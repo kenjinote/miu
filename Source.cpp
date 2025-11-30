@@ -2,7 +2,7 @@
 // Minimal, high-performance text editor for huge files using Win32 + DirectWrite.
 // Features: memory-mapped original file, piece table for edits, undo/redo, caret, basic input, fast visible-range rendering.
 // ... (Features list abbreviated for brevity) ...
-// Navigation Fix: Ctrl+Home/End now correctly reach navigation logic.
+// Search Feature: Regex replacement with escape sequences (\n, \t) and backreferences ($1) supported.
 
 // Build (MSVC):
 // rc FastMiniEditor.rc
@@ -28,7 +28,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <cmath>
 #include <iomanip>
 #include <sstream>
-#include <regex> // Regex support
+#include <regex> 
 #include "resource.h"
 
 #pragma comment(lib, "d2d1.lib")
@@ -37,62 +37,57 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comdlg32.lib")
 #pragma comment(lib, "comctl32.lib")
 
-// --- UTF helpers --------------------------------------------------
+// --- UTF helpers ---
 static std::wstring UTF8ToW(const std::string& s) {
     if (s.empty()) return {};
     int n = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), NULL, 0);
     if (n <= 0) return {};
-    std::wstring w;
-    w.resize(n);
+    std::wstring w; w.resize(n);
     MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), &w[0], n);
     return w;
 }
-
 static std::string WToUTF8(const std::wstring& w) {
     if (w.empty()) return {};
     int n = WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(), NULL, 0, NULL, NULL);
     if (n <= 0) return {};
-    std::string s;
-    s.resize(n);
+    std::string s; s.resize(n);
     WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(), &s[0], n, NULL, NULL);
     return s;
 }
 
-// --- Piece Table core ---
-struct Piece {
-    bool isOriginal;
-    size_t start;
-    size_t len;
-};
+// --- String Helper ---
+static std::string UnescapeString(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '\\' && i + 1 < s.size()) {
+            switch (s[i + 1]) {
+            case 'n': out += '\n'; break;
+            case 'r': out += '\r'; break;
+            case 't': out += '\t'; break;
+            case '\\': out += '\\'; break;
+                // Add other escapes if needed
+            default: out += s[i]; out += s[i + 1]; break;
+            }
+            i++;
+        }
+        else {
+            out += s[i];
+        }
+    }
+    return out;
+}
 
+// --- Piece Table ---
+struct Piece { bool isOriginal; size_t start; size_t len; };
 struct PieceTable {
-    const char* origPtr = nullptr;
-    size_t origSize = 0;
-    std::string addBuf;
-    std::vector<Piece> pieces;
-
-    void initFromFile(const char* data, size_t size) {
-        origPtr = data; origSize = size;
-        pieces.clear();
-        addBuf.clear();
-        if (size > 0) pieces.push_back({ true, 0, size });
-    }
-
-    void initEmpty() {
-        origPtr = nullptr; origSize = 0;
-        pieces.clear();
-        addBuf.clear();
-    }
-
-    size_t length() const {
-        size_t s = 0;
-        for (auto& p : pieces) s += p.len;
-        return s;
-    }
-
+    const char* origPtr = nullptr; size_t origSize = 0;
+    std::string addBuf; std::vector<Piece> pieces;
+    void initFromFile(const char* data, size_t size) { origPtr = data; origSize = size; pieces.clear(); addBuf.clear(); if (size > 0) pieces.push_back({ true, 0, size }); }
+    void initEmpty() { origPtr = nullptr; origSize = 0; pieces.clear(); addBuf.clear(); }
+    size_t length() const { size_t s = 0; for (auto& p : pieces) s += p.len; return s; }
     std::string getRange(size_t pos, size_t count) const {
-        std::string out;
-        out.reserve(std::min(count, (size_t)4096));
+        std::string out; out.reserve(std::min(count, (size_t)4096));
         size_t cur = 0;
         for (const auto& p : pieces) {
             if (cur + p.len <= pos) { cur += p.len; continue; }
@@ -106,7 +101,6 @@ struct PieceTable {
         }
         return out;
     }
-
     void insert(size_t pos, const std::string& s) {
         if (s.empty()) return;
         size_t cur = 0; size_t idx = 0;
@@ -115,21 +109,17 @@ struct PieceTable {
             Piece p = pieces[idx];
             size_t offsetInPiece = pos - cur;
             if (offsetInPiece > 0 && offsetInPiece < p.len) {
-                Piece left = { p.isOriginal, p.start, offsetInPiece };
-                Piece right = { p.isOriginal, p.start + offsetInPiece, p.len - offsetInPiece };
-                pieces[idx] = left;
-                pieces.insert(pieces.begin() + idx + 1, right);
+                pieces[idx] = { p.isOriginal, p.start, offsetInPiece };
+                pieces.insert(pieces.begin() + idx + 1, { p.isOriginal, p.start + offsetInPiece, p.len - offsetInPiece });
                 idx++;
             }
             else if (offsetInPiece == p.len) idx++;
         }
         else idx = pieces.size();
-        size_t addStart = addBuf.size();
-        addBuf.append(s);
+        size_t addStart = addBuf.size(); addBuf.append(s);
         pieces.insert(pieces.begin() + idx, { false, addStart, s.size() });
         coalesceAround(idx);
     }
-
     void erase(size_t pos, size_t count) {
         if (count == 0) return;
         size_t cur = 0; size_t idx = 0;
@@ -137,135 +127,87 @@ struct PieceTable {
         size_t remaining = count;
         if (idx >= pieces.size()) return;
         if (pos > cur) {
-            Piece p = pieces[idx];
-            size_t leftLen = pos - cur;
+            Piece p = pieces[idx]; size_t leftLen = pos - cur;
             pieces[idx] = { p.isOriginal, p.start, leftLen };
             pieces.insert(pieces.begin() + idx + 1, { p.isOriginal, p.start + leftLen, p.len - leftLen });
             idx++;
         }
         while (idx < pieces.size() && remaining > 0) {
-            if (pieces[idx].len <= remaining) {
-                remaining -= pieces[idx].len;
-                pieces.erase(pieces.begin() + idx);
-            }
-            else {
-                pieces[idx].start += remaining;
-                pieces[idx].len -= remaining;
-                remaining = 0;
-            }
+            if (pieces[idx].len <= remaining) { remaining -= pieces[idx].len; pieces.erase(pieces.begin() + idx); }
+            else { pieces[idx].start += remaining; pieces[idx].len -= remaining; remaining = 0; }
         }
         coalesceAround(idx > 0 ? idx - 1 : 0);
     }
-
     void coalesceAround(size_t idx) {
         if (pieces.empty()) return;
         if (idx >= pieces.size()) idx = pieces.size() - 1;
         if (idx > 0) {
             Piece& a = pieces[idx - 1]; Piece& b = pieces[idx];
-            if (!a.isOriginal && !b.isOriginal && (a.start + a.len == b.start)) {
-                a.len += b.len; pieces.erase(pieces.begin() + idx); idx--;
-            }
+            if (!a.isOriginal && !b.isOriginal && (a.start + a.len == b.start)) { a.len += b.len; pieces.erase(pieces.begin() + idx); idx--; }
         }
         if (idx + 1 < pieces.size()) {
             Piece& a = pieces[idx]; Piece& b = pieces[idx + 1];
-            if (!a.isOriginal && !b.isOriginal && (a.start + a.len == b.start)) {
-                a.len += b.len; pieces.erase(pieces.begin() + idx + 1);
-            }
+            if (!a.isOriginal && !b.isOriginal && (a.start + a.len == b.start)) { a.len += b.len; pieces.erase(pieces.begin() + idx + 1); }
         }
     }
-
     char charAt(size_t pos) const {
         size_t cur = 0;
         for (const auto& p : pieces) {
             if (cur + p.len <= pos) { cur += p.len; continue; }
             size_t local = pos - cur;
-            if (p.isOriginal) return origPtr[p.start + local];
-            else return addBuf[p.start + local];
+            if (p.isOriginal) return origPtr[p.start + local]; else return addBuf[p.start + local];
         }
         return ' ';
     }
 };
 
-// --- Cursor / Selection ---
 struct Cursor {
-    size_t head;
-    size_t anchor;
-    float desiredX;
+    size_t head; size_t anchor; float desiredX;
     size_t start() const { return std::min(head, anchor); }
     size_t end() const { return std::max(head, anchor); }
     bool hasSelection() const { return head != anchor; }
     void clearSelection() { anchor = head; }
 };
 
-// --- Undo/Redo ---
-struct EditOp {
-    enum Type { Insert, Erase } type;
-    size_t pos;
-    std::string text;
-};
-
-struct EditBatch {
-    std::vector<EditOp> ops;
-    std::vector<Cursor> beforeCursors;
-    std::vector<Cursor> afterCursors;
-};
-
+struct EditOp { enum Type { Insert, Erase } type; size_t pos; std::string text; };
+struct EditBatch { std::vector<EditOp> ops; std::vector<Cursor> beforeCursors; std::vector<Cursor> afterCursors; };
 struct UndoManager {
-    std::vector<EditBatch> undoStack;
-    std::vector<EditBatch> redoStack;
-    int savePoint = 0;
-
+    std::vector<EditBatch> undoStack; std::vector<EditBatch> redoStack; int savePoint = 0;
     void clear() { undoStack.clear(); redoStack.clear(); savePoint = 0; }
     void markSaved() { savePoint = (int)undoStack.size(); }
     bool isModified() const { return (int)undoStack.size() != savePoint; }
-    void push(const EditBatch& batch) {
-        if (savePoint > (int)undoStack.size()) savePoint = -1;
-        undoStack.push_back(batch); redoStack.clear();
-    }
+    void push(const EditBatch& batch) { if (savePoint > (int)undoStack.size()) savePoint = -1; undoStack.push_back(batch); redoStack.clear(); }
     bool canUndo() const { return !undoStack.empty(); }
     bool canRedo() const { return !redoStack.empty(); }
     EditBatch popUndo() { EditBatch e = undoStack.back(); undoStack.pop_back(); redoStack.push_back(e); return e; }
     EditBatch popRedo() { EditBatch e = redoStack.back(); redoStack.pop_back(); undoStack.push_back(e); return e; }
 };
 
-// --- File mapping helper ---
 struct MappedFile {
-    HANDLE hFile = INVALID_HANDLE_VALUE;
-    HANDLE hMap = NULL;
-    const char* ptr = nullptr;
-    size_t size = 0;
-
+    HANDLE hFile = INVALID_HANDLE_VALUE; HANDLE hMap = NULL; const char* ptr = nullptr; size_t size = 0;
     bool open(const wchar_t* path) {
         hFile = CreateFileW(path, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
         if (hFile == INVALID_HANDLE_VALUE) return false;
         LARGE_INTEGER li; if (!GetFileSizeEx(hFile, &li)) return false; size = (size_t)li.QuadPart;
         if (size == 0) { ptr = nullptr; return true; }
         hMap = CreateFileMappingW(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
-        if (!hMap) return false;
-        ptr = (const char*)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0);
-        if (!ptr) return false;
-        return true;
+        if (!hMap) return false; ptr = (const char*)MapViewOfFile(hMap, FILE_MAP_READ, 0, 0, 0); return !!ptr;
     }
-    void close() {
-        if (ptr) { UnmapViewOfFile(ptr); ptr = nullptr; }
-        if (hMap) { CloseHandle(hMap); hMap = NULL; }
-        if (hFile != INVALID_HANDLE_VALUE) { CloseHandle(hFile); hFile = INVALID_HANDLE_VALUE; }
-    }
+    void close() { if (ptr) { UnmapViewOfFile(ptr); ptr = nullptr; } if (hMap) { CloseHandle(hMap); hMap = NULL; } if (hFile != INVALID_HANDLE_VALUE) { CloseHandle(hFile); hFile = INVALID_HANDLE_VALUE; } }
     ~MappedFile() { close(); }
 };
 
-// --- Global editor state ---
+// --- Editor Struct ---
 struct Editor {
     HWND hwnd = NULL;
-    HWND hFindDlg = NULL; // Find Dialog Handle
+    HWND hFindDlg = NULL;
     PieceTable pt;
     UndoManager undo;
-
     std::unique_ptr<MappedFile> fileMap;
     std::wstring currentFilePath;
     bool isDirty = false;
 
-    // Search State
+    // Search & Replace State
     std::string searchQuery;
     std::string replaceQuery;
     bool searchMatchCase = false;
@@ -273,145 +215,64 @@ struct Editor {
     bool searchRegex = false;
     bool isReplaceMode = false;
 
-    // Multi-cursor state
     std::vector<Cursor> cursors;
     EditBatch pendingPadding;
+    bool isDragging = false; bool isRectSelecting = false;
+    float rectAnchorX = 0, rectAnchorY = 0; float rectHeadX = 0, rectHeadY = 0;
+    bool isDragMovePending = false; bool isDragMoving = false;
+    size_t dragMoveSourceStart = 0; size_t dragMoveSourceEnd = 0; size_t dragMoveDestPos = 0;
+    wchar_t highSurrogate = 0; std::string imeComp;
+    int vScrollPos = 0; int hScrollPos = 0; std::vector<size_t> lineStarts;
+    float maxLineWidth = 100.0f; float gutterWidth = 50.0f;
+    DWORD lastClickTime = 0; int clickCount = 0; int lastClickX = 0, lastClickY = 0;
+    float currentFontSize = 21.0f; DWORD zoomPopupEndTime = 0; std::wstring zoomPopupText;
 
-    bool isDragging = false;
-    bool isRectSelecting = false;
-    float rectAnchorX = 0, rectAnchorY = 0;
-    float rectHeadX = 0, rectHeadY = 0;
-
-    // Text Drag & Drop
-    bool isDragMovePending = false;
-    bool isDragMoving = false;
-    size_t dragMoveSourceStart = 0;
-    size_t dragMoveSourceEnd = 0;
-    size_t dragMoveDestPos = 0;
-
-    wchar_t highSurrogate = 0;
-    std::string imeComp;
-
-    // Scroll state
-    int vScrollPos = 0;
-    int hScrollPos = 0;
-    std::vector<size_t> lineStarts;
-    float maxLineWidth = 100.0f;
-    float gutterWidth = 50.0f;
-
-    // Click handling
-    DWORD lastClickTime = 0;
-    int clickCount = 0;
-    int lastClickX = 0, lastClickY = 0;
-
-    // Zoom state
-    float currentFontSize = 21.0f;
-    DWORD zoomPopupEndTime = 0;
-    std::wstring zoomPopupText;
-
-    // rendering
-    ID2D1Factory* d2dFactory = nullptr;
-    ID2D1HwndRenderTarget* rend = nullptr;
-    IDWriteFactory* dwFactory = nullptr;
-    IDWriteTextFormat* textFormat = nullptr;
-    IDWriteTextFormat* popupTextFormat = nullptr;
-
-    ID2D1StrokeStyle* dotStyle = nullptr;
-    ID2D1StrokeStyle* roundJoinStyle = nullptr;
-
-    D2D1::ColorF background = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
-    D2D1::ColorF textColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
-    D2D1::ColorF gutterBg = D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
-    D2D1::ColorF gutterText = D2D1::ColorF(0.6f, 0.6f, 0.6f, 1.0f);
-    D2D1::ColorF selColor = D2D1::ColorF(0.7f, 0.8f, 1.0f, 1.0f);
-    D2D1::ColorF highlightColor = D2D1::ColorF(1.0f, 1.0f, 0.0f, 0.4f); // Yellow for search hits
-
-    float dpiScaleX = 1.0f, dpiScaleY = 1.0f;
-    float lineHeight = 17.5f;
-    float charWidth = 8.0f;
+    ID2D1Factory* d2dFactory = nullptr; ID2D1HwndRenderTarget* rend = nullptr;
+    IDWriteFactory* dwFactory = nullptr; IDWriteTextFormat* textFormat = nullptr; IDWriteTextFormat* popupTextFormat = nullptr;
+    ID2D1StrokeStyle* dotStyle = nullptr; ID2D1StrokeStyle* roundJoinStyle = nullptr;
+    D2D1::ColorF background = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f); D2D1::ColorF textColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
+    D2D1::ColorF gutterBg = D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f); D2D1::ColorF gutterText = D2D1::ColorF(0.6f, 0.6f, 0.6f, 1.0f);
+    D2D1::ColorF selColor = D2D1::ColorF(0.7f, 0.8f, 1.0f, 1.0f); D2D1::ColorF highlightColor = D2D1::ColorF(1.0f, 1.0f, 0.0f, 0.4f);
+    float dpiScaleX = 1.0f, dpiScaleY = 1.0f; float lineHeight = 17.5f; float charWidth = 8.0f;
 
     void initGraphics(HWND h) {
         hwnd = h;
         D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &d2dFactory);
         DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&dwFactory));
         RECT r; GetClientRect(hwnd, &r);
-        D2D1_SIZE_U size = D2D1::SizeU(r.right - r.left, r.bottom - r.top);
-        d2dFactory->CreateHwndRenderTarget(D2D1::RenderTargetProperties(), D2D1::HwndRenderTargetProperties(hwnd, size), &rend);
-        FLOAT dpix = 96, dpiy = 96; rend->GetDpi(&dpix, &dpiy);
-        dpiScaleX = dpix / 96.0f; dpiScaleY = dpiy / 96.0f;
-
+        d2dFactory->CreateHwndRenderTarget(D2D1::RenderTargetProperties(), D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU(r.right - r.left, r.bottom - r.top)), &rend);
+        FLOAT dpix, dpiy; rend->GetDpi(&dpix, &dpiy); dpiScaleX = dpix / 96.0f; dpiScaleY = dpiy / 96.0f;
         dwFactory->CreateTextFormat(L"Segoe UI", NULL, DWRITE_FONT_WEIGHT_BOLD, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 24.0f, L"en-us", &popupTextFormat);
-        if (popupTextFormat) {
-            popupTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-            popupTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-        }
-
-        float dashes[] = { 2.0f, 2.0f };
-        D2D1_STROKE_STYLE_PROPERTIES props = D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_FLAT, D2D1_CAP_STYLE_FLAT, D2D1_CAP_STYLE_FLAT, D2D1_LINE_JOIN_MITER, 10.0f, D2D1_DASH_STYLE_CUSTOM, 0.0f);
-        d2dFactory->CreateStrokeStyle(&props, dashes, 2, &dotStyle);
-
-        D2D1_STROKE_STYLE_PROPERTIES roundProps = D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_LINE_JOIN_ROUND, 10.0f, D2D1_DASH_STYLE_SOLID, 0.0f);
-        d2dFactory->CreateStrokeStyle(&roundProps, nullptr, 0, &roundJoinStyle);
-
-        updateFont(currentFontSize);
-        rebuildLineStarts();
-        cursors.push_back({ 0, 0, 0.0f });
-        updateTitleBar();
+        if (popupTextFormat) { popupTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER); popupTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER); }
+        float dashes[] = { 2.0f, 2.0f }; D2D1_STROKE_STYLE_PROPERTIES props = D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_FLAT, D2D1_CAP_STYLE_FLAT, D2D1_CAP_STYLE_FLAT, D2D1_LINE_JOIN_MITER, 10.0f, D2D1_DASH_STYLE_CUSTOM, 0.0f); d2dFactory->CreateStrokeStyle(&props, dashes, 2, &dotStyle);
+        D2D1_STROKE_STYLE_PROPERTIES roundProps = D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_LINE_JOIN_ROUND, 10.0f, D2D1_DASH_STYLE_SOLID, 0.0f); d2dFactory->CreateStrokeStyle(&roundProps, nullptr, 0, &roundJoinStyle);
+        updateFont(currentFontSize); rebuildLineStarts(); cursors.push_back({ 0, 0, 0.0f }); updateTitleBar();
     }
-
     void updateFont(float size) {
-        if (size < 6.0f) size = 6.0f;
-        if (size > 200.0f) size = 200.0f;
-        currentFontSize = size;
+        if (size < 6.0f) size = 6.0f; if (size > 200.0f) size = 200.0f; currentFontSize = size;
         if (textFormat) { textFormat->Release(); textFormat = nullptr; }
         dwFactory->CreateTextFormat(L"Consolas", NULL, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, currentFontSize, L"en-us", &textFormat);
         lineHeight = currentFontSize * 1.25f;
         textFormat->SetLineSpacing(DWRITE_LINE_SPACING_METHOD_UNIFORM, lineHeight, lineHeight * 0.8f);
-        textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
-        textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
-
+        textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING); textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
         IDWriteTextLayout* layout = nullptr;
-        if (SUCCEEDED(dwFactory->CreateTextLayout(L"0", 1, textFormat, 100.0f, 100.0f, &layout))) {
-            DWRITE_TEXT_METRICS m; layout->GetMetrics(&m);
-            charWidth = m.width; layout->Release();
-        }
+        if (SUCCEEDED(dwFactory->CreateTextLayout(L"0", 1, textFormat, 100.0f, 100.0f, &layout))) { DWRITE_TEXT_METRICS m; layout->GetMetrics(&m); charWidth = m.width; layout->Release(); }
         updateGutterWidth(); updateScrollBars();
     }
-
     void destroyGraphics() {
-        if (popupTextFormat) { popupTextFormat->Release(); popupTextFormat = nullptr; }
-        if (dotStyle) { dotStyle->Release(); dotStyle = nullptr; }
-        if (roundJoinStyle) { roundJoinStyle->Release(); roundJoinStyle = nullptr; }
-        if (textFormat) { textFormat->Release(); textFormat = nullptr; }
-        if (dwFactory) { dwFactory->Release(); dwFactory = nullptr; }
-        if (rend) { rend->Release(); rend = nullptr; }
-        if (d2dFactory) { d2dFactory->Release(); d2dFactory = nullptr; }
+        if (popupTextFormat) popupTextFormat->Release(); if (dotStyle) dotStyle->Release(); if (roundJoinStyle) roundJoinStyle->Release();
+        if (textFormat) textFormat->Release(); if (dwFactory) dwFactory->Release(); if (rend) rend->Release(); if (d2dFactory) d2dFactory->Release();
     }
-
-    // ... (rest of standard helpers from previous version) ...
     void updateTitleBar() {
-        if (!hwnd) return;
-        std::wstring title = L"FastMiniEditor - ";
-        if (currentFilePath.empty()) title += L"Untitled"; else title += currentFilePath;
-        if (isDirty) title += L" *";
-        SetWindowTextW(hwnd, title.c_str());
+        if (!hwnd) return; std::wstring title = L"FastMiniEditor - "; if (currentFilePath.empty()) title += L"Untitled"; else title += currentFilePath; if (isDirty) title += L" *"; SetWindowTextW(hwnd, title.c_str());
     }
-
-    void updateDirtyFlag() {
-        bool newDirty = undo.isModified();
-        if (isDirty != newDirty) { isDirty = newDirty; updateTitleBar(); }
-    }
-
+    void updateDirtyFlag() { bool newDirty = undo.isModified(); if (isDirty != newDirty) { isDirty = newDirty; updateTitleBar(); } }
     void updateGutterWidth() {
-        int lines = (int)lineStarts.size(); int digits = 1;
-        while (lines >= 10) { lines /= 10; digits++; }
-        float digitWidth = 10.0f * (currentFontSize / 14.0f);
-        gutterWidth = (float)(digits * digitWidth + 20.0f);
+        int lines = (int)lineStarts.size(); int digits = 1; while (lines >= 10) { lines /= 10; digits++; }
+        float digitWidth = 10.0f * (currentFontSize / 14.0f); gutterWidth = (float)(digits * digitWidth + 20.0f);
     }
-
     void rebuildLineStarts() {
-        lineStarts.clear(); lineStarts.push_back(0);
-        size_t len = pt.length(); size_t globalOffset = 0; size_t maxBytes = 0;
+        lineStarts.clear(); lineStarts.push_back(0); size_t len = pt.length(); size_t globalOffset = 0; size_t maxBytes = 0;
         for (const auto& p : pt.pieces) {
             const char* buf = p.isOriginal ? (pt.origPtr + p.start) : (pt.addBuf.data() + p.start);
             for (size_t i = 0; i < p.len; ++i) { if (buf[i] == '\n') lineStarts.push_back(globalOffset + i + 1); }
@@ -421,136 +282,83 @@ struct Editor {
             size_t s = lineStarts[i]; size_t e = (i + 1 < lineStarts.size()) ? lineStarts[i + 1] : len;
             size_t lineLen = e - s; if (lineLen > maxBytes) maxBytes = lineLen;
         }
-        maxLineWidth = maxBytes * charWidth + 100.0f;
-        updateGutterWidth(); updateScrollBars();
+        maxLineWidth = maxBytes * charWidth + 100.0f; updateGutterWidth(); updateScrollBars();
     }
-
     int getLineIdx(size_t pos) {
         if (lineStarts.empty()) return 0;
-        auto it = std::upper_bound(lineStarts.begin(), lineStarts.end(), pos);
-        int idx = (int)std::distance(lineStarts.begin(), it) - 1;
-        if (idx < 0) idx = 0; if (idx >= (int)lineStarts.size()) idx = (int)lineStarts.size() - 1;
-        return idx;
+        auto it = std::upper_bound(lineStarts.begin(), lineStarts.end(), pos); int idx = (int)std::distance(lineStarts.begin(), it) - 1;
+        if (idx < 0) idx = 0; if (idx >= (int)lineStarts.size()) idx = (int)lineStarts.size() - 1; return idx;
     }
-
     float getXFromPos(size_t pos) {
-        int lineIdx = getLineIdx(pos);
-        size_t start = lineStarts[lineIdx];
-        size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
-        size_t len = (end > start) ? (end - start) : 0;
+        int lineIdx = getLineIdx(pos); size_t start = lineStarts[lineIdx];
+        size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length(); size_t len = (end > start) ? (end - start) : 0;
         std::string lineStr = pt.getRange(start, len); std::wstring wLine = UTF8ToW(lineStr);
         IDWriteTextLayout* layout = nullptr;
         HRESULT hr = dwFactory->CreateTextLayout(wLine.c_str(), (UINT32)wLine.size(), textFormat, 10000.0f, (FLOAT)lineHeight, &layout);
         float x = 0;
         if (SUCCEEDED(hr) && layout) {
-            size_t localIdx = pos - start;
-            if (localIdx > wLine.size()) localIdx = wLine.size();
-            DWRITE_HIT_TEST_METRICS m; FLOAT px, py;
-            layout->HitTestTextPosition((UINT32)localIdx, FALSE, &px, &py, &m);
-            x = px; layout->Release();
+            size_t localIdx = pos - start; if (localIdx > wLine.size()) localIdx = wLine.size();
+            DWRITE_HIT_TEST_METRICS m; FLOAT px, py; layout->HitTestTextPosition((UINT32)localIdx, FALSE, &px, &py, &m); x = px; layout->Release();
         }
         return x;
     }
-
     size_t getPosFromLineAndX(int lineIdx, float targetX) {
         if (lineIdx < 0 || lineIdx >= (int)lineStarts.size()) return cursors.empty() ? 0 : cursors.back().head;
-        size_t start = lineStarts[lineIdx];
-        size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
-        size_t len = (end > start) ? (end - start) : 0;
+        size_t start = lineStarts[lineIdx]; size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length(); size_t len = (end > start) ? (end - start) : 0;
         std::string lineStr = pt.getRange(start, len); std::wstring wLine = UTF8ToW(lineStr);
         IDWriteTextLayout* layout = nullptr;
         HRESULT hr = dwFactory->CreateTextLayout(wLine.c_str(), (UINT32)wLine.size(), textFormat, 10000.0f, (FLOAT)lineHeight, &layout);
         size_t resultPos = start;
         if (SUCCEEDED(hr) && layout) {
-            BOOL isTrailing, isInside; DWRITE_HIT_TEST_METRICS m;
-            layout->HitTestPoint(targetX, 1.0f, &isTrailing, &isInside, &m);
-            size_t local = m.textPosition;
-            if (isTrailing) local += m.length;
+            BOOL isTrailing, isInside; DWRITE_HIT_TEST_METRICS m; layout->HitTestPoint(targetX, 1.0f, &isTrailing, &isInside, &m);
+            size_t local = m.textPosition; if (isTrailing) local += m.length;
             bool hasNewline = (!wLine.empty() && wLine.back() == L'\n');
             if (hasNewline) { if (local >= wLine.size()) local = wLine.size() - 1; }
             else { if (local > wLine.size()) local = wLine.size(); }
-            std::wstring wSub = wLine.substr(0, local); std::string sub = WToUTF8(wSub);
-            resultPos = start + sub.size(); layout->Release();
+            std::wstring wSub = wLine.substr(0, local); std::string sub = WToUTF8(wSub); resultPos = start + sub.size(); layout->Release();
         }
         return resultPos;
     }
-
     void updateScrollBars() {
-        if (!hwnd) return;
-        RECT rc; GetClientRect(hwnd, &rc);
-        float clientH = (rc.bottom - rc.top) / dpiScaleY;
-        float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth;
-        if (clientW < 0) clientW = 0;
+        if (!hwnd) return; RECT rc; GetClientRect(hwnd, &rc);
+        float clientH = (rc.bottom - rc.top) / dpiScaleY; float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth; if (clientW < 0) clientW = 0;
         int linesVisible = (int)(clientH / lineHeight);
         SCROLLINFO si = {}; si.cbSize = sizeof(SCROLLINFO); si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
-        si.nMin = 0; si.nMax = (int)lineStarts.size() + linesVisible - 2;
-        if (si.nMax < 0) si.nMax = 0;
-        si.nPage = linesVisible;
-        si.nPos = vScrollPos;
-        SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
-        si.nMin = 0;
-        si.nMax = (int)maxLineWidth;
-        si.nPage = (int)clientW;
-        si.nPos = hScrollPos;
-        SetScrollInfo(hwnd, SB_HORZ, &si, TRUE);
+        si.nMin = 0; si.nMax = (int)lineStarts.size() + linesVisible - 2; if (si.nMax < 0) si.nMax = 0; si.nPage = linesVisible; si.nPos = vScrollPos; SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
+        si.nMin = 0; si.nMax = (int)maxLineWidth; si.nPage = (int)clientW; si.nPos = hScrollPos; SetScrollInfo(hwnd, SB_HORZ, &si, TRUE);
     }
-
     void getCaretPoint(float& x, float& y) {
         if (cursors.empty()) { x = 0; y = 0; return; }
-        size_t pos = cursors.back().head; int line = getLineIdx(pos);
-        float docY = line * lineHeight;
-        float localX = getXFromPos(pos);
-        x = (localX - hScrollPos + gutterWidth) * dpiScaleX;
-        y = (docY - vScrollPos * lineHeight) * dpiScaleY;
+        size_t pos = cursors.back().head; int line = getLineIdx(pos); float docY = line * lineHeight; float localX = getXFromPos(pos);
+        x = (localX - hScrollPos + gutterWidth) * dpiScaleX; y = (docY - vScrollPos * lineHeight) * dpiScaleY;
     }
-
     void ensureCaretVisible() {
-        if (cursors.empty()) return;
-        Cursor& mainCursor = cursors.back();
-        RECT rc; GetClientRect(hwnd, &rc);
-        float clientH = (rc.bottom - rc.top) / dpiScaleY;
-        int linesVisible = (int)(clientH / lineHeight);
+        if (cursors.empty()) return; Cursor& mainCursor = cursors.back(); RECT rc; GetClientRect(hwnd, &rc); float clientH = (rc.bottom - rc.top) / dpiScaleY; int linesVisible = (int)(clientH / lineHeight);
         int caretLine = getLineIdx(mainCursor.head);
-        if (caretLine < vScrollPos) vScrollPos = caretLine;
-        else if (caretLine >= vScrollPos + linesVisible - 1) vScrollPos = caretLine - linesVisible + 2;
-        if (vScrollPos < 0) vScrollPos = 0;
-        updateScrollBars(); InvalidateRect(hwnd, NULL, FALSE);
+        if (caretLine < vScrollPos) vScrollPos = caretLine; else if (caretLine >= vScrollPos + linesVisible - 1) vScrollPos = caretLine - linesVisible + 2;
+        if (vScrollPos < 0) vScrollPos = 0; updateScrollBars(); InvalidateRect(hwnd, NULL, FALSE);
     }
-
     std::string buildVisibleText(int numLines) {
         if (lineStarts.empty()) return "";
         size_t startOffset = (vScrollPos < (int)lineStarts.size()) ? lineStarts[vScrollPos] : lineStarts.back();
-        size_t endOffset = pt.length();
-        int endLineIdx = vScrollPos + numLines;
-        if (endLineIdx < (int)lineStarts.size()) endOffset = lineStarts[endLineIdx];
+        size_t endOffset = pt.length(); int endLineIdx = vScrollPos + numLines; if (endLineIdx < (int)lineStarts.size()) endOffset = lineStarts[endLineIdx];
         return pt.getRange(startOffset, (endOffset > startOffset) ? (endOffset - startOffset) : 0);
     }
-
     size_t getDocPosFromPoint(int x, int y) {
-        float dipX = x / dpiScaleX; float dipY = y / dpiScaleY;
-        if (dipX < gutterWidth) dipX = gutterWidth;
+        float dipX = x / dpiScaleX; float dipY = y / dpiScaleY; if (dipX < gutterWidth) dipX = gutterWidth;
         float virtualX = dipX - gutterWidth + hScrollPos; float virtualY = dipY;
-        RECT rc; GetClientRect(hwnd, &rc);
-        float clientH = (rc.bottom - rc.top) / dpiScaleY;
-        float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth;
-        int linesVisible = (int)(clientH / lineHeight) + 2;
-        std::string text = buildVisibleText(linesVisible); std::wstring wtext = UTF8ToW(text);
+        RECT rc; GetClientRect(hwnd, &rc); float clientH = (rc.bottom - rc.top) / dpiScaleY; float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth;
+        int linesVisible = (int)(clientH / lineHeight) + 2; std::string text = buildVisibleText(linesVisible); std::wstring wtext = UTF8ToW(text);
         float layoutWidth = maxLineWidth + clientW;
-        IDWriteTextLayout* layout = nullptr;
-        HRESULT hr = dwFactory->CreateTextLayout(wtext.c_str(), (UINT32)wtext.size(), textFormat, layoutWidth, clientH, &layout);
-        size_t resultPos = 0;
-        size_t visibleStartOffset = (vScrollPos < (int)lineStarts.size()) ? lineStarts[vScrollPos] : pt.length();
+        IDWriteTextLayout* layout = nullptr; HRESULT hr = dwFactory->CreateTextLayout(wtext.c_str(), (UINT32)wtext.size(), textFormat, layoutWidth, clientH, &layout);
+        size_t resultPos = 0; size_t visibleStartOffset = (vScrollPos < (int)lineStarts.size()) ? lineStarts[vScrollPos] : pt.length();
         if (SUCCEEDED(hr) && layout) {
-            BOOL isTrailing, isInside; DWRITE_HIT_TEST_METRICS metrics;
-            layout->HitTestPoint(virtualX, virtualY, &isTrailing, &isInside, &metrics);
-            UINT32 utf16Index = metrics.textPosition;
-            if (isTrailing) utf16Index += metrics.length;
-            if (utf16Index > wtext.size()) utf16Index = (UINT32)wtext.size();
-            std::wstring wsub = wtext.substr(0, utf16Index); std::string sub = WToUTF8(wsub);
+            BOOL isTrailing, isInside; DWRITE_HIT_TEST_METRICS metrics; layout->HitTestPoint(virtualX, virtualY, &isTrailing, &isInside, &metrics);
+            UINT32 utf16Index = metrics.textPosition; if (isTrailing) utf16Index += metrics.length;
+            if (utf16Index > wtext.size()) utf16Index = (UINT32)wtext.size(); std::wstring wsub = wtext.substr(0, utf16Index); std::string sub = WToUTF8(wsub);
             resultPos = visibleStartOffset + sub.size(); layout->Release();
         }
-        if (resultPos > pt.length()) resultPos = pt.length();
-        return resultPos;
+        if (resultPos > pt.length()) resultPos = pt.length(); return resultPos;
     }
 
     bool isWordChar(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'; }
@@ -735,13 +543,19 @@ struct Editor {
         size_t len = c.end() - c.start();
         std::string selText = pt.getRange(c.start(), len);
         bool match = false;
+        std::string replacement = replaceQuery;
 
         if (searchRegex) {
             try {
                 std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
                 if (!searchMatchCase) flags |= std::regex_constants::icase;
                 std::regex re(searchQuery, flags);
-                match = std::regex_match(selText, re);
+                std::smatch m;
+                if (std::regex_match(selText, m, re)) {
+                    match = true;
+                    std::string fmt = UnescapeString(replaceQuery);
+                    replacement = m.format(fmt);
+                }
             }
             catch (...) {}
         }
@@ -757,7 +571,7 @@ struct Editor {
         }
 
         if (match) {
-            insertAtCursors(replaceQuery);
+            insertAtCursors(replacement);
             findNext(true);
         }
         else {
@@ -767,7 +581,7 @@ struct Editor {
 
     void replaceAll() {
         if (searchQuery.empty()) return;
-        struct Match { size_t start; size_t len; };
+        struct Match { size_t start; size_t len; std::string replacementText; };
         std::vector<Match> matches;
 
         size_t currentPos = 0;
@@ -775,6 +589,7 @@ struct Editor {
 
         if (searchRegex) {
             std::string fullText = pt.getRange(0, docLen);
+            std::string fmt = UnescapeString(replaceQuery);
             try {
                 std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
                 if (!searchMatchCase) flags |= std::regex_constants::icase;
@@ -782,7 +597,7 @@ struct Editor {
                 auto begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
                 auto end = std::sregex_iterator();
                 for (auto i = begin; i != end; ++i) {
-                    matches.push_back({ (size_t)i->position(), (size_t)i->length() });
+                    matches.push_back({ (size_t)i->position(), (size_t)i->length(), i->format(fmt) });
                 }
             }
             catch (...) { return; }
@@ -791,7 +606,7 @@ struct Editor {
             while (true) {
                 size_t pos = findText(currentPos, searchQuery, true, searchMatchCase, searchWholeWord, false);
                 if (pos == std::string::npos || pos < currentPos) break;
-                matches.push_back({ pos, searchQuery.length() });
+                matches.push_back({ pos, searchQuery.length(), replaceQuery });
                 currentPos = pos + searchQuery.length();
                 if (currentPos > docLen) break;
             }
@@ -809,8 +624,8 @@ struct Editor {
             std::string deleted = pt.getRange(start, len);
             pt.erase(start, len);
             batch.ops.push_back({ EditOp::Erase, start, deleted });
-            pt.insert(start, replaceQuery);
-            batch.ops.push_back({ EditOp::Insert, start, replaceQuery });
+            pt.insert(start, it->replacementText);
+            batch.ops.push_back({ EditOp::Insert, start, it->replacementText });
         }
 
         cursors.clear();
