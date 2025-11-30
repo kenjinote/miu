@@ -1,12 +1,13 @@
-﻿// FastMiniEditor.cpp
+﻿// Source.cpp
 // Minimal, high-performance text editor for huge files using Win32 + DirectWrite.
 // Features: memory-mapped original file, piece table for edits, undo/redo, caret, basic input, fast visible-range rendering.
 // ... (Features list abbreviated for brevity) ...
-// Search Feature: Regex replacement with escape sequences (\n, \t) and backreferences ($1) supported.
+// UI Update: Help Popup size/opacity fixed by user.
+// New Feature: Ctrl+Shift+S for "Save As".
 
 // Build (MSVC):
-// rc FastMiniEditor.rc
-// cl /std:c++17 /O2 /EHsc FastMiniEditor.cpp FastMiniEditor.res /link d2d1.lib dwrite.lib user32.lib ole32.lib imm32.lib comdlg32.lib comctl32.lib
+// rc miu.rc
+// cl /std:c++17 /O2 /EHsc Source.cpp miu.res /link d2d1.lib dwrite.lib user32.lib ole32.lib imm32.lib comdlg32.lib comctl32.lib
 
 #pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
@@ -37,6 +38,27 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comdlg32.lib")
 #pragma comment(lib, "comctl32.lib")
 
+// --- Constants ---
+const std::wstring APP_VERSION = L"miu v1.0.0";
+const std::wstring HELP_TEXT =
+APP_VERSION + L"\n\n"
+L"[Shortcuts]\n"
+L"F1             Help\n"
+L"Ctrl+N         New\n"
+L"Ctrl+O         Open\n"
+L"Ctrl+S         Save\n"
+L"Ctrl+Shift+S   Save As\n"
+L"Ctrl+F         Find\n"
+L"Ctrl+H         Replace\n"
+L"F3             Find Next\n"
+L"Shift+F3       Find Prev\n"
+L"Ctrl+Z         Undo\n"
+L"Ctrl+Y         Redo\n"
+L"Ctrl+X/C/V     Cut/Copy/Paste\n"
+L"Ctrl+A         Select All\n"
+L"Alt+Drag       Rect Select\n"
+L"Ctrl+Wheel     Zoom";
+
 // --- UTF helpers ---
 static std::wstring UTF8ToW(const std::string& s) {
     if (s.empty()) return {};
@@ -66,7 +88,6 @@ static std::string UnescapeString(const std::string& s) {
             case 'r': out += '\r'; break;
             case 't': out += '\t'; break;
             case '\\': out += '\\'; break;
-                // Add other escapes if needed
             default: out += s[i]; out += s[i + 1]; break;
             }
             i++;
@@ -215,6 +236,9 @@ struct Editor {
     bool searchRegex = false;
     bool isReplaceMode = false;
 
+    // Help Popup State
+    bool showHelpPopup = false;
+
     std::vector<Cursor> cursors;
     EditBatch pendingPadding;
     bool isDragging = false; bool isRectSelecting = false;
@@ -264,7 +288,7 @@ struct Editor {
         if (textFormat) textFormat->Release(); if (dwFactory) dwFactory->Release(); if (rend) rend->Release(); if (d2dFactory) d2dFactory->Release();
     }
     void updateTitleBar() {
-        if (!hwnd) return; std::wstring title = L"FastMiniEditor - "; if (currentFilePath.empty()) title += L"Untitled"; else title += currentFilePath; if (isDirty) title += L" *"; SetWindowTextW(hwnd, title.c_str());
+        if (!hwnd) return; std::wstring title = L"miu - "; if (currentFilePath.empty()) title += L"無題"; else title += currentFilePath; if (isDirty) title += L" *"; SetWindowTextW(hwnd, title.c_str());
     }
     void updateDirtyFlag() { bool newDirty = undo.isModified(); if (isDirty != newDirty) { isDirty = newDirty; updateTitleBar(); } }
     void updateGutterWidth() {
@@ -635,18 +659,23 @@ struct Editor {
         rebuildLineStarts();
         updateDirtyFlag();
         InvalidateRect(hwnd, NULL, FALSE);
-        MessageBoxW(hwnd, (std::to_wstring(matches.size()) + L" 個の項目を置換しました。").c_str(), L"置換完了", MB_OK);
+
+        ShowTaskDialog(L"置換完了", (std::to_wstring(matches.size()) + L" 個の項目を置換しました。").c_str(), nullptr, TDCBF_OK_BUTTON, TD_INFORMATION_ICON);
+
+        if (hFindDlg && IsWindowVisible(hFindDlg)) {
+            SetFocus(hFindDlg);
+        }
     }
 
-    void updateFindReplaceUI(bool replaceMode) {
-        if (!hFindDlg) return;
+    void updateFindReplaceUI(HWND dlg, bool replaceMode) {
+        if (!dlg) return;
         isReplaceMode = replaceMode;
         int show = replaceMode ? SW_SHOW : SW_HIDE;
-        ShowWindow(GetDlgItem(hFindDlg, IDC_REPLACE_LABEL), show);
-        ShowWindow(GetDlgItem(hFindDlg, IDC_REPLACE_EDIT), show);
-        ShowWindow(GetDlgItem(hFindDlg, IDC_REPLACE_BTN), show);
-        ShowWindow(GetDlgItem(hFindDlg, IDC_REPLACE_ALL_BTN), show);
-        SetWindowTextW(hFindDlg, replaceMode ? L"置換" : L"検索");
+        ShowWindow(GetDlgItem(dlg, IDC_REPLACE_LABEL), show);
+        ShowWindow(GetDlgItem(dlg, IDC_REPLACE_EDIT), show);
+        ShowWindow(GetDlgItem(dlg, IDC_REPLACE_BTN), show);
+        ShowWindow(GetDlgItem(dlg, IDC_REPLACE_ALL_BTN), show);
+        SetWindowTextW(dlg, replaceMode ? L"置換" : L"検索");
     }
 
     static INT_PTR CALLBACK FindDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -666,7 +695,7 @@ struct Editor {
             CheckDlgButton(hDlg, IDC_FIND_CASE, pThis->searchMatchCase ? BST_CHECKED : BST_UNCHECKED);
             CheckDlgButton(hDlg, IDC_FIND_WORD, pThis->searchWholeWord ? BST_CHECKED : BST_UNCHECKED);
             CheckDlgButton(hDlg, IDC_FIND_REGEX, pThis->searchRegex ? BST_CHECKED : BST_UNCHECKED);
-            pThis->updateFindReplaceUI(pThis->isReplaceMode);
+            pThis->updateFindReplaceUI(hDlg, pThis->isReplaceMode);
             SetFocus(GetDlgItem(hDlg, IDC_FIND_EDIT));
             SendMessage(GetDlgItem(hDlg, IDC_FIND_EDIT), EM_SETSEL, 0, -1);
             return FALSE;
@@ -683,9 +712,11 @@ struct Editor {
                 pThis->findNext(true); return TRUE;
             }
             if (LOWORD(wParam) == IDC_REPLACE_BTN) {
+                if (!pThis->isReplaceMode) return TRUE; // Block mnemonic in Find mode
                 pThis->replaceNext(); return TRUE;
             }
             if (LOWORD(wParam) == IDC_REPLACE_ALL_BTN) {
+                if (!pThis->isReplaceMode) return TRUE; // Block mnemonic in Find mode
                 pThis->replaceAll(); return TRUE;
             }
             if (LOWORD(wParam) == IDC_FIND_CANCEL || LOWORD(wParam) == IDCANCEL) {
@@ -699,7 +730,7 @@ struct Editor {
     void showFindDialog(bool replaceMode) {
         isReplaceMode = replaceMode;
         if (hFindDlg) {
-            updateFindReplaceUI(isReplaceMode);
+            updateFindReplaceUI(hFindDlg, isReplaceMode);
             SetFocus(hFindDlg);
             if (!cursors.empty() && cursors.back().hasSelection()) {
                 size_t s = cursors.back().start(); size_t len = cursors.back().end() - s;
@@ -779,6 +810,10 @@ struct Editor {
             ID2D1SolidColorBrush* caretBrush = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f), &caretBrush);
             ID2D1SolidColorBrush* hlBrush = nullptr; rend->CreateSolidColorBrush(highlightColor, &hlBrush);
             // Search Highlights
+            if (showHelpPopup) {
+                // Do not draw text selection or search highlights over help popup if we want, but here we draw them under.
+            }
+
             if (!searchQuery.empty()) {
                 if (searchRegex) {
                     try {
@@ -911,12 +946,31 @@ struct Editor {
         HIMC hIMC = ImmGetContext(hwnd); if (hIMC) { COMPOSITIONFORM cf = {}; cf.dwStyle = CFS_POINT; cf.ptCurrentPos.x = (LONG)(imeCx + gutterWidth - hScrollPos); cf.ptCurrentPos.y = (LONG)imeCy; ImmSetCompositionWindow(hIMC, &cf); CANDIDATEFORM cdf = {}; cdf.dwIndex = 0; cdf.dwStyle = CFS_CANDIDATEPOS; cdf.ptCurrentPos.x = (LONG)(imeCx + gutterWidth - hScrollPos); cdf.ptCurrentPos.y = (LONG)(imeCy + lineHeight); ImmSetCandidateWindow(hIMC, &cdf); ImmReleaseContext(hwnd, hIMC); }
         if (GetTickCount() < zoomPopupEndTime) {
             D2D1_RECT_F popupRect = D2D1::RectF(clientW / 2 - 80, clientH / 2 - 40, clientW / 2 + 80, clientH / 2 + 40);
-            ID2D1SolidColorBrush* popupBg = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.7f), &popupBg);
+            ID2D1SolidColorBrush* popupBg = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.5f), &popupBg);
             ID2D1SolidColorBrush* popupText = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f), &popupText);
             rend->FillRoundedRectangle(D2D1::RoundedRect(popupRect, 10.0f, 10.0f), popupBg);
             if (popupTextFormat) rend->DrawText(zoomPopupText.c_str(), (UINT32)zoomPopupText.size(), popupTextFormat, popupRect, popupText);
             popupBg->Release(); popupText->Release();
         }
+
+        // Help Popup (F1)
+        if (showHelpPopup) {
+            float helpW = 400.0f; float helpH = 512.0f;
+            D2D1_RECT_F helpRect = D2D1::RectF((clientW - helpW) / 2, (clientH - helpH) / 2, (clientW + helpW) / 2, (clientH + helpH) / 2);
+            ID2D1SolidColorBrush* popupBg = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.5f), &popupBg);
+            ID2D1SolidColorBrush* popupText = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f), &popupText);
+            rend->FillRoundedRectangle(D2D1::RoundedRect(helpRect, 10.0f, 10.0f), popupBg);
+            // Use specific layout for help if needed, here reusing standard format but could make it left aligned
+            // Creating a specific layout for help text
+            IDWriteTextLayout* helpLayout = nullptr;
+            if (SUCCEEDED(dwFactory->CreateTextLayout(HELP_TEXT.c_str(), (UINT32)HELP_TEXT.size(), textFormat, helpW - 40, helpH - 40, &helpLayout))) {
+                // Temporarily force white color on the text format or use the brush
+                rend->DrawTextLayout(D2D1::Point2F(helpRect.left + 20, helpRect.top + 20), helpLayout, popupText);
+                helpLayout->Release();
+            }
+            popupBg->Release(); popupText->Release();
+        }
+
         rend->EndDraw(); EndPaint(hwnd, &ps);
     }
     void insertAtCursors(const std::string& text) { commitPadding(); if (cursors.empty()) return; EditBatch batch; batch.beforeCursors = cursors; std::vector<int> indices(cursors.size()); for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i; std::sort(indices.begin(), indices.end(), [&](int a, int b) {return cursors[a].start() > cursors[b].start(); }); for (int idx : indices) { Cursor& c = cursors[idx]; if (c.hasSelection()) { size_t s = c.start(); size_t l = c.end() - s; std::string d = pt.getRange(s, l); pt.erase(s, l); batch.ops.push_back({ EditOp::Erase,s,d }); for (auto& o : cursors) { if (o.head > s)o.head -= l; if (o.anchor > s)o.anchor -= l; }c.head = s; c.anchor = s; } } for (int idx : indices) { Cursor& c = cursors[idx]; size_t p = c.head; pt.insert(p, text); batch.ops.push_back({ EditOp::Insert,p,text }); size_t l = text.size(); for (auto& o : cursors) { if (o.head >= p)o.head += l; if (o.anchor >= p)o.anchor += l; } } batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
@@ -941,6 +995,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_CREATE: g_editor.initGraphics(hwnd); break;
     case WM_SIZE: if (g_editor.rend) { RECT rc; GetClientRect(hwnd, &rc); g_editor.rend->Resize(D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top)); g_editor.updateScrollBars(); InvalidateRect(hwnd, NULL, FALSE); } break;
     case WM_LBUTTONDOWN: {
+        // Dismiss Help Popup on interaction
+        if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
+
         int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam); SetCapture(hwnd); g_editor.isDragging = true; g_editor.rollbackPadding();
         if (abs(x - g_editor.lastClickX) < 5 && abs(y - g_editor.lastClickY) < 5 && (GetMessageTime() - g_editor.lastClickTime < GetDoubleClickTime())) g_editor.clickCount++; else g_editor.clickCount = 1;
         g_editor.lastClickTime = GetMessageTime(); g_editor.lastClickX = x; g_editor.lastClickY = y;
@@ -999,6 +1056,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         InvalidateRect(hwnd, NULL, FALSE); break;
     case WM_TIMER: if (wParam == 1) { KillTimer(hwnd, 1); InvalidateRect(hwnd, NULL, FALSE); } break;
     case WM_CHAR: {
+        // Dismiss Help Popup on input
+        if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
+
         wchar_t c = (wchar_t)wParam; if (c < 32 && c != 8 && c != 13) break;
         if (c == 8) { g_editor.highSurrogate = 0; g_editor.backspaceAtCursors(); }
         else if (c == 13) { g_editor.highSurrogate = 0; g_editor.insertAtCursors("\n"); }
@@ -1024,11 +1084,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         // Shortcuts
         if (GetKeyState(VK_CONTROL) & 0x8000) {
             switch (wParam) {
-            case 'F': g_editor.showFindDialog(false); return 0;
-            case 'H': g_editor.showFindDialog(true); return 0;
             case 'O': g_editor.openFile(); return 0;
             case 'N': g_editor.newFile(); return 0;
-            case 'S': if (g_editor.currentFilePath.empty()) g_editor.saveFileAs(); else g_editor.saveFile(g_editor.currentFilePath); return 0;
+            case 'S':
+                if (GetKeyState(VK_SHIFT) & 0x8000) g_editor.saveFileAs();
+                else if (g_editor.currentFilePath.empty()) g_editor.saveFileAs();
+                else g_editor.saveFile(g_editor.currentFilePath);
+                return 0;
             case 'Z': g_editor.performUndo(); return 0;
             case 'Y': g_editor.performRedo(); return 0;
             case 'C': case VK_INSERT: g_editor.copyToClipboard(); return 0;
@@ -1042,6 +1104,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         if ((GetKeyState(VK_SHIFT) & 0x8000) && wParam == VK_INSERT) { g_editor.pasteFromClipboard(); return 0; }
         if (wParam == VK_ESCAPE) { g_editor.rollbackPadding(); if (!g_editor.cursors.empty()) { Cursor c = g_editor.cursors.back(); c.anchor = c.head; g_editor.cursors.clear(); g_editor.cursors.push_back(c); g_editor.isRectSelecting = false; InvalidateRect(hwnd, NULL, FALSE); } return 0; }
         if (wParam == VK_DELETE) { g_editor.rollbackPadding(); g_editor.isRectSelecting = false; g_editor.deleteForwardAtCursors(); return 0; }
+
+        // Dismiss Help Popup on non-control navigation keys
+        if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
 
         // Navigation
         if (wParam == VK_LEFT || wParam == VK_RIGHT || wParam == VK_UP || wParam == VK_DOWN ||
@@ -1082,12 +1147,63 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 }
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
-    WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance; wc.lpszClassName = L"FastMiniEditorClass"; wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1)); wc.hCursor = LoadCursor(NULL, IDC_IBEAM); wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); RegisterClass(&wc);
-    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"FastMiniEditor - Minimal", WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_HSCROLL, CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, NULL, NULL, hInstance, NULL);
+    WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance; wc.lpszClassName = L"miu"; wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1)); wc.hCursor = LoadCursor(NULL, IDC_IBEAM); wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); RegisterClass(&wc);
+    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"miu", WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_HSCROLL, CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, NULL, NULL, hInstance, NULL);
     if (!hwnd) return 0; ShowWindow(hwnd, nCmdShow);
+
+    // Check startup file
+    if (g_editor.currentFilePath.empty()) {
+        int argc; wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
+        if (argc >= 2) {
+            g_editor.fileMap.reset(new MappedFile());
+            if (g_editor.fileMap->open(argv[1])) {
+                g_editor.pt.initFromFile(g_editor.fileMap->ptr, g_editor.fileMap->size);
+                g_editor.currentFilePath = argv[1];
+                g_editor.undo.clear(); g_editor.isDirty = false; g_editor.undo.markSaved();
+                g_editor.cursors.clear(); g_editor.cursors.push_back({ 0, 0, 0.0f });
+                g_editor.rebuildLineStarts(); g_editor.updateTitleBar();
+            }
+        }
+        else {
+            // No file argument, show help popup on startup
+            g_editor.showHelpPopup = true;
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+        LocalFree(argv);
+    }
+
     g_editor.updateTitleBar();
+
     MSG msg; while (GetMessage(&msg, NULL, 0, 0)) {
-        if (msg.message == WM_KEYDOWN && msg.wParam == VK_F3) { bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0; g_editor.findNext(!shift); continue; }
+        // Handle F1 in main loop to allow toggling or showing even if focus is elsewhere (though dialogs steal focus)
+        if (msg.message == WM_KEYDOWN) {
+            if (msg.wParam == VK_F1) {
+                g_editor.showHelpPopup = true;
+                InvalidateRect(hwnd, NULL, FALSE);
+                continue; // Consume F1
+            }
+            if (msg.wParam == VK_F3) {
+                bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+                g_editor.findNext(!shift);
+                continue;
+            }
+            if (GetKeyState(VK_CONTROL) & 0x8000) {
+                if (msg.wParam == 'F') { g_editor.showFindDialog(false); continue; }
+                if (msg.wParam == 'H') { g_editor.showFindDialog(true); continue; }
+            }
+        }
+        // Dismiss help popup on any key (except modifiers if needed, but strict requirement was "key press")
+        // Checking in loop allows catching keys even if focus is somehow weird, but main logic is in WndProc for editor.
+        // We add a check here for safety if dialog is not active.
+        if (g_editor.showHelpPopup && (msg.message == WM_KEYDOWN || msg.message == WM_CHAR || msg.message == WM_LBUTTONDOWN)) {
+            if (msg.message == WM_KEYDOWN && msg.wParam == VK_F1) {} // Ignore F1 handled above
+            else {
+                g_editor.showHelpPopup = false;
+                InvalidateRect(hwnd, NULL, FALSE);
+                // Dispatch the message so it processes (e.g. inserts 'A')
+            }
+        }
+
         if (!g_editor.hFindDlg || !IsDialogMessage(g_editor.hFindDlg, &msg)) { TranslateMessage(&msg); DispatchMessage(&msg); }
     }
     return 0;
