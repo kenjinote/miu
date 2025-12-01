@@ -37,8 +37,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comdlg32.lib")
 #pragma comment(lib, "comctl32.lib")
 
-// --- Constants ---
-const std::wstring APP_VERSION = L"FastMiniEditor v1.1";
+const std::wstring APP_VERSION = L"miu v1.0.1";
 const std::wstring HELP_TEXT =
 APP_VERSION + L"\n\n"
 L"[Shortcuts]\n"
@@ -58,7 +57,6 @@ L"Ctrl+A             Select All\n"
 L"Alt+Drag           Rect Select\n"
 L"Ctrl+Wheel         Zoom";
 
-// --- UTF helpers ---
 static std::wstring UTF8ToW(const std::string& s) {
     if (s.empty()) return {};
     int n = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), NULL, 0);
@@ -76,7 +74,6 @@ static std::string WToUTF8(const std::wstring& w) {
     return s;
 }
 
-// --- String Helper ---
 static std::string UnescapeString(const std::string& s) {
     std::string out;
     out.reserve(s.size());
@@ -98,7 +95,6 @@ static std::string UnescapeString(const std::string& s) {
     return out;
 }
 
-// --- Piece Table ---
 struct Piece { bool isOriginal; size_t start; size_t len; };
 struct PieceTable {
     const char* origPtr = nullptr; size_t origSize = 0;
@@ -226,6 +222,7 @@ struct Editor {
     std::unique_ptr<MappedFile> fileMap;
     std::wstring currentFilePath;
     bool isDirty = false;
+    UINT cfMsDevCol = 0;
 
     // Search & Replace State
     std::string searchQuery;
@@ -275,6 +272,7 @@ struct Editor {
         }
         float dashes[] = { 2.0f, 2.0f }; D2D1_STROKE_STYLE_PROPERTIES props = D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_FLAT, D2D1_CAP_STYLE_FLAT, D2D1_CAP_STYLE_FLAT, D2D1_LINE_JOIN_MITER, 10.0f, D2D1_DASH_STYLE_CUSTOM, 0.0f); d2dFactory->CreateStrokeStyle(&props, dashes, 2, &dotStyle);
         D2D1_STROKE_STYLE_PROPERTIES roundProps = D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_LINE_JOIN_ROUND, 10.0f, D2D1_DASH_STYLE_SOLID, 0.0f); d2dFactory->CreateStrokeStyle(&roundProps, nullptr, 0, &roundJoinStyle);
+        cfMsDevCol = RegisterClipboardFormatW(L"MSDEVColumnSelect");
         updateFont(currentFontSize); rebuildLineStarts(); cursors.push_back({ 0, 0, 0.0f }); updateTitleBar();
     }
     void updateFont(float size) {
@@ -795,12 +793,35 @@ struct Editor {
 
     // --- Edit Operations (Must be inside Editor) ---
     void rollbackPadding() { if (pendingPadding.ops.empty()) return; for (int i = (int)pendingPadding.ops.size() - 1; i >= 0; --i) { const auto& op = pendingPadding.ops[i]; if (op.type == EditOp::Insert) pt.erase(op.pos, op.text.size()); } pendingPadding.ops.clear(); rebuildLineStarts(); }
-    void commitPadding() { if (pendingPadding.ops.empty()) return; undo.push(pendingPadding); pendingPadding.ops.clear(); }
+    void commitPadding() {
+        if (pendingPadding.ops.empty()) return;
+        undo.push(pendingPadding);
+
+        // 以下の3行で構造体を完全にリセット
+        pendingPadding.ops.clear();
+        pendingPadding.beforeCursors.clear();
+        pendingPadding.afterCursors.clear();
+    }
     void updateRectSelection() {
+        if (pendingPadding.ops.empty()) {
+            pendingPadding.beforeCursors = cursors;
+        }
         rollbackPadding();
-        float startY = std::min(rectAnchorY, rectHeadY); float endY = std::max(rectAnchorY, rectHeadY);
-        int startLineIdx = (int)(startY / lineHeight); int endLineIdx = (int)(endY / lineHeight);
-        if (startLineIdx < 0) startLineIdx = 0; if (endLineIdx >= (int)lineStarts.size()) endLineIdx = (int)lineStarts.size() - 1;
+        float startY = std::min(rectAnchorY, rectHeadY);
+        float endY = std::max(rectAnchorY, rectHeadY);
+        int startLineIdx = (int)(startY / lineHeight);
+        int endLineIdx = (int)(endY / lineHeight);
+        if (startLineIdx < 0) startLineIdx = 0;
+        int currentMaxLine = (int)lineStarts.size() - 1;
+        if (endLineIdx > currentMaxLine) {
+            int linesToAdd = endLineIdx - currentMaxLine;
+            size_t insertPos = pt.length();
+            std::string newLines(linesToAdd, '\n');
+            pt.insert(insertPos, newLines);
+            pendingPadding.ops.push_back({ EditOp::Insert, insertPos, newLines });
+            rebuildLineStarts();
+        }
+        if (endLineIdx >= (int)lineStarts.size()) endLineIdx = (int)lineStarts.size() - 1;
         float targetAnchorX = rectAnchorX; float targetHeadX = rectHeadX;
         std::vector<int> lines; for (int i = startLineIdx; i <= endLineIdx; ++i) lines.push_back(i); std::reverse(lines.begin(), lines.end());
         cursors.clear();
@@ -810,7 +831,7 @@ struct Editor {
             float currentWidth = 0; std::string lineStr = pt.getRange(start, end - start); std::wstring wLine = UTF8ToW(lineStr); currentWidth = (float)wLine.length() * charWidth;
             float neededX = std::max(targetAnchorX, targetHeadX);
             if (neededX > currentWidth) {
-                int spacesNeeded = (int)std::ceil((neededX - currentWidth) / charWidth);
+                int spacesNeeded = (int)((neededX - currentWidth) / charWidth + 0.5f);
                 if (spacesNeeded > 0) { std::string spaces(spacesNeeded, ' '); pt.insert(end, spaces); pendingPadding.ops.push_back({ EditOp::Insert, end, spaces }); }
             }
         }
@@ -852,11 +873,6 @@ struct Editor {
             ID2D1SolidColorBrush* selBrush = nullptr; rend->CreateSolidColorBrush(selColor, &selBrush);
             ID2D1SolidColorBrush* caretBrush = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f), &caretBrush);
             ID2D1SolidColorBrush* hlBrush = nullptr; rend->CreateSolidColorBrush(highlightColor, &hlBrush);
-            // Search Highlights
-            if (showHelpPopup) {
-                // Do not draw text selection or search highlights over help popup if we want, but here we draw them under.
-            }
-
             if (!searchQuery.empty()) {
                 if (searchRegex) {
                     try {
@@ -1018,8 +1034,146 @@ struct Editor {
     void insertAtCursors(const std::string& text) { commitPadding(); if (cursors.empty()) return; EditBatch batch; batch.beforeCursors = cursors; std::vector<int> indices(cursors.size()); for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i; std::sort(indices.begin(), indices.end(), [&](int a, int b) {return cursors[a].start() > cursors[b].start(); }); for (int idx : indices) { Cursor& c = cursors[idx]; if (c.hasSelection()) { size_t s = c.start(); size_t l = c.end() - s; std::string d = pt.getRange(s, l); pt.erase(s, l); batch.ops.push_back({ EditOp::Erase,s,d }); for (auto& o : cursors) { if (o.head > s)o.head -= l; if (o.anchor > s)o.anchor -= l; }c.head = s; c.anchor = s; } } for (int idx : indices) { Cursor& c = cursors[idx]; size_t p = c.head; pt.insert(p, text); batch.ops.push_back({ EditOp::Insert,p,text }); size_t l = text.size(); for (auto& o : cursors) { if (o.head >= p)o.head += l; if (o.anchor >= p)o.anchor += l; } } batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
     void deleteForwardAtCursors() { commitPadding(); if (cursors.empty()) return; EditBatch batch; batch.beforeCursors = cursors; std::vector<int> indices(cursors.size()); for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i; std::sort(indices.begin(), indices.end(), [&](int a, int b) {return cursors[a].start() > cursors[b].start(); }); for (int idx : indices) { Cursor& c = cursors[idx]; size_t s = c.start(); size_t l = 0; if (c.hasSelection())l = c.end() - s; else { size_t n = moveCaretVisual(s, true); if (n > s)l = n - s; }if (l > 0 && s + l <= pt.length()) { std::string d = pt.getRange(s, l); pt.erase(s, l); batch.ops.push_back({ EditOp::Erase,s,d }); for (auto& o : cursors) { if (o.head > s)o.head -= l; if (o.anchor > s)o.anchor -= l; }c.head = s; c.anchor = s; } } batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
     void backspaceAtCursors() { commitPadding(); if (cursors.empty()) return; EditBatch batch; batch.beforeCursors = cursors; std::vector<int> indices(cursors.size()); for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i; std::sort(indices.begin(), indices.end(), [&](int a, int b) {return cursors[a].start() > cursors[b].start(); }); for (int idx : indices) { Cursor& c = cursors[idx]; size_t s = c.start(); size_t l = 0; if (c.hasSelection())l = c.end() - s; else if (s > 0) { size_t p = moveCaretVisual(s, false); if (p < s) { l = s - p; s = p; } }if (l > 0) { std::string d = pt.getRange(s, l); pt.erase(s, l); batch.ops.push_back({ EditOp::Erase,s,d }); for (auto& o : cursors) { if (o.head > s)o.head -= l; if (o.anchor > s)o.anchor -= l; } } } batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
-    void copyToClipboard() { std::string t; std::vector<Cursor> s = cursors; std::sort(s.begin(), s.end(), [](const Cursor& a, const Cursor& b) {return a.start() < b.start(); }); for (size_t i = 0; i < s.size(); ++i) { if (s[i].hasSelection())t += pt.getRange(s[i].start(), s[i].end() - s[i].start()); if (i < s.size() - 1 && s[i].hasSelection())t += "\r\n"; }if (t.empty())return; if (OpenClipboard(hwnd)) { EmptyClipboard(); std::wstring w = UTF8ToW(t); HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, (w.size() + 1) * sizeof(wchar_t)); if (h) { void* p = GlobalLock(h); memcpy(p, w.c_str(), (w.size() + 1) * sizeof(wchar_t)); GlobalUnlock(h); SetClipboardData(CF_UNICODETEXT, h); }CloseClipboard(); } }
-    void pasteFromClipboard() { if (!IsClipboardFormatAvailable(CF_UNICODETEXT))return; if (OpenClipboard(hwnd)) { HGLOBAL h = GetClipboardData(CF_UNICODETEXT); if (h) { const wchar_t* p = (const wchar_t*)GlobalLock(h); if (p) { std::wstring w(p); GlobalUnlock(h); insertAtCursors(WToUTF8(w)); } }CloseClipboard(); } }
+    void copyToClipboard() {
+        std::string t;
+        std::vector<Cursor> s = cursors;
+        std::sort(s.begin(), s.end(), [](const Cursor& a, const Cursor& b) {return a.start() < b.start(); });
+        for (size_t i = 0; i < s.size(); ++i) {
+            if (s[i].hasSelection())t += pt.getRange(s[i].start(), s[i].end() - s[i].start());
+            if (i < s.size() - 1 && s[i].hasSelection())t += "\r\n";
+        }
+        if (t.empty())return;
+        if (OpenClipboard(hwnd)) {
+            EmptyClipboard();
+            std::wstring w = UTF8ToW(t);
+            HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, (w.size() + 1) * sizeof(wchar_t));
+            if (h) {
+                void* p = GlobalLock(h);
+                memcpy(p, w.c_str(), (w.size() + 1) * sizeof(wchar_t));
+                GlobalUnlock(h);
+                SetClipboardData(CF_UNICODETEXT, h);
+            }
+            if (cursors.size() > 1) {
+                HGLOBAL hCol = GlobalAlloc(GMEM_MOVEABLE, 1);
+                if (hCol) SetClipboardData(cfMsDevCol, hCol);
+            }
+            CloseClipboard();
+        }
+    }
+    void insertRectangularBlock(const std::string& text) {
+        commitPadding();
+        if (cursors.empty()) return;
+        size_t basePos = cursors.back().head;
+        float baseX = getXFromPos(basePos);
+        int startLine = getLineIdx(basePos);
+        std::vector<std::string> lines;
+        std::stringstream ss(text);
+        std::string line;
+        while (std::getline(ss, line)) {
+            if (!line.empty() && line.back() == '\r') line.pop_back();
+            lines.push_back(line);
+        }
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        std::vector<Cursor> newCursors;
+        size_t accumulatedDelta = 0;
+        for (size_t i = 0; i < lines.size(); ++i) {
+            int targetLineIdx = startLine + (int)i;
+            std::string content = lines[i];
+            if (targetLineIdx >= (int)lineStarts.size()) {
+                size_t insertAt = pt.length();
+                std::string nl = "\n";
+                pt.insert(insertAt, nl);
+                batch.ops.push_back({ EditOp::Insert, insertAt, nl });
+                int spacesNeeded = (int)((baseX) / charWidth + 0.5f);
+                std::string spaces = "";
+                if (spacesNeeded > 0) spaces = std::string(spacesNeeded, ' ');
+                size_t contentPos = insertAt + 1;
+                if (!spaces.empty()) {
+                    pt.insert(contentPos, spaces);
+                    batch.ops.push_back({ EditOp::Insert, contentPos, spaces });
+                    contentPos += spaces.size();
+                }
+                pt.insert(contentPos, content);
+                batch.ops.push_back({ EditOp::Insert, contentPos, content });
+                size_t endPos = contentPos + content.size();
+                newCursors.push_back({ endPos, contentPos, baseX + (float)UTF8ToW(content).length() * charWidth });
+            }
+            else {
+                size_t lineStart = lineStarts[targetLineIdx] + accumulatedDelta;
+                size_t scanPos = lineStart;
+                size_t maxLen = pt.length();
+                while (scanPos < maxLen && pt.charAt(scanPos) != '\n') {
+                    scanPos++;
+                }
+                size_t lineEnd = scanPos;
+                std::string currentLineStr = pt.getRange(lineStart, lineEnd - lineStart);
+                std::wstring wCurrentLine = UTF8ToW(currentLineStr);
+                size_t insertOffset = wCurrentLine.length(); // デフォルトは行末
+                IDWriteTextLayout* layout = nullptr;
+                HRESULT hr = dwFactory->CreateTextLayout(wCurrentLine.c_str(), (UINT32)wCurrentLine.size(), textFormat, 10000.0f, (FLOAT)lineHeight, &layout);
+                if (SUCCEEDED(hr) && layout) {
+                    BOOL isTrailing, isInside;
+                    DWRITE_HIT_TEST_METRICS m;
+                    layout->HitTestPoint(baseX, 1.0f, &isTrailing, &isInside, &m);
+                    size_t u16Pos = m.textPosition;
+                    if (isTrailing) u16Pos += m.length;
+                    std::string pre = WToUTF8(wCurrentLine.substr(0, u16Pos));
+                    insertOffset = pre.size();
+                    layout->Release();
+                }
+                size_t insertPos = lineStart + insertOffset;
+                std::string spaces = "";
+                float currentLineWidth = (float)wCurrentLine.length() * charWidth;
+                if (insertPos == lineEnd && baseX > currentLineWidth) {
+                    int spacesNeeded = (int)((baseX - currentLineWidth) / charWidth + 0.5f);
+                    if (spacesNeeded > 0) spaces = std::string(spacesNeeded, ' ');
+                }
+                size_t addedBytes = 0;
+                if (!spaces.empty()) {
+                    pt.insert(insertPos, spaces);
+                    batch.ops.push_back({ EditOp::Insert, insertPos, spaces });
+                    insertPos += spaces.size();
+                    addedBytes += spaces.size();
+                }
+                pt.insert(insertPos, content);
+                batch.ops.push_back({ EditOp::Insert, insertPos, content });
+                addedBytes += content.size();
+                accumulatedDelta += addedBytes;
+                size_t endPos = insertPos + content.size();
+                newCursors.push_back({ endPos, insertPos, baseX + (float)UTF8ToW(content).length() * charWidth });
+            }
+        }
+        cursors = newCursors;
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
+        InvalidateRect(hwnd, NULL, FALSE);
+    }
+    void pasteFromClipboard() {
+        if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) return;
+        if (OpenClipboard(hwnd)) {
+            bool isRect = IsClipboardFormatAvailable(cfMsDevCol);
+            HGLOBAL h = GetClipboardData(CF_UNICODETEXT);
+            if (h) {
+                const wchar_t* p = (const wchar_t*)GlobalLock(h);
+                if (p) {
+                    std::wstring w(p);
+                    GlobalUnlock(h);
+                    std::string utf8 = WToUTF8(w);
+                    if (isRect) {
+                        insertRectangularBlock(utf8);
+                    }
+                    else {
+                        insertAtCursors(utf8);
+                    }
+                }
+            }
+            CloseClipboard();
+        }
+    }
     void cutToClipboard() { copyToClipboard(); insertAtCursors(""); }
     void doInsert(size_t pos, const std::string& s) { cursors.clear(); cursors.push_back({ pos, pos, getXFromPos(pos) }); insertAtCursors(s); }
     void performUndo() { if (!undo.canUndo())return; EditBatch b = undo.popUndo(); for (int i = (int)b.ops.size() - 1; i >= 0; --i) { const auto& o = b.ops[i]; if (o.type == EditOp::Insert)pt.erase(o.pos, o.text.size()); else pt.insert(o.pos, o.text); }cursors = b.beforeCursors; rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
@@ -1036,7 +1190,6 @@ struct Editor {
             return false;
         }
         bool ok = true;
-        // メモリマップ(読み取り用)はまだ有効なので、そこからデータを読んで一時ファイルに書く
         for (const auto& piece : pt.pieces) {
             const char* ptr = piece.isOriginal ? (pt.origPtr + piece.start) : (pt.addBuf.data() + piece.start);
             DWORD w = 0;
@@ -1050,25 +1203,16 @@ struct Editor {
             ShowTaskDialog(L"エラー", L"データの書き込みに失敗しました。", p.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return false;
         }
-        // 2. 状態の保存（リロード後に復元するため）
-        // ファイル内容は変わらないため、オフセット位置はそのまま有効です
         std::vector<Cursor> savedCursors = cursors;
         int savedV = vScrollPos;
         int savedH = hScrollPos;
         std::wstring oldPath = currentFilePath;
-        // 3. ファイルロックの解除 (重要: MoveFileExWを成功させるため)
-        // 同じファイルへの保存(上書き)の場合、必ずUnmapが必要です
         if (fileMap) {
             fileMap->close();
-            // 注意: これ以降、pt.origPtr は無効なポインタになります。
-            // 再ロードまで pt のデータにアクセスしてはいけません。
         }
-        // 4. ファイルの置換
         if (MoveFileExW(t.c_str(), p.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED) == 0) {
-            // 失敗時：リカバリを試みる
             DWORD err = GetLastError();
             DeleteFileW(t.c_str());
-            // 古いファイルを再度開いてエディタの状態を復旧させる
             if (!oldPath.empty()) {
                 if (fileMap) fileMap->open(oldPath.c_str());
                 if (fileMap->ptr) pt.origPtr = fileMap->ptr;
@@ -1077,20 +1221,16 @@ struct Editor {
             ShowTaskDialog(L"エラー", msg.c_str(), p.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return false;
         }
-        // 5. ファイルのリロード（新しい内容でマップし直す）
-        // openFileFromPath は Undo履歴などをリセットしますが、PieceTableを再構築するために必要です
         if (!openFileFromPath(p)) {
             ShowTaskDialog(L"致命的エラー", L"保存後のファイルを開けませんでした。", p.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return false;
         }
-        // 6. 状態の復元
-        // openFileFromPath でカーソルがリセットされるため、保存しておいた位置に戻す
         cursors = savedCursors;
         vScrollPos = savedV;
         hScrollPos = savedH;
         updateScrollBars();
         ensureCaretVisible();
-        updateTitleBar(); // ダーティフラグのクリアなどを反映
+        updateTitleBar();
         return true;
     }
     bool saveFileAs() { WCHAR f[MAX_PATH] = { 0 }; OPENFILENAMEW o = { 0 }; o.lStructSize = sizeof(o); o.hwndOwner = hwnd; o.lpstrFile = f; o.nMaxFile = MAX_PATH; o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0"; o.nFilterIndex = 1; o.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT; if (GetSaveFileNameW(&o))return saveFile(f); return false; }
@@ -1122,11 +1262,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE:
         g_editor.initGraphics(hwnd);
-        DragAcceptFiles(hwnd, TRUE); // Enable Drag & Drop
+        DragAcceptFiles(hwnd, TRUE);
         break;
     case WM_SIZE: if (g_editor.rend) { RECT rc; GetClientRect(hwnd, &rc); g_editor.rend->Resize(D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top)); g_editor.updateScrollBars(); InvalidateRect(hwnd, NULL, FALSE); } break;
     case WM_LBUTTONDOWN: {
-        // Dismiss Help Popup on interaction
         if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
 
         int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam); SetCapture(hwnd); g_editor.isDragging = true; g_editor.rollbackPadding();
@@ -1153,8 +1292,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     } break;
     case WM_MOUSEMOVE: {
         int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
-
-        // 1. ドラッグ開始の閾値判定
         if (g_editor.isDragMovePending) {
             if (abs(x - g_editor.lastClickX) > 5 || abs(y - g_editor.lastClickY) > 5) {
                 g_editor.isDragMovePending = false;
@@ -1162,17 +1299,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 SetCursor(LoadCursor(NULL, IDC_ARROW));
             }
         }
-
-        // 2. ドラッグ移動中の処理（キャレット表示など）
         if (g_editor.isDragMoving) {
             g_editor.dragMoveDestPos = g_editor.getDocPosFromPoint(x, y);
             InvalidateRect(hwnd, NULL, FALSE);
             return 0;
         }
-
-        // 3. 通常のドラッグ選択処理
-        // 修正: !g_editor.isDragMovePending を追加し、
-        // 「移動判定待ち」の間は選択範囲を書き換えないようにする
         if (g_editor.isDragging && !g_editor.isDragMovePending) {
             if (g_editor.isRectSelecting) {
                 float vx = x / g_editor.dpiScaleX - g_editor.gutterWidth + g_editor.hScrollPos;
@@ -1217,7 +1348,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         InvalidateRect(hwnd, NULL, FALSE); break;
     case WM_TIMER: if (wParam == 1) { KillTimer(hwnd, 1); InvalidateRect(hwnd, NULL, FALSE); } break;
     case WM_CHAR: {
-        // Dismiss Help Popup on input
         if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
 
         wchar_t c = (wchar_t)wParam; if (c < 32 && c != 8 && c != 13) break;
@@ -1318,40 +1448,33 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 }
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
-    WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance; wc.lpszClassName = L"FastMiniEditorClass"; wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1)); wc.hCursor = LoadCursor(NULL, IDC_IBEAM); wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); RegisterClass(&wc);
-    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"FastMiniEditor - Minimal", WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_HSCROLL, CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, NULL, NULL, hInstance, NULL);
+    WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance; wc.lpszClassName = L"miu"; wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1)); wc.hCursor = LoadCursor(NULL, IDC_IBEAM); wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); RegisterClass(&wc);
+    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"miu", WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_HSCROLL, CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, NULL, NULL, hInstance, NULL);
     if (!hwnd) return 0; ShowWindow(hwnd, nCmdShow);
-
-    // Check startup file
     if (g_editor.currentFilePath.empty()) {
         int argc; wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
         if (argc >= 2) {
             g_editor.openFileFromPath(argv[1]);
         }
         else {
-            // No file argument, show help popup on startup
             g_editor.showHelpPopup = true;
             InvalidateRect(hwnd, NULL, FALSE);
         }
         LocalFree(argv);
     }
-
     g_editor.updateTitleBar();
-
     MSG msg; while (GetMessage(&msg, NULL, 0, 0)) {
-        // Handle F1 in main loop to allow toggling or showing even if focus is elsewhere (though dialogs steal focus)
         if (msg.message == WM_KEYDOWN) {
             if (msg.wParam == VK_F1) {
                 g_editor.showHelpPopup = true;
                 InvalidateRect(hwnd, NULL, FALSE);
-                continue; // Consume F1
+                continue;
             }
             if (msg.wParam == VK_F3) {
                 bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
                 g_editor.findNext(!shift);
                 continue;
             }
-            // Global Ctrl+F / Ctrl+H hook
             if (GetKeyState(VK_CONTROL) & 0x8000) {
                 if (msg.wParam == 'F') {
                     g_editor.showFindDialog(false);
@@ -1363,18 +1486,13 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
                 }
             }
         }
-        // Dismiss help popup on any key (except modifiers if needed, but strict requirement was "key press")
-        // Checking in loop allows catching keys even if focus is somehow weird, but main logic is in WndProc for editor.
-        // We add a check here for safety if dialog is not active.
         if (g_editor.showHelpPopup && (msg.message == WM_KEYDOWN || msg.message == WM_CHAR || msg.message == WM_LBUTTONDOWN)) {
-            if (msg.message == WM_KEYDOWN && msg.wParam == VK_F1) {} // Ignore F1 handled above
+            if (msg.message == WM_KEYDOWN && msg.wParam == VK_F1) {}
             else {
                 g_editor.showHelpPopup = false;
                 InvalidateRect(hwnd, NULL, FALSE);
-                // Dispatch the message so it processes (e.g. inserts 'A')
             }
         }
-
         if (!g_editor.hFindDlg || !IsDialogMessage(g_editor.hFindDlg, &msg)) { TranslateMessage(&msg); DispatchMessage(&msg); }
     }
     return 0;
