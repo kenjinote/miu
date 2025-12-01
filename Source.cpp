@@ -1369,7 +1369,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case 'X': g_editor.cutToClipboard(); return 0;
             case 'V': g_editor.pasteFromClipboard(); return 0;
             case 'A': { g_editor.rollbackPadding(); g_editor.cursors.clear(); g_editor.cursors.push_back({ g_editor.pt.length(), 0, 0.0f }); InvalidateRect(hwnd, NULL, FALSE); return 0; }
-                    // Zoom support
             case VK_ADD: case VK_OEM_PLUS: {
                 g_editor.updateFont(g_editor.currentFontSize * 1.1f);
                 g_editor.zoomPopupEndTime = GetTickCount() + 1000;
@@ -1394,7 +1393,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 InvalidateRect(hwnd, NULL, FALSE);
                 return 0;
             }
-            default: break; // Fall through for Ctrl+Nav keys
+            default: break;
             }
         }
         if ((GetKeyState(VK_SHIFT) & 0x8000) && wParam == VK_INSERT) { g_editor.pasteFromClipboard(); return 0; }
@@ -1407,10 +1406,40 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             bool ctrl = (GetKeyState(VK_CONTROL) & 0x8000);
             bool alt = (GetKeyState(VK_MENU) & 0x8000);
             if (alt && shift && (wParam == VK_LEFT || wParam == VK_RIGHT || wParam == VK_UP || wParam == VK_DOWN)) {
-                if (!g_editor.isRectSelecting) { g_editor.isRectSelecting = true; float vx = 0, vy = 0; g_editor.getCaretPoint(vx, vy); g_editor.rectAnchorX = g_editor.rectHeadX = vx / g_editor.dpiScaleX - g_editor.gutterWidth + g_editor.hScrollPos; g_editor.rectAnchorY = g_editor.rectHeadY = vy / g_editor.dpiScaleY + (g_editor.vScrollPos * g_editor.lineHeight); }
-                if (wParam == VK_LEFT) g_editor.rectHeadX -= g_editor.charWidth; if (wParam == VK_RIGHT) g_editor.rectHeadX += g_editor.charWidth;
-                if (wParam == VK_UP) g_editor.rectHeadY -= g_editor.lineHeight; if (wParam == VK_DOWN) g_editor.rectHeadY += g_editor.lineHeight;
-                g_editor.updateRectSelection(); InvalidateRect(hwnd, NULL, FALSE); return 0;
+                if (!g_editor.isRectSelecting) {
+                    g_editor.isRectSelecting = true;
+                    float vx = 0, vy = 0;
+                    g_editor.getCaretPoint(vx, vy);
+                    g_editor.rectAnchorX = g_editor.rectHeadX = vx / g_editor.dpiScaleX - g_editor.gutterWidth + g_editor.hScrollPos;
+                    g_editor.rectAnchorY = g_editor.rectHeadY = vy / g_editor.dpiScaleY + (g_editor.vScrollPos * g_editor.lineHeight);
+                }
+                if (wParam == VK_LEFT || wParam == VK_RIGHT) {
+                    int lineIdx = (int)(g_editor.rectHeadY / g_editor.lineHeight);
+                    if (lineIdx < 0) lineIdx = 0;
+                    if (lineIdx >= (int)g_editor.lineStarts.size()) lineIdx = (int)g_editor.lineStarts.size() - 1;
+                    size_t pos = g_editor.getPosFromLineAndX(lineIdx, g_editor.rectHeadX);
+                    float textEndX = g_editor.getXFromPos(pos);
+                    bool inVirtualSpace = (g_editor.rectHeadX > textEndX + 1.0f);
+                    if (inVirtualSpace) {
+                        if (wParam == VK_LEFT) {
+                            g_editor.rectHeadX -= g_editor.charWidth;
+                            if (g_editor.rectHeadX < textEndX) g_editor.rectHeadX = textEndX; // 行末に戻ったらスナップ
+                        }
+                        else {
+                            g_editor.rectHeadX += g_editor.charWidth;
+                        }
+                    }
+                    else {
+                        bool forward = (wParam == VK_RIGHT);
+                        size_t nextPos = g_editor.moveCaretVisual(pos, forward);
+                        g_editor.rectHeadX = g_editor.getXFromPos(nextPos);
+                    }
+                }
+                if (wParam == VK_UP) g_editor.rectHeadY -= g_editor.lineHeight;
+                if (wParam == VK_DOWN) g_editor.rectHeadY += g_editor.lineHeight;
+                g_editor.updateRectSelection();
+                InvalidateRect(hwnd, NULL, FALSE);
+                return 0;
             }
             g_editor.rollbackPadding(); g_editor.isRectSelecting = false;
             for (auto& c : g_editor.cursors) {
@@ -1426,7 +1455,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             g_editor.mergeCursors(); g_editor.ensureCaretVisible(); InvalidateRect(hwnd, NULL, FALSE);
         }
-        break;
+    break;
     case WM_DROPFILES: {
         if (g_editor.checkUnsavedChanges()) {
             HDROP hDrop = (HDROP)wParam;
