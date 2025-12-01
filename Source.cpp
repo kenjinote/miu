@@ -364,10 +364,46 @@ struct Editor {
         x = (localX - hScrollPos + gutterWidth) * dpiScaleX; y = (docY - vScrollPos * lineHeight) * dpiScaleY;
     }
     void ensureCaretVisible() {
-        if (cursors.empty()) return; Cursor& mainCursor = cursors.back(); RECT rc; GetClientRect(hwnd, &rc); float clientH = (rc.bottom - rc.top) / dpiScaleY; int linesVisible = (int)(clientH / lineHeight);
+        if (cursors.empty()) return;
+        Cursor& mainCursor = cursors.back();
+        RECT rc; GetClientRect(hwnd, &rc);
+
+        // クライアント領域のサイズ計算
+        float clientH = (rc.bottom - rc.top) / dpiScaleY;
+        float clientW = (rc.right - rc.left) / dpiScaleX;
+
+        // --- 垂直スクロール (既存のロジック) ---
+        int linesVisible = (int)(clientH / lineHeight);
         int caretLine = getLineIdx(mainCursor.head);
-        if (caretLine < vScrollPos) vScrollPos = caretLine; else if (caretLine >= vScrollPos + linesVisible - 1) vScrollPos = caretLine - linesVisible + 2;
-        if (vScrollPos < 0) vScrollPos = 0; updateScrollBars(); InvalidateRect(hwnd, NULL, FALSE);
+        if (caretLine < vScrollPos) vScrollPos = caretLine;
+        else if (caretLine >= vScrollPos + linesVisible - 1) vScrollPos = caretLine - linesVisible + 2;
+        if (vScrollPos < 0) vScrollPos = 0;
+
+        // --- 水平スクロール (追加したロジック) ---
+        // テキストが表示可能な幅 (全体幅 - 行番号エリア)
+        float visibleTextW = clientW - gutterWidth;
+        if (visibleTextW < charWidth) visibleTextW = charWidth; // ゼロ除算等の防止
+
+        // カーソルの論理X座標を取得
+        float caretX = getXFromPos(mainCursor.head);
+
+        // 端に近づいたときの余白 (2文字分程度)
+        float margin = charWidth * 2.0f;
+
+        // 左側にはみ出している場合: 左へスクロール
+        if (caretX < hScrollPos + margin) {
+            hScrollPos = (int)(caretX - margin);
+        }
+        // 右側にはみ出している場合: 右へスクロール
+        else if (caretX > hScrollPos + visibleTextW - margin) {
+            hScrollPos = (int)(caretX - visibleTextW + margin);
+        }
+
+        // 負の値にならないように補正
+        if (hScrollPos < 0) hScrollPos = 0;
+
+        updateScrollBars();
+        InvalidateRect(hwnd, NULL, FALSE);
     }
     std::string buildVisibleText(int numLines) {
         if (lineStarts.empty()) return "";
