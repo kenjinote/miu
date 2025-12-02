@@ -1315,7 +1315,7 @@ struct Editor {
         size_t rangeStart = lineStarts[startLine];
         size_t rangeEnd = (endLine + 1 < (int)lineStarts.size()) ? lineStarts[endLine + 1] : pt.length();
         std::string textToMove = pt.getRange(rangeStart, rangeEnd - rangeStart);
-        bool isLastLineNoNewline = (rangeEnd == pt.length()) && (!textToMove.empty() && textToMove.back() != '\n');
+        bool isLastLineNoNewline = (rangeEnd == pt.length()) && (textToMove.empty() || textToMove.back() != '\n');
         EditBatch batch;
         batch.beforeCursors = cursors;
         if (up) {
