@@ -274,15 +274,28 @@ struct Editor {
         updateFont(currentFontSize); rebuildLineStarts(); cursors.push_back({ 0, 0, 0.0f }); updateTitleBar();
     }
     void updateFont(float size) {
-        if (size < 6.0f) size = 6.0f; if (size > 200.0f) size = 200.0f; currentFontSize = size;
+        size = std::round(size);
+        if (size < 6.0f) size = 6.0f;
+        if (size > 200.0f) size = 200.0f;
+        if (textFormat && size == currentFontSize) return;
+        currentFontSize = size;
         if (textFormat) { textFormat->Release(); textFormat = nullptr; }
         dwFactory->CreateTextFormat(L"Consolas", NULL, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, currentFontSize, L"en-us", &textFormat);
         lineHeight = currentFontSize * 1.25f;
-        textFormat->SetLineSpacing(DWRITE_LINE_SPACING_METHOD_UNIFORM, lineHeight, lineHeight * 0.8f);
-        textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING); textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+        if (textFormat) {
+            textFormat->SetLineSpacing(DWRITE_LINE_SPACING_METHOD_UNIFORM, lineHeight, lineHeight * 0.8f);
+            textFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
+            textFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
+        }
         IDWriteTextLayout* layout = nullptr;
-        if (SUCCEEDED(dwFactory->CreateTextLayout(L"0", 1, textFormat, 100.0f, 100.0f, &layout))) { DWRITE_TEXT_METRICS m; layout->GetMetrics(&m); charWidth = m.width; layout->Release(); }
-        updateGutterWidth(); updateScrollBars();
+        if (SUCCEEDED(dwFactory->CreateTextLayout(L"0", 1, textFormat, 100.0f, 100.0f, &layout))) {
+            DWRITE_TEXT_METRICS m;
+            layout->GetMetrics(&m);
+            charWidth = m.width;
+            layout->Release();
+        }
+        updateGutterWidth();
+        updateScrollBars();
     }
     void destroyGraphics() {
         if (popupTextFormat) popupTextFormat->Release();
