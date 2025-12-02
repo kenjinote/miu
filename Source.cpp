@@ -51,6 +51,8 @@ L"Shift+F3            Find Prev\n"
 L"Ctrl+Z              Undo\n"
 L"Ctrl+Y              Redo\n"
 L"Ctrl+X/C/V          Cut/Copy/Paste\n"
+L"Ctrl+U              Upper Case\n"
+L"Ctrl+Shift+U        Lower Case\n"
 L"Ctrl+A              Select All\n"
 L"Alt+Drag            Rect Select\n"
 L"Ctrl+Wheel/+/-      Zoom\n"
@@ -1179,6 +1181,82 @@ struct Editor {
         updateDirtyFlag();
         InvalidateRect(hwnd, NULL, FALSE);
     }
+    // Editor構造体内に追加
+    void convertCase(bool toUpper) {
+        commitPadding();
+        if (cursors.empty()) return;
+
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        bool isChanged = false;
+
+        // 複数のカーソルがある場合、後ろ(ファイル終端側)から処理することで
+        // 前方の編集による座標ズレの影響を受けにくくする
+        std::vector<int> indices(cursors.size());
+        for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i;
+        std::sort(indices.begin(), indices.end(), [&](int a, int b) {
+            return cursors[a].start() > cursors[b].start();
+            });
+
+        for (int idx : indices) {
+            Cursor& c = cursors[idx];
+            if (!c.hasSelection()) continue;
+
+            size_t start = c.start();
+            size_t len = c.end() - start;
+            std::string text = pt.getRange(start, len);
+
+            // UTF-8 -> Wide -> 変換 -> UTF-8
+            std::wstring wText = UTF8ToW(text);
+            if (toUpper) CharUpperBuffW(&wText[0], (DWORD)wText.size());
+            else CharLowerBuffW(&wText[0], (DWORD)wText.size());
+            std::string newText = WToUTF8(wText);
+
+            if (text == newText) continue; // 変更がなければスキップ
+
+            isChanged = true;
+
+            // 編集操作（削除して挿入）
+            pt.erase(start, len);
+            batch.ops.push_back({ EditOp::Erase, start, text });
+            pt.insert(start, newText);
+            batch.ops.push_back({ EditOp::Insert, start, newText });
+
+            // 長さが変わった場合のカーソル位置と、それ以降のカーソルの補正
+            long long diff = (long long)newText.size() - (long long)len;
+
+            // 現在のカーソルの選択範囲を更新
+            if (c.head > c.anchor) { // 正方向選択
+                c.head = start + newText.size();
+                c.anchor = start;
+            }
+            else { // 逆方向選択
+                c.head = start;
+                c.anchor = start + newText.size();
+            }
+
+            // この変更箇所より後ろにある他のすべてのカーソルをズラす
+            if (diff != 0) {
+                for (size_t k = 0; k < cursors.size(); ++k) {
+                    if ((int)k == idx) continue;
+                    Cursor& other = cursors[k];
+                    if (other.start() > start) {
+                        if (other.head > start) other.head = (size_t)((long long)other.head + diff);
+                        if (other.anchor > start) other.anchor = (size_t)((long long)other.anchor + diff);
+                    }
+                }
+            }
+        }
+
+        if (isChanged) {
+            batch.afterCursors = cursors;
+            undo.push(batch);
+            rebuildLineStarts();
+            ensureCaretVisible();
+            updateDirtyFlag();
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+    }
     void pasteFromClipboard() {
         if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) return;
         if (OpenClipboard(hwnd)) {
@@ -1411,6 +1489,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case 'C': case VK_INSERT: g_editor.copyToClipboard(); return 0;
             case 'X': g_editor.cutToClipboard(); return 0;
             case 'V': g_editor.pasteFromClipboard(); return 0;
+            case 'U': // 追加
+                if (GetKeyState(VK_SHIFT) & 0x8000) g_editor.convertCase(false); // 小文字へ
+                else g_editor.convertCase(true); // 大文字へ
+                return 0;
             case 'A': { g_editor.rollbackPadding(); g_editor.cursors.clear(); g_editor.cursors.push_back({ g_editor.pt.length(), 0, 0.0f }); InvalidateRect(hwnd, NULL, FALSE); return 0; }
             case VK_ADD: case VK_OEM_PLUS: {
                 g_editor.updateFont(g_editor.currentFontSize * 1.1f);
