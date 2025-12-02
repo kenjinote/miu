@@ -1052,9 +1052,11 @@ struct Editor {
     void insertRectangularBlock(const std::string& text) {
         commitPadding();
         if (cursors.empty()) return;
+
         size_t basePos = cursors.back().head;
         float baseX = getXFromPos(basePos);
         int startLine = getLineIdx(basePos);
+
         std::vector<std::string> lines;
         std::stringstream ss(text);
         std::string line;
@@ -1062,21 +1064,27 @@ struct Editor {
             if (!line.empty() && line.back() == '\r') line.pop_back();
             lines.push_back(line);
         }
+
         EditBatch batch;
         batch.beforeCursors = cursors;
         std::vector<Cursor> newCursors;
         size_t accumulatedDelta = 0;
+
         for (size_t i = 0; i < lines.size(); ++i) {
             int targetLineIdx = startLine + (int)i;
             std::string content = lines[i];
+
             if (targetLineIdx >= (int)lineStarts.size()) {
+                // ファイル末尾より下への挿入（変更なし）
                 size_t insertAt = pt.length();
                 std::string nl = "\n";
                 pt.insert(insertAt, nl);
                 batch.ops.push_back({ EditOp::Insert, insertAt, nl });
+
                 int spacesNeeded = (int)((baseX) / charWidth + 0.5f);
                 std::string spaces = "";
                 if (spacesNeeded > 0) spaces = std::string(spacesNeeded, ' ');
+
                 size_t contentPos = insertAt + 1;
                 if (!spaces.empty()) {
                     pt.insert(contentPos, spaces);
@@ -1085,10 +1093,12 @@ struct Editor {
                 }
                 pt.insert(contentPos, content);
                 batch.ops.push_back({ EditOp::Insert, contentPos, content });
+
                 size_t endPos = contentPos + content.size();
                 newCursors.push_back({ endPos, contentPos, baseX + (float)UTF8ToW(content).length() * charWidth });
             }
             else {
+                // 既存行への挿入
                 size_t lineStart = lineStarts[targetLineIdx] + accumulatedDelta;
                 size_t scanPos = lineStart;
                 size_t maxLen = pt.length();
@@ -1096,28 +1106,52 @@ struct Editor {
                     scanPos++;
                 }
                 size_t lineEnd = scanPos;
+
                 std::string currentLineStr = pt.getRange(lineStart, lineEnd - lineStart);
                 std::wstring wCurrentLine = UTF8ToW(currentLineStr);
+
                 size_t insertOffset = wCurrentLine.length(); // デフォルトは行末
+                float actualLineWidth = 0.0f; // ★修正: 正確な行幅を保持する変数
+
                 IDWriteTextLayout* layout = nullptr;
                 HRESULT hr = dwFactory->CreateTextLayout(wCurrentLine.c_str(), (UINT32)wCurrentLine.size(), textFormat, 10000.0f, (FLOAT)lineHeight, &layout);
+
                 if (SUCCEEDED(hr) && layout) {
                     BOOL isTrailing, isInside;
                     DWRITE_HIT_TEST_METRICS m;
                     layout->HitTestPoint(baseX, 1.0f, &isTrailing, &isInside, &m);
+
                     size_t u16Pos = m.textPosition;
                     if (isTrailing) u16Pos += m.length;
+
                     std::string pre = WToUTF8(wCurrentLine.substr(0, u16Pos));
                     insertOffset = pre.size();
+
+                    // ★修正: レイアウトから正確な行幅（末尾空白含む）を取得
+                    DWRITE_TEXT_METRICS tm;
+                    if (SUCCEEDED(layout->GetMetrics(&tm))) {
+                        actualLineWidth = tm.widthIncludingTrailingWhitespace;
+                    }
+                    else {
+                        // 取得失敗時は簡易計算へフォールバック
+                        actualLineWidth = (float)wCurrentLine.length() * charWidth;
+                    }
+
                     layout->Release();
                 }
+                else {
+                    actualLineWidth = (float)wCurrentLine.length() * charWidth;
+                }
+
                 size_t insertPos = lineStart + insertOffset;
                 std::string spaces = "";
-                float currentLineWidth = (float)wCurrentLine.length() * charWidth;
-                if (insertPos == lineEnd && baseX > currentLineWidth) {
-                    int spacesNeeded = (int)((baseX - currentLineWidth) / charWidth + 0.5f);
+
+                // ★修正: 簡易計算の currentLineWidth ではなく、actualLineWidth を使用して比較
+                if (insertPos == lineEnd && baseX > actualLineWidth + 1.0f) { // +1.0fは浮動小数点の誤差許容
+                    int spacesNeeded = (int)((baseX - actualLineWidth) / charWidth + 0.5f);
                     if (spacesNeeded > 0) spaces = std::string(spacesNeeded, ' ');
                 }
+
                 size_t addedBytes = 0;
                 if (!spaces.empty()) {
                     pt.insert(insertPos, spaces);
@@ -1125,14 +1159,18 @@ struct Editor {
                     insertPos += spaces.size();
                     addedBytes += spaces.size();
                 }
+
                 pt.insert(insertPos, content);
                 batch.ops.push_back({ EditOp::Insert, insertPos, content });
                 addedBytes += content.size();
+
                 accumulatedDelta += addedBytes;
+
                 size_t endPos = insertPos + content.size();
                 newCursors.push_back({ endPos, insertPos, baseX + (float)UTF8ToW(content).length() * charWidth });
             }
         }
+
         cursors = newCursors;
         batch.afterCursors = cursors;
         undo.push(batch);
