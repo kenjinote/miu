@@ -35,7 +35,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comdlg32.lib")
 #pragma comment(lib, "comctl32.lib")
 
-const std::wstring APP_VERSION = L"miu v1.0.3";
+const std::wstring APP_VERSION = L"miu v1.0.4";
 const std::wstring HELP_TEXT =
 APP_VERSION + L"\n\n"
 L"[Shortcuts]\n"
@@ -53,6 +53,9 @@ L"Ctrl+Y              Redo\n"
 L"Ctrl+X/C/V          Cut/Copy/Paste\n"
 L"Ctrl+U              Upper Case\n"
 L"Ctrl+Shift+U        Lower Case\n"
+L"Alt+Up/Down         Move Line\n"
+L"Alt+Shift+Up/Down   Copy Line\n"
+L"Ctrl+D              Select Word / Next\n"
 L"Ctrl+A              Select All\n"
 L"Alt+Drag            Rect Select\n"
 L"Ctrl+Wheel/+/-      Zoom\n"
@@ -241,7 +244,7 @@ struct Editor {
     float maxLineWidth = 100.0f; float gutterWidth = 50.0f;
     DWORD lastClickTime = 0; int clickCount = 0; int lastClickX = 0, lastClickY = 0;
     float currentFontSize = 21.0f; DWORD zoomPopupEndTime = 0; std::wstring zoomPopupText;
-
+    bool suppressUI = false;
     ID2D1Factory* d2dFactory = nullptr; ID2D1HwndRenderTarget* rend = nullptr;
     IDWriteFactory* dwFactory = nullptr; IDWriteTextFormat* textFormat = nullptr; IDWriteTextFormat* popupTextFormat = nullptr;
     IDWriteTextFormat* helpTextFormat = nullptr;
@@ -260,7 +263,7 @@ struct Editor {
         FLOAT dpix, dpiy; rend->GetDpi(&dpix, &dpiy); dpiScaleX = dpix / 96.0f; dpiScaleY = dpiy / 96.0f;
         dwFactory->CreateTextFormat(L"Segoe UI", NULL, DWRITE_FONT_WEIGHT_BOLD, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 24.0f, L"en-us", &popupTextFormat);
         if (popupTextFormat) { popupTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER); popupTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER); }
-        dwFactory->CreateTextFormat(L"Consolas", NULL, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 20.0f, L"en-us", &helpTextFormat);
+        dwFactory->CreateTextFormat(L"Consolas", NULL, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 18.0f, L"en-us", &helpTextFormat);
         if (helpTextFormat) {
             helpTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
             helpTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
@@ -292,6 +295,7 @@ struct Editor {
     }
     void updateDirtyFlag() { bool newDirty = undo.isModified(); if (isDirty != newDirty) { isDirty = newDirty; updateTitleBar(); } }
     void updateGutterWidth() {
+        if (suppressUI) return;
         int lines = (int)lineStarts.size(); int digits = 1; while (lines >= 10) { lines /= 10; digits++; }
         float digitWidth = 10.0f * (currentFontSize / 14.0f); gutterWidth = (float)(digits * digitWidth + 20.0f);
     }
@@ -352,6 +356,7 @@ struct Editor {
         return resultPos;
     }
     void updateScrollBars() {
+        if (suppressUI) return;
         if (!hwnd) return; RECT rc; GetClientRect(hwnd, &rc);
         float clientH = (rc.bottom - rc.top) / dpiScaleY; float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth; if (clientW < 0) clientW = 0;
         int linesVisible = (int)(clientH / lineHeight);
@@ -376,7 +381,7 @@ struct Editor {
         else if (caretLine >= vScrollPos + linesVisible - 1) vScrollPos = caretLine - linesVisible + 2;
         if (vScrollPos < 0) vScrollPos = 0;
         float visibleTextW = clientW - gutterWidth;
-        if (visibleTextW < charWidth) visibleTextW = charWidth; // ゼロ除算等の防止
+        if (visibleTextW < charWidth) visibleTextW = charWidth;
         float caretX = getXFromPos(mainCursor.head);
         float margin = charWidth * 2.0f;
         if (caretX < hScrollPos + margin) {
@@ -411,7 +416,11 @@ struct Editor {
         }
         if (resultPos > pt.length()) resultPos = pt.length(); return resultPos;
     }
-    bool isWordChar(char c) { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_'; }
+    bool isWordChar(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+            (c >= '0' && c <= '9') || c == '_' ||
+            (unsigned char)c >= 0x80;
+    }
     void mergeCursors() {
         if (cursors.empty()) return;
         std::sort(cursors.begin(), cursors.end(), [](const Cursor& a, const Cursor& b) { return a.head < b.head; });
@@ -717,11 +726,11 @@ struct Editor {
                 pThis->findNext(true); return TRUE;
             }
             if (LOWORD(wParam) == IDC_REPLACE_BTN) {
-                if (!pThis->isReplaceMode) return TRUE; // Block mnemonic in Find mode
+                if (!pThis->isReplaceMode) return TRUE;
                 pThis->replaceNext(); return TRUE;
             }
             if (LOWORD(wParam) == IDC_REPLACE_ALL_BTN) {
-                if (!pThis->isReplaceMode) return TRUE; // Block mnemonic in Find mode
+                if (!pThis->isReplaceMode) return TRUE;
                 pThis->replaceAll(); return TRUE;
             }
             if (LOWORD(wParam) == IDC_FIND_CANCEL || LOWORD(wParam) == IDCANCEL) {
@@ -762,20 +771,17 @@ struct Editor {
         pendingPadding.afterCursors.clear();
     }
     void updateRectSelection() {
+        suppressUI = true;
         if (pendingPadding.ops.empty()) {
             pendingPadding.beforeCursors = cursors;
         }
-        rollbackPadding(); // 前回のドラッグ移動分のパディングを一旦取り消し
-
+        rollbackPadding();
         float startY = std::min(rectAnchorY, rectHeadY);
         float endY = std::max(rectAnchorY, rectHeadY);
         int startLineIdx = (int)(startY / lineHeight);
         int endLineIdx = (int)(endY / lineHeight);
-
         if (startLineIdx < 0) startLineIdx = 0;
         int currentMaxLine = (int)lineStarts.size() - 1;
-
-        // 必要に応じて行を増やす（ファイル末尾より下へドラッグした場合）
         if (endLineIdx > currentMaxLine) {
             int linesToAdd = endLineIdx - currentMaxLine;
             size_t insertPos = pt.length();
@@ -785,33 +791,22 @@ struct Editor {
             rebuildLineStarts();
         }
         if (endLineIdx >= (int)lineStarts.size()) endLineIdx = (int)lineStarts.size() - 1;
-
         float targetAnchorX = rectAnchorX;
         float targetHeadX = rectHeadX;
-
-        // 行の処理順序を決定（カーソル生成順序のため）
         std::vector<int> lines;
         for (int i = startLineIdx; i <= endLineIdx; ++i) lines.push_back(i);
-        std::reverse(lines.begin(), lines.end()); // 一般的に下の行から処理することが多いが、ここでは順序は描画等に影響しない
-
+        std::reverse(lines.begin(), lines.end());
         cursors.clear();
-
-        // 1. まずパディング（スペース埋め）が必要かチェックして挿入する
-        //    マウス座標が既存の行の長さを超えている場合、そこまでスペースを埋める
         float requiredX = std::max(targetAnchorX, targetHeadX);
-
         for (int lineIdx : lines) {
             size_t start = lineStarts[lineIdx];
             size_t nextStart = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
             size_t end = nextStart;
             if (end > start && pt.charAt(end - 1) == '\n') end--;
-
             std::string lineStr = pt.getRange(start, end - start);
             std::wstring wLine = UTF8ToW(lineStr);
             float currentWidth = (float)wLine.length() * charWidth;
-
             if (requiredX > currentWidth) {
-                // 不足している幅をスペースで埋める
                 int spacesNeeded = (int)((requiredX - currentWidth) / charWidth + 0.5f);
                 if (spacesNeeded > 0) {
                     std::string spaces(spacesNeeded, ' ');
@@ -820,20 +815,15 @@ struct Editor {
                 }
             }
         }
-
         if (!pendingPadding.ops.empty()) rebuildLineStarts();
-
-        // 2. カーソル位置の決定
-        //    以前のコードにあった「rectHeadX = synchronizedHeadX」のような座標の上書き処理を削除し、
-        //    マウス座標(targetHeadX)に基づいて素直にヒットテストを行う。
         for (int i = startLineIdx; i <= endLineIdx; ++i) {
             size_t anc = getPosFromLineAndX(i, targetAnchorX);
             size_t hd = getPosFromLineAndX(i, targetHeadX);
-
-            // カーソルを追加。desiredXには現在のマウス位置(targetHeadX)を保持させることで
-            // 上下移動時などにX座標が維持されるようにする。
             cursors.push_back({ hd, anc, targetHeadX });
         }
+        suppressUI = false;
+        rebuildLineStarts();
+        InvalidateRect(hwnd, NULL, FALSE);
     }
     void performDragMove() {
         if (dragMoveDestPos >= dragMoveSourceStart && dragMoveDestPos <= dragMoveSourceEnd) return;
@@ -1008,7 +998,7 @@ struct Editor {
             popupBg->Release(); popupText->Release();
         }
         if (showHelpPopup) {
-            float helpW = 500.0f; float helpH = 500.0f;
+            float helpW = 500.0f; float helpH = 550.0f;
             D2D1_RECT_F helpRect = D2D1::RectF((clientW - helpW) / 2, (clientH - helpH) / 2, (clientW + helpW) / 2, (clientH + helpH) / 2);
             ID2D1SolidColorBrush* popupBg = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(0.1f, 0.1f, 0.1f, 0.5f), &popupBg);
             ID2D1SolidColorBrush* popupText = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f), &popupText);
@@ -1054,11 +1044,9 @@ struct Editor {
     void insertRectangularBlock(const std::string& text) {
         commitPadding();
         if (cursors.empty()) return;
-
         size_t basePos = cursors.back().head;
         float baseX = getXFromPos(basePos);
         int startLine = getLineIdx(basePos);
-
         std::vector<std::string> lines;
         std::stringstream ss(text);
         std::string line;
@@ -1066,27 +1054,21 @@ struct Editor {
             if (!line.empty() && line.back() == '\r') line.pop_back();
             lines.push_back(line);
         }
-
         EditBatch batch;
         batch.beforeCursors = cursors;
         std::vector<Cursor> newCursors;
         size_t accumulatedDelta = 0;
-
         for (size_t i = 0; i < lines.size(); ++i) {
             int targetLineIdx = startLine + (int)i;
             std::string content = lines[i];
-
             if (targetLineIdx >= (int)lineStarts.size()) {
-                // ファイル末尾より下への挿入（変更なし）
                 size_t insertAt = pt.length();
                 std::string nl = "\n";
                 pt.insert(insertAt, nl);
                 batch.ops.push_back({ EditOp::Insert, insertAt, nl });
-
                 int spacesNeeded = (int)((baseX) / charWidth + 0.5f);
                 std::string spaces = "";
                 if (spacesNeeded > 0) spaces = std::string(spacesNeeded, ' ');
-
                 size_t contentPos = insertAt + 1;
                 if (!spaces.empty()) {
                     pt.insert(contentPos, spaces);
@@ -1095,12 +1077,10 @@ struct Editor {
                 }
                 pt.insert(contentPos, content);
                 batch.ops.push_back({ EditOp::Insert, contentPos, content });
-
                 size_t endPos = contentPos + content.size();
                 newCursors.push_back({ endPos, contentPos, baseX + (float)UTF8ToW(content).length() * charWidth });
             }
             else {
-                // 既存行への挿入
                 size_t lineStart = lineStarts[targetLineIdx] + accumulatedDelta;
                 size_t scanPos = lineStart;
                 size_t maxLen = pt.length();
@@ -1108,52 +1088,38 @@ struct Editor {
                     scanPos++;
                 }
                 size_t lineEnd = scanPos;
-
                 std::string currentLineStr = pt.getRange(lineStart, lineEnd - lineStart);
                 std::wstring wCurrentLine = UTF8ToW(currentLineStr);
-
-                size_t insertOffset = wCurrentLine.length(); // デフォルトは行末
-                float actualLineWidth = 0.0f; // ★修正: 正確な行幅を保持する変数
-
+                size_t insertOffset = wCurrentLine.length();
+                float actualLineWidth = 0.0f;
                 IDWriteTextLayout* layout = nullptr;
                 HRESULT hr = dwFactory->CreateTextLayout(wCurrentLine.c_str(), (UINT32)wCurrentLine.size(), textFormat, 10000.0f, (FLOAT)lineHeight, &layout);
-
                 if (SUCCEEDED(hr) && layout) {
                     BOOL isTrailing, isInside;
                     DWRITE_HIT_TEST_METRICS m;
                     layout->HitTestPoint(baseX, 1.0f, &isTrailing, &isInside, &m);
-
                     size_t u16Pos = m.textPosition;
                     if (isTrailing) u16Pos += m.length;
-
                     std::string pre = WToUTF8(wCurrentLine.substr(0, u16Pos));
                     insertOffset = pre.size();
-
-                    // ★修正: レイアウトから正確な行幅（末尾空白含む）を取得
                     DWRITE_TEXT_METRICS tm;
                     if (SUCCEEDED(layout->GetMetrics(&tm))) {
                         actualLineWidth = tm.widthIncludingTrailingWhitespace;
                     }
                     else {
-                        // 取得失敗時は簡易計算へフォールバック
                         actualLineWidth = (float)wCurrentLine.length() * charWidth;
                     }
-
                     layout->Release();
                 }
                 else {
                     actualLineWidth = (float)wCurrentLine.length() * charWidth;
                 }
-
                 size_t insertPos = lineStart + insertOffset;
                 std::string spaces = "";
-
-                // ★修正: 簡易計算の currentLineWidth ではなく、actualLineWidth を使用して比較
-                if (insertPos == lineEnd && baseX > actualLineWidth + 1.0f) { // +1.0fは浮動小数点の誤差許容
+                if (insertPos == lineEnd && baseX > actualLineWidth + 1.0f) {
                     int spacesNeeded = (int)((baseX - actualLineWidth) / charWidth + 0.5f);
                     if (spacesNeeded > 0) spaces = std::string(spacesNeeded, ' ');
                 }
-
                 size_t addedBytes = 0;
                 if (!spaces.empty()) {
                     pt.insert(insertPos, spaces);
@@ -1161,18 +1127,14 @@ struct Editor {
                     insertPos += spaces.size();
                     addedBytes += spaces.size();
                 }
-
                 pt.insert(insertPos, content);
                 batch.ops.push_back({ EditOp::Insert, insertPos, content });
                 addedBytes += content.size();
-
                 accumulatedDelta += addedBytes;
-
                 size_t endPos = insertPos + content.size();
                 newCursors.push_back({ endPos, insertPos, baseX + (float)UTF8ToW(content).length() * charWidth });
             }
         }
-
         cursors = newCursors;
         batch.afterCursors = cursors;
         undo.push(batch);
@@ -1181,61 +1143,42 @@ struct Editor {
         updateDirtyFlag();
         InvalidateRect(hwnd, NULL, FALSE);
     }
-    // Editor構造体内に追加
     void convertCase(bool toUpper) {
         commitPadding();
         if (cursors.empty()) return;
-
         EditBatch batch;
         batch.beforeCursors = cursors;
         bool isChanged = false;
-
-        // 複数のカーソルがある場合、後ろ(ファイル終端側)から処理することで
-        // 前方の編集による座標ズレの影響を受けにくくする
         std::vector<int> indices(cursors.size());
         for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i;
         std::sort(indices.begin(), indices.end(), [&](int a, int b) {
             return cursors[a].start() > cursors[b].start();
             });
-
         for (int idx : indices) {
             Cursor& c = cursors[idx];
             if (!c.hasSelection()) continue;
-
             size_t start = c.start();
             size_t len = c.end() - start;
             std::string text = pt.getRange(start, len);
-
-            // UTF-8 -> Wide -> 変換 -> UTF-8
             std::wstring wText = UTF8ToW(text);
             if (toUpper) CharUpperBuffW(&wText[0], (DWORD)wText.size());
             else CharLowerBuffW(&wText[0], (DWORD)wText.size());
             std::string newText = WToUTF8(wText);
-
-            if (text == newText) continue; // 変更がなければスキップ
-
+            if (text == newText) continue;
             isChanged = true;
-
-            // 編集操作（削除して挿入）
             pt.erase(start, len);
             batch.ops.push_back({ EditOp::Erase, start, text });
             pt.insert(start, newText);
             batch.ops.push_back({ EditOp::Insert, start, newText });
-
-            // 長さが変わった場合のカーソル位置と、それ以降のカーソルの補正
             long long diff = (long long)newText.size() - (long long)len;
-
-            // 現在のカーソルの選択範囲を更新
-            if (c.head > c.anchor) { // 正方向選択
+            if (c.head > c.anchor) {
                 c.head = start + newText.size();
                 c.anchor = start;
             }
-            else { // 逆方向選択
+            else {
                 c.head = start;
                 c.anchor = start + newText.size();
             }
-
-            // この変更箇所より後ろにある他のすべてのカーソルをズラす
             if (diff != 0) {
                 for (size_t k = 0; k < cursors.size(); ++k) {
                     if ((int)k == idx) continue;
@@ -1247,7 +1190,6 @@ struct Editor {
                 }
             }
         }
-
         if (isChanged) {
             batch.afterCursors = cursors;
             undo.push(batch);
@@ -1256,6 +1198,131 @@ struct Editor {
             updateDirtyFlag();
             InvalidateRect(hwnd, NULL, FALSE);
         }
+    }
+    std::vector<int> getSelectedLineIndices() {
+        std::vector<int> lines;
+        for (const auto& c : cursors) {
+            int startLine = getLineIdx(c.start());
+            int endLine = getLineIdx(c.end());
+            if (c.hasSelection() && c.end() > c.start()) {
+                if (c.end() > 0 && pt.charAt(c.end() - 1) == '\n') {
+                    if (endLine > startLine) endLine--;
+                }
+            }
+            for (int i = startLine; i <= endLine; ++i) lines.push_back(i);
+        }
+        std::sort(lines.begin(), lines.end());
+        lines.erase(std::unique(lines.begin(), lines.end()), lines.end());
+        return lines;
+    }
+    void duplicateLines(bool up) {
+        commitPadding();
+        if (cursors.empty()) return;
+        std::vector<int> lines = getSelectedLineIndices();
+        if (lines.empty()) return;
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        std::string blockText;
+        size_t blockStart = lineStarts[lines.front()];
+        size_t blockEnd = (lines.back() + 1 < (int)lineStarts.size()) ? lineStarts[lines.back() + 1] : pt.length();
+        blockText = pt.getRange(blockStart, blockEnd - blockStart);
+        bool needNewline = false;
+        if (!blockText.empty() && blockText.back() != '\n') {
+            blockText += '\n';
+            needNewline = true;
+        }
+        size_t insertPos;
+        if (up) {
+            insertPos = blockStart;
+        }
+        else {
+            insertPos = blockEnd;
+            if (needNewline && blockEnd == pt.length() && pt.charAt(blockEnd - 1) != '\n') {
+                pt.insert(blockEnd, "\n");
+                batch.ops.push_back({ EditOp::Insert, blockEnd, "\n" });
+                insertPos++;
+            }
+        }
+        pt.insert(insertPos, blockText);
+        batch.ops.push_back({ EditOp::Insert, insertPos, blockText });
+        batch.afterCursors.clear();
+        size_t newSelectionStart = insertPos;
+        size_t newSelectionEnd = insertPos + blockText.size();
+        batch.afterCursors.push_back({ newSelectionEnd, newSelectionStart, getXFromPos(newSelectionEnd) });
+        cursors = batch.afterCursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
+        InvalidateRect(hwnd, NULL, FALSE);
+    }
+    void moveLines(bool up) {
+        commitPadding();
+        if (cursors.empty()) return;
+        std::vector<int> lines = getSelectedLineIndices();
+        if (lines.empty()) return;
+        if (up && lines.front() == 0) return;
+        if (!up && lines.back() >= (int)lineStarts.size() - 1) return;
+        int startLine = lines.front();
+        int endLine = lines.back();
+        size_t rangeStart = lineStarts[startLine];
+        size_t rangeEnd = (endLine + 1 < (int)lineStarts.size()) ? lineStarts[endLine + 1] : pt.length();
+        std::string textToMove = pt.getRange(rangeStart, rangeEnd - rangeStart);
+        bool isLastLineNoNewline = (rangeEnd == pt.length()) && (!textToMove.empty() && textToMove.back() != '\n');
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        if (up) {
+            int targetLineIdx = startLine - 1;
+            size_t targetStart = lineStarts[targetLineIdx];
+            size_t targetEnd = rangeStart;
+            std::string lineAbove = pt.getRange(targetStart, targetEnd - targetStart);
+            long long diff = -(long long)(rangeStart - targetStart);
+            if (isLastLineNoNewline) {
+                textToMove += '\n';
+                if (!lineAbove.empty() && lineAbove.back() == '\n') lineAbove.pop_back();
+            }
+            size_t deleteLen = rangeEnd - targetStart;
+            std::string deletedAll = pt.getRange(targetStart, deleteLen);
+            pt.erase(targetStart, deleteLen);
+            batch.ops.push_back({ EditOp::Erase, targetStart, deletedAll });
+            std::string newText = textToMove + lineAbove;
+            pt.insert(targetStart, newText);
+            batch.ops.push_back({ EditOp::Insert, targetStart, newText });
+            for (auto& c : cursors) {
+                c.head = (size_t)((long long)c.head + diff);
+                c.anchor = (size_t)((long long)c.anchor + diff);
+                c.desiredX = getXFromPos(c.head);
+            }
+        }
+        else {
+            int targetLineIdx = endLine + 1;
+            size_t targetStart = rangeEnd;
+            size_t targetEnd = (targetLineIdx + 1 < (int)lineStarts.size()) ? lineStarts[targetLineIdx + 1] : pt.length();
+            std::string lineBelow = pt.getRange(targetStart, targetEnd - targetStart);
+            if (targetEnd == pt.length() && (lineBelow.empty() || lineBelow.back() != '\n')) {
+                lineBelow += '\n';
+                if (!textToMove.empty() && textToMove.back() == '\n') textToMove.pop_back();
+            }
+            size_t deleteLen = targetEnd - rangeStart;
+            std::string deletedAll = pt.getRange(rangeStart, deleteLen);
+            pt.erase(rangeStart, deleteLen);
+            batch.ops.push_back({ EditOp::Erase, rangeStart, deletedAll });
+            std::string newText = lineBelow + textToMove;
+            pt.insert(rangeStart, newText);
+            batch.ops.push_back({ EditOp::Insert, rangeStart, newText });
+            long long diff = (long long)lineBelow.size();
+            for (auto& c : cursors) {
+                c.head = (size_t)((long long)c.head + diff);
+                c.anchor = (size_t)((long long)c.anchor + diff);
+                c.desiredX = getXFromPos(c.head);
+            }
+        }
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
+        InvalidateRect(hwnd, NULL, FALSE);
     }
     void pasteFromClipboard() {
         if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) return;
@@ -1339,6 +1406,35 @@ struct Editor {
     }
     bool saveFileAs() { WCHAR f[MAX_PATH] = { 0 }; OPENFILENAMEW o = { 0 }; o.lStructSize = sizeof(o); o.hwndOwner = hwnd; o.lpstrFile = f; o.nMaxFile = MAX_PATH; o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0"; o.nFilterIndex = 1; o.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT; if (GetSaveFileNameW(&o))return saveFile(f); return false; }
     void newFile() { if (!checkUnsavedChanges())return; pt.initEmpty(); currentFilePath.clear(); undo.clear(); isDirty = false; cursors.clear(); cursors.push_back({ 0,0,0.0f }); vScrollPos = 0; hScrollPos = 0; fileMap.reset(); rebuildLineStarts(); updateTitleBar(); InvalidateRect(hwnd, NULL, FALSE); }
+    void selectNextOccurrence() {
+        if (cursors.empty()) return;
+        Cursor c = cursors.back();
+        if (!c.hasSelection()) {
+            size_t targetPos = c.head;
+            if (targetPos > 0) {
+                char currChar = pt.charAt(targetPos);
+                char prevChar = pt.charAt(targetPos - 1);
+                if (!isWordChar(currChar) && isWordChar(prevChar)) {
+                    targetPos--;
+                }
+            }
+            selectWordAt(targetPos);
+            InvalidateRect(hwnd, NULL, FALSE);
+            return;
+        }
+        size_t start = c.start();
+        size_t len = c.end() - start;
+        std::string query = pt.getRange(start, len);
+        size_t nextPos = findText(std::max(c.head, c.anchor), query, true, true, false, false);
+        if (nextPos != std::string::npos) {
+            for (const auto& cur : cursors) {
+                if (cur.start() == nextPos) return;
+            }
+            cursors.push_back({ nextPos + len, nextPos, getXFromPos(nextPos + len) });
+            ensureCaretVisible();
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+    }
     bool openFileFromPath(const std::wstring& path) {
         fileMap.reset(new MappedFile());
         if (fileMap->open(path.c_str())) {
@@ -1473,7 +1569,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     } break;
     case WM_IME_ENDCOMPOSITION: g_editor.imeComp.clear(); InvalidateRect(hwnd, NULL, FALSE); break;
     case WM_IME_SETCONTEXT: lParam &= ~ISC_SHOWUICOMPOSITIONWINDOW; return DefWindowProc(hwnd, msg, wParam, lParam);
-    case WM_SYSKEYDOWN: if (wParam != VK_LEFT && wParam != VK_RIGHT && wParam != VK_UP && wParam != VK_DOWN) return DefWindowProc(hwnd, msg, wParam, lParam);
+    case WM_SYSKEYDOWN:
+        if (wParam == VK_UP || wParam == VK_DOWN) {
+            bool shift = (GetKeyState(VK_SHIFT) & 0x8000);
+            if (shift) {
+                g_editor.duplicateLines(wParam == VK_UP);
+            }
+            else {
+                g_editor.moveLines(wParam == VK_UP);
+            }
+            return 0;
+        }
+        if (wParam != VK_LEFT && wParam != VK_RIGHT && wParam != VK_F4) return DefWindowProc(hwnd, msg, wParam, lParam);
+        break;
     case WM_KEYDOWN:
         if (GetKeyState(VK_CONTROL) & 0x8000) {
             switch (wParam) {
@@ -1489,9 +1597,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case 'C': case VK_INSERT: g_editor.copyToClipboard(); return 0;
             case 'X': g_editor.cutToClipboard(); return 0;
             case 'V': g_editor.pasteFromClipboard(); return 0;
-            case 'U': // 追加
-                if (GetKeyState(VK_SHIFT) & 0x8000) g_editor.convertCase(false); // 小文字へ
-                else g_editor.convertCase(true); // 大文字へ
+            case 'D': g_editor.selectNextOccurrence(); return 0;
+            case 'U':
+                if (GetKeyState(VK_SHIFT) & 0x8000) g_editor.convertCase(false);
+                else g_editor.convertCase(true);
                 return 0;
             case 'A': { g_editor.rollbackPadding(); g_editor.cursors.clear(); g_editor.cursors.push_back({ g_editor.pt.length(), 0, 0.0f }); InvalidateRect(hwnd, NULL, FALSE); return 0; }
             case VK_ADD: case VK_OEM_PLUS: {
@@ -1511,7 +1620,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 return 0;
             }
             case '0': case VK_NUMPAD0: {
-                g_editor.updateFont(21.0f); // Default
+                g_editor.updateFont(21.0f);
                 g_editor.zoomPopupEndTime = GetTickCount() + 1000;
                 std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px"; g_editor.zoomPopupText = ss.str();
                 SetTimer(hwnd, 1, 1000, NULL);
@@ -1548,7 +1657,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     if (inVirtualSpace) {
                         if (wParam == VK_LEFT) {
                             g_editor.rectHeadX -= g_editor.charWidth;
-                            if (g_editor.rectHeadX < textEndX) g_editor.rectHeadX = textEndX; // 行末に戻ったらスナップ
+                            if (g_editor.rectHeadX < textEndX) g_editor.rectHeadX = textEndX;
                         }
                         else {
                             g_editor.rectHeadX += g_editor.charWidth;
@@ -1580,7 +1689,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             g_editor.mergeCursors(); g_editor.ensureCaretVisible(); InvalidateRect(hwnd, NULL, FALSE);
         }
-    break;
+        break;
     case WM_DROPFILES: {
         if (g_editor.checkUnsavedChanges()) {
             HDROP hDrop = (HDROP)wParam;
