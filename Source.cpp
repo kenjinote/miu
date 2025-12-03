@@ -1567,10 +1567,10 @@ struct Editor {
             return false;
         }
     }
-    void indentLines() {
+    void indentLines(bool forceLineIndent = false) {
         bool hasSelection = false;
         for (const auto& c : cursors) if (c.hasSelection()) hasSelection = true;
-        if (!hasSelection) {
+        if (!hasSelection && !forceLineIndent) {
             insertAtCursors("\t");
             return;
         }
@@ -1631,6 +1631,64 @@ struct Editor {
             updateDirtyFlag();
             InvalidateRect(hwnd, NULL, FALSE);
         }
+    }
+    void insertNewlineWithAutoIndent() {
+        commitPadding();
+        if (cursors.empty()) return;
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        std::vector<int> indices(cursors.size());
+        for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i;
+        std::sort(indices.begin(), indices.end(), [&](int a, int b) {
+            return cursors[a].start() > cursors[b].start();
+            });
+        for (int idx : indices) {
+            Cursor& c = cursors[idx];
+            size_t start = c.start();
+            if (c.hasSelection()) {
+                size_t len = c.end() - start;
+                std::string deleted = pt.getRange(start, len);
+                pt.erase(start, len);
+                batch.ops.push_back({ EditOp::Erase, start, deleted });
+                for (auto& o : cursors) {
+                    if (o.head > start) o.head -= len;
+                    if (o.anchor > start) o.anchor -= len;
+                }
+                c.head = start; c.anchor = start;
+            }
+            int lineIdx = getLineIdx(start);
+            size_t lineStart = lineStarts[lineIdx];
+            std::string indentStr = "";
+            size_t p = lineStart;
+            size_t maxLen = pt.length();
+            while (p < maxLen && p < start) {
+                char ch = pt.charAt(p);
+                if (ch == ' ' || ch == '\t') {
+                    indentStr += ch;
+                }
+                else {
+                    break;
+                }
+                p++;
+            }
+            std::string textToInsert = "\n" + indentStr;
+            pt.insert(start, textToInsert);
+            batch.ops.push_back({ EditOp::Insert, start, textToInsert });
+            size_t insLen = textToInsert.size();
+            for (auto& o : cursors) {
+                if (o.head >= start) o.head += insLen;
+                if (o.anchor >= start) o.anchor += insLen;
+                if (&o == &c) {
+                    o.desiredX = getXFromPos(o.head);
+                }
+            }
+        }
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
+        InvalidateRect(hwnd, NULL, FALSE);
     }
 } g_editor;
 
@@ -1741,7 +1799,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             InvalidateRect(hwnd, NULL, FALSE);
         }
-        else if (c == 13) { g_editor.highSurrogate = 0; g_editor.insertAtCursors("\n"); }
+        else if (c == 13) {
+            g_editor.highSurrogate = 0;
+            g_editor.insertNewlineWithAutoIndent();
+        }
         else {
             if (c >= 0xD800 && c <= 0xDBFF) { g_editor.highSurrogate = c; return 0; }
             std::wstring s; if (c >= 0xDC00 && c <= 0xDFFF) { if (g_editor.highSurrogate) { s += g_editor.highSurrogate; s += c; g_editor.highSurrogate = 0; } else return 0; }
@@ -1782,7 +1843,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                     g_editor.insertAtCursors("\t");
                 }
                 else {
-                    g_editor.indentLines();
+                    g_editor.indentLines(false);
                 }
             }
             return 0;
@@ -1802,6 +1863,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case 'X': g_editor.cutToClipboard(); return 0;
             case 'V': g_editor.pasteFromClipboard(); return 0;
             case 'D': g_editor.selectNextOccurrence(); return 0;
+            case VK_OEM_6:
+                g_editor.indentLines(true);
+                return 0;
+            case VK_OEM_4:
+                g_editor.unindentLines();
+                return 0;
             case 'U':
                 if (GetKeyState(VK_SHIFT) & 0x8000) g_editor.convertCase(false);
                 else g_editor.convertCase(true);
