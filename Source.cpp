@@ -294,6 +294,9 @@ struct Editor {
             charWidth = m.width;
             layout->Release();
         }
+        if (textFormat) {
+            textFormat->SetIncrementalTabStop(charWidth * 4.0f);
+        }
         updateGutterWidth();
         updateScrollBars();
     }
@@ -1564,6 +1567,71 @@ struct Editor {
             return false;
         }
     }
+    void indentLines() {
+        bool hasSelection = false;
+        for (const auto& c : cursors) if (c.hasSelection()) hasSelection = true;
+        if (!hasSelection) {
+            insertAtCursors("\t");
+            return;
+        }
+        commitPadding();
+        std::vector<int> lines = getSelectedLineIndices();
+        if (lines.empty()) return;
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        std::sort(lines.rbegin(), lines.rend());
+        for (int lineIdx : lines) {
+            size_t pos = lineStarts[lineIdx];
+            std::string indentStr = "\t";
+            pt.insert(pos, indentStr);
+            batch.ops.push_back({ EditOp::Insert, pos, indentStr });
+            for (auto& c : cursors) {
+                if (c.head >= pos) c.head += indentStr.size();
+                if (c.anchor >= pos) c.anchor += indentStr.size();
+                c.desiredX = getXFromPos(c.head);
+            }
+        }
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
+        InvalidateRect(hwnd, NULL, FALSE);
+    }
+    void unindentLines() {
+        commitPadding();
+        std::vector<int> lines = getSelectedLineIndices();
+        if (lines.empty()) return;
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        std::sort(lines.rbegin(), lines.rend());
+        for (int lineIdx : lines) {
+            size_t pos = lineStarts[lineIdx];
+            if (pos >= pt.length()) continue;
+            char c = pt.charAt(pos);
+            size_t eraseLen = 0;
+            if (c == '\t') eraseLen = 1;
+            else if (c == ' ') eraseLen = 1;
+            if (eraseLen > 0) {
+                std::string deleted = pt.getRange(pos, eraseLen);
+                pt.erase(pos, eraseLen);
+                batch.ops.push_back({ EditOp::Erase, pos, deleted });
+                for (auto& c : cursors) {
+                    if (c.head > pos) c.head -= std::min(c.head - pos, eraseLen);
+                    if (c.anchor > pos) c.anchor -= std::min(c.anchor - pos, eraseLen);
+                    c.desiredX = getXFromPos(c.head);
+                }
+            }
+        }
+        if (!batch.ops.empty()) {
+            batch.afterCursors = cursors;
+            undo.push(batch);
+            rebuildLineStarts();
+            ensureCaretVisible();
+            updateDirtyFlag();
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+    }
 } g_editor;
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
@@ -1632,7 +1700,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_LBUTTONUP:
         if (g_editor.isDragMovePending) { g_editor.isDragMovePending = false; size_t p = g_editor.getDocPosFromPoint((short)LOWORD(lParam), (short)HIWORD(lParam)); g_editor.cursors.clear(); g_editor.cursors.push_back({ p, p, g_editor.getXFromPos(p) }); InvalidateRect(hwnd, NULL, FALSE); }
         else if (g_editor.isDragMoving) { g_editor.performDragMove(); }
-        g_editor.isDragging = false; g_editor.isDragMoving = false; g_editor.isRectSelecting = false; g_editor.mergeCursors(); ReleaseCapture(); break;
+        g_editor.isDragging = false; g_editor.isDragMoving = false; g_editor.mergeCursors(); ReleaseCapture(); break;
     case WM_VSCROLL: {
         RECT rc; GetClientRect(hwnd, &rc); int page = (int)((rc.bottom / g_editor.dpiScaleY) / g_editor.lineHeight);
     switch (LOWORD(wParam)) { case SB_LINEUP: g_editor.vScrollPos--; break; case SB_LINEDOWN: g_editor.vScrollPos++; break; case SB_PAGEUP: g_editor.vScrollPos -= page; break; case SB_PAGEDOWN: g_editor.vScrollPos += page; break; case SB_THUMBTRACK: { SCROLLINFO si = { sizeof(SCROLLINFO), SIF_TRACKPOS }; GetScrollInfo(hwnd, SB_VERT, &si); g_editor.vScrollPos = si.nTrackPos; } break; }
@@ -1657,7 +1725,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_CHAR: {
         if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
         wchar_t c = (wchar_t)wParam;
-        if (c < 32 && c != 8 && c != 13 && c != 9) break;
+        if (c < 32 && c != 8 && c != 13) break;
         if (c == 8) {
             g_editor.highSurrogate = 0;
             bool hadSelection = false;
@@ -1674,7 +1742,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             InvalidateRect(hwnd, NULL, FALSE);
         }
         else if (c == 13) { g_editor.highSurrogate = 0; g_editor.insertAtCursors("\n"); }
-        else if (c == 9) { g_editor.highSurrogate = 0; g_editor.insertAtCursors("\t"); }
         else {
             if (c >= 0xD800 && c <= 0xDBFF) { g_editor.highSurrogate = c; return 0; }
             std::wstring s; if (c >= 0xDC00 && c <= 0xDFFF) { if (g_editor.highSurrogate) { s += g_editor.highSurrogate; s += c; g_editor.highSurrogate = 0; } else return 0; }
@@ -1706,6 +1773,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         if (wParam != VK_LEFT && wParam != VK_RIGHT && wParam != VK_F4) return DefWindowProc(hwnd, msg, wParam, lParam);
         break;
     case WM_KEYDOWN:
+        if (wParam == VK_TAB) {
+            if (GetKeyState(VK_SHIFT) & 0x8000) {
+                g_editor.unindentLines();
+            }
+            else {
+                if (g_editor.isRectSelecting) {
+                    g_editor.insertAtCursors("\t");
+                }
+                else {
+                    g_editor.indentLines();
+                }
+            }
+            return 0;
+        }
         if (GetKeyState(VK_CONTROL) & 0x8000) {
             switch (wParam) {
             case 'O': g_editor.openFile(); return 0;
