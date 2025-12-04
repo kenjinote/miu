@@ -321,7 +321,7 @@ struct Editor {
         updateGutterWidth();
         updateScrollBars();
     }
-    const WCHAR *appRegKey = L"Software\\kenjinote\\miu";
+    const WCHAR *appRegKey = L"Software\\kenjinote\\miu"; // レジストリキー
     void loadFont() {
         // レジストリ読み込み
         std::wstring fontName = currentFontName;
@@ -2066,18 +2066,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
     } break;
     case WM_CONTEXTMENU: {
+        // コンテキストメニューを表示
         const INT fontChangeId = 100;
         HMENU hMenu = CreatePopupMenu();
         AppendMenu(hMenu, MF_STRING, fontChangeId, L"フォントの変更(&F)...");
         UINT menu_flags = TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN;
         POINT pt;
-        if (lParam == -1) {
+        if (lParam == -1) { // キーボードから？
             RECT rc; GetClientRect(hwnd, &rc);
-            pt.x = rc.left; pt.y = rc.top;
+            pt.x = rc.left; pt.y = rc.top; // 画面の左上
             ClientToScreen(hwnd, &pt);
         }
         else {
-            GetCursorPos(&pt);
+            GetCursorPos(&pt); // カーソルの位置
         }
         INT cmd = (INT)TrackPopupMenu(hMenu, menu_flags, pt.x, pt.y, 0, hwnd, nullptr);
         PostMessage(hwnd, WM_NULL, 0, 0);
@@ -2104,9 +2105,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if (ChooseFont(&cf)) {
                 // フォント更新
                 int chosenPix = abs(lf.lfHeight);
-                float fontSizeDips = (float)chosenPix * (96.0f / (float)logPixelsY);
+                float fontSizeDips = (float)chosenPix * (96.0f / (float)logPixelsY); // DIPsに直す
                 g_editor.updateFont(lf.lfFaceName, fontSizeDips, lf.lfWeight, lf.lfItalic);
-                g_editor.saveFont();
+                g_editor.saveFont(); // レジストリに保存
                 // 画面更新
                 InvalidateRect(hwnd, nullptr, FALSE);
             }
