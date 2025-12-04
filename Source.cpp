@@ -322,8 +322,7 @@ struct Editor {
         updateScrollBars();
     }
     const WCHAR *appRegKey = L"Software\\kenjinote\\miu"; // レジストリキー
-    void loadFont() {
-        // レジストリ読み込み
+    void loadFont() { // レジストリ読み込み
         std::wstring fontName = currentFontName;
         float fontSize = currentFontSize;
         LONG fontWeight = currentFontWeight;
@@ -351,8 +350,7 @@ struct Editor {
         }
         updateFont(fontName, fontSize, fontWeight, fontItalic);
     }
-    void saveFont() {
-        // レジストリ書き込み
+    void saveFont() { // レジストリ書き込み
         TCHAR buffer[LF_FACESIZE];
         DWORD dataSize;
         StringCchPrintfW(buffer, _countof(buffer), L"%f", currentFontSize);
@@ -1788,8 +1786,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE: {
         g_editor.initGraphics(hwnd);
-        DragAcceptFiles(hwnd, TRUE);
         g_editor.loadFont();
+        DragAcceptFiles(hwnd, TRUE);
         break;
     }
     case WM_SIZE: if (g_editor.rend) { RECT rc; GetClientRect(hwnd, &rc); g_editor.rend->Resize(D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top)); g_editor.updateScrollBars(); InvalidateRect(hwnd, NULL, FALSE); } break;
@@ -2083,7 +2081,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         INT cmd = (INT)TrackPopupMenu(hMenu, menu_flags, pt.x, pt.y, 0, hwnd, nullptr);
         PostMessage(hwnd, WM_NULL, 0, 0);
         if (cmd == fontChangeId) { // フォントを変更するか？
-            // モニタ/ウィンドウの実際の論理解像度を取得して変換する
+            // ウィンドウの実際の論理解像度を取得して変換する
             HDC hdc = GetDC(hwnd);
             int logPixelsY = GetDeviceCaps(hdc, LOGPIXELSY);
             ReleaseDC(hwnd, hdc);
@@ -2104,7 +2102,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             // フォント選択
             if (ChooseFont(&cf)) {
                 // フォント更新
-                int chosenPix = abs(lf.lfHeight);
+                int chosenPix = abs(lf.lfHeight); // 絶対値
                 float fontSizeDips = (float)chosenPix * (96.0f / (float)logPixelsY); // DIPsに直す
                 g_editor.updateFont(lf.lfFaceName, fontSizeDips, lf.lfWeight, lf.lfItalic);
                 g_editor.saveFont(); // レジストリに保存
