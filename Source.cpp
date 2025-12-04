@@ -352,19 +352,19 @@ struct Editor {
     }
     void saveFont() {
         // レジストリ書き込み
-        TCHAR buffer[32];
-        DWORD bufferSize;
+        TCHAR buffer[LF_FACESIZE];
+        DWORD dataSize;
         StringCchPrintfW(buffer, _countof(buffer), L"%f", currentFontSize);
-        bufferSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
-        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontSize", REG_SZ, buffer, bufferSize);
-        bufferSize = (DWORD)((g_editor.currentFontName.length() + 1) * sizeof(WCHAR));
-        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontName", REG_SZ, g_editor.currentFontName.c_str(), bufferSize);
+        dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
+        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontSize", REG_SZ, buffer, dataSize);
+        dataSize = (DWORD)((g_editor.currentFontName.length() + 1) * sizeof(WCHAR));
+        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontName", REG_SZ, g_editor.currentFontName.c_str(), dataSize);
         StringCchPrintfW(buffer, _countof(buffer), L"%ld", currentFontWeight);
-        bufferSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
-        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontWeight", REG_SZ, buffer, bufferSize);
+        dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
+        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontWeight", REG_SZ, buffer, dataSize);
         StringCchPrintfW(buffer, _countof(buffer), L"%ld", currentFontItalic);
-        bufferSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
-        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontItalic", REG_SZ, buffer, bufferSize);
+        dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
+        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontItalic", REG_SZ, buffer, dataSize);
     }
     void destroyGraphics() {
         if (popupTextFormat) popupTextFormat->Release();
