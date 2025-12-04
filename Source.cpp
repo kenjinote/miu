@@ -247,7 +247,10 @@ struct Editor {
     int vScrollPos = 0; int hScrollPos = 0; std::vector<size_t> lineStarts;
     float maxLineWidth = 100.0f; float gutterWidth = 50.0f;
     DWORD lastClickTime = 0; int clickCount = 0; int lastClickX = 0, lastClickY = 0;
+    std::wstring currentFontName = L"Consolas"; // LOGFONT.lfFaceNameを参照
     float currentFontSize = 21.0f; DWORD zoomPopupEndTime = 0; std::wstring zoomPopupText;
+    LONG currentFontWeight = FW_NORMAL; // LOGFONT.lfWeightを参照
+    BYTE currentFontItalic = FALSE; // LOGFONT.lfItalicを参照
     bool suppressUI = false;
     ID2D1Factory* d2dFactory = nullptr; ID2D1HwndRenderTarget* rend = nullptr;
     IDWriteFactory* dwFactory = nullptr; IDWriteTextFormat* textFormat = nullptr; IDWriteTextFormat* popupTextFormat = nullptr;
@@ -259,9 +262,6 @@ struct Editor {
     float dpiScaleX = 1.0f, dpiScaleY = 1.0f; float lineHeight = 17.5f; float charWidth = 8.0f;
     bool isFullScreen = false;
     WINDOWPLACEMENT prevPlacement = { sizeof(WINDOWPLACEMENT) };
-    std::wstring currentFontName = L"Consolas"; // LOGFONT.lfFaceNameを参照
-    LONG currentFontWeight = FW_NORMAL; // LOGFONT.lfWeightを参照
-    BYTE currentFontItalic = FALSE; // LOGFONT.lfItalicを参照
 
     void initGraphics(HWND h) {
         hwnd = h;
