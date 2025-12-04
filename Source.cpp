@@ -289,15 +289,17 @@ struct Editor {
     }
     void updateFont(std::wstring fontName, float size, LONG fontWeight, BYTE fontItalic) {
         size = std::round(size);
+        // フォントサイズを制限する
         if (size < 6.0f) size = 6.0f;
         if (size > 200.0f) size = 200.0f;
+        // 変更がなければ変更しない
         if (textFormat && size == currentFontSize && fontName == currentFontName && fontWeight == currentFontWeight && fontItalic == currentFontItalic) return;
         currentFontSize = size;
         currentFontName = fontName;
         currentFontWeight = fontWeight;
         currentFontItalic = fontItalic;
         if (textFormat) { textFormat->Release(); textFormat = nullptr; }
-        DWRITE_FONT_WEIGHT weight = static_cast<DWRITE_FONT_WEIGHT>(currentFontWeight); // lfWeightとDWRITE_FONT_WEIGHTはFW_DONTCARE以外は互換
+        DWRITE_FONT_WEIGHT weight = static_cast<DWRITE_FONT_WEIGHT>(currentFontWeight); // LOGFONT.lfWeightとDWRITE_FONT_WEIGHTはFW_DONTCARE以外は互換
         DWRITE_FONT_STYLE style = currentFontItalic ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
         dwFactory->CreateTextFormat(currentFontName.c_str(), NULL, weight, style, DWRITE_FONT_STRETCH_NORMAL, currentFontSize, L"en-us", &textFormat);
         lineHeight = currentFontSize * 1.25f;
@@ -328,24 +330,24 @@ struct Editor {
         BYTE fontItalic = currentFontItalic;
         TCHAR buffer[LF_FACESIZE] = { 0 };
         DWORD bufferSize = sizeof(buffer);
-        LSTATUS error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontName", NULL, buffer, &bufferSize);
+        LSTATUS error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontName", nullptr, buffer, &bufferSize);
         if (error == ERROR_SUCCESS && buffer[0]) {
             fontName = buffer;
         }
         bufferSize = sizeof(buffer);
-        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontSize", NULL, buffer, &bufferSize);
+        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontSize", nullptr, buffer, &bufferSize);
         if (error == ERROR_SUCCESS) {
-            fontSize = std::wcstof(buffer, NULL);
+            fontSize = std::wcstof(buffer, nullptr);
         }
         bufferSize = sizeof(buffer);
-        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontWeight", NULL, buffer, &bufferSize);
+        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontWeight", nullptr, buffer, &bufferSize);
         if (error == ERROR_SUCCESS) {
-            fontWeight = std::wcstoul(buffer, NULL, 10);
+            fontWeight = std::wcstoul(buffer, nullptr, 10);
         }
         bufferSize = sizeof(buffer);
-        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontItalic", NULL, buffer, &bufferSize);
+        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontItalic", nullptr, buffer, &bufferSize);
         if (error == ERROR_SUCCESS) {
-            fontItalic = !!std::wcstoul(buffer, NULL, 10);
+            fontItalic = !!std::wcstoul(buffer, nullptr, 10);
         }
         updateFont(fontName, fontSize, fontWeight, fontItalic);
     }
@@ -2077,7 +2079,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         else {
             GetCursorPos(&pt);
         }
-        INT cmd = (INT)TrackPopupMenu(hMenu, menu_flags, pt.x, pt.y, 0, hwnd, NULL);
+        INT cmd = (INT)TrackPopupMenu(hMenu, menu_flags, pt.x, pt.y, 0, hwnd, nullptr);
         PostMessage(hwnd, WM_NULL, 0, 0);
         if (cmd == fontChangeId) { // フォントを変更するか？
             // モニタ/ウィンドウの実際の論理解像度を取得して変換する
@@ -2106,7 +2108,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 g_editor.updateFont(lf.lfFaceName, fontSizeDips, lf.lfWeight, lf.lfItalic);
                 g_editor.saveFont();
                 // 画面更新
-                InvalidateRect(hwnd, NULL, FALSE);
+                InvalidateRect(hwnd, nullptr, FALSE);
             }
         }
     } break;
