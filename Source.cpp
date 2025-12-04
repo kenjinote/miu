@@ -17,7 +17,6 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <imm.h>
 #include <commdlg.h>
 #include <commctrl.h>
-#include <shlwapi.h>
 #include <strsafe.h>
 #include <string>
 #include <vector>
@@ -36,7 +35,6 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "imm32.lib")
 #pragma comment(lib, "comdlg32.lib")
 #pragma comment(lib, "comctl32.lib")
-#pragma comment(lib, "shlwapi.lib")
 
 const std::wstring APP_VERSION = L"miu v1.0.7";
 const std::wstring HELP_TEXT =
@@ -323,47 +321,54 @@ struct Editor {
     }
     const WCHAR *appRegKey = L"Software\\kenjinote\\miu"; // レジストリキー
     void loadFont() { // レジストリ読み込み
+        HKEY hKey;
+        LSTATUS error = RegOpenKeyEx(HKEY_CURRENT_USER, appRegKey, 0, KEY_READ, &hKey);
+        if (error) return;
         std::wstring fontName = currentFontName;
         float fontSize = currentFontSize;
         LONG fontWeight = currentFontWeight;
         BYTE fontItalic = currentFontItalic;
         TCHAR buffer[LF_FACESIZE] = { 0 };
-        DWORD bufferSize = sizeof(buffer);
-        LSTATUS error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontName", nullptr, buffer, &bufferSize);
-        if (error == ERROR_SUCCESS && buffer[0]) {
-            fontName = buffer;
-        }
-        bufferSize = sizeof(buffer);
-        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontSize", nullptr, buffer, &bufferSize);
-        if (error == ERROR_SUCCESS) {
-            fontSize = std::wcstof(buffer, nullptr);
-        }
-        bufferSize = sizeof(buffer);
-        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontWeight", nullptr, buffer, &bufferSize);
-        if (error == ERROR_SUCCESS) {
-            fontWeight = std::wcstoul(buffer, nullptr, 10);
-        }
-        bufferSize = sizeof(buffer);
-        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontItalic", nullptr, buffer, &bufferSize);
-        if (error == ERROR_SUCCESS) {
-            fontItalic = !!std::wcstoul(buffer, nullptr, 10);
-        }
+        PBYTE bufferPtr = reinterpret_cast<PBYTE>(buffer);
+        DWORD bufferSize = (LONG)sizeof(buffer);
+        error = RegQueryValueEx(hKey, L"currentFontName", NULL, NULL, bufferPtr, &bufferSize);
+        buffer[_countof(buffer) - 1] = UNICODE_NULL;
+        if (!error && buffer[0]) fontName = buffer;
+        bufferSize = (DWORD)sizeof(buffer);
+        error = RegQueryValueEx(hKey, L"currentFontSize", NULL, NULL, bufferPtr, &bufferSize);
+        buffer[_countof(buffer) - 1] = UNICODE_NULL;
+        if (!error) fontSize = std::wcstof(buffer, nullptr);
+        bufferSize = (DWORD)sizeof(buffer);
+        error = RegQueryValueEx(hKey, L"currentFontWeight", NULL, NULL, bufferPtr, &bufferSize);
+        buffer[_countof(buffer) - 1] = UNICODE_NULL;
+        if (!error) fontWeight = std::wcstoul(buffer, nullptr, 10);
+        bufferSize = (DWORD)sizeof(buffer);
+        error = RegQueryValueEx(hKey, L"currentFontItalic", NULL, NULL, bufferPtr, &bufferSize);
+        buffer[_countof(buffer) - 1] = UNICODE_NULL;
+        if (!error) fontItalic = !!std::wcstoul(buffer, nullptr, 10);
+        RegCloseKey(hKey);
         updateFont(fontName, fontSize, fontWeight, fontItalic);
     }
     void saveFont() { // レジストリ書き込み
+        HKEY hKey;
+        LSTATUS error = RegOpenKeyEx(HKEY_CURRENT_USER, appRegKey, 0, KEY_WRITE, &hKey);
+        if (error) return;
         TCHAR buffer[LF_FACESIZE];
+        PBYTE bufferPtr = reinterpret_cast<PBYTE>(buffer);
         DWORD dataSize;
         StringCchPrintfW(buffer, _countof(buffer), L"%f", currentFontSize);
         dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
-        SHSetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontSize", REG_SZ, buffer, dataSize);
+        RegSetValueEx(hKey, L"currentFontSize", 0, REG_SZ, bufferPtr, dataSize);
         dataSize = (DWORD)((g_editor.currentFontName.length() + 1) * sizeof(WCHAR));
-        SHSetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontName", REG_SZ, g_editor.currentFontName.c_str(), dataSize);
+        const BYTE* dataPtr = reinterpret_cast<const BYTE*>(g_editor.currentFontName.c_str());
+        RegSetValueEx(hKey, L"currentFontName", 0, REG_SZ, dataPtr, dataSize);
         StringCchPrintfW(buffer, _countof(buffer), L"%ld", currentFontWeight);
         dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
-        SHSetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontWeight", REG_SZ, buffer, dataSize);
+        RegSetValueEx(hKey, L"currentFontWeight", 0, REG_SZ, bufferPtr, dataSize);
         StringCchPrintfW(buffer, _countof(buffer), L"%d", !!currentFontItalic);
         dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
-        SHSetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontItalic", REG_SZ, buffer, dataSize);
+        RegSetValueEx(hKey, L"currentFontItalic", 0, REG_SZ, bufferPtr, dataSize);
+        RegCloseKey(hKey);
     }
     void destroyGraphics() {
         if (popupTextFormat) popupTextFormat->Release();
