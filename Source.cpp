@@ -262,7 +262,6 @@ struct Editor {
     float dpiScaleX = 1.0f, dpiScaleY = 1.0f; float lineHeight = 17.5f; float charWidth = 8.0f;
     bool isFullScreen = false;
     WINDOWPLACEMENT prevPlacement = { sizeof(WINDOWPLACEMENT) };
-
     void initGraphics(HWND h) {
         hwnd = h;
         D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &d2dFactory);
