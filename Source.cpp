@@ -320,6 +320,7 @@ struct Editor {
         updateGutterWidth();
         updateScrollBars();
     }
+    const WCHAR *appRegKey = L"Software\\kenjinote\\miu";
     void loadFont() {
         // レジストリ読み込み
         std::wstring fontName = currentFontName;
@@ -328,23 +329,23 @@ struct Editor {
         BYTE fontItalic = currentFontItalic;
         TCHAR buffer[LF_FACESIZE] = { 0 };
         DWORD bufferSize = sizeof(buffer);
-        LSTATUS error = SHGetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontName", NULL, buffer, &bufferSize);
+        LSTATUS error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontName", NULL, buffer, &bufferSize);
         if (error == ERROR_SUCCESS && buffer[0]) {
             fontName = buffer;
         }
         bufferSize = sizeof(buffer);
-        error = SHGetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontSize", NULL, buffer, &bufferSize);
+        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontSize", NULL, buffer, &bufferSize);
         if (error == ERROR_SUCCESS) {
             fontSize = std::wcstof(buffer, NULL);
             if (fontSize <= 0) fontSize = 21.0f;
         }
         bufferSize = sizeof(buffer);
-        error = SHGetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontWeight", NULL, buffer, &bufferSize);
+        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontWeight", NULL, buffer, &bufferSize);
         if (error == ERROR_SUCCESS) {
             fontWeight = std::wcstoul(buffer, NULL, 10);
         }
         bufferSize = sizeof(buffer);
-        error = SHGetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontItalic", NULL, buffer, &bufferSize);
+        error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontItalic", NULL, buffer, &bufferSize);
         if (error == ERROR_SUCCESS) {
             fontItalic = !!std::wcstoul(buffer, NULL, 10);
         }
@@ -356,15 +357,15 @@ struct Editor {
         DWORD dataSize;
         StringCchPrintfW(buffer, _countof(buffer), L"%f", currentFontSize);
         dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
-        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontSize", REG_SZ, buffer, dataSize);
+        SHSetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontSize", REG_SZ, buffer, dataSize);
         dataSize = (DWORD)((g_editor.currentFontName.length() + 1) * sizeof(WCHAR));
-        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontName", REG_SZ, g_editor.currentFontName.c_str(), dataSize);
+        SHSetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontName", REG_SZ, g_editor.currentFontName.c_str(), dataSize);
         StringCchPrintfW(buffer, _countof(buffer), L"%ld", currentFontWeight);
         dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
-        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontWeight", REG_SZ, buffer, dataSize);
+        SHSetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontWeight", REG_SZ, buffer, dataSize);
         StringCchPrintfW(buffer, _countof(buffer), L"%ld", currentFontItalic);
         dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
-        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontItalic", REG_SZ, buffer, dataSize);
+        SHSetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontItalic", REG_SZ, buffer, dataSize);
     }
     void destroyGraphics() {
         if (popupTextFormat) popupTextFormat->Release();
