@@ -17,6 +17,8 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <imm.h>
 #include <commdlg.h>
 #include <commctrl.h>
+#include <shlwapi.h>
+#include <strsafe.h>
 #include <string>
 #include <vector>
 #include <memory>
@@ -34,6 +36,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "imm32.lib")
 #pragma comment(lib, "comdlg32.lib")
 #pragma comment(lib, "comctl32.lib")
+#pragma comment(lib, "shlwapi.lib")
 
 const std::wstring APP_VERSION = L"miu v1.0.7";
 const std::wstring HELP_TEXT =
@@ -256,6 +259,10 @@ struct Editor {
     float dpiScaleX = 1.0f, dpiScaleY = 1.0f; float lineHeight = 17.5f; float charWidth = 8.0f;
     bool isFullScreen = false;
     WINDOWPLACEMENT prevPlacement = { sizeof(WINDOWPLACEMENT) };
+    std::wstring currentFontName = L"Consolas"; // LOGFONT.lfFaceNameを参照
+    LONG currentFontWeight = FW_NORMAL; // LOGFONT.lfWeightを参照
+    BYTE currentFontItalic = FALSE; // LOGFONT.lfItalicを参照
+
     void initGraphics(HWND h) {
         hwnd = h;
         D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &d2dFactory);
@@ -276,13 +283,24 @@ struct Editor {
         updateFont(currentFontSize); rebuildLineStarts(); cursors.push_back({ 0, 0, 0.0f }); updateTitleBar();
     }
     void updateFont(float size) {
-        size = std::round(size);
+        updateFont(currentFontName, size);
+    }
+    void updateFont(std::wstring fontName, float size) {
+        updateFont(fontName, size, currentFontWeight, currentFontItalic);
+    }
+    void updateFont(std::wstring fontName, float size, LONG fontWeight, BYTE fontItalic) {
+            size = std::round(size);
         if (size < 6.0f) size = 6.0f;
         if (size > 200.0f) size = 200.0f;
-        if (textFormat && size == currentFontSize) return;
+        if (textFormat && size == currentFontSize && fontName == currentFontName && fontWeight == currentFontWeight && fontItalic == currentFontItalic) return;
         currentFontSize = size;
+        currentFontName = fontName;
+        currentFontWeight = fontWeight;
+        currentFontItalic = fontItalic;
         if (textFormat) { textFormat->Release(); textFormat = nullptr; }
-        dwFactory->CreateTextFormat(L"Consolas", NULL, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, currentFontSize, L"en-us", &textFormat);
+        DWRITE_FONT_WEIGHT weight = currentFontWeight >= FW_BOLD ? DWRITE_FONT_WEIGHT_BOLD : DWRITE_FONT_WEIGHT_NORMAL;
+        DWRITE_FONT_STYLE style = currentFontItalic ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
+        dwFactory->CreateTextFormat(currentFontName.c_str(), NULL, weight, style, DWRITE_FONT_STRETCH_NORMAL, currentFontSize, L"en-us", &textFormat);
         lineHeight = currentFontSize * 1.25f;
         if (textFormat) {
             textFormat->SetLineSpacing(DWRITE_LINE_SPACING_METHOD_UNIFORM, lineHeight, lineHeight * 0.8f);
@@ -301,6 +319,52 @@ struct Editor {
         }
         updateGutterWidth();
         updateScrollBars();
+    }
+    void loadFont() {
+        // レジストリ読み込み
+        std::wstring fontName = currentFontName;
+        float fontSize = currentFontSize;
+        LONG fontWeight = currentFontWeight;
+        BYTE fontItalic = currentFontItalic;
+        TCHAR buffer[LF_FACESIZE] = { 0 };
+        DWORD bufferSize = sizeof(buffer);
+        LSTATUS error = SHGetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontName", NULL, buffer, &bufferSize);
+        if (error == ERROR_SUCCESS && buffer[0]) {
+            fontName = buffer;
+        }
+        bufferSize = sizeof(buffer);
+        error = SHGetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontSize", NULL, buffer, &bufferSize);
+        if (error == ERROR_SUCCESS) {
+            fontSize = std::wcstof(buffer, NULL);
+            if (fontSize <= 0) fontSize = 21.0f;
+        }
+        bufferSize = sizeof(buffer);
+        error = SHGetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontWeight", NULL, buffer, &bufferSize);
+        if (error == ERROR_SUCCESS) {
+            fontWeight = std::wcstoul(buffer, NULL, 10);
+        }
+        bufferSize = sizeof(buffer);
+        error = SHGetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontItalic", NULL, buffer, &bufferSize);
+        if (error == ERROR_SUCCESS) {
+            fontItalic = !!std::wcstoul(buffer, NULL, 10);
+        }
+        updateFont(fontName, fontSize, fontWeight, fontItalic);
+    }
+    void saveFont() {
+        // レジストリ書き込み
+        TCHAR buffer[32];
+        DWORD bufferSize;
+        StringCchPrintfW(buffer, _countof(buffer), L"%f", currentFontSize);
+        bufferSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
+        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontSize", REG_SZ, buffer, bufferSize);
+        bufferSize = (DWORD)((g_editor.currentFontName.length() + 1) * sizeof(WCHAR));
+        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontName", REG_SZ, g_editor.currentFontName.c_str(), bufferSize);
+        StringCchPrintfW(buffer, _countof(buffer), L"%ld", currentFontWeight);
+        bufferSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
+        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontWeight", REG_SZ, buffer, bufferSize);
+        StringCchPrintfW(buffer, _countof(buffer), L"%ld", currentFontItalic);
+        bufferSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
+        SHSetValue(HKEY_CURRENT_USER, L"Software\\kenjinote\\miu", L"currentFontItalic", REG_SZ, buffer, bufferSize);
     }
     void destroyGraphics() {
         if (popupTextFormat) popupTextFormat->Release();
@@ -1721,10 +1785,12 @@ struct Editor {
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
-    case WM_CREATE:
+    case WM_CREATE: {
         g_editor.initGraphics(hwnd);
         DragAcceptFiles(hwnd, TRUE);
+        g_editor.loadFont();
         break;
+    }
     case WM_SIZE: if (g_editor.rend) { RECT rc; GetClientRect(hwnd, &rc); g_editor.rend->Resize(D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top)); g_editor.updateScrollBars(); InvalidateRect(hwnd, NULL, FALSE); } break;
     case WM_LBUTTONDOWN: {
         if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
@@ -1996,6 +2062,53 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE);
             }
             DragFinish(hDrop);
+        }
+    } break;
+    case WM_CONTEXTMENU: {
+        const INT fontChangeId = 100;
+        HMENU hMenu = CreatePopupMenu();
+        AppendMenu(hMenu, MF_STRING, fontChangeId, L"フォントの変更(&F)...");
+        UINT menu_flags = TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN;
+        POINT pt;
+        if (lParam == -1) {
+            RECT rc; GetClientRect(hwnd, &rc);
+            pt.x = rc.left; pt.y = rc.top;
+            ClientToScreen(hwnd, &pt);
+        }
+        else {
+            GetCursorPos(&pt);
+        }
+        INT cmd = (INT)TrackPopupMenu(hMenu, menu_flags, pt.x, pt.y, 0, hwnd, NULL);
+        PostMessage(hwnd, WM_NULL, 0, 0);
+        if (cmd == fontChangeId) { // フォントを変更するか？
+            // モニタ/ウィンドウの実際の論理解像度を取得して変換する
+            HDC hdc = GetDC(hwnd);
+            int logPixelsY = GetDeviceCaps(hdc, LOGPIXELSY);
+            ReleaseDC(hwnd, hdc);
+            // LOGFONT構造体を用意
+            LOGFONT lf = { 0 };
+            StringCchCopy(lf.lfFaceName, _countof(lf.lfFaceName), g_editor.currentFontName.c_str());
+            lf.lfCharSet = DEFAULT_CHARSET;
+            lf.lfWeight = g_editor.currentFontWeight;
+            lf.lfItalic = (BYTE)g_editor.currentFontItalic;
+            // currentFontSize は DirectWrite の DIPs（96dpi 基準）なので、LOGFONT に渡すピクセル高さに変換する
+            // LOGFONT の高さは符号付きピクセル数。負の値でキャラクタ高さを指定する慣例に合わせる。
+            int pixelHeight = (int)std::round(g_editor.currentFontSize * (static_cast<float>(logPixelsY) / 96.0f));
+            lf.lfHeight = -pixelHeight;
+            // CHOOSEFONT構造体を用意
+            CHOOSEFONT cf = { sizeof(cf), hwnd };
+            cf.lpLogFont = &lf;
+            cf.Flags = CF_SCREENFONTS | CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS;
+            // フォント選択
+            if (ChooseFont(&cf)) {
+                // フォント更新
+                int chosenPix = abs(lf.lfHeight);
+                float fontSizeDips = (float)chosenPix * (96.0f / (float)logPixelsY);
+                g_editor.updateFont(lf.lfFaceName, fontSizeDips, lf.lfWeight, lf.lfItalic);
+                g_editor.saveFont();
+                // 画面更新
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
         }
     } break;
     case WM_CLOSE: if (g_editor.checkUnsavedChanges()) DestroyWindow(hwnd); return 0;
