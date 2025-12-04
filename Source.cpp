@@ -297,7 +297,7 @@ struct Editor {
         currentFontWeight = fontWeight;
         currentFontItalic = fontItalic;
         if (textFormat) { textFormat->Release(); textFormat = nullptr; }
-        DWRITE_FONT_WEIGHT weight = static_cast<DWRITE_FONT_WEIGHT>(currentFontWeight); // lfWeightとDWRITE_FONT_WEIGHTは互換
+        DWRITE_FONT_WEIGHT weight = static_cast<DWRITE_FONT_WEIGHT>(currentFontWeight); // lfWeightとDWRITE_FONT_WEIGHTはFW_DONTCARE以外は互換
         DWRITE_FONT_STYLE style = currentFontItalic ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
         dwFactory->CreateTextFormat(currentFontName.c_str(), NULL, weight, style, DWRITE_FONT_STRETCH_NORMAL, currentFontSize, L"en-us", &textFormat);
         lineHeight = currentFontSize * 1.25f;
