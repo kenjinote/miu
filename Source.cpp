@@ -336,7 +336,6 @@ struct Editor {
         error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontSize", NULL, buffer, &bufferSize);
         if (error == ERROR_SUCCESS) {
             fontSize = std::wcstof(buffer, NULL);
-            if (fontSize <= 0) fontSize = 21.0f;
         }
         bufferSize = sizeof(buffer);
         error = SHGetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontWeight", NULL, buffer, &bufferSize);
@@ -362,7 +361,7 @@ struct Editor {
         StringCchPrintfW(buffer, _countof(buffer), L"%ld", currentFontWeight);
         dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
         SHSetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontWeight", REG_SZ, buffer, dataSize);
-        StringCchPrintfW(buffer, _countof(buffer), L"%ld", currentFontItalic);
+        StringCchPrintfW(buffer, _countof(buffer), L"%d", !!currentFontItalic);
         dataSize = (DWORD)((lstrlen(buffer) + 1) * sizeof(TCHAR));
         SHSetValue(HKEY_CURRENT_USER, appRegKey, L"currentFontItalic", REG_SZ, buffer, dataSize);
     }
@@ -2086,7 +2085,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             int logPixelsY = GetDeviceCaps(hdc, LOGPIXELSY);
             ReleaseDC(hwnd, hdc);
             // LOGFONT構造体を用意
-            LOGFONT lf = { 0 };
+            LOGFONT lf = {0};
             StringCchCopy(lf.lfFaceName, _countof(lf.lfFaceName), g_editor.currentFontName.c_str());
             lf.lfCharSet = DEFAULT_CHARSET;
             lf.lfWeight = g_editor.currentFontWeight;
@@ -2096,7 +2095,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             int pixelHeight = (int)std::round(g_editor.currentFontSize * (static_cast<float>(logPixelsY) / 96.0f));
             lf.lfHeight = -pixelHeight;
             // CHOOSEFONT構造体を用意
-            CHOOSEFONT cf = { sizeof(cf), hwnd };
+            CHOOSEFONT cf = {sizeof(cf), hwnd};
             cf.lpLogFont = &lf;
             cf.Flags = CF_SCREENFONTS | CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS;
             // フォント選択
