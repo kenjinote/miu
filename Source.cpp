@@ -288,7 +288,7 @@ struct Editor {
         updateFont(fontName, size, currentFontWeight, currentFontItalic);
     }
     void updateFont(std::wstring fontName, float size, LONG fontWeight, BYTE fontItalic) {
-            size = std::round(size);
+        size = std::round(size);
         if (size < 6.0f) size = 6.0f;
         if (size > 200.0f) size = 200.0f;
         if (textFormat && size == currentFontSize && fontName == currentFontName && fontWeight == currentFontWeight && fontItalic == currentFontItalic) return;
@@ -297,7 +297,7 @@ struct Editor {
         currentFontWeight = fontWeight;
         currentFontItalic = fontItalic;
         if (textFormat) { textFormat->Release(); textFormat = nullptr; }
-        DWRITE_FONT_WEIGHT weight = static_cast<DWRITE_FONT_WEIGHT>(currentFontWeight);
+        DWRITE_FONT_WEIGHT weight = static_cast<DWRITE_FONT_WEIGHT>(currentFontWeight); // lfWeightとDWRITE_FONT_WEIGHTは互換
         DWRITE_FONT_STYLE style = currentFontItalic ? DWRITE_FONT_STYLE_ITALIC : DWRITE_FONT_STYLE_NORMAL;
         dwFactory->CreateTextFormat(currentFontName.c_str(), NULL, weight, style, DWRITE_FONT_STRETCH_NORMAL, currentFontSize, L"en-us", &textFormat);
         lineHeight = currentFontSize * 1.25f;
