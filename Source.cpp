@@ -329,22 +329,22 @@ struct Editor {
         LONG fontWeight = currentFontWeight;
         BYTE fontItalic = currentFontItalic;
         TCHAR buffer[LF_FACESIZE] = { 0 };
-        PBYTE bufferPtr = reinterpret_cast<PBYTE>(buffer);
-        DWORD bufferSize = (LONG)sizeof(buffer);
-        error = RegQueryValueEx(hKey, L"currentFontName", NULL, NULL, bufferPtr, &bufferSize);
-        buffer[_countof(buffer) - 1] = UNICODE_NULL;
+        BYTE* bufferPtr = reinterpret_cast<BYTE*>(buffer);
+        DWORD bufferSize = sizeof(buffer);
+        error = RegQueryValueEx(hKey, L"currentFontName", nullptr, nullptr, bufferPtr, &bufferSize);
+        buffer[_countof(buffer) - 1] = UNICODE_NULL; // バッファオーバーランを防ぐ
         if (!error && buffer[0]) fontName = buffer;
         bufferSize = (DWORD)sizeof(buffer);
-        error = RegQueryValueEx(hKey, L"currentFontSize", NULL, NULL, bufferPtr, &bufferSize);
-        buffer[_countof(buffer) - 1] = UNICODE_NULL;
+        error = RegQueryValueEx(hKey, L"currentFontSize", nullptr, nullptr, bufferPtr, &bufferSize);
+        buffer[_countof(buffer) - 1] = UNICODE_NULL; // バッファオーバーランを防ぐ
         if (!error) fontSize = std::wcstof(buffer, nullptr);
         bufferSize = (DWORD)sizeof(buffer);
-        error = RegQueryValueEx(hKey, L"currentFontWeight", NULL, NULL, bufferPtr, &bufferSize);
-        buffer[_countof(buffer) - 1] = UNICODE_NULL;
+        error = RegQueryValueEx(hKey, L"currentFontWeight", nullptr, nullptr, bufferPtr, &bufferSize);
+        buffer[_countof(buffer) - 1] = UNICODE_NULL; // バッファオーバーランを防ぐ
         if (!error) fontWeight = std::wcstoul(buffer, nullptr, 10);
         bufferSize = (DWORD)sizeof(buffer);
-        error = RegQueryValueEx(hKey, L"currentFontItalic", NULL, NULL, bufferPtr, &bufferSize);
-        buffer[_countof(buffer) - 1] = UNICODE_NULL;
+        error = RegQueryValueEx(hKey, L"currentFontItalic", nullptr, nullptr, bufferPtr, &bufferSize);
+        buffer[_countof(buffer) - 1] = UNICODE_NULL; // バッファオーバーランを防ぐ
         if (!error) fontItalic = !!std::wcstoul(buffer, nullptr, 10);
         RegCloseKey(hKey);
         updateFont(fontName, fontSize, fontWeight, fontItalic);
