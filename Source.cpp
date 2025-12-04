@@ -2063,22 +2063,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             DragFinish(hDrop);
         }
     } break;
-    case WM_CONTEXTMENU: {
-        // コンテキストメニューを表示
-        const INT fontChangeId = 100;
-        HMENU hMenu = CreatePopupMenu();
-        AppendMenu(hMenu, MF_STRING, fontChangeId, L"フォントの変更(&F)...");
-        UINT menu_flags = TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN;
+    case WM_CONTEXTMENU: { // コンテキストメニューを表示
+        const INT fontChangeId = 100; // 「フォントの変更」メニュー項目ID
+        HMENU hMenu = CreatePopupMenu(); // 空のメニュー
+        AppendMenu(hMenu, MF_STRING, fontChangeId, L"フォントの変更(&F)..."); // メニュー追加
         POINT pt;
         if (lParam == -1) { // キーボードから？
-            RECT rc; GetClientRect(hwnd, &rc);
-            pt.x = rc.left; pt.y = rc.top; // 画面の左上
-            ClientToScreen(hwnd, &pt);
-        }
-        else {
+            pt.x = pt.y = 0; ClientToScreen(hwnd, &pt); // クライアント領域の左上端
+        } else { // マウスから？
             GetCursorPos(&pt); // カーソルの位置
         }
-        INT cmd = (INT)TrackPopupMenu(hMenu, menu_flags, pt.x, pt.y, 0, hwnd, nullptr);
+        const UINT menuFlags = TPM_RETURNCMD | TPM_RIGHTBUTTON | TPM_LEFTALIGN;
+        INT cmd = (INT)TrackPopupMenu(hMenu, menuFlags, pt.x, pt.y, 0, hwnd, nullptr);
         PostMessage(hwnd, WM_NULL, 0, 0);
         if (cmd == fontChangeId) { // フォントを変更するか？
             // ウィンドウの実際の論理解像度を取得して変換する
@@ -2090,7 +2086,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             StringCchCopy(lf.lfFaceName, _countof(lf.lfFaceName), g_editor.currentFontName.c_str());
             lf.lfCharSet = DEFAULT_CHARSET;
             lf.lfWeight = g_editor.currentFontWeight;
-            lf.lfItalic = (BYTE)g_editor.currentFontItalic;
+            lf.lfItalic = g_editor.currentFontItalic;
             // currentFontSize は DirectWrite の DIPs（96dpi 基準）なので、LOGFONT に渡すピクセル高さに変換する
             // LOGFONT の高さは符号付きピクセル数。負の値でキャラクタ高さを指定する慣例に合わせる。
             int pixelHeight = (int)std::round(g_editor.currentFontSize * (static_cast<float>(logPixelsY) / 96.0f));
@@ -2099,15 +2095,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             CHOOSEFONT cf = {sizeof(cf), hwnd};
             cf.lpLogFont = &lf;
             cf.Flags = CF_SCREENFONTS | CF_INITTOLOGFONTSTRUCT | CF_NOVERTFONTS;
-            // フォント選択
-            if (ChooseFont(&cf)) {
+            if (ChooseFont(&cf)) { // フォント選択
                 // フォント更新
                 int chosenPix = abs(lf.lfHeight); // 絶対値
                 float fontSizeDips = (float)chosenPix * (96.0f / (float)logPixelsY); // DIPsに直す
                 g_editor.updateFont(lf.lfFaceName, fontSizeDips, lf.lfWeight, lf.lfItalic);
                 g_editor.saveFont(); // レジストリに保存
-                // 画面更新
-                InvalidateRect(hwnd, nullptr, FALSE);
+                InvalidateRect(hwnd, nullptr, FALSE); // 画面更新
             }
         }
     } break;
