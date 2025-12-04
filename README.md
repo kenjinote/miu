@@ -1,6 +1,6 @@
 ﻿# miu — 次世代テキストエディタ
 
-<img src="image/icon-128x128.png" align="center" alt="[miu アイコン]" />
+<img src="image/icon-128x128.png" alt="[miu アイコン]" />
 
 ✨AIを活用した超高速テキストエディタです。Win32 API と C++ による軽快な動作と、大容量ファイル編集に対応した設計が特徴です。
 
