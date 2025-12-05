@@ -4,9 +4,7 @@
 
 ✨AIを活用した超高速かつ最小のテキストエディタです。カラフルな絵文字に対応。C++/Win32 で軽快に動作し、大容量ファイルの高速編集が可能です。
 
-<img src="image/screenshot.png" alt="[miu スクリーンショット]" width="365" height="290" />
-
-[ライセンス](https://github.com/kenjinote/miu/blob/master/LICENSE.TXT)
+<img src="image/screenshot.png" alt="[miu スクリーンショット]" />
 
 ## 主な特徴 🚩
 
