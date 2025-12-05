@@ -19,6 +19,14 @@
 - ⌨ 豊富なショートカットキーと F1 によるヘルプ表示
 - 🔒 安全なファイル操作と安定性重視の設計
 
+## 対応環境
+
+- Windows 11 / Windows 10
+
+## 開発環境
+
+- Visual Studio 2022
+
 ## ダウンロード ⬇
 
 最新リリースは [Releases](https://github.com/kenjinote/miu/releases) からダウンロードできます。
