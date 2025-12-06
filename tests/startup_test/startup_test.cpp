@@ -1,0 +1,213 @@
+﻿// startup.cpp --- 起動時間を測定する
+#include <cstdlib>
+#include <cstdio>
+#include <io.h>
+#include <fcntl.h>
+
+#include <string>
+#include <locale>
+
+#include <windows.h>
+#include <shlwapi.h>
+#pragma comment(lib, "shlwapi.lib")
+
+// ファイルを作成する
+bool make_file(LPCWSTR path, DWORD mb) {
+    DWORD mega = 1024 * 1024; // 1MiB = 1024 * 1024 バイト
+
+    WIN32_FIND_DATAW find;
+    HANDLE hFind = FindFirstFileW(path, &find);
+    if (hFind != INVALID_HANDLE_VALUE && find.nFileSizeHigh == 0 && find.nFileSizeLow == mb * mega)
+        return true; // 既に存在していてサイズが同じなら作成しない
+
+    wprintf(L"%lu MiBのファイル作成中...\n", mb);
+
+    // 1MiB の文字列を作成してから繰り返し連結する
+    std::string str, str1MB(mega, ' ');
+    str.reserve(mb * mega);
+    for (DWORD i = 0; i < mb; ++i) {
+        str += str1MB;
+    }
+
+    // ファイルを書き込む
+    FILE* fout;
+    _wfopen_s(&fout, path, L"wb");
+    if (!fout) {
+        wprintf(L"ファイルオープンエラー\n");
+        return false;
+    }
+    if (!fwrite(str.c_str(), str.size(), 1, fout)) {
+        wprintf(L"ファイル書き込みエラー\n");
+        fclose(fout);
+        return false;
+    }
+    fclose(fout);
+
+    wprintf(L"ファイル作成完了: %ls\n", path);
+    return true;
+}
+
+// ウィンドウが最前面になるまで待つ
+BOOL wait_for_foreground(HWND hWnd, UINT wait = 500) {
+    for (UINT waited = 0, interval = 100; waited < wait; waited += interval) {
+        if (GetForegroundWindow() == hWnd)
+            return TRUE;
+        if (IsWindowVisible(hWnd))
+            Sleep(interval);
+    }
+    return FALSE;
+}
+
+// ウィンドウを閉じる
+BOOL close_window(LPCWSTR class_name, DWORD dwProcessID) {
+    // miuウィンドウを探す
+    HWND hWnd = FindWindow(class_name, nullptr);
+    DWORD pid;
+    GetWindowThreadProcessId(hWnd, &pid);
+    if (pid != dwProcessID) {
+        WCHAR cls[64];
+        hWnd = GetTopWindow(nullptr);
+        do {
+            GetClassNameW(hWnd, cls, _countof(cls));
+            GetWindowThreadProcessId(hWnd, &pid);
+            if (lstrcmpiW(cls, class_name) == 0 && pid == dwProcessID) {
+                break;
+            }
+            hWnd = GetNextWindow(hWnd, GW_HWNDNEXT);
+        } while (hWnd);
+        if (!hWnd) {
+            wprintf(L"%ls ウィンドウが見つかりません。", class_name);
+            return FALSE;
+        }
+    }
+
+    // ウィンドウを最前面にする
+    SetForegroundWindow(hWnd);
+    SwitchToThisWindow(hWnd, TRUE);
+    wait_for_foreground(hWnd);
+
+    // ウィンドウを閉じる
+    DWORD_PTR result;
+    if (!SendMessageTimeoutW(hWnd, WM_SYSCOMMAND, SC_CLOSE, 0, SMTO_ABORTIFHUNG, 3000, &result) &&
+        !PostMessageW(hWnd, WM_SYSCOMMAND, SC_CLOSE, 0))
+    {
+        DestroyWindow(hWnd);
+    }
+    for (int i = 0; i < 10 && IsWindow(hWnd); ++i)
+        Sleep(100);
+
+    if (IsWindow(hWnd)) {
+        wprintf(L"%ls ウィンドウが閉じられません。", class_name);
+        return FALSE;
+    }
+
+    return TRUE;
+}
+
+// テスト用ファイルのフルパスを取得する
+void get_test_file_path(LPWSTR path, DWORD path_max) {
+    GetModuleFileNameW(nullptr, path, path_max);
+    PathRemoveFileSpecW(path);
+    PathAppendW(path, L"\\file.txt");
+}
+
+// 起動時間を計測する
+bool measure_startup_time(LPCWSTR program, LPCWSTR class_name, long mb) {
+    // テスト用ファイルのフルパスを取得する
+    WCHAR path[MAX_PATH];
+    get_test_file_path(path, _countof(path));
+
+    // 必要ならファイルを作成する
+    bool use_file = (mb >= 0);
+    if (use_file) {
+        if (!make_file(path, mb)) {
+            wprintf(L"ファイル %ls が作れません。\n", path);
+            return false;
+        }
+    }
+
+    // 起動時間の測定開始
+    DWORD dwTick0 = GetTickCount();
+
+    // program を起動する
+    SHELLEXECUTEINFOW sei = { sizeof(sei) };
+    sei.fMask = SEE_MASK_FLAG_NO_UI | SEE_MASK_NOCLOSEPROCESS;
+    sei.lpFile = program;
+    sei.lpParameters = (mb >= 0) ? path : nullptr;
+    sei.nShow = SW_SHOWNORMAL;
+    if (!ShellExecuteExW(&sei)) {
+        wprintf(L"%ls が起動できません。\n", program);
+        return false;
+    }
+    DWORD pid = GetProcessId(sei.hProcess);
+    WaitForInputIdle(sei.hProcess, INFINITE); // 起動するまで待つ
+    CloseHandle(sei.hProcess);
+
+    // 起動時間の測定終了
+    DWORD dwTick1 = GetTickCount();
+
+    WCHAR label[128];
+    if (!use_file)
+        swprintf_s(label, L"ファイルなし");
+    else
+        swprintf_s(label, L"%lu MiBのファイル使用", mb);
+
+    wprintf(L"%ls (%ls) の起動時間: %lu [ミリ秒]\n", class_name, label, dwTick1 - dwTick0);
+
+    // ウィンドウを閉じる
+    close_window(class_name, pid);
+
+    return true;
+}
+
+int main(void) {
+    // wprintfの出力を正しく行うためのおまじない
+    _setmode(_fileno(stdout), _O_U8TEXT);
+    SetConsoleOutputCP(CP_UTF8);
+    std::setlocale(LC_ALL, "");
+
+#ifndef NDEBUG
+    wprintf(L"Release版で実行してください。\n");
+    return 0;
+#else
+    // このEXEと同じフォルダの miu.exe を指定する
+    WCHAR miu_path[MAX_PATH];
+    GetModuleFileNameW(nullptr, miu_path, _countof(miu_path));
+    PathRemoveFileSpecW(miu_path);
+    PathAppendW(miu_path, L"miu.exe");
+    wprintf(L"miu のパス: %ls\n", miu_path);
+
+    WCHAR notepad_path[MAX_PATH];
+    GetSystemDirectoryW(notepad_path, _countof(notepad_path));
+    PathAppend(notepad_path, L"Notepad.exe");
+
+    // 計測実行
+    // キャッシュを考慮するためそれぞれ2回実行する
+    // メモ帳(Notepad)は大きいファイルを開けない
+    bool ok = true;
+    ok = ok && measure_startup_time(notepad_path, L"Notepad", -1);
+    ok = ok && measure_startup_time(notepad_path, L"Notepad", -1);
+    ok = ok && measure_startup_time(miu_path, L"miu", -1);
+    ok = ok && measure_startup_time(miu_path, L"miu", -1);
+    ok = ok && measure_startup_time(notepad_path, L"Notepad", 1);
+    ok = ok && measure_startup_time(notepad_path, L"Notepad", 1);
+    ok = ok && measure_startup_time(miu_path, L"miu", 1);
+    ok = ok && measure_startup_time(miu_path, L"miu", 1);
+    ok = ok && measure_startup_time(miu_path, L"miu", 1024);
+    ok = ok && measure_startup_time(miu_path, L"miu", 1024);
+
+    // テスト用ファイルを削除する
+    WCHAR path[MAX_PATH];
+    get_test_file_path(path, _countof(path));
+    DeleteFileW(path);
+    wprintf(L"ファイル削除: %ls\n", path);
+
+    if (!ok) {
+        wprintf(L"テスト失敗\n");
+        return 1;
+    }
+
+    wprintf(L"テスト成功\n");
+    return 0;
+#endif
+}
