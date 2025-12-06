@@ -12,9 +12,9 @@
 #pragma comment(lib, "shlwapi.lib")
 
 // ファイルを作成する
-bool make_file(LPCWSTR path, DWORD mb) {
+bool make_file(LPCWSTR path, DWORD mb_size) {
     DWORDLONG mega = 1024 * 1024; // 1MiB = 1024 * 1024 バイト
-    DWORDLONG size = mb * mega;
+    DWORDLONG size = mb_size * mega;
 
     // 既存のファイルを確認
     WIN32_FIND_DATAW find;
@@ -25,7 +25,7 @@ bool make_file(LPCWSTR path, DWORD mb) {
     if (hFind != INVALID_HANDLE_VALUE && file_size == size)
         return true; // 既に存在していてサイズが同じなら作成しない
 
-    wprintf(L"%lu MiBのファイル作成中...\n", mb);
+    wprintf(L"%lu MiBのファイル作成中...\n", mb_size);
 
     // 指定サイズの文字列を作成
 #ifdef _WIN64
@@ -52,7 +52,7 @@ bool make_file(LPCWSTR path, DWORD mb) {
     }
 #else
     // 32-bitの場合は複数回に分けて書き込む
-    for (DWORD i = 0; i < mb; ++i) {
+    for (DWORD i = 0; i < mb_size; ++i) {
         if (!fwrite(str1MiB.c_str(), str1MiB.size(), 1, fout)) {
             wprintf(L"ファイル書き込みエラー\n");
             fclose(fout);
@@ -115,15 +115,15 @@ void get_test_file_path(LPWSTR path, DWORD path_max) {
 }
 
 // 起動時間を計測する
-bool measure_startup_time(LPCWSTR program, LPCWSTR class_name, long mb) {
+bool measure_startup_time(LPCWSTR program, LPCWSTR class_name, long mb_size) {
     // テスト用ファイルのフルパスを取得する
     WCHAR path[MAX_PATH];
     get_test_file_path(path, _countof(path));
 
     // 必要ならファイルを作成する
-    bool use_file = (mb >= 0);
+    bool use_file = (mb_size >= 0);
     if (use_file) {
-        if (!make_file(path, mb)) {
+        if (!make_file(path, mb_size)) {
             wprintf(L"ファイル %ls が作れません。\n", path);
             return false;
         }
@@ -136,7 +136,7 @@ bool measure_startup_time(LPCWSTR program, LPCWSTR class_name, long mb) {
     SHELLEXECUTEINFOW sei = { sizeof(sei) };
     sei.fMask = SEE_MASK_FLAG_NO_UI | SEE_MASK_NOCLOSEPROCESS;
     sei.lpFile = program;
-    sei.lpParameters = (mb >= 0) ? path : nullptr;
+    sei.lpParameters = (mb_size >= 0) ? path : nullptr;
     sei.nShow = SW_SHOWNORMAL;
     if (!ShellExecuteExW(&sei)) {
         wprintf(L"%ls が起動できません。\n", program);
@@ -153,7 +153,7 @@ bool measure_startup_time(LPCWSTR program, LPCWSTR class_name, long mb) {
     if (!use_file)
         swprintf_s(label, L"ファイルなし");
     else
-        swprintf_s(label, L"%lu MiBのファイル使用", mb);
+        swprintf_s(label, L"%lu MiBのファイル使用", mb_size);
 
     wprintf(L"%ls (%ls) の起動時間: %lu [ミリ秒]\n", class_name, label, dwTick1 - dwTick0);
 
