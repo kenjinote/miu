@@ -65,10 +65,9 @@ bool make_file(LPCWSTR path, size_t mb_size) {
     }
 
     wprintf(L"%llu MiBのファイル作成中...\n", (unsigned long long)mb_size);
-    DeleteFileW(path); // 既存のファイルを削除
 
     // サイズ1MiBの文字列を作成
-    std::string str1MiB(mega, ' ');
+    std::string str1MiB(mega, 'X');
 
     // 文字列をファイルを書き込む
     FILE* fout;
@@ -85,7 +84,7 @@ bool make_file(LPCWSTR path, size_t mb_size) {
         }
     }
     fclose(fout);
-    Sleep(100); // ファイルシステムの遅延を考慮して少し待つ
+    Sleep(800); // ファイルシステムの遅延を考慮して少し待つ
 
     wprintf(L"ファイル作成完了: %ls\n", path);
     return true;
@@ -144,6 +143,7 @@ BOOL close_window(LPCWSTR class_name, DWORD pid) {
         return FALSE;
     }
 
+    Sleep(800); // アプリ終了後のファイルのロック解除を少し待つ
     return TRUE;
 }
 
