@@ -68,21 +68,23 @@ bool make_file(LPCWSTR path, DWORD mb_size) {
 
 // ウィンドウを閉じる
 BOOL close_window(LPCWSTR class_name, DWORD dwProcessID) {
-    // miuウィンドウを探す
+    // ウィンドウを探す
     HWND hWnd = FindWindow(class_name, nullptr);
+    if (!hWnd) return TRUE;
     DWORD pid;
     GetWindowThreadProcessId(hWnd, &pid);
-    if (pid != dwProcessID) {
-        WCHAR cls[64];
+    if (pid != dwProcessID) { // プロセスIDが不一致
+        // さらにウィンドウを探す
+        WCHAR cls_name[128];
         hWnd = GetTopWindow(nullptr);
-        do {
-            GetClassNameW(hWnd, cls, _countof(cls));
+        while (hWnd) {
+            GetClassNameW(hWnd, cls_name, _countof(cls_name));
             GetWindowThreadProcessId(hWnd, &pid);
-            if (lstrcmpiW(cls, class_name) == 0 && pid == dwProcessID) {
+            if (lstrcmpiW(cls_name, class_name) == 0 && pid == dwProcessID) { // クラス名とプロセスIDが一致
                 break;
             }
-            hWnd = GetNextWindow(hWnd, GW_HWNDNEXT);
-        } while (hWnd);
+            hWnd = GetNextWindow(hWnd, GW_HWNDNEXT); // 次のウィンドウ
+        }
         if (!hWnd) {
             wprintf(L"%ls ウィンドウが見つかりません。", class_name);
             return FALSE;
