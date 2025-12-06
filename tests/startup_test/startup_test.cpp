@@ -1,4 +1,4 @@
-﻿// startup.cpp --- 起動時間を測定する
+﻿// startup_test.cpp --- 起動時間を測定する
 #include <cstdlib>
 #include <cstdio>
 #include <io.h>
@@ -22,25 +22,35 @@ bool make_file(LPCWSTR path, DWORD mb) {
 
     wprintf(L"%lu MiBのファイル作成中...\n", mb);
 
-    // 1MiB の文字列を作成してから繰り返し連結する
-    std::string str, str1MB(mega, ' ');
-    str.reserve(mb * mega);
-    for (DWORD i = 0; i < mb; ++i) {
-        str += str1MB;
-    }
+    // 指定サイズの文字列を作成
+#ifdef _WIN64
+    std::string str(mega * mb, ' ');
+#else
+    std::string str(mega, ' ');
+#endif
 
-    // ファイルを書き込む
+    // 文字列をファイルを書き込む
     FILE* fout;
     _wfopen_s(&fout, path, L"wb");
     if (!fout) {
         wprintf(L"ファイルオープンエラー\n");
         return false;
     }
+#ifdef _WIN64
     if (!fwrite(str.c_str(), str.size(), 1, fout)) {
         wprintf(L"ファイル書き込みエラー\n");
         fclose(fout);
         return false;
     }
+#else
+    for (DWORD i = 0; i < mb; ++i) {
+        if (!fwrite(str.c_str(), str.size(), 1, fout)) {
+            wprintf(L"ファイル書き込みエラー\n");
+            fclose(fout);
+            return false;
+        }
+    }
+#endif
     fclose(fout);
 
     wprintf(L"ファイル作成完了: %ls\n", path);
