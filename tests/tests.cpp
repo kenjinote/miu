@@ -8,14 +8,16 @@
 #include <locale>
 
 #include <windows.h>
-#include <shlwapi.h>
-#include <strsafe.h>
+#include <shlwapi.h> // Path..
+#include <strsafe.h> // StringCch...
 #pragma comment(lib, "shlwapi.lib")
 
+// ストップウォッチ
 class StopWatch {
 public:
-    LARGE_INTEGER m_freq, m_start, m_now;
-    BOOL m_qp_supported;
+    LARGE_INTEGER m_freq; // 周波数
+    LARGE_INTEGER m_start, m_stop; // 開始時間と終了時間
+    BOOL m_qp_supported; // 計測用のQueryPerformanceCounterがサポートされているか？
     StopWatch() : m_qp_supported() {
         m_qp_supported = QueryPerformanceFrequency(&m_freq);
         if (!m_qp_supported) {
@@ -34,14 +36,14 @@ public:
     }
     double stop() {
         if (m_qp_supported) {
-            if (!QueryPerformanceCounter(&m_now)) {
+            if (!QueryPerformanceCounter(&m_stop)) {
                 wprintf(L"QueryPerformanceCounter エラー: %lu\n", GetLastError());
                 return -1.0;
             }
         } else {
-            m_now.QuadPart = (LONGLONG)GetTickCount64();
+            m_stop.QuadPart = (LONGLONG)GetTickCount64();
         }
-        LONGLONG delta = m_now.QuadPart - m_start.QuadPart;
+        LONGLONG delta = m_stop.QuadPart - m_start.QuadPart;
         double milliseconds = m_qp_supported ? ((double)delta * 1000.0 / (double)m_freq.QuadPart) : delta;
         return milliseconds;
     }
