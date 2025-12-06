@@ -1,4 +1,4 @@
-﻿// startup_test.cpp --- 起動時間を測定する
+﻿// tests.cpp --- miuのテストプログラム
 #include <cstdlib>
 #include <cstdio>
 #include <io.h>
