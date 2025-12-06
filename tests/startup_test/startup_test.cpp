@@ -57,17 +57,6 @@ bool make_file(LPCWSTR path, DWORD mb) {
     return true;
 }
 
-// ウィンドウが最前面になるまで待つ
-BOOL wait_for_foreground(HWND hWnd, UINT wait = 500) {
-    for (UINT waited = 0, interval = 100; waited < wait; waited += interval) {
-        if (GetForegroundWindow() == hWnd)
-            return TRUE;
-        if (IsWindowVisible(hWnd))
-            Sleep(interval);
-    }
-    return FALSE;
-}
-
 // ウィンドウを閉じる
 BOOL close_window(LPCWSTR class_name, DWORD dwProcessID) {
     // miuウィンドウを探す
@@ -90,11 +79,6 @@ BOOL close_window(LPCWSTR class_name, DWORD dwProcessID) {
             return FALSE;
         }
     }
-
-    // ウィンドウを最前面にする
-    SetForegroundWindow(hWnd);
-    SwitchToThisWindow(hWnd, TRUE);
-    wait_for_foreground(hWnd);
 
     // ウィンドウを閉じる
     DWORD_PTR result;
