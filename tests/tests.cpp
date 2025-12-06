@@ -13,8 +13,8 @@
 
 // ファイルを作成する
 bool make_file(LPCWSTR path, DWORD mb_size) {
-    DWORDLONG mega = 1024 * 1024; // 1MiB = 1024 * 1024 バイト
-    DWORDLONG size = mb_size * mega;
+    size_t mega = 1024 * 1024; // 1MiB = 1024 * 1024 バイト
+    DWORDLONG size = mb_size * (DWORDLONG)mega;
 
     // 既存のファイルを確認
     WIN32_FIND_DATAW find;
@@ -26,6 +26,7 @@ bool make_file(LPCWSTR path, DWORD mb_size) {
         return true; // 既に存在していてサイズが同じなら作成しない
 
     wprintf(L"%lu MiBのファイル作成中...\n", mb_size);
+    DeleteFileW(path); // 既存のファイルを削除
 
     // 指定サイズの文字列を作成
 #ifdef _WIN64
