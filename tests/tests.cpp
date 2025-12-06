@@ -206,8 +206,8 @@ int main(void) {
     // テスト用ファイルを削除する
     WCHAR path[MAX_PATH];
     get_test_file_path(path, _countof(path));
-    DeleteFileW(path);
-    wprintf(L"ファイル削除: %ls\n", path);
+    if (DeleteFileW(path))
+        wprintf(L"ファイル削除: %ls\n", path);
 
     if (!ok) {
         wprintf(L"テスト失敗\n");
