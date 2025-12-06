@@ -1032,7 +1032,8 @@ struct Editor {
                 if (hasIME && relHead >= caretOffsetInVisible) relHead += imeComp.size();
                 if (relHead <= text.size()) {
                     std::string beforeCaret = text.substr(0, relHead); std::wstring wBefore = UTF8ToW(beforeCaret);
-                    DWRITE_HIT_TEST_METRICS m; FLOAT px, py; layout->HitTestTextPosition((UINT32)wBefore.size(), FALSE, &px, &py, &m); rend->DrawLine(D2D1::Point2F(px, py), D2D1::Point2F(px, py + lineHeight), caretBrush);
+                    DWRITE_HIT_TEST_METRICS m;
+                    FLOAT px, py; layout->HitTestTextPosition((UINT32)wBefore.size(), FALSE, &px, &py, &m); rend->DrawLine(D2D1::Point2F(px, py), D2D1::Point2F(px, py + lineHeight), caretBrush);
                     if (&cursor == &cursors.back()) { imeCx = px; imeCy = py; }
                 }
             }
