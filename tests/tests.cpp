@@ -72,20 +72,25 @@ bool make_file(LPCWSTR path, size_t mb_size) {
     std::string str1MiB(mega, 'X');
 
     // 文字列をファイルを書き込む
-    FILE* fout;
-    _wfopen_s(&fout, path, L"wb");
-    if (!fout) {
+    HANDLE hFile = CreateFileW(
+        path, GENERIC_WRITE, FILE_SHARE_DELETE | FILE_SHARE_READ, nullptr,
+        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE) {
         wprintf(L"ファイルオープンエラー\n");
         return false;
     }
     for (size_t i = 0; i < mb_size; ++i) {
-        if (!fwrite(str1MiB.c_str(), str1MiB.size(), 1, fout)) {
+        DWORD cbWritten;
+        if (!WriteFile(hFile, str1MiB.c_str(), (DWORD)str1MiB.size(), &cbWritten, nullptr) ||
+            cbWritten != str1MiB.size())
+        {
             wprintf(L"ファイル書き込みエラー\n");
-            fclose(fout);
+            CloseHandle(hFile);
             return false;
         }
     }
-    fclose(fout);
+    SetEndOfFile(hFile);
+    CloseHandle(hFile);
     Sleep(800); // ファイルシステムの遅延を考慮して少し待つ
 
     wprintf(L"ファイル作成完了: %ls\n", path);
