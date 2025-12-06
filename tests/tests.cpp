@@ -241,7 +241,7 @@ int main(void) {
 #ifndef NDEBUG // Debug versionのとき
     wprintf(L"警告：Debug versionで実行しています。\n");
 #endif
-    // このEXEと同じフォルダの miu.exe を取得する
+    // このEXEと同じフォルダの miu.exe のフルパスを取得する
     WCHAR miu_path[MAX_PATH];
     GetModuleFileNameW(nullptr, miu_path, _countof(miu_path));
     PathRemoveFileSpecW(miu_path);
@@ -256,7 +256,7 @@ int main(void) {
 
     // 計測実行
     // キャッシュを考慮するためそれぞれ2回実行する
-    // メモ帳(Notepad)は大きいファイルを開けない
+    // NOTE: メモ帳(Notepad)は大きいファイル（32MB+ or 1GB+）を開けない
     bool ok = true;
     ok = ok && measure_startup_time(notepad_path, L"Notepad", 0);
     ok = ok && measure_startup_time(notepad_path, L"Notepad", 0);
@@ -266,6 +266,8 @@ int main(void) {
     ok = ok && measure_startup_time(notepad_path, L"Notepad", 1);
     ok = ok && measure_startup_time(miu_path, L"miu", 1);
     ok = ok && measure_startup_time(miu_path, L"miu", 1);
+    ok = ok && measure_startup_time(notepad_path, L"notepad", 8);
+    ok = ok && measure_startup_time(notepad_path, L"notepad", 8);
     ok = ok && measure_startup_time(miu_path, L"miu", 8);
     ok = ok && measure_startup_time(miu_path, L"miu", 8);
 
