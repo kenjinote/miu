@@ -13,20 +13,27 @@
 
 // ファイルを作成する
 bool make_file(LPCWSTR path, DWORD mb) {
-    DWORD mega = 1024 * 1024; // 1MiB = 1024 * 1024 バイト
+    DWORDLONG mega = 1024 * 1024; // 1MiB = 1024 * 1024 バイト
+    DWORDLONG size = mb * mega;
 
+    // 既存のファイルを確認
     WIN32_FIND_DATAW find;
     HANDLE hFind = FindFirstFileW(path, &find);
-    if (hFind != INVALID_HANDLE_VALUE && find.nFileSizeHigh == 0 && find.nFileSizeLow == mb * mega)
+    DWORDLONG file_size = find.nFileSizeHigh;
+    file_size <<= 32;
+    file_size |= find.nFileSizeLow;
+    if (hFind != INVALID_HANDLE_VALUE && file_size == size)
         return true; // 既に存在していてサイズが同じなら作成しない
 
     wprintf(L"%lu MiBのファイル作成中...\n", mb);
 
     // 指定サイズの文字列を作成
 #ifdef _WIN64
-    std::string str(mega * mb, ' ');
+    // 64-bitの場合は一気に書き込むため、1つの文字列を使う
+    std::string strTotal(size, ' ');
 #else
-    std::string str(mega, ' ');
+    // 32-bitの場合は複数回に分けて書き込むため、1MiBの文字列を使う
+    std::string str1MiB(mega, ' ');
 #endif
 
     // 文字列をファイルを書き込む
@@ -37,14 +44,16 @@ bool make_file(LPCWSTR path, DWORD mb) {
         return false;
     }
 #ifdef _WIN64
-    if (!fwrite(str.c_str(), str.size(), 1, fout)) {
+    // 64-bitの場合は一気に書き込む
+    if (!fwrite(strTotal.c_str(), strTotal.size(), 1, fout)) {
         wprintf(L"ファイル書き込みエラー\n");
         fclose(fout);
         return false;
     }
 #else
+    // 32-bitの場合は複数回に分けて書き込む
     for (DWORD i = 0; i < mb; ++i) {
-        if (!fwrite(str.c_str(), str.size(), 1, fout)) {
+        if (!fwrite(str1MiB.c_str(), str1MiB.size(), 1, fout)) {
             wprintf(L"ファイル書き込みエラー\n");
             fclose(fout);
             return false;
@@ -160,20 +169,22 @@ int main(void) {
     SetConsoleOutputCP(CP_UTF8);
     std::setlocale(LC_ALL, "");
 
-#ifndef NDEBUG
-    wprintf(L"Release版で実行してください。\n");
+#ifndef NDEBUG // Debug versionのとき
+    wprintf(L"Release versionで実行してください。\n");
     return 0;
 #else
-    // このEXEと同じフォルダの miu.exe を指定する
+    // このEXEと同じフォルダの miu.exe を取得する
     WCHAR miu_path[MAX_PATH];
     GetModuleFileNameW(nullptr, miu_path, _countof(miu_path));
     PathRemoveFileSpecW(miu_path);
     PathAppendW(miu_path, L"miu.exe");
     wprintf(L"miu のパス: %ls\n", miu_path);
 
+    // Notepad.exe のフルパスを取得する
     WCHAR notepad_path[MAX_PATH];
     GetSystemDirectoryW(notepad_path, _countof(notepad_path));
     PathAppend(notepad_path, L"Notepad.exe");
+    wprintf(L"メモ帳(Notepad)のパス: %ls\n", notepad_path);
 
     // 計測実行
     // キャッシュを考慮するためそれぞれ2回実行する
