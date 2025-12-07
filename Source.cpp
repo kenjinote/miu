@@ -35,7 +35,17 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comdlg32.lib")
 #pragma comment(lib, "comctl32.lib")
 
-const std::wstring APP_VERSION = L"miu v1.0.7";
+static std::wstring GetResString(UINT id) {
+    const wchar_t* pBuf = nullptr;
+    // LoadStringWでポインタを取得する方法 (高速)
+    int len = LoadStringW(GetModuleHandle(NULL), id, (LPWSTR)&pBuf, 0);
+    if (len > 0 && pBuf) {
+        return std::wstring(pBuf, len);
+    }
+    return L"";
+}
+
+const std::wstring APP_VERSION = L"miu v1.0.8";
 const std::wstring HELP_TEXT =
 APP_VERSION + L"\n\n"
 L"[Shortcuts]\n"
@@ -256,6 +266,7 @@ struct Editor {
     float dpiScaleX = 1.0f, dpiScaleY = 1.0f; float lineHeight = 17.5f; float charWidth = 8.0f;
     bool isFullScreen = false;
     WINDOWPLACEMENT prevPlacement = { sizeof(WINDOWPLACEMENT) };
+    std::wstring helpTextStr;
     void initGraphics(HWND h) {
         hwnd = h;
         D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &d2dFactory);
@@ -265,7 +276,8 @@ struct Editor {
         FLOAT dpix, dpiy; rend->GetDpi(&dpix, &dpiy); dpiScaleX = dpix / 96.0f; dpiScaleY = dpiy / 96.0f;
         dwFactory->CreateTextFormat(L"Segoe UI", NULL, DWRITE_FONT_WEIGHT_BOLD, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 24.0f, L"en-us", &popupTextFormat);
         if (popupTextFormat) { popupTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER); popupTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER); }
-        dwFactory->CreateTextFormat(L"Consolas", NULL, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 18.0f, L"en-us", &helpTextFormat);
+        helpTextStr = APP_VERSION + GetResString(IDS_HELP_TEXT);
+        dwFactory->CreateTextFormat(L"Consolas", NULL, DWRITE_FONT_WEIGHT_NORMAL, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 16.0f, L"en-us", &helpTextFormat);
         if (helpTextFormat) {
             helpTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
             helpTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
@@ -309,7 +321,12 @@ struct Editor {
         if (textFormat) textFormat->Release(); if (dwFactory) dwFactory->Release(); if (rend) rend->Release(); if (d2dFactory) d2dFactory->Release();
     }
     void updateTitleBar() {
-        if (!hwnd) return; std::wstring title = L"miu - "; if (currentFilePath.empty()) title += L"無題"; else title += currentFilePath; if (isDirty) title += L" *"; SetWindowTextW(hwnd, title.c_str());
+        if (!hwnd) return;
+        std::wstring title = GetResString(IDS_APP_TITLE) + L" - ";
+        if (currentFilePath.empty()) title += GetResString(IDS_UNTITLED);
+        else title += currentFilePath;
+        if (isDirty) title += L" *";
+        SetWindowTextW(hwnd, title.c_str());
     }
     void updateDirtyFlag() { bool newDirty = undo.isModified(); if (isDirty != newDirty) { isDirty = newDirty; updateTitleBar(); } }
     void updateGutterWidth() {
@@ -729,7 +746,11 @@ struct Editor {
         rebuildLineStarts();
         updateDirtyFlag();
         InvalidateRect(hwnd, NULL, FALSE);
-        ShowTaskDialog(L"置換完了", (std::to_wstring(matches.size()) + L" 個の項目を置換しました。").c_str(), nullptr, TDCBF_OK_BUTTON, TD_INFORMATION_ICON);
+        ShowTaskDialog(
+            GetResString(IDS_REPLACE_DONE).c_str(),
+            (std::to_wstring(matches.size()) + GetResString(IDS_REPLACE_COUNT)).c_str(),
+            nullptr, TDCBF_OK_BUTTON, TD_INFORMATION_ICON
+        );
         if (hFindDlg && IsWindowVisible(hFindDlg)) {
             SetFocus(hFindDlg);
         }
@@ -742,7 +763,7 @@ struct Editor {
         ShowWindow(GetDlgItem(dlg, IDC_REPLACE_EDIT), show);
         ShowWindow(GetDlgItem(dlg, IDC_REPLACE_BTN), show);
         ShowWindow(GetDlgItem(dlg, IDC_REPLACE_ALL_BTN), show);
-        SetWindowTextW(dlg, replaceMode ? L"置換" : L"検索");
+        SetWindowTextW(dlg, replaceMode ? GetResString(IDS_REPLACE_TITLE).c_str() : GetResString(IDS_FIND_TITLE).c_str());
     }
     static INT_PTR CALLBACK FindDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
         Editor* pThis = (Editor*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
@@ -1079,7 +1100,7 @@ struct Editor {
             ID2D1SolidColorBrush* popupText = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f), &popupText);
             rend->FillRoundedRectangle(D2D1::RoundedRect(helpRect, 10.0f, 10.0f), popupBg);
             IDWriteTextLayout* helpLayout = nullptr;
-            if (SUCCEEDED(dwFactory->CreateTextLayout(HELP_TEXT.c_str(), (UINT32)HELP_TEXT.size(), helpTextFormat, helpW - 40, helpH - 20, &helpLayout))) {
+            if (SUCCEEDED(dwFactory->CreateTextLayout(helpTextStr.c_str(), (UINT32)helpTextStr.size(), helpTextFormat, helpW - 40, helpH - 20, &helpLayout))) {
                 rend->DrawTextLayout(D2D1::Point2F(helpRect.left + 20, helpRect.top + 10), helpLayout, popupText);
                 helpLayout->Release();
             }
@@ -1464,13 +1485,13 @@ struct Editor {
     void performUndo() { if (!undo.canUndo())return; EditBatch b = undo.popUndo(); for (int i = (int)b.ops.size() - 1; i >= 0; --i) { const auto& o = b.ops[i]; if (o.type == EditOp::Insert)pt.erase(o.pos, o.text.size()); else pt.insert(o.pos, o.text); }cursors = b.beforeCursors; rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
     void performRedo() { if (!undo.canRedo())return; EditBatch b = undo.popRedo(); for (const auto& o : b.ops) { if (o.type == EditOp::Insert)pt.insert(o.pos, o.text); else pt.erase(o.pos, o.text.size()); }cursors = b.afterCursors; rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
     int ShowTaskDialog(const wchar_t* title, const wchar_t* instruction, const wchar_t* content, TASKDIALOG_COMMON_BUTTON_FLAGS buttons, PCWSTR icon) { TASKDIALOGCONFIG c = { 0 }; c.cbSize = sizeof(c); c.hwndParent = hwnd; c.hInstance = GetModuleHandle(NULL); c.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_POSITION_RELATIVE_TO_WINDOW; c.pszWindowTitle = title; c.pszMainInstruction = instruction; c.pszContent = content; c.dwCommonButtons = buttons; c.pszMainIcon = icon; int n = 0; TaskDialogIndirect(&c, &n, NULL, NULL); return n; }
-    bool checkUnsavedChanges() { if (!isDirty)return true; int r = ShowTaskDialog(L"確認", L"変更を保存しますか?", currentFilePath.empty() ? L"無題" : currentFilePath.c_str(), TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON, TD_WARNING_ICON); if (r == IDCANCEL)return false; if (r == IDYES) { if (currentFilePath.empty())return saveFileAs(); else return saveFile(currentFilePath); }return true; }
-    bool openFile() { if (!checkUnsavedChanges())return false; WCHAR f[MAX_PATH] = { 0 }; OPENFILENAMEW o = { 0 }; o.lStructSize = sizeof(o); o.hwndOwner = hwnd; o.lpstrFile = f; o.nMaxFile = MAX_PATH; o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0"; o.nFilterIndex = 1; o.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST; if (GetOpenFileNameW(&o)) { fileMap.reset(new MappedFile()); if (fileMap->open(f)) { pt.initFromFile(fileMap->ptr, fileMap->size); currentFilePath = f; undo.clear(); isDirty = false; undo.markSaved(); cursors.clear(); cursors.push_back({ 0,0,0.0f }); rebuildLineStarts(); updateTitleBar(); InvalidateRect(hwnd, NULL, FALSE); return true; } else ShowTaskDialog(L"エラー", L"開けません", f, TDCBF_OK_BUTTON, TD_ERROR_ICON); }return false; }
+    bool checkUnsavedChanges() { if (!isDirty)return true; int r = ShowTaskDialog(GetResString(IDS_CONFIRM_TITLE).c_str(), GetResString(IDS_SAVE_PROMPT).c_str(), currentFilePath.empty() ? GetResString(IDS_UNTITLED).c_str() : currentFilePath.c_str(), TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON, TD_WARNING_ICON); if (r == IDCANCEL)return false; if (r == IDYES) { if (currentFilePath.empty())return saveFileAs(); else return saveFile(currentFilePath); }return true; }
+    bool openFile() { if (!checkUnsavedChanges())return false; WCHAR f[MAX_PATH] = { 0 }; OPENFILENAMEW o = { 0 }; o.lStructSize = sizeof(o); o.hwndOwner = hwnd; o.lpstrFile = f; o.nMaxFile = MAX_PATH; o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0"; o.nFilterIndex = 1; o.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST; if (GetOpenFileNameW(&o)) { fileMap.reset(new MappedFile()); if (fileMap->open(f)) { pt.initFromFile(fileMap->ptr, fileMap->size); currentFilePath = f; undo.clear(); isDirty = false; undo.markSaved(); cursors.clear(); cursors.push_back({ 0,0,0.0f }); rebuildLineStarts(); updateTitleBar(); InvalidateRect(hwnd, NULL, FALSE); return true; } else ShowTaskDialog(GetResString(IDS_ERROR_TITLE).c_str(), GetResString(IDS_OPEN_ERROR).c_str(), f, TDCBF_OK_BUTTON, TD_ERROR_ICON); } return false; }
     bool saveFile(const std::wstring& p) {
         std::wstring t = p + L".tmp";
         HANDLE h = CreateFileW(t.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
         if (h == INVALID_HANDLE_VALUE) {
-            ShowTaskDialog(L"エラー", L"一時ファイルの作成に失敗しました。", t.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
+            ShowTaskDialog(GetResString(IDS_ERROR_TITLE).c_str(), GetResString(IDS_TEMP_FILE_ERR).c_str(), t.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return false;
         }
         bool ok = true;
@@ -1484,7 +1505,7 @@ struct Editor {
         CloseHandle(h);
         if (!ok) {
             DeleteFileW(t.c_str());
-            ShowTaskDialog(L"エラー", L"データの書き込みに失敗しました。", p.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
+            ShowTaskDialog(GetResString(IDS_ERROR_TITLE).c_str(), GetResString(IDS_WRITE_ERR).c_str(), p.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return false;
         }
         std::vector<Cursor> savedCursors = cursors;
@@ -1501,12 +1522,12 @@ struct Editor {
                 if (fileMap) fileMap->open(oldPath.c_str());
                 if (fileMap->ptr) pt.origPtr = fileMap->ptr;
             }
-            std::wstring msg = L"ファイルの保存に失敗しました。\nエラーコード: " + std::to_wstring(err);
-            ShowTaskDialog(L"エラー", msg.c_str(), p.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
+            std::wstring msg = GetResString(IDS_SAVE_ERR) + std::to_wstring(err);
+            ShowTaskDialog(GetResString(IDS_ERROR_TITLE).c_str(), msg.c_str(), p.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return false;
         }
         if (!openFileFromPath(p)) {
-            ShowTaskDialog(L"致命的エラー", L"保存後のファイルを開けませんでした。", p.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
+            ShowTaskDialog(GetResString(IDS_FATAL_ERROR).c_str(), GetResString(IDS_REOPEN_ERR).c_str(), p.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return false;
         }
         cursors = savedCursors;
@@ -1565,7 +1586,7 @@ struct Editor {
             return true;
         }
         else {
-            ShowTaskDialog(L"エラー", L"ファイルを開けませんでした。", path.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
+            ShowTaskDialog(GetResString(IDS_ERROR_TITLE).c_str(), GetResString(IDS_OPEN_FAIL).c_str(), path.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return false;
         }
     }
