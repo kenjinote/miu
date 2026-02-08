@@ -1,12 +1,4 @@
-﻿// Source.cpp
-// Minimal, high-performance text editor for huge files using Win32 + DirectWrite.
-// Features: memory-mapped original file, piece table for edits, undo/redo, caret, basic input, fast visible-range rendering.
-
-// Build (MSVC):
-// rc miu.rc
-// cl /std:c++17 /O2 /EHsc Source.cpp miu.res /link d2d1.lib dwrite.lib user32.lib ole32.lib imm32.lib comdlg32.lib comctl32.lib
-
-#pragma comment(linker,"\"/manifestdependency:type='win32' \
+﻿#pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
@@ -27,7 +19,7 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <iomanip>
 #include <sstream>
 #include <regex> 
-#include <cstring> // Added for memchr
+#include <cstring>
 #include "resource.h"
 
 #pragma comment(lib, "d2d1.lib")
@@ -35,6 +27,8 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "imm32.lib")
 #pragma comment(lib, "comdlg32.lib")
 #pragma comment(lib, "comctl32.lib")
+
+const std::wstring APP_VERSION = L"miu v1.0.9";
 
 static std::wstring GetResString(UINT id) {
     const wchar_t* pBuf = nullptr;
@@ -44,9 +38,6 @@ static std::wstring GetResString(UINT id) {
     }
     return L"";
 }
-
-const std::wstring APP_VERSION = L"miu v1.0.9"; // Version bumped
-
 static std::wstring UTF8ToW(const std::string& s) {
     if (s.empty()) return {};
     int n = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), NULL, 0);
@@ -63,7 +54,6 @@ static std::string WToUTF8(const std::wstring& w) {
     WideCharToMultiByte(CP_UTF8, 0, w.data(), (int)w.size(), &s[0], n, NULL, NULL);
     return s;
 }
-
 static std::string UnescapeString(const std::string& s) {
     std::string out;
     out.reserve(s.size());
@@ -84,7 +74,6 @@ static std::string UnescapeString(const std::string& s) {
     }
     return out;
 }
-
 struct Piece { bool isOriginal; size_t start; size_t len; };
 struct PieceTable {
     const char* origPtr = nullptr; size_t origSize = 0;
@@ -166,7 +155,6 @@ struct PieceTable {
         return ' ';
     }
 };
-
 struct Cursor {
     size_t head; size_t anchor; float desiredX;
     size_t start() const { return std::min(head, anchor); }
@@ -174,7 +162,6 @@ struct Cursor {
     bool hasSelection() const { return head != anchor; }
     void clearSelection() { anchor = head; }
 };
-
 struct EditOp { enum Type { Insert, Erase } type; size_t pos; std::string text; };
 struct EditBatch { std::vector<EditOp> ops; std::vector<Cursor> beforeCursors; std::vector<Cursor> afterCursors; };
 struct UndoManager {
@@ -188,7 +175,6 @@ struct UndoManager {
     EditBatch popUndo() { EditBatch e = undoStack.back(); undoStack.pop_back(); redoStack.push_back(e); return e; }
     EditBatch popRedo() { EditBatch e = redoStack.back(); redoStack.pop_back(); undoStack.push_back(e); return e; }
 };
-
 struct MappedFile {
     HANDLE hFile = INVALID_HANDLE_VALUE; HANDLE hMap = NULL; const char* ptr = nullptr; size_t size = 0;
     bool open(const wchar_t* path) {
@@ -202,7 +188,6 @@ struct MappedFile {
     void close() { if (ptr) { UnmapViewOfFile(ptr); ptr = nullptr; } if (hMap) { CloseHandle(hMap); hMap = NULL; } if (hFile != INVALID_HANDLE_VALUE) { CloseHandle(hFile); hFile = INVALID_HANDLE_VALUE; } }
     ~MappedFile() { close(); }
 };
-
 struct Editor {
     HWND hwnd = NULL;
     HWND hFindDlg = NULL;
@@ -242,6 +227,31 @@ struct Editor {
     bool isFullScreen = false;
     WINDOWPLACEMENT prevPlacement = { sizeof(WINDOWPLACEMENT) };
     std::wstring helpTextStr;
+    D2D1::ColorF autoHlColor = D2D1::ColorF(0.8f, 0.8f, 0.8f, 0.35f);
+    std::pair<std::string, bool> getHighlightTarget() {
+        if (cursors.empty()) return { "", false };
+        const Cursor& c = cursors.back();
+        if (c.hasSelection()) {
+            size_t len = c.end() - c.start();
+            if (len == 0 || len > 200) return { "", false };
+            std::string s = pt.getRange(c.start(), len);
+            if (s.empty() || s.find('\n') != std::string::npos) return { "", false };
+            return { s, false };
+        }
+        size_t pos = c.head;
+        size_t len = pt.length();
+        if (pos > len) pos = len;
+        bool charRight = (pos < len && isWordChar(pt.charAt(pos)));
+        bool charLeft = (pos > 0 && isWordChar(pt.charAt(pos - 1)));
+        if (!charRight && !charLeft) return { "", true };
+        size_t start = pos;
+        size_t end = pos;
+        if (!charRight && charLeft) start--;
+        while (start > 0 && isWordChar(pt.charAt(start - 1))) start--;
+        while (end < len && isWordChar(pt.charAt(end))) end++;
+        if (end > start) return { pt.getRange(start, end - start), true };
+        return { "", true };
+    }
     void initGraphics(HWND h) {
         hwnd = h;
         D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &d2dFactory);
@@ -297,10 +307,14 @@ struct Editor {
     }
     void updateTitleBar() {
         if (!hwnd) return;
-        std::wstring title = GetResString(IDS_APP_TITLE) + L" - ";
-        if (currentFilePath.empty()) title += GetResString(IDS_UNTITLED);
-        else title += currentFilePath;
-        if (isDirty) title += L" *";
+        std::wstring appName = GetResString(IDS_APP_TITLE);
+        std::wstring title;
+        if (isDirty) title = L"*";
+        if (currentFilePath.empty()) {
+            title += GetResString(IDS_UNTITLED) + L" - " + appName;
+        } else {
+            title += currentFilePath + L" - " + appName;
+        }
         SetWindowTextW(hwnd, title.c_str());
     }
     void updateDirtyFlag() { bool newDirty = undo.isModified(); if (isDirty != newDirty) { isDirty = newDirty; updateTitleBar(); } }
@@ -814,22 +828,28 @@ struct Editor {
     }
     void showFindDialog(bool replaceMode) {
         isReplaceMode = replaceMode;
+        auto [candidate, _] = getHighlightTarget();
+        bool hasSelection = !cursors.empty() && cursors.back().hasSelection();
+        bool shouldUpdate = false;
+        if (hasSelection) {
+            if (!candidate.empty()) shouldUpdate = true;
+        }
+        else {
+            if (searchQuery.empty() && !candidate.empty()) {
+                shouldUpdate = true;
+            }
+        }
+        if (shouldUpdate) {
+            searchQuery = candidate;
+        }
         if (hFindDlg) {
             updateFindReplaceUI(hFindDlg, isReplaceMode);
             SetFocus(hFindDlg);
-            if (!cursors.empty() && cursors.back().hasSelection()) {
-                size_t s = cursors.back().start(); size_t len = cursors.back().end() - s;
-                if (len < 100) {
-                    searchQuery = pt.getRange(s, len);
-                    SetDlgItemTextW(hFindDlg, IDC_FIND_EDIT, UTF8ToW(searchQuery).c_str());
-                    SendMessage(GetDlgItem(hFindDlg, IDC_FIND_EDIT), EM_SETSEL, 0, -1);
-                }
+            if (shouldUpdate) {
+                SetDlgItemTextW(hFindDlg, IDC_FIND_EDIT, UTF8ToW(searchQuery).c_str());
+                SendMessage(GetDlgItem(hFindDlg, IDC_FIND_EDIT), EM_SETSEL, 0, -1);
             }
             return;
-        }
-        if (!cursors.empty() && cursors.back().hasSelection()) {
-            size_t s = cursors.back().start(); size_t len = cursors.back().end() - s;
-            if (len < 100) searchQuery = pt.getRange(s, len);
         }
         hFindDlg = CreateDialogParamW(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_FIND_DIALOG), hwnd, FindDlgProc, (LPARAM)this);
         ShowWindow(hFindDlg, SW_SHOW);
@@ -955,6 +975,37 @@ struct Editor {
             ID2D1SolidColorBrush* selBrush = nullptr; rend->CreateSolidColorBrush(selColor, &selBrush);
             ID2D1SolidColorBrush* caretBrush = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f), &caretBrush);
             ID2D1SolidColorBrush* hlBrush = nullptr; rend->CreateSolidColorBrush(highlightColor, &hlBrush);
+            ID2D1SolidColorBrush* autoHlBrush = nullptr;
+            rend->CreateSolidColorBrush(autoHlColor, &autoHlBrush);
+            auto [autoStr, isWholeWord] = getHighlightTarget();
+            if (!autoStr.empty() && autoStr != searchQuery) {
+                std::string t = text;
+                size_t offset = 0;
+                size_t qLen = autoStr.length();
+                while ((offset = t.find(autoStr, offset)) != std::string::npos) {
+                    bool match = true;
+                    if (isWholeWord) {
+                        if (offset > 0 && isWordChar(t[offset - 1])) match = false;
+                        if (match && (offset + qLen < t.length()) && isWordChar(t[offset + qLen])) match = false;
+                    }
+                    if (match) {
+                        size_t startU16 = UTF8ToW(t.substr(0, offset)).length();
+                        size_t lenU16 = UTF8ToW(t.substr(offset, qLen)).length();
+                        UINT32 count = 0;
+                        layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, 0, 0, &count);
+                        if (count > 0) {
+                            std::vector<DWRITE_HIT_TEST_METRICS> m(count);
+                            layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, &m[0], count, &count);
+                            for (const auto& mm : m) {
+                                float top = std::floor((mm.top + lineHeight * 0.5f) / lineHeight) * lineHeight;
+                                rend->FillRectangle(D2D1::RectF(mm.left, top, mm.left + mm.width, top + lineHeight), autoHlBrush);
+                            }
+                        }
+                    }
+                    offset++;
+                }
+            }
+            autoHlBrush->Release();
             if (!searchQuery.empty()) {
                 if (searchRegex) {
                     try {
@@ -1738,7 +1789,6 @@ struct Editor {
         }
     }
 } g_editor;
-
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
     case WM_CREATE:
@@ -2025,11 +2075,16 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     return 0;
 }
-
-int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nShowCmd) {
     WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance; wc.lpszClassName = L"miu"; wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1)); wc.hCursor = LoadCursor(NULL, IDC_IBEAM); wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1); RegisterClass(&wc);
-    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"miu", WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_HSCROLL, CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, NULL, NULL, hInstance, NULL);
-    if (!hwnd) return 0; ShowWindow(hwnd, nCmdShow);
+    HDC hdc = GetDC(NULL);
+    int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
+    int dpiY = GetDeviceCaps(hdc, LOGPIXELSY);
+    ReleaseDC(NULL, hdc);
+    int initialWidth = MulDiv(800, dpiX, 96);
+    int initialHeight = MulDiv(600, dpiY, 96);
+    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"miu", WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_HSCROLL,CW_USEDEFAULT, CW_USEDEFAULT, initialWidth, initialHeight, NULL, NULL, hInstance, NULL);
+    if (!hwnd) return 0; ShowWindow(hwnd, nShowCmd);
     if (g_editor.currentFilePath.empty()) {
         int argc; wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
         if (argc >= 2) {
@@ -2045,7 +2100,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
     MSG msg; while (GetMessage(&msg, NULL, 0, 0)) {
         if (msg.message == WM_KEYDOWN) {
             if (msg.wParam == VK_F1) {
-                g_editor.showHelpPopup = true;
+                g_editor.showHelpPopup = !g_editor.showHelpPopup;
                 InvalidateRect(hwnd, NULL, FALSE);
                 continue;
             }
@@ -2063,7 +2118,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE, PWSTR, int nCmdShow) {
                     g_editor.showFindDialog(false);
                     continue;
                 }
-                if (msg.wParam == 'H') {
+                if (msg.wParam == 'H' || msg.wParam == 'R') {
                     g_editor.showFindDialog(true);
                     continue;
                 }
