@@ -279,6 +279,16 @@ struct Editor {
             InvalidateRect(hwnd, NULL, TRUE);
         }
     }
+    void handleDpiChange(float newDpiX, float newDpiY) {
+        dpiScaleX = newDpiX / 96.0f;
+        dpiScaleY = newDpiY / 96.0f;
+        if (rend) {
+            rend->SetDpi(newDpiX, newDpiY);
+        }
+        updateFont(currentFontSize);
+        rebuildLineStarts();
+        if (hwnd) InvalidateRect(hwnd, NULL, FALSE);
+    }
     std::pair<std::string, bool> getHighlightTarget() {
         if (cursors.empty()) return { "", false };
         const Cursor& c = cursors.back();
@@ -1867,6 +1877,21 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
         break;
     }
+    case WM_DPICHANGED:
+    {
+        float newDpiX = (float)LOWORD(wParam);
+        float newDpiY = (float)HIWORD(wParam);
+        RECT* const prcNewWindow = (RECT*)lParam;
+        SetWindowPos(hwnd,
+            NULL,
+            prcNewWindow->left,
+            prcNewWindow->top,
+            prcNewWindow->right - prcNewWindow->left,
+            prcNewWindow->bottom - prcNewWindow->top,
+            SWP_NOZORDER | SWP_NOACTIVATE);
+        g_editor.handleDpiChange(newDpiX, newDpiY);
+        return 0;
+    }
     case WM_SIZE: if (g_editor.rend) { RECT rc; GetClientRect(hwnd, &rc); g_editor.rend->Resize(D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top)); g_editor.updateScrollBars(); InvalidateRect(hwnd, NULL, FALSE); } break;
     case WM_LBUTTONDOWN: {
         if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
@@ -2148,6 +2173,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return 0;
 }
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nShowCmd) {
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance; wc.lpszClassName = L"miu"; wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1)); wc.hCursor = LoadCursor(NULL, IDC_IBEAM); RegisterClass(&wc);
     HDC hdc = GetDC(NULL);
     int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
