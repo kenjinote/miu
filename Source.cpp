@@ -1,7 +1,6 @@
 ﻿#pragma comment(linker,"\"/manifestdependency:type='win32' \
 name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
 processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
-
 #define NOMINMAX
 #include <windows.h>
 #include <d2d1.h>
@@ -23,7 +22,6 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #include <regex> 
 #include <cstring>
 #include "resource.h"
-
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "imm32.lib")
@@ -31,16 +29,53 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "uxtheme.lib")
-
-const std::wstring APP_VERSION = L"miu v1.0.9";
-
-static std::wstring GetResString(UINT id) {
-    const wchar_t* pBuf = nullptr;
-    int len = LoadStringW(GetModuleHandle(NULL), id, (LPWSTR)&pBuf, 0);
-    if (len > 0 && pBuf) {
-        return std::wstring(pBuf, len);
+const std::wstring APP_VERSION = L"miu v1.0.10";
+enum Encoding {
+    ENC_UTF8_NOBOM = 0,
+    ENC_UTF8_BOM,
+    ENC_UTF16LE,
+    ENC_UTF16BE,
+    ENC_ANSI
+};
+static void SwapBytes(wchar_t* buf, size_t count) {
+    for (size_t i = 0; i < count; ++i) {
+        unsigned short x = (unsigned short)buf[i];
+        buf[i] = (wchar_t)((x >> 8) | (x << 8));
     }
-    return L"";
+}
+static bool IsValidUtf8(const char* buf, size_t len) {
+    if (len > 4096) len = 4096;
+    int ret = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, buf, (int)len, NULL, 0);
+    return ret > 0;
+}
+static Encoding DetectEncoding(const char* buf, size_t len) {
+    if (len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) {
+        return ENC_UTF8_BOM;
+    }
+    if (len >= 2) {
+        if ((unsigned char)buf[0] == 0xFF && (unsigned char)buf[1] == 0xFE) {
+            return ENC_UTF16LE;
+        }
+        if ((unsigned char)buf[0] == 0xFE && (unsigned char)buf[1] == 0xFF) {
+            return ENC_UTF16BE;
+        }
+    }
+    if (IsValidUtf8(buf, len)) {
+        return ENC_UTF8_NOBOM;
+    }
+    return ENC_ANSI;
+}
+static std::string AnsiToUtf8(const char* data, size_t len) {
+    if (len == 0) return "";
+    int wLen = MultiByteToWideChar(CP_ACP, 0, data, (int)len, NULL, 0);
+    if (wLen <= 0) return "";
+    std::vector<wchar_t> wBuf(wLen);
+    MultiByteToWideChar(CP_ACP, 0, data, (int)len, wBuf.data(), wLen);
+    int uLen = WideCharToMultiByte(CP_UTF8, 0, wBuf.data(), wLen, NULL, 0, NULL, NULL);
+    if (uLen <= 0) return "";
+    std::string ret; ret.resize(uLen);
+    WideCharToMultiByte(CP_UTF8, 0, wBuf.data(), wLen, &ret[0], uLen, NULL, NULL);
+    return ret;
 }
 static std::wstring UTF8ToW(const std::string& s) {
     if (s.empty()) return {};
@@ -49,6 +84,48 @@ static std::wstring UTF8ToW(const std::string& s) {
     std::wstring w; w.resize(n);
     MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), &w[0], n);
     return w;
+}
+static std::string Utf8ToAnsi(const std::string& utf8) {
+    if (utf8.empty()) return "";
+    std::wstring w = UTF8ToW(utf8);
+    int len = WideCharToMultiByte(CP_ACP, 0, w.c_str(), (int)w.size(), NULL, 0, NULL, NULL);
+    if (len <= 0) return "";
+    std::string ret; ret.resize(len);
+    WideCharToMultiByte(CP_ACP, 0, w.c_str(), (int)w.size(), &ret[0], len, NULL, NULL);
+    return ret;
+}
+static std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
+    if (len < 2) return "";
+    const wchar_t* wData = (const wchar_t*)(data + 2);
+    size_t wLen = (len - 2) / sizeof(wchar_t);
+    if (wLen == 0) return "";
+    std::vector<wchar_t> wBuf(wData, wData + wLen);
+    if (isBigEndian) {
+        SwapBytes(wBuf.data(), wBuf.size());
+    }
+    int uLen = WideCharToMultiByte(CP_UTF8, 0, wBuf.data(), (int)wBuf.size(), NULL, 0, NULL, NULL);
+    if (uLen <= 0) return "";
+    std::string ret;
+    ret.resize(uLen);
+    WideCharToMultiByte(CP_UTF8, 0, wBuf.data(), (int)wBuf.size(), &ret[0], uLen, NULL, NULL);
+    return ret;
+}
+static std::wstring Utf8ToUtf16(const std::string& utf8) {
+    if (utf8.empty()) return L"";
+    int wLen = MultiByteToWideChar(CP_UTF8, 0, utf8.data(), (int)utf8.size(), NULL, 0);
+    if (wLen <= 0) return L"";
+    std::wstring ret;
+    ret.resize(wLen);
+    MultiByteToWideChar(CP_UTF8, 0, utf8.data(), (int)utf8.size(), &ret[0], wLen);
+    return ret;
+}
+static std::wstring GetResString(UINT id) {
+    const wchar_t* pBuf = nullptr;
+    int len = LoadStringW(GetModuleHandle(NULL), id, (LPWSTR)&pBuf, 0);
+    if (len > 0 && pBuf) {
+        return std::wstring(pBuf, len);
+    }
+    return L"";
 }
 static std::string WToUTF8(const std::wstring& w) {
     if (w.empty()) return {};
@@ -234,6 +311,8 @@ struct Editor {
     D2D1::ColorF autoHlColor = D2D1::ColorF(0.8f, 0.8f, 0.8f, 0.35f);
     D2D1::ColorF caretColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
     bool isDarkMode = false;
+    Encoding currentEncoding = ENC_UTF8_NOBOM;
+    std::string convertedBuffer;
     bool checkSystemDarkMode() {
         HKEY hKey;
         DWORD val = 1;
@@ -1612,7 +1691,22 @@ struct Editor {
     void performRedo() { if (!undo.canRedo())return; EditBatch b = undo.popRedo(); for (const auto& o : b.ops) { if (o.type == EditOp::Insert)pt.insert(o.pos, o.text); else pt.erase(o.pos, o.text.size()); }cursors = b.afterCursors; rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
     int ShowTaskDialog(const wchar_t* title, const wchar_t* instruction, const wchar_t* content, TASKDIALOG_COMMON_BUTTON_FLAGS buttons, PCWSTR icon) { TASKDIALOGCONFIG c = { 0 }; c.cbSize = sizeof(c); c.hwndParent = hwnd; c.hInstance = GetModuleHandle(NULL); c.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_POSITION_RELATIVE_TO_WINDOW; c.pszWindowTitle = title; c.pszMainInstruction = instruction; c.pszContent = content; c.dwCommonButtons = buttons; c.pszMainIcon = icon; int n = 0; TaskDialogIndirect(&c, &n, NULL, NULL); return n; }
     bool checkUnsavedChanges() { if (!isDirty)return true; int r = ShowTaskDialog(GetResString(IDS_CONFIRM_TITLE).c_str(), GetResString(IDS_SAVE_PROMPT).c_str(), currentFilePath.empty() ? GetResString(IDS_UNTITLED).c_str() : currentFilePath.c_str(), TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON, TD_WARNING_ICON); if (r == IDCANCEL)return false; if (r == IDYES) { if (currentFilePath.empty())return saveFileAs(); else return saveFile(currentFilePath); }return true; }
-    bool openFile() { if (!checkUnsavedChanges())return false; WCHAR f[MAX_PATH] = { 0 }; OPENFILENAMEW o = { 0 }; o.lStructSize = sizeof(o); o.hwndOwner = hwnd; o.lpstrFile = f; o.nMaxFile = MAX_PATH; o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0"; o.nFilterIndex = 1; o.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST; if (GetOpenFileNameW(&o)) { fileMap.reset(new MappedFile()); if (fileMap->open(f)) { pt.initFromFile(fileMap->ptr, fileMap->size); currentFilePath = f; undo.clear(); isDirty = false; undo.markSaved(); cursors.clear(); cursors.push_back({ 0,0,0.0f }); rebuildLineStarts(); updateTitleBar(); InvalidateRect(hwnd, NULL, FALSE); return true; } else ShowTaskDialog(GetResString(IDS_ERROR_TITLE).c_str(), GetResString(IDS_OPEN_ERROR).c_str(), f, TDCBF_OK_BUTTON, TD_ERROR_ICON); } return false; }
+    bool openFile() {
+        if (!checkUnsavedChanges()) return false;
+        WCHAR f[MAX_PATH] = { 0 };
+        OPENFILENAMEW o = { 0 };
+        o.lStructSize = sizeof(o);
+        o.hwndOwner = hwnd;
+        o.lpstrFile = f;
+        o.nMaxFile = MAX_PATH;
+        o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0";
+        o.nFilterIndex = 1;
+        o.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+        if (GetOpenFileNameW(&o)) {
+            return openFileFromPath(f);
+        }
+        return false;
+    }
     bool saveFile(const std::wstring& p) {
         std::wstring t = p + L".tmp";
         HANDLE h = CreateFileW(t.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
@@ -1620,12 +1714,38 @@ struct Editor {
             ShowTaskDialog(GetResString(IDS_ERROR_TITLE).c_str(), GetResString(IDS_TEMP_FILE_ERR).c_str(), t.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return false;
         }
+        std::string contentUtf8;
+        size_t totalLen = pt.length();
+        if (totalLen > 0) contentUtf8 = pt.getRange(0, totalLen);
         bool ok = true;
-        for (const auto& piece : pt.pieces) {
-            const char* ptr = piece.isOriginal ? (pt.origPtr + piece.start) : (pt.addBuf.data() + piece.start);
-            DWORD w = 0;
-            if (!WriteFile(h, ptr, (DWORD)piece.len, &w, NULL) || w != piece.len) {
-                ok = false; break;
+        DWORD w = 0;
+        if (currentEncoding == ENC_UTF16LE || currentEncoding == ENC_UTF16BE) {
+            std::wstring wStr = Utf8ToUtf16(contentUtf8);
+            unsigned char bomLE[] = { 0xFF, 0xFE };
+            unsigned char bomBE[] = { 0xFE, 0xFF };
+            if (currentEncoding == ENC_UTF16LE) {
+                WriteFile(h, bomLE, 2, &w, NULL);
+            }
+            else {
+                WriteFile(h, bomBE, 2, &w, NULL);
+                SwapBytes(&wStr[0], wStr.size());
+            }
+            DWORD bytesToWrite = (DWORD)(wStr.size() * sizeof(wchar_t));
+            if (!WriteFile(h, wStr.data(), bytesToWrite, &w, NULL) || w != bytesToWrite) ok = false;
+        }
+        else if (currentEncoding == ENC_ANSI) {
+            std::string ansi = Utf8ToAnsi(contentUtf8);
+            if (!ansi.empty()) {
+                if (!WriteFile(h, ansi.data(), (DWORD)ansi.size(), &w, NULL) || w != ansi.size()) ok = false;
+            }
+        }
+        else {
+            if (currentEncoding == ENC_UTF8_BOM) {
+                unsigned char bom[] = { 0xEF, 0xBB, 0xBF };
+                WriteFile(h, bom, 3, &w, NULL);
+            }
+            if (!contentUtf8.empty()) {
+                if (!WriteFile(h, contentUtf8.data(), (DWORD)contentUtf8.size(), &w, NULL) || w != contentUtf8.size()) ok = false;
             }
         }
         CloseHandle(h);
@@ -1638,16 +1758,11 @@ struct Editor {
         int savedV = vScrollPos;
         int savedH = hScrollPos;
         std::wstring oldPath = currentFilePath;
-        if (fileMap) {
-            fileMap->close();
-        }
+        if (fileMap) fileMap->close();
         if (MoveFileExW(t.c_str(), p.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_COPY_ALLOWED) == 0) {
             DWORD err = GetLastError();
             DeleteFileW(t.c_str());
-            if (!oldPath.empty()) {
-                if (fileMap) fileMap->open(oldPath.c_str());
-                if (fileMap->ptr) pt.origPtr = fileMap->ptr;
-            }
+            if (!oldPath.empty()) openFileFromPath(oldPath);
             std::wstring msg = GetResString(IDS_SAVE_ERR) + std::to_wstring(err);
             ShowTaskDialog(GetResString(IDS_ERROR_TITLE).c_str(), msg.c_str(), p.c_str(), TDCBF_OK_BUTTON, TD_ERROR_ICON);
             return false;
@@ -1665,7 +1780,22 @@ struct Editor {
         return true;
     }
     bool saveFileAs() { WCHAR f[MAX_PATH] = { 0 }; OPENFILENAMEW o = { 0 }; o.lStructSize = sizeof(o); o.hwndOwner = hwnd; o.lpstrFile = f; o.nMaxFile = MAX_PATH; o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0"; o.nFilterIndex = 1; o.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT; if (GetSaveFileNameW(&o))return saveFile(f); return false; }
-    void newFile() { if (!checkUnsavedChanges())return; pt.initEmpty(); currentFilePath.clear(); undo.clear(); isDirty = false; cursors.clear(); cursors.push_back({ 0,0,0.0f }); vScrollPos = 0; hScrollPos = 0; fileMap.reset(); rebuildLineStarts(); updateTitleBar(); InvalidateRect(hwnd, NULL, FALSE); }
+    void newFile() {
+        if (!checkUnsavedChanges()) return;
+        pt.initEmpty();
+        currentFilePath.clear();
+        undo.clear();
+        isDirty = false;
+        currentEncoding = ENC_UTF8_NOBOM;
+        convertedBuffer.clear();
+        cursors.clear();
+        cursors.push_back({ 0,0,0.0f });
+        vScrollPos = 0; hScrollPos = 0;
+        fileMap.reset();
+        rebuildLineStarts();
+        updateTitleBar();
+        InvalidateRect(hwnd, NULL, FALSE);
+    }
     void selectNextOccurrence() {
         if (cursors.empty()) return;
         Cursor c = cursors.back();
@@ -1698,7 +1828,31 @@ struct Editor {
     bool openFileFromPath(const std::wstring& path) {
         fileMap.reset(new MappedFile());
         if (fileMap->open(path.c_str())) {
-            pt.initFromFile(fileMap->ptr, fileMap->size);
+            currentEncoding = DetectEncoding(fileMap->ptr, fileMap->size);
+            convertedBuffer.clear();
+            const char* ptr = fileMap->ptr;
+            size_t size = fileMap->size;
+            switch (currentEncoding) {
+            case ENC_UTF8_BOM:
+                if (size >= 3) { ptr += 3; size -= 3; }
+                pt.initFromFile(ptr, size);
+                break;
+            case ENC_UTF16LE:
+                convertedBuffer = Utf16ToUtf8(ptr, size, false);
+                pt.initFromFile(convertedBuffer.data(), convertedBuffer.size());
+                break;
+            case ENC_UTF16BE:
+                convertedBuffer = Utf16ToUtf8(ptr, size, true);
+                pt.initFromFile(convertedBuffer.data(), convertedBuffer.size());
+                break;
+            case ENC_ANSI:
+                convertedBuffer = AnsiToUtf8(ptr, size);
+                pt.initFromFile(convertedBuffer.data(), convertedBuffer.size());
+                break;
+            default:
+                pt.initFromFile(ptr, size);
+                break;
+            }
             currentFilePath = path;
             undo.clear();
             isDirty = false;
