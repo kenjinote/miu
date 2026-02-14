@@ -311,6 +311,7 @@ struct Editor {
     D2D1::ColorF autoHlColor = D2D1::ColorF(0.8f, 0.8f, 0.8f, 0.35f);
     D2D1::ColorF caretColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
     bool isDarkMode = false;
+    bool isOverwriteMode = false;
     Encoding currentEncoding = ENC_UTF8_NOBOM;
     std::string convertedBuffer;
     bool checkSystemDarkMode() {
@@ -1114,7 +1115,9 @@ struct Editor {
         float imeCx = 0, imeCy = 0;
         if (SUCCEEDED(hr) && layout) {
             ID2D1SolidColorBrush* selBrush = nullptr; rend->CreateSolidColorBrush(selColor, &selBrush);
-            ID2D1SolidColorBrush* caretBrush = nullptr; rend->CreateSolidColorBrush(caretColor, &caretBrush);
+            ID2D1SolidColorBrush* caretBrush = nullptr;
+            if (isOverwriteMode) rend->CreateSolidColorBrush(D2D1::ColorF(caretColor.r, caretColor.g, caretColor.b, 0.5f), &caretBrush);
+            else rend->CreateSolidColorBrush(caretColor, &caretBrush);            
             ID2D1SolidColorBrush* hlBrush = nullptr; rend->CreateSolidColorBrush(highlightColor, &hlBrush);
             ID2D1SolidColorBrush* autoHlBrush = nullptr;
             rend->CreateSolidColorBrush(autoHlColor, &autoHlBrush);
@@ -1244,7 +1247,16 @@ struct Editor {
                 if (hasIME && relHead >= caretOffsetInVisible) relHead += imeComp.size();
                 if (relHead <= text.size()) {
                     std::string beforeCaret = text.substr(0, relHead); std::wstring wBefore = UTF8ToW(beforeCaret);
-                    DWRITE_HIT_TEST_METRICS m; FLOAT px, py; layout->HitTestTextPosition((UINT32)wBefore.size(), FALSE, &px, &py, &m); rend->DrawLine(D2D1::Point2F(px, py), D2D1::Point2F(px, py + lineHeight), caretBrush);
+                    DWRITE_HIT_TEST_METRICS m; FLOAT px, py;
+                    layout->HitTestTextPosition((UINT32)wBefore.size(), FALSE, &px, &py, &m);
+                    if (isOverwriteMode) {
+                        float cw = m.width;
+                        if (cw == 0) cw = charWidth;
+                        rend->FillRectangle(D2D1::RectF(px, py, px + cw, py + lineHeight), caretBrush);
+                    }
+                    else {
+                        rend->DrawLine(D2D1::Point2F(px, py), D2D1::Point2F(px, py + lineHeight), caretBrush);
+                    }
                     if (&cursor == &cursors.back()) { imeCx = px; imeCy = py; }
                 }
             }
@@ -1313,7 +1325,54 @@ struct Editor {
         }
         rend->EndDraw(); EndPaint(hwnd, &ps);
     }
-    void insertAtCursors(const std::string& text) { commitPadding(); if (cursors.empty()) return; EditBatch batch; batch.beforeCursors = cursors; std::vector<int> indices(cursors.size()); for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i; std::sort(indices.begin(), indices.end(), [&](int a, int b) {return cursors[a].start() > cursors[b].start(); }); for (int idx : indices) { Cursor& c = cursors[idx]; if (c.hasSelection()) { size_t s = c.start(); size_t l = c.end() - s; std::string d = pt.getRange(s, l); pt.erase(s, l); batch.ops.push_back({ EditOp::Erase,s,d }); for (auto& o : cursors) { if (o.head > s)o.head -= l; if (o.anchor > s)o.anchor -= l; }c.head = s; c.anchor = s; } } for (int idx : indices) { Cursor& c = cursors[idx]; size_t p = c.head; pt.insert(p, text); batch.ops.push_back({ EditOp::Insert,p,text }); size_t l = text.size(); for (auto& o : cursors) { if (o.head >= p)o.head += l; if (o.anchor >= p)o.anchor += l; } } batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
+    void insertAtCursors(const std::string& text) {
+        commitPadding();
+        if (cursors.empty()) return;
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        std::vector<int> indices(cursors.size());
+        for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i;
+        std::sort(indices.begin(), indices.end(), [&](int a, int b) {return cursors[a].start() > cursors[b].start(); });
+        for (int idx : indices) {
+            Cursor& c = cursors[idx];
+            if (isOverwriteMode && !c.hasSelection()) {
+                if (c.head < pt.length() && pt.charAt(c.head) != '\n') {
+                    size_t nextPos = moveCaretVisual(c.head, true); // 次の文字境界を取得（マルチバイト対応）
+                    size_t charLen = nextPos - c.head;
+                    if (charLen > 0) {
+                        std::string d = pt.getRange(c.head, charLen);
+                        pt.erase(c.head, charLen);
+                        batch.ops.push_back({ EditOp::Erase, c.head, d });
+                        for (auto& o : cursors) {
+                            if (o.head > c.head) o.head -= charLen;
+                            if (o.anchor > c.head) o.anchor -= charLen;
+                        }
+                    }
+                }
+            }
+            if (c.hasSelection()) {
+                size_t s = c.start(); size_t l = c.end() - s;
+                std::string d = pt.getRange(s, l);
+                pt.erase(s, l);
+                batch.ops.push_back({ EditOp::Erase,s,d });
+                for (auto& o : cursors) { if (o.head > s)o.head -= l; if (o.anchor > s)o.anchor -= l; }
+                c.head = s; c.anchor = s;
+            }
+        }
+        for (int idx : indices) {
+            Cursor& c = cursors[idx];
+            size_t p = c.head;
+            pt.insert(p, text);
+            batch.ops.push_back({ EditOp::Insert,p,text });
+            size_t l = text.size();
+            for (auto& o : cursors) { if (o.head >= p)o.head += l; if (o.anchor >= p)o.anchor += l; }
+        }
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
+    }
     void deleteForwardAtCursors() { commitPadding(); if (cursors.empty()) return; EditBatch batch; batch.beforeCursors = cursors; std::vector<int> indices(cursors.size()); for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i; std::sort(indices.begin(), indices.end(), [&](int a, int b) {return cursors[a].start() > cursors[b].start(); }); for (int idx : indices) { Cursor& c = cursors[idx]; size_t s = c.start(); size_t l = 0; if (c.hasSelection())l = c.end() - s; else { size_t n = moveCaretVisual(s, true); if (n > s)l = n - s; }if (l > 0 && s + l <= pt.length()) { std::string d = pt.getRange(s, l); pt.erase(s, l); batch.ops.push_back({ EditOp::Erase,s,d }); for (auto& o : cursors) { if (o.head > s)o.head -= l; if (o.anchor > s)o.anchor -= l; }c.head = s; c.anchor = s; } } batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
     void backspaceAtCursors(bool allowCharDeletion = true) {
         commitPadding();
@@ -2182,6 +2241,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         if (wParam != VK_LEFT && wParam != VK_RIGHT) return DefWindowProc(hwnd, msg, wParam, lParam);
         break;
     case WM_KEYDOWN:
+        if (wParam == VK_INSERT) {
+            if (!(GetKeyState(VK_CONTROL) & 0x8000) && !(GetKeyState(VK_SHIFT) & 0x8000)) {
+                g_editor.isOverwriteMode = !g_editor.isOverwriteMode;
+                InvalidateRect(hwnd, NULL, FALSE);
+                return 0;
+            }
+        }
         if (wParam == VK_TAB) {
             if (GetKeyState(VK_SHIFT) & 0x8000) {
                 g_editor.unindentLines();
