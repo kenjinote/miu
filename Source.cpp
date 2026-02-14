@@ -1,6 +1,4 @@
-﻿#pragma comment(linker,"\"/manifestdependency:type='win32' \
-name='Microsoft.Windows.Common-Controls' version='6.0.0.0' \
-processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+﻿#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define NOMINMAX
 #include <windows.h>
 #include <d2d1.h>
@@ -314,6 +312,55 @@ struct Editor {
     bool isOverwriteMode = false;
     Encoding currentEncoding = ENC_UTF8_NOBOM;
     std::string convertedBuffer;
+    std::string newlineStr = "\r\n";
+    std::string preprocessRegexQuery(const std::string& query) {
+        std::string processed;
+        processed.reserve(query.size() * 4);
+        for (size_t i = 0; i < query.size(); ++i) {
+            char c = query[i];
+            if (c == '\\') {
+                if (i + 1 < query.size()) {
+                    char next = query[i + 1];
+                    if (next == 'n') {
+                        bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
+                        if (!isPrecededByCR) {
+                            processed += "(?:\\r\\n|[\\r\\n])";
+                            i++; continue;
+                        }
+                    }
+                    processed += c; processed += next; i++; continue;
+                }
+            }
+            else if (c == '^') {
+                bool inClass = false;
+                if (i > 0 && query[i - 1] == '[') inClass = true;
+                if (!inClass) {
+                    processed += "(?:^|(?:\\r\\n|[\\r\\n]))";
+                    continue;
+                }
+            }
+            processed += c;
+        }
+        return processed;
+    }
+    void detectNewlineStyle(const char* buf, size_t len) {
+        size_t checkLen = (len > 4096) ? 4096 : len;
+        for (size_t i = 0; i < checkLen; ++i) {
+            if (buf[i] == '\r') {
+                if (i + 1 < checkLen && buf[i + 1] == '\n') {
+                    newlineStr = "\r\n";
+                    return;
+                }
+                newlineStr = "\r";
+                return;
+            }
+            else if (buf[i] == '\n') {
+                newlineStr = "\n";
+                return;
+            }
+        }
+        newlineStr = "\r\n";
+    }
     bool checkSystemDarkMode() {
         HKEY hKey;
         DWORD val = 1;
@@ -370,6 +417,7 @@ struct Editor {
         if (hwnd) InvalidateRect(hwnd, NULL, FALSE);
     }
     std::pair<std::string, bool> getHighlightTarget() {
+        if (isRectSelecting && cursors.size() > 1) return { "", false };
         if (cursors.empty()) return { "", false };
         const Cursor& c = cursors.back();
         if (c.hasSelection()) {
@@ -454,7 +502,8 @@ struct Editor {
         if (isDirty) title = L"*";
         if (currentFilePath.empty()) {
             title += GetResString(IDS_UNTITLED) + L" - " + appName;
-        } else {
+        }
+        else {
             title += currentFilePath + L" - " + appName;
         }
         SetWindowTextW(hwnd, title.c_str());
@@ -477,18 +526,29 @@ struct Editor {
             const char* ptr = buf;
             const char* end = buf + p.len;
             while (ptr < end) {
-                const void* found = memchr(ptr, '\n', end - ptr);
-                if (found) {
-                    const char* newlinePtr = (const char*)found;
-                    size_t offsetInPiece = newlinePtr - buf;
+                char c = *ptr;
+                if (c == '\n') {
+                    size_t offsetInPiece = ptr - buf;
                     size_t nextLineStart = globalOffset + offsetInPiece + 1;
                     size_t currentLineLen = nextLineStart - lineStarts.back();
                     if (currentLineLen > maxBytes) maxBytes = currentLineLen;
                     lineStarts.push_back(nextLineStart);
-                    ptr = newlinePtr + 1;
+                    ptr++;
+                }
+                else if (c == '\r') {
+                    size_t offsetInPiece = ptr - buf;
+                    size_t step = 1;
+                    if (ptr + 1 < end && *(ptr + 1) == '\n') {
+                        step = 2;
+                    }
+                    size_t nextLineStart = globalOffset + offsetInPiece + step;
+                    size_t currentLineLen = nextLineStart - lineStarts.back();
+                    if (currentLineLen > maxBytes) maxBytes = currentLineLen;
+                    lineStarts.push_back(nextLineStart);
+                    ptr += step;
                 }
                 else {
-                    break;
+                    ptr++;
                 }
             }
             globalOffset += p.len;
@@ -530,18 +590,30 @@ struct Editor {
     }
     size_t getPosFromLineAndX(int lineIdx, float targetX) {
         if (lineIdx < 0 || lineIdx >= (int)lineStarts.size()) return cursors.empty() ? 0 : cursors.back().head;
-        size_t start = lineStarts[lineIdx]; size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length(); size_t len = (end > start) ? (end - start) : 0;
-        std::string lineStr = pt.getRange(start, len); std::wstring wLine = UTF8ToW(lineStr);
+        size_t start = lineStarts[lineIdx];
+        size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
+        size_t len = (end > start) ? (end - start) : 0;
+        std::string lineStr = pt.getRange(start, len);
+        std::wstring wLine = UTF8ToW(lineStr);
         IDWriteTextLayout* layout = nullptr;
         HRESULT hr = dwFactory->CreateTextLayout(wLine.c_str(), (UINT32)wLine.size(), textFormat, 10000.0f, (FLOAT)lineHeight, &layout);
         size_t resultPos = start;
         if (SUCCEEDED(hr) && layout) {
-            BOOL isTrailing, isInside; DWRITE_HIT_TEST_METRICS m; layout->HitTestPoint(targetX, 1.0f, &isTrailing, &isInside, &m);
-            size_t local = m.textPosition; if (isTrailing) local += m.length;
-            bool hasNewline = (!wLine.empty() && wLine.back() == L'\n');
-            if (hasNewline) { if (local >= wLine.size()) local = wLine.size() - 1; }
-            else { if (local > wLine.size()) local = wLine.size(); }
-            std::wstring wSub = wLine.substr(0, local); std::string sub = WToUTF8(wSub); resultPos = start + sub.size(); layout->Release();
+            BOOL isTrailing, isInside;
+            DWRITE_HIT_TEST_METRICS m;
+            layout->HitTestPoint(targetX, 1.0f, &isTrailing, &isInside, &m);
+            size_t local = m.textPosition;
+            if (isTrailing) local += m.length;
+            size_t limit = wLine.size();
+            if (limit > 0 && wLine.back() == L'\n') {
+                limit--;
+                if (limit > 0 && wLine[limit - 1] == L'\r') limit--;
+            }
+            if (local > limit) local = limit;
+            std::wstring wSub = wLine.substr(0, local);
+            std::string sub = WToUTF8(wSub);
+            resultPos = start + sub.size();
+            layout->Release();
         }
         return resultPos;
     }
@@ -635,28 +707,74 @@ struct Editor {
         cursors.clear(); cursors.push_back({ end, start, getXFromPos(end) });
     }
     size_t moveWordLeft(size_t pos) {
-        if (pos == 0) return 0; size_t curr = pos;
-        if (curr > 0 && pt.charAt(curr - 1) == '\n') return curr - 1;
-        while (curr > 0) { char c = pt.charAt(curr - 1); if (c == '\n' || !isspace(c)) break; curr--; }
-        if (curr == 0) return 0; if (pt.charAt(curr - 1) == '\n') return curr;
-        bool type = isWordChar(pt.charAt(curr - 1));
-        while (curr > 0) { char c = pt.charAt(curr - 1); if (c == '\n' || isspace(c) || isWordChar(c) != type) break; curr--; }
+        if (pos == 0) return 0;
+        size_t curr = pos;
+        if (curr >= 2 && pt.charAt(curr - 1) == '\n' && pt.charAt(curr - 2) == '\r') return curr - 2;
+        if (curr >= 1 && pt.charAt(curr - 1) == '\n') return curr - 1;
+        while (curr > 0) {
+            char c = pt.charAt(curr - 1);
+            if (c == '\n' || c == '\r' || !isspace(c)) break;
+            curr--;
+        }
+        if (curr == 0) return 0;
+        char prev = pt.charAt(curr - 1);
+        if (prev == '\n' || prev == '\r') return curr;
+        bool type = isWordChar(prev);
+        while (curr > 0) {
+            char c = pt.charAt(curr - 1);
+            if (c == '\n' || c == '\r' || isspace(c) || isWordChar(c) != type) break;
+            curr--;
+        }
         return curr;
     }
     size_t moveWordRight(size_t pos) {
-        size_t len = pt.length(); if (pos >= len) return len; size_t curr = pos;
+        size_t len = pt.length();
+        if (pos >= len) return len;
+        size_t curr = pos;
+        if (pt.charAt(curr) == '\r') {
+            if (curr + 1 < len && pt.charAt(curr + 1) == '\n') return curr + 2;
+            return curr + 1;
+        }
         if (pt.charAt(curr) == '\n') return curr + 1;
         if (!isspace(pt.charAt(curr))) {
             bool type = isWordChar(pt.charAt(curr));
-            while (curr < len) { char c = pt.charAt(curr); if (c == '\n' || isspace(c) || isWordChar(c) != type) break; curr++; }
+            while (curr < len) {
+                char c = pt.charAt(curr);
+                if (c == '\n' || c == '\r' || isspace(c) || isWordChar(c) != type) break;
+                curr++;
+            }
         }
-        while (curr < len) { char c = pt.charAt(curr); if (c == '\n' || !isspace(c)) break; curr++; }
+        while (curr < len) {
+            char c = pt.charAt(curr);
+            if (c == '\n' || c == '\r' || !isspace(c)) break;
+            curr++;
+        }
         return curr;
     }
     size_t moveCaretVisual(size_t pos, bool forward) {
-        size_t len = pt.length(); if (pos == 0 && !forward) return 0; if (pos >= len && forward) return len;
-        char c = pt.charAt(pos); if (forward) { if (c == '\n') return pos + 1; }
-        else { if (pos > 0 && pt.charAt(pos - 1) == '\n') return pos - 1; }
+        size_t len = pt.length();
+        if (pos == 0 && !forward) return 0;
+        if (pos >= len && forward) return len;
+        if (forward) {
+            char c = pt.charAt(pos);
+            if (c == '\r') {
+                if (pos + 1 < len && pt.charAt(pos + 1) == '\n') {
+                    return pos + 2;
+                }
+            }
+            if (c == '\n') return pos + 1;
+        }
+        else {
+            if (pos > 0) {
+                char prev = pt.charAt(pos - 1);
+                if (prev == '\n') {
+                    if (pos > 1 && pt.charAt(pos - 2) == '\r') {
+                        return pos - 2;
+                    }
+                    return pos - 1;
+                }
+            }
+        }
         int lineIdx = getLineIdx(pos); size_t lineStart = lineStarts[lineIdx];
         size_t nextLineStart = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : len;
         size_t lineEnd = nextLineStart; if (lineEnd > lineStart && pt.charAt(lineEnd - 1) == '\n') lineEnd--;
@@ -697,57 +815,96 @@ struct Editor {
         }
         return forward ? std::min(pos + 1, len) : std::max(pos - 1, (size_t)0);
     }
-    size_t findText(size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex) {
+    size_t findText(size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen = nullptr) {
         if (query.empty()) return std::string::npos;
         size_t len = pt.length();
+        std::string actualQuery = query;
+        if (isRegex) actualQuery = preprocessRegexQuery(query);
         if (isRegex) {
             std::string fullText = pt.getRange(0, len);
             try {
                 std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
                 if (!matchCase) flags |= std::regex_constants::icase;
-                std::regex re(query, flags);
+                std::regex re(actualQuery, flags);
+                std::smatch m;
+                size_t foundPos = std::string::npos;
+                size_t foundLen = 0;
+                bool startsWithCaret = (!query.empty() && query[0] == '^');
                 if (forward) {
                     if (startPos >= fullText.size()) startPos = 0;
-                    std::smatch m;
-                    std::string::const_iterator searchStart = fullText.begin() + startPos;
-                    if (std::regex_search(searchStart, fullText.cend(), m, re)) return startPos + m.position();
-                    if (std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) return m.position();
+                    size_t searchStartIdx = startPos;
+                    std::regex_constants::match_flag_type searchFlags = std::regex_constants::match_default;
+                    if (searchStartIdx > 0) {
+                        searchFlags |= std::regex_constants::match_not_bol;
+                        char prevChar = fullText[searchStartIdx - 1];
+                        if (prevChar == '\n') {
+                            searchStartIdx--;
+                            if (searchStartIdx > 0 && fullText[searchStartIdx - 1] == '\r') {
+                                searchStartIdx--;
+                            }
+                        }
+                        else if (prevChar == '\r') {
+                            searchStartIdx--;
+                        }
+                    }
+                    std::string::const_iterator searchStartIter = fullText.begin() + searchStartIdx;
+                    if (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) {
+                        foundPos = searchStartIdx + m.position();
+                        foundLen = m.length();
+                    }
+                    else if (startPos > 0) {
+                        if (std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) {
+                            foundPos = m.position();
+                            foundLen = m.length();
+                        }
+                    }
                 }
                 else {
                     auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
                     auto words_end = std::sregex_iterator();
                     size_t bestPos = std::string::npos;
-                    size_t lastMatch = std::string::npos;
                     size_t limit = (startPos == 0) ? len : startPos;
-                    for (std::sregex_iterator i = words_begin; i != words_end; ++i) {
-                        size_t pos = i->position();
-                        if (pos < limit) bestPos = pos;
-                        lastMatch = pos;
+                    for (auto i = words_begin; i != words_end; ++i) {
+                        if (i->position() < (std::ptrdiff_t)limit) {
+                            bestPos = i->position();
+                            foundLen = i->length();
+                        }
                     }
-                    if (bestPos != std::string::npos) return bestPos;
-                    if (lastMatch != std::string::npos) return lastMatch;
+                    if (bestPos != std::string::npos) foundPos = bestPos;
+                }
+                if (foundPos != std::string::npos) {
+                    if (foundPos > 0 && startsWithCaret) {
+                        std::string matchStr = fullText.substr(foundPos, foundLen);
+                        size_t adj = 0;
+                        if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') {
+                            adj = 2;
+                        }
+                        else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) {
+                            adj = 1;
+                        }
+                        foundPos += adj;
+                        foundLen -= adj;
+                    }
+                    if (outLen) *outLen = foundLen;
+                    return foundPos;
                 }
             }
             catch (...) { return std::string::npos; }
             return std::string::npos;
         }
         size_t qLen = query.length();
+        if (outLen) *outLen = qLen;
         auto toLower = [](char c) { return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c; };
         size_t cur = startPos;
-        if (forward) {
-            if (cur >= len) cur = 0;
-        }
-        else {
-            if (cur == 0) cur = len; else cur--;
-        }
+        if (forward) { if (cur >= len) cur = 0; }
+        else { if (cur == 0) cur = len; else cur--; }
         size_t count = 0;
         while (count < len) {
             bool match = true;
             for (size_t i = 0; i < qLen; ++i) {
                 size_t p = cur + i;
                 if (p >= len) { match = false; break; }
-                char c1 = pt.charAt(p);
-                char c2 = query[i];
+                char c1 = pt.charAt(p); char c2 = query[i];
                 if (!matchCase) { c1 = toLower(c1); c2 = toLower(c2); }
                 if (c1 != c2) { match = false; break; }
             }
@@ -778,13 +935,8 @@ struct Editor {
                 }
             }
             if (match) return cur;
-            if (forward) {
-                cur++;
-                if (cur >= len) cur = 0;
-            }
-            else {
-                if (cur == 0) cur = len - 1; else cur--;
-            }
+            if (forward) { cur++; if (cur >= len) cur = 0; }
+            else { if (cur == 0) cur = len - 1; else cur--; }
             count++;
         }
         return std::string::npos;
@@ -792,22 +944,13 @@ struct Editor {
     void findNext(bool forward) {
         if (searchQuery.empty()) { showFindDialog(false); return; }
         size_t startPos = forward ? (cursors.empty() ? 0 : cursors.back().end()) : (cursors.empty() ? 0 : cursors.back().start());
-        size_t pos = findText(startPos, searchQuery, forward, searchMatchCase, searchWholeWord, searchRegex);
+        size_t matchLen = 0;
+        size_t pos = findText(startPos, searchQuery, forward, searchMatchCase, searchWholeWord, searchRegex, &matchLen);
         if (pos != std::string::npos) {
-            size_t matchLen = searchQuery.length();
-            if (searchRegex) {
-                std::string fullText = pt.getRange(0, pt.length());
-                try {
-                    std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
-                    if (!searchMatchCase) flags |= std::regex_constants::icase;
-                    std::regex re(searchQuery, flags); std::smatch m;
-                    std::string::const_iterator searchStart = fullText.begin() + pos;
-                    if (std::regex_search(searchStart, fullText.cend(), m, re, std::regex_constants::match_continuous)) matchLen = m.length();
-                }
-                catch (...) {}
-            }
-            cursors.clear(); cursors.push_back({ pos + matchLen, pos, getXFromPos(pos + matchLen) });
-            ensureCaretVisible(); updateTitleBar();
+            cursors.clear();
+            cursors.push_back({ pos + matchLen, pos, getXFromPos(pos + matchLen) });
+            ensureCaretVisible();
+            updateTitleBar();
         }
         else MessageBeep(MB_ICONWARNING);
     }
@@ -816,17 +959,37 @@ struct Editor {
         Cursor& c = cursors.back();
         if (!c.hasSelection()) { findNext(true); return; }
         size_t len = c.end() - c.start();
-        std::string selText = pt.getRange(c.start(), len);
+        size_t start = c.start();
+        std::string selText = pt.getRange(start, len);
         bool match = false;
         std::string replacement = replaceQuery;
         if (searchRegex) {
             try {
+                std::string actualQuery = preprocessRegexQuery(searchQuery);
                 std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
                 if (!searchMatchCase) flags |= std::regex_constants::icase;
-                std::regex re(searchQuery, flags);
+                std::regex re(actualQuery, flags);
                 std::smatch m;
                 if (std::regex_match(selText, m, re)) {
                     match = true;
+                }
+                else if (start > 0) {
+                    int backStep = 0;
+                    if (pt.charAt(start - 1) == '\n') {
+                        backStep = 1;
+                        if (start > 1 && pt.charAt(start - 2) == '\r') backStep = 2;
+                    }
+                    else if (pt.charAt(start - 1) == '\r') {
+                        backStep = 1;
+                    }
+                    if (backStep > 0) {
+                        std::string extendedText = pt.getRange(start - backStep, len + backStep);
+                        if (std::regex_match(extendedText, m, re)) {
+                            match = true;
+                        }
+                    }
+                }
+                if (match) {
                     std::string fmt = UnescapeString(replaceQuery);
                     replacement = m.format(fmt);
                 }
@@ -857,27 +1020,44 @@ struct Editor {
         std::vector<Match> matches;
         size_t currentPos = 0;
         size_t docLen = pt.length();
+        std::string actualQuery = searchQuery;
+        if (searchRegex) actualQuery = preprocessRegexQuery(searchQuery);
         if (searchRegex) {
             std::string fullText = pt.getRange(0, docLen);
             std::string fmt = UnescapeString(replaceQuery);
             try {
                 std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
                 if (!searchMatchCase) flags |= std::regex_constants::icase;
-                std::regex re(searchQuery, flags);
+                std::regex re(actualQuery, flags);
+                bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
                 auto begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
                 auto end = std::sregex_iterator();
                 for (auto i = begin; i != end; ++i) {
-                    matches.push_back({ (size_t)i->position(), (size_t)i->length(), i->format(fmt) });
+                    size_t pos = i->position();
+                    size_t len = i->length();
+                    std::string rText = i->format(fmt);
+                    if (pos > 0 && startsWithCaret) {
+                        std::string matchStr = i->str();
+                        size_t adj = 0;
+                        if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2;
+                        else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) adj = 1;
+                        if (adj > 0) {
+                            pos += adj;
+                            len -= adj;
+                        }
+                    }
+                    matches.push_back({ pos, len, rText });
                 }
             }
             catch (...) { return; }
         }
         else {
             while (true) {
-                size_t pos = findText(currentPos, searchQuery, true, searchMatchCase, searchWholeWord, false);
+                size_t matchLen = 0;
+                size_t pos = findText(currentPos, searchQuery, true, searchMatchCase, searchWholeWord, false, &matchLen);
                 if (pos == std::string::npos || pos < currentPos) break;
-                matches.push_back({ pos, searchQuery.length(), replaceQuery });
-                currentPos = pos + searchQuery.length();
+                matches.push_back({ pos, matchLen, replaceQuery });
+                currentPos = pos + matchLen;
                 if (currentPos > docLen) break;
             }
         }
@@ -1042,7 +1222,10 @@ struct Editor {
         if (endLineIdx > currentMaxLine) {
             int linesToAdd = endLineIdx - currentMaxLine;
             size_t insertPos = pt.length();
-            std::string newLines(linesToAdd, '\n');
+            std::string newLines;
+            for (int k = 0; k < linesToAdd; ++k) {
+                newLines += newlineStr;
+            }
             pt.insert(insertPos, newLines);
             pendingPadding.ops.push_back({ EditOp::Insert, insertPos, newLines });
             rebuildLineStarts();
@@ -1060,6 +1243,7 @@ struct Editor {
             size_t nextStart = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
             size_t end = nextStart;
             if (end > start && pt.charAt(end - 1) == '\n') end--;
+            if (end > start && pt.charAt(end - 1) == '\r') end--;
             std::string lineStr = pt.getRange(start, end - start);
             std::wstring wLine = UTF8ToW(lineStr);
             float currentWidth = (float)wLine.length() * charWidth;
@@ -1109,15 +1293,15 @@ struct Editor {
         std::wstring wtext = UTF8ToW(text);
         float layoutWidth = maxLineWidth + clientW;
         IDWriteTextLayout* layout = nullptr;
+        ID2D1SolidColorBrush* caretBrush = nullptr;
         HRESULT hr = dwFactory->CreateTextLayout(wtext.c_str(), (UINT32)wtext.size(), textFormat, layoutWidth, clientH, &layout);
         D2D1_MATRIX_3X2_F transform = D2D1::Matrix3x2F::Translation(gutterWidth - (float)hScrollPos, 0);
         rend->SetTransform(transform);
         float imeCx = 0, imeCy = 0;
         if (SUCCEEDED(hr) && layout) {
-            ID2D1SolidColorBrush* selBrush = nullptr; rend->CreateSolidColorBrush(selColor, &selBrush);
-            ID2D1SolidColorBrush* caretBrush = nullptr;
             if (isOverwriteMode) rend->CreateSolidColorBrush(D2D1::ColorF(caretColor.r, caretColor.g, caretColor.b, 0.5f), &caretBrush);
-            else rend->CreateSolidColorBrush(caretColor, &caretBrush);            
+            else rend->CreateSolidColorBrush(caretColor, &caretBrush);
+            ID2D1SolidColorBrush* selBrush = nullptr; rend->CreateSolidColorBrush(selColor, &selBrush);
             ID2D1SolidColorBrush* hlBrush = nullptr; rend->CreateSolidColorBrush(highlightColor, &hlBrush);
             ID2D1SolidColorBrush* autoHlBrush = nullptr;
             rend->CreateSolidColorBrush(autoHlColor, &autoHlBrush);
@@ -1203,10 +1387,21 @@ struct Editor {
                             for (const auto& mm : m) { float top = std::floor((mm.top + lineHeight * 0.5f) / lineHeight) * lineHeight; rawRects.push_back(D2D1::RectF(mm.left, top, mm.left + mm.width, top + lineHeight)); }
                         }
                         for (size_t k = 0; k < subRange.size(); ++k) {
+                            bool shouldDraw = false;
                             if (subRange[k] == '\n') {
+                                shouldDraw = true;
+                            }
+                            else if (subRange[k] == '\r') {
+                                size_t globalIdx = relS + k;
+                                if (globalIdx + 1 >= text.size() || text[globalIdx + 1] != '\n') {
+                                    shouldDraw = true;
+                                }
+                            }
+                            if (shouldDraw) {
                                 std::string pre = text.substr(0, relS + k); UINT32 idx16 = (UINT32)UTF8ToW(pre).size();
                                 DWRITE_HIT_TEST_METRICS m; FLOAT px, py; layout->HitTestTextPosition(idx16, FALSE, &px, &py, &m);
-                                float top = std::floor((m.top + lineHeight * 0.5f) / lineHeight) * lineHeight; rawRects.push_back(D2D1::RectF(px - 0.5f, top, px + charWidth, top + lineHeight));
+                                float top = std::floor((m.top + lineHeight * 0.5f) / lineHeight) * lineHeight;
+                                rawRects.push_back(D2D1::RectF(px - 0.5f, top, px + charWidth, top + lineHeight));
                             }
                         }
                     }
@@ -1235,33 +1430,73 @@ struct Editor {
                 }
                 if (unifiedSelectionGeo) { rend->FillGeometry(unifiedSelectionGeo, selBrush); rend->DrawGeometry(unifiedSelectionGeo, selBrush, 8.0f, roundJoinStyle); unifiedSelectionGeo->Release(); }
             }
-            if (isDragMoving) {
-                size_t relPos = (dragMoveDestPos > visibleStartOffset) ? dragMoveDestPos - visibleStartOffset : 0;
-                if (relPos <= text.size()) {
-                    std::string beforeCaret = text.substr(0, relPos); std::wstring wBefore = UTF8ToW(beforeCaret);
-                    DWRITE_HIT_TEST_METRICS m; FLOAT px, py; layout->HitTestTextPosition((UINT32)wBefore.size(), FALSE, &px, &py, &m); rend->DrawLine(D2D1::Point2F(px, py), D2D1::Point2F(px, py + lineHeight), caretBrush, 2.0f);
-                }
-            }
-            for (const auto& cursor : cursors) {
-                size_t head = cursor.head; size_t relHead = (head > visibleStartOffset) ? head - visibleStartOffset : 0;
-                if (hasIME && relHead >= caretOffsetInVisible) relHead += imeComp.size();
-                if (relHead <= text.size()) {
-                    std::string beforeCaret = text.substr(0, relHead); std::wstring wBefore = UTF8ToW(beforeCaret);
-                    DWRITE_HIT_TEST_METRICS m; FLOAT px, py;
-                    layout->HitTestTextPosition((UINT32)wBefore.size(), FALSE, &px, &py, &m);
-                    if (isOverwriteMode) {
-                        float cw = m.width;
-                        if (cw == 0) cw = charWidth;
-                        rend->FillRectangle(D2D1::RectF(px, py, px + cw, py + lineHeight), caretBrush);
+            selBrush->Release(); hlBrush->Release();
+            ID2D1SolidColorBrush* brush = nullptr; rend->CreateSolidColorBrush(textColor, &brush); rend->DrawTextLayout(D2D1::Point2F(0, 0), layout, brush, D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT); brush->Release();
+            ID2D1SolidColorBrush* wsBrush = nullptr;
+            rend->CreateSolidColorBrush(D2D1::ColorF(0.50f, 0.50f, 0.50f, 0.2f), &wsBrush);
+            float strokeWidth = std::max(1.5f, currentFontSize * 0.05f);
+            float sz = charWidth * 1.0f;
+            float halfSz = sz * 0.5f;
+            for (size_t i = 0; i < wtext.size(); ++i) {
+                bool isCR = (wtext[i] == L'\r');
+                bool isLF = (wtext[i] == L'\n');
+                bool isCRLF = (isCR && i + 1 < wtext.size() && wtext[i + 1] == L'\n');
+                bool isStandAloneCR = (isCR && !isCRLF);
+                if (isLF || isCRLF || isStandAloneCR) {
+                    FLOAT px, py;
+                    DWRITE_HIT_TEST_METRICS m;
+                    layout->HitTestTextPosition((UINT32)i, FALSE, &px, &py, &m);
+                    float cx = px + charWidth * 0.5f;
+                    float cy = py + lineHeight * 0.5f;
+                    ID2D1PathGeometry* pathGeo = nullptr;
+                    d2dFactory->CreatePathGeometry(&pathGeo);
+                    ID2D1GeometrySink* sink = nullptr;
+                    pathGeo->Open(&sink);
+                    float arrowSize = sz * 0.35f;
+                    if (isCRLF) {
+                        float vLineTop = cy - halfSz;
+                        float vLineBottom = cy + halfSz * 0.3f;
+                        float hLineRight = cx + halfSz * 0.6f;
+                        float hLineLeft = cx - halfSz * 0.6f;
+                        sink->BeginFigure(D2D1::Point2F(hLineRight, vLineTop), D2D1_FIGURE_BEGIN_HOLLOW);
+                        sink->AddLine(D2D1::Point2F(hLineRight, vLineBottom));
+                        sink->AddLine(D2D1::Point2F(hLineLeft, vLineBottom));
+                        sink->AddLine(D2D1::Point2F(hLineLeft + arrowSize, vLineBottom - arrowSize));
+                        sink->EndFigure(D2D1_FIGURE_END_OPEN);
+                        sink->BeginFigure(D2D1::Point2F(hLineLeft, vLineBottom), D2D1_FIGURE_BEGIN_HOLLOW);
+                        sink->AddLine(D2D1::Point2F(hLineLeft + arrowSize, vLineBottom + arrowSize));
+                        sink->EndFigure(D2D1_FIGURE_END_OPEN);
+                        i++;
+                    }
+                    else if (isStandAloneCR) {
+                        float hLineRight = cx + halfSz * 0.6f;
+                        float hLineLeft = cx - halfSz * 0.6f;
+                        sink->BeginFigure(D2D1::Point2F(hLineRight, cy), D2D1_FIGURE_BEGIN_HOLLOW);
+                        sink->AddLine(D2D1::Point2F(hLineLeft, cy));
+                        sink->AddLine(D2D1::Point2F(hLineLeft + arrowSize, cy - arrowSize));
+                        sink->EndFigure(D2D1_FIGURE_END_OPEN);
+                        sink->BeginFigure(D2D1::Point2F(hLineLeft, cy), D2D1_FIGURE_BEGIN_HOLLOW);
+                        sink->AddLine(D2D1::Point2F(hLineLeft + arrowSize, cy + arrowSize));
+                        sink->EndFigure(D2D1_FIGURE_END_OPEN);
                     }
                     else {
-                        rend->DrawLine(D2D1::Point2F(px, py), D2D1::Point2F(px, py + lineHeight), caretBrush);
+                        float stemTop = cy - halfSz * 0.8f;
+                        float stemBottom = cy + halfSz * 0.8f;
+                        sink->BeginFigure(D2D1::Point2F(cx, stemTop), D2D1_FIGURE_BEGIN_HOLLOW);
+                        sink->AddLine(D2D1::Point2F(cx, stemBottom));
+                        sink->AddLine(D2D1::Point2F(cx - arrowSize, stemBottom - arrowSize));
+                        sink->EndFigure(D2D1_FIGURE_END_OPEN);
+                        sink->BeginFigure(D2D1::Point2F(cx, stemBottom), D2D1_FIGURE_BEGIN_HOLLOW);
+                        sink->AddLine(D2D1::Point2F(cx + arrowSize, stemBottom - arrowSize));
+                        sink->EndFigure(D2D1_FIGURE_END_OPEN);
                     }
-                    if (&cursor == &cursors.back()) { imeCx = px; imeCy = py; }
+                    sink->Close();
+                    sink->Release();
+                    rend->DrawGeometry(pathGeo, wsBrush, strokeWidth, roundJoinStyle);
+                    pathGeo->Release();
                 }
             }
-            selBrush->Release(); caretBrush->Release(); hlBrush->Release();
-            ID2D1SolidColorBrush* brush = nullptr; rend->CreateSolidColorBrush(textColor, &brush); rend->DrawTextLayout(D2D1::Point2F(0, 0), layout, brush, D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT); brush->Release();
+            wsBrush->Release();
             if (hasIME) {
                 std::string prefixUtf8 = text.substr(0, caretOffsetInVisible); std::wstring prefixWide = UTF8ToW(prefixUtf8); UINT32 imeStart = (UINT32)prefixWide.size(); std::wstring imeCompWide = UTF8ToW(imeComp); UINT32 imeLen = (UINT32)imeCompWide.size(); UINT32 count = 0; layout->HitTestTextRange(imeStart, imeLen, 0, 0, 0, 0, &count);
                 if (count > 0) {
@@ -1274,7 +1509,6 @@ struct Editor {
                     underlineBrush->Release();
                 }
             }
-            layout->Release();
         }
         rend->SetTransform(D2D1::Matrix3x2F::Identity());
         ID2D1SolidColorBrush* gutterBgBrush = nullptr; rend->CreateSolidColorBrush(gutterBg, &gutterBgBrush); rend->FillRectangle(D2D1::RectF(0, 0, gutterWidth, clientH), gutterBgBrush); gutterBgBrush->Release();
@@ -1287,6 +1521,46 @@ struct Editor {
             }
         }
         gutterTextBrush->Release();
+        if (layout && caretBrush) {
+            D2D1_ANTIALIAS_MODE oldMode = rend->GetAntialiasMode();
+            rend->SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
+            rend->SetTransform(transform);
+            if (isDragMoving) {
+                size_t relPos = (dragMoveDestPos > visibleStartOffset) ? dragMoveDestPos - visibleStartOffset : 0;
+                if (relPos <= text.size()) {
+                    std::string beforeCaret = text.substr(0, relPos); std::wstring wBefore = UTF8ToW(beforeCaret);
+                    DWRITE_HIT_TEST_METRICS m; FLOAT px, py;
+                    layout->HitTestTextPosition((UINT32)wBefore.size(), FALSE, &px, &py, &m);
+                    px = std::round(px);
+                    if (px < 0.0f) px = 0.0f;
+                    rend->FillRectangle(D2D1::RectF(px, py, px + 1.0f, py + lineHeight), caretBrush);
+                }
+            }
+            for (const auto& cursor : cursors) {
+                size_t head = cursor.head; size_t relHead = (head > visibleStartOffset) ? head - visibleStartOffset : 0;
+                if (hasIME && relHead >= caretOffsetInVisible) relHead += imeComp.size();
+                if (relHead <= text.size()) {
+                    std::string beforeCaret = text.substr(0, relHead); std::wstring wBefore = UTF8ToW(beforeCaret);
+                    DWRITE_HIT_TEST_METRICS m; FLOAT px, py;
+                    layout->HitTestTextPosition((UINT32)wBefore.size(), FALSE, &px, &py, &m);
+                    px = std::round(px);
+                    if (px < 0.0f) px = 0.0f;
+                    if (isOverwriteMode) {
+                        float cw = m.width;
+                        if (cw == 0) cw = charWidth;
+                        rend->FillRectangle(D2D1::RectF(px, py, px + cw, py + lineHeight), caretBrush);
+                    }
+                    else {
+                        rend->FillRectangle(D2D1::RectF(px, py, px + 1.0f, py + lineHeight), caretBrush);
+                    }
+                    if (&cursor == &cursors.back()) { imeCx = px; imeCy = py; }
+                }
+            }
+            rend->SetTransform(D2D1::Matrix3x2F::Identity());
+            rend->SetAntialiasMode(oldMode);
+        }
+        if (caretBrush) caretBrush->Release();
+        if (layout) layout->Release();
         HIMC hIMC = ImmGetContext(hwnd);
         if (hIMC) {
             COMPOSITIONFORM cf = {};
@@ -1336,8 +1610,9 @@ struct Editor {
         for (int idx : indices) {
             Cursor& c = cursors[idx];
             if (isOverwriteMode && !c.hasSelection()) {
-                if (c.head < pt.length() && pt.charAt(c.head) != '\n') {
-                    size_t nextPos = moveCaretVisual(c.head, true); // 次の文字境界を取得（マルチバイト対応）
+                char ch = (c.head < pt.length()) ? pt.charAt(c.head) : 0;
+                if (ch != 0 && ch != '\n' && ch != '\r') {
+                    size_t nextPos = moveCaretVisual(c.head, true);
                     size_t charLen = nextPos - c.head;
                     if (charLen > 0) {
                         std::string d = pt.getRange(c.head, charLen);
@@ -1373,7 +1648,47 @@ struct Editor {
         ensureCaretVisible();
         updateDirtyFlag();
     }
-    void deleteForwardAtCursors() { commitPadding(); if (cursors.empty()) return; EditBatch batch; batch.beforeCursors = cursors; std::vector<int> indices(cursors.size()); for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i; std::sort(indices.begin(), indices.end(), [&](int a, int b) {return cursors[a].start() > cursors[b].start(); }); for (int idx : indices) { Cursor& c = cursors[idx]; size_t s = c.start(); size_t l = 0; if (c.hasSelection())l = c.end() - s; else { size_t n = moveCaretVisual(s, true); if (n > s)l = n - s; }if (l > 0 && s + l <= pt.length()) { std::string d = pt.getRange(s, l); pt.erase(s, l); batch.ops.push_back({ EditOp::Erase,s,d }); for (auto& o : cursors) { if (o.head > s)o.head -= l; if (o.anchor > s)o.anchor -= l; }c.head = s; c.anchor = s; } } batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
+    void deleteForwardAtCursors() {
+        commitPadding();
+        if (cursors.empty()) return;
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        std::vector<int> indices(cursors.size());
+        for (size_t i = 0; i < cursors.size(); ++i) indices[i] = (int)i;
+        std::sort(indices.begin(), indices.end(), [&](int a, int b) {return cursors[a].start() > cursors[b].start(); });
+        for (int idx : indices) {
+            Cursor& c = cursors[idx];
+            size_t s = c.start();
+            size_t l = 0;
+            if (c.hasSelection()) {
+                l = c.end() - s;
+            }
+            else {
+                if (s + 1 < pt.length() && pt.charAt(s) == '\r' && pt.charAt(s + 1) == '\n') {
+                    l = 2;
+                }
+                else {
+                    size_t n = moveCaretVisual(s, true);
+                    if (n > s) l = n - s;
+                }
+            }
+            if (l > 0 && s + l <= pt.length()) {
+                std::string d = pt.getRange(s, l);
+                pt.erase(s, l);
+                batch.ops.push_back({ EditOp::Erase,s,d });
+                for (auto& o : cursors) {
+                    if (o.head > s) o.head -= l;
+                    if (o.anchor > s) o.anchor -= l;
+                }
+                c.head = s; c.anchor = s;
+            }
+        }
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
+    }
     void backspaceAtCursors(bool allowCharDeletion = true) {
         commitPadding();
         if (cursors.empty()) return;
@@ -1390,16 +1705,22 @@ struct Editor {
                 l = c.end() - s;
             }
             else if (allowCharDeletion && s > 0) {
-                size_t p = moveCaretVisual(s, false);
-                if (p < s) { l = s - p; s = p; }
+                if (s >= 2 && pt.charAt(s - 1) == '\n' && pt.charAt(s - 2) == '\r') {
+                    l = 2;
+                    s -= 2;
+                }
+                else {
+                    size_t p = moveCaretVisual(s, false);
+                    if (p < s) { l = s - p; s = p; }
+                }
             }
             if (l > 0) {
                 std::string d = pt.getRange(s, l);
                 pt.erase(s, l);
                 batch.ops.push_back({ EditOp::Erase,s,d });
                 for (auto& o : cursors) {
-                    if (o.head > s)o.head -= l;
-                    if (o.anchor > s)o.anchor -= l;
+                    if (o.head > s) o.head -= l;
+                    if (o.anchor > s) o.anchor -= l;
                 }
                 c.head = s;
                 c.anchor = s;
@@ -1461,13 +1782,13 @@ struct Editor {
             std::string content = lines[i];
             if (targetLineIdx >= (int)lineStarts.size()) {
                 size_t insertAt = pt.length();
-                std::string nl = "\n";
+                std::string nl = newlineStr;
                 pt.insert(insertAt, nl);
                 batch.ops.push_back({ EditOp::Insert, insertAt, nl });
                 int spacesNeeded = (int)((baseX) / charWidth + 0.5f);
                 std::string spaces = "";
                 if (spacesNeeded > 0) spaces = std::string(spacesNeeded, ' ');
-                size_t contentPos = insertAt + 1;
+                size_t contentPos = insertAt + nl.size();
                 if (!spaces.empty()) {
                     pt.insert(contentPos, spaces);
                     batch.ops.push_back({ EditOp::Insert, contentPos, spaces });
@@ -1501,17 +1822,11 @@ struct Editor {
                     std::string pre = WToUTF8(wCurrentLine.substr(0, u16Pos));
                     insertOffset = pre.size();
                     DWRITE_TEXT_METRICS tm;
-                    if (SUCCEEDED(layout->GetMetrics(&tm))) {
-                        actualLineWidth = tm.widthIncludingTrailingWhitespace;
-                    }
-                    else {
-                        actualLineWidth = (float)wCurrentLine.length() * charWidth;
-                    }
+                    if (SUCCEEDED(layout->GetMetrics(&tm))) actualLineWidth = tm.widthIncludingTrailingWhitespace;
+                    else actualLineWidth = (float)wCurrentLine.length() * charWidth;
                     layout->Release();
                 }
-                else {
-                    actualLineWidth = (float)wCurrentLine.length() * charWidth;
-                }
+                else actualLineWidth = (float)wCurrentLine.length() * charWidth;
                 size_t insertPos = lineStart + insertOffset;
                 std::string spaces = "";
                 if (insertPos == lineEnd && baseX > actualLineWidth + 1.0f) {
@@ -1626,7 +1941,7 @@ struct Editor {
         blockText = pt.getRange(blockStart, blockEnd - blockStart);
         bool needNewline = false;
         if (blockText.empty() || blockText.back() != '\n') {
-            blockText += '\n';
+            blockText += newlineStr;
             needNewline = true;
         }
         size_t insertPos;
@@ -1636,9 +1951,9 @@ struct Editor {
         else {
             insertPos = blockEnd;
             if (needNewline && blockEnd == pt.length() && blockEnd > 0 && pt.charAt(blockEnd - 1) != '\n') {
-                pt.insert(blockEnd, "\n");
-                batch.ops.push_back({ EditOp::Insert, blockEnd, "\n" });
-                insertPos++;
+                pt.insert(blockEnd, newlineStr);
+                batch.ops.push_back({ EditOp::Insert, blockEnd, newlineStr });
+                insertPos += newlineStr.length();
             }
         }
         pt.insert(insertPos, blockText);
@@ -1676,8 +1991,11 @@ struct Editor {
             std::string lineAbove = pt.getRange(targetStart, targetEnd - targetStart);
             long long diff = -(long long)(rangeStart - targetStart);
             if (isLastLineNoNewline) {
-                textToMove += '\n';
-                if (!lineAbove.empty() && lineAbove.back() == '\n') lineAbove.pop_back();
+                textToMove += newlineStr;
+                if (!lineAbove.empty() && lineAbove.back() == '\n') {
+                    if (lineAbove.size() >= 2 && lineAbove[lineAbove.size() - 2] == '\r') lineAbove.pop_back(), lineAbove.pop_back();
+                    else lineAbove.pop_back();
+                }
             }
             size_t deleteLen = rangeEnd - targetStart;
             std::string deletedAll = pt.getRange(targetStart, deleteLen);
@@ -1698,8 +2016,11 @@ struct Editor {
             size_t targetEnd = (targetLineIdx + 1 < (int)lineStarts.size()) ? lineStarts[targetLineIdx + 1] : pt.length();
             std::string lineBelow = pt.getRange(targetStart, targetEnd - targetStart);
             if (targetEnd == pt.length() && (lineBelow.empty() || lineBelow.back() != '\n')) {
-                lineBelow += '\n';
-                if (!textToMove.empty() && textToMove.back() == '\n') textToMove.pop_back();
+                lineBelow += newlineStr;
+                if (!textToMove.empty() && textToMove.back() == '\n') {
+                    if (textToMove.size() >= 2 && textToMove[textToMove.size() - 2] == '\r') textToMove.pop_back(), textToMove.pop_back();
+                    else textToMove.pop_back();
+                }
             }
             size_t deleteLen = targetEnd - rangeStart;
             std::string deletedAll = pt.getRange(rangeStart, deleteLen);
@@ -1843,6 +2164,7 @@ struct Editor {
         if (!checkUnsavedChanges()) return;
         pt.initEmpty();
         currentFilePath.clear();
+        newlineStr = "\r\n";
         undo.clear();
         isDirty = false;
         currentEncoding = ENC_UTF8_NOBOM;
@@ -1895,21 +2217,26 @@ struct Editor {
             case ENC_UTF8_BOM:
                 if (size >= 3) { ptr += 3; size -= 3; }
                 pt.initFromFile(ptr, size);
+                detectNewlineStyle(ptr, size);
                 break;
             case ENC_UTF16LE:
                 convertedBuffer = Utf16ToUtf8(ptr, size, false);
                 pt.initFromFile(convertedBuffer.data(), convertedBuffer.size());
+                detectNewlineStyle(convertedBuffer.data(), convertedBuffer.size());
                 break;
             case ENC_UTF16BE:
                 convertedBuffer = Utf16ToUtf8(ptr, size, true);
                 pt.initFromFile(convertedBuffer.data(), convertedBuffer.size());
+                detectNewlineStyle(convertedBuffer.data(), convertedBuffer.size());
                 break;
             case ENC_ANSI:
                 convertedBuffer = AnsiToUtf8(ptr, size);
                 pt.initFromFile(convertedBuffer.data(), convertedBuffer.size());
+                detectNewlineStyle(convertedBuffer.data(), convertedBuffer.size());
                 break;
             default:
                 pt.initFromFile(ptr, size);
+                detectNewlineStyle(ptr, size);
                 break;
             }
             currentFilePath = path;
@@ -2033,7 +2360,7 @@ struct Editor {
                 }
                 p++;
             }
-            std::string textToInsert = "\n" + indentStr;
+            std::string textToInsert = newlineStr + indentStr;
             pt.insert(start, textToInsert);
             batch.ops.push_back({ EditOp::Insert, start, textToInsert });
             size_t insLen = textToInsert.size();
@@ -2367,7 +2694,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 else if (wParam == VK_UP) { int l = g_editor.getLineIdx(c.head); if (l > 0) c.head = g_editor.getPosFromLineAndX(l - 1, c.desiredX); if (!shift) c.anchor = c.head; }
                 else if (wParam == VK_DOWN) { int l = g_editor.getLineIdx(c.head); if (l + 1 < (int)g_editor.lineStarts.size()) c.head = g_editor.getPosFromLineAndX(l + 1, c.desiredX); if (!shift) c.anchor = c.head; }
                 else if (wParam == VK_HOME) { if (ctrl) c.head = 0; else { size_t p = c.head; while (p > 0 && g_editor.pt.charAt(p - 1) != '\n') p--; c.head = p; } if (!shift) c.anchor = c.head; }
-                else if (wParam == VK_END) { if (ctrl) c.head = g_editor.pt.length(); else { size_t p = c.head; size_t len = g_editor.pt.length(); while (p < len && g_editor.pt.charAt(p) != '\n') p++; c.head = p; } if (!shift) c.anchor = c.head; }
+                else if (wParam == VK_END) {
+                    if (ctrl) c.head = g_editor.pt.length();
+                    else {
+                        size_t p = c.head;
+                        size_t len = g_editor.pt.length();
+                        while (p < len && g_editor.pt.charAt(p) != '\n') p++;
+                        if (p > 0 && p < len && g_editor.pt.charAt(p) == '\n') {
+                            if (g_editor.pt.charAt(p - 1) == '\r') {
+                                p--;
+                            }
+                        }
+                        c.head = p;
+                    }
+                    if (!shift) c.anchor = c.head;
+                    c.desiredX = g_editor.getXFromPos(c.head);
+                }
                 else if (wParam == VK_PRIOR) { RECT r; GetClientRect(hwnd, &r); int p = (int)((r.bottom / g_editor.dpiScaleY) / g_editor.lineHeight); int l = g_editor.getLineIdx(c.head); c.head = g_editor.getPosFromLineAndX(std::max(0, l - p), c.desiredX); if (!shift) c.anchor = c.head; }
                 else if (wParam == VK_NEXT) { RECT r; GetClientRect(hwnd, &r); int p = (int)((r.bottom / g_editor.dpiScaleY) / g_editor.lineHeight); int l = g_editor.getLineIdx(c.head); c.head = g_editor.getPosFromLineAndX(std::min((int)g_editor.lineStarts.size() - 1, l + p), c.desiredX); if (!shift) c.anchor = c.head; }
                 if (wParam == VK_LEFT || wParam == VK_RIGHT || wParam == VK_HOME || wParam == VK_END) c.desiredX = g_editor.getXFromPos(c.head);
@@ -2401,7 +2743,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     ReleaseDC(NULL, hdc);
     int initialWidth = MulDiv(800, dpiX, 96);
     int initialHeight = MulDiv(600, dpiY, 96);
-    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"miu", WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_HSCROLL,CW_USEDEFAULT, CW_USEDEFAULT, initialWidth, initialHeight, NULL, NULL, hInstance, NULL);
+    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"miu", WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_HSCROLL, CW_USEDEFAULT, CW_USEDEFAULT, initialWidth, initialHeight, NULL, NULL, hInstance, NULL);
     if (!hwnd) return 0; ShowWindow(hwnd, nShowCmd);
     if (g_editor.currentFilePath.empty()) {
         int argc; wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
