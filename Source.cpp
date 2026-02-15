@@ -1054,7 +1054,7 @@ struct Editor {
                     size_t pos = i->position();
                     size_t len = i->length();
                     std::string rText = i->format(fmt);
-                    if (pos > 0 && startsWithCaret) {
+                    if (startsWithCaret) {
                         std::string matchStr = i->str();
                         size_t adj = 0;
                         if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2;
