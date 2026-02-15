@@ -1302,7 +1302,7 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<col def="S255">ISShortcutName</col>
 		<col def="I4">ISAttributes</col>
 		<row><td>NewShortcut1</td><td>DesktopFolder</td><td>##ID_STRING1##</td><td/><td>&lt;TARGETDIR&gt;\miu.exe</td><td/><td/><td/><td/><td/><td>1</td><td/><td/><td/><td/><td/><td/><td>NewShortcut1</td><td>18</td></row>
-		<row><td>NewShortcut2</td><td>StartupFolder</td><td>##ID_STRING2##</td><td/><td>&lt;TARGETDIR&gt;\miu.exe</td><td/><td/><td/><td/><td/><td>1</td><td/><td/><td/><td/><td/><td/><td>NewShortcut2</td><td>18</td></row>
+		<row><td>NewShortcut2</td><td>ProgramMenuFolder</td><td>##ID_STRING2##</td><td/><td>&lt;TARGETDIR&gt;\miu.exe</td><td/><td/><td/><td/><td/><td>1</td><td/><td/><td/><td/><td/><td/><td>NewShortcut2</td><td>18</td></row>
 	</table>
 
 	<table name="TextStyle">
