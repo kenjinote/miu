@@ -1114,6 +1114,7 @@
 		<col def="V0">Data</col>
 		<col def="S255">ISBuildSourcePath</col>
 		<col def="I2">ISIconIndex</col>
+		<row><td>ARPPRODUCTICON.exe</td><td/><td>C:\Users\kenjinote\Desktop\miu\resource\icon.ico</td><td>0</td></row>
 	</table>
 
 	<table name="InstallShield">
@@ -1152,7 +1153,7 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<row><td>SchemaVersion</td><td>785</td></row>
 		<row><td>Script</td><td>1</td></row>
 		<row><td>SetupArguments</td><td/></row>
-		<row><td>TARGETDIR</td><td>&lt;FOLDER_APPLICATIONS&gt;\&lt;IFX_COMPANY_NAME&gt;\&lt;IFX_PRODUCT_NAME&gt;</td></row>
+		<row><td>TARGETDIR</td><td>&lt;FOLDER_APPLICATIONS&gt;\&lt;IFX_PRODUCT_NAME&gt;</td></row>
 		<row><td>Type</td><td>PRO</td></row>
 	</table>
 
@@ -1202,6 +1203,7 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<col key="yes" def="s72">Property</col>
 		<col def="L0">Value</col>
 		<col def="S255">ISComments</col>
+		<row><td>ARPPRODUCTICON</td><td>ARPPRODUCTICON.exe</td><td/></row>
 		<row><td>ARPURLINFOABOUT</td><td>https://hack.jp/</td><td/></row>
 		<row><td>DWUSINTERVAL</td><td>30</td><td/></row>
 		<row><td>DefaultUIFont</td><td>Tahoma8</td><td/></row>
@@ -1247,7 +1249,7 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<row><td>ProObjUseDefaultSettings</td><td>##IDS_PROOBJ_USEDEFAULTSETTINGS##</td><td/></row>
 		<row><td>ProductCode</td><td>{B899017B-2842-400D-84F3-D65263B7D72D}</td><td/></row>
 		<row><td>ProductName</td><td>miu</td><td/></row>
-		<row><td>ProductVersion</td><td>1.0.0.12</td><td/></row>
+		<row><td>ProductVersion</td><td>1.0.0.13</td><td/></row>
 	</table>
 
 	<table name="RadioButton">
