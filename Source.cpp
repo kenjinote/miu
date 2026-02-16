@@ -27,7 +27,7 @@
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "uxtheme.lib")
-const std::wstring APP_VERSION = L"miu v1.0.12";
+const std::wstring APP_VERSION = L"miu v1.0.13";
 enum Encoding {
     ENC_UTF8_NOBOM = 0,
     ENC_UTF8_BOM,
@@ -1200,6 +1200,65 @@ struct Editor {
         }
         hFindDlg = CreateDialogParamW(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_FIND_DIALOG), hwnd, FindDlgProc, (LPARAM)this);
         ShowWindow(hFindDlg, SW_SHOW);
+    }
+    void gotoLine(int lineOneBased) {
+        int totalLines = (int)lineStarts.size();
+        if (totalLines == 0) return;
+        int target = lineOneBased;
+        if (target < 1) target = 1;
+        if (target > totalLines) target = totalLines;
+        int lineIdx = target - 1;
+        size_t newPos = lineStarts[lineIdx];
+        rollbackPadding();
+        cursors.clear();
+        cursors.push_back({ newPos, newPos, getXFromPos(newPos) });
+        ensureCaretVisible();
+        updateTitleBar();
+        InvalidateRect(hwnd, NULL, FALSE);
+    }
+    static INT_PTR CALLBACK GoToDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
+        Editor* pThis = (Editor*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
+        switch (message) {
+        case WM_INITDIALOG:
+            pThis = (Editor*)lParam;
+            SetWindowLongPtr(hDlg, GWLP_USERDATA, (LONG_PTR)pThis);
+            {
+                RECT rcParent, rcDlg; GetWindowRect(pThis->hwnd, &rcParent); GetWindowRect(hDlg, &rcDlg);
+                int x = rcParent.left + ((rcParent.right - rcParent.left) - (rcDlg.right - rcDlg.left)) / 2;
+                int y = rcParent.top + ((rcParent.bottom - rcParent.top) - (rcDlg.bottom - rcDlg.top)) / 2;
+                SetWindowPos(hDlg, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+                wchar_t fmt[256];
+                GetDlgItemTextW(hDlg, IDC_GOTO_LABEL, fmt, 256);
+                wchar_t buf[256];
+                swprintf_s(buf, fmt, (int)pThis->lineStarts.size());
+                SetDlgItemTextW(hDlg, IDC_GOTO_LABEL, buf);
+                size_t curPos = pThis->cursors.empty() ? 0 : pThis->cursors.back().head;
+                int curLine = pThis->getLineIdx(curPos) + 1;
+                SetDlgItemInt(hDlg, IDC_GOTO_EDIT, curLine, FALSE);
+                SetFocus(GetDlgItem(hDlg, IDC_GOTO_EDIT));
+                SendMessage(GetDlgItem(hDlg, IDC_GOTO_EDIT), EM_SETSEL, 0, -1);
+            }
+            return FALSE;
+        case WM_COMMAND:
+            if (LOWORD(wParam) == IDOK) {
+                BOOL translated = FALSE;
+                int line = GetDlgItemInt(hDlg, IDC_GOTO_EDIT, &translated, FALSE);
+                if (translated) {
+                    pThis->gotoLine(line);
+                }
+                EndDialog(hDlg, IDOK);
+                return TRUE;
+            }
+            if (LOWORD(wParam) == IDCANCEL) {
+                EndDialog(hDlg, IDCANCEL);
+                return TRUE;
+            }
+            break;
+        }
+        return FALSE;
+    }
+    void showGoToDialog() {
+        DialogBoxParamW(GetModuleHandle(NULL), MAKEINTRESOURCE(IDD_GOTO_DIALOG), hwnd, GoToDlgProc, (LPARAM)this);
     }
     void rollbackPadding() {
         if (pendingPadding.ops.empty()) return;
@@ -2771,6 +2830,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case 'X': g_editor.cutToClipboard(); return 0;
             case 'V': g_editor.pasteFromClipboard(); return 0;
             case 'D': g_editor.selectNextOccurrence(); return 0;
+            case 'G': g_editor.showGoToDialog(); return 0;
             case 'L':
                 if (GetKeyState(VK_SHIFT) & 0x8000) {
                     g_editor.deleteLines();
