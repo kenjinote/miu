@@ -1757,75 +1757,6 @@ struct Editor {
             updateDirtyFlag();
         }
     }
-    void copyToClipboard() {
-        bool hasSelection = false;
-        for (const auto& c : cursors) {
-            if (c.hasSelection()) {
-                hasSelection = true;
-                break;
-            }
-        }
-        std::string t;
-        bool isLineCopy = false;
-        if (!hasSelection) {
-            isLineCopy = true;
-            std::vector<int> processedLines;
-            std::vector<Cursor> sortedCursors = cursors;
-            std::sort(sortedCursors.begin(), sortedCursors.end(), [](const Cursor& a, const Cursor& b) { return a.head < b.head; });
-            for (const auto& c : sortedCursors) {
-                int lineIdx = getLineIdx(c.head);
-                bool alreadyProcessed = false;
-                for (int p : processedLines) { if (p == lineIdx) { alreadyProcessed = true; break; } }
-                if (alreadyProcessed) continue;
-                processedLines.push_back(lineIdx);
-                size_t start = lineStarts[lineIdx];
-                size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
-                std::string lineText = pt.getRange(start, end - start);
-                t += lineText;
-                if (lineIdx == (int)lineStarts.size() - 1) {
-                    if (lineText.empty() || lineText.back() != '\n') {
-                        t += newlineStr;
-                    }
-                }
-            }
-        }
-        else {
-            std::vector<Cursor> s = cursors;
-            std::sort(s.begin(), s.end(), [](const Cursor& a, const Cursor& b) {return a.start() < b.start(); });
-            for (size_t i = 0; i < s.size(); ++i) {
-                if (s[i].hasSelection()) {
-                    std::string part = pt.getRange(s[i].start(), s[i].end() - s[i].start());
-                    t += part;
-                    if (i < s.size() - 1) {
-                        if (!part.empty() && part.back() != '\n' && part.back() != '\r') {
-                            t += "\r\n";
-                        }
-                    }
-                }
-            }
-        }
-        if (t.empty()) return;
-        if (OpenClipboard(hwnd)) {
-            EmptyClipboard();
-            std::wstring w = UTF8ToW(t);
-            HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, (w.size() + 1) * sizeof(wchar_t));
-            if (h) {
-                void* p = GlobalLock(h);
-                memcpy(p, w.c_str(), (w.size() + 1) * sizeof(wchar_t));
-                GlobalUnlock(h);
-                SetClipboardData(CF_UNICODETEXT, h);
-            }
-            if (cursors.size() > 1 && hasSelection) {
-                HGLOBAL hCol = GlobalAlloc(GMEM_MOVEABLE, 1);
-                if (hCol) SetClipboardData(cfMsDevCol, hCol);
-            }
-            if (isLineCopy) {
-                HGLOBAL hLine = GlobalAlloc(GMEM_MOVEABLE, 1);
-                if (hLine) SetClipboardData(cfMsDevLine, hLine);
-            }
-            CloseClipboard();
-        }
-    }
     void insertRectangularBlock(const std::string& text) {
         commitPadding();
         if (cursors.empty()) return;
@@ -2109,11 +2040,152 @@ struct Editor {
         updateDirtyFlag();
         InvalidateRect(hwnd, NULL, FALSE);
     }
+    void setClipboard(const std::string& text, bool isLineCopy, bool isRectCopy) {
+        if (text.empty()) return;
+        if (OpenClipboard(hwnd)) {
+            EmptyClipboard();
+            std::wstring w = UTF8ToW(text);
+            HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, (w.size() + 1) * sizeof(wchar_t));
+            if (h) {
+                void* p = GlobalLock(h);
+                memcpy(p, w.c_str(), (w.size() + 1) * sizeof(wchar_t));
+                GlobalUnlock(h);
+                SetClipboardData(CF_UNICODETEXT, h);
+            }
+            if (isLineCopy) {
+                HGLOBAL hLine = GlobalAlloc(GMEM_MOVEABLE, 1);
+                if (hLine) SetClipboardData(cfMsDevLine, hLine);
+            }
+            if (isRectCopy) {
+                HGLOBAL hCol = GlobalAlloc(GMEM_MOVEABLE, 1);
+                if (hCol) SetClipboardData(cfMsDevCol, hCol);
+            }
+            CloseClipboard();
+        }
+    }
+    void copyToClipboard() {
+        bool hasSelection = false;
+        for (const auto& c : cursors) { if (c.hasSelection()) { hasSelection = true; break; } }
+        std::string t;
+        if (hasSelection) {
+            std::vector<Cursor> s = cursors;
+            std::sort(s.begin(), s.end(), [](const Cursor& a, const Cursor& b) { return a.start() < b.start(); });
+            for (size_t i = 0; i < s.size(); ++i) {
+                if (s[i].hasSelection()) {
+                    std::string part = pt.getRange(s[i].start(), s[i].end() - s[i].start());
+                    t += part;
+                    if (i < s.size() - 1 && !part.empty() && part.back() != '\n' && part.back() != '\r') {
+                        t += "\r\n";
+                    }
+                }
+            }
+            setClipboard(t, false, cursors.size() > 1);
+        }
+        else {
+            std::vector<int> processedLines;
+            std::vector<Cursor> s = cursors;
+            std::sort(s.begin(), s.end(), [](const Cursor& a, const Cursor& b) { return a.head < b.head; });
+            for (const auto& c : s) {
+                int lineIdx = getLineIdx(c.head);
+                bool dup = false;
+                for (int p : processedLines) if (p == lineIdx) dup = true;
+                if (dup) continue;
+                processedLines.push_back(lineIdx);
+                size_t start = lineStarts[lineIdx];
+                size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
+                std::string lineText = pt.getRange(start, end - start);
+                t += lineText;
+                if (lineIdx == (int)lineStarts.size() - 1) {
+                    if (lineText.empty() || lineText.back() != '\n') t += newlineStr;
+                }
+            }
+            setClipboard(t, true, false);
+        }
+    }
+    void cutToClipboard() {
+        bool hasSelection = false;
+        for (const auto& c : cursors) { if (c.hasSelection()) { hasSelection = true; break; } }
+        if (hasSelection) {
+            copyToClipboard();
+            insertAtCursors("");
+        }
+        else {
+            std::string t;
+            std::vector<int> processedLines;
+            std::vector<Cursor> s = cursors;
+            std::sort(s.begin(), s.end(), [](const Cursor& a, const Cursor& b) { return a.head < b.head; });
+            for (const auto& c : s) {
+                int lineIdx = getLineIdx(c.head);
+                bool dup = false;
+                for (int p : processedLines) if (p == lineIdx) dup = true;
+                if (dup) continue;
+                processedLines.push_back(lineIdx);
+                size_t start = lineStarts[lineIdx];
+                size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
+                std::string lineText = pt.getRange(start, end - start);
+                t += lineText;
+                if (lineIdx == (int)lineStarts.size() - 1) {
+                    if (lineText.empty() || lineText.back() != '\n') t += newlineStr;
+                }
+            }
+            setClipboard(t, true, false);
+            deleteLines();
+        }
+    }
+    void deleteLines() {
+        rollbackPadding();
+        std::vector<Cursor> originalCursors = cursors;
+        std::vector<Cursor> delRanges;
+        bool hasSelection = false;
+        for (const auto& c : cursors) if (c.hasSelection()) hasSelection = true;
+        if (hasSelection) {
+            for (const auto& c : cursors) {
+                int sLine = getLineIdx(c.start());
+                int eLine = getLineIdx(c.end());
+                if (c.hasSelection() && c.end() > 0 && pt.charAt(c.end() - 1) == '\n' && eLine > sLine) {
+                    eLine--;
+                }
+                size_t start = lineStarts[sLine];
+                size_t end = (eLine + 1 < (int)lineStarts.size()) ? lineStarts[eLine + 1] : pt.length();
+                if (end == pt.length() && start > 0) {
+                    char prev = pt.charAt(start - 1);
+                    if (prev == '\n') {
+                        start--;
+                        if (start > 0 && pt.charAt(start - 1) == '\r') start--;
+                    }
+                    else if (prev == '\r') start--;
+                }
+                delRanges.push_back({ end, start, 0.0f });
+            }
+        }
+        else {
+            for (const auto& c : cursors) {
+                int lineIdx = getLineIdx(c.head);
+                size_t start = lineStarts[lineIdx];
+                size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
+                if (end == pt.length() && start > 0) {
+                    char prev = pt.charAt(start - 1);
+                    if (prev == '\n') {
+                        start--;
+                        if (start > 0 && pt.charAt(start - 1) == '\r') start--;
+                    }
+                    else if (prev == '\r') start--;
+                }
+                delRanges.push_back({ end, start, 0.0f });
+            }
+        }
+        cursors = delRanges;
+        mergeCursors();
+        insertAtCursors("");
+        if (!undo.undoStack.empty()) {
+            undo.undoStack.back().beforeCursors = originalCursors;
+        }
+    }
     void pasteFromClipboard() {
         if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) return;
         if (OpenClipboard(hwnd)) {
             bool isRect = IsClipboardFormatAvailable(cfMsDevCol);
-            bool isLine = IsClipboardFormatAvailable(cfMsDevLine);
+            bool isLine = IsClipboardFormatAvailable(cfMsDevLine); // 行コピー判定
             HGLOBAL h = GetClipboardData(CF_UNICODETEXT);
             if (h) {
                 const wchar_t* p = (const wchar_t*)GlobalLock(h);
@@ -2137,10 +2209,8 @@ struct Editor {
                             for (auto& c : cursors) {
                                 int lineIdx = getLineIdx(c.head);
                                 size_t lineStart = lineStarts[lineIdx];
-                                size_t offset = (c.head > lineStart) ? (c.head - lineStart) : 0;
-                                relativeOffsets.push_back(offset);
-                                c.head = lineStart;
-                                c.anchor = lineStart;
+                                relativeOffsets.push_back((c.head > lineStart) ? (c.head - lineStart) : 0);
+                                c.head = lineStart; c.anchor = lineStart;
                             }
                             insertAtCursors(utf8);
                             for (size_t i = 0; i < cursors.size(); ++i) {
@@ -2161,67 +2231,6 @@ struct Editor {
                 }
             }
             CloseClipboard();
-        }
-    }
-    void cutToClipboard() {
-        bool hasSelection = false;
-        for (const auto& c : cursors) {
-            if (c.hasSelection()) {
-                hasSelection = true;
-                break;
-            }
-        }
-        if (!hasSelection) {
-            std::string t;
-            std::vector<int> processedLines;
-            std::vector<Cursor> sortedCursors = cursors;
-            std::sort(sortedCursors.begin(), sortedCursors.end(), [](const Cursor& a, const Cursor& b) { return a.head < b.head; });
-            for (const auto& c : sortedCursors) {
-                int lineIdx = getLineIdx(c.head);
-                bool alreadyProcessed = false;
-                for (int p : processedLines) { if (p == lineIdx) { alreadyProcessed = true; break; } }
-                if (alreadyProcessed) continue;
-                processedLines.push_back(lineIdx);
-                size_t start = lineStarts[lineIdx];
-                size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
-                std::string lineText = pt.getRange(start, end - start);
-                t += lineText;
-                if (lineIdx == (int)lineStarts.size() - 1) {
-                    if (lineText.empty() || lineText.back() != '\n') {
-                        t += newlineStr;
-                    }
-                }
-            }
-            if (!t.empty() && OpenClipboard(hwnd)) {
-                EmptyClipboard();
-                std::wstring w = UTF8ToW(t);
-                HGLOBAL h = GlobalAlloc(GMEM_MOVEABLE, (w.size() + 1) * sizeof(wchar_t));
-                if (h) {
-                    void* p = GlobalLock(h);
-                    memcpy(p, w.c_str(), (w.size() + 1) * sizeof(wchar_t));
-                    GlobalUnlock(h);
-                    SetClipboardData(CF_UNICODETEXT, h);
-                }
-                HGLOBAL hLine = GlobalAlloc(GMEM_MOVEABLE, 1);
-                if (hLine) {
-                    SetClipboardData(cfMsDevLine, hLine);
-                }
-                CloseClipboard();
-            }
-            std::vector<Cursor> lineSelections;
-            for (const auto& c : cursors) {
-                int lineIdx = getLineIdx(c.head);
-                size_t start = lineStarts[lineIdx];
-                size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
-                lineSelections.push_back({ end, start, getXFromPos(end) });
-            }
-            cursors = lineSelections;
-            mergeCursors();
-            insertAtCursors("");
-        }
-        else {
-            copyToClipboard();
-            insertAtCursors("");
         }
     }
     void doInsert(size_t pos, const std::string& s) { cursors.clear(); cursors.push_back({ pos, pos, getXFromPos(pos) }); insertAtCursors(s); }
@@ -2762,6 +2771,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case 'X': g_editor.cutToClipboard(); return 0;
             case 'V': g_editor.pasteFromClipboard(); return 0;
             case 'D': g_editor.selectNextOccurrence(); return 0;
+            case 'L':
+                if (GetKeyState(VK_SHIFT) & 0x8000) {
+                    g_editor.deleteLines();
+                }
+                else {
+                    g_editor.cutToClipboard();
+                }
+                return 0;
             case VK_OEM_6:
                 g_editor.indentLines(true);
                 return 0;
@@ -2773,6 +2790,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 else g_editor.convertCase(true);
                 return 0;
             case 'A': { g_editor.rollbackPadding(); g_editor.cursors.clear(); g_editor.cursors.push_back({ g_editor.pt.length(), 0, 0.0f }); InvalidateRect(hwnd, NULL, FALSE); return 0; }
+            case 'K':
+                if (GetKeyState(VK_SHIFT) & 0x8000) {
+                    g_editor.deleteLines();
+                    return 0;
+                }
+                break;
             case VK_ADD: case VK_OEM_PLUS: {
                 g_editor.updateFont(g_editor.currentFontSize * 1.1f);
                 g_editor.zoomPopupEndTime = GetTickCount64() + 1000;
