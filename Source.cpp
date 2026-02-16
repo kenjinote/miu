@@ -1765,30 +1765,23 @@ struct Editor {
                 break;
             }
         }
-
         std::string t;
-        bool isLineCopy = false; // ★行コピーかどうかのフラグ
-
+        bool isLineCopy = false;
         if (!hasSelection) {
-            isLineCopy = true; // ★選択なし＝行コピーモードON
+            isLineCopy = true;
             std::vector<int> processedLines;
             std::vector<Cursor> sortedCursors = cursors;
             std::sort(sortedCursors.begin(), sortedCursors.end(), [](const Cursor& a, const Cursor& b) { return a.head < b.head; });
-
             for (const auto& c : sortedCursors) {
                 int lineIdx = getLineIdx(c.head);
                 bool alreadyProcessed = false;
                 for (int p : processedLines) { if (p == lineIdx) { alreadyProcessed = true; break; } }
                 if (alreadyProcessed) continue;
                 processedLines.push_back(lineIdx);
-
                 size_t start = lineStarts[lineIdx];
                 size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
-
                 std::string lineText = pt.getRange(start, end - start);
                 t += lineText;
-
-                // 最終行などで改行がない場合は補完する
                 if (lineIdx == (int)lineStarts.size() - 1) {
                     if (lineText.empty() || lineText.back() != '\n') {
                         t += newlineStr;
@@ -1797,7 +1790,6 @@ struct Editor {
             }
         }
         else {
-            // 通常の選択コピー
             std::vector<Cursor> s = cursors;
             std::sort(s.begin(), s.end(), [](const Cursor& a, const Cursor& b) {return a.start() < b.start(); });
             for (size_t i = 0; i < s.size(); ++i) {
@@ -1812,9 +1804,7 @@ struct Editor {
                 }
             }
         }
-
         if (t.empty()) return;
-
         if (OpenClipboard(hwnd)) {
             EmptyClipboard();
             std::wstring w = UTF8ToW(t);
@@ -1829,13 +1819,10 @@ struct Editor {
                 HGLOBAL hCol = GlobalAlloc(GMEM_MOVEABLE, 1);
                 if (hCol) SetClipboardData(cfMsDevCol, hCol);
             }
-
-            // ★重要: 行コピーの場合、識別子をクリップボードに乗せる
             if (isLineCopy) {
                 HGLOBAL hLine = GlobalAlloc(GMEM_MOVEABLE, 1);
                 if (hLine) SetClipboardData(cfMsDevLine, hLine);
             }
-
             CloseClipboard();
         }
     }
