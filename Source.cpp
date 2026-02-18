@@ -418,7 +418,7 @@ struct Editor {
         if (hwnd) InvalidateRect(hwnd, NULL, FALSE);
     }
     std::pair<std::string, bool> getHighlightTarget() {
-        if (isRectSelecting && cursors.size() > 1) return { "", false };
+        if (cursors.size() > 1) return { "", false };
         if (cursors.empty()) return { "", false };
         const Cursor& c = cursors.back();
         if (c.hasSelection()) {
@@ -1863,6 +1863,9 @@ struct Editor {
                     scanPos++;
                 }
                 size_t lineEnd = scanPos;
+                if (lineEnd > lineStart && pt.charAt(lineEnd - 1) == '\r') {
+                    lineEnd--;
+                }
                 std::string currentLineStr = pt.getRange(lineStart, lineEnd - lineStart);
                 std::wstring wCurrentLine = UTF8ToW(currentLineStr);
                 size_t insertOffset = wCurrentLine.length();
