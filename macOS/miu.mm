@@ -327,9 +327,7 @@ struct Editor {
         for (auto& c : cursors) { c.anchor = c.head; c.desiredX = getXFromPos(c.head); c.isVirtual=false; }
         batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
     }
-    
     void moveLines(bool up) {
-        size_t len = pt.length(); if (len > 0 && pt.charAt(len-1) != '\n') { pt.insert(len, "\n"); rebuildLineStarts(); }
         std::vector<int> lines = getUniqueLineIndices(); if (lines.empty()) return;
         if (up && lines.front() == 0) return; if (!up && lines.back() >= (int)lineStarts.size() - 1) return;
         EditBatch batch; batch.beforeCursors = cursors;
@@ -340,16 +338,40 @@ struct Editor {
                 int gStart = g.first, gEnd = g.second, targetLine = gStart - 1;
                 size_t posTarget = lineStarts[targetLine], posStart = lineStarts[gStart];
                 size_t posEnd = (gEnd + 1 < (int)lineStarts.size()) ? lineStarts[gEnd + 1] : pt.length();
-                std::string movingText = pt.getRange(posStart, posEnd - posStart); size_t moveLen = movingText.length(); size_t prevLineLen = posStart - posTarget;
-                bool isLastLine = (posEnd == pt.length()), noNewline = (moveLen > 0 && movingText.back() != '\n'), targetHasNewline = (prevLineLen > 0 && pt.charAt(posStart - 1) == '\n');
-                pt.erase(posStart, moveLen); batch.ops.push_back({EditOp::Erase, posStart, movingText});
-                if (isLastLine && noNewline && targetHasNewline) { pt.erase(posStart - 1, 1); batch.ops.push_back({EditOp::Erase, posStart - 1, "\n"}); movingText += "\n"; moveLen++; }
-                pt.insert(posTarget, movingText); batch.ops.push_back({EditOp::Insert, posTarget, movingText});
+                bool isEOF = (posEnd == pt.length());
+                std::string movingText = pt.getRange(posStart, posEnd - posStart);
+                size_t moveLen = movingText.length();
+                size_t prevLineLen = posStart - posTarget;
+                bool movingIsLastNoNewline = (isEOF && (moveLen > 0 && movingText.back() != '\n'));
+                pt.erase(posStart, moveLen);
+                batch.ops.push_back({EditOp::Erase, posStart, movingText});
+                if (movingIsLastNoNewline) {
+                    if (posStart > 0 && pt.charAt(posStart - 1) == '\n') {
+                        pt.erase(posStart - 1, 1);
+                        batch.ops.push_back({EditOp::Erase, posStart - 1, "\n"});
+                        movingText += "\n";
+                        moveLen++;
+                    }
+                }
+                pt.insert(posTarget, movingText);
+                batch.ops.push_back({EditOp::Insert, posTarget, movingText});
                 for (auto& c : cursors) {
-                    bool headInA = (c.head >= posStart && c.head < posEnd); if (c.head == posEnd && c.hasSelection() && c.end() == c.head) headInA = true; if (isLastLine && c.head == posEnd) headInA = true;
-                    bool anchorInA = (c.anchor >= posStart && c.anchor < posEnd); if (c.anchor == posEnd && c.hasSelection() && c.end() == c.anchor) anchorInA = true; if (isLastLine && c.anchor == posEnd) anchorInA = true;
-                    if (headInA) { if (c.head >= prevLineLen) c.head -= prevLineLen; else c.head = 0; } else if (c.head >= posTarget && c.head < posStart) { c.head += moveLen; }
-                    if (anchorInA) { if (c.anchor >= prevLineLen) c.anchor -= prevLineLen; else c.anchor = 0; } else if (c.anchor >= posTarget && c.anchor < posStart) { c.anchor += moveLen; }
+                    bool headInA = (c.head >= posStart && c.head < posEnd);
+                    if (c.head == posEnd && c.hasSelection() && c.end() == c.head) headInA = true;
+                    if (isEOF && c.head == posEnd) headInA = true;
+                    bool anchorInA = (c.anchor >= posStart && c.anchor < posEnd);
+                    if (c.anchor == posEnd && c.hasSelection() && c.end() == c.anchor) anchorInA = true;
+                    if (isEOF && c.anchor == posEnd) anchorInA = true;
+                    if (headInA) {
+                        if (c.head >= prevLineLen) c.head -= prevLineLen; else c.head = 0;
+                    } else if (c.head >= posTarget && c.head < posStart) {
+                        c.head += moveLen;
+                    }
+                    if (anchorInA) {
+                        if (c.anchor >= prevLineLen) c.anchor -= prevLineLen; else c.anchor = 0;
+                    } else if (c.anchor >= posTarget && c.anchor < posStart) {
+                        c.anchor += moveLen;
+                    }
                     c.desiredX = getXFromPos(c.head); c.isVirtual = false;
                 }
                 rebuildLineStarts();
@@ -359,14 +381,42 @@ struct Editor {
                 int gStart = groups[i].first, gEnd = groups[i].second, swapLine = gEnd + 1;
                 size_t posStart = lineStarts[gStart], posEnd = (gEnd + 1 < (int)lineStarts.size()) ? lineStarts[gEnd + 1] : pt.length();
                 size_t posSwapEnd = (swapLine + 1 < (int)lineStarts.size()) ? lineStarts[swapLine + 1] : pt.length();
-                std::string movingText = pt.getRange(posStart, posEnd - posStart); size_t moveLen = movingText.length(); size_t swapLineLen = posSwapEnd - posEnd;
-                bool movingHasNewline = (moveLen > 0 && movingText.back() == '\n'), targetIsEOF = (posSwapEnd == pt.length()), targetNoNewline = (swapLineLen > 0 && pt.charAt(posSwapEnd - 1) != '\n');
-                pt.erase(posStart, moveLen); batch.ops.push_back({EditOp::Erase, posStart, movingText}); size_t insertPos = posStart + swapLineLen;
-                if (movingHasNewline && targetIsEOF && (targetNoNewline || swapLineLen == 0)) { pt.insert(insertPos, "\n"); batch.ops.push_back({EditOp::Insert, insertPos, "\n"}); swapLineLen++; insertPos++; movingText.pop_back(); moveLen--; }
-                pt.insert(insertPos, movingText); batch.ops.push_back({EditOp::Insert, insertPos, movingText});
+                bool isPosEndEOF = (posEnd == pt.length());
+                bool isSwapEndEOF = (posSwapEnd == pt.length());
+                std::string movingText = pt.getRange(posStart, posEnd - posStart);
+                size_t moveLen = movingText.length();
+                size_t swapLineLen = posSwapEnd - posEnd;
+                bool movingHasNewline = (moveLen > 0 && movingText.back() == '\n');
+                pt.erase(posStart, moveLen);
+                batch.ops.push_back({EditOp::Erase, posStart, movingText});
+                size_t insertPos = posStart + swapLineLen;
+                if (isSwapEndEOF) {
+                    bool precedingCharIsNewline = (insertPos > 0 && pt.charAt(insertPos - 1) == '\n');
+                    if (insertPos > 0 && !precedingCharIsNewline) {
+                        if (movingHasNewline) {
+                            pt.insert(insertPos, "\n");
+                            batch.ops.push_back({EditOp::Insert, insertPos, "\n"});
+                            insertPos++; swapLineLen++;
+                            movingText.pop_back(); moveLen--;
+                        }
+                    } else if (swapLineLen == 0) {
+                        if (movingHasNewline) {
+                            pt.insert(insertPos, "\n");
+                            batch.ops.push_back({EditOp::Insert, insertPos, "\n"});
+                            insertPos++; swapLineLen++;
+                            movingText.pop_back(); moveLen--;
+                        }
+                    }
+                }
+                pt.insert(insertPos, movingText);
+                batch.ops.push_back({EditOp::Insert, insertPos, movingText});
                 for (auto& c : cursors) {
-                    bool headInA = (c.head >= posStart && c.head < posEnd); if (c.head == posEnd && c.hasSelection() && c.end() == c.head) headInA = true;
-                    bool anchorInA = (c.anchor >= posStart && c.anchor < posEnd); if (c.anchor == posEnd && c.hasSelection() && c.end() == c.anchor) anchorInA = true;
+                    bool headInA = (c.head >= posStart && c.head < posEnd);
+                    if (c.head == posEnd && c.hasSelection() && c.end() == c.head) headInA = true;
+                    if (isPosEndEOF && c.head == posEnd) headInA = true;
+                    bool anchorInA = (c.anchor >= posStart && c.anchor < posEnd);
+                    if (c.anchor == posEnd && c.hasSelection() && c.end() == c.anchor) anchorInA = true;
+                    if (isPosEndEOF && c.anchor == posEnd) anchorInA = true;
                     if (headInA) { c.head += swapLineLen; } else if (c.head >= posEnd && c.head < posSwapEnd) { c.head -= moveLen; }
                     if (anchorInA) { c.anchor += swapLineLen; } else if (c.anchor >= posEnd && c.anchor < posSwapEnd) { c.anchor -= moveLen; }
                     c.desiredX = getXFromPos(c.head); c.isVirtual = false;
@@ -376,7 +426,6 @@ struct Editor {
         }
         batch.afterCursors = cursors; undo.push(batch); ensureCaretVisible(); updateDirtyFlag();
     }
-    
     void copyLines(bool up) {
         std::vector<int> lines = getUniqueLineIndices(); if (lines.empty()) return;
         size_t len = pt.length(); if (len > 0 && pt.charAt(len-1) != '\n') { pt.insert(len, "\n"); rebuildLineStarts(); }
