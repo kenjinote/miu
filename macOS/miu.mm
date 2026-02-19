@@ -212,9 +212,28 @@ struct Editor {
     std::vector<Cursor> cursors;
     std::vector<size_t> lineStarts;
     std::string imeComp;
+    std::string newlineStr = "\n";
     CGColorRef colBackground=NULL, colText=NULL, colGutterBg=NULL, colGutterText=NULL, colSel=NULL, colCaret=NULL;
     CTFontRef fontRef = nullptr;
     std::wstring helpTextStr = L"F1: Toggle Help\nCmd+D: Select Word / Next\nCmd+S: Save\nCmd+O: Open\nCmd+N: New\nCmd+A: Select All\nCmd+C/X/V: Copy/Cut/Paste\nCmd+Z/Shift+Z: Undo/Redo\nCmd+Shift+K: Delete Line\nCmd+U: To Uppercase\nCmd+Shift+U: To Lowercase\nAlt+Up/Down: Move Line\nAlt+Shift+Up/Down: Copy Line\nOption+Drag: Box Select";
+    void detectNewlineStyle(const char* buf, size_t len) {
+        size_t checkLen = (len > 4096) ? 4096 : len;
+        for (size_t i = 0; i < checkLen; ++i) {
+            if (buf[i] == '\r') {
+                if (i + 1 < checkLen && buf[i + 1] == '\n') {
+                    newlineStr = "\r\n";
+                    return;
+                }
+                newlineStr = "\r";
+                return;
+            }
+            else if (buf[i] == '\n') {
+                newlineStr = "\n";
+                return;
+            }
+        }
+        newlineStr = "\n";
+    }
     void insertAtCursorsWithPadding(const std::string& text) {
         if (cursors.empty()) return;
         EditBatch batch; batch.beforeCursors = cursors;
@@ -570,6 +589,7 @@ struct Editor {
         if (li < 0 || li >= (int)lineStarts.size()) return 0.0f;
         size_t s = lineStarts[li], e = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
         if (e > s && pt.charAt(e-1) == '\n') e--;
+        if (e > s && pt.charAt(e-1) == '\r') e--;
         std::string lstr = pt.getRange(s, e - s); size_t rp = std::clamp(pos, s, e) - s;
         if (!imeComp.empty() && !cursors.empty() && getLineIdx(cursors.back().head) == li) { size_t cp = cursors.back().head; if (cp >= s && cp <= e) { lstr.insert(cp - s, imeComp); if (pos >= cp) rp += imeComp.size(); } }
         if (lstr.empty()) return 0.0f;
@@ -585,6 +605,7 @@ struct Editor {
         if (li < 0 || li >= (int)lineStarts.size()) return cursors.empty() ? 0 : cursors.back().head;
         size_t s = lineStarts[li], e = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
         if (e > s && pt.charAt(e-1) == '\n') e--;
+        if (e > s && pt.charAt(e-1) == '\r') e--;
         std::string lstr = pt.getRange(s, e - s); if (lstr.empty()) return s;
         CFStringRef cf = CFStringCreateWithBytes(NULL, (const UInt8*)lstr.data(), lstr.size(), kCFStringEncodingUTF8, false); if (!cf) return s;
         const void* k[]={kCTFontAttributeName}; const void* v[]={fontRef}; CFDictionaryRef d = CFDictionaryCreate(NULL, k, v, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
@@ -787,15 +808,32 @@ struct Editor {
         if(fileMap->open(p.c_str())){
             currentEncoding=DetectEncoding(fileMap->ptr,fileMap->size); const char* ptr=fileMap->ptr; size_t sz=fileMap->size; std::string conv = "";
             if(currentEncoding==ENC_UTF16LE) conv=Utf16ToUtf8(ptr,sz,false); else if(currentEncoding == ENC_UTF16BE) conv=Utf16ToUtf8(ptr,sz,true); else if(currentEncoding == ENC_ANSI) conv=AnsiToUtf8(ptr,sz); else if(currentEncoding == ENC_UTF8_BOM){ptr+=3;sz-=3;}
-            if(!conv.empty()) pt.initFromFile(conv.data(),conv.size()); else pt.initFromFile(ptr, sz);
+            if(!conv.empty()) {
+                pt.initFromFile(conv.data(),conv.size());
+                detectNewlineStyle(conv.data(), conv.size());
+            } else {
+                pt.initFromFile(ptr, sz);
+                detectNewlineStyle(ptr, sz);
+            }
             currentFilePath = UTF8ToW(p); undo.clear(); isDirty = false; vScrollPos = 0; hScrollPos = 0;
             cursors.clear(); cursors.push_back({0,0,0.0f,0.0f,false}); rebuildLineStarts(); updateTitleBar(); if (view) { [(EditorView*)view updateScrollers]; [(NSView*)view setNeedsDisplay:YES]; }
             return true;
         } return false;
     }
     bool openFile() { if(!checkUnsavedChanges()) return false; NSOpenPanel *p = [NSOpenPanel openPanel]; if([p runModal]==NSModalResponseOK) return openFileFromPath([[[p URLs] objectAtIndex:0].path UTF8String]); return false; }
-    void newFile() { if(checkUnsavedChanges()){ pt.initEmpty(); currentFilePath.clear(); undo.clear(); isDirty=false; cursors.clear(); cursors.push_back({0,0,0.0f,0.0f,false}); rebuildLineStarts(); updateTitleBar(); } }
-    
+    void newFile() {
+        if(checkUnsavedChanges()){
+            pt.initEmpty();
+            currentFilePath.clear();
+            newlineStr = "\n";
+            undo.clear();
+            isDirty=false;
+            cursors.clear();
+            cursors.push_back({0,0,0.0f,0.0f,false});
+            rebuildLineStarts();
+            updateTitleBar();
+        }
+    }
     bool isWordChar(char c) { if (isalnum((unsigned char)c) || c == '_') return true; if ((unsigned char)c >= 0x80) return true; return false; }
     void getWordBoundaries(size_t pos, size_t& start, size_t& end) {
             size_t len = pt.length();
@@ -890,7 +928,7 @@ struct Editor {
                     size_t lineBegin = lineStarts[l], lineEnd = (l + 1 < (int)lineStarts.size() ? lineStarts[l + 1] : pt.length());
                     size_t selS = std::max(pStart, lineBegin), selE = std::min(pEnd, lineEnd);
                     float x1 = getXInLine(l, selS), x2 = getXInLine(l, selE);
-                    if (selE == lineEnd && pEnd >= lineEnd) x2 += (charWidth * 0.5f);
+                    if (selE == lineEnd && pEnd >= lineEnd) x2 += charWidth;
                     if (x2 > x1) CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
                 }
             }
@@ -918,6 +956,64 @@ struct Editor {
                     CTLineRef tl = CTLineCreateWithAttributedString(mas);
                     CGContextSetTextPosition(ctx, gutterWidth - (float)hScrollPos, (float)(i - start) * lineHeight + asc + 2.0f);
                     CTLineDraw(tl, ctx); CFRelease(tl); CFRelease(mas); CFRelease(cf);
+                }
+            }
+            
+            if (e > s) {
+                bool isCRLF = false, isLF = false, isCR = false;
+                size_t newlinePos = e;
+                if (e - s >= 2 && pt.charAt(e - 2) == '\r' && pt.charAt(e - 1) == '\n') {
+                    isCRLF = true; newlinePos = e - 2;
+                } else if (pt.charAt(e - 1) == '\n') {
+                    isLF = true; newlinePos = e - 1;
+                } else if (pt.charAt(e - 1) == '\r') {
+                    isCR = true; newlinePos = e - 1;
+                }
+                if (isCRLF || isLF || isCR) {
+                    float px = getXInLine(i, newlinePos);
+                    float cx = gutterWidth - (float)hScrollPos + px + charWidth * 0.5f;
+                    float cy = (float)(i - start) * lineHeight + lineHeight * 0.5f;
+                    CGContextSetRGBStrokeColor(ctx, 0.5f, 0.5f, 0.5f, 0.3f);
+                    float strokeWidth = std::max(1.5f, currentFontSize * 0.05f);
+                    CGContextSetLineWidth(ctx, strokeWidth);
+                    CGContextSetLineCap(ctx, kCGLineCapRound);
+                    CGContextSetLineJoin(ctx, kCGLineJoinRound);
+                    float sz = charWidth * 1.0f;
+                    float halfSz = sz * 0.5f;
+                    float arrowSize = sz * 0.35f;
+                    CGContextBeginPath(ctx);
+                    if (isCRLF) {
+                        float vLineTop = cy - halfSz;
+                        float vLineBottom = cy + halfSz * 0.3f;
+                        float hLineRight = cx + halfSz * 0.6f;
+                        float hLineLeft = cx - halfSz * 0.6f;
+                        CGContextMoveToPoint(ctx, hLineRight, vLineTop);
+                        CGContextAddLineToPoint(ctx, hLineRight, vLineBottom);
+                        CGContextAddLineToPoint(ctx, hLineLeft, vLineBottom);
+                        CGContextMoveToPoint(ctx, hLineLeft, vLineBottom);
+                        CGContextAddLineToPoint(ctx, hLineLeft + arrowSize, vLineBottom - arrowSize);
+                        CGContextMoveToPoint(ctx, hLineLeft, vLineBottom);
+                        CGContextAddLineToPoint(ctx, hLineLeft + arrowSize, vLineBottom + arrowSize);
+                    } else if (isCR) {
+                        float hLineRight = cx + halfSz * 0.6f;
+                        float hLineLeft = cx - halfSz * 0.6f;
+                        CGContextMoveToPoint(ctx, hLineRight, cy);
+                        CGContextAddLineToPoint(ctx, hLineLeft, cy);
+                        CGContextMoveToPoint(ctx, hLineLeft, cy);
+                        CGContextAddLineToPoint(ctx, hLineLeft + arrowSize, cy - arrowSize);
+                        CGContextMoveToPoint(ctx, hLineLeft, cy);
+                        CGContextAddLineToPoint(ctx, hLineLeft + arrowSize, cy + arrowSize);
+                    } else { // LF
+                        float stemTop = cy - halfSz * 0.8f;
+                        float stemBottom = cy + halfSz * 0.8f;
+                        CGContextMoveToPoint(ctx, cx, stemTop);
+                        CGContextAddLineToPoint(ctx, cx, stemBottom);
+                        CGContextMoveToPoint(ctx, cx, stemBottom);
+                        CGContextAddLineToPoint(ctx, cx - arrowSize, stemBottom - arrowSize);
+                        CGContextMoveToPoint(ctx, cx, stemBottom);
+                        CGContextAddLineToPoint(ctx, cx + arrowSize, stemBottom - arrowSize);
+                    }
+                    CGContextStrokePath(ctx);
                 }
             }
         }
@@ -1224,13 +1320,27 @@ struct Editor {
     editor->hScrollPos = std::clamp(editor->hScrollPos - (int)[e deltaX], 0, maxH);
     [self updateScrollers]; [self setNeedsDisplay:YES];
 }
-- (void)insertText:(id)s replacementRange:(NSRange)r { NSString* t = [s isKindOfClass:[NSAttributedString class]] ? [s string] : s; if ([t isEqualToString:@"\r"] || [t isEqualToString:@"\n"]) { editor->insertAtCursors("\n"); } else { if (editor->cursors.size() > 1) editor->insertAtCursorsWithPadding([t UTF8String]); else editor->insertAtCursors([t UTF8String]); } editor->imeComp = ""; [self setNeedsDisplay:YES]; }
+- (void)insertText:(id)s replacementRange:(NSRange)r {
+    NSString* t = [s isKindOfClass:[NSAttributedString class]] ? [s string] : s;
+    if ([t isEqualToString:@"\r"] || [t isEqualToString:@"\n"]) {
+        editor->insertAtCursors(editor->newlineStr);
+    } else {
+        if (editor->cursors.size() > 1) editor->insertAtCursorsWithPadding([t UTF8String]);
+        else editor->insertAtCursors([t UTF8String]);
+    }
+    editor->imeComp = "";
+    [self setNeedsDisplay:YES];
+}
 - (void)setMarkedText:(id)s selectedRange:(NSRange)sr replacementRange:(NSRange)rr { editor->imeComp = [([s isKindOfClass:[NSAttributedString class]] ? [s string] : s) UTF8String]; [self setNeedsDisplay:YES]; }
 - (void)unmarkText { editor->imeComp = ""; [self setNeedsDisplay:YES]; }
 - (BOOL)hasMarkedText { return !editor->imeComp.empty(); }
 - (NSRange)markedRange { return [self hasMarkedText] ? NSMakeRange(0, editor->imeComp.length()) : NSMakeRange(NSNotFound, 0); }
 - (NSRange)selectedRange { return NSMakeRange(NSNotFound, 0); }
-- (void)doCommandBySelector:(SEL)s { if (s == @selector(deleteBackward:)) editor->backspaceAtCursors(); else if (s == @selector(deleteForward:)) editor->deleteForwardAtCursors(); else if (s == @selector(insertNewline:)) editor->insertAtCursors("\n"); [self setNeedsDisplay:YES]; }
+- (void)doCommandBySelector:(SEL)s {
+    if (s == @selector(deleteBackward:)) editor->backspaceAtCursors();
+    else if (s == @selector(deleteForward:)) editor->deleteForwardAtCursors();
+    else if (s == @selector(insertNewline:)) editor->insertAtCursors(editor->newlineStr);
+    [self setNeedsDisplay:YES]; }
 - (nullable NSAttributedString *)attributedSubstringForProposedRange:(NSRange)r actualRange:(NSRangePointer)ar { return nil; }
 - (NSArray*)validAttributesForMarkedText { return @[]; }
 - (NSRect)firstRectForCharacterRange:(NSRange)r actualRange:(NSRangePointer)ar { if (editor->cursors.empty()) return NSZeroRect; float x = editor->getXFromPos(editor->cursors.back().head), y = (float)(editor->getLineIdx(editor->cursors.back().head) - editor->vScrollPos) * editor->lineHeight; return [[self window] convertRectToScreen:[self convertRect:NSMakeRect(editor->gutterWidth-(float)editor->hScrollPos+x, y, 2, editor->lineHeight) toView:nil]]; }
