@@ -698,10 +698,29 @@ struct Editor {
     }
     void selectWordAt(size_t pos) {
         if (pos >= pt.length()) { cursors.clear(); cursors.push_back({ pos, pos, getXFromPos(pos) }); return; }
-        char c = pt.charAt(pos); bool targetType = isWordChar(c);
+        char c = pt.charAt(pos);
+        if (c == '\r') {
+            if (pos + 1 < pt.length() && pt.charAt(pos + 1) == '\n') {
+                cursors.clear();
+                cursors.push_back({ pos + 2, pos, getXFromPos(pos + 2) });
+                return;
+            }
+        }
+        bool targetType = isWordChar(c);
         if (c == '\n') { cursors.clear(); cursors.push_back({ pos + 1, pos, getXFromPos(pos + 1) }); return; }
-        size_t start = pos; while (start > 0) { char p = pt.charAt(start - 1); if (isWordChar(p) != targetType || p == '\n') break; start--; }
-        size_t end = pos; size_t len = pt.length(); while (end < len) { char p = pt.charAt(end); if (isWordChar(p) != targetType || p == '\n') break; end++; }
+        size_t start = pos;
+        while (start > 0) {
+            char p = pt.charAt(start - 1);
+            if (isWordChar(p) != targetType || p == '\n' || p == '\r') break;
+            start--;
+        }
+        size_t end = pos;
+        size_t len = pt.length();
+        while (end < len) {
+            char p = pt.charAt(end);
+            if (isWordChar(p) != targetType || p == '\n' || p == '\r') break;
+            end++;
+        }
         cursors.clear(); cursors.push_back({ end, start, getXFromPos(end) });
     }
     void selectLineAt(size_t pos) {
