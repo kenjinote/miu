@@ -18,7 +18,7 @@
 #import <Cocoa/Cocoa.h>
 #import <CoreText/CoreText.h>
 
-const std::wstring APP_VERSION = L"miu v1.0.15 (macOS)";
+const std::wstring APP_VERSION = L"miu v1.0.14";
 const std::wstring APP_TITLE = L"miu";
 enum Encoding { ENC_UTF8_NOBOM = 0, ENC_UTF8_BOM, ENC_UTF16LE, ENC_UTF16BE, ENC_ANSI };
 static NSString *const kMiuRectangularSelectionType = @"com.kenji.miu.rectangular";
@@ -1162,10 +1162,21 @@ struct Editor {
 - (void)viewDidMoveToWindow {
     if (![self window]) return;
     editor->initGraphics();
-    NSString *m = [[NSUserDefaults standardUserDefaults] stringForKey:@"AppleInterfaceStyle"];
-    editor->isDarkMode = (m && [m isEqualToString:@"Dark"]);
+    BOOL isDark = [[self.effectiveAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]] isEqualToString:NSAppearanceNameDarkAqua];
+    editor->isDarkMode = isDark;
     editor->updateThemeColors(); [self updateScrollers];
     [[self window] makeFirstResponder:self];
+}
+- (void)viewDidChangeEffectiveAppearance {
+    [super viewDidChangeEffectiveAppearance];
+    if (editor) {
+        BOOL isDark = [[self.effectiveAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]] isEqualToString:NSAppearanceNameDarkAqua];
+        if (editor->isDarkMode != isDark) {
+            editor->isDarkMode = isDark;
+            editor->updateThemeColors();
+            [self setNeedsDisplay:YES];
+        }
+    }
 }
 - (void)drawRect:(NSRect)r {
     editor->render([[NSGraphicsContext currentContext] CGContext], (float)self.bounds.size.width, (float)self.bounds.size.height);
