@@ -1249,7 +1249,7 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<row><td>ProObjUseDefaultSettings</td><td>##IDS_PROOBJ_USEDEFAULTSETTINGS##</td><td/></row>
 		<row><td>ProductCode</td><td>{B899017B-2842-400D-84F3-D65263B7D72D}</td><td/></row>
 		<row><td>ProductName</td><td>miu</td><td/></row>
-		<row><td>ProductVersion</td><td>1.0.0.13</td><td/></row>
+		<row><td>ProductVersion</td><td>1.0.0.14</td><td/></row>
 	</table>
 
 	<table name="RadioButton">
