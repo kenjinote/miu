@@ -296,6 +296,64 @@ struct Editor {
         }
         batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
     }
+    void insertNewlineWithAutoIndent() {
+        if (cursors.empty()) return;
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        std::vector<size_t> indices(cursors.size());
+        std::iota(indices.begin(), indices.end(), 0);
+        std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) {
+            return cursors[a].start() > cursors[b].start();
+        });
+        for (size_t idx : indices) {
+            Cursor& c = cursors[idx];
+            size_t start = c.start();
+            if (c.hasSelection()) {
+                size_t len = c.end() - start;
+                std::string deleted = pt.getRange(start, len);
+                pt.erase(start, len);
+                batch.ops.push_back({ EditOp::Erase, start, deleted });
+                for (auto& o : cursors) {
+                    if (o.head > start) o.head -= len;
+                    if (o.anchor > start) o.anchor -= len;
+                }
+                c.head = start; c.anchor = start;
+            }
+            int lineIdx = getLineIdx(start);
+            size_t lineStart = lineStarts[lineIdx];
+            std::string indentStr = "";
+            size_t p = lineStart;
+            size_t maxLen = pt.length();
+            while (p < maxLen && p < start) {
+                char ch = pt.charAt(p);
+                if (ch == ' ' || ch == '\t') {
+                    indentStr += ch;
+                }
+                else {
+                    break;
+                }
+                p++;
+            }
+            std::string textToInsert = newlineStr + indentStr;
+            pt.insert(start, textToInsert);
+            batch.ops.push_back({ EditOp::Insert, start, textToInsert });
+            size_t insLen = textToInsert.size();
+            for (auto& o : cursors) {
+                if (o.head >= start) o.head += insLen;
+                if (o.anchor >= start) o.anchor += insLen;
+                if (&o == &c) {
+                    o.desiredX = getXFromPos(o.head);
+                    o.originalAnchorX = o.desiredX;
+                    o.isVirtual = false;
+                }
+            }
+        }
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
+    }
     void insertRectangularBlock(const std::string& text) {
         if (cursors.empty()) return;
         std::vector<std::string> lines; std::stringstream ss(text); std::string line;
@@ -503,6 +561,84 @@ struct Editor {
             }
         }
         batch.afterCursors = cursors; undo.push(batch); ensureCaretVisible(); updateDirtyFlag();
+    }
+    void indentLines(bool forceLineIndent = false) {
+        bool hasSelection = false;
+        for (const auto& c : cursors) if (c.hasSelection()) hasSelection = true;
+        if (!hasSelection && !forceLineIndent) {
+            insertAtCursors("\t");
+            return;
+        }
+        std::vector<int> lines = getUniqueLineIndices();
+        if (lines.empty()) return;
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        std::sort(lines.rbegin(), lines.rend());
+        for (int lineIdx : lines) {
+            size_t pos = lineStarts[lineIdx];
+            std::string indentStr = "\t";
+            pt.insert(pos, indentStr);
+            batch.ops.push_back({ EditOp::Insert, pos, indentStr });
+            for (auto& c : cursors) {
+                if (!c.hasSelection()) {
+                    if (c.head >= pos) c.head += indentStr.size();
+                    if (c.anchor >= pos) c.anchor += indentStr.size();
+                } else {
+                    if (c.head < c.anchor) {
+                        if (c.head > pos) c.head += indentStr.size();
+                        if (c.anchor >= pos) c.anchor += indentStr.size();
+                    } else {
+                        if (c.anchor > pos) c.anchor += indentStr.size();
+                        if (c.head >= pos) c.head += indentStr.size();
+                    }
+                }
+                c.desiredX = getXFromPos(c.head);
+                c.originalAnchorX = getXFromPos(c.anchor);
+                c.isVirtual = false;
+            }
+        }
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
+    }
+    void unindentLines() {
+        std::vector<int> lines = getUniqueLineIndices();
+        if (lines.empty()) return;
+        EditBatch batch;
+        batch.beforeCursors = cursors;
+        std::sort(lines.rbegin(), lines.rend());
+        for (int lineIdx : lines) {
+            size_t pos = lineStarts[lineIdx];
+            if (pos >= pt.length()) continue;
+            
+            char c = pt.charAt(pos);
+            size_t eraseLen = 0;
+            // Windows版と同じくタブ1文字またはスペース1文字を削除
+            if (c == '\t') eraseLen = 1;
+            else if (c == ' ') eraseLen = 1;
+            
+            if (eraseLen > 0) {
+                std::string deleted = pt.getRange(pos, eraseLen);
+                pt.erase(pos, eraseLen);
+                batch.ops.push_back({ EditOp::Erase, pos, deleted });
+                for (auto& cur : cursors) {
+                    if (cur.head > pos) cur.head -= std::min(cur.head - pos, eraseLen);
+                    if (cur.anchor > pos) cur.anchor -= std::min(cur.anchor - pos, eraseLen);
+                    cur.desiredX = getXFromPos(cur.head);
+                    cur.originalAnchorX = cur.desiredX;
+                    cur.isVirtual = false;
+                }
+            }
+        }
+        if (!batch.ops.empty()) {
+            batch.afterCursors = cursors;
+            undo.push(batch);
+            rebuildLineStarts();
+            ensureCaretVisible();
+            updateDirtyFlag();
+        }
     }
     void updateGutterWidth() {
         int totalLines = (int)lineStarts.size(), digits = 1; int tempLines = totalLines;
@@ -1293,6 +1429,22 @@ struct Editor {
     if (editor->showHelpPopup) { editor->showHelpPopup = false; [self setNeedsDisplay:YES]; if (code == 122) return; }
     if (code == 122) { editor->showHelpPopup = true; [self setNeedsDisplay:YES]; return; }
     if (code == 53) { if (editor->cursors.size() > 1 || (editor->cursors.size() == 1 && editor->cursors[0].hasSelection())) { Cursor lastC = editor->cursors.back(); lastC.anchor = lastC.head; editor->cursors.clear(); editor->cursors.push_back(lastC); [self setNeedsDisplay:YES]; return; } }
+    if (code == 48) { // Tab キー
+        if (shift) {
+            editor->unindentLines();
+        } else {
+            bool isRectMode = editor->cursors.size() > 1;
+            if (isRectMode) {
+                // 矩形選択など複数カーソル時は現在の位置にタブを挿入
+                editor->insertAtCursors("\t");
+            } else {
+                // 範囲選択時 または 通常のインデント
+                editor->indentLines(false);
+            }
+        }
+        [self setNeedsDisplay:YES];
+        return;
+    }
     if (code == 115 || code == 119) {
         for (auto& c : editor->cursors) {
             if (code == 115) { if (cmd) c.head = 0; else c.head = editor->lineStarts[editor->getLineIdx(c.head)]; }
@@ -1338,6 +1490,8 @@ struct Editor {
         if ([lowerChar isEqualToString:@"0"]) { [self applyZoom:14.0f relative:false]; return; }
         if ([lowerChar isEqualToString:@"+"] || [lowerChar isEqualToString:@"="]) { [self applyZoom:1.1f relative:true]; return; }
         if ([lowerChar isEqualToString:@"-"]) { [self applyZoom:0.9f relative:true]; return; }
+        if ([lowerChar isEqualToString:@"]"]) { editor->indentLines(true); [self setNeedsDisplay:YES]; return; }
+        if ([lowerChar isEqualToString:@"["]) { editor->unindentLines(); [self setNeedsDisplay:YES]; return; }
     }
     if (code >= 123 && code <= 126) {
         bool opt = ([e modifierFlags] & NSEventModifierFlagOption);
@@ -1392,7 +1546,7 @@ struct Editor {
 - (void)insertText:(id)s replacementRange:(NSRange)r {
     NSString* t = [s isKindOfClass:[NSAttributedString class]] ? [s string] : s;
     if ([t isEqualToString:@"\r"] || [t isEqualToString:@"\n"]) {
-        editor->insertAtCursors(editor->newlineStr);
+        editor->insertNewlineWithAutoIndent();
     } else {
         if (editor->cursors.size() > 1) editor->insertAtCursorsWithPadding([t UTF8String]);
         else editor->insertAtCursors([t UTF8String]);
@@ -1408,7 +1562,7 @@ struct Editor {
 - (void)doCommandBySelector:(SEL)s {
     if (s == @selector(deleteBackward:)) editor->backspaceAtCursors();
     else if (s == @selector(deleteForward:)) editor->deleteForwardAtCursors();
-    else if (s == @selector(insertNewline:)) editor->insertAtCursors(editor->newlineStr);
+    else if (s == @selector(insertNewline:)) editor->insertNewlineWithAutoIndent(); // ここを変更
     [self setNeedsDisplay:YES]; }
 - (nullable NSAttributedString *)attributedSubstringForProposedRange:(NSRange)r actualRange:(NSRangePointer)ar { return nil; }
 - (NSArray*)validAttributesForMarkedText { return @[]; }
