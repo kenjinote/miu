@@ -1333,8 +1333,8 @@ struct Editor {
     editor->visibleVScrollWidth = needsV ? sw : 0.0f;
     editor->visibleHScrollHeight = needsH ? sw : 0.0f;
     int visibleLines = (int)std::floor(visibleHeight / editor->lineHeight); if (visibleLines < 1) visibleLines = 1;
-    [vScroller setKnobProportion:std::min(1.0, (double)visibleLines / totalLines)];
-    int maxV = totalLines - visibleLines;
+    [vScroller setKnobProportion:std::min(1.0, (double)visibleLines / (totalLines + visibleLines - 1))];
+    int maxV = std::max(0, totalLines - 1);
     if (needsV && maxV > 0) { [vScroller setDoubleValue:(double)editor->vScrollPos / maxV]; [vScroller setEnabled:YES]; } else { [vScroller setDoubleValue:0.0]; [vScroller setEnabled:NO]; editor->vScrollPos = 0; }
     if (visibleWidth < 1) visibleWidth = 1;
     [hScroller setKnobProportion:std::min(1.0, (double)visibleWidth / maxLineWidth)];
@@ -1345,8 +1345,8 @@ struct Editor {
 - (void)scrollAction:(NSScroller*)s {
     NSRect b = [self bounds]; CGFloat sw = [NSScroller scrollerWidthForControlSize:NSControlSizeRegular scrollerStyle:NSScrollerStyleLegacy];
     if (s == vScroller) {
-        int visibleLines = (int)std::floor((b.size.height - sw) / editor->lineHeight);
-        int maxV = (int)editor->lineStarts.size() - visibleLines; editor->vScrollPos = std::max(0, (int)([s doubleValue] * maxV));
+        int maxV = std::max(0, (int)editor->lineStarts.size() - 1);
+        editor->vScrollPos = std::max(0, (int)std::round([s doubleValue] * maxV));
     } else {
         float visibleWidth = b.size.width - editor->gutterWidth - sw; float maxH = editor->maxLineWidth - visibleWidth;
         editor->hScrollPos = std::max(0, (int)([s doubleValue] * maxH));
@@ -1534,13 +1534,11 @@ struct Editor {
     float visibleHeight = b.size.height - editor->visibleHScrollHeight;
     int visibleLines = (int)(visibleHeight / editor->lineHeight);
     int totalLines = (int)editor->lineStarts.size();
-    int maxV = std::max(0, totalLines - visibleLines + 1);
-    editor->vScrollPos = std::clamp(editor->vScrollPos - (int)[e deltaY], 0, maxV);
-    
+    int maxV = std::max(0, totalLines - 1);
+    editor->vScrollPos = std::clamp(editor->vScrollPos - (int)std::round([e deltaY]), 0, maxV);
     float visibleWidth = b.size.width - editor->gutterWidth - editor->visibleVScrollWidth;
     int maxH = std::max(0, (int)(editor->maxLineWidth - visibleWidth + editor->charWidth * 4));
     editor->hScrollPos = std::clamp(editor->hScrollPos - (int)[e deltaX], 0, maxH);
-    
     [self updateScrollers]; [self setNeedsDisplay:YES];
 }
 - (void)insertText:(id)s replacementRange:(NSRange)r {
