@@ -29,9 +29,42 @@ struct Editor;
 {
 @public
     std::shared_ptr<Editor> editor;
+    NSPanel *findPanel;
+    NSTextField *findLabel;
+    NSTextField *findTextField;
+    NSTextField *replaceTextField;
+    NSTextField *replaceLabel;
+    NSButton *findBtn;
+    NSButton *replaceBtn;
+    NSButton *replaceAllBtn;
+    NSButton *matchCaseBtn;
+    NSButton *wholeWordBtn;
+    NSButton *regexBtn;
 }
 - (void)updateScrollers;
 - (void)applyZoom:(float)val relative:(bool)rel;
+- (void)showFindPanel:(BOOL)replaceMode;
+@end
+
+@interface FindPanel : NSPanel
+@property (assign) EditorView *editorView;
+@end
+
+@implementation FindPanel
+- (BOOL)performKeyEquivalent:(NSEvent *)event {
+    if (([event modifierFlags] & NSEventModifierFlagCommand)) {
+        NSString *ch = [[event charactersIgnoringModifiers] lowercaseString];
+        if ([ch isEqualToString:@"f"]) {
+            [self.editorView showFindPanel:NO];
+            return YES;
+        }
+        if ([ch isEqualToString:@"h"] || [ch isEqualToString:@"r"]) {
+            [self.editorView showFindPanel:YES];
+            return YES;
+        }
+    }
+    return [super performKeyEquivalent:event];
+}
 @end
 
 static std::string CFStringToStdString(CFStringRef cfStr) {
@@ -201,6 +234,12 @@ struct Editor {
     bool isDirty = false;
     bool isDarkMode = false;
     bool showHelpPopup = false;
+    std::string searchQuery;
+    std::string replaceQuery;
+    bool searchMatchCase = false;
+    bool searchWholeWord = false;
+    bool searchRegex = false;
+    bool isReplaceMode = false;
     std::chrono::steady_clock::time_point zoomPopupEndTime;
     std::string zoomPopupText = "";
     float currentFontSize = 14.0f;
@@ -612,10 +651,8 @@ struct Editor {
         for (int lineIdx : lines) {
             size_t pos = lineStarts[lineIdx];
             if (pos >= pt.length()) continue;
-            
             char c = pt.charAt(pos);
             size_t eraseLen = 0;
-            // Windows版と同じくタブ1文字またはスペース1文字を削除
             if (c == '\t') eraseLen = 1;
             else if (c == ' ') eraseLen = 1;
             
@@ -669,23 +706,170 @@ struct Editor {
         if (end > start) return { pt.getRange(start, end - start), true };
         return { "", true };
     }
-    size_t findText(size_t startPos, const std::string& query, bool forward) {
+    std::string preprocessRegexQuery(const std::string& query) {
+        std::string processed; processed.reserve(query.size() * 4);
+        for (size_t i = 0; i < query.size(); ++i) {
+            char c = query[i];
+            if (c == '\\' && i + 1 < query.size()) {
+                char next = query[i + 1];
+                if (next == 'n') {
+                    bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
+                    if (!isPrecededByCR) { processed += "(?:\\r\\n|[\\r\\n])"; i++; continue; }
+                }
+                processed += c; processed += next; i++; continue;
+            } else if (c == '^') {
+                bool inClass = false; if (i > 0 && query[i - 1] == '[') inClass = true;
+                if (!inClass) { processed += "(?:^|(?:\\r\\n|[\\r\\n]))"; continue; }
+            }
+            processed += c;
+        }
+        return processed;
+    }
+    std::string UnescapeString(const std::string& s, const std::string& newline) {
+        std::string out; out.reserve(s.size());
+        for (size_t i = 0; i < s.size(); ++i) {
+            if (s[i] == '\\' && i + 1 < s.size()) {
+                switch (s[i + 1]) { case 'n': out += newline; break; case 'r': out += '\r'; break; case 't': out += '\t'; break; case '\\': out += '\\'; break; default: out += s[i]; out += s[i + 1]; break; } i++;
+            } else out += s[i];
+        } return out;
+    }
+    size_t findText(size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen = nullptr) {
         if (query.empty()) return std::string::npos;
-        size_t len = pt.length();
-        if (len == 0) return std::string::npos;
-        size_t cur = startPos;
-        if (forward) { if (cur >= len) cur = 0; }
-        else { if (cur == 0) cur = len - 1; else cur--; }
+        size_t len = pt.length(); std::string actualQuery = query;
+        if (isRegex) {
+            actualQuery = preprocessRegexQuery(query); std::string fullText = pt.getRange(0, len);
+            try {
+                std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+                if (!matchCase) flags |= std::regex_constants::icase;
+                std::regex re(actualQuery, flags); std::smatch m; size_t foundPos = std::string::npos; size_t foundLen = 0;
+                bool startsWithCaret = (!query.empty() && query[0] == '^');
+                if (forward) {
+                    if (startPos >= fullText.size()) startPos = 0;
+                    size_t searchStartIdx = startPos; std::regex_constants::match_flag_type searchFlags = std::regex_constants::match_default;
+                    if (searchStartIdx > 0) {
+                        searchFlags |= std::regex_constants::match_not_bol; char prevChar = fullText[searchStartIdx - 1];
+                        if (prevChar == '\n') { searchStartIdx--; if (searchStartIdx > 0 && fullText[searchStartIdx - 1] == '\r') searchStartIdx--; } else if (prevChar == '\r') searchStartIdx--;
+                    }
+                    std::string::const_iterator searchStartIter = fullText.begin() + searchStartIdx;
+                    if (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) { foundPos = searchStartIdx + m.position(); foundLen = m.length(); }
+                    else if (startPos > 0) { if (std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) { foundPos = m.position(); foundLen = m.length(); } }
+                } else {
+                    auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re); auto words_end = std::sregex_iterator();
+                    size_t bestPos = std::string::npos; size_t limit = (startPos == 0) ? len : startPos;
+                    for (auto i = words_begin; i != words_end; ++i) { if (i->position() < (std::ptrdiff_t)limit) { bestPos = i->position(); foundLen = i->length(); } }
+                    if (bestPos != std::string::npos) foundPos = bestPos;
+                }
+                if (foundPos != std::string::npos) {
+                    if (foundPos > 0 && startsWithCaret) {
+                        std::string matchStr = fullText.substr(foundPos, foundLen); size_t adj = 0;
+                        if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2; else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) adj = 1;
+                        foundPos += adj; foundLen -= adj;
+                    }
+                    if (outLen) *outLen = foundLen; return foundPos;
+                }
+            } catch (...) { return std::string::npos; }
+            return std::string::npos;
+        }
+        size_t qLen = query.length(); if (outLen) *outLen = qLen;
+        auto toLower = [](char c) { return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c; };
+        size_t cur = startPos; if (forward) { if (cur >= len) cur = 0; } else { if (cur == 0) cur = len; else cur--; }
         for (size_t count = 0; count < len; ++count) {
             bool match = true;
-            for (size_t i = 0; i < query.length(); ++i) {
-                if (cur + i >= len || pt.charAt(cur + i) != query[i]) { match = false; break; }
+            for (size_t i = 0; i < qLen; ++i) {
+                size_t p = cur + i; if (p >= len) { match = false; break; }
+                char c1 = pt.charAt(p); char c2 = query[i];
+                if (!matchCase) { c1 = toLower(c1); c2 = toLower(c2); }
+                if (c1 != c2) { match = false; break; }
+            }
+            if (match && wholeWord) {
+                if (cur > 0 && isWordChar(pt.charAt(cur - 1))) match = false;
+                if (match && (cur + qLen < len) && isWordChar(pt.charAt(cur + qLen))) match = false;
             }
             if (match) return cur;
-            if (forward) { cur++; if (cur >= len) cur = 0; }
-            else { if (cur == 0) cur = len - 1; else cur--; }
+            if (forward) { cur++; if (cur >= len) cur = 0; } else { if (cur == 0) cur = len - 1; else cur--; }
         }
         return std::string::npos;
+    }
+    void findNext(bool forward) {
+        if (searchQuery.empty()) return;
+        size_t startPos = forward ? (cursors.empty() ? 0 : cursors.back().end()) : (cursors.empty() ? 0 : cursors.back().start());
+        size_t matchLen = 0; size_t pos = findText(startPos, searchQuery, forward, searchMatchCase, searchWholeWord, searchRegex, &matchLen);
+        if (pos != std::string::npos) { cursors.clear(); cursors.push_back({ pos + matchLen, pos, getXFromPos(pos + matchLen), getXFromPos(pos), false }); ensureCaretVisible(); if (view) [(NSView*)view setNeedsDisplay:YES]; } else { NSBeep(); }
+    }
+    void replaceNext() {
+        if (cursors.empty() || searchQuery.empty()) return;
+        Cursor& c = cursors.back(); if (!c.hasSelection()) { findNext(true); return; }
+        size_t len = c.end() - c.start(); size_t start = c.start();
+        std::string selText = pt.getRange(start, len); bool match = false; std::string replacement = replaceQuery;
+        if (searchRegex) {
+            try {
+                std::string actualQuery = preprocessRegexQuery(searchQuery); std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+                if (!searchMatchCase) flags |= std::regex_constants::icase; std::regex re(actualQuery, flags); std::smatch m;
+                if (std::regex_match(selText, m, re)) match = true;
+                else if (start > 0) {
+                    int backStep = 0; if (pt.charAt(start - 1) == '\n') { backStep = 1; if (start > 1 && pt.charAt(start - 2) == '\r') backStep = 2; } else if (pt.charAt(start - 1) == '\r') backStep = 1;
+                    if (backStep > 0) { std::string extText = pt.getRange(start - backStep, len + backStep); if (std::regex_match(extText, m, re)) match = true; }
+                }
+                if (match) replacement = m.format(UnescapeString(replaceQuery, newlineStr));
+            } catch (...) {}
+        } else {
+            if (len == searchQuery.length()) {
+                match = true;
+                for (size_t i = 0; i < len; ++i) {
+                    char c1 = selText[i]; char c2 = searchQuery[i];
+                    if (!searchMatchCase) { c1 = (c1 >= 'A' && c1 <= 'Z') ? c1 + ('a' - 'A') : c1; c2 = (c2 >= 'A' && c2 <= 'Z') ? c2 + ('a' - 'A') : c2; }
+                    if (c1 != c2) { match = false; break; }
+                }
+            }
+            if (match) replacement = replaceQuery;
+        }
+        if (match) {
+            EditBatch batch; batch.beforeCursors = cursors; pt.erase(start, len); batch.ops.push_back({ EditOp::Erase, start, selText });
+            pt.insert(start, replacement); batch.ops.push_back({ EditOp::Insert, start, replacement });
+            cursors.clear(); size_t newEnd = start + replacement.size(); cursors.push_back({ newEnd, start, getXFromPos(newEnd), getXFromPos(start), false });
+            batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); if (view) [(NSView*)view setNeedsDisplay:YES];
+        } else findNext(true);
+    }
+    void replaceAll() {
+        if (searchQuery.empty()) return;
+        struct Match { size_t start; size_t len; std::string replacementText; }; std::vector<Match> matches;
+        size_t currentPos = 0, docLen = pt.length(); std::string actualQuery = searchQuery;
+        if (searchRegex) {
+            actualQuery = preprocessRegexQuery(searchQuery); std::string fullText = pt.getRange(0, docLen); std::string fmt = UnescapeString(replaceQuery, newlineStr);
+            try {
+                std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript; if (!searchMatchCase) flags |= std::regex_constants::icase; std::regex re(actualQuery, flags);
+                bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
+                auto begin = std::sregex_iterator(fullText.begin(), fullText.end(), re); auto end = std::sregex_iterator();
+                for (auto i = begin; i != end; ++i) {
+                    size_t pos = i->position(), len = i->length(); std::string rText = i->format(fmt);
+                    if (startsWithCaret) {
+                        std::string matchStr = i->str(); size_t adj = 0;
+                        if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2; else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) adj = 1;
+                        if (adj > 0) { pos += adj; len -= adj; }
+                    }
+                    matches.push_back({ pos, len, rText });
+                }
+            } catch (...) { return; }
+        } else {
+            while (true) {
+                size_t matchLen = 0; size_t pos = findText(currentPos, searchQuery, true, searchMatchCase, searchWholeWord, false, &matchLen);
+                if (pos == std::string::npos || pos < currentPos) break;
+                matches.push_back({ pos, matchLen, replaceQuery }); currentPos = pos + matchLen; if (currentPos > docLen) break;
+            }
+        }
+        if (matches.empty()) { NSBeep(); return; }
+        EditBatch batch; batch.beforeCursors = cursors;
+        for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
+            size_t start = it->start, len = it->len; std::string deleted = pt.getRange(start, len);
+            pt.erase(start, len); batch.ops.push_back({ EditOp::Erase, start, deleted });
+            pt.insert(start, it->replacementText); batch.ops.push_back({ EditOp::Insert, start, it->replacementText });
+        }
+        size_t finalMatchIdx = matches.size() - 1; long long offsetBeforeFinal = 0;
+        for (size_t i = 0; i < finalMatchIdx; ++i) offsetBeforeFinal += (long long)matches[i].replacementText.size() - (long long)matches[i].len;
+        size_t lastReplaceStart = (size_t)((long long)matches.back().start + offsetBeforeFinal); size_t lastReplaceEnd = lastReplaceStart + matches.back().replacementText.size();
+        cursors.clear(); cursors.push_back({ lastReplaceEnd, lastReplaceStart, getXFromPos(lastReplaceEnd), getXFromPos(lastReplaceStart), false });
+        batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); if (view) [(NSView*)view setNeedsDisplay:YES];
+        NSAlert *alert = [[NSAlert alloc] init]; [alert setMessageText:@"Replace All"]; [alert setInformativeText:[NSString stringWithFormat:@"%lu occurrence(s) replaced.", matches.size()]]; [alert runModal];
     }
     void selectNextOccurrence() {
         if (cursors.empty()) return;
@@ -710,7 +894,7 @@ struct Editor {
         size_t start = c.start();
         size_t len = c.end() - start;
         std::string query = pt.getRange(start, len);
-        size_t nextPos = findText(std::max(c.head, c.anchor), query, true);
+        size_t nextPos = findText(std::max(c.head, c.anchor), query, true, true, false, false);
         if (nextPos != std::string::npos) {
             for (const auto& cur : cursors) {
                 if (cur.start() == nextPos) return;
@@ -1046,7 +1230,7 @@ struct Editor {
         CGFloat asc = CTFontGetAscent(fontRef);
         CGContextSaveGState(ctx); CGContextClipToRect(ctx, CGRectMake(gutterWidth, 0, vw, vh));
         auto [autoStr, isWholeWord] = getHighlightTarget();
-        if (!autoStr.empty()) {
+        if (!autoStr.empty() && autoStr != searchQuery) {
             CGColorRef autoHlColor = isDarkMode ? CGColorCreateGenericRGB(0.35, 0.35, 0.35, 0.5) : CGColorCreateGenericRGB(0.85, 0.85, 0.85, 0.5);
             CGContextSetFillColorWithColor(ctx, autoHlColor);
             size_t searchRangeStart = lineStarts[start]; size_t searchRangeEnd = (end < lineStarts.size()) ? lineStarts[end] : pt.length();
@@ -1069,6 +1253,57 @@ struct Editor {
                 searchPos += 1;
             }
             CGColorRelease(autoHlColor);
+        }
+        if (!searchQuery.empty()) {
+            CGColorRef hlColor = isDarkMode ? CGColorCreateGenericRGB(0.4, 0.4, 0.0, 0.6) : CGColorCreateGenericRGB(1.0, 1.0, 0.0, 0.4);
+            CGContextSetFillColorWithColor(ctx, hlColor);
+            
+            size_t searchRangeStart = lineStarts[start];
+            size_t searchRangeEnd = (end < lineStarts.size()) ? lineStarts[end] : pt.length();
+            std::string visibleText = pt.getRange(searchRangeStart, searchRangeEnd - searchRangeStart);
+            
+            if (searchRegex) {
+                try {
+                    std::string actualQuery = preprocessRegexQuery(searchQuery);
+                    std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+                    if (!searchMatchCase) flags |= std::regex_constants::icase;
+                    std::regex re(actualQuery, flags);
+                    auto words_begin = std::sregex_iterator(visibleText.begin(), visibleText.end(), re);
+                    auto words_end = std::sregex_iterator();
+                    for (auto i = words_begin; i != words_end; ++i) {
+                        size_t offset = i->position(); size_t len = i->length();
+                        size_t docPos = searchRangeStart + offset;
+                        int li = getLineIdx(docPos);
+                        if (li >= start && li < end) {
+                            float y = (float)(li - start) * lineHeight;
+                            float x1 = getXInLine(li, docPos); float x2 = getXInLine(li, docPos + len);
+                            CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                        }
+                    }
+                } catch (...) {}
+            } else {
+                std::string q = searchQuery; std::string t = visibleText;
+                if (!searchMatchCase) { std::transform(q.begin(), q.end(), q.begin(), ::tolower); std::transform(t.begin(), t.end(), t.begin(), ::tolower); }
+                size_t offset = 0;
+                while ((offset = t.find(q, offset)) != std::string::npos) {
+                    bool match = true;
+                    if (searchWholeWord) {
+                        if (offset > 0 && isWordChar(visibleText[offset - 1])) match = false;
+                        if (match && (offset + q.length() < visibleText.length()) && isWordChar(visibleText[offset + q.length()])) match = false;
+                    }
+                    if (match) {
+                        size_t docPos = searchRangeStart + offset;
+                        int li = getLineIdx(docPos);
+                        if (li >= start && li < end) {
+                            float y = (float)(li - start) * lineHeight;
+                            float x1 = getXInLine(li, docPos); float x2 = getXInLine(li, docPos + q.length());
+                            CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                        }
+                    }
+                    offset += 1;
+                }
+            }
+            CGColorRelease(hlColor);
         }
         CGContextSetFillColorWithColor(ctx, colSel); bool isRectMode = (cursors.size() > 1);
         for (const auto& c : cursors) {
@@ -1428,7 +1663,89 @@ struct Editor {
     editor->ensureCaretVisible(); [self setNeedsDisplay:YES];
 }
 - (void)mouseUp:(NSEvent *)e { [self setNeedsDisplay:YES]; }
-
+- (void)showFindPanel:(BOOL)replaceMode {
+    editor->isReplaceMode = replaceMode;
+    auto [candidate, _] = editor->getHighlightTarget();
+    bool hasSelection = !editor->cursors.empty() && editor->cursors.back().hasSelection();
+    if (hasSelection && !candidate.empty()) editor->searchQuery = candidate;
+    else if (editor->searchQuery.empty() && !candidate.empty()) editor->searchQuery = candidate;
+    if (!findPanel) {
+        findPanel = [[FindPanel alloc] initWithContentRect:NSMakeRect(0, 0, 360, 160)
+                                               styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskUtilityWindow | NSWindowStyleMaskNonactivatingPanel
+                                                 backing:NSBackingStoreBuffered defer:NO];
+        [(FindPanel*)findPanel setEditorView:self];
+        [findPanel setLevel:NSFloatingWindowLevel];
+        [findPanel setHidesOnDeactivate:NO];
+        [findPanel setReleasedWhenClosed:NO];
+        NSRect parentFrame = [[self window] frame];
+        NSRect panelFrame = [findPanel frame];
+        panelFrame.origin.x = parentFrame.origin.x + (parentFrame.size.width - panelFrame.size.width) / 2.0;
+        panelFrame.origin.y = parentFrame.origin.y + (parentFrame.size.height - panelFrame.size.height) / 2.0;
+        [findPanel setFrame:panelFrame display:NO];
+        NSView *cv = [findPanel contentView];
+        findLabel = [NSTextField labelWithString:@"Find:"];
+        [cv addSubview:findLabel];
+        findTextField = [NSTextField textFieldWithString:@""];
+        [findTextField setTarget:self];
+        [findTextField setAction:@selector(findNextAction:)];
+        [cv addSubview:findTextField];
+        replaceLabel = [NSTextField labelWithString:@"Replace:"];
+        [cv addSubview:replaceLabel];
+        replaceTextField = [NSTextField textFieldWithString:@""];
+        [cv addSubview:replaceTextField];
+        matchCaseBtn = [NSButton checkboxWithTitle:@"Match Case" target:self action:@selector(findOptionsChanged:)];
+        [cv addSubview:matchCaseBtn];
+        wholeWordBtn = [NSButton checkboxWithTitle:@"Whole Word" target:self action:@selector(findOptionsChanged:)];
+        [cv addSubview:wholeWordBtn];
+        regexBtn = [NSButton checkboxWithTitle:@"Regex" target:self action:@selector(findOptionsChanged:)];
+        [cv addSubview:regexBtn];
+        findBtn = [NSButton buttonWithTitle:@"Find Next" target:self action:@selector(findNextAction:)];
+        [findBtn setKeyEquivalent:@"\r"];
+        [cv addSubview:findBtn];
+        replaceBtn = [NSButton buttonWithTitle:@"Replace" target:self action:@selector(replaceAction:)];
+        [cv addSubview:replaceBtn];
+        replaceAllBtn = [NSButton buttonWithTitle:@"Replace All" target:self action:@selector(replaceAllAction:)];
+        [cv addSubview:replaceAllBtn];
+        [matchCaseBtn setState:editor->searchMatchCase ? NSControlStateValueOn : NSControlStateValueOff];
+        [wholeWordBtn setState:editor->searchWholeWord ? NSControlStateValueOn : NSControlStateValueOff];
+        [regexBtn setState:editor->searchRegex ? NSControlStateValueOn : NSControlStateValueOff];
+    }
+    [findPanel setTitle:replaceMode ? @"Replace" : @"Find"];
+    [replaceLabel setHidden:!replaceMode];
+    [replaceTextField setHidden:!replaceMode];
+    [replaceBtn setHidden:!replaceMode];
+    [replaceAllBtn setHidden:!replaceMode];
+    CGFloat panelHeight = 160;
+    [findPanel setContentSize:NSMakeSize(360, panelHeight)];
+    [findLabel setFrame:NSMakeRect(10, 125, 60, 20)];
+    [findTextField setFrame:NSMakeRect(80, 125, 260, 22)];
+    [replaceLabel setFrame:NSMakeRect(10, 95, 60, 20)];
+    [replaceTextField setFrame:NSMakeRect(80, 95, 260, 22)];
+    [matchCaseBtn setFrame:NSMakeRect(80, 65, 100, 20)];
+    [wholeWordBtn setFrame:NSMakeRect(180, 65, 100, 20)];
+    [regexBtn setFrame:NSMakeRect(280, 65, 70, 20)];
+    [findBtn setFrame:NSMakeRect(80, 20, 90, 32)];
+    [replaceBtn setFrame:NSMakeRect(170, 20, 80, 32)];
+    [replaceAllBtn setFrame:NSMakeRect(250, 20, 100, 32)];
+    if (!editor->searchQuery.empty()) [findTextField setStringValue:[NSString stringWithUTF8String:editor->searchQuery.c_str()]];
+    if (!editor->replaceQuery.empty()) [replaceTextField setStringValue:[NSString stringWithUTF8String:editor->replaceQuery.c_str()]];
+    [[self window] addChildWindow:findPanel ordered:NSWindowAbove];
+    [findPanel makeKeyAndOrderFront:nil];
+    [findPanel makeFirstResponder:findTextField];
+}
+- (void)updateFindQueries {
+    editor->searchQuery = [[findTextField stringValue] UTF8String];
+    editor->replaceQuery = [[replaceTextField stringValue] UTF8String];
+}
+- (void)findOptionsChanged:(NSButton *)sender {
+    editor->searchMatchCase = ([matchCaseBtn state] == NSControlStateValueOn);
+    editor->searchWholeWord = ([wholeWordBtn state] == NSControlStateValueOn);
+    editor->searchRegex = ([regexBtn state] == NSControlStateValueOn);
+    [self setNeedsDisplay:YES];
+}
+- (void)findNextAction:(id)sender { [self updateFindQueries]; editor->findNext(true); }
+- (void)replaceAction:(id)sender { [self updateFindQueries]; editor->replaceNext(); }
+- (void)replaceAllAction:(id)sender { [self updateFindQueries]; editor->replaceAll(); }
 - (void)keyDown:(NSEvent *)e {
     unsigned short code = [e keyCode]; NSString *chars = [e charactersIgnoringModifiers];
     bool cmd = ([e modifierFlags] & NSEventModifierFlagCommand);
@@ -1480,6 +1797,10 @@ struct Editor {
         if (code == 116) editor->vScrollPos = std::max(0, editor->vScrollPos - pageLines); else editor->vScrollPos = std::min(totalLines - 1, editor->vScrollPos + pageLines);
         editor->ensureCaretVisible(); [self setNeedsDisplay:YES]; return;
     }
+    if (code == 99) {
+        editor->findNext(!shift);
+        return;
+    }
     if (cmd) {
         NSString *lowerChar = [chars lowercaseString];
         if (ctrl && [lowerChar isEqualToString:@"f"]) { [[self window] toggleFullScreen:nil]; return; }
@@ -1500,6 +1821,8 @@ struct Editor {
         if ([lowerChar isEqualToString:@"-"]) { [self applyZoom:0.9f relative:true]; return; }
         if ([lowerChar isEqualToString:@"]"]) { editor->indentLines(true); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"["]) { editor->unindentLines(); [self setNeedsDisplay:YES]; return; }
+        if ([lowerChar isEqualToString:@"f"]) { [self showFindPanel:NO]; return; }
+        if ([lowerChar isEqualToString:@"h"] || [lowerChar isEqualToString:@"r"]) { [self showFindPanel:YES]; return; }
     }
     if (code >= 123 && code <= 126) {
         bool opt = ([e modifierFlags] & NSEventModifierFlagOption);
