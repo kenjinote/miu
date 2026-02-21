@@ -2757,7 +2757,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
         else {
             g_editor.vScrollPos -= GET_WHEEL_DELTA_WPARAM(wParam) / WHEEL_DELTA * 3;
-            if (g_editor.vScrollPos < 0) g_editor.vScrollPos = 0; if (g_editor.vScrollPos > (int)g_editor.lineStarts.size()) g_editor.vScrollPos = (int)g_editor.lineStarts.size();
+            int maxScroll = (int)g_editor.lineStarts.size() - 1;
+            if (maxScroll < 0) maxScroll = 0;
+            if (g_editor.vScrollPos < 0) g_editor.vScrollPos = 0;
+            if (g_editor.vScrollPos > maxScroll) g_editor.vScrollPos = maxScroll;
             g_editor.updateScrollBars();
         }
         InvalidateRect(hwnd, NULL, FALSE); break;
