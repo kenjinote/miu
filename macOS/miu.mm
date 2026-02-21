@@ -1324,11 +1324,10 @@ struct Editor {
     float visibleWidth = b.size.width - editor->gutterWidth;
     int totalLines = (int)editor->lineStarts.size();
     float maxLineWidth = editor->maxLineWidth;
-    bool needsV = (totalLines * editor->lineHeight) > visibleHeight;
+    bool needsV = totalLines > 1;
+    if (needsV) visibleWidth -= sw;
     bool needsH = maxLineWidth > visibleWidth;
-    if (needsV) { visibleWidth -= sw; needsH = maxLineWidth > visibleWidth; }
-    if (needsH) { visibleHeight -= sw; needsV = (totalLines * editor->lineHeight) > visibleHeight; if (needsV) visibleWidth = b.size.width - editor->gutterWidth - sw; }
-    [vScroller setHidden:!needsV];
+    if (needsH) visibleHeight -= sw;    [vScroller setHidden:!needsV];
     [hScroller setHidden:!needsH];
     editor->visibleVScrollWidth = needsV ? sw : 0.0f;
     editor->visibleHScrollHeight = needsH ? sw : 0.0f;
