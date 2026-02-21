@@ -1857,19 +1857,18 @@ struct Editor {
     }
     if (![self.inputContext handleEvent:e]) [super keyDown:e];
 }
-
 - (void)scrollWheel:(NSEvent *)e {
     if ([e modifierFlags] & NSEventModifierFlagCommand) { float dy = [e scrollingDeltaY]; if (dy == 0) dy = [e deltaY]; if (dy != 0) { float factor = (dy > 0) ? 1.1f : 0.9f; editor->updateFont(editor->currentFontSize * factor); editor->zoomPopupText = std::to_string((int)std::round(editor->currentFontSize)) + "px"; editor->zoomPopupEndTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000); [self setNeedsDisplay:YES]; } return; }
-    CGFloat sw = [NSScroller scrollerWidthForControlSize:NSControlSizeRegular scrollerStyle:NSScrollerStyleLegacy];
+    
     NSRect b = [self bounds];
-    float visibleHeight = b.size.height - editor->visibleHScrollHeight;
-    int visibleLines = (int)(visibleHeight / editor->lineHeight);
     int totalLines = (int)editor->lineStarts.size();
     int maxV = std::max(0, totalLines - 1);
     editor->vScrollPos = std::clamp(editor->vScrollPos - (int)std::round([e deltaY]), 0, maxV);
+    
     float visibleWidth = b.size.width - editor->gutterWidth - editor->visibleVScrollWidth;
     int maxH = std::max(0, (int)(editor->maxLineWidth - visibleWidth + editor->charWidth * 4));
     editor->hScrollPos = std::clamp(editor->hScrollPos - (int)[e deltaX], 0, maxH);
+    
     [self updateScrollers]; [self setNeedsDisplay:YES];
 }
 - (void)insertText:(id)s replacementRange:(NSRange)r {
@@ -1930,8 +1929,21 @@ struct Editor {
 - (void)openDocument:(id)sender { NSWindow *win = [NSApp keyWindow]; if (win && [win isKindOfClass:[CustomWindow class]]) { EditorView *v = (EditorView *)win.contentView; v->editor->openFile(); } else { [self createWindowWithPath:nullptr]; CustomWindow *newWin = self.windows.lastObject; EditorView *v = (EditorView *)newWin.contentView; if (!v->editor->openFile()) {} } }
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender { return YES; }
 - (BOOL)windowShouldClose:(NSWindow *)sender { EditorView *v = (EditorView *)sender.contentView; if (v && v->editor) { if (!v->editor->checkUnsavedChanges()) return NO; } return YES; }
-- (void)windowWillClose:(NSNotification *)notification { CustomWindow *win = (CustomWindow *)notification.object; [self.windows removeObject:win]; }
+- (void)windowWillClose:(NSNotification *)notification {
+    CustomWindow *win = (CustomWindow *)notification.object;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self.windows removeObject:win];
+    });
+}
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender { for (CustomWindow *win in self.windows) { EditorView *v = (EditorView *)win.contentView; if (v && v->editor) { if (!v->editor->checkUnsavedChanges()) return NSTerminateCancel; } } return NSTerminateNow; }
 @end
-
-int main(int argc, const char * argv[]) { @autoreleasepool { NSApplication *a = [NSApplication sharedApplication]; AppDelegate *d = [AppDelegate new]; [a setDelegate:d]; [a run]; } return 0; }
+int main(int argc, const char * argv[]) {
+    @autoreleasepool {
+        NSApplication *a = [NSApplication sharedApplication];
+        static AppDelegate *d = nil;
+        d = [AppDelegate new];
+        [a setDelegate:d];
+        [a run];
+    }
+    return 0;
+}
