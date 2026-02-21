@@ -1327,7 +1327,16 @@ struct Editor {
     bool needsV = totalLines > 1;
     if (needsV) visibleWidth -= sw;
     bool needsH = maxLineWidth > visibleWidth;
-    if (needsH) visibleHeight -= sw;    [vScroller setHidden:!needsV];
+    if (needsH) visibleHeight -= sw;
+    if (needsV) {
+        CGFloat vHeight = needsH ? b.size.height - sw : b.size.height;
+        [vScroller setFrame:NSMakeRect(b.size.width - sw, 0, sw, vHeight)];
+    }
+    if (needsH) {
+        CGFloat hWidth = needsV ? b.size.width - sw : b.size.width;
+        [hScroller setFrame:NSMakeRect(0, b.size.height - sw, hWidth, sw)];
+    }
+    [vScroller setHidden:!needsV];
     [hScroller setHidden:!needsH];
     editor->visibleVScrollWidth = needsV ? sw : 0.0f;
     editor->visibleHScrollHeight = needsH ? sw : 0.0f;
