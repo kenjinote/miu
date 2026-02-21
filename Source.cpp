@@ -2523,8 +2523,14 @@ struct Editor {
             pt.insert(pos, indentStr);
             batch.ops.push_back({ EditOp::Insert, pos, indentStr });
             for (auto& c : cursors) {
-                if (c.head >= pos) c.head += indentStr.size();
-                if (c.anchor >= pos) c.anchor += indentStr.size();
+                if (c.hasSelection()) {
+                    if (c.head > pos) c.head += indentStr.size();
+                    if (c.anchor > pos) c.anchor += indentStr.size();
+                }
+                else {
+                    if (c.head >= pos) c.head += indentStr.size();
+                    if (c.anchor >= pos) c.anchor += indentStr.size();
+                }
                 c.desiredX = getXFromPos(c.head);
             }
         }
