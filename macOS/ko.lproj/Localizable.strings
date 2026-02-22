@@ -6,18 +6,19 @@
   
 */
 
-"Find" = "Find";
-"Replace" = "Replace";
-"Find:" = "Find:";
-"Replace:" = "Replace:";
-"Match Case" = "Match Case";
-"Whole Word" = "Whole Word";
-"Regex" = "Regex";
-"Find Next" = "Find Next";
-"Replace All" = "Replace All";
-"%lu occurrence(s) replaced." = "%lu occurrence(s) replaced.";
-"Untitled" = "Untitled";
-"Save changes?" = "Save changes?";
-"Save" = "Save";
-"Cancel" = "Cancel";
-"Discard" = "Discard";
+"HelpText" = "F1                    도움말\nCmd+N                 새로 만들기\nCmd+O / Drag&Drop     열기\nCmd+S                 저장\nCmd+Shift+S           다른 이름으로 저장\nCmd+F                 찾기\nCmd+H                 바꾸기\nF3 / Shift+F3         다음/이전 찾기\nCmd+G                 줄로 이동\nCmd+Z/Shift+Z         실행 취소/다시 실행\nCmd+X/C/V             잘라내기/복사/붙여넣기\nCmd+Shift+K           줄 삭제\nCmd+U                 대문자로 변환\nCmd+Shift+U           소문자로 변환\nOption+Up/Down        줄 이동\nOption+Shift+Up/Down  줄 복사\nCmd+D                 단어 선택 / 다음\nCmd+A                 모두 선택\nOption+Drag           사각형 선택\nCmd+Wheel/+/-         확대/축소\nCmd+0                 확대/축소 재설정\nCtrl+Cmd+F            전체 화면\n";
+"Find" = "찾기";
+"Replace" = "바꾸기";
+"Find:" = "찾기:";
+"Replace:" = "바꾸기:";
+"Match Case" = "대소문자 구분";
+"Whole Word" = "단어 단위로";
+"Regex" = "정규식";
+"Find Next" = "다음 찾기";
+"Replace All" = "모두 바꾸기";
+"%lu occurrence(s) replaced." = "%lu개 항목이 바뀌었습니다.";
+"Untitled" = "제목 없음";
+"Save changes?" = "변경 사항을 저장하시겠습니까?";
+"Save" = "저장";
+"Cancel" = "취소";
+"Discard" = "저장 안 함";

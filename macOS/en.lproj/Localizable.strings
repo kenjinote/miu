@@ -5,3 +5,20 @@
   Created by kenji on 2026/02/22.
   
 */
+
+"HelpText" = "F1                    Help\nCmd+N                 New\nCmd+O / Drag&Drop     Open\nCmd+S                 Save\nCmd+Shift+S           Save As\nCmd+F                 Find\nCmd+H                 Replace\nF3 / Shift+F3         Find Next/Prev\nCmd+G                 Go To Line\nCmd+Z/Shift+Z         Undo/Redo\nCmd+X/C/V             Cut/Copy/Paste\nCmd+Shift+K           Delete Line\nCmd+U                 Upper Case\nCmd+Shift+U           Lower Case\nOption+Up/Down        Move Line\nOption+Shift+Up/Down  Copy Line\nCmd+D                 Select Word / Next\nCmd+A                 Select All\nOption+Drag           Rect Select\nCmd+Wheel/+/-         Zoom\nCmd+0                 Reset Zoom\nCtrl+Cmd+F            Full Screen\n";
+"Find" = "Find";
+"Replace" = "Replace";
+"Find:" = "Find:";
+"Replace:" = "Replace:";
+"Match Case" = "Match Case";
+"Whole Word" = "Whole Word";
+"Regex" = "Regex";
+"Find Next" = "Find Next";
+"Replace All" = "Replace All";
+"%lu occurrence(s) replaced." = "%lu occurrence(s) replaced.";
+"Untitled" = "Untitled";
+"Save changes?" = "Save changes?";
+"Save" = "Save";
+"Cancel" = "Cancel";
+"Discard" = "Discard";

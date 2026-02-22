@@ -6,18 +6,19 @@
   
 */
 
-"Find" = "Find";
-"Replace" = "Replace";
-"Find:" = "Find:";
-"Replace:" = "Replace:";
-"Match Case" = "Match Case";
-"Whole Word" = "Whole Word";
-"Regex" = "Regex";
-"Find Next" = "Find Next";
-"Replace All" = "Replace All";
-"%lu occurrence(s) replaced." = "%lu occurrence(s) replaced.";
-"Untitled" = "Untitled";
-"Save changes?" = "Save changes?";
-"Save" = "Save";
-"Cancel" = "Cancel";
-"Discard" = "Discard";
+"HelpText" = "F1                    Օգնություն\nCmd+N                 Նոր\nCmd+O / Drag&Drop     Բացել\nCmd+S                 Պահպանել\nCmd+Shift+S           Պահպանել որպես\nCmd+F                 Գտնել\nCmd+H                 Փոխարինել\nF3 / Shift+F3         Գտնել հաջորդը/նախորդը\nCmd+G                 Անցնել տողին\nCmd+Z/Shift+Z         Հետարկել/Կրկնել\nCmd+X/C/V             Կտրել/Պատճենել/Տեղադրել\nCmd+Shift+K           Ջնջել տողը\nCmd+U                 Մեծատառ\nCmd+Shift+U           Փոքրատառ\nOption+Up/Down        Տեղափոխել տողը\nOption+Shift+Up/Down  Պատճենել տողը\nCmd+D                 Ընտրել բառը / հաջորդը\nCmd+A                 Ընտրել բոլորը\nOption+Drag           Ուղղանկյուն ընտրություն\nCmd+Wheel/+/-         Խոշորացնել\nCmd+0                 Վերականգնել չափը\nCtrl+Cmd+F            Լիաէկրան\n";
+"Find" = "Գտնել";
+"Replace" = "Փոխարինել";
+"Find:" = "Գտնել՝";
+"Replace:" = "Փոխարինել՝";
+"Match Case" = "Հաշվի առնել մեծատառ/փոքրատառ";
+"Whole Word" = "Ամբողջ բառով";
+"Regex" = "Կանոնավոր արտահայտություն";
+"Find Next" = "Գտնել հաջորդը";
+"Replace All" = "Փոխարինել բոլորը";
+"%lu occurrence(s) replaced." = "Փոխարինվեց %lu համընկնում:";
+"Untitled" = "Անանուն";
+"Save changes?" = "Պահպանե՞լ փոփոխությունները:";
+"Save" = "Պահպանել";
+"Cancel" = "Չեղարկել";
+"Discard" = "Մերժել";

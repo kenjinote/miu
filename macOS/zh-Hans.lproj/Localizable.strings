@@ -6,18 +6,19 @@
   
 */
 
-"Find" = "Find";
-"Replace" = "Replace";
-"Find:" = "Find:";
-"Replace:" = "Replace:";
-"Match Case" = "Match Case";
-"Whole Word" = "Whole Word";
-"Regex" = "Regex";
-"Find Next" = "Find Next";
-"Replace All" = "Replace All";
-"%lu occurrence(s) replaced." = "%lu occurrence(s) replaced.";
-"Untitled" = "Untitled";
-"Save changes?" = "Save changes?";
-"Save" = "Save";
-"Cancel" = "Cancel";
-"Discard" = "Discard";
+"HelpText" = "F1                    帮助\nCmd+N                 新建\nCmd+O / Drag&Drop     打开\nCmd+S                 保存\nCmd+Shift+S           另存为\nCmd+F                 查找\nCmd+H                 替换\nF3 / Shift+F3         查找下一个/上一个\nCmd+G                 转到行\nCmd+Z/Shift+Z         撤销/重做\nCmd+X/C/V             剪切/复制/粘贴\nCmd+Shift+K           删除行\nCmd+U                 转大写\nCmd+Shift+U           转小写\nOption+Up/Down        移动行\nOption+Shift+Up/Down  复制行\nCmd+D                 选择单词 / 下一个\nCmd+A                 全选\nOption+Drag           矩形选择\nCmd+Wheel/+/-         缩放\nCmd+0                 重置缩放\nCtrl+Cmd+F            全屏\n";
+"Find" = "查找";
+"Replace" = "替换";
+"Find:" = "查找:";
+"Replace:" = "替换:";
+"Match Case" = "区分大小写";
+"Whole Word" = "全字匹配";
+"Regex" = "正则表达式";
+"Find Next" = "查找下一个";
+"Replace All" = "全部替换";
+"%lu occurrence(s) replaced." = "已替换 %lu 处。";
+"Untitled" = "无标题";
+"Save changes?" = "是否保存更改？";
+"Save" = "保存";
+"Cancel" = "取消";
+"Discard" = "不保存";

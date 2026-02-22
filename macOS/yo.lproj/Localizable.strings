@@ -6,18 +6,19 @@
   
 */
 
-"Find" = "Find";
-"Replace" = "Replace";
-"Find:" = "Find:";
-"Replace:" = "Replace:";
-"Match Case" = "Match Case";
-"Whole Word" = "Whole Word";
-"Regex" = "Regex";
-"Find Next" = "Find Next";
-"Replace All" = "Replace All";
-"%lu occurrence(s) replaced." = "%lu occurrence(s) replaced.";
-"Untitled" = "Untitled";
-"Save changes?" = "Save changes?";
-"Save" = "Save";
-"Cancel" = "Cancel";
-"Discard" = "Discard";
+"HelpText" = "F1                    Ìrànwọ́\nCmd+N                 Tuntun\nCmd+O / Drag&Drop     Ṣí i\nCmd+S                 Fipamọ́\nCmd+Shift+S           Fipamọ́ Gẹ́gẹ́ Bí\nCmd+F                 Wá a\nCmd+H                 Rọ́pò\nF3 / Shift+F3         Wá Tókàn/Tẹ́lẹ̀\nCmd+G                 Lọ Sí Láyìnì\nCmd+Z/Shift+Z         Dápadà/Túnṣe\nCmd+X/C/V             Gé/Ṣẹ́dà/Lẹ̀mọ́\nCmd+Shift+K           Pa Láyìnì Rẹ́\nCmd+U                 Lẹ́tà Ńlá\nCmd+Shift+U           Lẹ́tà Kékeré\nOption+Up/Down        Gbé Láyìnì\nOption+Shift+Up/Down  Ṣẹ́dà Láyìnì\nCmd+D                 Yan Ọ̀rọ̀ / Tókàn\nCmd+A                 Yan Gbogbo Rẹ̀\nOption+Drag           Ìyàn Rẹkítáńgùlù\nCmd+Wheel/+/-         Súùmu\nCmd+0                 Súùmu Bóṣewà\nCtrl+Cmd+F            Ìbòjú Kíkún\n";
+"Find" = "Wá a";
+"Replace" = "Rọ́pò";
+"Find:" = "Wá a:";
+"Replace:" = "Rọ́pò:";
+"Match Case" = "Pàtó ńlá/kékeré";
+"Whole Word" = "Ọ̀rọ̀ Odidi";
+"Regex" = "Àkàwé Déédé";
+"Find Next" = "Wá Tókàn";
+"Replace All" = "Rọ́pò Gbogbo Rẹ̀";
+"%lu occurrence(s) replaced." = "A ti rọ́pò %lu.";
+"Untitled" = "Kò ní àkọlé";
+"Save changes?" = "Ṣé o fẹ́ fi àwọn àyípadà pamọ́?";
+"Save" = "Fipamọ́";
+"Cancel" = "Fagilé";
+"Discard" = "Nù ún sọnù";

@@ -21,7 +21,7 @@
 const std::wstring APP_VERSION = L"miu v1.0.14";
 const std::wstring APP_TITLE = L"miu";
 enum Encoding { ENC_UTF8_NOBOM = 0, ENC_UTF8_BOM, ENC_UTF16LE, ENC_UTF16BE, ENC_ANSI };
-static NSString *const kMiuRectangularSelectionType = @"com.kenji.miu.rectangular";
+static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular";
 
 struct Editor;
 
@@ -44,10 +44,12 @@ struct Editor;
 - (void)updateScrollers;
 - (void)applyZoom:(float)val relative:(bool)rel;
 - (void)showFindPanel:(BOOL)replaceMode;
+- (void)findNextAction:(id)sender;
+- (void)replaceAction:(id)sender;
 @end
 
 @interface FindPanel : NSPanel
-@property (assign) EditorView *editorView;
+@property (weak) EditorView *editorView;
 @end
 
 @implementation FindPanel
@@ -256,30 +258,8 @@ struct Editor {
     std::string newlineStr = "\n";
     CGColorRef colBackground=NULL, colText=NULL, colGutterBg=NULL, colGutterText=NULL, colSel=NULL, colCaret=NULL;
     CTFontRef fontRef = nullptr;
-    std::wstring helpTextStr =
-            L"[Shortcuts]\n"
-            L"F1                    Help\n"
-            L"Cmd+N                 New\n"
-            L"Cmd+O / Drag&Drop     Open\n"
-            L"Cmd+S                 Save\n"
-            L"Cmd+Shift+S           Save As\n"
-            L"Cmd+F                 Find\n"
-            L"Cmd+H                 Replace\n"
-            L"F3 / Shift+F3         Find Next/Prev\n"
-            L"Cmd+G                 Go To Line\n"
-            L"Cmd+Z/Shift+Z         Undo/Redo\n"
-            L"Cmd+X/C/V             Cut/Copy/Paste\n"
-            L"Cmd+Shift+K           Delete Line\n"
-            L"Cmd+U                 Upper Case\n"
-            L"Cmd+Shift+U           Lower Case\n"
-            L"Option+Up/Down        Move Line\n"
-            L"Option+Shift+Up/Down  Copy Line\n"
-            L"Cmd+D                 Select Word / Next\n"
-            L"Cmd+A                 Select All\n"
-            L"Option+Drag           Rect Select\n"
-            L"Cmd+Wheel/+/-         Zoom\n"
-            L"Cmd+0                 Reset Zoom\n"
-            L"Ctrl+Cmd+F            Full Screen\n";
+    std::wstring helpTextStr;
+    
     void detectNewlineStyle(const char* buf, size_t len) {
         size_t checkLen = (len > 4096) ? 4096 : len;
         for (size_t i = 0; i < checkLen; ++i) {
@@ -869,7 +849,11 @@ struct Editor {
         size_t lastReplaceStart = (size_t)((long long)matches.back().start + offsetBeforeFinal); size_t lastReplaceEnd = lastReplaceStart + matches.back().replacementText.size();
         cursors.clear(); cursors.push_back({ lastReplaceEnd, lastReplaceStart, getXFromPos(lastReplaceEnd), getXFromPos(lastReplaceStart), false });
         batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); if (view) [(NSView*)view setNeedsDisplay:YES];
-        NSAlert *alert = [[NSAlert alloc] init]; [alert setMessageText:@"Replace All"]; [alert setInformativeText:[NSString stringWithFormat:@"%lu occurrence(s) replaced.", matches.size()]]; [alert runModal];
+        NSAlert *alert = [[NSAlert alloc] init];
+        [alert setMessageText:NSLocalizedString(@"Replace All", @"すべて置換のアラートタイトル")];
+        NSString *infoFormat = NSLocalizedString(@"%lu occurrence(s) replaced.", @"置換した件数");
+        [alert setInformativeText:[NSString stringWithFormat:infoFormat, matches.size()]];
+        [alert runModal];
     }
     void selectNextOccurrence() {
         if (cursors.empty()) return;
@@ -905,7 +889,8 @@ struct Editor {
         }
     }
     void updateTitleBar() {
-        std::wstring t = (isDirty ? L"*" : L"") + (currentFilePath.empty() ? L"Untitled" : currentFilePath.substr(currentFilePath.find_last_of(L"/")+1)) + L" - " + APP_TITLE;
+        std::wstring untitledStr = UTF8ToW([NSLocalizedString(@"Untitled", @"新規ファイル名") UTF8String]);
+        std::wstring t = (isDirty ? L"*" : L"") + (currentFilePath.empty() ? untitledStr : currentFilePath.substr(currentFilePath.find_last_of(L"/")+1)) + L" - " + APP_TITLE;
         if (view) [[(NSView*)view window] setTitle:[NSString stringWithUTF8String:WToUTF8(t).c_str()]];
         if (view) [[(NSView*)view window] setDocumentEdited:isDirty];
     }
@@ -1141,7 +1126,12 @@ struct Editor {
     
     bool checkUnsavedChanges() {
         if(!isDirty) return true;
-        NSAlert *a = [NSAlert new]; [a setMessageText:@"Save changes?"]; [a addButtonWithTitle:@"Save"]; [a addButtonWithTitle:@"Cancel"]; [a addButtonWithTitle:@"Discard"];
+        NSAlert *a = [NSAlert new];
+        // 多言語化: 保存確認ダイアログ
+        [a setMessageText:NSLocalizedString(@"Save changes?", @"変更を保存しますか？")];
+        [a addButtonWithTitle:NSLocalizedString(@"Save", @"保存")];
+        [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
+        [a addButtonWithTitle:NSLocalizedString(@"Discard", @"破棄")];
         NSModalResponse r = [a runModal];
         if(r==NSAlertFirstButtonReturn) return currentFilePath.empty()?saveFileAs():saveFile(currentFilePath);
         if(r==NSAlertThirdButtonReturn){ isDirty=false; updateTitleBar(); return true; }
@@ -1208,7 +1198,14 @@ struct Editor {
             }
         }
     
-    void initGraphics() { if (!fontRef) fontRef = CTFontCreateWithName(CFSTR("Menlo"), currentFontSize, NULL); rebuildLineStarts(); updateThemeColors(); if (cursors.empty()) cursors.push_back({0, 0, 0.0f, 0.0f, false}); updateTitleBar(); }
+    void initGraphics() {
+        if (!fontRef) fontRef = CTFontCreateWithName(CFSTR("Menlo"), currentFontSize, NULL);
+        rebuildLineStarts(); updateThemeColors();
+        if (cursors.empty()) cursors.push_back({0, 0, 0.0f, 0.0f, false});
+        NSString *helpObjC = NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧");
+        helpTextStr = UTF8ToW([helpObjC UTF8String]);
+        updateTitleBar();
+    }
     void updateThemeColors() {
         if (colBackground) { CGColorRelease(colBackground); CGColorRelease(colText); CGColorRelease(colGutterBg); CGColorRelease(colGutterText); CGColorRelease(colSel); CGColorRelease(colCaret); }
         if (isDarkMode) {
@@ -1441,7 +1438,7 @@ struct Editor {
         if (now < zoomPopupEndTime) {
             float zw = 160.0f, zh = 80.0f;
             CGRect zpr = CGRectMake((w - zw) / 2.0f, (h - zh) / 2.0f, zw, zh);
-            CGContextSetFillColorWithColor(ctx, CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.7));
+            CGContextSetFillColorWithColor(ctx, CGColorCreateGenericRGB(0.2, 0.2, 0.2, 0.7));
             CGPathRef path = CGPathCreateWithRoundedRect(zpr, 10.0f, 10.0f, NULL);
             CGContextAddPath(ctx, path); CGContextFillPath(ctx); CGPathRelease(path);
             CFStringRef zcf = CFStringCreateWithCString(NULL, zoomPopupText.c_str(), kCFStringEncodingUTF8);
@@ -1457,40 +1454,67 @@ struct Editor {
             CGContextSetTextPosition(ctx, zpr.origin.x + (zw - (float)lineWidth) / 2.0f, textY);
             CTLineDraw(zl, ctx);
             CFRelease(zl); CFRelease(zf); CFRelease(zcf); CGColorRelease(white);
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{ [(NSView*)view setNeedsDisplay:YES]; });
+            __weak NSView *weakView = (NSView *)view;
+                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                            NSView *strongView = weakView;
+                            if (strongView) {
+                                [strongView setNeedsDisplay:YES];
+                            }
+                        });
         }
         if (showHelpPopup) {
-            float hw = 500.0f, hh = 550.0f;
-            CGRect hr = CGRectMake((w - hw) / 2.0f, (h - hh) / 2.0f, hw, hh);
-            CGContextSetFillColorWithColor(ctx, CGColorCreateGenericRGB(0.1, 0.1, 0.1, 0.5));
-            CGPathRef hpath = CGPathCreateWithRoundedRect(hr, 10.0f, 10.0f, NULL);
-            CGContextAddPath(ctx, hpath); CGContextFillPath(ctx); CGPathRelease(hpath);
             std::wstring fullHelp = APP_VERSION + L"\n\n" + helpTextStr;
             CFStringRef hcf = CFStringCreateWithBytes(NULL, (const UInt8*)fullHelp.data(), fullHelp.size()*sizeof(wchar_t), kCFStringEncodingUTF32LE, false);
-            CTFontRef hf = CTFontCreateWithName(CFSTR("Menlo"), 16.0f, NULL);
-            NSDictionary *ha = @{(id)kCTFontAttributeName: (__bridge id)hf, (id)kCTForegroundColorAttributeName: (__bridge id)CGColorCreateGenericRGB(1,1,1,1)};
+            CTFontRef hf = CTFontCreateWithName(CFSTR("Menlo"), 14.0f, NULL);
+            CGFloat helpLineHeight = 15.0f;
+            CTParagraphStyleSetting settings[] = {
+                { kCTParagraphStyleSpecifierMinimumLineHeight, sizeof(CGFloat), &helpLineHeight },
+                { kCTParagraphStyleSpecifierMaximumLineHeight, sizeof(CGFloat), &helpLineHeight }
+            };
+            CTParagraphStyleRef ps = CTParagraphStyleCreate(settings, 2);
+            NSDictionary *ha = @{
+                (id)kCTFontAttributeName: (__bridge id)hf,
+                (id)kCTForegroundColorAttributeName: (__bridge id)CGColorCreateGenericRGB(1, 1, 1, 1),
+                (id)kCTParagraphStyleAttributeName: (__bridge id)ps
+            };
             NSAttributedString *has = [[NSAttributedString alloc] initWithString:(__bridge NSString*)hcf attributes:ha];
             CTFramesetterRef fs = CTFramesetterCreateWithAttributedString((CFAttributedStringRef)has);
+            CGSize maxConstraints = CGSizeMake(w * 0.9f, h * 0.9f); // 画面サイズの最大90%で折り返す
+            CGSize suggestedSize = CTFramesetterSuggestFrameSizeWithConstraints(fs, CFRangeMake(0, 0), NULL, maxConstraints, NULL);
+            float padding = 20.0f;
+            float hw = suggestedSize.width + (padding * 2.0f);
+            float hh = suggestedSize.height + (padding * 2.0f);
+            CGRect hr = CGRectMake((w - hw) / 2.0f, (h - hh) / 2.0f, hw, hh);
+            CGContextSetFillColorWithColor(ctx, CGColorCreateGenericRGB(0.2, 0.2, 0.2, 0.7));
+            CGPathRef hpath = CGPathCreateWithRoundedRect(hr, 10.0f, 10.0f, NULL);
+            CGContextAddPath(ctx, hpath); CGContextFillPath(ctx); CGPathRelease(hpath);
             CGContextSaveGState(ctx);
             CGContextSetTextMatrix(ctx, CGAffineTransformIdentity);
             CGContextTranslateCTM(ctx, hr.origin.x, hr.origin.y + hr.size.height);
             CGContextScaleCTM(ctx, 1.0f, -1.0f);
             CGMutablePathRef pth = CGPathCreateMutable();
-            CGPathAddRect(pth, NULL, CGRectMake(20.0f, 20.0f, hw - 40.0f, hh - 30.0f));
+            CGPathAddRect(pth, NULL, CGRectMake(padding, padding, suggestedSize.width, suggestedSize.height));
             CTFrameRef frame = CTFramesetterCreateFrame(fs, CFRangeMake(0, 0), pth, NULL);
             CTFrameDraw(frame, ctx);
             CGContextRestoreGState(ctx);
-            CFRelease(frame); CFRelease(pth); CFRelease(fs); CFRelease(hf); CFRelease(hcf);
+            CFRelease(frame); CFRelease(pth); CFRelease(fs); CFRelease(hf); CFRelease(hcf); CFRelease(ps);
         }
     }
+    ~Editor() {
+        if (colBackground) CGColorRelease(colBackground);
+        if (colText) CGColorRelease(colText);
+        if (colGutterBg) CGColorRelease(colGutterBg);
+        if (colGutterText) CGColorRelease(colGutterText);
+        if (colSel) CGColorRelease(colSel);
+        if (colCaret) CGColorRelease(colCaret);
+        if (fontRef) CFRelease(fontRef);
+    }
 };
-
 @implementation EditorView {
     NSScroller *vScroller, *hScroller;
     NSPoint boxSelectStartPoint;
     size_t cursorsSnapshotCount;
 }
-
 - (instancetype)initWithFrame:(NSRect)fr {
     if (self = [super initWithFrame:fr]) {
         editor = std::make_shared<Editor>();
@@ -1506,12 +1530,15 @@ struct Editor {
     }
     return self;
 }
+- (void)dealloc {
+    if (findTextField) [findTextField setDelegate:nil];
+    if (replaceTextField) [replaceTextField setDelegate:nil];
+}
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
     NSPasteboard *pboard = [sender draggingPasteboard];
     if ([[pboard types] containsObject:NSPasteboardTypeFileURL]) return NSDragOperationCopy;
     return NSDragOperationNone;
 }
-
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
     NSPasteboard *pboard = [sender draggingPasteboard];
     if ([[pboard types] containsObject:NSPasteboardTypeFileURL]) {
@@ -1526,7 +1553,6 @@ struct Editor {
     }
     return NO;
 }
-
 - (BOOL)acceptsFirstResponder { return YES; }
 - (BOOL)becomeFirstResponder { return YES; }
 - (BOOL)isFlipped { return YES; }
@@ -1602,7 +1628,6 @@ struct Editor {
     editor->zoomPopupText = std::to_string((int)std::round(editor->currentFontSize)) + "px";
     [self setNeedsDisplay:YES];
 }
-
 - (void)mouseDown:(NSEvent *)e {
     if (editor->showHelpPopup) { editor->showHelpPopup = false; [self setNeedsDisplay:YES]; }
     [[self window] makeFirstResponder:self];
@@ -1635,7 +1660,6 @@ struct Editor {
     } else { editor->cursors.push_back(newCursor); }
     [self setNeedsDisplay:YES];
 }
-
 - (void)mouseDragged:(NSEvent *)e {
     NSPoint p = [self convertPoint:[e locationInWindow] fromView:nil];
     bool isOption = ([e modifierFlags] & NSEventModifierFlagOption);
@@ -1671,8 +1695,8 @@ struct Editor {
     else if (editor->searchQuery.empty() && !candidate.empty()) editor->searchQuery = candidate;
     if (!findPanel) {
         findPanel = [[FindPanel alloc] initWithContentRect:NSMakeRect(0, 0, 360, 160)
-                                               styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskUtilityWindow | NSWindowStyleMaskNonactivatingPanel
-                                                 backing:NSBackingStoreBuffered defer:NO];
+                                                 styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskUtilityWindow | NSWindowStyleMaskNonactivatingPanel
+                                                   backing:NSBackingStoreBuffered defer:NO];
         [(FindPanel*)findPanel setEditorView:self];
         [findPanel setLevel:NSFloatingWindowLevel];
         [findPanel setHidesOnDeactivate:NO];
@@ -1683,36 +1707,36 @@ struct Editor {
         panelFrame.origin.y = parentFrame.origin.y + (parentFrame.size.height - panelFrame.size.height) / 2.0;
         [findPanel setFrame:panelFrame display:NO];
         NSView *cv = [findPanel contentView];
-        findLabel = [NSTextField labelWithString:@"Find:"];
+        findLabel = [NSTextField labelWithString:NSLocalizedString(@"Find:", @"検索ラベル")];
         [cv addSubview:findLabel];
         findTextField = [NSTextField textFieldWithString:@""];
         [findTextField setDelegate:self];
         [findTextField setTarget:self];
         [findTextField setAction:@selector(findNextAction:)];
         [cv addSubview:findTextField];
-        replaceLabel = [NSTextField labelWithString:@"Replace:"];
+        replaceLabel = [NSTextField labelWithString:NSLocalizedString(@"Replace:", @"置換ラベル")];
         [cv addSubview:replaceLabel];
         replaceTextField = [NSTextField textFieldWithString:@""];
         [replaceTextField setDelegate:self];
         [cv addSubview:replaceTextField];
-        matchCaseBtn = [NSButton checkboxWithTitle:@"Match Case" target:self action:@selector(findOptionsChanged:)];
+        matchCaseBtn = [NSButton checkboxWithTitle:NSLocalizedString(@"Match Case", @"大文字小文字を区別") target:self action:@selector(findOptionsChanged:)];
         [cv addSubview:matchCaseBtn];
-        wholeWordBtn = [NSButton checkboxWithTitle:@"Whole Word" target:self action:@selector(findOptionsChanged:)];
+        wholeWordBtn = [NSButton checkboxWithTitle:NSLocalizedString(@"Whole Word", @"単語単位") target:self action:@selector(findOptionsChanged:)];
         [cv addSubview:wholeWordBtn];
-        regexBtn = [NSButton checkboxWithTitle:@"Regex" target:self action:@selector(findOptionsChanged:)];
+        regexBtn = [NSButton checkboxWithTitle:NSLocalizedString(@"Regex", @"正規表現") target:self action:@selector(findOptionsChanged:)];
         [cv addSubview:regexBtn];
-        findBtn = [NSButton buttonWithTitle:@"Find Next" target:self action:@selector(findNextAction:)];
+        findBtn = [NSButton buttonWithTitle:NSLocalizedString(@"Find Next", @"次を検索") target:self action:@selector(findNextAction:)];
         [findBtn setKeyEquivalent:@"\r"];
         [cv addSubview:findBtn];
-        replaceBtn = [NSButton buttonWithTitle:@"Replace" target:self action:@selector(replaceAction:)];
+        replaceBtn = [NSButton buttonWithTitle:NSLocalizedString(@"Replace", @"置換") target:self action:@selector(replaceAction:)];
         [cv addSubview:replaceBtn];
-        replaceAllBtn = [NSButton buttonWithTitle:@"Replace All" target:self action:@selector(replaceAllAction:)];
+        replaceAllBtn = [NSButton buttonWithTitle:NSLocalizedString(@"Replace All", @"すべて置換") target:self action:@selector(replaceAllAction:)];
         [cv addSubview:replaceAllBtn];
         [matchCaseBtn setState:editor->searchMatchCase ? NSControlStateValueOn : NSControlStateValueOff];
         [wholeWordBtn setState:editor->searchWholeWord ? NSControlStateValueOn : NSControlStateValueOff];
         [regexBtn setState:editor->searchRegex ? NSControlStateValueOn : NSControlStateValueOff];
     }
-    [findPanel setTitle:replaceMode ? @"Replace" : @"Find"];
+    [findPanel setTitle:replaceMode ? NSLocalizedString(@"Replace", @"置換パネルタイトル") : NSLocalizedString(@"Find", @"検索パネルタイトル")];
     [replaceLabel setHidden:!replaceMode];
     [replaceTextField setHidden:!replaceMode];
     [replaceBtn setHidden:!replaceMode];
@@ -1748,11 +1772,9 @@ struct Editor {
 - (BOOL)control:(NSControl *)control textView:(NSTextView *)textView doCommandBySelector:(SEL)commandSelector {
     if (commandSelector == @selector(insertNewline:)) {
         if (control == findTextField) {
-            [self findNextAction:nil];
-            return YES;
+            [self findNextAction:nil]; return YES;
         } else if (control == replaceTextField) {
-            [self replaceAction:nil];
-            return YES;
+            [self replaceAction:nil]; return YES;
         }
     }
     return NO;
@@ -1774,18 +1796,10 @@ struct Editor {
     if (editor->showHelpPopup) { editor->showHelpPopup = false; [self setNeedsDisplay:YES]; if (code == 122) return; }
     if (code == 122) { editor->showHelpPopup = true; [self setNeedsDisplay:YES]; return; }
     if (code == 53) { if (editor->cursors.size() > 1 || (editor->cursors.size() == 1 && editor->cursors[0].hasSelection())) { Cursor lastC = editor->cursors.back(); lastC.anchor = lastC.head; editor->cursors.clear(); editor->cursors.push_back(lastC); [self setNeedsDisplay:YES]; return; } }
-    if (code == 48) { // Tab キー
-        if (shift) {
-            editor->unindentLines();
-        } else {
+    if (code == 48) {
+        if (shift) { editor->unindentLines(); } else {
             bool isRectMode = editor->cursors.size() > 1;
-            if (isRectMode) {
-                // 矩形選択など複数カーソル時は現在の位置にタブを挿入
-                editor->insertAtCursors("\t");
-            } else {
-                // 範囲選択時 または 通常のインデント
-                editor->indentLines(false);
-            }
+            if (isRectMode) { editor->insertAtCursors("\t"); } else { editor->indentLines(false); }
         }
         [self setNeedsDisplay:YES];
         return;
@@ -1879,16 +1893,13 @@ struct Editor {
 }
 - (void)scrollWheel:(NSEvent *)e {
     if ([e modifierFlags] & NSEventModifierFlagCommand) { float dy = [e scrollingDeltaY]; if (dy == 0) dy = [e deltaY]; if (dy != 0) { float factor = (dy > 0) ? 1.1f : 0.9f; editor->updateFont(editor->currentFontSize * factor); editor->zoomPopupText = std::to_string((int)std::round(editor->currentFontSize)) + "px"; editor->zoomPopupEndTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000); [self setNeedsDisplay:YES]; } return; }
-    
     NSRect b = [self bounds];
     int totalLines = (int)editor->lineStarts.size();
     int maxV = std::max(0, totalLines - 1);
     editor->vScrollPos = std::clamp(editor->vScrollPos - (int)std::round([e deltaY]), 0, maxV);
-    
     float visibleWidth = b.size.width - editor->gutterWidth - editor->visibleVScrollWidth;
     int maxH = std::max(0, (int)(editor->maxLineWidth - visibleWidth + editor->charWidth * 4));
     editor->hScrollPos = std::clamp(editor->hScrollPos - (int)[e deltaX], 0, maxH);
-    
     [self updateScrollers]; [self setNeedsDisplay:YES];
 }
 - (void)insertText:(id)s replacementRange:(NSRange)r {
@@ -1910,7 +1921,7 @@ struct Editor {
 - (void)doCommandBySelector:(SEL)s {
     if (s == @selector(deleteBackward:)) editor->backspaceAtCursors();
     else if (s == @selector(deleteForward:)) editor->deleteForwardAtCursors();
-    else if (s == @selector(insertNewline:)) editor->insertNewlineWithAutoIndent(); // ここを変更
+    else if (s == @selector(insertNewline:)) editor->insertNewlineWithAutoIndent();
     [self setNeedsDisplay:YES]; }
 - (nullable NSAttributedString *)attributedSubstringForProposedRange:(NSRange)r actualRange:(NSRangePointer)ar { return nil; }
 - (NSArray*)validAttributesForMarkedText { return @[]; }

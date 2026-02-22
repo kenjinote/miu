@@ -5,3 +5,20 @@
   Created by kenji on 2026/02/22.
   
 */
+
+"HelpText" = "F1                    ヘルプ\nCmd+N                 新規作成\nCmd+O / Drag&Drop     開く\nCmd+S                 保存\nCmd+Shift+S           名前を付けて保存\nCmd+F                 検索\nCmd+H                 置換\nF3 / Shift+F3         次/前を検索\nCmd+G                 指定行へ移動\nCmd+Z/Shift+Z         元に戻す/やり直し\nCmd+X/C/V             カット/コピー/ペースト\nCmd+Shift+K           行を削除\nCmd+U                 大文字に変換\nCmd+Shift+U           小文字に変換\nOption+Up/Down        行を移動\nOption+Shift+Up/Down  行をコピー\nCmd+D                 単語を選択 / 次へ\nCmd+A                 すべて選択\nOption+Drag           矩形選択\nCmd+Wheel/+/-         ズーム\nCmd+0                 ズームをリセット\nCtrl+Cmd+F            フルスクリーン\n";
+"Find" = "検索";
+"Replace" = "置換";
+"Find:" = "検索:";
+"Replace:" = "置換:";
+"Match Case" = "大文字/小文字を区別";
+"Whole Word" = "単語単位";
+"Regex" = "正規表現";
+"Find Next" = "次を検索";
+"Replace All" = "すべて置換";
+"%lu occurrence(s) replaced." = "%lu 件置換しました。";
+"Untitled" = "無題";
+"Save changes?" = "変更を保存しますか？";
+"Save" = "保存";
+"Cancel" = "キャンセル";
+"Discard" = "破棄";
