@@ -64,6 +64,17 @@ struct Editor;
             [self.editorView showFindPanel:YES];
             return YES;
         }
+        if ([ch isEqualToString:@"x"]) { return [NSApp sendAction:@selector(cut:) to:nil from:self]; }
+        if ([ch isEqualToString:@"c"]) { return [NSApp sendAction:@selector(copy:) to:nil from:self]; }
+        if ([ch isEqualToString:@"v"]) { return [NSApp sendAction:@selector(paste:) to:nil from:self]; }
+        if ([ch isEqualToString:@"a"]) { return [NSApp sendAction:@selector(selectAll:) to:nil from:self]; }
+        if ([ch isEqualToString:@"z"]) {
+            if ([event modifierFlags] & NSEventModifierFlagShift) {
+                return [NSApp sendAction:NSSelectorFromString(@"redo:") to:nil from:self];
+            } else {
+                return [NSApp sendAction:NSSelectorFromString(@"undo:") to:nil from:self];
+            }
+        }
     }
     return [super performKeyEquivalent:event];
 }
