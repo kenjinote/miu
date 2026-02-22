@@ -1542,8 +1542,14 @@ struct Editor {
     return self;
 }
 - (void)dealloc {
-    if (findTextField) [findTextField setDelegate:nil];
-    if (replaceTextField) [replaceTextField setDelegate:nil];
+    if (findTextField) {
+        [findTextField setDelegate:nil];
+        [findTextField setTarget:nil];
+    }
+    if (replaceTextField) {
+        [replaceTextField setDelegate:nil];
+        [replaceTextField setTarget:nil];
+    }
 }
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
     NSPasteboard *pboard = [sender draggingPasteboard];
@@ -1973,11 +1979,21 @@ struct Editor {
 - (BOOL)windowShouldClose:(NSWindow *)sender { EditorView *v = (EditorView *)sender.contentView; if (v && v->editor) { if (!v->editor->checkUnsavedChanges()) return NO; } return YES; }
 - (void)windowWillClose:(NSNotification *)notification {
     CustomWindow *win = (CustomWindow *)notification.object;
+    // ウィンドウ自身の終了処理が完走するのを待ってから配列から消す
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.windows removeObject:win];
     });
 }
-- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender { for (CustomWindow *win in self.windows) { EditorView *v = (EditorView *)win.contentView; if (v && v->editor) { if (!v->editor->checkUnsavedChanges()) return NSTerminateCancel; } } return NSTerminateNow; }
+- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
+    NSArray *windowsToClose = [self.windows copy];
+    for (CustomWindow *win in windowsToClose) {
+        EditorView *v = (EditorView *)win.contentView;
+        if (v && v->editor) {
+            if (!v->editor->checkUnsavedChanges()) return NSTerminateCancel;
+        }
+    }
+    return NSTerminateNow;
+}
 @end
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
