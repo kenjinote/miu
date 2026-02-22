@@ -25,7 +25,7 @@ static NSString *const kMiuRectangularSelectionType = @"com.kenji.miu.rectangula
 
 struct Editor;
 
-@interface EditorView : NSView <NSTextInputClient>
+@interface EditorView : NSView <NSTextInputClient, NSTextFieldDelegate>
 {
 @public
     std::shared_ptr<Editor> editor;
@@ -1686,12 +1686,14 @@ struct Editor {
         findLabel = [NSTextField labelWithString:@"Find:"];
         [cv addSubview:findLabel];
         findTextField = [NSTextField textFieldWithString:@""];
+        [findTextField setDelegate:self];
         [findTextField setTarget:self];
         [findTextField setAction:@selector(findNextAction:)];
         [cv addSubview:findTextField];
         replaceLabel = [NSTextField labelWithString:@"Replace:"];
         [cv addSubview:replaceLabel];
         replaceTextField = [NSTextField textFieldWithString:@""];
+        [replaceTextField setDelegate:self];
         [cv addSubview:replaceTextField];
         matchCaseBtn = [NSButton checkboxWithTitle:@"Match Case" target:self action:@selector(findOptionsChanged:)];
         [cv addSubview:matchCaseBtn];
@@ -1736,6 +1738,24 @@ struct Editor {
 - (void)updateFindQueries {
     editor->searchQuery = [[findTextField stringValue] UTF8String];
     editor->replaceQuery = [[replaceTextField stringValue] UTF8String];
+}
+- (void)controlTextDidChange:(NSNotification *)obj {
+    if ([obj object] == findTextField || [obj object] == replaceTextField) {
+        [self updateFindQueries];
+        [self setNeedsDisplay:YES];
+    }
+}
+- (BOOL)control:(NSControl *)control textView:(NSTextView *)textView doCommandBySelector:(SEL)commandSelector {
+    if (commandSelector == @selector(insertNewline:)) {
+        if (control == findTextField) {
+            [self findNextAction:nil];
+            return YES;
+        } else if (control == replaceTextField) {
+            [self replaceAction:nil];
+            return YES;
+        }
+    }
+    return NO;
 }
 - (void)findOptionsChanged:(NSButton *)sender {
     editor->searchMatchCase = ([matchCaseBtn state] == NSControlStateValueOn);
