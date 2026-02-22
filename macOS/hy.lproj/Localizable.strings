@@ -1,0 +1,23 @@
+/* 
+  Localizable.strings
+  miu
+
+  Created by kenji on 2026/02/22.
+  
+*/
+
+"Find" = "Find";
+"Replace" = "Replace";
+"Find:" = "Find:";
+"Replace:" = "Replace:";
+"Match Case" = "Match Case";
+"Whole Word" = "Whole Word";
+"Regex" = "Regex";
+"Find Next" = "Find Next";
+"Replace All" = "Replace All";
+"%lu occurrence(s) replaced." = "%lu occurrence(s) replaced.";
+"Untitled" = "Untitled";
+"Save changes?" = "Save changes?";
+"Save" = "Save";
+"Cancel" = "Cancel";
+"Discard" = "Discard";
