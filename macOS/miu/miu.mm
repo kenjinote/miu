@@ -1541,6 +1541,10 @@ struct Editor {
     }
     return self;
 }
+- (void)resetCursorRects {
+    [super resetCursorRects];
+    [self addCursorRect:[self bounds] cursor:[NSCursor IBeamCursor]];
+}
 - (void)dealloc {
     if (findTextField) {
         [findTextField setDelegate:nil];
