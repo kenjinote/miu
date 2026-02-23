@@ -22,3 +22,6 @@
 "Save" = "保存";
 "Cancel" = "キャンセル";
 "Discard" = "破棄";
+"Find Next (F3)" = "次を検索 (F3)";
+"Replace (⌘R)" = "置換 (⌘R)";
+"Replace All (⌥⌘R)" = "すべて置換 (⌥⌘R)";

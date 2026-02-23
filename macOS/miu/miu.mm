@@ -17,14 +17,11 @@
 #include <unistd.h>
 #import <Cocoa/Cocoa.h>
 #import <CoreText/CoreText.h>
-
 const std::wstring APP_VERSION = L"miu v1.0.14";
 const std::wstring APP_TITLE = L"miu";
 enum Encoding { ENC_UTF8_NOBOM = 0, ENC_UTF8_BOM, ENC_UTF16LE, ENC_UTF16BE, ENC_ANSI };
 static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular";
-
 struct Editor;
-
 @interface EditorView : NSView <NSTextInputClient, NSTextFieldDelegate>
 {
 @public
@@ -44,16 +41,24 @@ struct Editor;
 - (void)updateScrollers;
 - (void)applyZoom:(float)val relative:(bool)rel;
 - (void)showFindPanel:(BOOL)replaceMode;
+- (void)updateFindQueries;
+- (void)findNextWithDirection:(BOOL)forward;
+- (BOOL)isReplaceMode;
 - (void)findNextAction:(id)sender;
 - (void)replaceAction:(id)sender;
+- (void)replaceAllAction:(id)sender;
 @end
-
 @interface FindPanel : NSPanel
 @property (weak) EditorView *editorView;
 @end
-
 @implementation FindPanel
 - (BOOL)performKeyEquivalent:(NSEvent *)event {
+    if ([event keyCode] == 99) {
+        BOOL shift = ([event modifierFlags] & NSEventModifierFlagShift) != 0;
+        [self.editorView updateFindQueries];
+        [self.editorView findNextWithDirection:!shift];
+        return YES;
+    }
     if (([event modifierFlags] & NSEventModifierFlagCommand)) {
         NSString *ch = [[event charactersIgnoringModifiers] lowercaseString];
         if ([ch isEqualToString:@"f"]) {
@@ -61,7 +66,17 @@ struct Editor;
             return YES;
         }
         if ([ch isEqualToString:@"h"] || [ch isEqualToString:@"r"]) {
-            [self.editorView showFindPanel:YES];
+            if ([event modifierFlags] & NSEventModifierFlagOption) {
+                [self.editorView replaceAllAction:nil];
+            }
+            else {
+                if ([self.editorView isReplaceMode]) {
+                    [self.editorView replaceAction:nil];
+                }
+                else {
+                    [self.editorView showFindPanel:YES];
+                }
+            }
             return YES;
         }
         if ([ch isEqualToString:@"x"]) { return [NSApp sendAction:@selector(cut:) to:nil from:self]; }
@@ -79,7 +94,6 @@ struct Editor;
     return [super performKeyEquivalent:event];
 }
 @end
-
 static std::string CFStringToStdString(CFStringRef cfStr) {
     if (!cfStr) return "";
     CFIndex len = CFStringGetLength(cfStr);
@@ -236,7 +250,6 @@ struct MappedFile {
     void close() { if (ptr && ptr != MAP_FAILED) munmap(ptr, size); if (fd != -1) ::close(fd); ptr = nullptr; fd = -1; }
     ~MappedFile() { close(); }
 };
-
 struct Editor {
     EditorView* view = nullptr;
     PieceTable pt;
@@ -270,7 +283,6 @@ struct Editor {
     CGColorRef colBackground=NULL, colText=NULL, colGutterBg=NULL, colGutterText=NULL, colSel=NULL, colCaret=NULL;
     CTFontRef fontRef = nullptr;
     std::wstring helpTextStr;
-    
     void detectNewlineStyle(const char* buf, size_t len) {
         size_t checkLen = (len > 4096) ? 4096 : len;
         for (size_t i = 0; i < checkLen; ++i) {
@@ -1138,7 +1150,6 @@ struct Editor {
     bool checkUnsavedChanges() {
         if(!isDirty) return true;
         NSAlert *a = [NSAlert new];
-        // 多言語化: 保存確認ダイアログ
         [a setMessageText:NSLocalizedString(@"Save changes?", @"変更を保存しますか？")];
         [a addButtonWithTitle:NSLocalizedString(@"Save", @"保存")];
         [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
@@ -1748,10 +1759,17 @@ struct Editor {
         [cv addSubview:regexBtn];
         findBtn = [NSButton buttonWithTitle:NSLocalizedString(@"Find Next", @"次を検索") target:self action:@selector(findNextAction:)];
         [findBtn setKeyEquivalent:@"\r"];
+        [findBtn setToolTip:NSLocalizedString(@"Find Next (F3)", @"次を検索のツールチップ")];
         [cv addSubview:findBtn];
         replaceBtn = [NSButton buttonWithTitle:NSLocalizedString(@"Replace", @"置換") target:self action:@selector(replaceAction:)];
+        [replaceBtn setKeyEquivalent:@"r"];
+        [replaceBtn setKeyEquivalentModifierMask:NSEventModifierFlagCommand];
+        [replaceBtn setToolTip:NSLocalizedString(@"Replace (⌘R)", @"置換のツールチップ")];
         [cv addSubview:replaceBtn];
         replaceAllBtn = [NSButton buttonWithTitle:NSLocalizedString(@"Replace All", @"すべて置換") target:self action:@selector(replaceAllAction:)];
+        [replaceAllBtn setKeyEquivalent:@"r"];
+        [replaceAllBtn setKeyEquivalentModifierMask:NSEventModifierFlagCommand | NSEventModifierFlagOption];
+        [replaceAllBtn setToolTip:NSLocalizedString(@"Replace All (⌥⌘R)", @"すべて置換のツールチップ")];
         [cv addSubview:replaceAllBtn];
         [matchCaseBtn setState:editor->searchMatchCase ? NSControlStateValueOn : NSControlStateValueOff];
         [wholeWordBtn setState:editor->searchWholeWord ? NSControlStateValueOn : NSControlStateValueOff];
@@ -1762,18 +1780,18 @@ struct Editor {
     [replaceTextField setHidden:!replaceMode];
     [replaceBtn setHidden:!replaceMode];
     [replaceAllBtn setHidden:!replaceMode];
-    CGFloat panelHeight = 160;
+    CGFloat panelHeight = 185;
     [findPanel setContentSize:NSMakeSize(360, panelHeight)];
-    [findLabel setFrame:NSMakeRect(10, 125, 60, 20)];
-    [findTextField setFrame:NSMakeRect(80, 125, 260, 22)];
-    [replaceLabel setFrame:NSMakeRect(10, 95, 60, 20)];
-    [replaceTextField setFrame:NSMakeRect(80, 95, 260, 22)];
-    [matchCaseBtn setFrame:NSMakeRect(80, 65, 100, 20)];
-    [wholeWordBtn setFrame:NSMakeRect(180, 65, 100, 20)];
-    [regexBtn setFrame:NSMakeRect(280, 65, 70, 20)];
-    [findBtn setFrame:NSMakeRect(80, 20, 90, 32)];
-    [replaceBtn setFrame:NSMakeRect(170, 20, 80, 32)];
-    [replaceAllBtn setFrame:NSMakeRect(250, 20, 100, 32)];
+    [findLabel setFrame:NSMakeRect(10, 150, 60, 20)];
+    [findTextField setFrame:NSMakeRect(80, 150, 260, 22)];
+    [replaceLabel setFrame:NSMakeRect(10, 120, 60, 20)];
+    [replaceTextField setFrame:NSMakeRect(80, 120, 260, 22)];
+    [matchCaseBtn setFrame:NSMakeRect(80, 95, 260, 20)];
+    [wholeWordBtn setFrame:NSMakeRect(80, 75, 260, 20)];
+    [regexBtn setFrame:NSMakeRect(80, 55, 260, 20)];
+    [replaceAllBtn setFrame:NSMakeRect(80, 10, 100, 32)];
+    [replaceBtn setFrame:NSMakeRect(180, 10, 80, 32)];
+    [findBtn setFrame:NSMakeRect(260, 10, 90, 32)];
     if (!editor->searchQuery.empty()) [findTextField setStringValue:[NSString stringWithUTF8String:editor->searchQuery.c_str()]];
     if (!editor->replaceQuery.empty()) [replaceTextField setStringValue:[NSString stringWithUTF8String:editor->replaceQuery.c_str()]];
     [[self window] addChildWindow:findPanel ordered:NSWindowAbove];
@@ -1805,6 +1823,17 @@ struct Editor {
     editor->searchWholeWord = ([wholeWordBtn state] == NSControlStateValueOn);
     editor->searchRegex = ([regexBtn state] == NSControlStateValueOn);
     [self setNeedsDisplay:YES];
+}
+- (void)findNextWithDirection:(BOOL)forward {
+    if (editor) {
+        editor->findNext(forward);
+    }
+}
+- (BOOL)isReplaceMode {
+    if (editor) {
+        return editor->isReplaceMode;
+    }
+    return NO;
 }
 - (void)findNextAction:(id)sender { [self updateFindQueries]; editor->findNext(true); }
 - (void)replaceAction:(id)sender { [self updateFindQueries]; editor->replaceNext(); }
@@ -1949,17 +1978,14 @@ struct Editor {
 - (NSRect)firstRectForCharacterRange:(NSRange)r actualRange:(NSRangePointer)ar { if (editor->cursors.empty()) return NSZeroRect; float x = editor->getXFromPos(editor->cursors.back().head), y = (float)(editor->getLineIdx(editor->cursors.back().head) - editor->vScrollPos) * editor->lineHeight; return [[self window] convertRectToScreen:[self convertRect:NSMakeRect(editor->gutterWidth-(float)editor->hScrollPos+x, y, 2, editor->lineHeight) toView:nil]]; }
 - (NSUInteger)characterIndexForPoint:(NSPoint)p { return 0; }
 @end
-
 @interface CustomWindow : NSWindow @end
 @implementation CustomWindow
 - (BOOL)canBecomeKeyWindow { return YES; }
 - (BOOL)canBecomeMainWindow { return YES; }
 @end
-
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
 @property (strong) NSMutableArray<CustomWindow *> *windows;
 @end
-
 @implementation AppDelegate
 - (instancetype)init { if (self = [super init]) { self.windows = [NSMutableArray array]; } return self; }
 - (void)createWindowWithPath:(const char*)path {
@@ -1983,7 +2009,6 @@ struct Editor {
 - (BOOL)windowShouldClose:(NSWindow *)sender { EditorView *v = (EditorView *)sender.contentView; if (v && v->editor) { if (!v->editor->checkUnsavedChanges()) return NO; } return YES; }
 - (void)windowWillClose:(NSNotification *)notification {
     CustomWindow *win = (CustomWindow *)notification.object;
-    // ウィンドウ自身の終了処理が完走するのを待ってから配列から消す
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.windows removeObject:win];
     });
