@@ -1136,12 +1136,17 @@ void Editor::updateThemeColors() {
 #if defined(__APPLE__)
 void Editor::render(CGContextRef ctx, float w, float h) {
     CGContextSetFillColorWithColor(ctx, colBackground); CGContextFillRect(ctx, CGRectMake(0, 0, w, h));
+    
+    // 【最適化】テキスト全体のY軸を反転させる設定を1度だけ適用（描画を高速化）
     CGContextSetTextMatrix(ctx, CGAffineTransformMakeScale(1.0, -1.0));
+    
     float vw = std::max(0.0f, w - gutterWidth - visibleVScrollWidth);
     float vh = std::max(0.0f, h - visibleHScrollHeight);
     int start = vScrollPos; int vis = (int)(vh / lineHeight) + 2; int end = std::min((int)lineStarts.size(), start + vis);
     CGFloat asc = CTFontGetAscent(fontRef);
+    
     CGContextSaveGState(ctx); CGContextClipToRect(ctx, CGRectMake(gutterWidth, 0, vw, vh));
+    
     auto [autoStr, isWholeWord] = getHighlightTarget();
     if (!autoStr.empty() && autoStr != searchQuery) {
         CGColorRef autoHlColor = isDarkMode ? CGColorCreateGenericRGB(0.35, 0.35, 0.35, 0.5) : CGColorCreateGenericRGB(0.85, 0.85, 0.85, 0.5);
@@ -1167,6 +1172,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
         CGColorRelease(autoHlColor);
     }
+    
     if (!searchQuery.empty()) {
         CGColorRef hlColor = isDarkMode ? CGColorCreateGenericRGB(0.4, 0.4, 0.0, 0.6) : CGColorCreateGenericRGB(1.0, 1.0, 0.0, 0.4);
         CGContextSetFillColorWithColor(ctx, hlColor);
@@ -1218,6 +1224,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
         CGColorRelease(hlColor);
     }
+    
     CGContextSetFillColorWithColor(ctx, colSel); bool isRectMode = (cursors.size() > 1);
     for (const auto& c : cursors) {
         if (isRectMode) {
@@ -1244,6 +1251,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             }
         }
     }
+    
     for (int i = start; i < end; ++i) {
         size_t s = lineStarts[i], e = (i + 1 < lineStarts.size() ? lineStarts[i + 1] : pt.length());
         std::string ls = pt.getRange(s, std::max((size_t)0, e - s)); size_t imIdx = std::string::npos;
@@ -1265,8 +1273,12 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                     CFRelease(n); if (prefix) CFRelease(prefix); if (icf) CFRelease(icf);
                 }
                 CTLineRef tl = CTLineCreateWithAttributedString(mas);
+                
+                // 【最適化】ステート保存なしのダイレクト描画
                 CGContextSetTextPosition(ctx, gutterWidth - (float)hScrollPos, (float)(i - start) * lineHeight + asc + 2.0f);
-                CTLineDraw(tl, ctx); CFRelease(tl); CFRelease(mas); CFRelease(cf);
+                CTLineDraw(tl, ctx);
+                
+                CFRelease(tl); CFRelease(mas); CFRelease(cf);
             }
         }
         
@@ -1328,6 +1340,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             }
         }
     }
+    
     CGContextSetFillColorWithColor(ctx, colCaret);
     for (const auto& c : cursors) {
         int l = getLineIdx(c.head);
@@ -1337,9 +1350,10 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
     }
     CGContextRestoreGState(ctx);
+    
     CGContextSetFillColorWithColor(ctx, colGutterBg); CGContextFillRect(ctx, CGRectMake(0, 0, gutterWidth, h));
     
-    // ガター（行番号）の描画（Objective-C排除・Pure C/CF実装へ変更）
+    // ガター（行番号）の描画
     for (int i = start; i < end; ++i) {
         CFStringRef n = CFStringCreateWithCString(NULL, std::to_string(i + 1).c_str(), kCFStringEncodingUTF8);
         if (n) {
@@ -1351,13 +1365,16 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             double ascent, descent, leading;
             double lineWidth = CTLineGetTypographicBounds(nl, &ascent, &descent, &leading);
             float xPos = gutterWidth - (float)lineWidth - (charWidth * 0.5f); if (xPos < 5.0f) xPos = 5.0f;
+            
+            // 【最適化】ステート保存なしのダイレクト描画
             CGContextSetTextPosition(ctx, xPos, (float)(i - start) * lineHeight + asc + 2.0f);
             CTLineDraw(nl, ctx);
+            
             CFRelease(nl); CFRelease(nas); CFRelease(attr); CFRelease(n);
         }
     }
     
-    // ズームポップアップの描画（Objective-C排除・Pure C/CF実装へ変更）
+    // ズームポップアップの描画
     auto now = std::chrono::steady_clock::now();
     if (now < zoomPopupEndTime) {
         float zw = 160.0f, zh = 80.0f;
@@ -1393,7 +1410,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
     }
     
-    // ヘルプポップアップの描画（Objective-C排除・Pure C/CF実装へ変更）
+    // ヘルプポップアップの描画
     if (showHelpPopup) {
         std::wstring fullHelp = APP_VERSION + L"\n\n" + helpTextStr;
         CFStringRef hcf = CFStringCreateWithBytes(NULL, (const UInt8*)fullHelp.data(), fullHelp.size()*sizeof(wchar_t), kCFStringEncodingUTF32LE, false);

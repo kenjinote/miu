@@ -7,45 +7,71 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		BA5C5FA02F4CA6370029DB67 /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA5C5F9F2F4CA6370029DB67 /* UniformTypeIdentifiers.framework */; };
 		BAA1E1DB2F4AE17800BA3D2C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */; };
 		BABDDE6D2F49E1C000B3E84A /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */; };
 		BABDDE6F2F49E1CC00B3E84A /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		BA4A72FC2F4C1DC90045F2FD /* miu_iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = miu_iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BA5C5F9F2F4CA6370029DB67 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = DEVELOPER_DIR; };
 		BAA1E1DA2F4AE17800BA3D2C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1DC2F4AE1FC00BA3D2C /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1DD2F4AE6CF00BA3D2C /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1DE2F4AE6FF00BA3D2C /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		BAA1E1DF2F4AE79500BA3D2C /* yo */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = yo; path = yo.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1E02F4AE7CA00BA3D2C /* hy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hy; path = hy.lproj/Localizable.strings; sourceTree = "<group>"; };
-		BABDDE562F49D3BC00B3E84A /* miu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = miu.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BABDDE562F49D3BC00B3E84A /* miu_macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = miu_macOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		BA4A72EB2F4C15B90045F2FD /* Exceptions for "miu" folder in "miu" target */ = {
+		BA4A73142F4C1DCA0045F2FD /* Exceptions for "miu_iOS" folder in "miu_iOS" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = BABDDE552F49D3BC00B3E84A /* miu */;
+			target = BA4A72FB2F4C1DC90045F2FD /* miu_iOS */;
+		};
+		BA4A731C2F4C22720045F2FD /* Exceptions for "miu_macOS" folder in "miu_iOS" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				EditorCore.cpp,
+			);
+			target = BA4A72FB2F4C1DC90045F2FD /* miu_iOS */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		BABDDE582F49D3BC00B3E84A /* miu */ = {
+		BA4A72FD2F4C1DC90045F2FD /* miu_iOS */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				BA4A72EB2F4C15B90045F2FD /* Exceptions for "miu" folder in "miu" target */,
+				BA4A73142F4C1DCA0045F2FD /* Exceptions for "miu_iOS" folder in "miu_iOS" target */,
 			);
-			path = miu;
+			path = miu_iOS;
+			sourceTree = "<group>";
+		};
+		BABDDE582F49D3BC00B3E84A /* miu_macOS */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				BA4A731C2F4C22720045F2FD /* Exceptions for "miu_macOS" folder in "miu_iOS" target */,
+			);
+			path = miu_macOS;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		BA4A72F92F4C1DC90045F2FD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA5C5FA02F4CA6370029DB67 /* UniformTypeIdentifiers.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BABDDE532F49D3BC00B3E84A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -62,7 +88,8 @@
 			isa = PBXGroup;
 			children = (
 				BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */,
-				BABDDE582F49D3BC00B3E84A /* miu */,
+				BABDDE582F49D3BC00B3E84A /* miu_macOS */,
+				BA4A72FD2F4C1DC90045F2FD /* miu_iOS */,
 				BABDDE6B2F49E1C000B3E84A /* Frameworks */,
 				BABDDE572F49D3BC00B3E84A /* Products */,
 			);
@@ -71,7 +98,8 @@
 		BABDDE572F49D3BC00B3E84A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				BABDDE562F49D3BC00B3E84A /* miu.app */,
+				BABDDE562F49D3BC00B3E84A /* miu_macOS.app */,
+				BA4A72FC2F4C1DC90045F2FD /* miu_iOS.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -79,6 +107,7 @@
 		BABDDE6B2F49E1C000B3E84A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				BA5C5F9F2F4CA6370029DB67 /* UniformTypeIdentifiers.framework */,
 				BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */,
 				BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */,
 			);
@@ -88,9 +117,31 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		BABDDE552F49D3BC00B3E84A /* miu */ = {
+		BA4A72FB2F4C1DC90045F2FD /* miu_iOS */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = BABDDE682F49D3BE00B3E84A /* Build configuration list for PBXNativeTarget "miu" */;
+			buildConfigurationList = BA4A73152F4C1DCA0045F2FD /* Build configuration list for PBXNativeTarget "miu_iOS" */;
+			buildPhases = (
+				BA4A72F82F4C1DC90045F2FD /* Sources */,
+				BA4A72F92F4C1DC90045F2FD /* Frameworks */,
+				BA4A72FA2F4C1DC90045F2FD /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				BA4A72FD2F4C1DC90045F2FD /* miu_iOS */,
+			);
+			name = miu_iOS;
+			packageProductDependencies = (
+			);
+			productName = miu_iOS;
+			productReference = BA4A72FC2F4C1DC90045F2FD /* miu_iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+		BABDDE552F49D3BC00B3E84A /* miu_macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BABDDE682F49D3BE00B3E84A /* Build configuration list for PBXNativeTarget "miu_macOS" */;
 			buildPhases = (
 				BABDDE522F49D3BC00B3E84A /* Sources */,
 				BABDDE532F49D3BC00B3E84A /* Frameworks */,
@@ -101,13 +152,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				BABDDE582F49D3BC00B3E84A /* miu */,
+				BABDDE582F49D3BC00B3E84A /* miu_macOS */,
 			);
-			name = miu;
+			name = miu_macOS;
 			packageProductDependencies = (
 			);
 			productName = miu;
-			productReference = BABDDE562F49D3BC00B3E84A /* miu.app */;
+			productReference = BABDDE562F49D3BC00B3E84A /* miu_macOS.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -119,6 +170,9 @@
 				BuildIndependentTargetsInParallel = 1;
 				LastUpgradeCheck = 2620;
 				TargetAttributes = {
+					BA4A72FB2F4C1DC90045F2FD = {
+						CreatedOnToolsVersion = 26.2;
+					};
 					BABDDE552F49D3BC00B3E84A = {
 						CreatedOnToolsVersion = 26.2;
 					};
@@ -143,12 +197,20 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				BABDDE552F49D3BC00B3E84A /* miu */,
+				BABDDE552F49D3BC00B3E84A /* miu_macOS */,
+				BA4A72FB2F4C1DC90045F2FD /* miu_iOS */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		BA4A72FA2F4C1DC90045F2FD /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BABDDE542F49D3BC00B3E84A /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -160,6 +222,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		BA4A72F82F4C1DC90045F2FD /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BABDDE522F49D3BC00B3E84A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -186,6 +255,73 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		BA4A73122F4C1DCA0045F2FD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J8HRH6XC73;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = miu_iOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = miu;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UIStatusBarHidden = NO;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.15;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BA4A73132F4C1DCA0045F2FD /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = J8HRH6XC73;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = miu_iOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = miu;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = Main;
+				INFOPLIST_KEY_UIStatusBarHidden = NO;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0.15;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		BABDDE662F49D3BE00B3E84A /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -326,7 +462,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = miu/Info.plist;
+				INFOPLIST_FILE = miu_macOS/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -367,7 +503,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = miu/Info.plist;
+				INFOPLIST_FILE = miu_macOS/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -388,6 +524,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		BA4A73152F4C1DCA0045F2FD /* Build configuration list for PBXNativeTarget "miu_iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BA4A73122F4C1DCA0045F2FD /* Debug */,
+				BA4A73132F4C1DCA0045F2FD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		BABDDE512F49D3BC00B3E84A /* Build configuration list for PBXProject "miu" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -397,7 +542,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		BABDDE682F49D3BE00B3E84A /* Build configuration list for PBXNativeTarget "miu" */ = {
+		BABDDE682F49D3BE00B3E84A /* Build configuration list for PBXNativeTarget "miu_macOS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				BABDDE692F49D3BE00B3E84A /* Debug */,
