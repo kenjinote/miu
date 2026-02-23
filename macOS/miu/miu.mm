@@ -17,7 +17,7 @@
 #include <unistd.h>
 #import <Cocoa/Cocoa.h>
 #import <CoreText/CoreText.h>
-const std::wstring APP_VERSION = L"miu v1.0.14";
+const std::wstring APP_VERSION = L"miu v1.0.15";
 const std::wstring APP_TITLE = L"miu";
 enum Encoding { ENC_UTF8_NOBOM = 0, ENC_UTF8_BOM, ENC_UTF16LE, ENC_UTF16BE, ENC_ANSI };
 static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular";
