@@ -46,8 +46,9 @@
 // MARK: - iOSEditorView
 // ===================================================
 
-@interface iOSEditorView : UIView <UITextInput>
+@interface iOSEditorView : UIView <UITextInput, UIGestureRecognizerDelegate>
 @property (nonatomic) Editor *editor;
+@property (nonatomic, copy) void (^onNewDocumentAction)(void);
 @end
 
 @implementation iOSEditorView {
@@ -59,6 +60,9 @@
     NSTimeInterval _lastUpdateTime;
     CGFloat _initialFontSize;
     UIView *_customAccessoryView;
+    BOOL _isMouseSelecting;
+    UIPanGestureRecognizer *_panRecognizer;
+    NSInteger _selectionGranularity;
 }
 
 @synthesize inputDelegate = _inputDelegate;
@@ -70,18 +74,22 @@
         self.contentMode = UIViewContentModeTopLeft;
         _tokenizer = [[UITextInputStringTokenizer alloc] initWithTextInput:self];
         
-        // タップジェスチャーはすべて削除し、スクロール(Pan)だけ残す
-        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
-                
-                // 【追加】マウスホイールやトラックパッドでのスクロールイベントをPanとして検知させる
-                if (@available(iOS 13.4, *)) {
-                    pan.allowedScrollTypesMask = UIScrollTypeMaskAll;
-                }
-                
-                [self addGestureRecognizer:pan];
+        // ★【修正】ローカル変数ではなくメンバ変数(_panRecognizer)に代入する
+        _panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+        
+        // マウスホイールやトラックパッドでのスクロールイベントをPanとして検知させる
+        if (@available(iOS 13.4, *)) {
+            _panRecognizer.allowedScrollTypesMask = UIScrollTypeMaskAll;
+        }
+        _panRecognizer.cancelsTouchesInView = NO;
+        
+        // ★【追加】デリゲートを設定（これで gestureRecognizer:shouldReceiveTouch: が呼ばれるようになる）
+        _panRecognizer.delegate = self;
+        
+        [self addGestureRecognizer:_panRecognizer];
         
         UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinch:)];
-                [self addGestureRecognizer:pinch];
+        [self addGestureRecognizer:pinch];
     }
     return self;
 }
@@ -98,17 +106,104 @@
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [self stopMomentumScroll];
+    
+    UITouch *touch = [touches anyObject];
+    CGPoint p = [touch locationInView:self];
+    
+    // マウス(IndirectPointer)やPencilの場合
+    if (touch.type == UITouchTypeIndirectPointer || touch.type == UITouchTypePencil) {
+        _isMouseSelecting = YES;
+        
+        // ★【修正】タップ回数に応じて初期動作とモードを切り替える
+        if (touch.tapCount == 2) {
+            _selectionGranularity = 1; // Wordモード
+            [self handleDoubleTapAtPoint:p];
+        } else if (touch.tapCount >= 3) {
+            _selectionGranularity = 2; // Lineモード
+            [self handleTripleTapAtPoint:p];
+        } else {
+            _selectionGranularity = 0; // Characterモード
+            [self handleSingleTapAtPoint:p];
+        }
+    } else {
+        _isMouseSelecting = NO;
+        _selectionGranularity = 0;
+    }
+    
     [super touchesBegan:touches withEvent:event];
+}
+
+- (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    [super touchesMoved:touches withEvent:event];
+    
+    if (!_isMouseSelecting || !self.editor) return;
+    
+    UITouch *touch = [touches anyObject];
+    CGPoint p = [touch locationInView:self];
+    
+    // 1. ドラッグ先の生のテキスト位置
+    size_t rawPos = self.editor->getDocPosFromPoint(p.x, p.y);
+    
+    if (self.editor->cursors.empty()) return;
+    Cursor &c = self.editor->cursors.back();
+    size_t anchor = c.anchor; // 選択開始地点（固定）
+    
+    size_t newHead = rawPos;
+    
+    // ★【修正】選択粒度に応じた Head（終点）の吸着処理
+    if (_selectionGranularity == 1) { // Wordモード
+        size_t wStart, wEnd;
+        // ドラッグ先の単語範囲を取得
+        [self getSmartWordRangeAtPos:rawPos outStart:&wStart outEnd:&wEnd];
+        
+        // アンカーより後ろにいるなら単語の終わりまで、前にいるなら単語の始まりまで含める
+        if (rawPos >= anchor) {
+            newHead = wEnd;
+        } else {
+            newHead = wStart;
+        }
+        
+    } else if (_selectionGranularity == 2) { // Lineモード
+        int lineIdx = self.editor->getLineIdx(rawPos);
+        size_t lStart = self.editor->lineStarts[lineIdx];
+        size_t lEnd = (lineIdx + 1 < (int)self.editor->lineStarts.size()) ? self.editor->lineStarts[lineIdx + 1] : self.editor->pt.length();
+        
+        if (rawPos >= anchor) {
+            newHead = lEnd;
+        } else {
+            newHead = lStart;
+        }
+    }
+    
+    // 3. カーソル更新
+    if (c.head != newHead) {
+        [self.inputDelegate selectionWillChange:self];
+        
+        c.head = newHead;
+        
+        int li = self.editor->getLineIdx(newHead);
+        c.desiredX = self.editor->getXInLine(li, newHead);
+        
+        [self.inputDelegate selectionDidChange:self];
+        [self setNeedsDisplay];
+    }
 }
 
 // 指が画面から離れた瞬間に、遅延ゼロで即時発火する
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [super touchesEnded:touches withEvent:event];
     
+    // ★【追加】マウス操作が終わったらフラグを下ろす
+    if (_isMouseSelecting) {
+        _isMouseSelecting = NO;
+        _selectionGranularity = 0; // ★リセット
+        return;
+    }
+    
     UITouch *touch = [touches anyObject];
     CGPoint p = [touch locationInView:self];
     
-    // タップ回数に応じて処理を即座に分岐（待機時間ゼロ！）
+    // 指（タッチ）の場合はここでカーソル移動を行う
     if (touch.tapCount == 1) {
         [self handleSingleTapAtPoint:p];
     } else if (touch.tapCount == 2) {
@@ -141,35 +236,99 @@
     [self becomeFirstResponder];
 }
 
-// 2回目：単語選択に即座に切り替え
+- (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd {
+    *outStart = pos;
+    *outEnd = pos;
+    
+    if (!self.editor) return;
+    size_t docLen = self.editor->pt.length();
+    if (docLen == 0) return;
+    if (pos >= docLen) pos = docLen - 1;
+
+    // 行情報を取得
+    int lineIdx = self.editor->getLineIdx(pos);
+    size_t lineStart = self.editor->lineStarts[lineIdx];
+    size_t lineEnd = (lineIdx + 1 < (int)self.editor->lineStarts.size()) ? self.editor->lineStarts[lineIdx + 1] : docLen;
+    size_t lineByteLen = lineEnd - lineStart;
+    
+    if (lineByteLen == 0) return;
+    
+    // 行テキストをNSString(UTF-16)に変換
+    std::string lineBytes = self.editor->pt.getRange(lineStart, lineByteLen);
+    NSString *lineStr = [NSString stringWithUTF8String:lineBytes.c_str()];
+    if (!lineStr || lineStr.length == 0) return;
+    
+    // UTF-8位置 -> UTF-16文字インデックス
+    size_t relativeTapByte = pos - lineStart;
+    if (relativeTapByte > lineBytes.size()) relativeTapByte = lineBytes.size();
+    
+    NSString *preTapStr = [[NSString alloc] initWithBytes:lineBytes.c_str() length:relativeTapByte encoding:NSUTF8StringEncoding];
+    NSUInteger tapCharIdx = preTapStr.length;
+    if (tapCharIdx >= lineStr.length && tapCharIdx > 0) tapCharIdx = lineStr.length - 1;
+
+    // トークナイザーによる解析
+    CFRange tokenRange = CFRangeMake(kCFNotFound, 0);
+    CFStringTokenizerRef tokenizer = CFStringTokenizerCreate(kCFAllocatorDefault, (__bridge CFStringRef)lineStr, CFRangeMake(0, lineStr.length), kCFStringTokenizerUnitWordBoundary, NULL);
+    
+    if (tokenizer) {
+        CFStringTokenizerTokenType tokenType = CFStringTokenizerGoToTokenAtIndex(tokenizer, tapCharIdx);
+        if (tokenType != kCFStringTokenizerTokenNone) {
+            tokenRange = CFStringTokenizerGetCurrentTokenRange(tokenizer);
+        }
+        CFRelease(tokenizer);
+    }
+    
+    NSRange finalRange;
+    if (tokenRange.location != kCFNotFound) {
+        finalRange = NSMakeRange(tokenRange.location, tokenRange.length);
+        
+        // 英数字の場合、"_" も単語の一部とみなして拡張する処理
+        NSCharacterSet *wordSet = [NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"];
+        unichar c = [lineStr characterAtIndex:tapCharIdx];
+        if ([wordSet characterIsMember:c]) {
+            while (finalRange.location > 0) {
+                if ([wordSet characterIsMember:[lineStr characterAtIndex:finalRange.location - 1]]) {
+                    finalRange.location--; finalRange.length++;
+                } else break;
+            }
+            while (finalRange.location + finalRange.length < lineStr.length) {
+                if ([wordSet characterIsMember:[lineStr characterAtIndex:finalRange.location + finalRange.length]]) {
+                    finalRange.length++;
+                } else break;
+            }
+        }
+    } else {
+        finalRange = NSMakeRange(tapCharIdx, 1);
+    }
+    
+    // UTF-16範囲 -> UTF-8バイト位置に戻す
+    NSString *preMatchStr = [lineStr substringToIndex:finalRange.location];
+    NSString *matchStr = [lineStr substringWithRange:finalRange];
+    size_t preBytes = [preMatchStr lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+    size_t matchBytes = [matchStr lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+    
+    *outStart = lineStart + preBytes;
+    *outEnd = *outStart + matchBytes;
+}
+
+// 2回目：単語選択（ヘルパー利用版）
 - (void)handleDoubleTapAtPoint:(CGPoint)p {
     if (!self.editor) return;
+    
     size_t pos = self.editor->getDocPosFromPoint(p.x, p.y);
-    size_t len = self.editor->pt.length();
-    if (len == 0) return;
-    if (pos >= len) pos = len - 1;
+    size_t start, end;
     
-    auto isWordChar = [&](size_t idx) {
-        char c = self.editor->pt.charAt(idx);
-        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
-    };
-    
-    size_t start = pos; size_t end = pos;
-    if (isWordChar(pos)) {
-        while (start > 0 && isWordChar(start - 1)) start--;
-        while (end < len && isWordChar(end)) end++;
-    } else {
-        char targetC = self.editor->pt.charAt(pos);
-        while (start > 0 && self.editor->pt.charAt(start - 1) == targetC) start--;
-        while (end < len && self.editor->pt.charAt(end) == targetC) end++;
-    }
+    // ヘルパーを使って範囲を決定
+    [self getSmartWordRangeAtPos:pos outStart:&start outEnd:&end];
     
     [self.inputDelegate selectionWillChange:self];
     self.editor->cursors.clear();
     Cursor c; c.anchor = start; c.head = end;
+    
     int li = self.editor->getLineIdx(end);
     c.desiredX = self.editor->getXInLine(li, end);
     c.originalAnchorX = c.desiredX; c.isVirtual = false;
+    
     self.editor->cursors.push_back(c);
     [self.inputDelegate selectionDidChange:self];
     
@@ -197,92 +356,164 @@
     [self setNeedsDisplay];
 }
 
+- (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    return YES;
+}
+
+// ---------------------------------------------------
+// MARK: - フォントサイズ変更（共通処理）
+// ---------------------------------------------------
+
+- (void)applyNewFontSize:(CGFloat)newFontSize {
+    if (!self.editor) return;
+
+    // フォントサイズの限界値を設定
+    newFontSize = std::clamp((float)newFontSize, 8.0f, 120.0f);
+    
+    // パフォーマンス確保のため、0.5px以上の変化があった時だけ再計算・再描画
+    if (fabs(newFontSize - self.editor->currentFontSize) < 0.5f) {
+        return;
+    }
+
+    self.editor->currentFontSize = newFontSize;
+    
+    // --- C++コアは触らず、iOS側(ラッパー)でフォントとメトリクスを更新する ---
+    if (self.editor->fontRef) {
+        CFRelease(self.editor->fontRef);
+        self.editor->fontRef = NULL;
+    }
+    self.editor->fontRef = CTFontCreateWithName(CFSTR("Menlo"), newFontSize, NULL);
+    
+    if (self.editor->fontRef) {
+        CGFloat ascent = CTFontGetAscent(self.editor->fontRef);
+        CGFloat descent = CTFontGetDescent(self.editor->fontRef);
+        CGFloat leading = CTFontGetLeading(self.editor->fontRef);
+        
+        self.editor->lineHeight = std::ceil(ascent + descent + leading);
+        if (self.editor->lineHeight < 1.0f) self.editor->lineHeight = 1.0f;
+        
+        UniChar ch = 'A';
+        CGGlyph glyph;
+        if (CTFontGetGlyphsForCharacters(self.editor->fontRef, &ch, &glyph, 1)) {
+            CGSize advance;
+            CTFontGetAdvancesForGlyphs(self.editor->fontRef, kCTFontOrientationHorizontal, &glyph, &advance, 1);
+            self.editor->charWidth = advance.width;
+        }
+    }
+    
+    self.editor->updateGutterWidth();
+    
+    // C++エンジンに行の折り返しやカーソル位置の再計算を指示
+    self.editor->updateMaxLineWidth();
+    self.editor->ensureCaretVisible();
+    
+    // ★【修正】ズームポップアップの表示をパーセントからピクセル(px)に変更
+    self.editor->zoomPopupText = std::to_string((int)newFontSize) + " px";
+    self.editor->zoomPopupEndTime = std::chrono::steady_clock::now() + std::chrono::seconds(1);
+    
+    [self setNeedsDisplay];
+}
+
+// ---------------------------------------------------
+// MARK: - ジェスチャー処理（パン・スクロール・ホイール）
+// ---------------------------------------------------
+
 - (void)handlePan:(UIPanGestureRecognizer *)gesture {
     if (!self.editor) return;
     
+    // マウスでのテキスト選択中はスクロール処理をしない
+    if (_isMouseSelecting) {
+        [gesture setTranslation:CGPointZero inView:self];
+        return;
+    }
+
+    // --- 1. Cmd + ホイール (ズーム) ---
+    if (@available(iOS 13.4, *)) {
+        if (gesture.modifierFlags & UIKeyModifierCommand) {
+            if (gesture.state == UIGestureRecognizerStateBegan) {
+                [self stopMomentumScroll];
+            } else if (gesture.state == UIGestureRecognizerStateChanged) {
+                CGPoint translation = [gesture translationInView:self];
+                
+                // ズーム処理（前回の修正：PCライクにするため符号反転）
+                CGFloat sensitivity = 0.5;
+                CGFloat targetSize = self.editor->currentFontSize - (translation.y * sensitivity);
+                
+                [self applyNewFontSize:targetSize];
+                [gesture setTranslation:CGPointZero inView:self];
+            }
+            return;
+        }
+    }
+
+    // --- 2. 通常のスクロール処理 ---
     if (gesture.state == UIGestureRecognizerStateBegan) {
         [self stopMomentumScroll];
-        _lastPanTranslation = CGPointZero;
         _vScrollAccumulator = 0.0;
         
     } else if (gesture.state == UIGestureRecognizerStateChanged) {
-        CGPoint t = [gesture translationInView:self];
-        CGFloat dx = t.x - _lastPanTranslation.x;
-        CGFloat dy = t.y - _lastPanTranslation.y;
-        _lastPanTranslation = t;
+        CGPoint translation = [gesture translationInView:self];
         
+        CGFloat dx = 0;
+        CGFloat dy = 0;
+        
+        // ★【修正】マウス/トラックパッドと、指タッチで処理を分岐する
+        if (gesture.numberOfTouches == 0) {
+            // [マウス/トラックパッド操作]
+            // PCライクな操作感にするため、移動量を反転(-1)させます。
+            // 速度(Multiplier)も指より少し速め(5.0倍)に設定
+            CGFloat scrollMultiplier = -10.0;
+            
+            dx = translation.x * scrollMultiplier;
+            dy = translation.y * scrollMultiplier;
+            
+        } else {
+            // [指によるタッチ操作]
+            // iOS標準の「ナチュラルスクロール（紙を動かす感覚）」のまま
+            CGFloat scrollMultiplier = 1.0;
+            
+            dx = translation.x * scrollMultiplier;
+            dy = translation.y * scrollMultiplier;
+        }
+
         [self applyScrollDeltaX:dx deltaY:dy];
+        [gesture setTranslation:CGPointZero inView:self];
         
     } else if (gesture.state == UIGestureRecognizerStateEnded || gesture.state == UIGestureRecognizerStateCancelled) {
-        // 指が離れた瞬間の「速度」を取得して慣性アニメーションを開始
         _scrollVelocity = [gesture velocityInView:self];
+        
+        // マウス操作だった場合、慣性スクロールの初速も反転させる必要がある
+        // (Panジェスチャが終わった瞬間に numberOfTouches は 0 になることが多いが、
+        //  直前の操作意図を汲む必要があるため、velocityの正負も確認して反転させる)
+        if (@available(iOS 13.4, *)) {
+             // 厳密な判定が難しければ、簡易的に「タッチがないならマウス慣性」とみなして反転
+             // ※ただし gesture.numberOfTouches は Ended 時には常に 0 なので注意が必要です。
+             // ここでは「もしマウス操作のスクロールだったら」という文脈で反転させたいですが、
+             // 実際には Ended でマウスか指か区別がつかない場合があります。
+             //
+             // 実用上は「マウスホイールには慣性スクロールは不要」なケースも多いため、
+             // マウスホイール操作直後は慣性を止める手もありますが、
+             // ここでは「慣性もPCライクな方向」にするため、とりあえずそのまま流します。
+             // (もしマウスの慣性方向が逆なら、ここでも _scrollVelocity に -1 を掛けます)
+        }
+        
         [self startMomentumScroll];
     }
 }
 
-// ---------------------------------------------------
-// MARK: - 拡大縮小（ピンチズーム）処理
-// ---------------------------------------------------
-
+// ピンチ操作も共通メソッドを使うようにシンプル化
 - (void)handlePinch:(UIPinchGestureRecognizer *)gesture {
     if (!self.editor) return;
     
     if (gesture.state == UIGestureRecognizerStateBegan) {
-        // ピンチ開始時のフォントサイズを記憶
         _initialFontSize = self.editor->currentFontSize;
-        [self stopMomentumScroll]; // ズーム中はスクロールの慣性を止める
-        
+        [self stopMomentumScroll];
     } else if (gesture.state == UIGestureRecognizerStateChanged) {
-        // 指の開き具合（scale）を掛け合わせて新しいサイズを計算
-        CGFloat newFontSize = _initialFontSize * gesture.scale;
-        
-        // フォントサイズの限界値を設定（例：最小8px 〜 最大120px）
-        newFontSize = std::clamp((float)newFontSize, 8.0f, 120.0f);
-        
-        // パフォーマンス確保のため、0.5px以上の変化があった時だけ再計算・再描画
-        if (fabs(newFontSize - self.editor->currentFontSize) >= 0.5f) {
-            self.editor->currentFontSize = newFontSize;
-            
-            // --- C++コアは触らず、iOS側(ラッパー)でフォントとメトリクスを更新する ---
-            if (self.editor->fontRef) {
-                CFRelease(self.editor->fontRef);
-                self.editor->fontRef = NULL;
-            }
-            self.editor->fontRef = CTFontCreateWithName(CFSTR("Menlo"), newFontSize, NULL);
-            
-            if (self.editor->fontRef) {
-                CGFloat ascent = CTFontGetAscent(self.editor->fontRef);
-                CGFloat descent = CTFontGetDescent(self.editor->fontRef);
-                CGFloat leading = CTFontGetLeading(self.editor->fontRef);
-                
-                self.editor->lineHeight = std::ceil(ascent + descent + leading);
-                if (self.editor->lineHeight < 1.0f) self.editor->lineHeight = 1.0f;
-                
-                UniChar ch = 'A';
-                CGGlyph glyph;
-                if (CTFontGetGlyphsForCharacters(self.editor->fontRef, &ch, &glyph, 1)) {
-                    CGSize advance;
-                    CTFontGetAdvancesForGlyphs(self.editor->fontRef, kCTFontOrientationHorizontal, &glyph, &advance, 1);
-                    self.editor->charWidth = advance.width;
-                }
-            }
-            // -----------------------------------------------------------------
-            
-            self.editor->updateGutterWidth();
-            
-            // C++エンジンに行の折り返しやカーソル位置の再計算を指示
-            self.editor->updateMaxLineWidth();
-            self.editor->ensureCaretVisible();
-            
-            // ズームポップアップの表示
-            self.editor->zoomPopupText = std::to_string((int)newFontSize) + " %";
-            self.editor->zoomPopupEndTime = std::chrono::steady_clock::now() + std::chrono::seconds(1);
-            
-            [self setNeedsDisplay];
-        }
+        // ピンチは倍率計算
+        CGFloat targetSize = _initialFontSize * gesture.scale;
+        [self applyNewFontSize:targetSize];
     }
 }
-
 // スクロール量をC++エンジンに適用する共通メソッド
 - (void)applyScrollDeltaX:(CGFloat)dx deltaY:(CGFloat)dy {
     _vScrollAccumulator -= dy;
@@ -571,6 +802,12 @@
         [UIKeyCommand keyCommandWithInput:@"s" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(saveDocumentAs:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand action:@selector(cmdFind:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand | UIKeyModifierAlternate action:@selector(cmdReplace:)],
+        
+        // ズーム操作
+        [UIKeyCommand keyCommandWithInput:@"+" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
+        [UIKeyCommand keyCommandWithInput:@"=" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
+        [UIKeyCommand keyCommandWithInput:@"-" modifierFlags:UIKeyModifierCommand action:@selector(zoomOut:)],
+        [UIKeyCommand keyCommandWithInput:@"0" modifierFlags:UIKeyModifierCommand action:@selector(resetZoom:)]
     ];
     
     // 【最重要】iOSシステムによる矢印キーなどの横取りを禁止し、独自のコマンドを優先させる
@@ -585,6 +822,9 @@
 
 // どのアクションが現在実行可能か（メニューのグレーアウト制御などに使われます）
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender {
+    if (action == @selector(newDocument:)) {
+        return YES;
+    }
     if (action == @selector(copy:) || action == @selector(cut:)) {
         return self.editor && !self.editor->cursors.empty() && self.editor->cursors.back().hasSelection();
     }
@@ -603,7 +843,11 @@
     if (action == @selector(cmdFind:) || action == @selector(cmdReplace:)) {
         return YES;
     }
-    
+    if (action == @selector(zoomIn:) ||
+        action == @selector(zoomOut:) ||
+        action == @selector(resetZoom:)) {
+        return YES;
+    }    
     // 【追加】カーソル移動系のカスタムアクションをシステムに握りつぶさせないための許可リスト
     if (action == @selector(moveLeft:) || action == @selector(moveRight:) ||
         action == @selector(moveUp:) || action == @selector(moveDown:) ||
@@ -617,6 +861,13 @@
     }
     
     return [super canPerformAction:action withSender:sender];
+}
+
+- (void)newDocument:(id)sender {
+    // 【修正】直接C++を呼ばず、ブロックを実行してViewControllerに判断を委ねる
+    if (self.onNewDocumentAction) {
+        self.onNewDocumentAction();
+    }
 }
 
 // Cmd + A (すべて選択)
@@ -813,6 +1064,24 @@
     [self setNeedsDisplay];
 }
 
+- (void)zoomIn:(id)sender {
+    if (!self.editor) return;
+    // 現在のサイズ + 2px 拡大
+    [self applyNewFontSize:self.editor->currentFontSize + 2.0f];
+}
+
+- (void)zoomOut:(id)sender {
+    if (!self.editor) return;
+    // 現在のサイズ - 2px 縮小
+    [self applyNewFontSize:self.editor->currentFontSize - 2.0f];
+}
+
+- (void)resetZoom:(id)sender {
+    if (!self.editor) return;
+    // デフォルトサイズ（例: 14px）に戻す
+    [self applyNewFontSize:14.0f];
+}
+
 // ---------------------------------------------------
 // MARK: - 横スライド型 ソフトウェアキーボード用ツールバー (スリム＆タップ反応版)
 // ---------------------------------------------------
@@ -902,6 +1171,7 @@
     };
     
     // ボタンの追加（ここで追加した数だけ横に繋がっていきます）
+    [stackView addArrangedSubview:createBtn(@"新規", @selector(newDocument:))];
     [stackView addArrangedSubview:createBtn(@"開く", @selector(openDocument:))];
     [stackView addArrangedSubview:createBtn(@"保存", @selector(saveDocument:))];
     [stackView addArrangedSubview:createBtn(@"名前をつけて保存", @selector(saveDocumentAs:))];
@@ -954,6 +1224,27 @@
     BOOL _isFirstLayoutDone;
     NSLayoutConstraint *_editorBottomConstraint; // キーボードの高さに応じて変更する制約
     BOOL _isExportingDocument;
+}
+
+- (void)performNewDocument {
+    if (!_editorEngine) return;
+    
+    // C++エンジンの状態をリセット
+    _editorEngine->newFile();
+    
+    // UI側の表示位置などもリセット
+    _editorEngine->vScrollPos = 0;
+    _editorEngine->hScrollPos = 0;
+    
+    // レイアウト再計算と描画更新
+    _editorEngine->updateMaxLineWidth();
+    _editorEngine->ensureCaretVisible();
+    [self.editorView setNeedsDisplay];
+    
+    // タイトルバーを更新（Untitledに戻す）
+    if (_editorEngine->cbUpdateTitleBar) {
+        _editorEngine->cbUpdateTitleBar();
+    }
 }
 
 - (void)viewDidLoad {
@@ -1068,11 +1359,14 @@
     
     // 「ファイルを開く」コールバック
     _editorEngine->cbOpenFile = [weakSelf]() -> bool {
-        __strong typeof(self) strongSelf = weakSelf;
-        if (strongSelf) [strongSelf presentDocumentPickerForOpening];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [weakSelf confirmSaveIfNeededWithAction:^{
+                [weakSelf presentDocumentPickerForOpening];
+            }];
+        });
         return true;
     };
-    
+   
     // 「名前を付けて保存」コールバック
     _editorEngine->cbSaveFileAs = [weakSelf]() -> bool {
         __strong typeof(self) strongSelf = weakSelf;
@@ -1088,6 +1382,13 @@
     _editorEngine->initGraphics();
     self.editorView.editor = _editorEngine.get();
     
+    self.editorView.onNewDocumentAction = ^{
+        // 保存確認を行い、問題なければ performNewDocument を実行する
+        [weakSelf confirmSaveIfNeededWithAction:^{
+            [weakSelf performNewDocument];
+        }];
+    };
+    
     // ---------------------------------------------------
     // 8. 各種通知の登録（キーボード伸縮、テーマ変更、検索UI表示）
     // ---------------------------------------------------
@@ -1102,6 +1403,42 @@
     if (@available(iOS 17.0, *)) {
         [self registerForTraitChanges:@[[UITraitUserInterfaceStyle class]] withAction:@selector(updateThemeIfNeeded)];
     }
+}
+
+// ★【追加】: 未保存なら確認ダイアログを出し、その後 action を実行するメソッド
+- (void)confirmSaveIfNeededWithAction:(void(^)(void))action {
+    // 未保存でなければ即実行
+    if (!_editorEngine || !_editorEngine->isDirty) {
+        action();
+        return;
+    }
+    
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"未保存の変更"
+                                                                 message:@"変更内容を保存しますか？"
+                                                          preferredStyle:UIAlertControllerStyleAlert];
+    
+    // 「保存する」
+    [alert addAction:[UIAlertAction actionWithTitle:@"保存" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull alertAction) {
+        // パスがあれば上書き保存して次へ、なければ「名前をつけて保存」画面へ（その場合actionは中断される）
+        if (!self->_editorEngine->currentFilePath.empty()) {
+            self->_editorEngine->saveFile(self->_editorEngine->currentFilePath);
+            action(); // 保存後に本来の処理を実行
+        } else {
+            // Untitledの場合は保存ダイアログを出す必要があるため、一旦フローを中断して保存画面へ遷移
+            [self presentDocumentPickerForSaving];
+            // ユーザーが保存完了後に再度「新規」や「開く」を押してもらう形になります（シンプル化のため）
+        }
+    }]];
+    
+    // 「保存しない」
+    [alert addAction:[UIAlertAction actionWithTitle:@"保存しない" style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull alertAction) {
+        action(); // 保存せずに本来の処理を実行
+    }]];
+    
+    // 「キャンセル」
+    [alert addAction:[UIAlertAction actionWithTitle:@"キャンセル" style:UIAlertActionStyleCancel handler:nil]];
+    
+    [self presentViewController:alert animated:YES completion:nil];
 }
 
 - (void)dealloc {
