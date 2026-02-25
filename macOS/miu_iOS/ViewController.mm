@@ -41,6 +41,24 @@
 - (BOOL)isEmpty { return self.startPos.index == self.endPos.index; }
 @end
 
+// ===================================================
+// MARK: - UITextSelectionRect サブクラス (必須)
+// ===================================================
+@interface iOSSelectionRect : UITextSelectionRect
+@property (nonatomic, assign) CGRect rectValue;
+@property (nonatomic, assign) NSWritingDirection writingDirectionValue;
+@property (nonatomic, assign) BOOL containsStartValue;
+@property (nonatomic, assign) BOOL containsEndValue;
+@property (nonatomic, assign) BOOL isVerticalValue;
+@end
+
+@implementation iOSSelectionRect
+- (CGRect)rect { return _rectValue; }
+- (NSWritingDirection)writingDirection { return _writingDirectionValue; }
+- (BOOL)containsStart { return _containsStartValue; }
+- (BOOL)containsEnd { return _containsEndValue; }
+- (BOOL)isVertical { return _isVerticalValue; }
+@end
 
 // ===================================================
 // MARK: - iOSEditorView
@@ -63,6 +81,11 @@
     BOOL _isMouseSelecting;
     UIPanGestureRecognizer *_panRecognizer;
     NSInteger _selectionGranularity;
+    NSMutableArray<id<UIInteraction>> *_textInteractions;
+    BOOL _isScrolling;
+    UITapGestureRecognizer *_singleTapGR;
+    UITapGestureRecognizer *_doubleTapGR;
+    UITapGestureRecognizer *_tripleTapGR;
 }
 
 @synthesize inputDelegate = _inputDelegate;
@@ -72,26 +95,88 @@
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
         self.contentMode = UIViewContentModeTopLeft;
+        // マルチタッチを有効にしないと、ピンチズームなどが正しく動作しない場合があります
+        self.multipleTouchEnabled = YES;
+        
         _tokenizer = [[UITextInputStringTokenizer alloc] initWithTextInput:self];
         
-        // ★【修正】ローカル変数ではなくメンバ変数(_panRecognizer)に代入する
-        _panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
+        // ★【修正】正しいAPIを使用
+        if (@available(iOS 13.0, *)) {
+            UITextInteraction *interaction = [UITextInteraction textInteractionForMode:UITextInteractionModeEditable];
+            interaction.textInput = self;
+            [self addInteraction:interaction];
+        }
+
+        // 1. トリプルタップ (行選択)
+        _tripleTapGR = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(onTripleTap:)];
+        _tripleTapGR.numberOfTapsRequired = 3;
+        [self addGestureRecognizer:_tripleTapGR];
         
-        // マウスホイールやトラックパッドでのスクロールイベントをPanとして検知させる
+        // 2. ダブルタップ (単語選択)
+        _doubleTapGR = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(onDoubleTap:)];
+        _doubleTapGR.numberOfTapsRequired = 2;
+        // トリプルタップ成立待ちをする（これがないとダブルタップが先に発火してしまう）
+        [_doubleTapGR requireGestureRecognizerToFail:_tripleTapGR];
+        [self addGestureRecognizer:_doubleTapGR];
+        
+        // 3. シングルタップ (カーソル移動)
+        _singleTapGR = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(onSingleTap:)];
+        _singleTapGR.numberOfTapsRequired = 1;
+        // ダブルタップ成立待ちをする（これがないとシングルタップが先に発火してしまう）
+        [_singleTapGR requireGestureRecognizerToFail:_doubleTapGR];
+        [self addGestureRecognizer:_singleTapGR];
+        
+        // --- 既存のジェスチャー設定 ---
+        _panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
         if (@available(iOS 13.4, *)) {
             _panRecognizer.allowedScrollTypesMask = UIScrollTypeMaskAll;
         }
         _panRecognizer.cancelsTouchesInView = NO;
-        
-        // ★【追加】デリゲートを設定（これで gestureRecognizer:shouldReceiveTouch: が呼ばれるようになる）
         _panRecognizer.delegate = self;
-        
         [self addGestureRecognizer:_panRecognizer];
         
         UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinch:)];
         [self addGestureRecognizer:pinch];
     }
     return self;
+}
+
+// ---------------------------------------------------
+// MARK: - ジェスチャーアクション (新規追加)
+// ---------------------------------------------------
+
+- (void)onSingleTap:(UITapGestureRecognizer *)sender {
+    if (sender.state == UIGestureRecognizerStateEnded) {
+        CGPoint p = [sender locationInView:self];
+        // 既存のロジックを呼び出す
+        [self handleSingleTapAtPoint:p];
+        
+        // ★重要: タップでカーソル移動した際、システムにメニュー(Paste等)を出させるため
+        // メニューコントローラを表示するなどの処理が必要ならここに書くことができますが、
+        // 基本的に selectionDidChange 通知でシステムが判断します。
+    }
+}
+
+- (void)onDoubleTap:(UITapGestureRecognizer *)sender {
+    if (sender.state == UIGestureRecognizerStateEnded) {
+        CGPoint p = [sender locationInView:self];
+        _selectionGranularity = 1; // Wordモード
+        [self handleDoubleTapAtPoint:p];
+    }
+}
+
+- (void)onTripleTap:(UITapGestureRecognizer *)sender {
+    if (sender.state == UIGestureRecognizerStateEnded) {
+        CGPoint p = [sender locationInView:self];
+        _selectionGranularity = 2; // Lineモード
+        [self handleTripleTapAtPoint:p];
+    }
+}
+
+
+// システムがレイアウト変更を知るために必要
+- (void)layoutSubviews {
+    [super layoutSubviews];
 }
 
 - (void)drawRect:(CGRect)rect {
@@ -107,22 +192,22 @@
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [self stopMomentumScroll];
     
-    UITouch *touch = [touches anyObject];
-    CGPoint p = [touch locationInView:self];
+    // ★修正: マウス操作(Pencil含む)以外の「指でのタップ」判定ロジックを削除
+    // GestureRecognizerに任せるため、ここではドラッグ開始の準備だけにする
     
-    // マウス(IndirectPointer)やPencilの場合
+    UITouch *touch = [touches anyObject];
     if (touch.type == UITouchTypeIndirectPointer || touch.type == UITouchTypePencil) {
+        // マウス/Pencilの場合は既存ロジックを生かす（ただし競合するならここもGesture化検討）
         _isMouseSelecting = YES;
-        
-        // ★【修正】タップ回数に応じて初期動作とモードを切り替える
+        CGPoint p = [touch locationInView:self];
         if (touch.tapCount == 2) {
-            _selectionGranularity = 1; // Wordモード
+            _selectionGranularity = 1;
             [self handleDoubleTapAtPoint:p];
         } else if (touch.tapCount >= 3) {
-            _selectionGranularity = 2; // Lineモード
+            _selectionGranularity = 2;
             [self handleTripleTapAtPoint:p];
         } else {
-            _selectionGranularity = 0; // Characterモード
+            _selectionGranularity = 0;
             [self handleSingleTapAtPoint:p];
         }
     } else {
@@ -130,7 +215,8 @@
         _selectionGranularity = 0;
     }
     
-    [super touchesBegan:touches withEvent:event];
+    // [super touchesBegan...] は呼ばない方が安全（UITextInteractionに余計な干渉をさせないため）
+    // もしくは呼ぶとしても一番最後
 }
 
 - (void)touchesMoved:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
@@ -189,28 +275,19 @@
     }
 }
 
-// 指が画面から離れた瞬間に、遅延ゼロで即時発火する
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
-    [super touchesEnded:touches withEvent:event];
+    // ★修正: 指でのタップ処理（handleSingleTapAtPointなどを呼んでいた部分）を完全に削除
+    // すべて onSingleTap: などのジェスチャーメソッドに移行したため。
     
-    // ★【追加】マウス操作が終わったらフラグを下ろす
     if (_isMouseSelecting) {
         _isMouseSelecting = NO;
-        _selectionGranularity = 0; // ★リセット
+        _selectionGranularity = 0;
         return;
     }
     
-    UITouch *touch = [touches anyObject];
-    CGPoint p = [touch locationInView:self];
+    // ここにあったタップ回数判定と handle...TapAtPoint の呼び出しは削除
     
-    // 指（タッチ）の場合はここでカーソル移動を行う
-    if (touch.tapCount == 1) {
-        [self handleSingleTapAtPoint:p];
-    } else if (touch.tapCount == 2) {
-        [self handleDoubleTapAtPoint:p];
-    } else if (touch.tapCount >= 3) {
-        [self handleTripleTapAtPoint:p];
-    }
+    [super touchesEnded:touches withEvent:event];
 }
 
 // ---------------------------------------------------
@@ -412,6 +489,9 @@
     self.editor->zoomPopupEndTime = std::chrono::steady_clock::now() + std::chrono::seconds(1);
     
     [self setNeedsDisplay];
+    [self setNeedsLayout];
+    
+    [self.inputDelegate selectionDidChange:self];
 }
 
 // ---------------------------------------------------
@@ -450,7 +530,8 @@
     if (gesture.state == UIGestureRecognizerStateBegan) {
         [self stopMomentumScroll];
         _vScrollAccumulator = 0.0;
-        
+        _isScrolling = YES;
+        [self.inputDelegate selectionDidChange:self];
     } else if (gesture.state == UIGestureRecognizerStateChanged) {
         CGPoint translation = [gesture translationInView:self];
         
@@ -478,26 +559,16 @@
 
         [self applyScrollDeltaX:dx deltaY:dy];
         [gesture setTranslation:CGPointZero inView:self];
-        
+        [self setNeedsDisplay];
     } else if (gesture.state == UIGestureRecognizerStateEnded || gesture.state == UIGestureRecognizerStateCancelled) {
         _scrollVelocity = [gesture velocityInView:self];
-        
-        // マウス操作だった場合、慣性スクロールの初速も反転させる必要がある
-        // (Panジェスチャが終わった瞬間に numberOfTouches は 0 になることが多いが、
-        //  直前の操作意図を汲む必要があるため、velocityの正負も確認して反転させる)
-        if (@available(iOS 13.4, *)) {
-             // 厳密な判定が難しければ、簡易的に「タッチがないならマウス慣性」とみなして反転
-             // ※ただし gesture.numberOfTouches は Ended 時には常に 0 なので注意が必要です。
-             // ここでは「もしマウス操作のスクロールだったら」という文脈で反転させたいですが、
-             // 実際には Ended でマウスか指か区別がつかない場合があります。
-             //
-             // 実用上は「マウスホイールには慣性スクロールは不要」なケースも多いため、
-             // マウスホイール操作直後は慣性を止める手もありますが、
-             // ここでは「慣性もPCライクな方向」にするため、とりあえずそのまま流します。
-             // (もしマウスの慣性方向が逆なら、ここでも _scrollVelocity に -1 を掛けます)
+        if (fabs(_scrollVelocity.x) < 10.0 && fabs(_scrollVelocity.y) < 10.0) {
+            // ★追加: 慣性なしで停止 -> 表示を復元
+            _isScrolling = NO;
+            [self.inputDelegate selectionDidChange:self];
+        } else {
+            [self startMomentumScroll];
         }
-        
-        [self startMomentumScroll];
     }
 }
 
@@ -541,6 +612,8 @@
     }
     
     [self setNeedsDisplay];
+    [self setNeedsLayout];
+    [self.inputDelegate selectionDidChange:self];
 }
 
 // ---------------------------------------------------
@@ -549,6 +622,7 @@
 
 - (void)startMomentumScroll {
     [self stopMomentumScroll];
+    _isScrolling = YES;
     _lastUpdateTime = CACurrentMediaTime();
     _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateMomentumScroll:)];
     [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
@@ -558,6 +632,10 @@
     if (_displayLink) {
         [_displayLink invalidate];
         _displayLink = nil;
+        if (_isScrolling) {
+            _isScrolling = NO;
+            [self.inputDelegate selectionDidChange:self];
+        }
     }
 }
 
@@ -632,10 +710,17 @@
 
 - (void)deleteBackward {
     if (!self.editor) return;
+    
+    [self.inputDelegate selectionWillChange:self]; // ★追加
     [self.inputDelegate textWillChange:self];
+    
     self.editor->backspaceAtCursors();
+    
     [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self]; // ★追加: カーソル位置更新を通知
+    
     [self setNeedsDisplay];
+    [self setNeedsLayout];
 }
 
 - (UITextRange *)selectedTextRange {
@@ -646,15 +731,26 @@
 
 - (void)setSelectedTextRange:(UITextRange *)selectedTextRange {
     if (!self.editor) return;
+    
+    // C++エンジン側のカーソルを同期
     size_t start = ((iOSTextPosition*)selectedTextRange.start).index;
     size_t end = ((iOSTextPosition*)selectedTextRange.end).index;
     
     self.editor->cursors.clear();
-    Cursor c; c.head = end; c.anchor = start;
+    Cursor c;
+    c.anchor = start; // anchorとheadの向きはUITextRangeからは不明だが、通常start<=end
+    c.head = end;
+    
     int li = self.editor->getLineIdx(end);
     c.desiredX = self.editor->getXInLine(li, end);
-    c.originalAnchorX = c.desiredX; c.isVirtual = false;
+    c.originalAnchorX = c.desiredX;
+    c.isVirtual = false;
+    
     self.editor->cursors.push_back(c);
+    
+    // システムへ変更通知は不要（システムが呼んでいるので）
+    // 描画更新だけ行う
+    [self setNeedsDisplay];
 }
 
 - (UITextRange *)markedTextRange {
@@ -734,22 +830,121 @@
 - (NSWritingDirection)baseWritingDirectionForPosition:(UITextPosition *)p inDirection:(UITextStorageDirection)d { return NSWritingDirectionNatural; }
 - (void)setBaseWritingDirection:(NSWritingDirection)w forRange:(UITextRange *)r {}
 
-- (CGRect)firstRectForRange:(UITextRange *)range { return CGRectZero; }
-- (NSArray *)selectionRectsForRange:(UITextRange *)range { return @[]; }
-- (UITextPosition *)closestPositionToPoint:(CGPoint)point { return [self.beginningOfDocument copy]; }
+- (CGRect)firstRectForRange:(UITextRange *)range {
+    if (!self.editor || !range) return CGRectZero;
+    size_t start = ((iOSTextPosition*)range.start).index;
+    
+    int li = self.editor->getLineIdx(start);
+    float x = self.editor->getXInLine(li, start);
+    
+    // View上の座標に変換
+    float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
+    float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight;
+    
+    return CGRectMake(drawX, drawY, 2, self.editor->lineHeight);
+}
+
+- (NSArray<UITextSelectionRect *> *)selectionRectsForRange:(UITextRange *)range {
+    if (_isScrolling) {
+        return @[];
+    }
+    if (!self.editor || !range) return @[];
+    
+    NSMutableArray *rects = [NSMutableArray array];
+    size_t start = ((iOSTextPosition*)range.start).index;
+    size_t end = ((iOSTextPosition*)range.end).index;
+    if (start > end) std::swap(start, end);
+    
+    int startLine = self.editor->getLineIdx(start);
+    int endLine = self.editor->getLineIdx(end);
+    
+    for (int line = startLine; line <= endLine; line++) {
+        size_t lineStartIdx = self.editor->lineStarts[line];
+        size_t nextLineStartIdx = (line + 1 < self.editor->lineStarts.size())
+                                  ? self.editor->lineStarts[line + 1]
+                                  : self.editor->pt.length();
+        
+        // 行内での開始・終了位置を特定
+        size_t segStart = (line == startLine) ? start : lineStartIdx;
+        size_t segEnd = (line == endLine) ? end : nextLineStartIdx;
+        
+        // 改行文字が含まれる場合の調整（通常、選択範囲の見た目は改行を含まない幅にする）
+        if (segEnd > segStart && segEnd > 0) {
+             // 簡易判定：本当はC++側で文字種判定すべきだが、ここではindexのみで計算
+             // 必要であれば segEnd-- 等を行う
+        }
+
+        float x1 = self.editor->getXInLine(line, segStart);
+        float x2 = self.editor->getXInLine(line, segEnd);
+        
+        // 空行やカーソルのみの場合でも最低限の幅を持たせる
+        if (x2 < x1) x2 = x1;
+        
+        float w = x2 - x1;
+        // 行選択などで行末まで選択されている場合は、見栄えのために少し幅を足す等の調整が可能
+        if (line != endLine && w == 0) w = self.editor->charWidth / 2;
+
+        // View座標系へ変換
+        float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x1;
+        float drawY = (line - self.editor->vScrollPos) * self.editor->lineHeight;
+        CGRect r = CGRectMake(drawX, drawY, w, self.editor->lineHeight);
+        
+        iOSSelectionRect *selRect = [[iOSSelectionRect alloc] init];
+        selRect.rectValue = r;
+        selRect.writingDirectionValue = NSWritingDirectionNatural;
+        
+        // ハンドルの位置決定フラグ
+        selRect.containsStartValue = (line == startLine && segStart == start);
+        selRect.containsEndValue = (line == endLine && segEnd == end);
+        selRect.isVerticalValue = NO;
+        
+        [rects addObject:selRect];
+    }
+    
+    return rects;
+}
+
+- (UITextPosition *)closestPositionToPoint:(CGPoint)point {
+    if (!self.editor) return [self beginningOfDocument];
+    
+    // スクロール等を考慮した座標を C++エンジンに渡して index を取得
+    // ※ pointはViewのローカル座標
+    size_t idx = self.editor->getDocPosFromPoint(point.x, point.y);
+    return [iOSTextPosition positionWithIndex:idx];
+}
+
 - (UITextPosition *)closestPositionToPoint:(CGPoint)point withinRange:(UITextRange *)range { return [self.beginningOfDocument copy]; }
 - (UITextRange *)characterRangeAtPoint:(CGPoint)point { return nil; }
 
 - (CGRect)caretRectForPosition:(UITextPosition *)position {
+    // スクロール中は非表示にするロジックは維持
+    if (_isScrolling) {
+        return CGRectZero;
+    }
+    
     if (!self.editor) return CGRectZero;
+
+    // 1. テキスト位置(index)を取得
     size_t p = ((iOSTextPosition*)position).index;
+    
+    // 2. C++エンジンから行番号と行内X座標を取得
     int l = self.editor->getLineIdx(p);
     float x = self.editor->getXInLine(l, p);
-    return CGRectMake(self.editor->gutterWidth - self.editor->hScrollPos + x, (l - self.editor->vScrollPos) * self.editor->lineHeight, 2, self.editor->lineHeight);
+    
+    // 3. View上の描画座標（スクロールとガーター幅を考慮）に変換
+    float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
+    float drawY = (l - self.editor->vScrollPos) * self.editor->lineHeight;
+    
+    // 4. カーソルの矩形を返す（幅は2.0程度が標準的）
+    return CGRectMake(drawX, drawY, 0, 0);
 }
 
 // プログラミング用エディタの設定
 - (UITextAutocorrectionType)autocorrectionType { return UITextAutocorrectionTypeNo; }
+- (UITextSpellCheckingType)spellCheckingType {
+    // コードエディタなのでスペルチェック（赤線や修正提案）を無効にする
+    return UITextSpellCheckingTypeNo;
+}
 - (UITextAutocapitalizationType)autocapitalizationType { return UITextAutocapitalizationTypeNone; }
 - (UITextSmartQuotesType)smartQuotesType { return UITextSmartQuotesTypeNo; }
 - (UITextSmartDashesType)smartDashesType { return UITextSmartDashesTypeNo; }
@@ -1017,12 +1212,22 @@
 // Cmd + X (カット)
 - (void)cut:(id)sender {
     if (!self.editor) return;
-    [self copy:sender]; // まずコピーする
+    [self copy:sender];
     
+    // システムに変更開始を通知
+    [self.inputDelegate selectionWillChange:self]; // ★追加
     [self.inputDelegate textWillChange:self];
-    self.editor->backspaceAtCursors(); // 選択範囲を削除（C++エンジンのDelete挙動に依存）
+    
+    // C++エンジンで削除（ここでカーソルが「範囲選択」から「一本線」になる）
+    self.editor->backspaceAtCursors();
+    
+    // システムに変更終了を通知
     [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self]; // ★これが無いと青い範囲が消えません
+    
+    // 描画更新
     [self setNeedsDisplay];
+    [self setNeedsLayout];
 }
 
 // Cmd + V (ペースト)
@@ -1031,10 +1236,16 @@
     NSString *pasteString = [UIPasteboard generalPasteboard].string;
     
     if (pasteString.length > 0) {
+        [self.inputDelegate selectionWillChange:self]; // ★追加
         [self.inputDelegate textWillChange:self];
+        
         self.editor->insertAtCursors([pasteString UTF8String]);
+        
         [self.inputDelegate textDidChange:self];
+        [self.inputDelegate selectionDidChange:self]; // ★追加
+        
         [self setNeedsDisplay];
+        [self setNeedsLayout];
     }
 }
 
