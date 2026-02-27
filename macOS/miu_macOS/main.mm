@@ -244,6 +244,18 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 - (void)drawRect:(NSRect)r {
     editor->render([[NSGraphicsContext currentContext] CGContext], (float)self.bounds.size.width, (float)self.bounds.size.height);
 }
+- (void)undo:(id)sender {
+    if (editor) {
+        editor->performUndo();
+        [self setNeedsDisplay:YES];
+    }
+}
+- (void)redo:(id)sender {
+    if (editor) {
+        editor->performRedo();
+        [self setNeedsDisplay:YES];
+    }
+}
 - (void)updateScrollers {
     NSRect b = [self bounds];
     CGFloat sw = [NSScroller scrollerWidthForControlSize:NSControlSizeRegular scrollerStyle:NSScrollerStyleLegacy];
@@ -633,7 +645,19 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     [win setContentView:v]; [win makeKeyAndOrderFront:nil]; [win makeFirstResponder:v];
     [self.windows addObject:win];
 }
+- (void)setupMenuBar {
+    NSString *appTitleNS = [NSString stringWithUTF8String:WToUTF8(APP_TITLE).c_str()];
+    NSMenu *mainMenu = [NSMenu new];
+    [NSApp setMainMenu:mainMenu];
+    NSMenuItem *appMenuItem = [NSMenuItem new];
+    [mainMenu addItem:appMenuItem];
+    NSMenu *appMenu = [NSMenu new];
+    [appMenuItem setSubmenu:appMenu];
+    NSString *quitTitle = [NSString stringWithFormat:NSLocalizedString(@"Quit", nil), appTitleNS];
+    [appMenu addItemWithTitle:quitTitle action:@selector(terminate:) keyEquivalent:@"q"];
+}
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
+    [self setupMenuBar];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular]; [NSApp activateIgnoringOtherApps:YES];
     NSArray *args = [[NSProcessInfo processInfo] arguments];
     if (args.count > 1) [self createWindowWithPath:[args[1] UTF8String]]; else if (self.windows.count == 0) [self createWindowWithPath:nullptr];

@@ -25,3 +25,4 @@
 "Find Next (F3)" = "查找下一个 (F3)";
 "Replace (⌘R)" = "替换 (⌘R)";
 "Replace All (⌥⌘R)" = "全部替换 (⌥⌘R)";
+"Quit" = "退出 %@";

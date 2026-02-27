@@ -18,36 +18,6 @@
             endingLineNumber = "308"
             landmarkName = "-handleSingleTapAtPoint:"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "A6047B96-FB52-4B8D-A8B0-C246EEA04EEB - 4ec7c691e951044a"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "-[iOSEditorView getSmartWordRangeAtPos:outStart:outEnd:]"
-                  moduleName = "miu_iOS"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/kenji/Desktop/git/miu/macOS/miu_iOS/ViewController.mm"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "308"
-                  endingLineNumber = "308">
-               </Location>
-               <Location
-                  uuid = "A6047B96-FB52-4B8D-A8B0-C246EEA04EEB - e449db6f782545e8"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "-[iOSEditorView handleSingleTapAtPoint:]"
-                  moduleName = "miu_iOS"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/kenji/Desktop/git/miu/macOS/miu_iOS/ViewController.mm"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "308"
-                  endingLineNumber = "308">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -64,36 +34,6 @@
             endingLineNumber = "409"
             landmarkName = "-handleDoubleTapAtPoint:"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "442A8C4B-5FD6-4A4A-83E2-228F52017E79 - a2e55ed54b1cb994"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "-[iOSEditorView applyNewFontSize:]"
-                  moduleName = "miu_iOS"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/kenji/Desktop/git/miu/macOS/miu_iOS/ViewController.mm"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "410"
-                  endingLineNumber = "410">
-               </Location>
-               <Location
-                  uuid = "442A8C4B-5FD6-4A4A-83E2-228F52017E79 - ae92f513e0b9d3d4"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "-[iOSEditorView handleDoubleTapAtPoint:]"
-                  moduleName = "miu_iOS"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/kenji/Desktop/git/miu/macOS/miu_iOS/ViewController.mm"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "409"
-                  endingLineNumber = "409">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -110,50 +50,6 @@
             endingLineNumber = "429"
             landmarkName = "-handleTripleTapAtPoint:"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "E2050CC0-947F-4501-A9FE-E3A27319C4E6 - a2e55ed54b1cb831"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "-[iOSEditorView applyNewFontSize:]"
-                  moduleName = "miu_iOS"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/kenji/Desktop/git/miu/macOS/miu_iOS/ViewController.mm"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "415"
-                  endingLineNumber = "415">
-               </Location>
-               <Location
-                  uuid = "E2050CC0-947F-4501-A9FE-E3A27319C4E6 - a2e55ed54b1cba07"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "-[iOSEditorView applyNewFontSize:]"
-                  moduleName = "miu_iOS"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/kenji/Desktop/git/miu/macOS/miu_iOS/ViewController.mm"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "429"
-                  endingLineNumber = "429">
-               </Location>
-               <Location
-                  uuid = "E2050CC0-947F-4501-A9FE-E3A27319C4E6 - 126609724ffeb783"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "-[iOSEditorView handleTripleTapAtPoint:]"
-                  moduleName = "miu_iOS"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/kenji/Desktop/git/miu/macOS/miu_iOS/ViewController.mm"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "429"
-                  endingLineNumber = "429">
-               </Location>
-            </Locations>
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
@@ -172,26 +68,26 @@
             landmarkType = "7">
             <Locations>
                <Location
-                  uuid = "03F6EA10-A9AE-4FF4-843B-57E17DFC21C5 - 999fda21ce00d700"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "-[iOSEditorView firstRectForRange:]"
-                  moduleName = "miu_iOS"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/kenji/Desktop/git/miu/macOS/miu_iOS/ViewController.mm"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "799"
-                  endingLineNumber = "799">
-               </Location>
-               <Location
                   uuid = "03F6EA10-A9AE-4FF4-843B-57E17DFC21C5 - 97d4c089e47a2377"
                   shouldBeEnabled = "Yes"
                   ignoreCount = "0"
                   continueAfterRunningActions = "No"
                   symbolName = "-[iOSEditorView replaceRange:withText:]"
                   moduleName = "miu_iOS"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/kenji/Desktop/git/miu/macOS/miu_iOS/ViewController.mm"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "798"
+                  endingLineNumber = "798">
+               </Location>
+               <Location
+                  uuid = "03F6EA10-A9AE-4FF4-843B-57E17DFC21C5 - d11f30c47886aa75"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "-[iOSEditorView replaceRange:withText:]"
+                  moduleName = "miu"
                   usesParentBreakpointCondition = "Yes"
                   urlString = "file:///Users/kenji/Desktop/git/miu/macOS/miu_iOS/ViewController.mm"
                   startingColumnNumber = "9223372036854775807"

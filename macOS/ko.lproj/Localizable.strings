@@ -25,3 +25,4 @@
 "Find Next (F3)" = "다음 찾기 (F3)";
 "Replace (⌘R)" = "바꾸기 (⌘R)";
 "Replace All (⌥⌘R)" = "모두 바꾸기 (⌥⌘R)";
+"Quit" = "%@ 종료";
