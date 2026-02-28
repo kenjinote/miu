@@ -907,12 +907,12 @@
 - (UIView *)inputAccessoryView {
     if (_customAccessoryView) return _customAccessoryView;
     CGFloat barHeight = 36.0;
+    _customAccessoryView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, barHeight)];
+    _customAccessoryView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
     UIVisualEffectView *effectView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-    effectView.frame = CGRectMake(0, 0, UIScreen.mainScreen.bounds.size.width, barHeight);
+    effectView.frame = _customAccessoryView.bounds;
     effectView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    _customAccessoryView = [[UIView alloc] initWithFrame:effectView.bounds];
-    _customAccessoryView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
     [_customAccessoryView addSubview:effectView];
     UIScrollView *scrollView = [[UIScrollView alloc] initWithFrame:_customAccessoryView.bounds];
     scrollView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
@@ -964,8 +964,11 @@
             btn.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
             btn.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.2];
             btn.layer.cornerRadius = 0;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             btn.contentEdgeInsets = UIEdgeInsetsMake(0, 10, 0, 10);
             btn.showsTouchWhenHighlighted = YES;
+#pragma clang diagnostic pop
         }
         [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
         return btn;
@@ -975,6 +978,7 @@
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Save", nil), @selector(saveDocument:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Save As", nil), @selector(saveDocumentAs:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Find", nil), @selector(cmdFind:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Replace", nil), @selector(cmdReplace:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Undo", nil), @selector(handleUndo:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Redo", nil), @selector(handleRedo:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Select All", nil), @selector(selectAll:))];
@@ -1004,6 +1008,10 @@
 @property (nonatomic, strong) UITextField *searchField;
 @property (nonatomic, strong) UITextField *replaceField;
 @property (nonatomic, strong) UIStackView *replaceRowStack;
+@property (nonatomic, strong) UIButton *matchCaseBtn;
+@property (nonatomic, strong) UIButton *wholeWordBtn;
+@property (nonatomic, strong) UIButton *regexBtn;
+@property (nonatomic, strong) NSLayoutConstraint *buttonsWidthConstraint;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1301,51 +1309,165 @@
         tf.autocorrectionType = UITextAutocorrectionTypeNo;
         tf.returnKeyType = UIReturnKeySearch;
         tf.delegate = self;
-        [tf setContentHuggingPriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
+        [tf setContentHuggingPriority:249 forAxis:UILayoutConstraintAxisHorizontal];
+        [tf setContentCompressionResistancePriority:UILayoutPriorityDefaultLow forAxis:UILayoutConstraintAxisHorizontal];
         return tf;
     };
     auto createBtn = ^UIButton*(NSString *title, SEL action) {
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-        [btn setTitle:title forState:UIControlStateNormal];
+        if (@available(iOS 15.0, *)) {
+            UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+            config.title = title;
+            btn.configuration = config;
+        } else {
+            [btn setTitle:title forState:UIControlStateNormal];
+        }
         [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
         [btn setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [btn setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
         return btn;
+    };
+    auto createToggleBtn = ^UIButton*(NSString *title, SEL action) {
+        UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
+        if (@available(iOS 15.0, *)) {
+            UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
+            NSDictionary *attrs = @{NSFontAttributeName: [UIFont systemFontOfSize:12 weight:UIFontWeightBold]};
+            config.attributedTitle = [[NSAttributedString alloc] initWithString:title attributes:attrs];
+            config.baseForegroundColor = [UIColor labelColor];
+            config.contentInsets = NSDirectionalEdgeInsetsMake(4, 8, 4, 8);
+            config.background.strokeColor = [UIColor separatorColor];
+            config.background.strokeWidth = 1.0;
+            config.background.cornerRadius = 4;
+            btn.configuration = config;
+            btn.configurationUpdateHandler = ^(UIButton *updatedBtn) {
+                UIButtonConfiguration *updatedConfig = updatedBtn.configuration;
+                if (updatedBtn.selected) {
+                    updatedConfig.baseForegroundColor = [UIColor whiteColor];
+                    updatedConfig.background.backgroundColor = [UIColor systemBlueColor];
+                    updatedConfig.background.strokeColor = [UIColor systemBlueColor];
+                } else {
+                    updatedConfig.baseForegroundColor = [UIColor labelColor];
+                    updatedConfig.background.backgroundColor = [UIColor clearColor];
+                    updatedConfig.background.strokeColor = [UIColor separatorColor];
+                }
+                updatedBtn.configuration = updatedConfig;
+            };
+        } else {
+            [btn setTitle:title forState:UIControlStateNormal];
+            [btn setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
+            [btn setTitleColor:[UIColor whiteColor] forState:UIControlStateSelected];
+            btn.titleLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightBold];
+            btn.layer.cornerRadius = 4;
+            btn.layer.borderWidth = 1;
+            btn.layer.borderColor = [UIColor separatorColor].CGColor;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+            btn.contentEdgeInsets = UIEdgeInsetsMake(4, 8, 4, 8);
+#pragma clang diagnostic pop
+        }
+        [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+        return btn;
+    };
+    auto createSpacer = ^UIView*() {
+        UIView *v = [[UIView alloc] init];
+        v.backgroundColor = [UIColor clearColor];
+        [v setContentHuggingPriority:50 forAxis:UILayoutConstraintAxisHorizontal];
+        return v;
     };
     self.searchField = createField(NSLocalizedString(@"Search...", nil));
     [self.searchField addTarget:self action:@selector(searchTextChanged:) forControlEvents:UIControlEventEditingChanged];
-    UIStackView *searchRow = [[UIStackView alloc] initWithArrangedSubviews:@[
-        self.searchField,
+    UIStackView *searchBtnsStack = [[UIStackView alloc] initWithArrangedSubviews:@[
         createBtn(@"<", @selector(doFindPrev)),
         createBtn(@">", @selector(doFindNext)),
         createBtn(NSLocalizedString(@"Done", nil), @selector(closeSearch))
     ]];
-    searchRow.spacing = 12;
+    searchBtnsStack.spacing = 12;
+    searchBtnsStack.distribution = UIStackViewDistributionFill;
+    UIStackView *searchRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.searchField,
+        searchBtnsStack
+    ]];
+    searchRow.spacing = 8;
     [mainStack addArrangedSubview:searchRow];
     self.replaceField = createField(NSLocalizedString(@"Replace...", nil));
     self.replaceField.returnKeyType = UIReturnKeyDone;
-    self.replaceRowStack = [[UIStackView alloc] initWithArrangedSubviews:@[
-        self.replaceField,
+    UIStackView *replaceBtnsStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        createSpacer(),
         createBtn(NSLocalizedString(@"Replace", nil), @selector(doReplace)),
         createBtn(NSLocalizedString(@"All", nil), @selector(doReplaceAll))
     ]];
-    self.replaceRowStack.spacing = 12;
+    replaceBtnsStack.spacing = 12;
+    replaceBtnsStack.distribution = UIStackViewDistributionFill;
+    self.replaceRowStack = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.replaceField,
+        replaceBtnsStack
+    ]];
+    self.replaceRowStack.spacing = 8;
     [mainStack addArrangedSubview:self.replaceRowStack];
+    self.matchCaseBtn = createToggleBtn(NSLocalizedString(@"Match Case", nil), @selector(toggleMatchCase:));
+    self.wholeWordBtn = createToggleBtn(NSLocalizedString(@"Whole Word", nil), @selector(toggleWholeWord:));
+    self.regexBtn = createToggleBtn(NSLocalizedString(@"Regex", nil), @selector(toggleRegex:));
+    UIStackView *optionRow = [[UIStackView alloc] initWithArrangedSubviews:@[
+        self.matchCaseBtn,
+        self.wholeWordBtn,
+        self.regexBtn,
+        createSpacer()
+    ]];
+    optionRow.spacing = 8;
+    [mainStack addArrangedSubview:optionRow];
+    self.buttonsWidthConstraint = [searchBtnsStack.widthAnchor constraintEqualToAnchor:replaceBtnsStack.widthAnchor];
+}
+- (void)updateOptionButtonVisual:(UIButton *)btn isSelected:(BOOL)isSelected {
+    btn.selected = isSelected;
+    if (@available(iOS 15.0, *)) {
+        [btn setNeedsUpdateConfiguration];
+    } else {
+        btn.backgroundColor = isSelected ? [UIColor systemBlueColor] : [UIColor clearColor];
+        btn.layer.borderColor = isSelected ? [UIColor systemBlueColor].CGColor : [UIColor separatorColor].CGColor;
+    }
+}
+- (void)toggleMatchCase:(UIButton *)sender {
+    if (!_editorEngine) return;
+    _editorEngine->searchMatchCase = !sender.selected;
+    [self updateOptionButtonVisual:sender isSelected:_editorEngine->searchMatchCase];
+}
+- (void)toggleWholeWord:(UIButton *)sender {
+    if (!_editorEngine) return;
+    _editorEngine->searchWholeWord = !sender.selected;
+    [self updateOptionButtonVisual:sender isSelected:_editorEngine->searchWholeWord];
+}
+- (void)toggleRegex:(UIButton *)sender {
+    if (!_editorEngine) return;
+    _editorEngine->searchRegex = !sender.selected;
+    [self updateOptionButtonVisual:sender isSelected:_editorEngine->searchRegex];
 }
 - (void)showSearchNotif {
-    if (_editorEngine) _editorEngine->isReplaceMode = false;
+    if (_editorEngine) {
+        _editorEngine->isReplaceMode = false;
+        [self updateOptionButtonVisual:self.matchCaseBtn isSelected:_editorEngine->searchMatchCase];
+        [self updateOptionButtonVisual:self.wholeWordBtn isSelected:_editorEngine->searchWholeWord];
+        [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
+    }    
     [UIView animateWithDuration:0.25 animations:^{
         self.searchContainer.hidden = NO;
         self.replaceRowStack.hidden = YES;
+        self.buttonsWidthConstraint.active = NO;
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         [self.searchField becomeFirstResponder];
     }];
 }
 - (void)showReplaceNotif {
-    if (_editorEngine) _editorEngine->isReplaceMode = true;
+    if (_editorEngine) {
+        _editorEngine->isReplaceMode = true;
+        [self updateOptionButtonVisual:self.matchCaseBtn isSelected:_editorEngine->searchMatchCase];
+        [self updateOptionButtonVisual:self.wholeWordBtn isSelected:_editorEngine->searchWholeWord];
+        [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
+    }
     [UIView animateWithDuration:0.25 animations:^{
         self.searchContainer.hidden = NO;
         self.replaceRowStack.hidden = NO;
+        self.buttonsWidthConstraint.active = YES;
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         [self.searchField becomeFirstResponder];
