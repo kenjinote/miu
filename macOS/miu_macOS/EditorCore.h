@@ -1,5 +1,4 @@
 #pragma once
-
 #define NOMINMAX
 #include <iostream>
 #include <string>
@@ -14,26 +13,20 @@
 #include <chrono>
 #include <numeric>
 #include <functional>
-
 #if defined(__APPLE__)
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreText/CoreText.h>
 #endif
-
 extern const std::wstring APP_VERSION;
 extern const std::wstring APP_TITLE;
-
 enum Encoding { ENC_UTF8_NOBOM = 0, ENC_UTF8_BOM, ENC_UTF16LE, ENC_UTF16BE, ENC_ANSI };
-
 std::string WToUTF8(const std::wstring& w);
 std::wstring UTF8ToW(const std::string& s);
 std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian);
 std::string AnsiToUtf8(const char* data, size_t len);
 Encoding DetectEncoding(const char* buf, size_t len);
 std::string ConvertCase(const std::string& s, bool toUpper);
-
 struct Piece { bool isOriginal; size_t start; size_t len; };
-
 struct PieceTable {
     const char* origPtr = nullptr; size_t origSize = 0;
     std::string addBuf; std::vector<Piece> pieces;
@@ -95,7 +88,6 @@ struct PieceTable {
         }
     }
 };
-
 struct Cursor {
     size_t head, anchor;
     float desiredX;
@@ -105,10 +97,8 @@ struct Cursor {
     size_t end() const { return std::max(head, anchor); }
     bool hasSelection() const { return head != anchor; }
 };
-
 struct EditOp { enum Type { Insert, Erase } type; size_t pos; std::string text; };
 struct EditBatch { std::vector<EditOp> ops; std::vector<Cursor> beforeCursors, afterCursors; };
-
 struct UndoManager {
     std::vector<EditBatch> undoStack, redoStack; int savePoint = 0;
     void clear() { undoStack.clear(); redoStack.clear(); savePoint = 0; }
@@ -118,14 +108,12 @@ struct UndoManager {
     EditBatch popUndo() { EditBatch e = undoStack.back(); undoStack.pop_back(); redoStack.push_back(e); return e; }
     EditBatch popRedo() { EditBatch e = redoStack.back(); redoStack.pop_back(); undoStack.push_back(e); return e; }
 };
-
 struct MappedFile {
     int fd = -1; char* ptr = nullptr; size_t size = 0;
     bool open(const char* path);
     void close();
     ~MappedFile() { close(); }
 };
-
 struct Editor {
     PieceTable pt;
     UndoManager undo;
@@ -146,6 +134,7 @@ struct Editor {
     float currentFontSize = 14.0f;
     float lineHeight = 18.0f;
     float charWidth = 8.0f;
+    float tabWidth = 32.0f;
     float gutterWidth = 40.0f;
     float maxLineWidth = 100.0f;
     int vScrollPos = 0, hScrollPos = 0;
@@ -155,14 +144,12 @@ struct Editor {
     std::vector<size_t> lineStarts;
     std::string imeComp;
     std::string newlineStr = "\n";
-    
 #if defined(__APPLE__)
     CGColorRef colBackground=NULL, colText=NULL, colGutterBg=NULL, colGutterText=NULL, colSel=NULL, colCaret=NULL;
     CTFontRef fontRef = nullptr;
+    CTParagraphStyleRef paragraphStyle = nullptr;
 #endif
     std::wstring helpTextStr;
-
-    // UI層とのコールバック (プラットフォーム非依存にするため)
     std::function<void()> cbNeedsDisplay;
     std::function<void()> cbUpdateScrollers;
     std::function<void()> cbUpdateTitleBar;
@@ -174,7 +161,6 @@ struct Editor {
     std::function<bool()> cbShowUnsavedAlert;
     std::function<bool()> cbSaveFileAs;
     std::function<bool()> cbOpenFile;
-
     void detectNewlineStyle(const char* buf, size_t len);
     void insertAtCursorsWithPadding(const std::string& text);
     void insertNewlineWithAutoIndent();
@@ -195,7 +181,6 @@ struct Editor {
     void replaceNext();
     void replaceAll();
     void selectNextOccurrence();
-    
     void updateTitleBar();
     void updateScrollBars();
     void updateDirtyFlag();
@@ -213,29 +198,23 @@ struct Editor {
     void deleteForwardAtCursors();
     void selectAll();
     void convertSelectedText(bool toUpper);
-    
     void copyToClipboard();
     void cutToClipboard();
     void pasteFromClipboard();
-    
     void performUndo();
     void performRedo();
-    
     bool checkUnsavedChanges();
     bool saveFile(const std::wstring& p);
     bool saveFileAs();
     bool openFileFromPath(const std::string& p);
     bool openFile();
     void newFile();
-    
     bool isWordChar(char c);
     void getWordBoundaries(size_t pos, size_t& start, size_t& end);
     void initGraphics();
     void updateThemeColors();
-    
 #if defined(__APPLE__)
     void render(CGContextRef ctx, float w, float h);
 #endif
-    
     ~Editor();
 };
