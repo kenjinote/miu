@@ -11,6 +11,7 @@
 		BAA1E1DB2F4AE17800BA3D2C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */; };
 		BABDDE6D2F49E1C000B3E84A /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */; };
 		BABDDE6F2F49E1CC00B3E84A /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */; };
+		BAF7CE7F2F535F4B00447839 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -208,6 +209,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BAF7CE7F2F535F4B00447839 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
