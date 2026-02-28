@@ -597,8 +597,18 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     if ([t isEqualToString:@"\r"] || [t isEqualToString:@"\n"]) {
         editor->insertNewlineWithAutoIndent();
     } else {
-        if (editor->cursors.size() > 1) editor->insertAtCursorsWithPadding([t UTF8String]);
-        else editor->insertAtCursors([t UTF8String]);
+        bool usePadding = false;
+        for (const auto& c : editor->cursors) {
+            if (c.isVirtual) {
+                usePadding = true;
+                break;
+            }
+        }
+        if (usePadding) {
+            editor->insertAtCursorsWithPadding([t UTF8String]);
+        } else {
+            editor->insertAtCursors([t UTF8String]);
+        }
     }
     editor->imeComp = "";
     [self setNeedsDisplay:YES];
