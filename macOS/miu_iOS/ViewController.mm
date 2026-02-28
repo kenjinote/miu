@@ -85,11 +85,9 @@
         [self addGestureRecognizer:_tripleTapGR];
         _doubleTapGR = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(onDoubleTap:)];
         _doubleTapGR.numberOfTapsRequired = 2;
-        [_doubleTapGR requireGestureRecognizerToFail:_tripleTapGR];
         [self addGestureRecognizer:_doubleTapGR];
         _singleTapGR = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(onSingleTap:)];
         _singleTapGR.numberOfTapsRequired = 1;
-        [_singleTapGR requireGestureRecognizerToFail:_doubleTapGR];
         [self addGestureRecognizer:_singleTapGR];
         _panRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handlePan:)];
         if (@available(iOS 13.4, *)) {
