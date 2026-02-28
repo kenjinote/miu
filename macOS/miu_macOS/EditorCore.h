@@ -197,6 +197,7 @@ struct Editor {
     void backspaceAtCursors();
     void deleteForwardAtCursors();
     void selectAll();
+    void jumpToFileEdge(bool start, bool select);
     void convertSelectedText(bool toUpper);
     void copyToClipboard();
     void cutToClipboard();

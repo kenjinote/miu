@@ -886,6 +886,30 @@ void Editor::deleteForwardAtCursors() {
     if (changed) { b.afterCursors = cursors; undo.push(b); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
 }
 void Editor::selectAll() { cursors.clear(); size_t len = pt.length(); cursors.push_back({len, 0, getXFromPos(len), getXFromPos(len), false}); }
+void Editor::jumpToFileEdge(bool start, bool select) {
+    size_t target = start ? 0 : pt.length();
+    float targetX = 0.0f;
+    if (!start) targetX = getXFromPos(target);
+    if (!select) {
+        cursors.clear();
+        cursors.push_back({target, target, targetX, targetX, false});
+    } else {
+        for (auto& c : cursors) {
+            c.head = target;
+            c.desiredX = targetX;
+            c.originalAnchorX = targetX;
+            c.isVirtual = false;
+        }
+    }
+    if (start) {
+        vScrollPos = 0;
+        hScrollPos = 0;
+    }
+    ensureCaretVisible();
+    updateScrollBars();
+    updateDirtyFlag();
+    if (cbNeedsDisplay) cbNeedsDisplay();
+}
 void Editor::convertSelectedText(bool toUpper) {
     if (cursors.empty()) return;
     EditBatch batch;
