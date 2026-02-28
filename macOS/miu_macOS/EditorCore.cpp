@@ -3,10 +3,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-
 #if defined(__APPLE__)
 #include <CoreFoundation/CoreFoundation.h>
-
 static std::string CFStringToStdString(CFStringRef cfStr) {
     if (!cfStr) return "";
     CFIndex len = CFStringGetLength(cfStr);
@@ -15,7 +13,6 @@ static std::string CFStringToStdString(CFStringRef cfStr) {
     if (CFStringGetCString(cfStr, buf.data(), maxSize, kCFStringEncodingUTF8)) return std::string(buf.data());
     return "";
 }
-
 static std::wstring CFStringToStdWString(CFStringRef cfStr) {
     if (!cfStr) return L"";
     CFIndex len = CFStringGetLength(cfStr);
@@ -25,21 +22,18 @@ static std::wstring CFStringToStdWString(CFStringRef cfStr) {
     for(CFIndex i=0; i<len; ++i) wstr.push_back((wchar_t)buf[i]);
     return wstr;
 }
-
 std::string WToUTF8(const std::wstring& w) {
     CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)w.data(), w.size() * sizeof(wchar_t), kCFStringEncodingUTF32LE, false);
     std::string res = CFStringToStdString(str);
     if (str) CFRelease(str);
     return res;
 }
-
 std::wstring UTF8ToW(const std::string& s) {
     CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)s.data(), s.size(), kCFStringEncodingUTF8, false);
     std::wstring res = CFStringToStdWString(str);
     if (str) CFRelease(str);
     return res;
 }
-
 std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
     if (len < 2) return "";
     CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)(data + 2), len - 2, isBigEndian ? kCFStringEncodingUTF16BE : kCFStringEncodingUTF16LE, false);
@@ -47,7 +41,6 @@ std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
     if (str) CFRelease(str);
     return res;
 }
-
 std::string AnsiToUtf8(const char* data, size_t len) {
     CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingWindowsLatin1, false);
     std::string res = CFStringToStdString(str);
@@ -55,10 +48,8 @@ std::string AnsiToUtf8(const char* data, size_t len) {
     return res;
 }
 #endif
-
 const std::wstring APP_VERSION = L"miu v1.0.15";
 const std::wstring APP_TITLE = L"miu";
-
 bool MappedFile::open(const char* path) {
     fd = ::open(path, O_RDONLY); if (fd == -1) return false;
     struct stat sb; if (fstat(fd, &sb) == -1) { ::close(fd); return false; }
@@ -66,7 +57,6 @@ bool MappedFile::open(const char* path) {
     ptr = (char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0); return (ptr != MAP_FAILED);
 }
 void MappedFile::close() { if (ptr && ptr != MAP_FAILED) munmap(ptr, size); if (fd != -1) ::close(fd); ptr = nullptr; fd = -1; }
-
 Encoding DetectEncoding(const char* buf, size_t len) {
     if (len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) return ENC_UTF8_BOM;
     if (len >= 2) {
@@ -75,7 +65,6 @@ Encoding DetectEncoding(const char* buf, size_t len) {
     }
     return ENC_UTF8_NOBOM;
 }
-
 std::string ConvertCase(const std::string& s, bool toUpper) {
     std::wstring w = UTF8ToW(s);
     for (auto& c : w) {
@@ -89,7 +78,6 @@ std::string ConvertCase(const std::string& s, bool toUpper) {
     }
     return WToUTF8(w);
 }
-
 void Editor::detectNewlineStyle(const char* buf, size_t len) {
     size_t checkLen = (len > 4096) ? 4096 : len;
     for (size_t i = 0; i < checkLen; ++i) {
@@ -108,7 +96,6 @@ void Editor::detectNewlineStyle(const char* buf, size_t len) {
     }
     newlineStr = "\n";
 }
-
 void Editor::insertAtCursorsWithPadding(const std::string& text) {
     if (cursors.empty()) return;
     EditBatch batch; batch.beforeCursors = cursors;
@@ -145,7 +132,6 @@ void Editor::insertAtCursorsWithPadding(const std::string& text) {
     }
     batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
 }
-
 void Editor::insertNewlineWithAutoIndent() {
     if (cursors.empty()) return;
     EditBatch batch;
@@ -204,7 +190,6 @@ void Editor::insertNewlineWithAutoIndent() {
     ensureCaretVisible();
     updateDirtyFlag();
 }
-
 void Editor::insertRectangularBlock(const std::string& text) {
     if (cursors.empty()) return;
     std::vector<std::string> lines; std::stringstream ss(text); std::string line;
@@ -243,7 +228,6 @@ void Editor::insertRectangularBlock(const std::string& text) {
     }
     batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
 }
-
 std::vector<int> Editor::getUniqueLineIndices() {
     std::vector<int> lines;
     for (const auto& c : cursors) {
@@ -256,7 +240,6 @@ std::vector<int> Editor::getUniqueLineIndices() {
     }
     std::sort(lines.begin(), lines.end()); lines.erase(std::unique(lines.begin(), lines.end()), lines.end()); return lines;
 }
-
 void Editor::deleteLine() {
     std::vector<int> lines = getUniqueLineIndices(); if (lines.empty()) return;
     EditBatch batch; batch.beforeCursors = cursors;
@@ -279,7 +262,6 @@ void Editor::deleteLine() {
     for (auto& c : cursors) { c.anchor = c.head; c.desiredX = getXFromPos(c.head); c.isVirtual=false; }
     batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
 }
-
 void Editor::moveLines(bool up) {
     std::vector<int> lines = getUniqueLineIndices(); if (lines.empty()) return;
     if (up && lines.front() == 0) return; if (!up && lines.back() >= (int)lineStarts.size() - 1) return;
@@ -379,7 +361,6 @@ void Editor::moveLines(bool up) {
     }
     batch.afterCursors = cursors; undo.push(batch); ensureCaretVisible(); updateDirtyFlag();
 }
-
 void Editor::copyLines(bool up) {
     std::vector<int> lines = getUniqueLineIndices(); if (lines.empty()) return;
     size_t len = pt.length(); if (len > 0 && pt.charAt(len-1) != '\n') { pt.insert(len, "\n"); rebuildLineStarts(); }
@@ -417,7 +398,6 @@ void Editor::copyLines(bool up) {
     }
     batch.afterCursors = cursors; undo.push(batch); ensureCaretVisible(); updateDirtyFlag();
 }
-
 void Editor::indentLines(bool forceLineIndent) {
     bool hasSelection = false;
     for (const auto& c : cursors) if (c.hasSelection()) hasSelection = true;
@@ -459,7 +439,6 @@ void Editor::indentLines(bool forceLineIndent) {
     ensureCaretVisible();
     updateDirtyFlag();
 }
-
 void Editor::unindentLines() {
     std::vector<int> lines = getUniqueLineIndices();
     if (lines.empty()) return;
@@ -495,13 +474,11 @@ void Editor::unindentLines() {
         updateDirtyFlag();
     }
 }
-
 void Editor::updateGutterWidth() {
     int totalLines = (int)lineStarts.size(), digits = 1; int tempLines = totalLines;
     while (tempLines >= 10) { tempLines /= 10; digits++; }
-    gutterWidth = (float)(digits * charWidth) + (charWidth * 1.5f);
+    gutterWidth = (float)(digits * charWidth) + (charWidth * 1.0f);
 }
-
 void Editor::updateMaxLineWidth() {
 #if defined(__APPLE__)
     if (!fontRef) return;
@@ -513,7 +490,6 @@ void Editor::updateMaxLineWidth() {
     }
     maxLineWidth += charWidth * 2.0f;
 }
-
 std::pair<std::string, bool> Editor::getHighlightTarget() {
     if (cursors.empty() || cursors.size() > 1) return { "", false };
     const Cursor& c = cursors.back();
@@ -530,7 +506,6 @@ std::pair<std::string, bool> Editor::getHighlightTarget() {
     if (end > start) return { pt.getRange(start, end - start), true };
     return { "", true };
 }
-
 std::string Editor::preprocessRegexQuery(const std::string& query) {
     std::string processed; processed.reserve(query.size() * 4);
     for (size_t i = 0; i < query.size(); ++i) {
@@ -550,7 +525,6 @@ std::string Editor::preprocessRegexQuery(const std::string& query) {
     }
     return processed;
 }
-
 std::string Editor::UnescapeString(const std::string& s, const std::string& newline) {
     std::string out; out.reserve(s.size());
     for (size_t i = 0; i < s.size(); ++i) {
@@ -559,7 +533,6 @@ std::string Editor::UnescapeString(const std::string& s, const std::string& newl
         } else out += s[i];
     } return out;
 }
-
 size_t Editor::findText(size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
     size_t len = pt.length(); std::string actualQuery = query;
@@ -617,7 +590,6 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
     }
     return std::string::npos;
 }
-
 void Editor::findNext(bool forward) {
     if (searchQuery.empty()) return;
     size_t startPos = forward ? (cursors.empty() ? 0 : cursors.back().end()) : (cursors.empty() ? 0 : cursors.back().start());
@@ -630,7 +602,6 @@ void Editor::findNext(bool forward) {
         if (cbBeep) cbBeep();
     }
 }
-
 void Editor::replaceNext() {
     if (cursors.empty() || searchQuery.empty()) return;
     Cursor& c = cursors.back(); if (!c.hasSelection()) { findNext(true); return; }
@@ -666,7 +637,6 @@ void Editor::replaceNext() {
         if (cbNeedsDisplay) cbNeedsDisplay();
     } else findNext(true);
 }
-
 void Editor::replaceAll() {
     if (searchQuery.empty()) return;
     struct Match { size_t start; size_t len; std::string replacementText; }; std::vector<Match> matches;
@@ -710,7 +680,6 @@ void Editor::replaceAll() {
     
     if (cbShowReplaceAlert) cbShowReplaceAlert((int)matches.size());
 }
-
 void Editor::selectNextOccurrence() {
     if (cursors.empty()) return;
     Cursor c = cursors.back();
@@ -740,26 +709,22 @@ void Editor::selectNextOccurrence() {
         ensureCaretVisible();
     }
 }
-
 void Editor::updateTitleBar() {
     if (cbUpdateTitleBar) cbUpdateTitleBar();
 }
-
 void Editor::updateScrollBars() {
     if (cbUpdateScrollers) cbUpdateScrollers();
 }
-
 void Editor::updateDirtyFlag() {
     bool nd = undo.isModified();
     if (isDirty != nd) { isDirty = nd; updateTitleBar(); }
 }
-
 void Editor::updateFont(float s) {
     float oldCharWidth = charWidth; s = std::clamp(s, 6.0f, 200.0f);
 #if defined(__APPLE__)
     if (fontRef) CFRelease(fontRef); fontRef = CTFontCreateWithName(CFSTR("Menlo"), s, NULL);
     currentFontSize = s; lineHeight = std::ceil(s * 1.4f);
-    UniChar c = '0'; CGGlyph g; CGSize adv; CTFontGetGlyphsForCharacters(fontRef, &c, &g, 1); CTFontGetAdvancesForGlyphs(fontRef, kCTFontOrientationHorizontal, &g, &adv, 1);
+    UniChar c = ' '; CGGlyph g; CGSize adv; CTFontGetGlyphsForCharacters(fontRef, &c, &g, 1); CTFontGetAdvancesForGlyphs(fontRef, kCTFontOrientationHorizontal, &g, &adv, 1);
     charWidth = adv.width;
     tabWidth = charWidth * 4.0f;
     if (paragraphStyle) CFRelease(paragraphStyle);
@@ -775,7 +740,6 @@ void Editor::updateFont(float s) {
     if (oldCharWidth > 0.0f && charWidth > 0.0f) { float ratio = charWidth / oldCharWidth; for (auto& cur : cursors) { cur.desiredX *= ratio; cur.originalAnchorX *= ratio; } }
     updateGutterWidth(); updateMaxLineWidth(); updateScrollBars();
 }
-
 void Editor::rebuildLineStarts() {
     lineStarts.clear(); lineStarts.push_back(0); size_t go = 0;
     for (const auto& p : pt.pieces) {
@@ -785,12 +749,10 @@ void Editor::rebuildLineStarts() {
     }
     updateGutterWidth(); updateMaxLineWidth(); updateScrollBars();
 }
-
 int Editor::getLineIdx(size_t pos) {
     auto it = std::upper_bound(lineStarts.begin(), lineStarts.end(), pos);
     return std::max(0, (int)std::distance(lineStarts.begin(), it) - 1);
 }
-
 float Editor::getXInLine(int li, size_t pos) {
     if (li < 0 || li >= (int)lineStarts.size()) return 0.0f;
     size_t s = lineStarts[li], e = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
@@ -812,9 +774,7 @@ float Editor::getXInLine(int li, size_t pos) {
     return 0.0f;
 #endif
 }
-
 float Editor::getXFromPos(size_t p) { return getXInLine(getLineIdx(p), p); }
-
 size_t Editor::getPosFromLineAndX(int li, float tx) {
     if (li < 0 || li >= (int)lineStarts.size()) return cursors.empty() ? 0 : cursors.back().head;
     size_t s = lineStarts[li], e = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
@@ -837,13 +797,11 @@ size_t Editor::getPosFromLineAndX(int li, float tx) {
     return s;
 #endif
 }
-
 size_t Editor::getDocPosFromPoint(float x, float y) {
     float absY = y + (float)vScrollPos * lineHeight;
     int li = std::clamp((int)std::floor(absY / lineHeight), 0, (int)lineStarts.size() - 1);
     return getPosFromLineAndX(li, x - gutterWidth + (float)hScrollPos);
 }
-
 void Editor::ensureCaretVisible() {
     if (cursors.empty() || !cbGetViewSize) return;
     Cursor& c = cursors.back();
@@ -855,13 +813,11 @@ void Editor::ensureCaretVisible() {
     float cx = getXFromPos(c.head), m = charWidth*2; if (cx < (float)hScrollPos + m) hScrollPos = (int)(cx - m); else if (cx > (float)hScrollPos + cw - m) hScrollPos = (int)(cx - cw + m);
     vScrollPos = std::max(0, vScrollPos); hScrollPos = std::max(0, hScrollPos); updateScrollBars();
 }
-
 size_t Editor::moveCaretVisual(size_t pos, bool f) {
     size_t len = pt.length();
     if (f) { if (pos >= len) return len; unsigned char c = pt.charAt(pos); int sl = 1; if ((c&0x80)==0) sl=1; else if((c&0xE0)==0xC0) sl=2; else if((c&0xF0)==0xE0) sl=3; else if((c&0xF8)==0xF0) sl=4; if(c=='\r'&&pos+1<len&&pt.charAt(pos+1)=='\n') sl=2; return std::min(len, pos+sl); }
     else { if (pos == 0) return 0; size_t p = pos-1; while(p>0 && (pt.charAt(p)&0xC0)==0x80) p--; if(p>0 && pt.charAt(p-1)=='\r'&&pt.charAt(p)=='\n') p--; return p; }
 }
-
 void Editor::insertAtCursors(const std::string& t) {
     EditBatch b; b.beforeCursors=cursors; auto sorted = cursors;
     std::sort(sorted.begin(), sorted.end(), [](const Cursor& a, const Cursor& b){return a.start()>b.start();});
@@ -885,7 +841,6 @@ void Editor::insertAtCursors(const std::string& t) {
     for (auto& c : cursors) { c.desiredX = getXFromPos(c.head); c.originalAnchorX = c.desiredX; c.isVirtual = false; }
     b.afterCursors=cursors; undo.push(b); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
 }
-
 void Editor::backspaceAtCursors() {
     if (cursors.empty()) return; EditBatch b; b.beforeCursors = cursors;
     std::vector<size_t> indices(cursors.size()); std::iota(indices.begin(), indices.end(), 0);
@@ -913,7 +868,6 @@ void Editor::backspaceAtCursors() {
     if (changed) { b.afterCursors = cursors; undo.push(b); rebuildLineStarts(); updateDirtyFlag(); } ensureCaretVisible();
     if (cbNeedsDisplay) cbNeedsDisplay();
 }
-
 void Editor::deleteForwardAtCursors() {
     if (cursors.empty()) return; EditBatch b; b.beforeCursors = cursors;
     std::vector<size_t> indices(cursors.size()); std::iota(indices.begin(), indices.end(), 0);
@@ -931,9 +885,7 @@ void Editor::deleteForwardAtCursors() {
     }
     if (changed) { b.afterCursors = cursors; undo.push(b); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
 }
-
 void Editor::selectAll() { cursors.clear(); size_t len = pt.length(); cursors.push_back({len, 0, getXFromPos(len), getXFromPos(len), false}); }
-
 void Editor::convertSelectedText(bool toUpper) {
     if (cursors.empty()) return;
     EditBatch batch;
@@ -987,7 +939,6 @@ void Editor::convertSelectedText(bool toUpper) {
         if (cbNeedsDisplay) cbNeedsDisplay();
     }
 }
-
 void Editor::copyToClipboard() {
     bool hasSelection = false; for (const auto& c : cursors) if (c.hasSelection()) { hasSelection = true; break; }
     std::string t; bool isRect = (cursors.size() > 1);
@@ -1005,13 +956,11 @@ void Editor::copyToClipboard() {
         cbSetClipboard(t, hasSelection && isRect);
     }
 }
-
 void Editor::cutToClipboard() {
     bool hasSelection = false; for (const auto& c : cursors) if (c.hasSelection()) { hasSelection = true; break; }
     copyToClipboard();
     if (!hasSelection) deleteLine(); else insertAtCursors("");
 }
-
 void Editor::pasteFromClipboard() {
     if (!cbGetClipboard) return;
     bool isRectMarker = false;
@@ -1028,25 +977,20 @@ void Editor::pasteFromClipboard() {
     } else { insertAtCursors(utf8); }
     if (cbNeedsDisplay) cbNeedsDisplay();
 }
-
 void Editor::performUndo() { if(!undo.undoStack.empty()){ auto b = undo.popUndo(); for(int i=(int)b.ops.size()-1;i>=0;--i){ if(b.ops[i].type==EditOp::Insert) pt.erase(b.ops[i].pos, (int)b.ops[i].text.size()); else pt.insert(b.ops[i].pos, b.ops[i].text); } cursors=b.beforeCursors; rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); } }
 void Editor::performRedo() { if(!undo.redoStack.empty()){ auto b = undo.popRedo(); for(const auto& o:b.ops){ if(o.type==EditOp::Insert) pt.insert(o.pos, o.text); else pt.erase(o.pos, (int)o.text.size()); } cursors=b.afterCursors; rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); } }
-
 bool Editor::checkUnsavedChanges() {
     if(!isDirty) return true;
     if(cbShowUnsavedAlert) return cbShowUnsavedAlert();
     return true;
 }
-
 bool Editor::saveFile(const std::wstring& p) {
     std::string s = pt.getRange(0,pt.length()); std::ofstream f(WToUTF8(p), std::ios::binary); if(!f) return false; f.write(s.data(), s.size()); f.close(); currentFilePath=p; undo.markSaved(); isDirty=false; updateTitleBar(); return true;
 }
-
 bool Editor::saveFileAs() {
     if (cbSaveFileAs) return cbSaveFileAs();
     return false;
 }
-
 bool Editor::openFileFromPath(const std::string& p) {
     fileMap.reset(new MappedFile());
     if(fileMap->open(p.c_str())){
@@ -1066,13 +1010,11 @@ bool Editor::openFileFromPath(const std::string& p) {
         return true;
     } return false;
 }
-
 bool Editor::openFile() {
     if(!checkUnsavedChanges()) return false;
     if (cbOpenFile) return cbOpenFile();
     return false;
 }
-
 void Editor::newFile() {
     if(checkUnsavedChanges()){
         pt.initEmpty();
@@ -1086,7 +1028,6 @@ void Editor::newFile() {
         updateTitleBar();
     }
 }
-
 bool Editor::isWordChar(char c) { if (isalnum((unsigned char)c) || c == '_') return true; if ((unsigned char)c >= 0x80) return true; return false; }
 void Editor::getWordBoundaries(size_t pos, size_t& start, size_t& end) {
     size_t len = pt.length();
@@ -1112,7 +1053,6 @@ void Editor::getWordBoundaries(size_t pos, size_t& start, size_t& end) {
         end++;
     }
 }
-
 void Editor::initGraphics() {
 #if defined(__APPLE__)
     if (!fontRef) fontRef = CTFontCreateWithName(CFSTR("Menlo"), currentFontSize, NULL);
@@ -1122,7 +1062,6 @@ void Editor::initGraphics() {
     if (cursors.empty()) cursors.push_back({0, 0, 0.0f, 0.0f, false});
     updateTitleBar();
 }
-
 void Editor::updateThemeColors() {
 #if defined(__APPLE__)
     if (colBackground) { CGColorRelease(colBackground); CGColorRelease(colText); CGColorRelease(colGutterBg); CGColorRelease(colGutterText); CGColorRelease(colSel); CGColorRelease(colCaret); }
@@ -1137,7 +1076,6 @@ void Editor::updateThemeColors() {
     }
 #endif
 }
-
 #if defined(__APPLE__)
 void Editor::render(CGContextRef ctx, float w, float h) {
     CGContextSetFillColorWithColor(ctx, colBackground); CGContextFillRect(ctx, CGRectMake(0, 0, w, h));
@@ -1424,7 +1362,6 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     }
 }
 #endif
-
 Editor::~Editor() {
 #if defined(__APPLE__)
     if (colBackground) CGColorRelease(colBackground);
