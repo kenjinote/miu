@@ -303,7 +303,7 @@
 }
 - (void)applyNewFontSize:(CGFloat)newFontSize {
     if (!self.editor) return;
-    newFontSize = std::clamp((float)newFontSize, 8.0f, 120.0f);
+    newFontSize = std::clamp((float)newFontSize, 6.0f, 200.0f);
     if (fabs(newFontSize - self.editor->currentFontSize) < 0.5f) {
         return;
     }
@@ -329,6 +329,14 @@
     }
     self.editor->updateGutterWidth();
     self.editor->updateMaxLineWidth();
+    float vw = self.bounds.size.width - self.editor->gutterWidth - self.editor->visibleVScrollWidth;
+    int maxH = std::max(0, (int)(self.editor->maxLineWidth - vw + self.editor->charWidth * 4));
+    if (self.editor->hScrollPos > maxH) {
+        self.editor->hScrollPos = maxH;
+    }
+    if (maxH <= 0) {
+        self.editor->hScrollPos = 0;
+    }
     self.editor->ensureCaretVisible();
     self.editor->zoomPopupText = std::to_string((int)newFontSize) + " px";
     self.editor->zoomPopupEndTime = std::chrono::steady_clock::now() + std::chrono::seconds(1);
