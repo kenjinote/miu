@@ -1315,13 +1315,7 @@
     };
     auto createBtn = ^UIButton*(NSString *title, SEL action) {
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeSystem];
-        if (@available(iOS 15.0, *)) {
-            UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
-            config.title = title;
-            btn.configuration = config;
-        } else {
-            [btn setTitle:title forState:UIControlStateNormal];
-        }
+        [btn setTitle:title forState:UIControlStateNormal];
         [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
         [btn setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
         [btn setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
@@ -1366,12 +1360,15 @@
 #pragma clang diagnostic pop
         }
         [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+        [btn setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
+        [btn setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
         return btn;
     };
     auto createSpacer = ^UIView*() {
         UIView *v = [[UIView alloc] init];
         v.backgroundColor = [UIColor clearColor];
         [v setContentHuggingPriority:50 forAxis:UILayoutConstraintAxisHorizontal];
+        [v setContentCompressionResistancePriority:50 forAxis:UILayoutConstraintAxisHorizontal];
         return v;
     };
     self.searchField = createField(NSLocalizedString(@"Search...", nil));
@@ -1413,7 +1410,10 @@
         self.regexBtn,
         createSpacer()
     ]];
-    optionRow.spacing = 8;
+    optionRow.axis = UILayoutConstraintAxisHorizontal;
+    optionRow.spacing = 6;
+    optionRow.alignment = UIStackViewAlignmentFill;
+    optionRow.distribution = UIStackViewDistributionFill;
     [mainStack addArrangedSubview:optionRow];
     self.buttonsWidthConstraint = [searchBtnsStack.widthAnchor constraintEqualToAnchor:replaceBtnsStack.widthAnchor];
 }
@@ -1486,14 +1486,13 @@
         _editorEngine->isReplaceMode = false;
         _editorEngine->searchQuery = "";
     }
-    [self.view endEditing:YES];
+    [self.editorView becomeFirstResponder];
     [UIView animateWithDuration:0.25 animations:^{
         self.searchContainer.hidden = YES;
         self.searchField.text = @"";
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         [self.editorView setNeedsDisplay];
-        [self.editorView becomeFirstResponder];
     }];
 }
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
