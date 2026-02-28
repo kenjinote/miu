@@ -1411,84 +1411,73 @@
 }
 
 @end
-
-// ===================================================
-// MARK: - ビューコントローラー
-// ===================================================
-
 @interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate>
 @property (nonatomic, strong) iOSEditorView *editorView;
 @property (nonatomic, strong) NSURL *currentDocumentURL;
 @property (nonatomic, strong) UIStackView *headerStack;
 @property (nonatomic, strong) UIView *titleBarView;
 @property (nonatomic, strong) UILabel *titleLabel;
-
-// 検索・置換UI用
 @property (nonatomic, strong) UIView *searchContainer;
 @property (nonatomic, strong) UITextField *searchField;
 @property (nonatomic, strong) UITextField *replaceField;
 @property (nonatomic, strong) UIStackView *replaceRowStack;
 @end
-
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
     BOOL _isFirstLayoutDone;
-    NSLayoutConstraint *_editorBottomConstraint; // キーボードの高さに応じて変更する制約
+    NSLayoutConstraint *_editorBottomConstraint;
     BOOL _isExportingDocument;
 }
-
 - (void)performNewDocument {
     if (!_editorEngine) return;
-    
-    // C++エンジンの状態をリセット
     _editorEngine->newFile();
-    
-    // UI側の表示位置などもリセット
     _editorEngine->vScrollPos = 0;
     _editorEngine->hScrollPos = 0;
-    
-    // レイアウト再計算と描画更新
     _editorEngine->updateMaxLineWidth();
     _editorEngine->ensureCaretVisible();
     [self.editorView setNeedsDisplay];
-    
-    // タイトルバーを更新（Untitledに戻す）
     if (_editorEngine->cbUpdateTitleBar) {
         _editorEngine->cbUpdateTitleBar();
     }
 }
-
 - (void)viewDidLoad {
     [super viewDidLoad];
-    
-    // 背景色（ライト/ダーク両対応）
-    self.view.backgroundColor = [UIColor systemBackgroundColor];
-    
-    // ---------------------------------------------------
-    // 1. ヘッダー全体をまとめるStackView (自動伸縮の魔法)
-    // ---------------------------------------------------
+    self.view.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor systemBackgroundColor];
+    }];
     self.headerStack = [[UIStackView alloc] init];
     self.headerStack.axis = UILayoutConstraintAxisVertical;
     self.headerStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.headerStack.layer.zPosition = 10;
     [self.view addSubview:self.headerStack];
     
-    // ---------------------------------------------------
-    // 2. タイトルバーの作成
-    // ---------------------------------------------------
     self.titleBarView = [[UIView alloc] init];
-    self.titleBarView.backgroundColor = [UIColor secondarySystemBackgroundColor];
+    self.titleBarView.backgroundColor = [UIColor clearColor];
     [self.headerStack addArrangedSubview:self.titleBarView];
     
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.textColor = [UIColor labelColor];
-    self.titleLabel.font = [UIFont boldSystemFontOfSize:14];
+    self.titleLabel.textColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor colorWithWhite:0.7 alpha:1.0] : [UIColor secondaryLabelColor];
+        }];
+    self.titleLabel.font = [UIFont boldSystemFontOfSize:13];
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.text = @"Untitled";
     [self.titleBarView addSubview:self.titleLabel];
     
     // ---------------------------------------------------
-    // 3. 検索バーの構築（ここでheaderStackの中に組み込まれます）
+    // ★ ステータスバーとタイトルバーを一体化させる背景View
+    // ---------------------------------------------------
+    UIView *topFillView = [[UIView alloc] init];
+    topFillView.translatesAutoresizingMaskIntoConstraints = NO;
+    topFillView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor secondarySystemBackgroundColor];
+        }];
+    [self.view addSubview:topFillView];
+    [self.view insertSubview:topFillView belowSubview:self.headerStack];
+
+    // ---------------------------------------------------
+    // 3. 検索バーの構築
     // ---------------------------------------------------
     [self setupSearchUI];
     
@@ -1497,27 +1486,40 @@
     // ---------------------------------------------------
     self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
     self.editorView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.editorView.backgroundColor = [UIColor colorNamed:@"EditorBgColor"];
+    self.editorView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor colorNamed:@"EditorBgColor"]; // Assetsに無い場合は systemBackgroundColor 等へ
+        }];
     [self.view addSubview:self.editorView];
+    [self.view sendSubviewToBack:self.editorView];
     
     // ---------------------------------------------------
     // 5. AutoLayout の制約設定
     // ---------------------------------------------------
     UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
-    _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:safeArea.bottomAnchor];
+    
+    _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
     
     [NSLayoutConstraint activateConstraints:@[
-        // ヘッダー全体をSafeAreaの一番上に配置
-        [self.headerStack.topAnchor constraintEqualToAnchor:safeArea.topAnchor],
+        // 背景Viewの制約
+        [topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [topFillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [topFillView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [topFillView.bottomAnchor constraintEqualToAnchor:self.titleBarView.bottomAnchor],
+        
+        // ---【修正】ヘッダー位置の調整 ---
+        // constant: -8 を設定して、セーフエリアよりも少し上に食い込ませる
+        [self.headerStack.topAnchor constraintEqualToAnchor:safeArea.topAnchor constant:-12],
         [self.headerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.headerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         
-        // タイトルバーの高さ固定とラベルの中央配置
-        [self.titleBarView.heightAnchor constraintEqualToConstant:30],
-        [self.titleLabel.centerXAnchor constraintEqualToAnchor:self.titleBarView.centerXAnchor],
-        [self.titleLabel.centerYAnchor constraintEqualToAnchor:self.titleBarView.centerYAnchor],
+        // ---【修正】タイトルバーの高さをさらに詰める (20 -> 18) ---
+        [self.titleBarView.heightAnchor constraintEqualToConstant:17],
         
-        // 【重要】エディタビューは「ヘッダー全体（タイトル＋検索）」の下に繋ぐ
+        // ラベルを上部揃え（余白なし）
+        [self.titleLabel.centerXAnchor constraintEqualToAnchor:self.titleBarView.centerXAnchor],
+        [self.titleLabel.topAnchor constraintEqualToAnchor:self.titleBarView.topAnchor],
+        
+        // エディタビュー
         [self.editorView.topAnchor constraintEqualToAnchor:self.headerStack.bottomAnchor],
         _editorBottomConstraint,
         [self.editorView.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
@@ -1530,7 +1532,6 @@
     _editorEngine = std::make_shared<Editor>();
     __weak typeof(self) weakSelf = self;
     
-    // タイトルバー更新コールバック（ファイル名と未保存フラグ*の監視）
     _editorEngine->cbUpdateTitleBar = [weakSelf]() {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(self) strongSelf = weakSelf;
@@ -1541,25 +1542,21 @@
                     fileName = [[NSString stringWithUTF8String:utf8Name.c_str()] lastPathComponent];
                 }
                 NSString *dirtyMark = strongSelf->_editorEngine->isDirty ? @"*" : @"";
-                // dirtyMark (*) を fileName の前に配置
                 strongSelf.titleLabel.text = [NSString stringWithFormat:@"%@%@", dirtyMark, fileName];
             }
         });
     };
     
-    // 画面の再描画コールバック
     _editorEngine->cbNeedsDisplay = [weakSelf]() {
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf) {
             [strongSelf.editorView setNeedsDisplay];
-            // 描画が更新されるタイミングでタイトルバー（未保存フラグ）も連動させる
             if (strongSelf->_editorEngine && strongSelf->_editorEngine->cbUpdateTitleBar) {
                 strongSelf->_editorEngine->cbUpdateTitleBar();
             }
         }
     };
     
-    // 画面サイズ取得コールバック
     _editorEngine->cbGetViewSize = [weakSelf](float& w, float& h) {
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf) {
@@ -1568,7 +1565,6 @@
         }
     };
     
-    // 「ファイルを開く」コールバック
     _editorEngine->cbOpenFile = [weakSelf]() -> bool {
         dispatch_async(dispatch_get_main_queue(), ^{
             [weakSelf confirmSaveIfNeededWithAction:^{
@@ -1578,7 +1574,6 @@
         return true;
     };
    
-    // 「名前を付けて保存」コールバック
     _editorEngine->cbSaveFileAs = [weakSelf]() -> bool {
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf) [strongSelf presentDocumentPickerForSaving];
@@ -1594,19 +1589,17 @@
     self.editorView.editor = _editorEngine.get();
     
     self.editorView.onNewDocumentAction = ^{
-        // 保存確認を行い、問題なければ performNewDocument を実行する
         [weakSelf confirmSaveIfNeededWithAction:^{
             [weakSelf performNewDocument];
         }];
     };
     
     // ---------------------------------------------------
-    // 8. 各種通知の登録（キーボード伸縮、テーマ変更、検索UI表示）
+    // 8. 各種通知の登録
     // ---------------------------------------------------
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
     
-    // 検索・置換UI表示の通知を購読
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showSearchNotif) name:@"miuShowSearch" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showReplaceNotif) name:@"miuShowReplace" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(closeSearch) name:@"miuCloseSearch" object:nil];
@@ -1615,7 +1608,6 @@
         [self registerForTraitChanges:@[[UITraitUserInterfaceStyle class]] withAction:@selector(updateThemeIfNeeded)];
     }
 }
-
 // ★【追加】: 未保存なら確認ダイアログを出し、その後 action を実行するメソッド
 - (void)confirmSaveIfNeededWithAction:(void(^)(void))action {
     // 未保存でなければ即実行
@@ -1685,8 +1677,8 @@
     NSDictionary *userInfo = notification.userInfo;
     CGRect keyboardFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
     
-    CGFloat safeAreaBottom = self.view.safeAreaInsets.bottom;
-    CGFloat shrinkAmount = keyboardFrame.size.height - safeAreaBottom;
+    // 【修正】bottomAnchorをself.view.bottomAnchorにしたため、キーボードの高さそのものを引く
+    CGFloat shrinkAmount = keyboardFrame.size.height;
     
     // システムのアニメーションを強制的に無効化するブロック
     [UIView performWithoutAnimation:^{
