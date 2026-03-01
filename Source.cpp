@@ -632,7 +632,15 @@ struct Editor {
     void updateScrollBars() {
         if (suppressUI) return;
         if (!hwnd) return; RECT rc; GetClientRect(hwnd, &rc);
-        float clientH = (rc.bottom - rc.top) / dpiScaleY; float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth; if (clientW < 0) clientW = 0;
+        float clientH = (rc.bottom - rc.top) / dpiScaleY;
+        float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth; if (clientW < 0) clientW = 0;
+        int maxH = std::max(0, (int)(maxLineWidth - clientW + charWidth * 4.0f));
+        if (hScrollPos > maxH) {
+            hScrollPos = maxH;
+        }
+        if (maxH <= 0) {
+            hScrollPos = 0;
+        }
         int linesVisible = (int)(clientH / lineHeight);
         SCROLLINFO si = {}; si.cbSize = sizeof(SCROLLINFO); si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
         si.nMin = 0; si.nMax = (int)lineStarts.size() + linesVisible - 2; if (si.nMax < 0) si.nMax = 0; si.nPage = linesVisible; si.nPos = vScrollPos; SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
@@ -2793,8 +2801,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     } break;
     case WM_MOUSEWHEEL:
         if (GET_KEYSTATE_WPARAM(wParam) & MK_CONTROL) {
-            float s = (GET_WHEEL_DELTA_WPARAM(wParam) > 0) ? 1.1f : 0.9f; g_editor.updateFont(g_editor.currentFontSize * s);
-            g_editor.zoomPopupEndTime = GetTickCount64() + 1000; std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px"; g_editor.zoomPopupText = ss.str(); SetTimer(hwnd, 1, 1000, NULL);
+            float s = (GET_WHEEL_DELTA_WPARAM(wParam) > 0) ? 1.1f : 0.9f;
+            g_editor.updateFont(g_editor.currentFontSize * s);
+            g_editor.rebuildLineStarts();
+            g_editor.zoomPopupEndTime = GetTickCount64() + 1000;
+            std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px";
+            g_editor.zoomPopupText = ss.str(); 
+            SetTimer(hwnd, 1, 1000, NULL);
         }
         else {
             g_editor.vScrollPos -= GET_WHEEL_DELTA_WPARAM(wParam) / WHEEL_DELTA * 3;
@@ -2934,6 +2947,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 break;
             case VK_ADD: case VK_OEM_PLUS: {
                 g_editor.updateFont(g_editor.currentFontSize * 1.1f);
+                g_editor.rebuildLineStarts();
                 g_editor.zoomPopupEndTime = GetTickCount64() + 1000;
                 std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px"; g_editor.zoomPopupText = ss.str();
                 SetTimer(hwnd, 1, 1000, NULL);
@@ -2942,6 +2956,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             case VK_SUBTRACT: case VK_OEM_MINUS: {
                 g_editor.updateFont(g_editor.currentFontSize * 0.9f);
+                g_editor.rebuildLineStarts();
                 g_editor.zoomPopupEndTime = GetTickCount64() + 1000;
                 std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px"; g_editor.zoomPopupText = ss.str();
                 SetTimer(hwnd, 1, 1000, NULL);
@@ -2950,6 +2965,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             case '0': case VK_NUMPAD0: {
                 g_editor.updateFont(21.0f);
+                g_editor.rebuildLineStarts();
                 g_editor.zoomPopupEndTime = GetTickCount64() + 1000;
                 std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px"; g_editor.zoomPopupText = ss.str();
                 SetTimer(hwnd, 1, 1000, NULL);
