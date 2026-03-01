@@ -2804,7 +2804,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if (g_editor.vScrollPos > maxScroll) g_editor.vScrollPos = maxScroll;
             g_editor.updateScrollBars();
         }
-        InvalidateRect(hwnd, NULL, FALSE); break;
+        InvalidateRect(hwnd, NULL, FALSE);
+        break;
+    case WM_MOUSEHWHEEL:
+        {
+            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            g_editor.hScrollPos += delta;
+            if (g_editor.hScrollPos < 0) g_editor.hScrollPos = 0;
+            if (g_editor.hScrollPos > (int)g_editor.maxLineWidth) g_editor.hScrollPos = (int)g_editor.maxLineWidth;
+            g_editor.updateScrollBars();
+            InvalidateRect(hwnd, NULL, FALSE);
+        } break;
     case WM_TIMER: if (wParam == 1) { KillTimer(hwnd, 1); InvalidateRect(hwnd, NULL, FALSE); } break;
     case WM_CHAR: {
         if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
