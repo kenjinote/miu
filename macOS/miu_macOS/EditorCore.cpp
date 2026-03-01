@@ -1090,17 +1090,27 @@ void Editor::updateThemeColors() {
 #if defined(__APPLE__)
     if (colBackground) { CGColorRelease(colBackground); CGColorRelease(colText); CGColorRelease(colGutterBg); CGColorRelease(colGutterText); CGColorRelease(colSel); CGColorRelease(colCaret); }
     if (isDarkMode) {
-        colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
         colText = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 1.0);
-        colGutterBg = CGColorCreateGenericRGB(0.08, 0.08, 0.08, 1.0);
-        colGutterText = CGColorCreateGenericRGB(0.4, 0.4, 0.4, 1.0);
+#if TARGET_OS_IOS
+        colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
+        colGutterBg = CGColorCreateGenericRGB(0.1, 0.1, 0.1, 1.0);
+#elif TARGET_OS_OSX
+        colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.5);
+        colGutterBg = CGColorCreateGenericRGB(0.25, 0.25, 0.25, 0.0);
+#endif
+        colGutterText = CGColorCreateGenericRGB(0.45, 0.45, 0.45, 1.0);
         colSel = CGColorCreateGenericRGB(0.1, 0.2, 0.4, 1.0);
         colCaret = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
     } else {
-        colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
         colText = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
+#if TARGET_OS_IOS
+        colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
         colGutterBg = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 1.0);
-        colGutterText = CGColorCreateGenericRGB(0.6, 0.6, 0.6, 1.0);
+#elif TARGET_OS_OSX
+        colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.5);
+        colGutterBg = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 0.0);
+#endif
+        colGutterText = CGColorCreateGenericRGB(0.5, 0.5, 0.5, 1.0);
         colSel = CGColorCreateGenericRGB(0.70, 0.80, 1.0, 1.0);
         colCaret = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
     }
@@ -1108,7 +1118,9 @@ void Editor::updateThemeColors() {
 }
 #if defined(__APPLE__)
 void Editor::render(CGContextRef ctx, float w, float h) {
-    CGContextSetFillColorWithColor(ctx, colBackground); CGContextFillRect(ctx, CGRectMake(0, 0, w, h));
+    CGContextClearRect(ctx, CGRectMake(0, 0, gutterWidth, h));
+    CGContextSetFillColorWithColor(ctx, colBackground);
+    CGContextFillRect(ctx, CGRectMake(gutterWidth, 0, w - gutterWidth, h));
     CGContextSetTextMatrix(ctx, CGAffineTransformMakeScale(1.0, -1.0));
     float vw = std::max(0.0f, w - gutterWidth - visibleVScrollWidth);
     float vh = std::max(0.0f, h - visibleHScrollHeight);

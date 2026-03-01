@@ -707,12 +707,38 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 @implementation AppDelegate
 - (instancetype)init { if (self = [super init]) { self.windows = [NSMutableArray array]; } return self; }
 - (void)createWindowWithPath:(const char*)path {
-    CustomWindow *win = [[CustomWindow alloc] initWithContentRect:NSMakeRect(0,0,800,600) styleMask:NSWindowStyleMaskTitled|NSWindowStyleMaskClosable|NSWindowStyleMaskResizable|NSWindowStyleMaskMiniaturizable backing:NSBackingStoreBuffered defer:NO];
-    [win center]; [win setDelegate:self];
-    if (self.windows.count > 0) { NSRect lastFrame = self.windows.lastObject.frame; [win setFrameTopLeftPoint:NSMakePoint(lastFrame.origin.x + 22, lastFrame.origin.y - 22)]; }
-    EditorView *v = [[EditorView alloc] initWithFrame:win.contentView.bounds];
+    NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskFullSizeContentView;
+    CustomWindow *win = [[CustomWindow alloc] initWithContentRect:NSMakeRect(0,0,800,600) styleMask:style backing:NSBackingStoreBuffered defer:NO];
+    [win setTitlebarAppearsTransparent:YES];
+    [win setTitleVisibility:NSWindowTitleVisible];
+    [win setTitlebarSeparatorStyle:NSTitlebarSeparatorStyleNone];
+    NSVisualEffectView *visualEffectView = [[NSVisualEffectView alloc] initWithFrame:win.contentView.bounds];
+    visualEffectView.material = NSVisualEffectMaterialSidebar;
+    visualEffectView.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+    visualEffectView.state = NSVisualEffectStateFollowsWindowActiveState;
+    visualEffectView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [win setContentView:visualEffectView];
+    CGFloat titleBarHeight = 28.0;
+    NSRect contentRect = visualEffectView.bounds;
+    contentRect.origin.y = 0;
+    contentRect.size.height -= titleBarHeight;
+    EditorView *v = [[EditorView alloc] initWithFrame:contentRect];
+    v.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [v setWantsLayer:YES];
+    v.layer.backgroundColor = [NSColor clearColor].CGColor;
+    v.layer.opaque = NO;
     if (path) v->editor->openFileFromPath(path); else v->editor->newFile();
-    [win setContentView:v]; [win makeKeyAndOrderFront:nil]; [win makeFirstResponder:v];
+    [visualEffectView addSubview:v];
+    v.translatesAutoresizingMaskIntoConstraints = NO;
+    [NSLayoutConstraint activateConstraints:@[
+        [v.topAnchor constraintEqualToAnchor:visualEffectView.safeAreaLayoutGuide.topAnchor], // タイトルバーの下に合わせる
+        [v.bottomAnchor constraintEqualToAnchor:visualEffectView.bottomAnchor],
+        [v.leftAnchor constraintEqualToAnchor:visualEffectView.leftAnchor],
+        [v.rightAnchor constraintEqualToAnchor:visualEffectView.rightAnchor]
+    ]];
+    [win center]; [win setDelegate:self];
+    [win setBackgroundColor:[NSColor blackColor]];
+    [win makeKeyAndOrderFront:nil]; [win makeFirstResponder:v];
     [self.windows addObject:win];
 }
 - (void)setupMenuBar {
@@ -733,10 +759,35 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     if (args.count > 1) [self createWindowWithPath:[args[1] UTF8String]]; else if (self.windows.count == 0) [self createWindowWithPath:nullptr];
 }
 - (void)application:(NSApplication *)sender openFiles:(NSArray<NSString *> *)filenames { for (NSString *path in filenames) [self createWindowWithPath:[path UTF8String]]; [sender replyToOpenOrPrint:NSApplicationDelegateReplySuccess]; }
-- (void)newDocument:(id)sender { NSWindow *win = [NSApp keyWindow]; if (win && [win isKindOfClass:[CustomWindow class]]) { EditorView *v = (EditorView *)win.contentView; v->editor->newFile(); } else { [self createWindowWithPath:nullptr]; } }
-- (void)openDocument:(id)sender { NSWindow *win = [NSApp keyWindow]; if (win && [win isKindOfClass:[CustomWindow class]]) { EditorView *v = (EditorView *)win.contentView; v->editor->openFile(); } else { [self createWindowWithPath:nullptr]; CustomWindow *newWin = self.windows.lastObject; EditorView *v = (EditorView *)newWin.contentView; if (!v->editor->openFile()) {} } }
+- (void)newDocument:(id)sender {
+    NSWindow *win = [NSApp keyWindow];
+    EditorView *v = [self findEditorViewInWindow:win]; // ここを修正
+    if (v) {
+        v->editor->newFile();
+    } else {
+        [self createWindowWithPath:nullptr];
+    }
+}
+- (void)openDocument:(id)sender {
+    NSWindow *win = [NSApp keyWindow];
+    EditorView *v = [self findEditorViewInWindow:win];
+    if (v) {
+        v->editor->openFile();
+    } else {
+        [self createWindowWithPath:nullptr];
+        CustomWindow *newWin = self.windows.lastObject;
+        EditorView *newV = [self findEditorViewInWindow:newWin];
+        if (newV) newV->editor->openFile();
+    }
+}
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender { return YES; }
-- (BOOL)windowShouldClose:(NSWindow *)sender { EditorView *v = (EditorView *)sender.contentView; if (v && v->editor) { if (!v->editor->checkUnsavedChanges()) return NO; } return YES; }
+- (BOOL)windowShouldClose:(NSWindow *)sender {
+    EditorView *v = [self findEditorViewInWindow:sender];
+    if (v && v->editor) {
+        if (!v->editor->checkUnsavedChanges()) return NO;
+    }
+    return YES;
+}
 - (void)windowWillClose:(NSNotification *)notification {
     CustomWindow *win = (CustomWindow *)notification.object;
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -746,12 +797,25 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
     NSArray *windowsToClose = [self.windows copy];
     for (CustomWindow *win in windowsToClose) {
-        EditorView *v = (EditorView *)win.contentView;
+        EditorView *v = [self findEditorViewInWindow:win];
         if (v && v->editor) {
             if (!v->editor->checkUnsavedChanges()) return NSTerminateCancel;
         }
     }
     return NSTerminateNow;
+}
+- (EditorView *)findEditorViewInWindow:(NSWindow *)window {
+    if (!window) return nil;
+    NSView *contentView = window.contentView;
+    if ([contentView isKindOfClass:[EditorView class]]) {
+        return (EditorView *)contentView;
+    }
+    for (NSView *subview in contentView.subviews) {
+        if ([subview isKindOfClass:[EditorView class]]) {
+            return (EditorView *)subview;
+        }
+    }
+    return nil;
 }
 @end
 int main(int argc, const char * argv[]) {
