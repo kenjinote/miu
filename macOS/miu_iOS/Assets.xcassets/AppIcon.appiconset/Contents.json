@@ -1,7 +1,7 @@
 {
   "images" : [
     {
-      "filename" : "white3.png",
+      "filename" : "miu_clear.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -13,7 +13,7 @@
           "value" : "dark"
         }
       ],
-      "filename" : "black.png",
+      "filename" : "miu_dark.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
