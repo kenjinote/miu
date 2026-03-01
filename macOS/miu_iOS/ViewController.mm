@@ -903,18 +903,22 @@
 }
 - (void)handleUndo:(id)sender {
     if (!self.editor) return;
+    [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->performUndo();
     self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
 }
 - (void)handleRedo:(id)sender {
     if (!self.editor) return;
+    [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->performRedo();
     self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
 }
 - (void)zoomIn:(id)sender {
