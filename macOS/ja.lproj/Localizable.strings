@@ -41,3 +41,8 @@
 "All" = "すべて";
 "Unsaved Changes" = "未保存の変更";
 "Don't Save" = "保存しない";
+"Go to Line" = "指定行へ移動";
+"Go" = "移動";
+"Line:" = "行:";
+"Line Number:" = "行番号:";
+"Go To" = "指定行";

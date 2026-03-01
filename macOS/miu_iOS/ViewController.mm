@@ -48,6 +48,8 @@
 @interface iOSEditorView : UIView <UITextInput, UIGestureRecognizerDelegate>
 @property (nonatomic) Editor *editor;
 @property (nonatomic, copy) void (^onNewDocumentAction)(void);
+@property (nonatomic, copy) void (^onGoToLineAction)(void);
+- (void)jumpToLine:(NSInteger)lineNumber;
 @end
 @implementation iOSEditorView {
     CGPoint _lastPanTranslation;
@@ -497,7 +499,7 @@
 }
 - (void)deleteBackward {
     if (!self.editor) return;
-    [self.inputDelegate selectionWillChange:self]; // ★追加
+    [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->backspaceAtCursors();
     [self.inputDelegate textDidChange:self];
@@ -693,6 +695,8 @@
         [UIKeyCommand keyCommandWithInput:@"s" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(saveDocumentAs:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand action:@selector(cmdFind:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand | UIKeyModifierAlternate action:@selector(cmdReplace:)],
+        [UIKeyCommand keyCommandWithInput:@"j" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
+        [UIKeyCommand keyCommandWithInput:@"g" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
         [UIKeyCommand keyCommandWithInput:@"+" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
         [UIKeyCommand keyCommandWithInput:@"=" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
         [UIKeyCommand keyCommandWithInput:@"-" modifierFlags:UIKeyModifierCommand action:@selector(zoomOut:)],
@@ -725,6 +729,9 @@
         return YES;
     }
     if (action == @selector(cmdFind:) || action == @selector(cmdReplace:)) {
+        return YES;
+    }
+    if (action == @selector(cmdGoToLine:)) {
         return YES;
     }
     if (action == @selector(zoomIn:) ||
@@ -985,6 +992,7 @@
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Save As", nil), @selector(saveDocumentAs:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Find", nil), @selector(cmdFind:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Replace", nil), @selector(cmdReplace:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Go To", nil), @selector(cmdGoToLine:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Undo", nil), @selector(handleUndo:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Redo", nil), @selector(handleRedo:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Select All", nil), @selector(selectAll:))];
@@ -1003,6 +1011,32 @@
 - (void)cmdReplace:(id)sender {
     [[NSNotificationCenter defaultCenter] postNotificationName:@"miuShowReplace" object:nil];
 }
+- (void)cmdGoToLine:(id)sender {
+    if (self.onGoToLineAction) {
+        self.onGoToLineAction();
+    }
+}
+- (void)jumpToLine:(NSInteger)lineNumber {
+    if (!self.editor) return;
+    if (lineNumber < 1) lineNumber = 1;
+    size_t totalLines = self.editor->lineStarts.size();
+    if (lineNumber > totalLines) lineNumber = totalLines;
+    NSInteger lineIndex = lineNumber - 1;
+    size_t newPos = self.editor->lineStarts[lineIndex];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->cursors.clear();
+    Cursor c;
+    c.head = newPos;
+    c.anchor = newPos;
+    c.desiredX = 0;
+    c.originalAnchorX = 0;
+    c.isVirtual = false;
+    self.editor->cursors.push_back(c);
+    [self.inputDelegate selectionDidChange:self];
+    self.editor->ensureCaretVisible();
+    [self setNeedsDisplay];
+    [self setNeedsLayout];
+}
 @end
 @interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate>
 @property (nonatomic, strong) iOSEditorView *editorView;
@@ -1018,6 +1052,8 @@
 @property (nonatomic, strong) UIButton *wholeWordBtn;
 @property (nonatomic, strong) UIButton *regexBtn;
 @property (nonatomic, strong) NSLayoutConstraint *buttonsWidthConstraint;
+@property (nonatomic, strong) UIView *goToLineContainer;
+@property (nonatomic, strong) UITextField *goToLineField;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1036,6 +1072,55 @@
     if (_editorEngine->cbUpdateTitleBar) {
         _editorEngine->cbUpdateTitleBar();
     }
+}
+- (void)setupGoToLineUI {
+    self.goToLineContainer = [[UIView alloc] init];
+    self.goToLineContainer.backgroundColor = [UIColor secondarySystemBackgroundColor];
+    self.goToLineContainer.hidden = YES;
+    UIView *bottomLine = [[UIView alloc] init];
+    bottomLine.backgroundColor = [UIColor separatorColor];
+    bottomLine.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.goToLineContainer addSubview:bottomLine];
+    [self.headerStack addArrangedSubview:self.goToLineContainer];
+    UIStackView *mainStack = [[UIStackView alloc] init];
+    mainStack.axis = UILayoutConstraintAxisHorizontal;
+    mainStack.spacing = 12;
+    mainStack.alignment = UIStackViewAlignmentCenter;
+    mainStack.translatesAutoresizingMaskIntoConstraints = NO;
+    mainStack.layoutMargins = UIEdgeInsetsMake(8, 12, 8, 12);
+    mainStack.layoutMarginsRelativeArrangement = YES;
+    [self.goToLineContainer addSubview:mainStack];
+    [NSLayoutConstraint activateConstraints:@[
+        [bottomLine.bottomAnchor constraintEqualToAnchor:self.goToLineContainer.bottomAnchor],
+        [bottomLine.leadingAnchor constraintEqualToAnchor:self.goToLineContainer.leadingAnchor],
+        [bottomLine.trailingAnchor constraintEqualToAnchor:self.goToLineContainer.trailingAnchor],
+        [bottomLine.heightAnchor constraintEqualToConstant:0.5],
+        [mainStack.topAnchor constraintEqualToAnchor:self.goToLineContainer.topAnchor],
+        [mainStack.bottomAnchor constraintEqualToAnchor:self.goToLineContainer.bottomAnchor],
+        [mainStack.leadingAnchor constraintEqualToAnchor:self.goToLineContainer.leadingAnchor],
+        [mainStack.trailingAnchor constraintEqualToAnchor:self.goToLineContainer.trailingAnchor]
+    ]];
+    UILabel *label = [[UILabel alloc] init];
+    label.text = NSLocalizedString(@"Line:", @"行番号ラベル");
+    label.font = [UIFont systemFontOfSize:14];
+    [mainStack addArrangedSubview:label];
+    self.goToLineField = [[UITextField alloc] init];
+    self.goToLineField.placeholder = @"1...";
+    self.goToLineField.borderStyle = UITextBorderStyleRoundedRect;
+    self.goToLineField.keyboardType = UIKeyboardTypeNumbersAndPunctuation;
+    self.goToLineField.returnKeyType = UIReturnKeyGo;
+    self.goToLineField.delegate = self;
+    self.goToLineField.tag = 1001;
+    [self.goToLineField setContentHuggingPriority:249 forAxis:UILayoutConstraintAxisHorizontal];
+    [mainStack addArrangedSubview:self.goToLineField];
+    UIButton *goBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    [goBtn setTitle:NSLocalizedString(@"Go", nil) forState:UIControlStateNormal];
+    [goBtn addTarget:self action:@selector(performGoToLine) forControlEvents:UIControlEventTouchUpInside];
+    [mainStack addArrangedSubview:goBtn];
+    UIButton *closeBtn = [UIButton buttonWithType:UIButtonTypeSystem];
+    [closeBtn setTitle:NSLocalizedString(@"Cancel", nil) forState:UIControlStateNormal];
+    [closeBtn addTarget:self action:@selector(closeGoToLine) forControlEvents:UIControlEventTouchUpInside];
+    [mainStack addArrangedSubview:closeBtn];
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -1067,6 +1152,7 @@
     [self.view addSubview:topFillView];
     [self.view insertSubview:topFillView belowSubview:self.headerStack];
     [self setupSearchUI];
+    [self setupGoToLineUI];
     self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
     self.editorView.translatesAutoresizingMaskIntoConstraints = NO;
     self.editorView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
@@ -1144,6 +1230,24 @@
     self.editorView.onNewDocumentAction = ^{
         [weakSelf confirmSaveIfNeededWithAction:^{
             [weakSelf performNewDocument];
+        }];
+    };
+    self.editorView.onGoToLineAction = ^{
+        __strong typeof(self) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        if (!strongSelf.searchContainer.hidden) {
+            [strongSelf closeSearch];
+        }
+        if (strongSelf->_editorEngine && !strongSelf->_editorEngine->cursors.empty()) {
+            size_t head = strongSelf->_editorEngine->cursors.back().head;
+            int currentLine = strongSelf->_editorEngine->getLineIdx(head) + 1;
+            strongSelf.goToLineField.text = [NSString stringWithFormat:@"%d", currentLine];
+        }
+        [UIView animateWithDuration:0.25 animations:^{
+            strongSelf.goToLineContainer.hidden = NO;
+            [strongSelf.view layoutIfNeeded];
+        } completion:^(BOOL finished) {
+            [strongSelf.goToLineField becomeFirstResponder];
         }];
     };
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
@@ -1501,11 +1605,34 @@
         [self.editorView setNeedsDisplay];
     }];
 }
+- (void)closeGoToLine {
+    [self.editorView becomeFirstResponder];
+    [UIView animateWithDuration:0.25 animations:^{
+        self.goToLineContainer.hidden = YES;
+        [self.view layoutIfNeeded];
+    }];
+}
+- (void)performGoToLine {
+    NSInteger line = [self.goToLineField.text integerValue];
+    if (line > 0) {
+        [self.editorView jumpToLine:line];
+    }
+    [self closeGoToLine];
+}
+- (void)textFieldDidBeginEditing:(UITextField *)textField {
+    if (textField.tag == 1001) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [textField selectAll:nil];
+        });
+    }
+}
 - (BOOL)textFieldShouldReturn:(UITextField *)textField {
     if (textField == self.searchField) {
         [self doFindNext];
     } else if (textField == self.replaceField) {
         [self doReplace];
+    } else if (textField == self.goToLineField) {
+        [self performGoToLine];
     }
     return YES;
 }
@@ -1517,13 +1644,13 @@
 - (void)doFindNext {
     if (!_editorEngine || self.searchField.text.length == 0) return;
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
-    _editorEngine->findNext(true); // forward = true
+    _editorEngine->findNext(true);
     [self.editorView setNeedsDisplay];
 }
 - (void)doFindPrev {
     if (!_editorEngine || self.searchField.text.length == 0) return;
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
-    _editorEngine->findNext(false); // forward = false
+    _editorEngine->findNext(false);
     [self.editorView setNeedsDisplay];
 }
 - (void)doReplace {
