@@ -20,6 +20,12 @@
 #include <regex> 
 #include <cstring>
 #include "resource.h"
+#ifndef DWMWA_SYSTEMBACKDROP_TYPE
+#define DWMWA_SYSTEMBACKDROP_TYPE 38
+#endif
+#ifndef DWMSBT_MAINWINDOW
+#define DWMSBT_MAINWINDOW 2
+#endif
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "imm32.lib")
@@ -374,10 +380,14 @@ struct Editor {
     }
     void updateThemeColors() {
         isDarkMode = checkSystemDarkMode();
+        int backdropValue = DWMSBT_MAINWINDOW;
+        HRESULT hrMica = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropValue, sizeof(backdropValue));
+        bool isMicaEnabled = SUCCEEDED(hrMica);
+        float bgAlpha = isMicaEnabled ? 0.0f : 1.0f;
         if (isDarkMode) {
-            background = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
+            background = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
             textColor = D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
-            gutterBg = D2D1::ColorF(0.08f, 0.08f, 0.08f, 1.0f);
+            gutterBg = D2D1::ColorF(0.08f, 0.08f, 0.08f, bgAlpha);
             gutterText = D2D1::ColorF(0.4f, 0.4f, 0.4f, 1.0f);
             selColor = D2D1::ColorF(0.1f, 0.2f, 0.4f, 1.0f);
             caretColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
@@ -385,9 +395,9 @@ struct Editor {
             highlightColor = D2D1::ColorF(0.4f, 0.4f, 0.0f, 0.6f);
         }
         else {
-            background = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
+            background = D2D1::ColorF(1.0f, 1.0f, 1.0f, bgAlpha);
             textColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
-            gutterBg = D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
+            gutterBg = D2D1::ColorF(0.95f, 0.95f, 0.95f, bgAlpha);
             gutterText = D2D1::ColorF(0.6f, 0.6f, 0.6f, 1.0f);
             selColor = D2D1::ColorF(0.7f, 0.8f, 1.0f, 1.0f);
             caretColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
