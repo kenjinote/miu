@@ -375,14 +375,14 @@ struct Editor {
     void updateThemeColors() {
         isDarkMode = checkSystemDarkMode();
         if (isDarkMode) {
-            background = D2D1::ColorF(0.12f, 0.12f, 0.12f, 1.0f);
-            textColor = D2D1::ColorF(0.9f, 0.9f, 0.9f, 1.0f);
-            gutterBg = D2D1::ColorF(0.18f, 0.18f, 0.18f, 1.0f);
-            gutterText = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
-            selColor = D2D1::ColorF(0.26f, 0.4f, 0.6f, 1.0f);
-            highlightColor = D2D1::ColorF(0.4f, 0.4f, 0.0f, 0.6f);
-            autoHlColor = D2D1::ColorF(0.35f, 0.35f, 0.35f, 0.6f);
+            background = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
+            textColor = D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
+            gutterBg = D2D1::ColorF(0.08f, 0.08f, 0.08f, 1.0f);
+            gutterText = D2D1::ColorF(0.4f, 0.4f, 0.4f, 1.0f);
+            selColor = D2D1::ColorF(0.1f, 0.2f, 0.4f, 1.0f);
             caretColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
+            autoHlColor = D2D1::ColorF(0.35f, 0.35f, 0.35f, 0.5f);
+            highlightColor = D2D1::ColorF(0.4f, 0.4f, 0.0f, 0.6f);
         }
         else {
             background = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
@@ -390,9 +390,9 @@ struct Editor {
             gutterBg = D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
             gutterText = D2D1::ColorF(0.6f, 0.6f, 0.6f, 1.0f);
             selColor = D2D1::ColorF(0.7f, 0.8f, 1.0f, 1.0f);
-            highlightColor = D2D1::ColorF(1.0f, 1.0f, 0.0f, 0.4f);
-            autoHlColor = D2D1::ColorF(0.8f, 0.8f, 0.8f, 0.35f);
             caretColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
+            autoHlColor = D2D1::ColorF(0.85f, 0.85f, 0.85f, 0.5f);
+            highlightColor = D2D1::ColorF(1.0f, 1.0f, 0.0f, 0.4f);
         }
         BOOL dark = isDarkMode;
         DwmSetWindowAttribute(hwnd, 20, &dark, sizeof(dark));
@@ -513,8 +513,18 @@ struct Editor {
     void updateDirtyFlag() { bool newDirty = undo.isModified(); if (isDirty != newDirty) { isDirty = newDirty; updateTitleBar(); } }
     void updateGutterWidth() {
         if (suppressUI) return;
-        int lines = (int)lineStarts.size(); int digits = 1; while (lines >= 10) { lines /= 10; digits++; }
-        float digitWidth = 10.0f * (currentFontSize / 14.0f); gutterWidth = (float)(digits * digitWidth + 20.0f);
+
+        // 全行数から桁数を算出
+        int totalLines = (int)lineStarts.size();
+        int digits = 1;
+        int tempLines = totalLines;
+        while (tempLines >= 10) {
+            tempLines /= 10;
+            digits++;
+        }
+
+        // macOS版のロジック: (桁数 * 文字幅) + 文字1つ分の余白
+        gutterWidth = (float)(digits * charWidth) + (charWidth * 1.0f);
     }
     void rebuildLineStarts() {
         lineStarts.clear();
@@ -1235,6 +1245,26 @@ struct Editor {
         updateTitleBar();
         InvalidateRect(hwnd, NULL, FALSE);
     }
+    void jumpToFileEdge(bool start, bool select) {
+        size_t target = start ? 0 : pt.length();
+        if (!select) {
+            cursors.clear();
+            cursors.push_back({ target, target, getXFromPos(target) });
+        }
+        else {
+            for (auto& c : cursors) {
+                c.head = target;
+                c.desiredX = getXFromPos(c.head);
+            }
+        }
+        if (start) {
+            vScrollPos = 0;
+            hScrollPos = 0;
+        }
+        ensureCaretVisible();
+        updateDirtyFlag();
+        InvalidateRect(hwnd, NULL, FALSE);
+    }
     static INT_PTR CALLBACK GoToDlgProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
         Editor* pThis = (Editor*)GetWindowLongPtr(hDlg, GWLP_USERDATA);
         switch (message) {
@@ -1620,7 +1650,10 @@ struct Editor {
         for (int i = startLine; i < endLine; i++) {
             std::wstring numStr = std::to_wstring(i + 1); float yPos = (float)((i - startLine)) * lineHeight; IDWriteTextLayout* numLayout = nullptr;
             if (SUCCEEDED(dwFactory->CreateTextLayout(numStr.c_str(), (UINT32)numStr.size(), textFormat, gutterWidth, lineHeight, &numLayout))) {
-                numLayout->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING); rend->DrawTextLayout(D2D1::Point2F(0, yPos), numLayout, gutterTextBrush); numLayout->Release();
+                numLayout->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_TRAILING);
+                float xPos = -(charWidth * 0.5f);
+                rend->DrawTextLayout(D2D1::Point2F(xPos, yPos), numLayout, gutterTextBrush);
+                numLayout->Release();
             }
         }
         gutterTextBrush->Release();
@@ -1679,7 +1712,8 @@ struct Editor {
         }
         if (GetTickCount64() < zoomPopupEndTime) {
             D2D1_RECT_F popupRect = D2D1::RectF(clientW / 2 - 80, clientH / 2 - 40, clientW / 2 + 80, clientH / 2 + 40);
-            ID2D1SolidColorBrush* popupBg = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(0.0f, 0.0f, 0.0f, 0.7f), &popupBg);
+            ID2D1SolidColorBrush* popupBg = nullptr;
+            rend->CreateSolidColorBrush(D2D1::ColorF(0.2f, 0.2f, 0.2f, 0.7f), &popupBg);
             ID2D1SolidColorBrush* popupText = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f), &popupText);
             rend->FillRoundedRectangle(D2D1::RoundedRect(popupRect, 10.0f, 10.0f), popupBg);
             if (popupTextFormat) rend->DrawText(zoomPopupText.c_str(), (UINT32)zoomPopupText.size(), popupTextFormat, popupRect, popupText);
@@ -1688,7 +1722,8 @@ struct Editor {
         if (showHelpPopup) {
             float helpW = 500.0f; float helpH = 550.0f;
             D2D1_RECT_F helpRect = D2D1::RectF((clientW - helpW) / 2, (clientH - helpH) / 2, (clientW + helpW) / 2, (clientH + helpH) / 2);
-            ID2D1SolidColorBrush* popupBg = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(0.1f, 0.1f, 0.1f, 0.5f), &popupBg);
+            ID2D1SolidColorBrush* popupBg = nullptr;
+            rend->CreateSolidColorBrush(D2D1::ColorF(0.2f, 0.2f, 0.2f, 0.7f), &popupBg);
             ID2D1SolidColorBrush* popupText = nullptr; rend->CreateSolidColorBrush(D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f), &popupText);
             rend->FillRoundedRectangle(D2D1::RoundedRect(helpRect, 10.0f, 10.0f), popupBg);
             IDWriteTextLayout* helpLayout = nullptr;
@@ -2864,10 +2899,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case 'G': g_editor.showGoToDialog(); return 0;
             case 'L':
                 if (GetKeyState(VK_SHIFT) & 0x8000) {
-                    g_editor.deleteLines();
+                    g_editor.deleteLines(); // Ctrl + Shift + L は既存の行削除を維持
                 }
                 else {
-                    g_editor.cutToClipboard();
+                    g_editor.showGoToDialog(); // Ctrl + L を行移動に変更
                 }
                 return 0;
             case VK_OEM_6:
@@ -2911,6 +2946,20 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 InvalidateRect(hwnd, NULL, FALSE);
                 return 0;
             }
+            case VK_UP:
+            {
+                bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+                g_editor.rollbackPadding(); // 仮想スペース等の調整をリセット
+                g_editor.jumpToFileEdge(true, shift);
+            }
+            return 0;
+            case VK_DOWN:
+            {
+                bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+                g_editor.rollbackPadding();
+                g_editor.jumpToFileEdge(false, shift);
+            }
+            return 0;
             default: break;
             }
         }
