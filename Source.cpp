@@ -20,6 +20,12 @@
 #include <regex> 
 #include <cstring>
 #include "resource.h"
+#ifndef DWMWA_SYSTEMBACKDROP_TYPE
+#define DWMWA_SYSTEMBACKDROP_TYPE 38
+#endif
+#ifndef DWMSBT_MAINWINDOW
+#define DWMSBT_MAINWINDOW 2
+#endif
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "imm32.lib")
@@ -374,10 +380,14 @@ struct Editor {
     }
     void updateThemeColors() {
         isDarkMode = checkSystemDarkMode();
+        int backdropValue = DWMSBT_MAINWINDOW;
+        HRESULT hrMica = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropValue, sizeof(backdropValue));
+        bool isMicaEnabled = SUCCEEDED(hrMica);
+        float bgAlpha = isMicaEnabled ? 0.0f : 1.0f;
         if (isDarkMode) {
-            background = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
+            background = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
             textColor = D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
-            gutterBg = D2D1::ColorF(0.08f, 0.08f, 0.08f, 1.0f);
+            gutterBg = D2D1::ColorF(0.08f, 0.08f, 0.08f, bgAlpha);
             gutterText = D2D1::ColorF(0.4f, 0.4f, 0.4f, 1.0f);
             selColor = D2D1::ColorF(0.1f, 0.2f, 0.4f, 1.0f);
             caretColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
@@ -385,9 +395,9 @@ struct Editor {
             highlightColor = D2D1::ColorF(0.4f, 0.4f, 0.0f, 0.6f);
         }
         else {
-            background = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
+            background = D2D1::ColorF(1.0f, 1.0f, 1.0f, bgAlpha);
             textColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
-            gutterBg = D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
+            gutterBg = D2D1::ColorF(0.95f, 0.95f, 0.95f, bgAlpha);
             gutterText = D2D1::ColorF(0.6f, 0.6f, 0.6f, 1.0f);
             selColor = D2D1::ColorF(0.7f, 0.8f, 1.0f, 1.0f);
             caretColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
@@ -513,8 +523,6 @@ struct Editor {
     void updateDirtyFlag() { bool newDirty = undo.isModified(); if (isDirty != newDirty) { isDirty = newDirty; updateTitleBar(); } }
     void updateGutterWidth() {
         if (suppressUI) return;
-
-        // 全行数から桁数を算出
         int totalLines = (int)lineStarts.size();
         int digits = 1;
         int tempLines = totalLines;
@@ -522,8 +530,6 @@ struct Editor {
             tempLines /= 10;
             digits++;
         }
-
-        // macOS版のロジック: (桁数 * 文字幅) + 文字1つ分の余白
         gutterWidth = (float)(digits * charWidth) + (charWidth * 1.0f);
     }
     void rebuildLineStarts() {
@@ -632,7 +638,15 @@ struct Editor {
     void updateScrollBars() {
         if (suppressUI) return;
         if (!hwnd) return; RECT rc; GetClientRect(hwnd, &rc);
-        float clientH = (rc.bottom - rc.top) / dpiScaleY; float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth; if (clientW < 0) clientW = 0;
+        float clientH = (rc.bottom - rc.top) / dpiScaleY;
+        float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth; if (clientW < 0) clientW = 0;
+        int maxH = std::max(0, (int)(maxLineWidth - clientW + charWidth * 4.0f));
+        if (hScrollPos > maxH) {
+            hScrollPos = maxH;
+        }
+        if (maxH <= 0) {
+            hScrollPos = 0;
+        }
         int linesVisible = (int)(clientH / lineHeight);
         SCROLLINFO si = {}; si.cbSize = sizeof(SCROLLINFO); si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
         si.nMin = 0; si.nMax = (int)lineStarts.size() + linesVisible - 2; if (si.nMax < 0) si.nMax = 0; si.nPage = linesVisible; si.nPos = vScrollPos; SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
@@ -2301,7 +2315,7 @@ struct Editor {
         if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) return;
         if (OpenClipboard(hwnd)) {
             bool isRect = IsClipboardFormatAvailable(cfMsDevCol);
-            bool isLine = IsClipboardFormatAvailable(cfMsDevLine); // 行コピー判定
+            bool isLine = IsClipboardFormatAvailable(cfMsDevLine);
             HGLOBAL h = GetClipboardData(CF_UNICODETEXT);
             if (h) {
                 const wchar_t* p = (const wchar_t*)GlobalLock(h);
@@ -2793,8 +2807,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     } break;
     case WM_MOUSEWHEEL:
         if (GET_KEYSTATE_WPARAM(wParam) & MK_CONTROL) {
-            float s = (GET_WHEEL_DELTA_WPARAM(wParam) > 0) ? 1.1f : 0.9f; g_editor.updateFont(g_editor.currentFontSize * s);
-            g_editor.zoomPopupEndTime = GetTickCount64() + 1000; std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px"; g_editor.zoomPopupText = ss.str(); SetTimer(hwnd, 1, 1000, NULL);
+            float s = (GET_WHEEL_DELTA_WPARAM(wParam) > 0) ? 1.1f : 0.9f;
+            g_editor.updateFont(g_editor.currentFontSize * s);
+            g_editor.rebuildLineStarts();
+            g_editor.zoomPopupEndTime = GetTickCount64() + 1000;
+            std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px";
+            g_editor.zoomPopupText = ss.str(); 
+            SetTimer(hwnd, 1, 1000, NULL);
         }
         else {
             g_editor.vScrollPos -= GET_WHEEL_DELTA_WPARAM(wParam) / WHEEL_DELTA * 3;
@@ -2804,7 +2823,17 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             if (g_editor.vScrollPos > maxScroll) g_editor.vScrollPos = maxScroll;
             g_editor.updateScrollBars();
         }
-        InvalidateRect(hwnd, NULL, FALSE); break;
+        InvalidateRect(hwnd, NULL, FALSE);
+        break;
+    case WM_MOUSEHWHEEL:
+        {
+            int delta = GET_WHEEL_DELTA_WPARAM(wParam);
+            g_editor.hScrollPos += delta;
+            if (g_editor.hScrollPos < 0) g_editor.hScrollPos = 0;
+            if (g_editor.hScrollPos > (int)g_editor.maxLineWidth) g_editor.hScrollPos = (int)g_editor.maxLineWidth;
+            g_editor.updateScrollBars();
+            InvalidateRect(hwnd, NULL, FALSE);
+        } break;
     case WM_TIMER: if (wParam == 1) { KillTimer(hwnd, 1); InvalidateRect(hwnd, NULL, FALSE); } break;
     case WM_CHAR: {
         if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
@@ -2899,10 +2928,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case 'G': g_editor.showGoToDialog(); return 0;
             case 'L':
                 if (GetKeyState(VK_SHIFT) & 0x8000) {
-                    g_editor.deleteLines(); // Ctrl + Shift + L は既存の行削除を維持
+                    g_editor.deleteLines();
                 }
                 else {
-                    g_editor.showGoToDialog(); // Ctrl + L を行移動に変更
+                    g_editor.showGoToDialog();
                 }
                 return 0;
             case VK_OEM_6:
@@ -2924,6 +2953,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 break;
             case VK_ADD: case VK_OEM_PLUS: {
                 g_editor.updateFont(g_editor.currentFontSize * 1.1f);
+                g_editor.rebuildLineStarts();
                 g_editor.zoomPopupEndTime = GetTickCount64() + 1000;
                 std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px"; g_editor.zoomPopupText = ss.str();
                 SetTimer(hwnd, 1, 1000, NULL);
@@ -2932,6 +2962,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             case VK_SUBTRACT: case VK_OEM_MINUS: {
                 g_editor.updateFont(g_editor.currentFontSize * 0.9f);
+                g_editor.rebuildLineStarts();
                 g_editor.zoomPopupEndTime = GetTickCount64() + 1000;
                 std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px"; g_editor.zoomPopupText = ss.str();
                 SetTimer(hwnd, 1, 1000, NULL);
@@ -2940,6 +2971,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             case '0': case VK_NUMPAD0: {
                 g_editor.updateFont(21.0f);
+                g_editor.rebuildLineStarts();
                 g_editor.zoomPopupEndTime = GetTickCount64() + 1000;
                 std::wstringstream ss; ss << (int)g_editor.currentFontSize << L"px"; g_editor.zoomPopupText = ss.str();
                 SetTimer(hwnd, 1, 1000, NULL);
@@ -2949,7 +2981,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case VK_UP:
             {
                 bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
-                g_editor.rollbackPadding(); // 仮想スペース等の調整をリセット
+                g_editor.rollbackPadding();
                 g_editor.jumpToFileEdge(true, shift);
             }
             return 0;
