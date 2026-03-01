@@ -1668,16 +1668,19 @@
         [self closeSearch];
         return;
     }
-    if (_editorEngine && _editorEngine->cursors.size() > 1) {
+    if (_editorEngine && !_editorEngine->cursors.empty()) {
         Cursor lastCursor = _editorEngine->cursors.back();
-        _editorEngine->cursors.clear();
-        _editorEngine->cursors.push_back(lastCursor);
-        _editorEngine->ensureCaretVisible();
-        [self.editorView setNeedsDisplay];
-        if (self.editorView.inputDelegate) {
-            [self.editorView.inputDelegate selectionDidChange:self.editorView];
+        if (_editorEngine->cursors.size() > 1 || lastCursor.hasSelection()) {
+            _editorEngine->cursors.clear();
+            lastCursor.anchor = lastCursor.head;
+            lastCursor.originalAnchorX = lastCursor.desiredX;
+            _editorEngine->cursors.push_back(lastCursor);
+            _editorEngine->ensureCaretVisible();
+            [self.editorView setNeedsDisplay];
+            if (self.editorView.inputDelegate) {
+                [self.editorView.inputDelegate selectionDidChange:self.editorView];
+            }
         }
-        return;
     }
 }
 - (void)closeGoToLine {
