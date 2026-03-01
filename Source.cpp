@@ -513,8 +513,6 @@ struct Editor {
     void updateDirtyFlag() { bool newDirty = undo.isModified(); if (isDirty != newDirty) { isDirty = newDirty; updateTitleBar(); } }
     void updateGutterWidth() {
         if (suppressUI) return;
-
-        // 全行数から桁数を算出
         int totalLines = (int)lineStarts.size();
         int digits = 1;
         int tempLines = totalLines;
@@ -522,8 +520,6 @@ struct Editor {
             tempLines /= 10;
             digits++;
         }
-
-        // macOS版のロジック: (桁数 * 文字幅) + 文字1つ分の余白
         gutterWidth = (float)(digits * charWidth) + (charWidth * 1.0f);
     }
     void rebuildLineStarts() {
@@ -2309,7 +2305,7 @@ struct Editor {
         if (!IsClipboardFormatAvailable(CF_UNICODETEXT)) return;
         if (OpenClipboard(hwnd)) {
             bool isRect = IsClipboardFormatAvailable(cfMsDevCol);
-            bool isLine = IsClipboardFormatAvailable(cfMsDevLine); // 行コピー判定
+            bool isLine = IsClipboardFormatAvailable(cfMsDevLine);
             HGLOBAL h = GetClipboardData(CF_UNICODETEXT);
             if (h) {
                 const wchar_t* p = (const wchar_t*)GlobalLock(h);
@@ -2922,10 +2918,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case 'G': g_editor.showGoToDialog(); return 0;
             case 'L':
                 if (GetKeyState(VK_SHIFT) & 0x8000) {
-                    g_editor.deleteLines(); // Ctrl + Shift + L は既存の行削除を維持
+                    g_editor.deleteLines();
                 }
                 else {
-                    g_editor.showGoToDialog(); // Ctrl + L を行移動に変更
+                    g_editor.showGoToDialog();
                 }
                 return 0;
             case VK_OEM_6:
@@ -2975,7 +2971,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             case VK_UP:
             {
                 bool shift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
-                g_editor.rollbackPadding(); // 仮想スペース等の調整をリセット
+                g_editor.rollbackPadding();
                 g_editor.jumpToFileEdge(true, shift);
             }
             return 0;
