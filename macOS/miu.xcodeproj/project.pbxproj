@@ -11,10 +11,11 @@
 		BAA1E1DB2F4AE17800BA3D2C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */; };
 		BABDDE6D2F49E1C000B3E84A /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */; };
 		BABDDE6F2F49E1CC00B3E84A /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */; };
+		BAF7CE7F2F535F4B00447839 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		BA4A72FC2F4C1DC90045F2FD /* miu_iOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = miu_iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BA4A72FC2F4C1DC90045F2FD /* miu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = miu.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA5C5F9F2F4CA6370029DB67 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = DEVELOPER_DIR; };
 		BAA1E1DA2F4AE17800BA3D2C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1DC2F4AE1FC00BA3D2C /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -22,7 +23,7 @@
 		BAA1E1DE2F4AE6FF00BA3D2C /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		BAA1E1DF2F4AE79500BA3D2C /* yo */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = yo; path = yo.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1E02F4AE7CA00BA3D2C /* hy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hy; path = hy.lproj/Localizable.strings; sourceTree = "<group>"; };
-		BABDDE562F49D3BC00B3E84A /* miu_macOS.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = miu_macOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		BABDDE562F49D3BC00B3E84A /* miu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = miu.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
@@ -98,8 +99,8 @@
 		BABDDE572F49D3BC00B3E84A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				BABDDE562F49D3BC00B3E84A /* miu_macOS.app */,
-				BA4A72FC2F4C1DC90045F2FD /* miu_iOS.app */,
+				BABDDE562F49D3BC00B3E84A /* miu.app */,
+				BA4A72FC2F4C1DC90045F2FD /* miu.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -136,7 +137,7 @@
 			packageProductDependencies = (
 			);
 			productName = miu_iOS;
-			productReference = BA4A72FC2F4C1DC90045F2FD /* miu_iOS.app */;
+			productReference = BA4A72FC2F4C1DC90045F2FD /* miu.app */;
 			productType = "com.apple.product-type.application";
 		};
 		BABDDE552F49D3BC00B3E84A /* miu_macOS */ = {
@@ -158,7 +159,7 @@
 			packageProductDependencies = (
 			);
 			productName = miu;
-			productReference = BABDDE562F49D3BC00B3E84A /* miu_macOS.app */;
+			productReference = BABDDE562F49D3BC00B3E84A /* miu.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -208,6 +209,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BAF7CE7F2F535F4B00447839 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -280,7 +282,7 @@
 				);
 				MARKETING_VERSION = 1.0.15;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = miu;
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -313,7 +315,7 @@
 				);
 				MARKETING_VERSION = 1.0.15;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = miu;
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -463,6 +465,7 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = miu_macOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = miu;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -473,7 +476,7 @@
 				);
 				MARKETING_VERSION = 1.0.15;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = miu;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -504,6 +507,7 @@
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = miu_macOS/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = miu;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -514,7 +518,7 @@
 				);
 				MARKETING_VERSION = 1.0.15;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = miu;
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;

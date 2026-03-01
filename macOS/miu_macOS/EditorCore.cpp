@@ -3,10 +3,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-
 #if defined(__APPLE__)
 #include <CoreFoundation/CoreFoundation.h>
-
 static std::string CFStringToStdString(CFStringRef cfStr) {
     if (!cfStr) return "";
     CFIndex len = CFStringGetLength(cfStr);
@@ -15,7 +13,6 @@ static std::string CFStringToStdString(CFStringRef cfStr) {
     if (CFStringGetCString(cfStr, buf.data(), maxSize, kCFStringEncodingUTF8)) return std::string(buf.data());
     return "";
 }
-
 static std::wstring CFStringToStdWString(CFStringRef cfStr) {
     if (!cfStr) return L"";
     CFIndex len = CFStringGetLength(cfStr);
@@ -25,21 +22,18 @@ static std::wstring CFStringToStdWString(CFStringRef cfStr) {
     for(CFIndex i=0; i<len; ++i) wstr.push_back((wchar_t)buf[i]);
     return wstr;
 }
-
 std::string WToUTF8(const std::wstring& w) {
     CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)w.data(), w.size() * sizeof(wchar_t), kCFStringEncodingUTF32LE, false);
     std::string res = CFStringToStdString(str);
     if (str) CFRelease(str);
     return res;
 }
-
 std::wstring UTF8ToW(const std::string& s) {
     CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)s.data(), s.size(), kCFStringEncodingUTF8, false);
     std::wstring res = CFStringToStdWString(str);
     if (str) CFRelease(str);
     return res;
 }
-
 std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
     if (len < 2) return "";
     CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)(data + 2), len - 2, isBigEndian ? kCFStringEncodingUTF16BE : kCFStringEncodingUTF16LE, false);
@@ -47,7 +41,6 @@ std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
     if (str) CFRelease(str);
     return res;
 }
-
 std::string AnsiToUtf8(const char* data, size_t len) {
     CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingWindowsLatin1, false);
     std::string res = CFStringToStdString(str);
@@ -55,10 +48,8 @@ std::string AnsiToUtf8(const char* data, size_t len) {
     return res;
 }
 #endif
-
 const std::wstring APP_VERSION = L"miu v1.0.15";
 const std::wstring APP_TITLE = L"miu";
-
 bool MappedFile::open(const char* path) {
     fd = ::open(path, O_RDONLY); if (fd == -1) return false;
     struct stat sb; if (fstat(fd, &sb) == -1) { ::close(fd); return false; }
@@ -66,7 +57,6 @@ bool MappedFile::open(const char* path) {
     ptr = (char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0); return (ptr != MAP_FAILED);
 }
 void MappedFile::close() { if (ptr && ptr != MAP_FAILED) munmap(ptr, size); if (fd != -1) ::close(fd); ptr = nullptr; fd = -1; }
-
 Encoding DetectEncoding(const char* buf, size_t len) {
     if (len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) return ENC_UTF8_BOM;
     if (len >= 2) {
@@ -75,7 +65,6 @@ Encoding DetectEncoding(const char* buf, size_t len) {
     }
     return ENC_UTF8_NOBOM;
 }
-
 std::string ConvertCase(const std::string& s, bool toUpper) {
     std::wstring w = UTF8ToW(s);
     for (auto& c : w) {
@@ -89,7 +78,6 @@ std::string ConvertCase(const std::string& s, bool toUpper) {
     }
     return WToUTF8(w);
 }
-
 void Editor::detectNewlineStyle(const char* buf, size_t len) {
     size_t checkLen = (len > 4096) ? 4096 : len;
     for (size_t i = 0; i < checkLen; ++i) {
@@ -108,7 +96,6 @@ void Editor::detectNewlineStyle(const char* buf, size_t len) {
     }
     newlineStr = "\n";
 }
-
 void Editor::insertAtCursorsWithPadding(const std::string& text) {
     if (cursors.empty()) return;
     EditBatch batch; batch.beforeCursors = cursors;
@@ -122,7 +109,6 @@ void Editor::insertAtCursorsWithPadding(const std::string& text) {
         size_t lineEnd = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
         if (lineEnd > lineStart && pt.charAt(lineEnd - 1) == '\n') lineEnd--;
         if (lineEnd > lineStart && pt.charAt(lineEnd - 1) == '\r') lineEnd--;
-        
         if (c.hasSelection()) {
             size_t st = c.start(), len = c.end() - st;
             batch.ops.push_back({ EditOp::Erase, st, pt.getRange(st, len) });
@@ -146,7 +132,6 @@ void Editor::insertAtCursorsWithPadding(const std::string& text) {
     }
     batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
 }
-
 void Editor::insertNewlineWithAutoIndent() {
     if (cursors.empty()) return;
     EditBatch batch;
@@ -205,7 +190,6 @@ void Editor::insertNewlineWithAutoIndent() {
     ensureCaretVisible();
     updateDirtyFlag();
 }
-
 void Editor::insertRectangularBlock(const std::string& text) {
     if (cursors.empty()) return;
     std::vector<std::string> lines; std::stringstream ss(text); std::string line;
@@ -244,7 +228,6 @@ void Editor::insertRectangularBlock(const std::string& text) {
     }
     batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
 }
-
 std::vector<int> Editor::getUniqueLineIndices() {
     std::vector<int> lines;
     for (const auto& c : cursors) {
@@ -257,7 +240,6 @@ std::vector<int> Editor::getUniqueLineIndices() {
     }
     std::sort(lines.begin(), lines.end()); lines.erase(std::unique(lines.begin(), lines.end()), lines.end()); return lines;
 }
-
 void Editor::deleteLine() {
     std::vector<int> lines = getUniqueLineIndices(); if (lines.empty()) return;
     EditBatch batch; batch.beforeCursors = cursors;
@@ -280,7 +262,6 @@ void Editor::deleteLine() {
     for (auto& c : cursors) { c.anchor = c.head; c.desiredX = getXFromPos(c.head); c.isVirtual=false; }
     batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
 }
-
 void Editor::moveLines(bool up) {
     std::vector<int> lines = getUniqueLineIndices(); if (lines.empty()) return;
     if (up && lines.front() == 0) return; if (!up && lines.back() >= (int)lineStarts.size() - 1) return;
@@ -380,7 +361,6 @@ void Editor::moveLines(bool up) {
     }
     batch.afterCursors = cursors; undo.push(batch); ensureCaretVisible(); updateDirtyFlag();
 }
-
 void Editor::copyLines(bool up) {
     std::vector<int> lines = getUniqueLineIndices(); if (lines.empty()) return;
     size_t len = pt.length(); if (len > 0 && pt.charAt(len-1) != '\n') { pt.insert(len, "\n"); rebuildLineStarts(); }
@@ -418,7 +398,6 @@ void Editor::copyLines(bool up) {
     }
     batch.afterCursors = cursors; undo.push(batch); ensureCaretVisible(); updateDirtyFlag();
 }
-
 void Editor::indentLines(bool forceLineIndent) {
     bool hasSelection = false;
     for (const auto& c : cursors) if (c.hasSelection()) hasSelection = true;
@@ -460,7 +439,6 @@ void Editor::indentLines(bool forceLineIndent) {
     ensureCaretVisible();
     updateDirtyFlag();
 }
-
 void Editor::unindentLines() {
     std::vector<int> lines = getUniqueLineIndices();
     if (lines.empty()) return;
@@ -496,13 +474,11 @@ void Editor::unindentLines() {
         updateDirtyFlag();
     }
 }
-
 void Editor::updateGutterWidth() {
     int totalLines = (int)lineStarts.size(), digits = 1; int tempLines = totalLines;
     while (tempLines >= 10) { tempLines /= 10; digits++; }
-    gutterWidth = (float)(digits * charWidth) + (charWidth * 1.5f);
+    gutterWidth = (float)(digits * charWidth) + (charWidth * 1.0f);
 }
-
 void Editor::updateMaxLineWidth() {
 #if defined(__APPLE__)
     if (!fontRef) return;
@@ -514,7 +490,6 @@ void Editor::updateMaxLineWidth() {
     }
     maxLineWidth += charWidth * 2.0f;
 }
-
 std::pair<std::string, bool> Editor::getHighlightTarget() {
     if (cursors.empty() || cursors.size() > 1) return { "", false };
     const Cursor& c = cursors.back();
@@ -531,7 +506,6 @@ std::pair<std::string, bool> Editor::getHighlightTarget() {
     if (end > start) return { pt.getRange(start, end - start), true };
     return { "", true };
 }
-
 std::string Editor::preprocessRegexQuery(const std::string& query) {
     std::string processed; processed.reserve(query.size() * 4);
     for (size_t i = 0; i < query.size(); ++i) {
@@ -551,7 +525,6 @@ std::string Editor::preprocessRegexQuery(const std::string& query) {
     }
     return processed;
 }
-
 std::string Editor::UnescapeString(const std::string& s, const std::string& newline) {
     std::string out; out.reserve(s.size());
     for (size_t i = 0; i < s.size(); ++i) {
@@ -560,7 +533,6 @@ std::string Editor::UnescapeString(const std::string& s, const std::string& newl
         } else out += s[i];
     } return out;
 }
-
 size_t Editor::findText(size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
     size_t len = pt.length(); std::string actualQuery = query;
@@ -618,7 +590,6 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
     }
     return std::string::npos;
 }
-
 void Editor::findNext(bool forward) {
     if (searchQuery.empty()) return;
     size_t startPos = forward ? (cursors.empty() ? 0 : cursors.back().end()) : (cursors.empty() ? 0 : cursors.back().start());
@@ -631,7 +602,6 @@ void Editor::findNext(bool forward) {
         if (cbBeep) cbBeep();
     }
 }
-
 void Editor::replaceNext() {
     if (cursors.empty() || searchQuery.empty()) return;
     Cursor& c = cursors.back(); if (!c.hasSelection()) { findNext(true); return; }
@@ -667,7 +637,6 @@ void Editor::replaceNext() {
         if (cbNeedsDisplay) cbNeedsDisplay();
     } else findNext(true);
 }
-
 void Editor::replaceAll() {
     if (searchQuery.empty()) return;
     struct Match { size_t start; size_t len; std::string replacementText; }; std::vector<Match> matches;
@@ -711,7 +680,6 @@ void Editor::replaceAll() {
     
     if (cbShowReplaceAlert) cbShowReplaceAlert((int)matches.size());
 }
-
 void Editor::selectNextOccurrence() {
     if (cursors.empty()) return;
     Cursor c = cursors.back();
@@ -741,32 +709,37 @@ void Editor::selectNextOccurrence() {
         ensureCaretVisible();
     }
 }
-
 void Editor::updateTitleBar() {
     if (cbUpdateTitleBar) cbUpdateTitleBar();
 }
-
 void Editor::updateScrollBars() {
     if (cbUpdateScrollers) cbUpdateScrollers();
 }
-
 void Editor::updateDirtyFlag() {
     bool nd = undo.isModified();
     if (isDirty != nd) { isDirty = nd; updateTitleBar(); }
 }
-
 void Editor::updateFont(float s) {
     float oldCharWidth = charWidth; s = std::clamp(s, 6.0f, 200.0f);
 #if defined(__APPLE__)
     if (fontRef) CFRelease(fontRef); fontRef = CTFontCreateWithName(CFSTR("Menlo"), s, NULL);
     currentFontSize = s; lineHeight = std::ceil(s * 1.4f);
-    UniChar c = '0'; CGGlyph g; CGSize adv; CTFontGetGlyphsForCharacters(fontRef, &c, &g, 1); CTFontGetAdvancesForGlyphs(fontRef, kCTFontOrientationHorizontal, &g, &adv, 1);
+    UniChar c = ' '; CGGlyph g; CGSize adv; CTFontGetGlyphsForCharacters(fontRef, &c, &g, 1); CTFontGetAdvancesForGlyphs(fontRef, kCTFontOrientationHorizontal, &g, &adv, 1);
     charWidth = adv.width;
+    tabWidth = charWidth * 4.0f;
+    if (paragraphStyle) CFRelease(paragraphStyle);
+    CGFloat tabInterval = (CGFloat)tabWidth;
+    CFArrayRef emptyTabStops = CFArrayCreate(NULL, NULL, 0, NULL);
+    CTParagraphStyleSetting settings[] = {
+        { kCTParagraphStyleSpecifierDefaultTabInterval, sizeof(CGFloat), &tabInterval },
+        { kCTParagraphStyleSpecifierTabStops, sizeof(CFArrayRef), &emptyTabStops }
+    };
+    paragraphStyle = CTParagraphStyleCreate(settings, 2);
+    CFRelease(emptyTabStops);
 #endif
     if (oldCharWidth > 0.0f && charWidth > 0.0f) { float ratio = charWidth / oldCharWidth; for (auto& cur : cursors) { cur.desiredX *= ratio; cur.originalAnchorX *= ratio; } }
     updateGutterWidth(); updateMaxLineWidth(); updateScrollBars();
 }
-
 void Editor::rebuildLineStarts() {
     lineStarts.clear(); lineStarts.push_back(0); size_t go = 0;
     for (const auto& p : pt.pieces) {
@@ -776,12 +749,10 @@ void Editor::rebuildLineStarts() {
     }
     updateGutterWidth(); updateMaxLineWidth(); updateScrollBars();
 }
-
 int Editor::getLineIdx(size_t pos) {
     auto it = std::upper_bound(lineStarts.begin(), lineStarts.end(), pos);
     return std::max(0, (int)std::distance(lineStarts.begin(), it) - 1);
 }
-
 float Editor::getXInLine(int li, size_t pos) {
     if (li < 0 || li >= (int)lineStarts.size()) return 0.0f;
     size_t s = lineStarts[li], e = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
@@ -790,12 +761,11 @@ float Editor::getXInLine(int li, size_t pos) {
     std::string lstr = pt.getRange(s, e - s); size_t rp = std::clamp(pos, s, e) - s;
     if (!imeComp.empty() && !cursors.empty() && getLineIdx(cursors.back().head) == li) { size_t cp = cursors.back().head; if (cp >= s && cp <= e) { lstr.insert(cp - s, imeComp); if (pos >= cp) rp += imeComp.size(); } }
     if (lstr.empty()) return 0.0f;
-    
 #if defined(__APPLE__)
     CFStringRef cf = CFStringCreateWithBytes(NULL, (const UInt8*)lstr.data(), lstr.size(), kCFStringEncodingUTF8, false); if (!cf) return 0.0f;
-    const void* keys[] = { kCTFontAttributeName };
-    const void* values[] = { fontRef };
-    CFDictionaryRef d = CFDictionaryCreate(NULL, keys, values, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    const void* keys[] = { kCTFontAttributeName, kCTParagraphStyleAttributeName };
+    const void* values[] = { fontRef, paragraphStyle };
+    CFDictionaryRef d = CFDictionaryCreate(NULL, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     CFAttributedStringRef as = CFAttributedStringCreate(NULL, cf, d); CTLineRef line = CTLineCreateWithAttributedString(as);
     CFStringRef sub = CFStringCreateWithBytes(NULL, (const UInt8*)lstr.data(), rp, kCFStringEncodingUTF8, false);
     CGFloat x = CTLineGetOffsetForStringIndex(line, sub ? CFStringGetLength(sub) : 0, NULL);
@@ -804,21 +774,18 @@ float Editor::getXInLine(int li, size_t pos) {
     return 0.0f;
 #endif
 }
-
 float Editor::getXFromPos(size_t p) { return getXInLine(getLineIdx(p), p); }
-
 size_t Editor::getPosFromLineAndX(int li, float tx) {
     if (li < 0 || li >= (int)lineStarts.size()) return cursors.empty() ? 0 : cursors.back().head;
     size_t s = lineStarts[li], e = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
     if (e > s && pt.charAt(e-1) == '\n') e--;
     if (e > s && pt.charAt(e-1) == '\r') e--;
     std::string lstr = pt.getRange(s, e - s); if (lstr.empty()) return s;
-    
 #if defined(__APPLE__)
     CFStringRef cf = CFStringCreateWithBytes(NULL, (const UInt8*)lstr.data(), lstr.size(), kCFStringEncodingUTF8, false); if (!cf) return s;
-    const void* keys[] = { kCTFontAttributeName };
-    const void* values[] = { fontRef };
-    CFDictionaryRef d = CFDictionaryCreate(NULL, keys, values, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    const void* keys[] = { kCTFontAttributeName, kCTParagraphStyleAttributeName };
+    const void* values[] = { fontRef, paragraphStyle };
+    CFDictionaryRef d = CFDictionaryCreate(NULL, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     CFAttributedStringRef as = CFAttributedStringCreate(NULL, cf, d); CTLineRef line = CTLineCreateWithAttributedString(as);
     CFIndex ci = CTLineGetStringIndexForPosition(line, CGPointMake(tx, 0));
     CFIndex bytes = 0; if (ci > 0) {
@@ -830,32 +797,27 @@ size_t Editor::getPosFromLineAndX(int li, float tx) {
     return s;
 #endif
 }
-
 size_t Editor::getDocPosFromPoint(float x, float y) {
     float absY = y + (float)vScrollPos * lineHeight;
     int li = std::clamp((int)std::floor(absY / lineHeight), 0, (int)lineStarts.size() - 1);
     return getPosFromLineAndX(li, x - gutterWidth + (float)hScrollPos);
 }
-
 void Editor::ensureCaretVisible() {
     if (cursors.empty() || !cbGetViewSize) return;
     Cursor& c = cursors.back();
     float viewWidth = 0.0f, viewHeight = 0.0f;
     cbGetViewSize(viewWidth, viewHeight);
-    
     float ch = viewHeight - visibleHScrollHeight, cw = viewWidth - gutterWidth - visibleVScrollWidth;
     int li = getLineIdx(c.head), vis = (int)(ch/lineHeight);
     if (li < vScrollPos) vScrollPos = li; else if (li >= vScrollPos + vis) vScrollPos = li - vis + 1;
     float cx = getXFromPos(c.head), m = charWidth*2; if (cx < (float)hScrollPos + m) hScrollPos = (int)(cx - m); else if (cx > (float)hScrollPos + cw - m) hScrollPos = (int)(cx - cw + m);
     vScrollPos = std::max(0, vScrollPos); hScrollPos = std::max(0, hScrollPos); updateScrollBars();
 }
-
 size_t Editor::moveCaretVisual(size_t pos, bool f) {
     size_t len = pt.length();
     if (f) { if (pos >= len) return len; unsigned char c = pt.charAt(pos); int sl = 1; if ((c&0x80)==0) sl=1; else if((c&0xE0)==0xC0) sl=2; else if((c&0xF0)==0xE0) sl=3; else if((c&0xF8)==0xF0) sl=4; if(c=='\r'&&pos+1<len&&pt.charAt(pos+1)=='\n') sl=2; return std::min(len, pos+sl); }
     else { if (pos == 0) return 0; size_t p = pos-1; while(p>0 && (pt.charAt(p)&0xC0)==0x80) p--; if(p>0 && pt.charAt(p-1)=='\r'&&pt.charAt(p)=='\n') p--; return p; }
 }
-
 void Editor::insertAtCursors(const std::string& t) {
     EditBatch b; b.beforeCursors=cursors; auto sorted = cursors;
     std::sort(sorted.begin(), sorted.end(), [](const Cursor& a, const Cursor& b){return a.start()>b.start();});
@@ -879,7 +841,6 @@ void Editor::insertAtCursors(const std::string& t) {
     for (auto& c : cursors) { c.desiredX = getXFromPos(c.head); c.originalAnchorX = c.desiredX; c.isVirtual = false; }
     b.afterCursors=cursors; undo.push(b); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
 }
-
 void Editor::backspaceAtCursors() {
     if (cursors.empty()) return; EditBatch b; b.beforeCursors = cursors;
     std::vector<size_t> indices(cursors.size()); std::iota(indices.begin(), indices.end(), 0);
@@ -907,7 +868,6 @@ void Editor::backspaceAtCursors() {
     if (changed) { b.afterCursors = cursors; undo.push(b); rebuildLineStarts(); updateDirtyFlag(); } ensureCaretVisible();
     if (cbNeedsDisplay) cbNeedsDisplay();
 }
-
 void Editor::deleteForwardAtCursors() {
     if (cursors.empty()) return; EditBatch b; b.beforeCursors = cursors;
     std::vector<size_t> indices(cursors.size()); std::iota(indices.begin(), indices.end(), 0);
@@ -925,9 +885,31 @@ void Editor::deleteForwardAtCursors() {
     }
     if (changed) { b.afterCursors = cursors; undo.push(b); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
 }
-
 void Editor::selectAll() { cursors.clear(); size_t len = pt.length(); cursors.push_back({len, 0, getXFromPos(len), getXFromPos(len), false}); }
-
+void Editor::jumpToFileEdge(bool start, bool select) {
+    size_t target = start ? 0 : pt.length();
+    float targetX = 0.0f;
+    if (!start) targetX = getXFromPos(target);
+    if (!select) {
+        cursors.clear();
+        cursors.push_back({target, target, targetX, targetX, false});
+    } else {
+        for (auto& c : cursors) {
+            c.head = target;
+            c.desiredX = targetX;
+            c.originalAnchorX = targetX;
+            c.isVirtual = false;
+        }
+    }
+    if (start) {
+        vScrollPos = 0;
+        hScrollPos = 0;
+    }
+    ensureCaretVisible();
+    updateScrollBars();
+    updateDirtyFlag();
+    if (cbNeedsDisplay) cbNeedsDisplay();
+}
 void Editor::convertSelectedText(bool toUpper) {
     if (cursors.empty()) return;
     EditBatch batch;
@@ -981,7 +963,6 @@ void Editor::convertSelectedText(bool toUpper) {
         if (cbNeedsDisplay) cbNeedsDisplay();
     }
 }
-
 void Editor::copyToClipboard() {
     bool hasSelection = false; for (const auto& c : cursors) if (c.hasSelection()) { hasSelection = true; break; }
     std::string t; bool isRect = (cursors.size() > 1);
@@ -999,13 +980,11 @@ void Editor::copyToClipboard() {
         cbSetClipboard(t, hasSelection && isRect);
     }
 }
-
 void Editor::cutToClipboard() {
     bool hasSelection = false; for (const auto& c : cursors) if (c.hasSelection()) { hasSelection = true; break; }
     copyToClipboard();
     if (!hasSelection) deleteLine(); else insertAtCursors("");
 }
-
 void Editor::pasteFromClipboard() {
     if (!cbGetClipboard) return;
     bool isRectMarker = false;
@@ -1022,25 +1001,20 @@ void Editor::pasteFromClipboard() {
     } else { insertAtCursors(utf8); }
     if (cbNeedsDisplay) cbNeedsDisplay();
 }
-
 void Editor::performUndo() { if(!undo.undoStack.empty()){ auto b = undo.popUndo(); for(int i=(int)b.ops.size()-1;i>=0;--i){ if(b.ops[i].type==EditOp::Insert) pt.erase(b.ops[i].pos, (int)b.ops[i].text.size()); else pt.insert(b.ops[i].pos, b.ops[i].text); } cursors=b.beforeCursors; rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); } }
 void Editor::performRedo() { if(!undo.redoStack.empty()){ auto b = undo.popRedo(); for(const auto& o:b.ops){ if(o.type==EditOp::Insert) pt.insert(o.pos, o.text); else pt.erase(o.pos, (int)o.text.size()); } cursors=b.afterCursors; rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); } }
-
 bool Editor::checkUnsavedChanges() {
     if(!isDirty) return true;
     if(cbShowUnsavedAlert) return cbShowUnsavedAlert();
     return true;
 }
-
 bool Editor::saveFile(const std::wstring& p) {
     std::string s = pt.getRange(0,pt.length()); std::ofstream f(WToUTF8(p), std::ios::binary); if(!f) return false; f.write(s.data(), s.size()); f.close(); currentFilePath=p; undo.markSaved(); isDirty=false; updateTitleBar(); return true;
 }
-
 bool Editor::saveFileAs() {
     if (cbSaveFileAs) return cbSaveFileAs();
     return false;
 }
-
 bool Editor::openFileFromPath(const std::string& p) {
     fileMap.reset(new MappedFile());
     if(fileMap->open(p.c_str())){
@@ -1060,13 +1034,11 @@ bool Editor::openFileFromPath(const std::string& p) {
         return true;
     } return false;
 }
-
 bool Editor::openFile() {
     if(!checkUnsavedChanges()) return false;
     if (cbOpenFile) return cbOpenFile();
     return false;
 }
-
 void Editor::newFile() {
     if(checkUnsavedChanges()){
         pt.initEmpty();
@@ -1080,12 +1052,10 @@ void Editor::newFile() {
         updateTitleBar();
     }
 }
-
 bool Editor::isWordChar(char c) { if (isalnum((unsigned char)c) || c == '_') return true; if ((unsigned char)c >= 0x80) return true; return false; }
 void Editor::getWordBoundaries(size_t pos, size_t& start, size_t& end) {
     size_t len = pt.length();
     if (len == 0 || pos >= len) { start = end = pos; return; }
-    
     char c = pt.charAt(pos);
     if (c == '\r') {
         if (pos + 1 < len && pt.charAt(pos + 1) == '\n') {
@@ -1094,7 +1064,6 @@ void Editor::getWordBoundaries(size_t pos, size_t& start, size_t& end) {
     }
     bool targetType = isWordChar(c);
     if (c == '\n') { start = pos; end = pos + 1; return; }
-    
     start = pos;
     while (start > 0) {
         char p = pt.charAt(start - 1);
@@ -1108,45 +1077,44 @@ void Editor::getWordBoundaries(size_t pos, size_t& start, size_t& end) {
         end++;
     }
 }
-
 void Editor::initGraphics() {
 #if defined(__APPLE__)
     if (!fontRef) fontRef = CTFontCreateWithName(CFSTR("Menlo"), currentFontSize, NULL);
+    updateFont(currentFontSize);
 #endif
     rebuildLineStarts(); updateThemeColors();
     if (cursors.empty()) cursors.push_back({0, 0, 0.0f, 0.0f, false});
     updateTitleBar();
 }
-
 void Editor::updateThemeColors() {
 #if defined(__APPLE__)
     if (colBackground) { CGColorRelease(colBackground); CGColorRelease(colText); CGColorRelease(colGutterBg); CGColorRelease(colGutterText); CGColorRelease(colSel); CGColorRelease(colCaret); }
     if (isDarkMode) {
-        colBackground = CGColorCreateGenericRGB(0.12, 0.12, 0.12, 1.0); colText = CGColorCreateGenericRGB(0.9, 0.9, 0.9, 1.0);
-        colGutterBg = CGColorCreateGenericRGB(0.18, 0.18, 0.18, 1.0); colGutterText = CGColorCreateGenericRGB(0.5, 0.5, 0.5, 1.0);
-        colSel = CGColorCreateGenericRGB(0.26, 0.40, 0.60, 1.0); colCaret = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
+        colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
+        colText = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 1.0);
+        colGutterBg = CGColorCreateGenericRGB(0.08, 0.08, 0.08, 1.0);
+        colGutterText = CGColorCreateGenericRGB(0.4, 0.4, 0.4, 1.0);
+        colSel = CGColorCreateGenericRGB(0.1, 0.2, 0.4, 1.0);
+        colCaret = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
     } else {
-        colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0); colText = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
-        colGutterBg = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 1.0); colGutterText = CGColorCreateGenericRGB(0.6, 0.6, 0.6, 1.0);
-        colSel = CGColorCreateGenericRGB(0.70, 0.80, 1.0, 1.0); colCaret = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
+        colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
+        colText = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
+        colGutterBg = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 1.0);
+        colGutterText = CGColorCreateGenericRGB(0.6, 0.6, 0.6, 1.0);
+        colSel = CGColorCreateGenericRGB(0.70, 0.80, 1.0, 1.0);
+        colCaret = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
     }
 #endif
 }
-
 #if defined(__APPLE__)
 void Editor::render(CGContextRef ctx, float w, float h) {
     CGContextSetFillColorWithColor(ctx, colBackground); CGContextFillRect(ctx, CGRectMake(0, 0, w, h));
-    
-    // 【最適化】テキスト全体のY軸を反転させる設定を1度だけ適用（描画を高速化）
     CGContextSetTextMatrix(ctx, CGAffineTransformMakeScale(1.0, -1.0));
-    
     float vw = std::max(0.0f, w - gutterWidth - visibleVScrollWidth);
     float vh = std::max(0.0f, h - visibleHScrollHeight);
     int start = vScrollPos; int vis = (int)(vh / lineHeight) + 2; int end = std::min((int)lineStarts.size(), start + vis);
     CGFloat asc = CTFontGetAscent(fontRef);
-    
     CGContextSaveGState(ctx); CGContextClipToRect(ctx, CGRectMake(gutterWidth, 0, vw, vh));
-    
     auto [autoStr, isWholeWord] = getHighlightTarget();
     if (!autoStr.empty() && autoStr != searchQuery) {
         CGColorRef autoHlColor = isDarkMode ? CGColorCreateGenericRGB(0.35, 0.35, 0.35, 0.5) : CGColorCreateGenericRGB(0.85, 0.85, 0.85, 0.5);
@@ -1172,15 +1140,12 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
         CGColorRelease(autoHlColor);
     }
-    
     if (!searchQuery.empty()) {
         CGColorRef hlColor = isDarkMode ? CGColorCreateGenericRGB(0.4, 0.4, 0.0, 0.6) : CGColorCreateGenericRGB(1.0, 1.0, 0.0, 0.4);
         CGContextSetFillColorWithColor(ctx, hlColor);
-        
         size_t searchRangeStart = lineStarts[start];
         size_t searchRangeEnd = (end < lineStarts.size()) ? lineStarts[end] : pt.length();
         std::string visibleText = pt.getRange(searchRangeStart, searchRangeEnd - searchRangeStart);
-        
         if (searchRegex) {
             try {
                 std::string actualQuery = preprocessRegexQuery(searchQuery);
@@ -1224,7 +1189,6 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
         CGColorRelease(hlColor);
     }
-    
     CGContextSetFillColorWithColor(ctx, colSel); bool isRectMode = (cursors.size() > 1);
     for (const auto& c : cursors) {
         if (isRectMode) {
@@ -1251,7 +1215,6 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             }
         }
     }
-    
     for (int i = start; i < end; ++i) {
         size_t s = lineStarts[i], e = (i + 1 < lineStarts.size() ? lineStarts[i + 1] : pt.length());
         std::string ls = pt.getRange(s, std::max((size_t)0, e - s)); size_t imIdx = std::string::npos;
@@ -1263,6 +1226,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                 CFAttributedStringReplaceString(mas, CFRangeMake(0, 0), cf);
                 CFAttributedStringSetAttribute(mas, CFRangeMake(0, CFStringGetLength(cf)), kCTFontAttributeName, fontRef);
                 CFAttributedStringSetAttribute(mas, CFRangeMake(0, CFStringGetLength(cf)), kCTForegroundColorAttributeName, colText);
+                CFAttributedStringSetAttribute(mas, CFRangeMake(0, CFStringGetLength(cf)), kCTParagraphStyleAttributeName, paragraphStyle);
                 if (imIdx != std::string::npos) {
                     CFStringRef prefix = CFStringCreateWithBytes(NULL, (const UInt8*)ls.data(), imIdx, kCFStringEncodingUTF8, false);
                     CFIndex prefixLen = prefix ? CFStringGetLength(prefix) : 0;
@@ -1273,15 +1237,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                     CFRelease(n); if (prefix) CFRelease(prefix); if (icf) CFRelease(icf);
                 }
                 CTLineRef tl = CTLineCreateWithAttributedString(mas);
-                
-                // 【最適化】ステート保存なしのダイレクト描画
                 CGContextSetTextPosition(ctx, gutterWidth - (float)hScrollPos, (float)(i - start) * lineHeight + asc + 2.0f);
                 CTLineDraw(tl, ctx);
-                
                 CFRelease(tl); CFRelease(mas); CFRelease(cf);
             }
         }
-        
         if (e > s) {
             bool isCRLF = false, isLF = false, isCR = false;
             size_t newlinePos = e;
@@ -1340,7 +1300,6 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             }
         }
     }
-    
     CGContextSetFillColorWithColor(ctx, colCaret);
     for (const auto& c : cursors) {
         int l = getLineIdx(c.head);
@@ -1350,10 +1309,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
     }
     CGContextRestoreGState(ctx);
-    
     CGContextSetFillColorWithColor(ctx, colGutterBg); CGContextFillRect(ctx, CGRectMake(0, 0, gutterWidth, h));
-    
-    // ガター（行番号）の描画
     for (int i = start; i < end; ++i) {
         CFStringRef n = CFStringCreateWithCString(NULL, std::to_string(i + 1).c_str(), kCFStringEncodingUTF8);
         if (n) {
@@ -1365,16 +1321,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             double ascent, descent, leading;
             double lineWidth = CTLineGetTypographicBounds(nl, &ascent, &descent, &leading);
             float xPos = gutterWidth - (float)lineWidth - (charWidth * 0.5f); if (xPos < 5.0f) xPos = 5.0f;
-            
-            // 【最適化】ステート保存なしのダイレクト描画
             CGContextSetTextPosition(ctx, xPos, (float)(i - start) * lineHeight + asc + 2.0f);
             CTLineDraw(nl, ctx);
-            
             CFRelease(nl); CFRelease(nas); CFRelease(attr); CFRelease(n);
         }
     }
-    
-    // ズームポップアップの描画
     auto now = std::chrono::steady_clock::now();
     if (now < zoomPopupEndTime) {
         float zw = 160.0f, zh = 80.0f;
@@ -1382,35 +1333,27 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         CGContextSetFillColorWithColor(ctx, CGColorCreateGenericRGB(0.2, 0.2, 0.2, 0.7));
         CGPathRef path = CGPathCreateWithRoundedRect(zpr, 10.0f, 10.0f, NULL);
         CGContextAddPath(ctx, path); CGContextFillPath(ctx); CGPathRelease(path);
-        
         CFStringRef zcf = CFStringCreateWithCString(NULL, zoomPopupText.c_str(), kCFStringEncodingUTF8);
         CTFontRef zf = CTFontCreateWithName(CFSTR("Helvetica-Bold"), 24.0f, NULL);
         CGColorRef white = CGColorCreateGenericRGB(1, 1, 1, 1);
-        
         const void* zKeys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName };
         const void* zVals[] = { zf, white };
         CFDictionaryRef za = CFDictionaryCreate(NULL, zKeys, zVals, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         CFAttributedStringRef zas = CFAttributedStringCreate(NULL, zcf, za);
         CTLineRef zl = CTLineCreateWithAttributedString(zas);
-        
         double lineWidth = CTLineGetTypographicBounds(zl, NULL, NULL, NULL);
         CGFloat zAsc = CTFontGetAscent(zf);
         CGFloat zDesc = CTFontGetDescent(zf);
         float textY = zpr.origin.y + (zh - (zAsc + zDesc)) / 2.0f + zAsc;
-        
         CGContextSetTextPosition(ctx, zpr.origin.x + (zw - (float)lineWidth) / 2.0f, textY);
         CTLineDraw(zl, ctx);
-        
         CFRelease(zl); CFRelease(zas); CFRelease(za); CFRelease(zf); CFRelease(zcf); CGColorRelease(white);
-        
         if (cbNeedsDisplay) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 cbNeedsDisplay();
             });
         }
     }
-    
-    // ヘルプポップアップの描画
     if (showHelpPopup) {
         std::wstring fullHelp = APP_VERSION + L"\n\n" + helpTextStr;
         CFStringRef hcf = CFStringCreateWithBytes(NULL, (const UInt8*)fullHelp.data(), fullHelp.size()*sizeof(wchar_t), kCFStringEncodingUTF32LE, false);
@@ -1422,12 +1365,10 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         };
         CTParagraphStyleRef ps = CTParagraphStyleCreate(settings, 2);
         CGColorRef helpWhite = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
-        
         const void* hKeys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName, kCTParagraphStyleAttributeName };
         const void* hVals[] = { hf, helpWhite, ps };
         CFDictionaryRef ha = CFDictionaryCreate(NULL, hKeys, hVals, 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         CFAttributedStringRef has = CFAttributedStringCreate(NULL, hcf, ha);
-        
         CTFramesetterRef fs = CTFramesetterCreateWithAttributedString(has);
         CGSize maxConstraints = CGSizeMake(w * 0.9f, h * 0.9f);
         CGSize suggestedSize = CTFramesetterSuggestFrameSizeWithConstraints(fs, CFRangeMake(0, 0), NULL, maxConstraints, NULL);
@@ -1435,27 +1376,22 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         float hw = suggestedSize.width + (padding * 2.0f);
         float hh = suggestedSize.height + (padding * 2.0f);
         CGRect hr = CGRectMake((w - hw) / 2.0f, (h - hh) / 2.0f, hw, hh);
-        
         CGContextSetFillColorWithColor(ctx, CGColorCreateGenericRGB(0.2, 0.2, 0.2, 0.7));
         CGPathRef hpath = CGPathCreateWithRoundedRect(hr, 10.0f, 10.0f, NULL);
         CGContextAddPath(ctx, hpath); CGContextFillPath(ctx); CGPathRelease(hpath);
-        
         CGContextSaveGState(ctx);
         CGContextSetTextMatrix(ctx, CGAffineTransformIdentity);
         CGContextTranslateCTM(ctx, hr.origin.x, hr.origin.y + hr.size.height);
         CGContextScaleCTM(ctx, 1.0f, -1.0f);
-        
         CGMutablePathRef pth = CGPathCreateMutable();
         CGPathAddRect(pth, NULL, CGRectMake(padding, padding, suggestedSize.width, suggestedSize.height));
         CTFrameRef frame = CTFramesetterCreateFrame(fs, CFRangeMake(0, 0), pth, NULL);
         CTFrameDraw(frame, ctx);
-        
         CGContextRestoreGState(ctx);
         CFRelease(frame); CFRelease(pth); CFRelease(fs); CFRelease(has); CFRelease(ha); CFRelease(hf); CFRelease(hcf); CFRelease(ps); CGColorRelease(helpWhite);
     }
 }
 #endif
-
 Editor::~Editor() {
 #if defined(__APPLE__)
     if (colBackground) CGColorRelease(colBackground);
@@ -1465,5 +1401,6 @@ Editor::~Editor() {
     if (colSel) CGColorRelease(colSel);
     if (colCaret) CGColorRelease(colCaret);
     if (fontRef) CFRelease(fontRef);
+    if (paragraphStyle) CFRelease(paragraphStyle);
 #endif
 }

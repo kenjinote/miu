@@ -1,8 +1,6 @@
 #import <Cocoa/Cocoa.h>
 #import "EditorCore.h"
-
 static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular";
-
 @interface EditorView : NSView <NSTextInputClient, NSTextFieldDelegate>
 {
 @public
@@ -28,12 +26,12 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 - (void)findNextAction:(id)sender;
 - (void)replaceAction:(id)sender;
 - (void)replaceAllAction:(id)sender;
+- (void)showGoToLinePanel;
+- (void)jumpToLine:(NSInteger)line;
 @end
-
 @interface FindPanel : NSPanel
 @property (weak) EditorView *editorView;
 @end
-
 @implementation FindPanel
 - (BOOL)performKeyEquivalent:(NSEvent *)event {
     if ([event keyCode] == 99) {
@@ -77,32 +75,26 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     return [super performKeyEquivalent:event];
 }
 @end
-
 @implementation EditorView {
     NSScroller *vScroller, *hScroller;
     NSPoint boxSelectStartPoint;
     size_t cursorsSnapshotCount;
+    NSWindow *goToLineWindow;
+    NSTextField *goToLineTextField;
 }
-
 - (instancetype)initWithFrame:(NSRect)fr {
     if (self = [super initWithFrame:fr]) {
         editor = std::make_shared<Editor>();
-        
-        // --- コールバックのバインド (C++からのAppKit操作を仲介) ---
         __weak EditorView* weakSelf = self;
-        
         editor->cbNeedsDisplay = [weakSelf]() {
             __strong EditorView *strongSelf = weakSelf;
             if (strongSelf) [strongSelf setNeedsDisplay:YES];
         };
-        
         editor->cbUpdateScrollers = [weakSelf]() {
             __strong EditorView *strongSelf = weakSelf;
             if (strongSelf) [strongSelf updateScrollers];
         };
-        
         editor->cbBeep = []() { NSBeep(); };
-        
         editor->cbGetViewSize = [weakSelf](float& w, float& h) {
             __strong EditorView *strongSelf = weakSelf;
             if (strongSelf) {
@@ -110,7 +102,6 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
                 w = b.size.width; h = b.size.height;
             }
         };
-        
         editor->cbUpdateTitleBar = [weakSelf]() {
             __strong EditorView *strongSelf = weakSelf;
             if (!strongSelf || !strongSelf->editor) return;
@@ -119,21 +110,18 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             [[strongSelf window] setTitle:[NSString stringWithUTF8String:WToUTF8(t).c_str()]];
             [[strongSelf window] setDocumentEdited:strongSelf->editor->isDirty];
         };
-        
         editor->cbSetClipboard = [](const std::string& text, bool isRect) {
             NSPasteboard *pb = [NSPasteboard generalPasteboard];
             [pb clearContents];
             [pb setString:[NSString stringWithUTF8String:text.c_str()] forType:NSPasteboardTypeString];
             if(isRect) [pb setData:[NSData data] forType:kMiuRectangularSelectionType];
         };
-        
         editor->cbGetClipboard = [](bool& isRect) -> std::string {
             NSPasteboard *pb = [NSPasteboard generalPasteboard];
             NSString *s = [pb stringForType:NSPasteboardTypeString];
             isRect = ([pb dataForType:kMiuRectangularSelectionType] != nil);
             return s ? [s UTF8String] : "";
         };
-        
         editor->cbShowReplaceAlert = [](int count) {
             NSAlert *alert = [[NSAlert alloc] init];
             [alert setMessageText:NSLocalizedString(@"Replace All", @"すべて置換のアラートタイトル")];
@@ -141,7 +129,6 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             [alert setInformativeText:[NSString stringWithFormat:infoFormat, (unsigned long)count]];
             [alert runModal];
         };
-        
         editor->cbShowUnsavedAlert = [weakSelf]() -> bool {
             __strong EditorView *strongSelf = weakSelf;
             if(!strongSelf) return true;
@@ -151,12 +138,10 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
             [a addButtonWithTitle:NSLocalizedString(@"Discard", @"破棄")];
             NSModalResponse r = [a runModal];
-            
             if(r==NSAlertFirstButtonReturn) return strongSelf->editor->currentFilePath.empty() ? strongSelf->editor->saveFileAs() : strongSelf->editor->saveFile(strongSelf->editor->currentFilePath);
             if(r==NSAlertThirdButtonReturn){ strongSelf->editor->isDirty=false; strongSelf->editor->updateTitleBar(); return true; }
             return false;
         };
-        
         editor->cbSaveFileAs = [weakSelf]() -> bool {
             __strong EditorView *strongSelf = weakSelf;
             if (!strongSelf) return false;
@@ -164,7 +149,6 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             if([p runModal]==NSModalResponseOK) return strongSelf->editor->saveFile(UTF8ToW([p.URL.path UTF8String]));
             return false;
         };
-        
         editor->cbOpenFile = [weakSelf]() -> bool {
             __strong EditorView *strongSelf = weakSelf;
             if (!strongSelf) return false;
@@ -172,8 +156,6 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             if([p runModal]==NSModalResponseOK) return strongSelf->editor->openFileFromPath([[[p URLs] objectAtIndex:0].path UTF8String]);
             return false;
         };
-        // ----------------------------------------------------
-
         CGFloat sw = [NSScroller scrollerWidthForControlSize:NSControlSizeRegular scrollerStyle:NSScrollerStyleLegacy];
         vScroller = [[NSScroller alloc] initWithFrame:NSMakeRect(fr.size.width-sw, 0, sw, fr.size.height-sw)];
         [vScroller setAutoresizingMask:NSViewMinXMargin|NSViewHeightSizable];
@@ -243,6 +225,18 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 }
 - (void)drawRect:(NSRect)r {
     editor->render([[NSGraphicsContext currentContext] CGContext], (float)self.bounds.size.width, (float)self.bounds.size.height);
+}
+- (void)undo:(id)sender {
+    if (editor) {
+        editor->performUndo();
+        [self setNeedsDisplay:YES];
+    }
+}
+- (void)redo:(id)sender {
+    if (editor) {
+        editor->performRedo();
+        [self setNeedsDisplay:YES];
+    }
 }
 - (void)updateScrollers {
     NSRect b = [self bounds];
@@ -472,6 +466,69 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 - (void)findNextAction:(id)sender { [self updateFindQueries]; editor->findNext(true); }
 - (void)replaceAction:(id)sender { [self updateFindQueries]; editor->replaceNext(); }
 - (void)replaceAllAction:(id)sender { [self updateFindQueries]; editor->replaceAll(); }
+- (void)jumpToLine:(NSInteger)line {
+    if (!editor) return;
+    if (line < 1) line = 1;
+    int totalLines = (int)editor->lineStarts.size();
+    if (line > totalLines) line = totalLines;
+    int lineIdx = (int)line - 1;
+    size_t newPos = editor->lineStarts[lineIdx];
+    editor->cursors.clear();
+    Cursor c;
+    c.head = newPos;
+    c.anchor = newPos;
+    c.desiredX = 0;
+    c.originalAnchorX = 0;
+    c.isVirtual = false;
+    editor->cursors.push_back(c);
+    editor->ensureCaretVisible();
+    [self setNeedsDisplay:YES];
+}
+- (void)showGoToLinePanel {
+    if (goToLineWindow && [goToLineWindow isVisible]) return;
+    NSRect rect = NSMakeRect(0, 0, 300, 120);
+    goToLineWindow = [[NSWindow alloc] initWithContentRect:rect
+                                                 styleMask:NSWindowStyleMaskTitled
+                                                   backing:NSBackingStoreBuffered
+                                                     defer:NO];
+    [goToLineWindow setReleasedWhenClosed:NO];
+    NSTextField *label = [NSTextField labelWithString:NSLocalizedString(@"Line Number:", nil)];
+    [label setFrame:NSMakeRect(20, 80, 260, 20)];
+    [goToLineWindow.contentView addSubview:label];
+    goToLineTextField = [[NSTextField alloc] initWithFrame:NSMakeRect(20, 50, 260, 24)];
+    [goToLineTextField setPlaceholderString:@"1..."];
+    if (!editor->cursors.empty()) {
+        int currentLine = editor->getLineIdx(editor->cursors.back().head) + 1;
+        [goToLineTextField setStringValue:[NSString stringWithFormat:@"%d", currentLine]];
+    }
+    [goToLineWindow.contentView addSubview:goToLineTextField];
+    NSButton *goBtn = [NSButton buttonWithTitle:NSLocalizedString(@"Go", nil) target:self action:@selector(performGoToLineAction:)];
+    [goBtn setFrame:NSMakeRect(190, 10, 90, 30)];
+    [goBtn setKeyEquivalent:@"\r"];
+    [goToLineWindow.contentView addSubview:goBtn];
+    NSButton *cancelBtn = [NSButton buttonWithTitle:NSLocalizedString(@"Cancel", nil) target:self action:@selector(cancelGoToLineAction:)];
+    [cancelBtn setFrame:NSMakeRect(100, 10, 90, 30)];
+    [cancelBtn setKeyEquivalent:@"\033"];
+    [goToLineWindow.contentView addSubview:cancelBtn];
+    [goToLineWindow setInitialFirstResponder:goToLineTextField];
+    [self.window beginSheet:goToLineWindow completionHandler:nil];
+}
+- (void)performGoToLineAction:(id)sender {
+    NSInteger line = [goToLineTextField integerValue];
+    [self jumpToLine:line];
+    [self.window endSheet:goToLineWindow];
+    [goToLineWindow orderOut:nil];
+    goToLineWindow = nil;
+    goToLineTextField = nil;
+    [self.window makeFirstResponder:self];
+}
+- (void)cancelGoToLineAction:(id)sender {
+    [self.window endSheet:goToLineWindow];
+    [goToLineWindow orderOut:nil];
+    goToLineWindow = nil;
+    goToLineTextField = nil;
+    [self.window makeFirstResponder:self];
+}
 - (void)keyDown:(NSEvent *)e {
     unsigned short code = [e keyCode]; NSString *chars = [e charactersIgnoringModifiers];
     bool cmd = ([e modifierFlags] & NSEventModifierFlagCommand);
@@ -488,11 +545,27 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         [self setNeedsDisplay:YES];
         return;
     }
+    if (cmd && (code == 126 || code == 115)) {
+        editor->jumpToFileEdge(true, shift);
+        return;
+    }
+    if (cmd && (code == 125 || code == 119)) {
+        editor->jumpToFileEdge(false, shift);
+        return;
+    }
     if (code == 115 || code == 119) {
         for (auto& c : editor->cursors) {
-            if (code == 115) { if (cmd) c.head = 0; else c.head = editor->lineStarts[editor->getLineIdx(c.head)]; }
-            else { if (cmd) c.head = editor->pt.length(); else { int li = editor->getLineIdx(c.head); size_t nextLineStart = (li + 1 < (int)editor->lineStarts.size()) ? editor->lineStarts[li + 1] : editor->pt.length(); if (nextLineStart > editor->lineStarts[li] && editor->pt.charAt(nextLineStart - 1) == '\n') { nextLineStart--; if (nextLineStart > editor->lineStarts[li] && editor->pt.charAt(nextLineStart - 1) == '\r') nextLineStart--; } c.head = nextLineStart; } }
-            
+            if (code == 115) {
+                c.head = editor->lineStarts[editor->getLineIdx(c.head)];
+            } else {
+                int li = editor->getLineIdx(c.head);
+                size_t nextLineStart = (li + 1 < (int)editor->lineStarts.size()) ? editor->lineStarts[li + 1] : editor->pt.length();
+                if (nextLineStart > editor->lineStarts[li] && editor->pt.charAt(nextLineStart - 1) == '\n') {
+                    nextLineStart--;
+                    if (nextLineStart > editor->lineStarts[li] && editor->pt.charAt(nextLineStart - 1) == '\r') nextLineStart--;
+                }
+                c.head = nextLineStart;
+            }
             c.desiredX = editor->getXFromPos(c.head);
             if (!shift) { c.anchor = c.head; c.originalAnchorX = c.desiredX; }
             c.isVirtual = false;
@@ -541,6 +614,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         if ([lowerChar isEqualToString:@"["]) { editor->unindentLines(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"f"]) { [self showFindPanel:NO]; return; }
         if ([lowerChar isEqualToString:@"h"] || [lowerChar isEqualToString:@"r"]) { [self showFindPanel:YES]; return; }
+        if ([lowerChar isEqualToString:@"l"] || [lowerChar isEqualToString:@"g"]) { [self showGoToLinePanel]; return; }
     }
     if (code >= 123 && code <= 126) {
         bool opt = ([e modifierFlags] & NSEventModifierFlagOption);
@@ -591,8 +665,18 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     if ([t isEqualToString:@"\r"] || [t isEqualToString:@"\n"]) {
         editor->insertNewlineWithAutoIndent();
     } else {
-        if (editor->cursors.size() > 1) editor->insertAtCursorsWithPadding([t UTF8String]);
-        else editor->insertAtCursors([t UTF8String]);
+        bool usePadding = false;
+        for (const auto& c : editor->cursors) {
+            if (c.isVirtual) {
+                usePadding = true;
+                break;
+            }
+        }
+        if (usePadding) {
+            editor->insertAtCursorsWithPadding([t UTF8String]);
+        } else {
+            editor->insertAtCursors([t UTF8String]);
+        }
     }
     editor->imeComp = "";
     [self setNeedsDisplay:YES];
@@ -612,13 +696,11 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 - (NSRect)firstRectForCharacterRange:(NSRange)r actualRange:(NSRangePointer)ar { if (editor->cursors.empty()) return NSZeroRect; float x = editor->getXFromPos(editor->cursors.back().head), y = (float)(editor->getLineIdx(editor->cursors.back().head) - editor->vScrollPos) * editor->lineHeight; return [[self window] convertRectToScreen:[self convertRect:NSMakeRect(editor->gutterWidth-(float)editor->hScrollPos+x, y, 2, editor->lineHeight) toView:nil]]; }
 - (NSUInteger)characterIndexForPoint:(NSPoint)p { return 0; }
 @end
-
 @interface CustomWindow : NSWindow @end
 @implementation CustomWindow
 - (BOOL)canBecomeKeyWindow { return YES; }
 - (BOOL)canBecomeMainWindow { return YES; }
 @end
-
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
 @property (strong) NSMutableArray<CustomWindow *> *windows;
 @end
@@ -633,7 +715,19 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     [win setContentView:v]; [win makeKeyAndOrderFront:nil]; [win makeFirstResponder:v];
     [self.windows addObject:win];
 }
+- (void)setupMenuBar {
+    NSString *appTitleNS = [NSString stringWithUTF8String:WToUTF8(APP_TITLE).c_str()];
+    NSMenu *mainMenu = [NSMenu new];
+    [NSApp setMainMenu:mainMenu];
+    NSMenuItem *appMenuItem = [NSMenuItem new];
+    [mainMenu addItem:appMenuItem];
+    NSMenu *appMenu = [NSMenu new];
+    [appMenuItem setSubmenu:appMenu];
+    NSString *quitTitle = [NSString stringWithFormat:NSLocalizedString(@"Quit", nil), appTitleNS];
+    [appMenu addItemWithTitle:quitTitle action:@selector(terminate:) keyEquivalent:@"q"];
+}
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
+    [self setupMenuBar];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular]; [NSApp activateIgnoringOtherApps:YES];
     NSArray *args = [[NSProcessInfo processInfo] arguments];
     if (args.count > 1) [self createWindowWithPath:[args[1] UTF8String]]; else if (self.windows.count == 0) [self createWindowWithPath:nullptr];
@@ -660,7 +754,6 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     return NSTerminateNow;
 }
 @end
-
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
         NSApplication *a = [NSApplication sharedApplication];

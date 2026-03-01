@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "BABDDE552F49D3BC00B3E84A"
-               BuildableName = "miu_macOS.app"
+               BuildableName = "miu.app"
                BlueprintName = "miu_macOS"
                ReferencedContainer = "container:miu.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "BABDDE552F49D3BC00B3E84A"
-            BuildableName = "miu_macOS.app"
+            BuildableName = "miu.app"
             BlueprintName = "miu_macOS"
             ReferencedContainer = "container:miu.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "BABDDE552F49D3BC00B3E84A"
-            BuildableName = "miu_macOS.app"
+            BuildableName = "miu.app"
             BlueprintName = "miu_macOS"
             ReferencedContainer = "container:miu.xcodeproj">
          </BuildableReference>
