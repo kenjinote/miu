@@ -24,12 +24,12 @@
 #include <regex> 
 #include <cstring>
 #include "resource.h"
-#ifndef DWMWA_SYSTEMBACKDROP_TYPE
-#define DWMWA_SYSTEMBACKDROP_TYPE 38
-#endif
-#ifndef DWMSBT_MAINWINDOW
-#define DWMSBT_MAINWINDOW 2
-#endif
+//#ifndef DWMWA_SYSTEMBACKDROP_TYPE
+//#define DWMWA_SYSTEMBACKDROP_TYPE 38
+//#endif
+//#ifndef DWMSBT_MAINWINDOW
+//#define DWMSBT_MAINWINDOW 2
+//#endif
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -402,13 +402,13 @@ struct Editor {
         int backdropValue = DWMSBT_TRANSIENTWINDOW;
         HRESULT hrMica = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropValue, sizeof(backdropValue));
         bool isMicaEnabled = SUCCEEDED(hrMica);
-        float bgAlpha = isMicaEnabled ? 0.5f : 1.0f;
+        float bgAlpha = isMicaEnabled ? 0.0f : 1.0f;
         if (isDarkMode) {
             background = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
-            textColor = D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
-            gutterBg = D2D1::ColorF(0.08f, 0.08f, 0.08f, bgAlpha);
-            gutterText = D2D1::ColorF(0.4f, 0.4f, 0.4f, 1.0f);
-            selColor = D2D1::ColorF(0.1f, 0.2f, 0.4f, 1.0f);
+            textColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
+            gutterBg = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
+            gutterText = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
+            selColor = D2D1::ColorF(0.2f, 0.3f, 0.5f, 1.0f);
             caretColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
             autoHlColor = D2D1::ColorF(0.35f, 0.35f, 0.35f, 0.5f);
             highlightColor = D2D1::ColorF(0.4f, 0.4f, 0.0f, 0.6f);
@@ -416,8 +416,8 @@ struct Editor {
         else {
             background = D2D1::ColorF(1.0f, 1.0f, 1.0f, bgAlpha);
             textColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
-            gutterBg = D2D1::ColorF(0.95f, 0.95f, 0.95f, bgAlpha);
-            gutterText = D2D1::ColorF(0.6f, 0.6f, 0.6f, 1.0f);
+            gutterBg = D2D1::ColorF(1.0f, 1.0f, 1.0f, bgAlpha);
+            gutterText = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
             selColor = D2D1::ColorF(0.7f, 0.8f, 1.0f, 1.0f);
             caretColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
             autoHlColor = D2D1::ColorF(0.85f, 0.85f, 0.85f, 0.5f);
@@ -582,14 +582,13 @@ struct Editor {
     }
     void updateTitleBar() {
         if (!hwnd) return;
-        std::wstring appName = GetResString(IDS_APP_TITLE);
         std::wstring title;
         if (isDirty) title = L"*";
         if (currentFilePath.empty()) {
-            title += GetResString(IDS_UNTITLED) + L" - " + appName;
+            title += GetResString(IDS_UNTITLED);
         }
         else {
-            title += currentFilePath + L" - " + appName;
+            title += currentFilePath;
         }
         SetWindowTextW(hwnd, title.c_str());
     }
