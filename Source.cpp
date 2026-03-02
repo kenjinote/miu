@@ -1664,17 +1664,41 @@ struct Editor {
             if (!searchQuery.empty()) {
                 if (searchRegex) {
                     try {
+                        std::string actualQuery = preprocessRegexQuery(searchQuery);
                         std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
                         if (!searchMatchCase) flags |= std::regex_constants::icase;
-                        std::regex re(searchQuery, flags);
-                        auto words_begin = std::sregex_iterator(text.begin(), text.end(), re); auto words_end = std::sregex_iterator();
+                        std::regex re(actualQuery, flags);
+                        bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
+                        auto words_begin = std::sregex_iterator(text.begin(), text.end(), re);
+                        auto words_end = std::sregex_iterator();
                         for (auto i = words_begin; i != words_end; ++i) {
-                            size_t offset = i->position(); size_t len = i->length();
-                            size_t startU16 = UTF8ToW(text.substr(0, offset)).length(); size_t lenU16 = UTF8ToW(text.substr(offset, len)).length();
-                            UINT32 count = 0; layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, 0, 0, &count);
-                            if (count > 0) {
-                                std::vector<DWRITE_HIT_TEST_METRICS> m(count); layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, &m[0], count, &count);
-                                for (const auto& mm : m) { float top = std::floor((mm.top + lineHeight * 0.5f) / lineHeight) * lineHeight; rend->FillRectangle(D2D1::RectF(mm.left, top, mm.left + mm.width, top + lineHeight), hlBrush); }
+                            size_t offset = i->position();
+                            size_t len = i->length();
+                            if (startsWithCaret && offset > 0) {
+                                std::string matchStr = i->str();
+                                size_t adj = 0;
+                                if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') {
+                                    adj = 2;
+                                }
+                                else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) {
+                                    adj = 1;
+                                }
+                                offset += adj;
+                                len -= adj;
+                            }
+                            if (len > 0 || (len == 0 && startsWithCaret)) {
+                                size_t startU16 = UTF8ToW(text.substr(0, offset)).length();
+                                size_t lenU16 = UTF8ToW(text.substr(offset, len)).length();
+                                UINT32 count = 0;
+                                layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, 0, 0, &count);
+                                if (count > 0) {
+                                    std::vector<DWRITE_HIT_TEST_METRICS> m(count);
+                                    layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, &m[0], count, &count);
+                                    for (const auto& mm : m) {
+                                        float top = std::floor((mm.top + lineHeight * 0.5f) / lineHeight) * lineHeight;
+                                        rend->FillRectangle(D2D1::RectF(mm.left, top, mm.left + mm.width, top + lineHeight), hlBrush);
+                                    }
+                                }
                             }
                         }
                     }
