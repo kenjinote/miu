@@ -736,7 +736,12 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     [v setWantsLayer:YES];
     v.layer.backgroundColor = [NSColor clearColor].CGColor;
     v.layer.opaque = NO;
-    if (path) v->editor->openFileFromPath(path); else v->editor->newFile();
+    if (path) {
+        v->editor->openFileFromPath(path);
+    } else {
+        v->editor->newFile();
+        v->editor->showHelpPopup = true;
+    }
     [visualEffectView addSubview:v];
     v.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
