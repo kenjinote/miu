@@ -1329,7 +1329,13 @@
 }
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    
+    BOOL isLandscape = self.view.bounds.size.width > self.view.bounds.size.height;
+    for (NSLayoutConstraint *c in self.titleBarView.constraints) {
+        if (c.firstAttribute == NSLayoutAttributeHeight && c.relation == NSLayoutRelationEqual) {
+            c.constant = isLandscape ? 0 : 17;
+            break;
+        }
+    }
     if (_editorEngine) {
         if (!_isFirstLayoutDone) {
             _isFirstLayoutDone = YES;
