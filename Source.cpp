@@ -611,6 +611,8 @@ struct Editor {
         lineStarts.push_back(0);
         size_t globalOffset = 0;
         size_t maxBytes = 0;
+        int maxBytesLineIdx = -1;
+        int currentLineIdx = 0;
         for (const auto& p : pt.pieces) {
             const char* buf = p.isOriginal ? (pt.origPtr + p.start) : (pt.addBuf.data() + p.start);
             const char* ptr = buf;
@@ -621,9 +623,13 @@ struct Editor {
                     size_t offsetInPiece = ptr - buf;
                     size_t nextLineStart = globalOffset + offsetInPiece + 1;
                     size_t currentLineLen = nextLineStart - lineStarts.back();
-                    if (currentLineLen > maxBytes) maxBytes = currentLineLen;
+                    if (currentLineLen > maxBytes) {
+                        maxBytes = currentLineLen;
+                        maxBytesLineIdx = currentLineIdx;
+                    }
                     lineStarts.push_back(nextLineStart);
                     ptr++;
+                    currentLineIdx++;
                 }
                 else if (c == '\r') {
                     size_t offsetInPiece = ptr - buf;
@@ -633,9 +639,13 @@ struct Editor {
                     }
                     size_t nextLineStart = globalOffset + offsetInPiece + step;
                     size_t currentLineLen = nextLineStart - lineStarts.back();
-                    if (currentLineLen > maxBytes) maxBytes = currentLineLen;
+                    if (currentLineLen > maxBytes) {
+                        maxBytes = currentLineLen;
+                        maxBytesLineIdx = currentLineIdx;
+                    }
                     lineStarts.push_back(nextLineStart);
                     ptr += step;
+                    currentLineIdx++;
                 }
                 else {
                     ptr++;
@@ -646,9 +656,35 @@ struct Editor {
         size_t lastStart = lineStarts.back();
         if (lastStart < totalLen) {
             size_t lastLineLen = totalLen - lastStart;
-            if (lastLineLen > maxBytes) maxBytes = lastLineLen;
+            if (lastLineLen > maxBytes) {
+                maxBytes = lastLineLen;
+                maxBytesLineIdx = currentLineIdx;
+            }
         }
-        maxLineWidth = maxBytes * charWidth + 100.0f;
+        maxLineWidth = 100.0f;
+        if (maxBytesLineIdx >= 0 && dwFactory && textFormat) {
+            size_t start = lineStarts[maxBytesLineIdx];
+            size_t end = (maxBytesLineIdx + 1 < (int)lineStarts.size()) ? lineStarts[maxBytesLineIdx + 1] : pt.length();
+            size_t len = (end > start) ? (end - start) : 0;
+            if (len > 0) {
+                std::string lineStr = pt.getRange(start, len);
+                if (!lineStr.empty() && lineStr.back() == '\n') lineStr.pop_back();
+                if (!lineStr.empty() && lineStr.back() == '\r') lineStr.pop_back();
+                std::wstring wLine = UTF8ToW(lineStr);
+                IDWriteTextLayout* layout = nullptr;
+                HRESULT hr = dwFactory->CreateTextLayout(wLine.c_str(), (UINT32)wLine.size(), textFormat, 100000.0f, (FLOAT)lineHeight, &layout);
+                if (SUCCEEDED(hr) && layout) {
+                    DWRITE_TEXT_METRICS metrics;
+                    if (SUCCEEDED(layout->GetMetrics(&metrics))) {
+                        maxLineWidth = metrics.widthIncludingTrailingWhitespace + charWidth * 2.0f + 50.0f;
+                    }
+                    layout->Release();
+                }
+            }
+        }
+        else {
+            maxLineWidth = maxBytes * charWidth + 100.0f;
+        }
         updateGutterWidth();
         updateScrollBars();
     }
@@ -662,7 +698,7 @@ struct Editor {
         size_t end = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length(); size_t len = (end > start) ? (end - start) : 0;
         std::string lineStr = pt.getRange(start, len); std::wstring wLine = UTF8ToW(lineStr);
         IDWriteTextLayout* layout = nullptr;
-        HRESULT hr = dwFactory->CreateTextLayout(wLine.c_str(), (UINT32)wLine.size(), textFormat, 10000.0f, (FLOAT)lineHeight, &layout);
+        HRESULT hr = dwFactory->CreateTextLayout(wLine.c_str(), (UINT32)wLine.size(), textFormat, 10000000.0f, (FLOAT)lineHeight, &layout);
         float x = 0;
         if (SUCCEEDED(hr) && layout) {
             size_t utf8Len = (pos >= start) ? (pos - start) : 0;
@@ -686,7 +722,7 @@ struct Editor {
         std::string lineStr = pt.getRange(start, len);
         std::wstring wLine = UTF8ToW(lineStr);
         IDWriteTextLayout* layout = nullptr;
-        HRESULT hr = dwFactory->CreateTextLayout(wLine.c_str(), (UINT32)wLine.size(), textFormat, 10000.0f, (FLOAT)lineHeight, &layout);
+        HRESULT hr = dwFactory->CreateTextLayout(wLine.c_str(), (UINT32)wLine.size(), textFormat, 10000000.0f, (FLOAT)lineHeight, &layout);
         size_t resultPos = start;
         if (SUCCEEDED(hr) && layout) {
             BOOL isTrailing, isInside;
@@ -747,6 +783,11 @@ struct Editor {
         }
         else if (caretX > hScrollPos + visibleTextW - margin) {
             hScrollPos = (int)(caretX - visibleTextW + margin);
+        }
+        float requiredWidth = hScrollPos + visibleTextW + margin;
+        if (caretX + margin * 4.0f > requiredWidth) requiredWidth = caretX + margin * 4.0f;
+        if (requiredWidth > maxLineWidth) {
+            maxLineWidth = requiredWidth;
         }
         if (hScrollPos < 0) hScrollPos = 0;
         updateScrollBars();
@@ -897,7 +938,7 @@ struct Editor {
         std::string lineUtf8 = pt.getRange(lineStart, lineEnd - lineStart); std::wstring lineUtf16 = UTF8ToW(lineUtf8);
         size_t offsetInLine = pos - lineStart; std::string preUtf8 = lineUtf8.substr(0, offsetInLine); size_t u16Pos = UTF8ToW(preUtf8).length();
         IDWriteTextLayout* layout = nullptr;
-        HRESULT hr = dwFactory->CreateTextLayout(lineUtf16.c_str(), (UINT32)lineUtf16.length(), textFormat, 10000.0f, (FLOAT)lineHeight, &layout);
+        HRESULT hr = dwFactory->CreateTextLayout(lineUtf16.c_str(), (UINT32)lineUtf16.length(), textFormat, 10000000.0f, (FLOAT)lineHeight, &layout);
         size_t newU16Pos = u16Pos;
         if (SUCCEEDED(hr) && layout) {
             UINT32 clusterCount = 0; layout->GetClusterMetrics(NULL, 0, &clusterCount);
