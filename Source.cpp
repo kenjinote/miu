@@ -394,8 +394,28 @@ struct Editor {
         }
         return (val == 0);
     }
+    D2D1::ColorF getWindowsAccentColor(float alpha) {
+        DWORD color = 0;
+        bool success = false;
+        HKEY hKey;
+        if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\DWM", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            DWORD type, size = sizeof(DWORD);
+            if (RegQueryValueExW(hKey, L"AccentColor", NULL, &type, (LPBYTE)&color, &size) == ERROR_SUCCESS) {
+                success = true;
+            }
+            RegCloseKey(hKey);
+        }
+        if (success) {
+            float r = (float)(color & 0xFF) / 255.0f;
+            float g = (float)((color >> 8) & 0xFF) / 255.0f;
+            float b = (float)((color >> 16) & 0xFF) / 255.0f;
+            return D2D1::ColorF(r, g, b, alpha);
+        }
+        return D2D1::ColorF(0.0f, 0.47f, 0.84f, alpha);
+    }
     void updateThemeColors() {
         isDarkMode = checkSystemDarkMode();
+        D2D1::ColorF accent = getWindowsAccentColor(0.5f);
         int backdropValue = DWMSBT_TRANSIENTWINDOW;
         HRESULT hrMica = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropValue, sizeof(backdropValue));
         bool isMicaEnabled = SUCCEEDED(hrMica);
@@ -405,7 +425,7 @@ struct Editor {
             textColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
             gutterBg = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
             gutterText = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
-            selColor = D2D1::ColorF(0.2f, 0.3f, 0.5f, 1.0f);
+            selColor = accent;
             caretColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
             autoHlColor = D2D1::ColorF(0.35f, 0.35f, 0.35f, 0.5f);
             highlightColor = D2D1::ColorF(0.4f, 0.4f, 0.0f, 0.6f);
@@ -415,7 +435,7 @@ struct Editor {
             textColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
             gutterBg = D2D1::ColorF(1.0f, 1.0f, 1.0f, bgAlpha);
             gutterText = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
-            selColor = D2D1::ColorF(0.7f, 0.8f, 1.0f, 1.0f);
+            selColor = accent;
             caretColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
             autoHlColor = D2D1::ColorF(0.85f, 0.85f, 0.85f, 0.5f);
             highlightColor = D2D1::ColorF(1.0f, 1.0f, 0.0f, 0.4f);
@@ -1718,16 +1738,9 @@ struct Editor {
                 }
             }
             if (!mergedRects.empty()) {
-                ID2D1RectangleGeometry* firstRect = nullptr; D2D1_RECT_F r = mergedRects[0]; r.left += hInset; r.top += vInset; r.right -= hInset; r.bottom -= vInset;
-                d2dFactory->CreateRectangleGeometry(&r, &firstRect); unifiedSelectionGeo = firstRect;
-                for (size_t i = 1; i < mergedRects.size(); ++i) {
-                    D2D1_RECT_F rNext = mergedRects[i]; rNext.left += hInset; rNext.top += vInset; rNext.right -= hInset; rNext.bottom -= vInset;
-                    ID2D1RectangleGeometry* nextGeo = nullptr; d2dFactory->CreateRectangleGeometry(&rNext, &nextGeo);
-                    ID2D1PathGeometry* pathGeo = nullptr; d2dFactory->CreatePathGeometry(&pathGeo);
-                    ID2D1GeometrySink* sink = nullptr; pathGeo->Open(&sink); unifiedSelectionGeo->CombineWithGeometry(nextGeo, D2D1_COMBINE_MODE_UNION, nullptr, sink);
-                    sink->Close(); sink->Release(); unifiedSelectionGeo->Release(); unifiedSelectionGeo = pathGeo; nextGeo->Release();
+                for (const auto& rect : mergedRects) {
+                    rend->FillRectangle(rect, selBrush);
                 }
-                if (unifiedSelectionGeo) { rend->FillGeometry(unifiedSelectionGeo, selBrush); rend->DrawGeometry(unifiedSelectionGeo, selBrush, 8.0f, roundJoinStyle); unifiedSelectionGeo->Release(); }
             }
             selBrush->Release(); hlBrush->Release();
             ID2D1SolidColorBrush* brush = nullptr; rend->CreateSolidColorBrush(textColor, &brush); rend->DrawTextLayout(D2D1::Point2F(0, 0), layout, brush, D2D1_DRAW_TEXT_OPTIONS_ENABLE_COLOR_FONT); brush->Release();
