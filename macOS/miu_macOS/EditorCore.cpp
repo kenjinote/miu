@@ -1090,25 +1090,25 @@ void Editor::updateThemeColors() {
 #if defined(__APPLE__)
     if (colBackground) { CGColorRelease(colBackground); CGColorRelease(colText); CGColorRelease(colGutterBg); CGColorRelease(colGutterText); CGColorRelease(colSel); CGColorRelease(colCaret); }
     if (isDarkMode) {
-        colText = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 1.0);
+        colText = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
 #if TARGET_OS_IOS
         colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
-        colGutterBg = CGColorCreateGenericRGB(0.1, 0.1, 0.1, 1.0);
+        colGutterBg = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
 #elif TARGET_OS_OSX
-        colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.5);
-        colGutterBg = CGColorCreateGenericRGB(0.25, 0.25, 0.25, 0.0);
+        colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
+        colGutterBg = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
 #endif
-        colGutterText = CGColorCreateGenericRGB(0.45, 0.45, 0.45, 1.0);
-        colSel = CGColorCreateGenericRGB(0.1, 0.2, 0.4, 1.0);
+        colGutterText = CGColorCreateGenericRGB(0.5, 0.5, 0.5, 1.0);
+        colSel = CGColorCreateGenericRGB(0.2, 0.3, 0.5, 1.0);
         colCaret = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
     } else {
         colText = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
 #if TARGET_OS_IOS
         colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
-        colGutterBg = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 1.0);
+        colGutterBg = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
 #elif TARGET_OS_OSX
-        colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.5);
-        colGutterBg = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 0.0);
+        colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.0);
+        colGutterBg = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.0);
 #endif
         colGutterText = CGColorCreateGenericRGB(0.5, 0.5, 0.5, 1.0);
         colSel = CGColorCreateGenericRGB(0.70, 0.80, 1.0, 1.0);
