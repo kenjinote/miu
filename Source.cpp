@@ -362,6 +362,14 @@ struct Editor {
                     continue;
                 }
             }
+            else if (c == '$') {
+                bool inClass = false;
+                if (i > 0 && query[i - 1] == '[') inClass = true;
+                if (!inClass) {
+                    processed += "(?=(?:\\r\\n|[\\r\\n]|$))";
+                    continue;
+                }
+            }
             processed += c;
         }
         return processed;
