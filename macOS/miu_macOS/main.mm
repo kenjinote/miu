@@ -173,14 +173,28 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         [hScroller setAutoresizingMask:NSViewWidthSizable|NSViewMinYMargin];
         [hScroller setTarget:self]; [hScroller setAction:@selector(scrollAction:)]; [self addSubview:hScroller];
         [self registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                         selector:@selector(systemColorsDidChange:)
+                                                             name:NSSystemColorsDidChangeNotification
+                                                           object:nil];
     }
     return self;
+}
+- (void)applySystemHighlightColor {
+    if (!editor) return;
+    NSColor *highlightColor = [NSColor selectedTextBackgroundColor];
+    NSColor *safeColor = [highlightColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
+    if (!safeColor) safeColor = highlightColor;
+    if (editor->colSel) CGColorRelease(editor->colSel);
+    editor->colSel = [safeColor CGColor];
+    CGColorRetain(editor->colSel);
 }
 - (void)resetCursorRects {
     [super resetCursorRects];
     [self addCursorRect:[self bounds] cursor:[NSCursor IBeamCursor]];
 }
 - (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     if (findTextField) {
         [findTextField setDelegate:nil];
         [findTextField setTarget:nil];
@@ -189,6 +203,10 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         [replaceTextField setDelegate:nil];
         [replaceTextField setTarget:nil];
     }
+}
+- (void)systemColorsDidChange:(NSNotification *)notification {
+    [self applySystemHighlightColor];
+    [self setNeedsDisplay:YES];
 }
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
     NSPasteboard *pboard = [sender draggingPasteboard];
@@ -218,7 +236,9 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     editor->initGraphics();
     BOOL isDark = [[self.effectiveAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]] isEqualToString:NSAppearanceNameDarkAqua];
     editor->isDarkMode = isDark;
-    editor->updateThemeColors(); [self updateScrollers];
+    editor->updateThemeColors();
+    [self applySystemHighlightColor];
+    [self updateScrollers];
     [[self window] makeFirstResponder:self];
 }
 - (void)viewDidChangeEffectiveAppearance {
@@ -228,6 +248,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         if (editor->isDarkMode != isDark) {
             editor->isDarkMode = isDark;
             editor->updateThemeColors();
+            [self applySystemHighlightColor];
             [self setNeedsDisplay:YES];
         }
     }
@@ -745,7 +766,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     [visualEffectView addSubview:v];
     v.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
-        [v.topAnchor constraintEqualToAnchor:visualEffectView.safeAreaLayoutGuide.topAnchor], // タイトルバーの下に合わせる
+        [v.topAnchor constraintEqualToAnchor:visualEffectView.safeAreaLayoutGuide.topAnchor],
         [v.bottomAnchor constraintEqualToAnchor:visualEffectView.bottomAnchor],
         [v.leftAnchor constraintEqualToAnchor:visualEffectView.leftAnchor],
         [v.rightAnchor constraintEqualToAnchor:visualEffectView.rightAnchor]
@@ -775,7 +796,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 - (void)application:(NSApplication *)sender openFiles:(NSArray<NSString *> *)filenames { for (NSString *path in filenames) [self createWindowWithPath:[path UTF8String]]; [sender replyToOpenOrPrint:NSApplicationDelegateReplySuccess]; }
 - (void)newDocument:(id)sender {
     NSWindow *win = [NSApp keyWindow];
-    EditorView *v = [self findEditorViewInWindow:win]; // ここを修正
+    EditorView *v = [self findEditorViewInWindow:win];
     if (v) {
         v->editor->newFile();
     } else {
