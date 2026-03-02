@@ -1093,10 +1093,10 @@ void Editor::updateThemeColors() {
         colText = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
 #if TARGET_OS_IOS
         colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
-        colGutterBg = CGColorCreateGenericRGB(0.1, 0.1, 0.1, 1.0);
+        colGutterBg = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
 #elif TARGET_OS_OSX
         colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
-        colGutterBg = CGColorCreateGenericRGB(0.25, 0.25, 0.25, 0.0);
+        colGutterBg = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
 #endif
         colGutterText = CGColorCreateGenericRGB(0.5, 0.5, 0.5, 1.0);
         colSel = CGColorCreateGenericRGB(0.2, 0.3, 0.5, 1.0);
