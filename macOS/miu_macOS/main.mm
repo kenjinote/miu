@@ -182,12 +182,16 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 }
 - (void)applySystemHighlightColor {
     if (!editor) return;
-    NSColor *highlightColor = [NSColor selectedTextBackgroundColor];
-    NSColor *safeColor = [highlightColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
-    if (!safeColor) safeColor = highlightColor;
-    if (editor->colSel) CGColorRelease(editor->colSel);
-    editor->colSel = [safeColor CGColor];
-    CGColorRetain(editor->colSel);
+    if (@available(macOS 10.14, *)) {
+        [self.effectiveAppearance performAsCurrentDrawingAppearance:^{
+            NSColor *highlightColor = [NSColor selectedTextBackgroundColor];
+            NSColor *safeColor = [highlightColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
+            if (!safeColor) safeColor = highlightColor;
+            if (editor->colSel) CGColorRelease(editor->colSel);
+            editor->colSel = [safeColor CGColor];
+            CGColorRetain(editor->colSel);
+        }];
+    }
 }
 - (void)resetCursorRects {
     [super resetCursorRects];
@@ -484,7 +488,11 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 }
 - (void)findNextWithDirection:(BOOL)forward {
     if (editor) {
-        editor->findNext(forward);
+        if (editor->searchQuery.empty()) {
+            [self showFindPanel:NO];
+        } else {
+            editor->findNext(forward);
+        }
     }
 }
 - (BOOL)isReplaceMode {
@@ -619,7 +627,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         editor->ensureCaretVisible(); [self setNeedsDisplay:YES]; return;
     }
     if (code == 99) {
-        editor->findNext(!shift);
+        [self findNextWithDirection:!shift];
         return;
     }
     if (cmd) {
