@@ -2878,6 +2878,30 @@ struct Editor {
 } g_editor;
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
+    case WM_SETCURSOR:
+        if (LOWORD(lParam) == HTCLIENT) {
+            POINT pt;
+            GetCursorPos(&pt);
+            ScreenToClient(hwnd, &pt);
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            float mouseX = pt.x / g_editor.dpiScaleX;
+            float mouseY = pt.y / g_editor.dpiScaleY;
+            float clientW = (rc.right - rc.left) / g_editor.dpiScaleX;
+            float clientH = (rc.bottom - rc.top) / g_editor.dpiScaleY;
+            const float SB_HIT_WIDTH = 20.0f;
+            bool onGutter = mouseX < g_editor.gutterWidth;
+            bool onVScroll = (!g_editor.lineStarts.empty() && g_editor.lineStarts.size() > 1) && (mouseX >= clientW - SB_HIT_WIDTH);
+            bool onHScroll = (g_editor.maxLineWidth > clientW) && (mouseY >= clientH - SB_HIT_WIDTH);
+            if (onGutter || onVScroll || onHScroll) {
+                SetCursor(LoadCursor(NULL, IDC_ARROW));
+            }
+            else {
+                SetCursor(LoadCursor(NULL, IDC_IBEAM));
+            }
+            return TRUE;
+        }
+        break;
     case WM_ERASEBKGND:
         return 1;
     case WM_CREATE:
