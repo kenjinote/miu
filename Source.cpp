@@ -1,6 +1,7 @@
 ﻿#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define NOMINMAX
 #include <windows.h>
+#include <shellapi.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
 #include <d2d1_1.h>
@@ -24,12 +25,6 @@
 #include <regex> 
 #include <cstring>
 #include "resource.h"
-//#ifndef DWMWA_SYSTEMBACKDROP_TYPE
-//#define DWMWA_SYSTEMBACKDROP_TYPE 38
-//#endif
-//#ifndef DWMSBT_MAINWINDOW
-//#define DWMSBT_MAINWINDOW 2
-//#endif
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
@@ -282,6 +277,8 @@ struct MappedFile {
 };
 struct Editor {
     HWND hwnd = NULL;
+    HICON hFileIcon = NULL;
+    HICON hAppIcon = NULL;
     HWND hFindDlg = NULL;
     PieceTable pt;
     UndoManager undo;
@@ -536,8 +533,13 @@ struct Editor {
         D2D1_STROKE_STYLE_PROPERTIES roundProps = D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_LINE_JOIN_ROUND, 10.0f, D2D1_DASH_STYLE_SOLID, 0.0f); d2dFactory->CreateStrokeStyle(&roundProps, nullptr, 0, &roundJoinStyle);
         cfMsDevCol = RegisterClipboardFormatW(L"MSDEVColumnSelect");
         cfMsDevLine = RegisterClipboardFormatW(L"MSDEVLineSelect");
+        hAppIcon = LoadIcon(GetModuleHandle(NULL), MAKEINTRESOURCE(IDI_ICON1));
         updateThemeColors();
-        updateFont(currentFontSize); rebuildLineStarts(); cursors.push_back({ 0, 0, 0.0f }); updateTitleBar();
+        updateFont(currentFontSize);
+        rebuildLineStarts();
+        cursors.push_back({ 0, 0, 0.0f });
+        updateTitleBar();
+        updateWindowIcon();
     }
     void updateFont(float size) {
         size = std::round(size);
@@ -567,6 +569,7 @@ struct Editor {
         updateScrollBars();
     }
     void destroyGraphics() {
+        if (hFileIcon) { DestroyIcon(hFileIcon); hFileIcon = NULL; }
         if (dcompTarget) dcompTarget->Release();
         if (dcompDevice) dcompDevice->Release();
         if (targetBitmap) targetBitmap->Release();
@@ -588,9 +591,31 @@ struct Editor {
             title += GetResString(IDS_UNTITLED);
         }
         else {
-            title += currentFilePath;
+            std::wstring fileName = currentFilePath;
+            size_t lastSlash = currentFilePath.find_last_of(L"\\/");
+            if (lastSlash != std::wstring::npos) {
+                fileName = currentFilePath.substr(lastSlash + 1);
+            }
+            title += fileName;
         }
         SetWindowTextW(hwnd, title.c_str());
+    }
+    void updateWindowIcon() {
+        if (!hwnd) return;
+        if (hFileIcon) {
+            DestroyIcon(hFileIcon);
+            hFileIcon = NULL;
+        }
+        HICON iconForTitleBar = hAppIcon;
+        if (!currentFilePath.empty()) {
+            SHFILEINFOW sfi = { 0 };
+            if (SHGetFileInfoW(currentFilePath.c_str(), 0, &sfi, sizeof(sfi), SHGFI_ICON | SHGFI_SMALLICON)) {
+                hFileIcon = sfi.hIcon;
+                iconForTitleBar = hFileIcon;
+            }
+        }
+        SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)iconForTitleBar);
+        SendMessage(hwnd, WM_SETICON, ICON_BIG, (LPARAM)hAppIcon);
     }
     void updateDirtyFlag() { bool newDirty = undo.isModified(); if (isDirty != newDirty) { isDirty = newDirty; updateTitleBar(); } }
     void updateGutterWidth() {
@@ -2575,7 +2600,23 @@ struct Editor {
     void performUndo() { if (!undo.canUndo())return; EditBatch b = undo.popUndo(); for (int i = (int)b.ops.size() - 1; i >= 0; --i) { const auto& o = b.ops[i]; if (o.type == EditOp::Insert)pt.erase(o.pos, o.text.size()); else pt.insert(o.pos, o.text); }cursors = b.beforeCursors; rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
     void performRedo() { if (!undo.canRedo())return; EditBatch b = undo.popRedo(); for (const auto& o : b.ops) { if (o.type == EditOp::Insert)pt.insert(o.pos, o.text); else pt.erase(o.pos, o.text.size()); }cursors = b.afterCursors; rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag(); }
     int ShowTaskDialog(const wchar_t* title, const wchar_t* instruction, const wchar_t* content, TASKDIALOG_COMMON_BUTTON_FLAGS buttons, PCWSTR icon) { TASKDIALOGCONFIG c = { 0 }; c.cbSize = sizeof(c); c.hwndParent = hwnd; c.hInstance = GetModuleHandle(NULL); c.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_POSITION_RELATIVE_TO_WINDOW; c.pszWindowTitle = title; c.pszMainInstruction = instruction; c.pszContent = content; c.dwCommonButtons = buttons; c.pszMainIcon = icon; int n = 0; TaskDialogIndirect(&c, &n, NULL, NULL); return n; }
-    bool checkUnsavedChanges() { if (!isDirty)return true; int r = ShowTaskDialog(GetResString(IDS_CONFIRM_TITLE).c_str(), GetResString(IDS_SAVE_PROMPT).c_str(), currentFilePath.empty() ? GetResString(IDS_UNTITLED).c_str() : currentFilePath.c_str(), TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON, TD_WARNING_ICON); if (r == IDCANCEL)return false; if (r == IDYES) { if (currentFilePath.empty())return saveFileAs(); else return saveFile(currentFilePath); }return true; }
+    bool checkUnsavedChanges() {
+        if (!isDirty)return true;
+        SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hAppIcon);
+        int r = ShowTaskDialog(GetResString(IDS_CONFIRM_TITLE).c_str(), GetResString(IDS_SAVE_PROMPT).c_str(), currentFilePath.empty() ? GetResString(IDS_UNTITLED).c_str() : currentFilePath.c_str(), TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON, TD_WARNING_ICON);
+        updateWindowIcon();
+        if (r == IDCANCEL)
+            return false;
+        if (r == IDYES) {
+            if (currentFilePath.empty()) {
+                return saveFileAs();
+            }
+            else {
+                return saveFile(currentFilePath);
+            }
+        }
+        return true;
+    }
     bool openFile() {
         if (!checkUnsavedChanges()) return false;
         WCHAR f[MAX_PATH] = { 0 };
@@ -2587,9 +2628,11 @@ struct Editor {
         o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0";
         o.nFilterIndex = 1;
         o.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+        SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hAppIcon);
         if (GetOpenFileNameW(&o)) {
             return openFileFromPath(f);
         }
+        updateWindowIcon();
         return false;
     }
     bool saveFile(const std::wstring& p) {
@@ -2662,9 +2705,26 @@ struct Editor {
         updateScrollBars();
         ensureCaretVisible();
         updateTitleBar();
+        updateWindowIcon();
         return true;
     }
-    bool saveFileAs() { WCHAR f[MAX_PATH] = { 0 }; OPENFILENAMEW o = { 0 }; o.lStructSize = sizeof(o); o.hwndOwner = hwnd; o.lpstrFile = f; o.nMaxFile = MAX_PATH; o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0"; o.nFilterIndex = 1; o.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT; if (GetSaveFileNameW(&o))return saveFile(f); return false; }
+    bool saveFileAs() {
+        WCHAR f[MAX_PATH] = { 0 };
+        OPENFILENAMEW o = { 0 };
+        o.lStructSize = sizeof(o);
+        o.hwndOwner = hwnd;
+        o.lpstrFile = f;
+        o.nMaxFile = MAX_PATH;
+        o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0";
+        o.nFilterIndex = 1;
+        o.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
+        SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hAppIcon);
+        if (GetSaveFileNameW(&o)) {
+            return saveFile(f);
+        }
+        updateWindowIcon();
+        return false;
+    }
     void newFile() {
         if (!checkUnsavedChanges()) return;
         pt.initEmpty();
@@ -2680,6 +2740,7 @@ struct Editor {
         fileMap.reset();
         rebuildLineStarts();
         updateTitleBar();
+        updateWindowIcon();
         InvalidateRect(hwnd, NULL, FALSE);
     }
     void selectNextOccurrence() {
@@ -2754,6 +2815,7 @@ struct Editor {
             rebuildLineStarts();
             updateTitleBar();
             InvalidateRect(hwnd, NULL, FALSE);
+            updateWindowIcon();
             return true;
         }
         else {
