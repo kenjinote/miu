@@ -105,10 +105,19 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         editor->cbUpdateTitleBar = [weakSelf]() {
             __strong EditorView *strongSelf = weakSelf;
             if (!strongSelf || !strongSelf->editor) return;
+            NSWindow *window = [strongSelf window];
+            std::wstring currentPathW = strongSelf->editor->currentFilePath;
             std::wstring untitledStr = UTF8ToW([NSLocalizedString(@"Untitled", @"新規ファイル名") UTF8String]);
-            std::wstring t = (strongSelf->editor->isDirty ? L"*" : L"") + (strongSelf->editor->currentFilePath.empty() ? untitledStr : strongSelf->editor->currentFilePath.substr(strongSelf->editor->currentFilePath.find_last_of(L"/")+1)) + L" - " + APP_TITLE;
-            [[strongSelf window] setTitle:[NSString stringWithUTF8String:WToUTF8(t).c_str()]];
-            [[strongSelf window] setDocumentEdited:strongSelf->editor->isDirty];
+            std::wstring fileName = currentPathW.empty() ? untitledStr : currentPathW.substr(currentPathW.find_last_of(L"/") + 1);
+            std::wstring titleText = (strongSelf->editor->isDirty ? L"*" : L"") + fileName;
+            [window setTitle:[NSString stringWithUTF8String:WToUTF8(titleText).c_str()]];
+            [window setDocumentEdited:strongSelf->editor->isDirty];
+            if (!currentPathW.empty()) {
+                NSString *currentPathNS = [NSString stringWithUTF8String:WToUTF8(currentPathW).c_str()];
+                [window setRepresentedURL:[NSURL fileURLWithPath:currentPathNS]];
+            } else {
+                [window setRepresentedURL:[[NSBundle mainBundle] bundleURL]];
+            }
         };
         editor->cbSetClipboard = [](const std::string& text, bool isRect) {
             NSPasteboard *pb = [NSPasteboard generalPasteboard];
