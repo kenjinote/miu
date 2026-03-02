@@ -1914,7 +1914,7 @@ struct Editor {
             }
             swapChain->ResizeBuffers(2, w, h, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
             updateScrollBars();
-            render();
+            if (hwnd) InvalidateRect(hwnd, NULL, FALSE);
         }
     }
     void insertAtCursors(const std::string& text) {
@@ -3069,7 +3069,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 if (g_editor.hScrollPos > (int)maxScroll) g_editor.hScrollPos = (int)maxScroll;
             }
             g_editor.updateScrollBars();
-            g_editor.render();
+            InvalidateRect(hwnd, NULL, FALSE);
             return 0;
         }
         if (g_editor.isDragMovePending) {
