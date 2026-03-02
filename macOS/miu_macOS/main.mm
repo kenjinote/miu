@@ -488,7 +488,11 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 }
 - (void)findNextWithDirection:(BOOL)forward {
     if (editor) {
-        editor->findNext(forward);
+        if (editor->searchQuery.empty()) {
+            [self showFindPanel:NO];
+        } else {
+            editor->findNext(forward);
+        }
     }
 }
 - (BOOL)isReplaceMode {
@@ -623,7 +627,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         editor->ensureCaretVisible(); [self setNeedsDisplay:YES]; return;
     }
     if (code == 99) {
-        editor->findNext(!shift);
+        [self findNextWithDirection:!shift];
         return;
     }
     if (cmd) {
