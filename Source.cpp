@@ -2878,7 +2878,7 @@ struct Editor {
 } g_editor;
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
-    case WM_SETCURSOR:
+    case WM_SETCURSOR: {
         if (LOWORD(lParam) == HTCLIENT) {
             POINT pt;
             GetCursorPos(&pt);
@@ -2901,7 +2901,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             }
             return TRUE;
         }
-        break;
+        return DefWindowProc(hwnd, msg, wParam, lParam);
+    }
     case WM_ERASEBKGND:
         return 1;
     case WM_CREATE:
@@ -3443,7 +3444,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 }
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nShowCmd) {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-    WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance; wc.lpszClassName = L"miu"; wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1)); wc.hCursor = LoadCursor(NULL, IDC_IBEAM); RegisterClass(&wc);
+    WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance; wc.lpszClassName = L"miu"; wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1)); RegisterClass(&wc);
     HDC hdc = GetDC(NULL);
     int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
     int dpiY = GetDeviceCaps(hdc, LOGPIXELSY);
