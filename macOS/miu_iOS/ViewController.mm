@@ -1070,6 +1070,7 @@
 @property (nonatomic, strong) NSLayoutConstraint *buttonsWidthConstraint;
 @property (nonatomic, strong) UIView *goToLineContainer;
 @property (nonatomic, strong) UITextField *goToLineField;
+@property (nonatomic, strong) UIImageView *titleIconView;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1154,6 +1155,16 @@
     self.titleBarView = [[UIView alloc] init];
     self.titleBarView.backgroundColor = [UIColor clearColor];
     [self.headerStack addArrangedSubview:self.titleBarView];
+    UIStackView *titleStack = [[UIStackView alloc] init];
+    titleStack.axis = UILayoutConstraintAxisHorizontal;
+    titleStack.alignment = UIStackViewAlignmentCenter;
+    titleStack.spacing = 6.0;
+    titleStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.titleBarView addSubview:titleStack];
+    self.titleIconView = [[UIImageView alloc] init];
+    self.titleIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.titleIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    [titleStack addArrangedSubview:self.titleIconView];
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleLabel.textColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
@@ -1162,7 +1173,7 @@
     self.titleLabel.font = [UIFont boldSystemFontOfSize:13];
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.text = NSLocalizedString(@"Untitled", @"新規ファイル名");
-    [self.titleBarView addSubview:self.titleLabel];
+    [titleStack addArrangedSubview:self.titleLabel];
     UIView *topFillView = [[UIView alloc] init];
     topFillView.translatesAutoresizingMaskIntoConstraints = NO;
     topFillView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
@@ -1190,8 +1201,10 @@
         [self.headerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.headerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.titleBarView.heightAnchor constraintEqualToConstant:17],
-        [self.titleLabel.centerXAnchor constraintEqualToAnchor:self.titleBarView.centerXAnchor],
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.titleBarView.topAnchor],
+        [titleStack.centerXAnchor constraintEqualToAnchor:self.titleBarView.centerXAnchor],
+        [titleStack.centerYAnchor constraintEqualToAnchor:self.titleBarView.centerYAnchor],
+        [self.titleIconView.widthAnchor constraintEqualToConstant:16],
+        [self.titleIconView.heightAnchor constraintEqualToConstant:16],
         [self.editorView.topAnchor constraintEqualToAnchor:self.headerStack.bottomAnchor],
         _editorBottomConstraint,
         [self.editorView.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
@@ -1204,12 +1217,23 @@
             __strong typeof(self) strongSelf = weakSelf;
             if (strongSelf && strongSelf->_editorEngine) {
                 NSString *fileName = NSLocalizedString(@"Untitled", @"新規ファイル名");
+                UIImage *iconImage = nil;
                 if (!strongSelf->_editorEngine->currentFilePath.empty()) {
                     std::string utf8Name = WToUTF8(strongSelf->_editorEngine->currentFilePath);
-                    fileName = [[NSString stringWithUTF8String:utf8Name.c_str()] lastPathComponent];
+                    NSString *fullPath = [NSString stringWithUTF8String:utf8Name.c_str()];
+                    fileName = [fullPath lastPathComponent];
+                    NSURL *fileURL = [NSURL fileURLWithPath:fullPath];
+                    UIDocumentInteractionController *docController = [UIDocumentInteractionController interactionControllerWithURL:fileURL];
+                    if (docController.icons.count > 0) {
+                        iconImage = docController.icons.lastObject;
+                    }
+                } else {
+                    iconImage = [UIImage imageNamed:@"TitleIcon"];
                 }
                 NSString *dirtyMark = strongSelf->_editorEngine->isDirty ? @"*" : @"";
                 strongSelf.titleLabel.text = [NSString stringWithFormat:@"%@%@", dirtyMark, fileName];
+                strongSelf.titleIconView.image = iconImage;
+                strongSelf.titleIconView.hidden = (iconImage == nil);
             }
         });
     };
