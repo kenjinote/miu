@@ -50,6 +50,7 @@
 @property (nonatomic, copy) void (^onNewDocumentAction)(void);
 @property (nonatomic, copy) void (^onGoToLineAction)(void);
 - (void)jumpToLine:(NSInteger)lineNumber;
+- (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd;
 @end
 @implementation iOSEditorView {
     CGPoint _lastPanTranslation;
@@ -697,6 +698,7 @@
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand | UIKeyModifierAlternate action:@selector(cmdReplace:)],
         [UIKeyCommand keyCommandWithInput:@"j" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
         [UIKeyCommand keyCommandWithInput:@"g" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
+        [UIKeyCommand keyCommandWithInput:@"d" modifierFlags:UIKeyModifierCommand action:@selector(selectWordOrNextOccurrence:)],
         [UIKeyCommand keyCommandWithInput:@"+" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
         [UIKeyCommand keyCommandWithInput:@"=" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
         [UIKeyCommand keyCommandWithInput:@"-" modifierFlags:UIKeyModifierCommand action:@selector(zoomOut:)],
@@ -721,6 +723,9 @@
     }
     if (action == @selector(selectAll:)) {
         return self.editor && self.editor->pt.length() > 0;
+    }
+    if (action == @selector(selectWordOrNextOccurrence:)) {
+        return YES;
     }
     if (action == @selector(handleUndo:) || action == @selector(handleRedo:)) {
         return YES;
@@ -839,6 +844,13 @@
 - (void)moveToDocStartAndSelect:(id)sender { [self moveCursorTo:0 keepSelection:YES updateX:YES]; }
 - (void)moveToDocEnd:(id)sender { [self moveCursorTo:self.editor->pt.length() keepSelection:NO updateX:YES]; }
 - (void)moveToDocEndAndSelect:(id)sender { [self moveCursorTo:self.editor->pt.length() keepSelection:YES updateX:YES]; }
+- (void)selectWordOrNextOccurrence:(id)sender {
+    if (!self.editor) return;
+    self.editor->selectNextOccurrence();
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
 - (void)openDocument:(id)sender {
     if (self.editor) self.editor->openFile();
 }
@@ -891,18 +903,22 @@
 }
 - (void)handleUndo:(id)sender {
     if (!self.editor) return;
+    [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->performUndo();
     self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
 }
 - (void)handleRedo:(id)sender {
     if (!self.editor) return;
+    [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->performRedo();
     self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
 }
 - (void)zoomIn:(id)sender {
@@ -1067,6 +1083,9 @@
     _editorEngine->vScrollPos = 0;
     _editorEngine->hScrollPos = 0;
     _editorEngine->updateMaxLineWidth();
+    if (self.searchField.text.length > 0) {
+        _editorEngine->searchQuery = self.searchField.text.UTF8String;
+    }
     _editorEngine->ensureCaretVisible();
     [self.editorView setNeedsDisplay];
     if (_editorEngine->cbUpdateTitleBar) {
@@ -1377,6 +1396,9 @@
             _editorEngine->vScrollPos = 0;
             _editorEngine->hScrollPos = 0;
             _editorEngine->initGraphics();
+            if (self.searchField.text.length > 0) {
+                _editorEngine->searchQuery = self.searchField.text.UTF8String;
+            }
             [self.editorView setNeedsDisplay];
         }
     } else {
@@ -1551,13 +1573,54 @@
     _editorEngine->searchRegex = !sender.selected;
     [self updateOptionButtonVisual:sender isSelected:_editorEngine->searchRegex];
 }
+- (void)prepareSearchQuery {
+    if (!_editorEngine || _editorEngine->cursors.empty()) return;
+    Cursor c = _editorEngine->cursors.back();
+    if (c.hasSelection()) {
+        size_t start = c.start();
+        size_t end = c.end();
+        std::string selectedText = _editorEngine->pt.getRange(start, end - start);
+        if (!selectedText.empty()) {
+            NSString *nsText = [NSString stringWithUTF8String:selectedText.c_str()];
+            self.searchField.text = nsText;
+            _editorEngine->searchQuery = selectedText;
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self.editorView setNeedsDisplay];
+            });
+            return;
+        }
+    }
+    if (self.searchField.text.length > 0) {
+        _editorEngine->searchQuery = self.searchField.text.UTF8String;
+        [self.editorView setNeedsDisplay];
+        return;
+    }
+    size_t head = c.head;
+    size_t wStart, wEnd;
+    [self.editorView getSmartWordRangeAtPos:head outStart:&wStart outEnd:&wEnd];
+    if (wEnd > wStart) {
+        std::string rawStr = _editorEngine->pt.getRange(wStart, wEnd - wStart);
+        NSString *candidate = [NSString stringWithUTF8String:rawStr.c_str()];
+        if (candidate.length > 0) {
+            NSString *trimmed = [candidate stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+            if (trimmed.length > 0) {
+                self.searchField.text = candidate;
+                _editorEngine->searchQuery = rawStr;
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [self.editorView setNeedsDisplay];
+                });
+            }
+        }
+    }
+}
 - (void)showSearchNotif {
     if (_editorEngine) {
         _editorEngine->isReplaceMode = false;
         [self updateOptionButtonVisual:self.matchCaseBtn isSelected:_editorEngine->searchMatchCase];
         [self updateOptionButtonVisual:self.wholeWordBtn isSelected:_editorEngine->searchWholeWord];
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
-    }    
+    }
+    [self prepareSearchQuery];
     [UIView animateWithDuration:0.25 animations:^{
         self.searchContainer.hidden = NO;
         self.replaceRowStack.hidden = YES;
@@ -1574,6 +1637,7 @@
         [self updateOptionButtonVisual:self.wholeWordBtn isSelected:_editorEngine->searchWholeWord];
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
+    [self prepareSearchQuery];
     [UIView animateWithDuration:0.25 animations:^{
         self.searchContainer.hidden = NO;
         self.replaceRowStack.hidden = NO;
@@ -1588,22 +1652,40 @@
 }
 - (NSArray<UIKeyCommand *> *)keyCommands {
     return @[
-        [UIKeyCommand keyCommandWithInput:UIKeyInputEscape modifierFlags:0 action:@selector(closeSearch)]
+        [UIKeyCommand keyCommandWithInput:UIKeyInputEscape modifierFlags:0 action:@selector(handleEscape:)]
     ];
 }
 - (void)closeSearch {
     if (_editorEngine) {
         _editorEngine->isReplaceMode = false;
-        _editorEngine->searchQuery = "";
     }
     [self.editorView becomeFirstResponder];
     [UIView animateWithDuration:0.25 animations:^{
         self.searchContainer.hidden = YES;
-        self.searchField.text = @"";
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         [self.editorView setNeedsDisplay];
     }];
+}
+- (void)handleEscape:(id)sender {
+    if (!self.searchContainer.hidden) {
+        [self closeSearch];
+        return;
+    }
+    if (_editorEngine && !_editorEngine->cursors.empty()) {
+        Cursor lastCursor = _editorEngine->cursors.back();
+        if (_editorEngine->cursors.size() > 1 || lastCursor.hasSelection()) {
+            _editorEngine->cursors.clear();
+            lastCursor.anchor = lastCursor.head;
+            lastCursor.originalAnchorX = lastCursor.desiredX;
+            _editorEngine->cursors.push_back(lastCursor);
+            _editorEngine->ensureCaretVisible();
+            [self.editorView setNeedsDisplay];
+            if (self.editorView.inputDelegate) {
+                [self.editorView.inputDelegate selectionDidChange:self.editorView];
+            }
+        }
+    }
 }
 - (void)closeGoToLine {
     [self.editorView becomeFirstResponder];
@@ -1620,7 +1702,7 @@
     [self closeGoToLine];
 }
 - (void)textFieldDidBeginEditing:(UITextField *)textField {
-    if (textField.tag == 1001) {
+    if (textField.tag == 1001 || textField == self.searchField || textField == self.replaceField) {
         dispatch_async(dispatch_get_main_queue(), ^{
             [textField selectAll:nil];
         });
