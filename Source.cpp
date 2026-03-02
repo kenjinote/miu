@@ -1,8 +1,12 @@
 ﻿#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define NOMINMAX
 #include <windows.h>
+#include <d3d11.h>
+#include <dxgi1_2.h>
+#include <d2d1_1.h>
 #include <d2d1.h>
 #include <dwrite.h>
+#include <dcomp.h>
 #include <imm.h>
 #include <commdlg.h>
 #include <commctrl.h>
@@ -27,6 +31,9 @@
 #define DWMSBT_MAINWINDOW 2
 #endif
 #pragma comment(lib, "d2d1.lib")
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
+#pragma comment(lib, "dcomp.lib")
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "imm32.lib")
 #pragma comment(lib, "comdlg32.lib")
@@ -302,8 +309,14 @@ struct Editor {
     DWORD lastClickTime = 0; int clickCount = 0; int lastClickX = 0, lastClickY = 0;
     float currentFontSize = 21.0f; DWORD64 zoomPopupEndTime = 0; std::wstring zoomPopupText;
     bool suppressUI = false;
-    ID2D1Factory* d2dFactory = nullptr; ID2D1HwndRenderTarget* rend = nullptr;
-    IDWriteFactory* dwFactory = nullptr; IDWriteTextFormat* textFormat = nullptr; IDWriteTextFormat* popupTextFormat = nullptr;
+    ID2D1Factory1* d2dFactory = nullptr;
+    ID2D1DeviceContext* rend = nullptr;
+    IDXGISwapChain1* swapChain = nullptr;
+    ID2D1Bitmap1* targetBitmap = nullptr;
+    IDCompositionDevice* dcompDevice = nullptr;
+    IDCompositionTarget* dcompTarget = nullptr;
+    IDWriteFactory* dwFactory = nullptr;
+    IDWriteTextFormat* textFormat = nullptr; IDWriteTextFormat* popupTextFormat = nullptr;
     IDWriteTextFormat* helpTextFormat = nullptr;
     ID2D1StrokeStyle* dotStyle = nullptr; ID2D1StrokeStyle* roundJoinStyle = nullptr;
     D2D1::ColorF background = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f); D2D1::ColorF textColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
@@ -317,6 +330,12 @@ struct Editor {
     D2D1::ColorF caretColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
     bool isDarkMode = false;
     bool isOverwriteMode = false;
+    bool isVScrollDragging = false;
+    bool isHScrollDragging = false;
+    float scrollDragOffset = 0.0f;
+    bool isVScrollHover = false;
+    bool isHScrollHover = false;
+    bool isTrackingMouse = false;
     Encoding currentEncoding = ENC_UTF8_NOBOM;
     std::string convertedBuffer;
     std::string newlineStr = "\r\n";
@@ -380,10 +399,10 @@ struct Editor {
     }
     void updateThemeColors() {
         isDarkMode = checkSystemDarkMode();
-        int backdropValue = DWMSBT_MAINWINDOW;
+        int backdropValue = DWMSBT_TRANSIENTWINDOW;
         HRESULT hrMica = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropValue, sizeof(backdropValue));
         bool isMicaEnabled = SUCCEEDED(hrMica);
-        float bgAlpha = isMicaEnabled ? 0.0f : 1.0f;
+        float bgAlpha = isMicaEnabled ? 0.5f : 1.0f;
         if (isDarkMode) {
             background = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
             textColor = D2D1::ColorF(0.95f, 0.95f, 0.95f, 1.0f);
@@ -454,11 +473,56 @@ struct Editor {
     }
     void initGraphics(HWND h) {
         hwnd = h;
-        D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &d2dFactory);
+        RECT rc; GetClientRect(hwnd, &rc);
+        UINT width = rc.right - rc.left;
+        UINT height = rc.bottom - rc.top;
+        ID3D11Device* d3dDevice = nullptr;
+        ID3D11DeviceContext* d3dContext = nullptr;
+        UINT creationFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+        D3D_FEATURE_LEVEL featureLevels[] = { D3D_FEATURE_LEVEL_11_1, D3D_FEATURE_LEVEL_11_0, D3D_FEATURE_LEVEL_10_1, D3D_FEATURE_LEVEL_10_0 };
+        D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, creationFlags,
+            featureLevels, ARRAYSIZE(featureLevels), D3D11_SDK_VERSION, &d3dDevice, nullptr, &d3dContext);
+        IDXGIDevice* dxgiDevice = nullptr;
+        d3dDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice);
+        D2D1_FACTORY_OPTIONS options = {};
+        D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, __uuidof(ID2D1Factory1), &options, (void**)&d2dFactory);
+        ID2D1Device* d2dDevice = nullptr;
+        d2dFactory->CreateDevice(dxgiDevice, &d2dDevice);
+        d2dDevice->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, &rend);
+        IDXGIFactory2* dxgiFactory = nullptr;
+        CreateDXGIFactory2(0, __uuidof(IDXGIFactory2), (void**)&dxgiFactory);
+        DXGI_SWAP_CHAIN_DESC1 description = {};
+        description.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+        description.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+        description.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+        description.BufferCount = 2;
+        description.SampleDesc.Count = 1;
+        description.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
+        description.Scaling = DXGI_SCALING_STRETCH;
+        description.Width = width;
+        description.Height = height;
+        dxgiFactory->CreateSwapChainForComposition(dxgiDevice, &description, nullptr, &swapChain);
+        DCompositionCreateDevice(dxgiDevice, __uuidof(IDCompositionDevice), (void**)&dcompDevice);
+        dcompDevice->CreateTargetForHwnd(hwnd, TRUE, &dcompTarget);
+        IDCompositionVisual* dcompVisual = nullptr;
+        dcompDevice->CreateVisual(&dcompVisual);
+        dcompVisual->SetContent(swapChain);
+        dcompTarget->SetRoot(dcompVisual);
+        dcompDevice->Commit();
+        if (dcompVisual) dcompVisual->Release();
+        if (dxgiFactory) dxgiFactory->Release();
+        if (d2dDevice) d2dDevice->Release();
+        if (dxgiDevice) dxgiDevice->Release();
+        if (d3dContext) d3dContext->Release();
+        if (d3dDevice) d3dDevice->Release();
         DWriteCreateFactory(DWRITE_FACTORY_TYPE_SHARED, __uuidof(IDWriteFactory), reinterpret_cast<IUnknown**>(&dwFactory));
-        RECT r; GetClientRect(hwnd, &r);
-        d2dFactory->CreateHwndRenderTarget(D2D1::RenderTargetProperties(), D2D1::HwndRenderTargetProperties(hwnd, D2D1::SizeU(r.right - r.left, r.bottom - r.top)), &rend);
-        FLOAT dpix, dpiy; rend->GetDpi(&dpix, &dpiy); dpiScaleX = dpix / 96.0f; dpiScaleY = dpiy / 96.0f;
+        UINT dpi = GetDpiForWindow(hwnd);
+        if (dpi == 0) dpi = 96;
+        FLOAT dpix = (FLOAT)dpi;
+        FLOAT dpiy = (FLOAT)dpi;
+        dpiScaleX = dpix / 96.0f;
+        dpiScaleY = dpiy / 96.0f;
+        rend->SetDpi(dpix, dpiy);
         dwFactory->CreateTextFormat(L"Segoe UI", NULL, DWRITE_FONT_WEIGHT_BOLD, DWRITE_FONT_STYLE_NORMAL, DWRITE_FONT_STRETCH_NORMAL, 24.0f, L"en-us", &popupTextFormat);
         if (popupTextFormat) { popupTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER); popupTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER); }
         helpTextStr = APP_VERSION + GetResString(IDS_HELP_TEXT);
@@ -467,7 +531,8 @@ struct Editor {
             helpTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_LEADING);
             helpTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_NEAR);
         }
-        float dashes[] = { 2.0f, 2.0f }; D2D1_STROKE_STYLE_PROPERTIES props = D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_FLAT, D2D1_CAP_STYLE_FLAT, D2D1_CAP_STYLE_FLAT, D2D1_LINE_JOIN_MITER, 10.0f, D2D1_DASH_STYLE_CUSTOM, 0.0f); d2dFactory->CreateStrokeStyle(&props, dashes, 2, &dotStyle);
+        float dashes[] = { 2.0f, 2.0f };
+        D2D1_STROKE_STYLE_PROPERTIES props = D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_FLAT, D2D1_CAP_STYLE_FLAT, D2D1_CAP_STYLE_FLAT, D2D1_LINE_JOIN_MITER, 10.0f, D2D1_DASH_STYLE_CUSTOM, 0.0f); d2dFactory->CreateStrokeStyle(&props, dashes, 2, &dotStyle);
         D2D1_STROKE_STYLE_PROPERTIES roundProps = D2D1::StrokeStyleProperties(D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_CAP_STYLE_ROUND, D2D1_LINE_JOIN_ROUND, 10.0f, D2D1_DASH_STYLE_SOLID, 0.0f); d2dFactory->CreateStrokeStyle(&roundProps, nullptr, 0, &roundJoinStyle);
         cfMsDevCol = RegisterClipboardFormatW(L"MSDEVColumnSelect");
         cfMsDevLine = RegisterClipboardFormatW(L"MSDEVLineSelect");
@@ -502,10 +567,18 @@ struct Editor {
         updateScrollBars();
     }
     void destroyGraphics() {
+        if (dcompTarget) dcompTarget->Release();
+        if (dcompDevice) dcompDevice->Release();
+        if (targetBitmap) targetBitmap->Release();
+        if (swapChain) swapChain->Release();
+        if (rend) rend->Release();
         if (popupTextFormat) popupTextFormat->Release();
         if (helpTextFormat) helpTextFormat->Release();
-        if (dotStyle) dotStyle->Release(); if (roundJoinStyle) roundJoinStyle->Release();
-        if (textFormat) textFormat->Release(); if (dwFactory) dwFactory->Release(); if (rend) rend->Release(); if (d2dFactory) d2dFactory->Release();
+        if (dotStyle) dotStyle->Release();
+        if (roundJoinStyle) roundJoinStyle->Release();
+        if (textFormat) textFormat->Release();
+        if (dwFactory) dwFactory->Release();
+        if (d2dFactory) d2dFactory->Release();
     }
     void updateTitleBar() {
         if (!hwnd) return;
@@ -637,20 +710,18 @@ struct Editor {
     }
     void updateScrollBars() {
         if (suppressUI) return;
-        if (!hwnd) return; RECT rc; GetClientRect(hwnd, &rc);
+        if (!hwnd) return;
+        RECT rc; GetClientRect(hwnd, &rc);
         float clientH = (rc.bottom - rc.top) / dpiScaleY;
-        float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth; if (clientW < 0) clientW = 0;
+        float clientW = (rc.right - rc.left) / dpiScaleX - gutterWidth;
+        if (clientW < 0) clientW = 0;
         int maxH = std::max(0, (int)(maxLineWidth - clientW + charWidth * 4.0f));
-        if (hScrollPos > maxH) {
-            hScrollPos = maxH;
-        }
-        if (maxH <= 0) {
-            hScrollPos = 0;
-        }
+        if (hScrollPos > maxH) hScrollPos = maxH;
+        if (hScrollPos < 0) hScrollPos = 0;
         int linesVisible = (int)(clientH / lineHeight);
-        SCROLLINFO si = {}; si.cbSize = sizeof(SCROLLINFO); si.fMask = SIF_RANGE | SIF_PAGE | SIF_POS;
-        si.nMin = 0; si.nMax = (int)lineStarts.size() + linesVisible - 2; if (si.nMax < 0) si.nMax = 0; si.nPage = linesVisible; si.nPos = vScrollPos; SetScrollInfo(hwnd, SB_VERT, &si, TRUE);
-        si.nMin = 0; si.nMax = (int)maxLineWidth; si.nPage = (int)clientW; si.nPos = hScrollPos; SetScrollInfo(hwnd, SB_HORZ, &si, TRUE);
+        int maxV = std::max(0, (int)lineStarts.size() - 1);
+        if (vScrollPos > maxV) vScrollPos = maxV;
+        if (vScrollPos < 0) vScrollPos = 0;
     }
     void getCaretPoint(float& x, float& y) {
         if (cursors.empty()) { x = 0; y = 0; return; }
@@ -758,7 +829,7 @@ struct Editor {
         if (curr >= 1 && pt.charAt(curr - 1) == '\n') return curr - 1;
         while (curr > 0) {
             char c = pt.charAt(curr - 1);
-            if (c == '\n' || c == '\r' || !isspace(c)) break;
+            if (c == '\n' || c == '\r' || !isspace((unsigned char)c)) break;
             curr--;
         }
         if (curr == 0) return 0;
@@ -767,7 +838,7 @@ struct Editor {
         bool type = isWordChar(prev);
         while (curr > 0) {
             char c = pt.charAt(curr - 1);
-            if (c == '\n' || c == '\r' || isspace(c) || isWordChar(c) != type) break;
+            if (c == '\n' || c == '\r' || isspace((unsigned char)c) || isWordChar(c) != type) break;
             curr--;
         }
         return curr;
@@ -781,17 +852,17 @@ struct Editor {
             return curr + 1;
         }
         if (pt.charAt(curr) == '\n') return curr + 1;
-        if (!isspace(pt.charAt(curr))) {
+        if (!isspace((unsigned char)pt.charAt(curr))) {
             bool type = isWordChar(pt.charAt(curr));
             while (curr < len) {
                 char c = pt.charAt(curr);
-                if (c == '\n' || c == '\r' || isspace(c) || isWordChar(c) != type) break;
+                if (c == '\n' || c == '\r' || isspace((unsigned char)c) || isWordChar(c) != type) break;
                 curr++;
             }
         }
         while (curr < len) {
             char c = pt.charAt(curr);
-            if (c == '\n' || c == '\r' || !isspace(c)) break;
+            if (c == '\n' || c == '\r' || !isspace((unsigned char)c)) break;
             curr++;
         }
         return curr;
@@ -1424,9 +1495,23 @@ struct Editor {
         batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
     }
     void render() {
-        if (!rend) return;
-        PAINTSTRUCT ps; HDC hdc = BeginPaint(hwnd, &ps);
-        rend->BeginDraw(); rend->Clear(background);
+        if (!rend || !swapChain) return;
+        if (!targetBitmap) {
+            IDXGISurface* dxgiBackBuffer = nullptr;
+            swapChain->GetBuffer(0, __uuidof(IDXGISurface), (void**)&dxgiBackBuffer);
+            if (dxgiBackBuffer) {
+                D2D1_BITMAP_PROPERTIES1 bitmapProperties = D2D1::BitmapProperties1(
+                    D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+                    D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
+                    96.0f * dpiScaleX, 96.0f * dpiScaleY
+                );
+                rend->CreateBitmapFromDxgiSurface(dxgiBackBuffer, &bitmapProperties, &targetBitmap);
+                dxgiBackBuffer->Release();
+            }
+        }
+        rend->SetTarget(targetBitmap);
+        rend->BeginDraw();
+        rend->Clear(background);
         RECT rc; GetClientRect(hwnd, &rc); D2D1_SIZE_F size = rend->GetSize();
         float clientW = size.width; float clientH = size.height;
         int linesVisible = (int)(clientH / lineHeight) + 2;
@@ -1443,8 +1528,10 @@ struct Editor {
         ID2D1SolidColorBrush* caretBrush = nullptr;
         HRESULT hr = dwFactory->CreateTextLayout(wtext.c_str(), (UINT32)wtext.size(), textFormat, layoutWidth, clientH, &layout);
         D2D1_MATRIX_3X2_F transform = D2D1::Matrix3x2F::Translation(gutterWidth - (float)hScrollPos, 0);
-        rend->SetTransform(transform);
         float imeCx = 0, imeCy = 0;
+        D2D1_RECT_F textClipRect = D2D1::RectF(gutterWidth, 0, clientW, clientH);
+        rend->PushAxisAlignedClip(textClipRect, D2D1_ANTIALIAS_MODE_ALIASED);
+        rend->SetTransform(transform);
         if (SUCCEEDED(hr) && layout) {
             if (isOverwriteMode) rend->CreateSolidColorBrush(D2D1::ColorF(caretColor.r, caretColor.g, caretColor.b, 0.5f), &caretBrush);
             else rend->CreateSolidColorBrush(caretColor, &caretBrush);
@@ -1658,6 +1745,7 @@ struct Editor {
             }
         }
         rend->SetTransform(D2D1::Matrix3x2F::Identity());
+        rend->PopAxisAlignedClip();
         ID2D1SolidColorBrush* gutterBgBrush = nullptr; rend->CreateSolidColorBrush(gutterBg, &gutterBgBrush); rend->FillRectangle(D2D1::RectF(0, 0, gutterWidth, clientH), gutterBgBrush); gutterBgBrush->Release();
         ID2D1SolidColorBrush* gutterTextBrush = nullptr; rend->CreateSolidColorBrush(gutterText, &gutterTextBrush);
         int startLine = vScrollPos; int endLine = startLine + linesVisible; if (endLine > (int)lineStarts.size()) endLine = (int)lineStarts.size();
@@ -1672,6 +1760,7 @@ struct Editor {
         }
         gutterTextBrush->Release();
         if (layout && caretBrush) {
+            rend->PushAxisAlignedClip(textClipRect, D2D1_ANTIALIAS_MODE_ALIASED);
             D2D1_ANTIALIAS_MODE oldMode = rend->GetAntialiasMode();
             rend->SetAntialiasMode(D2D1_ANTIALIAS_MODE_ALIASED);
             rend->SetTransform(transform);
@@ -1706,6 +1795,7 @@ struct Editor {
             }
             rend->SetTransform(D2D1::Matrix3x2F::Identity());
             rend->SetAntialiasMode(oldMode);
+            rend->PopAxisAlignedClip();
         }
         if (caretBrush) caretBrush->Release();
         if (layout) layout->Release();
@@ -1747,7 +1837,85 @@ struct Editor {
             }
             popupBg->Release(); popupText->Release();
         }
-        rend->EndDraw(); EndPaint(hwnd, &ps);
+        {
+            const float SB_HIT_WIDTH = 20.0f;
+            const float SB_MIN_WIDTH = 4.0f;
+            const float SB_MAX_WIDTH = 10.0f;
+            const float SB_PADDING = 0.0f;
+            ID2D1SolidColorBrush* sbBrushIdle = nullptr;
+            ID2D1SolidColorBrush* sbBrushActive = nullptr;
+            rend->CreateSolidColorBrush(D2D1::ColorF(0.5f, 0.5f, 0.5f, 0.4f), &sbBrushIdle);
+            rend->CreateSolidColorBrush(D2D1::ColorF(0.6f, 0.6f, 0.6f, 0.8f), &sbBrushActive);
+            if (!lineStarts.empty()) {
+                float total = (float)lineStarts.size();
+                float viewportLines = clientH / lineHeight;
+                if (total > 1.0f) {
+                    bool isActive = isVScrollHover || isVScrollDragging;
+                    float currentSize = isActive ? SB_MAX_WIDTH : SB_MIN_WIDTH;
+                    ID2D1SolidColorBrush* currentBrush = isActive ? sbBrushActive : sbBrushIdle;
+                    float maxScroll = std::max(1.0f, total - 1.0f);
+                    float trackH = clientH - (SB_PADDING * 2);
+                    if (maxLineWidth > clientW) trackH -= SB_HIT_WIDTH;
+                    float virtualTotal = total + viewportLines - 1.0f;
+                    float thumbH = trackH * (viewportLines / virtualTotal);
+                    if (thumbH < 30.0f) thumbH = 30.0f;
+                    if (thumbH > trackH) thumbH = trackH;
+                    float progress = (float)vScrollPos / maxScroll;
+                    if (progress > 1.0f) progress = 1.0f;
+                    if (progress < 0.0f) progress = 0.0f;
+                    float thumbY = SB_PADDING + (trackH - thumbH) * progress;
+                    D2D1_RECT_F rect = D2D1::RectF(
+                        clientW - currentSize - SB_PADDING,
+                        thumbY,
+                        clientW - SB_PADDING,
+                        thumbY + thumbH
+                    );
+                    rend->FillRoundedRectangle(D2D1::RoundedRect(rect, currentSize / 2.0f, currentSize / 2.0f), currentBrush);
+                }
+            }
+            if (maxLineWidth > clientW) {
+                float total = maxLineWidth;
+                float visible = clientW;
+                bool isActive = isHScrollHover || isHScrollDragging;
+                float currentSize = isActive ? SB_MAX_WIDTH : SB_MIN_WIDTH;
+                ID2D1SolidColorBrush* currentBrush = isActive ? sbBrushActive : sbBrushIdle;
+                float maxScroll = std::max(1.0f, total - visible);
+                float trackW = clientW - (SB_PADDING * 2);
+                if (!lineStarts.empty() && (float)lineStarts.size() > 1.0f) {
+                    trackW -= SB_HIT_WIDTH;
+                }
+                float thumbW = trackW * (visible / total);
+                if (thumbW < 30.0f) thumbW = 30.0f;
+                if (thumbW > trackW) thumbW = trackW;
+                float progress = (float)hScrollPos / maxScroll;
+                if (progress > 1.0f) progress = 1.0f;
+                if (progress < 0.0f) progress = 0.0f;
+                float thumbX = SB_PADDING + (trackW - thumbW) * progress;
+                D2D1_RECT_F rect = D2D1::RectF(
+                    thumbX,
+                    clientH - currentSize - SB_PADDING,
+                    thumbX + thumbW,
+                    clientH - SB_PADDING
+                );
+                rend->FillRoundedRectangle(D2D1::RoundedRect(rect, currentSize / 2.0f, currentSize / 2.0f), currentBrush);
+            }
+            if (sbBrushIdle) sbBrushIdle->Release();
+            if (sbBrushActive) sbBrushActive->Release();
+        }
+        rend->EndDraw();
+        swapChain->Present(1, 0);
+    }
+    void resizeSwapChain(int w, int h) {
+        if (rend && swapChain) {
+            rend->SetTarget(nullptr);
+            if (targetBitmap) {
+                targetBitmap->Release();
+                targetBitmap = nullptr;
+            }
+            swapChain->ResizeBuffers(2, w, h, DXGI_FORMAT_B8G8R8A8_UNORM, 0);
+            updateScrollBars();
+            render();
+        }
     }
     void insertAtCursors(const std::string& text) {
         commitPadding();
@@ -2710,6 +2878,8 @@ struct Editor {
 } g_editor;
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg) {
+    case WM_ERASEBKGND:
+        return 1;
     case WM_CREATE:
         g_editor.initGraphics(hwnd);
         DragAcceptFiles(hwnd, TRUE);
@@ -2735,10 +2905,73 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         g_editor.handleDpiChange(newDpiX, newDpiY);
         return 0;
     }
-    case WM_SIZE: if (g_editor.rend) { RECT rc; GetClientRect(hwnd, &rc); g_editor.rend->Resize(D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top)); g_editor.updateScrollBars(); InvalidateRect(hwnd, NULL, FALSE); } break;
+    case WM_SIZE:
+        {
+            RECT rc; GetClientRect(hwnd, &rc);
+            int w = rc.right - rc.left;
+            int h = rc.bottom - rc.top;
+            if (w > 0 && h > 0) {
+                g_editor.resizeSwapChain(w, h);
+            }
+        }
+        break;
     case WM_LBUTTONDOWN: {
         if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
-        int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam); SetCapture(hwnd); g_editor.isDragging = true; g_editor.rollbackPadding();
+        int x = (short)LOWORD(lParam);
+        int y = (short)HIWORD(lParam);
+        RECT rc; GetClientRect(hwnd, &rc);
+        float clientW = (rc.right - rc.left) / g_editor.dpiScaleX;
+        float clientH = (rc.bottom - rc.top) / g_editor.dpiScaleY;
+        float mouseX = x / g_editor.dpiScaleX;
+        float mouseY = y / g_editor.dpiScaleY;
+        const float SB_HIT_WIDTH = 20.0f;
+        const float SB_PADDING = 0.0f;
+        if (!g_editor.lineStarts.empty()) {
+            float total = (float)g_editor.lineStarts.size();
+            float viewportLines = clientH / g_editor.lineHeight;
+            if (total > 1.0f) {
+                float maxScroll = std::max(1.0f, total - 1.0f);
+                float trackH = clientH - (SB_PADDING * 2);
+                if (g_editor.maxLineWidth > clientW) trackH -= SB_HIT_WIDTH;
+                float virtualTotal = total + viewportLines - 1.0f;
+                float thumbH = trackH * (viewportLines / virtualTotal);
+                if (thumbH < 30.0f) thumbH = 30.0f;
+                if (thumbH > trackH) thumbH = trackH;
+                float progress = (float)g_editor.vScrollPos / maxScroll;
+                float thumbY = SB_PADDING + (trackH - thumbH) * progress;
+                if (mouseX >= clientW - SB_HIT_WIDTH) {
+                    if (mouseY >= thumbY - 10 && mouseY <= thumbY + thumbH + 10) {
+                        g_editor.isVScrollDragging = true;
+                        g_editor.scrollDragOffset = mouseY - thumbY;
+                        SetCapture(hwnd);
+                        return 0;
+                    }
+                }
+            }
+        }
+        if (g_editor.maxLineWidth > clientW) {
+            float total = g_editor.maxLineWidth;
+            float visible = clientW;
+            float maxScroll = std::max(1.0f, total - visible);
+            float trackW = clientW - (SB_PADDING * 2);
+            if (!g_editor.lineStarts.empty() && (float)g_editor.lineStarts.size() > 1.0f) {
+                trackW -= SB_HIT_WIDTH;
+            }
+            float thumbW = trackW * (visible / total);
+            if (thumbW < 30.0f) thumbW = 30.0f;
+            if (thumbW > trackW) thumbW = trackW;
+            float progress = (float)g_editor.hScrollPos / maxScroll;
+            float thumbX = SB_PADDING + (trackW - thumbW) * progress;
+            if (mouseY >= clientH - SB_HIT_WIDTH) {
+                if (mouseX >= thumbX - 10 && mouseX <= thumbX + thumbW + 10) {
+                    g_editor.isHScrollDragging = true;
+                    g_editor.scrollDragOffset = mouseX - thumbX;
+                    SetCapture(hwnd);
+                    return 0;
+                }
+            }
+        }
+        SetCapture(hwnd); g_editor.isDragging = true; g_editor.rollbackPadding();
         if (abs(x - g_editor.lastClickX) < 5 && abs(y - g_editor.lastClickY) < 5 && (GetMessageTime() - g_editor.lastClickTime < GetDoubleClickTime())) g_editor.clickCount++; else g_editor.clickCount = 1;
         g_editor.lastClickTime = GetMessageTime(); g_editor.lastClickX = x; g_editor.lastClickY = y;
         if (g_editor.clickCount == 1 && !(GetKeyState(VK_SHIFT) & 0x8000)) {
@@ -2761,7 +2994,84 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         InvalidateRect(hwnd, NULL, FALSE);
     } break;
     case WM_MOUSEMOVE: {
+        if (!g_editor.isTrackingMouse) {
+            TRACKMOUSEEVENT tme = { sizeof(TRACKMOUSEEVENT) };
+            tme.dwFlags = TME_LEAVE;
+            tme.hwndTrack = hwnd;
+            TrackMouseEvent(&tme);
+            g_editor.isTrackingMouse = true;
+        }
         int x = (short)LOWORD(lParam), y = (short)HIWORD(lParam);
+        RECT rc; GetClientRect(hwnd, &rc);
+        float clientW = (rc.right - rc.left) / g_editor.dpiScaleX;
+        float clientH = (rc.bottom - rc.top) / g_editor.dpiScaleY;
+        float mouseX = x / g_editor.dpiScaleX;
+        float mouseY = y / g_editor.dpiScaleY;
+        const float SB_HIT_WIDTH = 20.0f;
+        const float SB_PADDING = 0.0f;
+        bool prevVHover = g_editor.isVScrollHover;
+        bool prevHHover = g_editor.isHScrollHover;
+        if (g_editor.isVScrollDragging) {
+            g_editor.isVScrollHover = true;
+            g_editor.isHScrollHover = false;
+        }
+        else if (g_editor.isHScrollDragging) {
+            g_editor.isVScrollHover = false;
+            g_editor.isHScrollHover = true;
+        }
+        else {
+            g_editor.isVScrollHover = (mouseX >= clientW - SB_HIT_WIDTH);
+            g_editor.isHScrollHover = (mouseY >= clientH - SB_HIT_WIDTH);
+        }
+        if (prevVHover != g_editor.isVScrollHover || prevHHover != g_editor.isHScrollHover) {
+            InvalidateRect(hwnd, NULL, FALSE);
+        }
+        if (g_editor.isVScrollDragging || g_editor.isHScrollDragging) {
+            if (g_editor.isVScrollDragging) {
+                float total = (float)g_editor.lineStarts.size();
+                float viewportLines = clientH / g_editor.lineHeight;
+                float maxScroll = std::max(1.0f, total - 1.0f);
+                float trackH = clientH - (SB_PADDING * 2);
+                if (g_editor.maxLineWidth > clientW) trackH -= SB_HIT_WIDTH;
+                float virtualTotal = total + viewportLines - 1.0f;
+                float thumbH = trackH * (viewportLines / virtualTotal);
+                if (thumbH < 30.0f) thumbH = 30.0f;
+                if (thumbH > trackH) thumbH = trackH;
+                float newThumbY = mouseY - g_editor.scrollDragOffset;
+                float relativeY = newThumbY - SB_PADDING;
+                float scrollableArea = trackH - thumbH;
+                if (scrollableArea > 0) {
+                    float ratio = relativeY / scrollableArea;
+                    g_editor.vScrollPos = (int)(ratio * maxScroll);
+                }
+                if (g_editor.vScrollPos < 0) g_editor.vScrollPos = 0;
+                if (g_editor.vScrollPos > (int)maxScroll) g_editor.vScrollPos = (int)maxScroll;
+            }
+            else if (g_editor.isHScrollDragging) {
+                float total = g_editor.maxLineWidth;
+                float visible = clientW;
+                float maxScroll = std::max(1.0f, total - visible);
+                float trackW = clientW - (SB_PADDING * 2);
+                if (!g_editor.lineStarts.empty() && (float)g_editor.lineStarts.size() > 1.0f) {
+                    trackW -= SB_HIT_WIDTH;
+                }
+                float thumbW = trackW * (visible / total);
+                if (thumbW < 30.0f) thumbW = 30.0f;
+                if (thumbW > trackW) thumbW = trackW;
+                float newThumbX = mouseX - g_editor.scrollDragOffset;
+                float relativeX = newThumbX - SB_PADDING;
+                float scrollableArea = trackW - thumbW;
+                if (scrollableArea > 0) {
+                    float ratio = relativeX / scrollableArea;
+                    g_editor.hScrollPos = (int)(ratio * maxScroll);
+                }
+                if (g_editor.hScrollPos < 0) g_editor.hScrollPos = 0;
+                if (g_editor.hScrollPos > (int)maxScroll) g_editor.hScrollPos = (int)maxScroll;
+            }
+            g_editor.updateScrollBars();
+            g_editor.render();
+            return 0;
+        }
         if (g_editor.isDragMovePending) {
             if (abs(x - g_editor.lastClickX) > 5 || abs(y - g_editor.lastClickY) > 5) {
                 g_editor.isDragMovePending = false;
@@ -2793,9 +3103,22 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
     } break;
     case WM_LBUTTONUP:
+        if (g_editor.isVScrollDragging || g_editor.isHScrollDragging) {
+            g_editor.isVScrollDragging = false;
+            g_editor.isHScrollDragging = false;
+            ReleaseCapture();
+            return 0;
+        }
         if (g_editor.isDragMovePending) { g_editor.isDragMovePending = false; size_t p = g_editor.getDocPosFromPoint((short)LOWORD(lParam), (short)HIWORD(lParam)); g_editor.cursors.clear(); g_editor.cursors.push_back({ p, p, g_editor.getXFromPos(p) }); InvalidateRect(hwnd, NULL, FALSE); }
         else if (g_editor.isDragMoving) { g_editor.performDragMove(); }
         g_editor.isDragging = false; g_editor.isDragMoving = false; g_editor.mergeCursors(); ReleaseCapture(); break;
+    case WM_MOUSELEAVE: {
+        g_editor.isTrackingMouse = false;
+        g_editor.isVScrollHover = false;
+        g_editor.isHScrollHover = false;
+        InvalidateRect(hwnd, NULL, FALSE);
+        return 0;
+    }
     case WM_VSCROLL: {
         RECT rc; GetClientRect(hwnd, &rc); int page = (int)((rc.bottom / g_editor.dpiScaleY) / g_editor.lineHeight);
     switch (LOWORD(wParam)) { case SB_LINEUP: g_editor.vScrollPos--; break; case SB_LINEDOWN: g_editor.vScrollPos++; break; case SB_PAGEUP: g_editor.vScrollPos -= page; break; case SB_PAGEDOWN: g_editor.vScrollPos += page; break; case SB_THUMBTRACK: { SCROLLINFO si = { sizeof(SCROLLINFO), SIF_TRACKPOS }; GetScrollInfo(hwnd, SB_VERT, &si); g_editor.vScrollPos = si.nTrackPos; } break; }
@@ -3081,7 +3404,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
     } break;
     case WM_CLOSE: if (g_editor.checkUnsavedChanges()) DestroyWindow(hwnd); return 0;
-    case WM_PAINT: g_editor.render(); break;
+    case WM_PAINT:
+        {
+            PAINTSTRUCT ps;
+            BeginPaint(hwnd, &ps);
+            g_editor.render();
+            EndPaint(hwnd, &ps);
+        }
+        break;
     case WM_DESTROY: g_editor.destroyGraphics(); PostQuitMessage(0); break;
     default: return DefWindowProc(hwnd, msg, wParam, lParam);
     }
@@ -3096,7 +3426,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
     ReleaseDC(NULL, hdc);
     int initialWidth = MulDiv(800, dpiX, 96);
     int initialHeight = MulDiv(600, dpiY, 96);
-    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, L"miu", WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_HSCROLL, CW_USEDEFAULT, CW_USEDEFAULT, initialWidth, initialHeight, NULL, NULL, hInstance, NULL);
+    HWND hwnd = CreateWindowEx(WS_EX_NOREDIRECTIONBITMAP, wc.lpszClassName, L"miu", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, initialWidth, initialHeight, NULL, NULL, hInstance, NULL);
     if (!hwnd) return 0; ShowWindow(hwnd, nShowCmd);
     if (g_editor.currentFilePath.empty()) {
         int argc; wchar_t** argv = CommandLineToArgvW(GetCommandLineW(), &argc);
