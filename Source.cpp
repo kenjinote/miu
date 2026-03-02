@@ -287,6 +287,9 @@ struct Editor {
     bool isDirty = false;
     UINT cfMsDevCol = 0;
     UINT cfMsDevLine = 0;
+    std::regex cachedRegex;
+    bool isRegexDirty = true;
+    bool isRegexValid = false;
     std::string searchQuery;
     std::string replaceQuery;
     bool searchMatchCase = false;
@@ -336,6 +339,40 @@ struct Editor {
     Encoding currentEncoding = ENC_UTF8_NOBOM;
     std::string convertedBuffer;
     std::string newlineStr = "\r\n";
+    void updateSearchQuery(const std::string& newQuery) {
+        if (searchQuery != newQuery) {
+            searchQuery = newQuery;
+            isRegexDirty = true;
+        }
+    }
+
+    void updateSearchFlags(bool matchCase, bool wholeWord, bool regexMode) {
+        if (searchMatchCase != matchCase || searchWholeWord != wholeWord || searchRegex != regexMode) {
+            searchMatchCase = matchCase;
+            searchWholeWord = wholeWord;
+            searchRegex = regexMode;
+            isRegexDirty = true;
+        }
+    }
+
+    void ensureRegexReady() {
+        if (searchRegex && isRegexDirty) {
+            isRegexValid = false;
+            if (!searchQuery.empty()) {
+                try {
+                    std::string actualQuery = preprocessRegexQuery(searchQuery);
+                    std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+                    if (!searchMatchCase) flags |= std::regex_constants::icase;
+                    cachedRegex = std::regex(actualQuery, flags);
+                    isRegexValid = true;
+                }
+                catch (...) {
+                    isRegexValid = false;
+                }
+            }
+            isRegexDirty = false;
+        }
+    }
     std::string preprocessRegexQuery(const std::string& query) {
         std::string processed;
         processed.reserve(query.size() * 4);
@@ -358,7 +395,7 @@ struct Editor {
                 bool inClass = false;
                 if (i > 0 && query[i - 1] == '[') inClass = true;
                 if (!inClass) {
-                    processed += "(?:^|(?:\\r\\n|[\\r\\n]))";
+                    processed += "((?:^|(?:\\r\\n|[\\r\\n])))";
                     continue;
                 }
             }
@@ -1040,7 +1077,7 @@ struct Editor {
                 size_t foundLen = 0;
                 bool startsWithCaret = (!query.empty() && query[0] == '^');
                 if (forward) {
-                    if (startPos >= fullText.size()) startPos = 0;
+                    if (startPos > fullText.size()) startPos = 0;
                     size_t searchStartIdx = startPos;
                     std::regex_constants::match_flag_type searchFlags = std::regex_constants::match_default;
                     if (searchStartIdx > 0) {
@@ -1081,8 +1118,19 @@ struct Editor {
                     }
                     if (bestPos != std::string::npos) foundPos = bestPos;
                 }
+                if (foundPos == std::string::npos && startsWithCaret && forward) {
+                    if (!fullText.empty()) {
+                        char lastChar = fullText.back();
+                        if (lastChar == '\n' || lastChar == '\r') {
+                            if (startPos <= fullText.size()) {
+                                foundPos = fullText.size();
+                                foundLen = 0;
+                            }
+                        }
+                    }
+                }
                 if (foundPos != std::string::npos) {
-                    if (foundPos > 0 && startsWithCaret) {
+                    if (startsWithCaret) {
                         std::string matchStr = fullText.substr(foundPos, foundLen);
                         size_t adj = 0;
                         if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') {
@@ -1091,8 +1139,14 @@ struct Editor {
                         else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) {
                             adj = 1;
                         }
-                        foundPos += adj;
-                        foundLen -= adj;
+                        if (adj > 0 && adj == foundLen) {
+                            foundPos += adj;
+                            foundLen -= adj;
+                        }
+                        else if (foundPos > 0 && adj > 0) {
+                            foundPos += adj;
+                            foundLen -= adj;
+                        }
                     }
                     if (outLen) *outLen = foundLen;
                     return foundPos;
@@ -1152,16 +1206,47 @@ struct Editor {
     }
     void findNext(bool forward) {
         if (searchQuery.empty()) { showFindDialog(false); return; }
-        size_t startPos = forward ? (cursors.empty() ? 0 : cursors.back().end()) : (cursors.empty() ? 0 : cursors.back().start());
-        size_t matchLen = 0;
-        size_t pos = findText(startPos, searchQuery, forward, searchMatchCase, searchWholeWord, searchRegex, &matchLen);
-        if (pos != std::string::npos) {
+        size_t currentCursorPos = forward ? (cursors.empty() ? 0 : cursors.back().end()) : (cursors.empty() ? 0 : cursors.back().start());
+        size_t searchStart = currentCursorPos;
+        bool hasWrapped = false;
+        while (true) {
+            size_t matchLen = 0;
+            size_t pos = findText(searchStart, searchQuery, forward, searchMatchCase, searchWholeWord, searchRegex, &matchLen);
+            if (pos == std::string::npos) {
+                if (forward && !hasWrapped) {
+                    searchStart = 0;
+                    hasWrapped = true;
+                    continue;
+                }
+                else if (!forward && !hasWrapped) {
+                    searchStart = pt.length();
+                    hasWrapped = true;
+                    continue;
+                }
+                MessageBeep(MB_ICONWARNING);
+                return;
+            }
+            size_t matchEnd = pos + matchLen;
+            if (forward) {
+                if (!hasWrapped && matchEnd <= currentCursorPos) {
+                    size_t nextStart = searchStart + 1;
+                    if (searchStart + 1 < pt.length() && pt.charAt(searchStart) == '\r' && pt.charAt(searchStart + 1) == '\n') {
+                        nextStart++;
+                    }
+                    searchStart = nextStart;
+                    if (searchStart > pt.length()) {
+                        searchStart = 0;
+                        hasWrapped = true;
+                    }
+                    continue;
+                }
+            }
             cursors.clear();
-            cursors.push_back({ pos + matchLen, pos, getXFromPos(pos + matchLen) });
+            cursors.push_back({ matchEnd, pos, getXFromPos(matchEnd) });
             ensureCaretVisible();
             updateTitleBar();
+            break;
         }
-        else MessageBeep(MB_ICONWARNING);
     }
     void replaceNext() {
         if (cursors.empty() || searchQuery.empty()) return;
@@ -1236,6 +1321,7 @@ struct Editor {
             rebuildLineStarts();
             ensureCaretVisible();
             updateDirtyFlag();
+            findNext(true);
         }
         else {
             findNext(true);
@@ -1245,37 +1331,75 @@ struct Editor {
         if (searchQuery.empty()) return;
         struct Match { size_t start; size_t len; std::string replacementText; };
         std::vector<Match> matches;
-        size_t currentPos = 0;
         size_t docLen = pt.length();
-        std::string actualQuery = searchQuery;
+        ensureRegexReady();
         if (searchRegex) {
-            actualQuery = preprocessRegexQuery(searchQuery);
-            std::string fullText = pt.getRange(0, docLen);
-            std::string fmt = UnescapeString(replaceQuery, newlineStr);
-            try {
-                std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
-                if (!searchMatchCase) flags |= std::regex_constants::icase;
-                std::regex re(actualQuery, flags);
-                bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
-                auto begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
-                auto end = std::sregex_iterator();
-                for (auto i = begin; i != end; ++i) {
-                    size_t pos = i->position();
-                    size_t len = i->length();
-                    std::string rText = i->format(fmt);
-                    if (startsWithCaret) {
-                        std::string matchStr = i->str();
-                        size_t adj = 0;
-                        if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2;
-                        else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) adj = 1;
-                        if (adj > 0) { pos += adj; len -= adj; }
+            if (isRegexValid) {
+                std::string fullText = pt.getRange(0, docLen);
+                std::string fmt = UnescapeString(replaceQuery, newlineStr);
+                try {
+                    bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
+                    auto searchStart = fullText.cbegin();
+                    std::smatch m;
+                    size_t currentOffset = 0;
+                    std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
+                    while (std::regex_search(searchStart, fullText.cend(), m, cachedRegex, flags)) {
+                        size_t matchPos = currentOffset + m.position();
+                        size_t anchorLen = 0;
+                        if (startsWithCaret && m.size() > 1) {
+                            anchorLen = m.length(1);
+                        }
+                        if (startsWithCaret && anchorLen == 1 && matchPos > 0) {
+                            char matchedChar = fullText[matchPos];
+                            char prevChar = fullText[matchPos - 1];
+                            if (matchedChar == '\n' && prevChar == '\r') {
+                                size_t skipStep = 1;
+                                size_t remaining = std::distance(searchStart, fullText.cend());
+                                if (m.position() + skipStep > remaining) break;
+                                std::advance(searchStart, m.position() + skipStep);
+                                currentOffset += m.position() + skipStep;
+                                continue;
+                            }
+                        }
+                        size_t contentPos = matchPos + anchorLen;
+                        size_t contentLen = m.length() - anchorLen;
+                        std::string rText = m.format(fmt);
+                        matches.push_back({ contentPos, contentLen, rText });
+                        size_t step = (anchorLen > 0) ? anchorLen : m.length();
+                        if (step == 0) {
+                            if (flags & std::regex_constants::match_not_bol) {
+                                if (matchPos + 1 < fullText.size() && fullText[matchPos] == '\r' && fullText[matchPos + 1] == '\n') step = 2;
+                                else step = 1;
+                            }
+                            else {
+                                step = 0;
+                            }
+                        }
+                        size_t relativeAdvance = m.position() + step;
+                        size_t remaining = std::distance(searchStart, fullText.cend());
+                        if (relativeAdvance > remaining) break;
+                        std::advance(searchStart, relativeAdvance);
+                        currentOffset += relativeAdvance;
+                        flags |= std::regex_constants::match_not_bol;
                     }
-                    matches.push_back({ pos, len, rText });
+                    if (startsWithCaret && !fullText.empty()) {
+                        char lastChar = fullText.back();
+                        if (lastChar == '\n' || lastChar == '\r') {
+                            bool alreadyMatchedEOF = false;
+                            if (!matches.empty()) {
+                                if (matches.back().start >= fullText.size()) alreadyMatchedEOF = true;
+                            }
+                            if (!alreadyMatchedEOF) {
+                                matches.push_back({ fullText.size(), 0, fmt });
+                            }
+                        }
+                    }
                 }
+                catch (...) { return; }
             }
-            catch (...) { return; }
         }
         else {
+            size_t currentPos = 0;
             while (true) {
                 size_t matchLen = 0;
                 size_t pos = findText(currentPos, searchQuery, true, searchMatchCase, searchWholeWord, false, &matchLen);
@@ -1354,12 +1478,20 @@ struct Editor {
             SendMessage(GetDlgItem(hDlg, IDC_FIND_EDIT), EM_SETSEL, 0, -1);
             return FALSE;
         case WM_COMMAND:
-            if (LOWORD(wParam) == IDC_FIND_CASE) { pThis->searchMatchCase = IsDlgButtonChecked(hDlg, IDC_FIND_CASE) == BST_CHECKED; InvalidateRect(pThis->hwnd, NULL, FALSE); }
-            if (LOWORD(wParam) == IDC_FIND_WORD) { pThis->searchWholeWord = IsDlgButtonChecked(hDlg, IDC_FIND_WORD) == BST_CHECKED; InvalidateRect(pThis->hwnd, NULL, FALSE); }
-            if (LOWORD(wParam) == IDC_FIND_REGEX) { pThis->searchRegex = IsDlgButtonChecked(hDlg, IDC_FIND_REGEX) == BST_CHECKED; InvalidateRect(pThis->hwnd, NULL, FALSE); }
+            if (LOWORD(wParam) == IDC_FIND_CASE || LOWORD(wParam) == IDC_FIND_WORD || LOWORD(wParam) == IDC_FIND_REGEX) {
+                bool bCase = IsDlgButtonChecked(hDlg, IDC_FIND_CASE) == BST_CHECKED;
+                bool bWord = IsDlgButtonChecked(hDlg, IDC_FIND_WORD) == BST_CHECKED;
+                bool bRegex = IsDlgButtonChecked(hDlg, IDC_FIND_REGEX) == BST_CHECKED;
+                pThis->updateSearchFlags(bCase, bWord, bRegex);
+                InvalidateRect(pThis->hwnd, NULL, FALSE);
+            }
             if (HIWORD(wParam) == EN_CHANGE) {
                 wchar_t wbuf[1024];
-                if (LOWORD(wParam) == IDC_FIND_EDIT) { GetDlgItemTextW(hDlg, IDC_FIND_EDIT, wbuf, 1024); pThis->searchQuery = WToUTF8(wbuf); InvalidateRect(pThis->hwnd, NULL, FALSE); }
+                if (LOWORD(wParam) == IDC_FIND_EDIT) {
+                    GetDlgItemTextW(hDlg, IDC_FIND_EDIT, wbuf, 1024);
+                    pThis->updateSearchQuery(WToUTF8(wbuf));
+                    InvalidateRect(pThis->hwnd, NULL, FALSE);
+                }
                 if (LOWORD(wParam) == IDC_REPLACE_EDIT) { GetDlgItemTextW(hDlg, IDC_REPLACE_EDIT, wbuf, 1024); pThis->replaceQuery = WToUTF8(wbuf); }
             }
             if (LOWORD(wParam) == IDC_FIND_NEXT || LOWORD(wParam) == IDOK) {
@@ -1625,6 +1757,7 @@ struct Editor {
         D2D1_RECT_F textClipRect = D2D1::RectF(gutterWidth, 0, clientW, clientH);
         rend->PushAxisAlignedClip(textClipRect, D2D1_ANTIALIAS_MODE_ALIASED);
         rend->SetTransform(transform);
+        ensureRegexReady();
         if (SUCCEEDED(hr) && layout) {
             if (isOverwriteMode) rend->CreateSolidColorBrush(D2D1::ColorF(caretColor.r, caretColor.g, caretColor.b, 0.5f), &caretBrush);
             else rend->CreateSolidColorBrush(caretColor, &caretBrush);
@@ -1663,46 +1796,64 @@ struct Editor {
             autoHlBrush->Release();
             if (!searchQuery.empty()) {
                 if (searchRegex) {
-                    try {
-                        std::string actualQuery = preprocessRegexQuery(searchQuery);
-                        std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
-                        if (!searchMatchCase) flags |= std::regex_constants::icase;
-                        std::regex re(actualQuery, flags);
-                        bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
-                        auto words_begin = std::sregex_iterator(text.begin(), text.end(), re);
-                        auto words_end = std::sregex_iterator();
-                        for (auto i = words_begin; i != words_end; ++i) {
-                            size_t offset = i->position();
-                            size_t len = i->length();
-                            if (startsWithCaret && offset > 0) {
-                                std::string matchStr = i->str();
-                                size_t adj = 0;
-                                if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') {
-                                    adj = 2;
+                    if (isRegexValid) {
+                        try {
+                            bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
+                            auto searchStart = text.cbegin();
+                            std::smatch m;
+                            std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
+                            while (std::regex_search(searchStart, text.cend(), m, cachedRegex, flags)) {
+                                size_t matchPos = std::distance(text.cbegin(), searchStart) + m.position();
+                                size_t anchorLen = 0;
+                                if (startsWithCaret && m.size() > 1) {
+                                    anchorLen = m.length(1);
                                 }
-                                else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) {
-                                    adj = 1;
-                                }
-                                offset += adj;
-                                len -= adj;
-                            }
-                            if (len > 0 || (len == 0 && startsWithCaret)) {
-                                size_t startU16 = UTF8ToW(text.substr(0, offset)).length();
-                                size_t lenU16 = UTF8ToW(text.substr(offset, len)).length();
-                                UINT32 count = 0;
-                                layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, 0, 0, &count);
-                                if (count > 0) {
-                                    std::vector<DWRITE_HIT_TEST_METRICS> m(count);
-                                    layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, &m[0], count, &count);
-                                    for (const auto& mm : m) {
-                                        float top = std::floor((mm.top + lineHeight * 0.5f) / lineHeight) * lineHeight;
-                                        rend->FillRectangle(D2D1::RectF(mm.left, top, mm.left + mm.width, top + lineHeight), hlBrush);
+                                if (startsWithCaret && anchorLen == 1 && matchPos > 0) {
+                                    char matchedChar = text[matchPos];
+                                    char prevChar = text[matchPos - 1];
+                                    if (matchedChar == '\n' && prevChar == '\r') {
+                                        size_t skipStep = 1;
+                                        size_t remaining = std::distance(searchStart, text.cend());
+                                        if (m.position() + skipStep > remaining) break;
+                                        std::advance(searchStart, m.position() + skipStep);
+                                        continue;
                                     }
                                 }
+                                size_t contentPos = matchPos + anchorLen;
+                                size_t contentLen = m.length() - anchorLen;
+                                if (contentLen > 0 || (contentLen == 0 && startsWithCaret)) {
+                                    size_t startU16 = UTF8ToW(text.substr(0, contentPos)).length();
+                                    size_t lenU16 = UTF8ToW(text.substr(contentPos, contentLen)).length();
+                                    UINT32 count = 0;
+                                    layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, 0, 0, &count);
+                                    if (count > 0) {
+                                        std::vector<DWRITE_HIT_TEST_METRICS> metrics(count);
+                                        layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, &metrics[0], count, &count);
+                                        for (const auto& mm : metrics) {
+                                            float top = std::floor((mm.top + lineHeight * 0.5f) / lineHeight) * lineHeight;
+                                            float drawWidth = (mm.width > 0) ? mm.width : charWidth;
+                                            rend->FillRectangle(D2D1::RectF(mm.left, top, mm.left + drawWidth, top + lineHeight), hlBrush);
+                                        }
+                                    }
+                                }
+                                size_t advance = (anchorLen > 0) ? anchorLen : m.length();
+                                if (advance == 0) {
+                                    if (flags & std::regex_constants::match_not_bol) {
+                                        if (matchPos + 1 < text.size() && text[matchPos] == '\r' && text[matchPos + 1] == '\n') advance = 2;
+                                        else advance = 1;
+                                    }
+                                    else {
+                                        advance = 0;
+                                    }
+                                }
+                                size_t nextOffset = matchPos + advance;
+                                if (nextOffset > text.length()) break;
+                                searchStart = text.cbegin() + nextOffset;
+                                flags |= std::regex_constants::match_not_bol;
                             }
                         }
+                        catch (...) {}
                     }
-                    catch (...) {}
                 }
                 else {
                     std::string q = searchQuery; std::string t = text;
