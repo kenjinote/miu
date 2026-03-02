@@ -182,12 +182,16 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 }
 - (void)applySystemHighlightColor {
     if (!editor) return;
-    NSColor *highlightColor = [NSColor selectedTextBackgroundColor];
-    NSColor *safeColor = [highlightColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
-    if (!safeColor) safeColor = highlightColor;
-    if (editor->colSel) CGColorRelease(editor->colSel);
-    editor->colSel = [safeColor CGColor];
-    CGColorRetain(editor->colSel);
+    if (@available(macOS 10.14, *)) {
+        [self.effectiveAppearance performAsCurrentDrawingAppearance:^{
+            NSColor *highlightColor = [NSColor selectedTextBackgroundColor];
+            NSColor *safeColor = [highlightColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
+            if (!safeColor) safeColor = highlightColor;
+            if (editor->colSel) CGColorRelease(editor->colSel);
+            editor->colSel = [safeColor CGColor];
+            CGColorRetain(editor->colSel);
+        }];
+    }
 }
 - (void)resetCursorRects {
     [super resetCursorRects];
