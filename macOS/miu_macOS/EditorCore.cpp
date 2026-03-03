@@ -506,25 +506,6 @@ std::pair<std::string, bool> Editor::getHighlightTarget() {
     if (end > start) return { pt.getRange(start, end - start), true };
     return { "", true };
 }
-std::string Editor::preprocessRegexQuery(const std::string& query) {
-    std::string processed; processed.reserve(query.size() * 4);
-    for (size_t i = 0; i < query.size(); ++i) {
-        char c = query[i];
-        if (c == '\\' && i + 1 < query.size()) {
-            char next = query[i + 1];
-            if (next == 'n') {
-                bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
-                if (!isPrecededByCR) { processed += "(?:\\r\\n|[\\r\\n])"; i++; continue; }
-            }
-            processed += c; processed += next; i++; continue;
-        } else if (c == '^') {
-            bool inClass = false; if (i > 0 && query[i - 1] == '[') inClass = true;
-            if (!inClass) { processed += "(?:^|(?:\\r\\n|[\\r\\n]))"; continue; }
-        }
-        processed += c;
-    }
-    return processed;
-}
 std::string Editor::UnescapeString(const std::string& s, const std::string& newline) {
     std::string out; out.reserve(s.size());
     for (size_t i = 0; i < s.size(); ++i) {
@@ -533,50 +514,235 @@ std::string Editor::UnescapeString(const std::string& s, const std::string& newl
         } else out += s[i];
     } return out;
 }
+// EditorCore.cpp 内の該当関数を以下に差し替えてください
+
+std::string Editor::preprocessRegexQuery(const std::string& query) {
+    std::string processed;
+    processed.reserve(query.size() * 4);
+    for (size_t i = 0; i < query.size(); ++i) {
+        char c = query[i];
+        if (c == '\\') {
+            if (i + 1 < query.size()) {
+                char next = query[i + 1];
+                if (next == 'n') {
+                    bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
+                    if (!isPrecededByCR) {
+                        processed += "(?:\\r\\n|[\\r\\n])";
+                        i++; continue;
+                    }
+                }
+                processed += c; processed += next; i++; continue;
+            }
+        }
+        else if (c == '^') {
+            bool inClass = false;
+            if (i > 0 && query[i - 1] == '[') inClass = true;
+            if (!inClass) {
+                processed += "((?:^|(?:\\r\\n|[\\r\\n])))";
+                continue;
+            }
+        }
+        else if (c == '$') {
+            bool inClass = false;
+            if (i > 0 && query[i - 1] == '[') inClass = true;
+            if (!inClass) {
+                processed += "(?=(?:\\r\\n|[\\r\\n]|$))";
+                continue;
+            }
+        }
+        processed += c;
+    }
+    return processed;
+}
+
 size_t Editor::findText(size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
-    size_t len = pt.length(); std::string actualQuery = query;
+    size_t len = pt.length();
+    std::string actualQuery = query;
+    if (isRegex) actualQuery = preprocessRegexQuery(query);
+    
     if (isRegex) {
-        actualQuery = preprocessRegexQuery(query); std::string fullText = pt.getRange(0, len);
+        std::string fullText = pt.getRange(0, len);
         try {
             std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
             if (!matchCase) flags |= std::regex_constants::icase;
-            std::regex re(actualQuery, flags); std::smatch m; size_t foundPos = std::string::npos; size_t foundLen = 0;
+            std::regex re(actualQuery, flags);
+            std::smatch m;
+            size_t foundPos = std::string::npos;
+            size_t foundLen = 0;
             bool startsWithCaret = (!query.empty() && query[0] == '^');
+            
             if (forward) {
-                if (startPos >= fullText.size()) startPos = 0;
-                size_t searchStartIdx = startPos; std::regex_constants::match_flag_type searchFlags = std::regex_constants::match_default;
+                if (startPos > fullText.size()) startPos = 0;
+                size_t searchStartIdx = startPos;
+                std::regex_constants::match_flag_type searchFlags = std::regex_constants::match_default;
+                
+                // ^にマッチさせるため、直前が改行ならそこから検索を開始する（バックトラック）
                 if (searchStartIdx > 0) {
-                    searchFlags |= std::regex_constants::match_not_bol; char prevChar = fullText[searchStartIdx - 1];
-                    if (prevChar == '\n') { searchStartIdx--; if (searchStartIdx > 0 && fullText[searchStartIdx - 1] == '\r') searchStartIdx--; } else if (prevChar == '\r') searchStartIdx--;
+                    searchFlags |= std::regex_constants::match_not_bol;
+                    char prevChar = fullText[searchStartIdx - 1];
+                    if (prevChar == '\n') {
+                        searchStartIdx--;
+                        if (searchStartIdx > 0 && fullText[searchStartIdx - 1] == '\r') {
+                            searchStartIdx--;
+                        }
+                    }
+                    else if (prevChar == '\r') {
+                        searchStartIdx--;
+                    }
                 }
+
                 std::string::const_iterator searchStartIter = fullText.begin() + searchStartIdx;
-                if (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) { foundPos = searchStartIdx + m.position(); foundLen = m.length(); }
-                else if (startPos > 0) { if (std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) { foundPos = m.position(); foundLen = m.length(); } }
-            } else {
-                auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re); auto words_end = std::sregex_iterator();
-                size_t bestPos = std::string::npos; size_t limit = (startPos == 0) ? len : startPos;
-                for (auto i = words_begin; i != words_end; ++i) { if (i->position() < (std::ptrdiff_t)limit) { bestPos = i->position(); foundLen = i->length(); } }
-                if (bestPos != std::string::npos) foundPos = bestPos;
-            }
-            if (foundPos != std::string::npos) {
-                if (foundPos > 0 && startsWithCaret) {
-                    std::string matchStr = fullText.substr(foundPos, foundLen); size_t adj = 0;
-                    if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2; else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) adj = 1;
-                    foundPos += adj; foundLen -= adj;
+                
+                // 検索ループ
+                while (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) {
+                    size_t currentMatchPos = searchStartIdx + m.position();
+                    size_t currentMatchLen = m.length();
+                    size_t currentMatchEnd = currentMatchPos + currentMatchLen;
+
+                    // ^ の検索で、改行文字にマッチして幅を持ってしまっている場合の特別判定
+                    bool isNewlineMatchForCaret = false;
+                    if (startsWithCaret && currentMatchLen > 0) {
+                        char firstChar = fullText[currentMatchPos];
+                        if (firstChar == '\r' || firstChar == '\n') {
+                            isNewlineMatchForCaret = true;
+                        }
+                    }
+
+                    // 採用判定
+                    bool isValid = false;
+                    if (isNewlineMatchForCaret) {
+                        // 改行マッチの場合は、マッチの「終わり（次の行頭）」がstartPos以降なら有効
+                        if (currentMatchEnd >= startPos) isValid = true;
+                    } else {
+                        // 通常は開始位置で判定
+                        if (currentMatchPos >= startPos) isValid = true;
+                    }
+
+                    if (isValid) {
+                        foundPos = currentMatchPos;
+                        foundLen = currentMatchLen;
+
+                        // ^用の改行マッチだった場合、位置を改行後にずらして幅0扱いにする
+                        if (isNewlineMatchForCaret) {
+                            foundPos += foundLen;
+                            foundLen = 0;
+                        }
+                        break;
+                    }
+
+                    // 指定位置より手前だった場合はスキップして次へ
+                    size_t step = currentMatchLen;
+                    if (step == 0) step = 1;
+
+                    size_t dist = std::distance(searchStartIter, fullText.cend());
+                    if ((size_t)m.position() + step > dist) break;
+
+                    size_t advance = m.position() + step;
+                    std::advance(searchStartIter, advance);
+                    searchStartIdx += advance;
+                    searchFlags |= std::regex_constants::match_not_bol;
                 }
-                if (outLen) *outLen = foundLen; return foundPos;
+
+                // 見つからなかった場合のラップ検索
+                if (foundPos == std::string::npos && startPos > 0) {
+                    if (std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) {
+                        foundPos = m.position();
+                        foundLen = m.length();
+                        // ラップ時も ^ の改行マッチ補正を入れる
+                        if (startsWithCaret && foundLen > 0) {
+                            char firstChar = fullText[foundPos];
+                            if (firstChar == '\r' || firstChar == '\n') {
+                                foundPos += foundLen;
+                                foundLen = 0;
+                            }
+                        }
+                    }
+                }
             }
-        } catch (...) { return std::string::npos; }
+            else {
+                // 後方検索 (Reverse search)
+                auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
+                auto words_end = std::sregex_iterator();
+                size_t bestPos = std::string::npos;
+                size_t bestLen = 0;
+                size_t limit = (startPos == 0) ? len : startPos;
+                
+                for (auto i = words_begin; i != words_end; ++i) {
+                    size_t mPos = i->position();
+                    size_t mLen = i->length();
+                    
+                    // ^補正: 改行マッチなら位置をずらす
+                    if (startsWithCaret && mLen > 0) {
+                        char fc = fullText[mPos];
+                        if (fc == '\r' || fc == '\n') {
+                            mPos += mLen;
+                            mLen = 0;
+                        }
+                    }
+
+                    if (mPos < limit) {
+                        bestPos = mPos;
+                        bestLen = mLen;
+                    }
+                }
+                if (bestPos != std::string::npos) {
+                    foundPos = bestPos;
+                    foundLen = bestLen;
+                }
+            }
+            
+            // ^ や $ の特殊な補正（ファイル末尾などのエッジケース用）
+            if (foundPos == std::string::npos && startsWithCaret && forward) {
+                if (!fullText.empty()) {
+                    char lastChar = fullText.back();
+                    if (lastChar == '\n' || lastChar == '\r') {
+                        if (startPos <= fullText.size()) {
+                            foundPos = fullText.size();
+                            foundLen = 0;
+                        }
+                    }
+                }
+                else if (fullText.empty() && startPos == 0) {
+                    foundPos = 0;
+                    foundLen = 0;
+                }
+            }
+            
+            if (foundPos != std::string::npos) {
+                bool endsWithDollar = (!query.empty() && query.back() == '$');
+                if (endsWithDollar) {
+                    std::string matchStr = fullText.substr(foundPos, foundLen);
+                    size_t adj = 0;
+                    if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2;
+                    else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) adj = 1;
+                    
+                    if (adj > 0) {
+                        foundLen -= adj;
+                    }
+                }
+                if (outLen) *outLen = foundLen;
+                return foundPos;
+            }
+        }
+        catch (...) { return std::string::npos; }
         return std::string::npos;
     }
-    size_t qLen = query.length(); if (outLen) *outLen = qLen;
+
+    // 通常検索ロジック
+    size_t qLen = query.length();
+    if (outLen) *outLen = qLen;
     auto toLower = [](char c) { return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c; };
-    size_t cur = startPos; if (forward) { if (cur >= len) cur = 0; } else { if (cur == 0) cur = len; else cur--; }
-    for (size_t count = 0; count < len; ++count) {
+    size_t cur = startPos;
+    if (forward) { if (cur >= len) cur = 0; }
+    else { if (cur == 0) cur = len; else cur--; }
+    
+    size_t count = 0;
+    while (count < len) {
         bool match = true;
         for (size_t i = 0; i < qLen; ++i) {
-            size_t p = cur + i; if (p >= len) { match = false; break; }
+            size_t p = cur + i;
+            if (p >= len) { match = false; break; }
             char c1 = pt.charAt(p); char c2 = query[i];
             if (!matchCase) { c1 = toLower(c1); c2 = toLower(c2); }
             if (c1 != c2) { match = false; break; }
@@ -585,38 +751,127 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
             if (cur > 0 && isWordChar(pt.charAt(cur - 1))) match = false;
             if (match && (cur + qLen < len) && isWordChar(pt.charAt(cur + qLen))) match = false;
         }
+        if (match) {
+            size_t nextPos = cur + qLen;
+            if (nextPos < len) {
+                unsigned char b1 = (unsigned char)pt.charAt(nextPos);
+                if (b1 == 0xE2 && nextPos + 2 < len) {
+                    unsigned char b2 = (unsigned char)pt.charAt(nextPos + 1);
+                    unsigned char b3 = (unsigned char)pt.charAt(nextPos + 2);
+                    if (b2 == 0x80 && b3 == 0x8D) match = false;
+                }
+                else if (b1 == 0xEF && nextPos + 2 < len) {
+                    unsigned char b2 = (unsigned char)pt.charAt(nextPos + 1);
+                    unsigned char b3 = (unsigned char)pt.charAt(nextPos + 2);
+                    if (b2 == 0xB8 && b3 == 0x8F) match = false;
+                }
+                else if (b1 == 0xF0 && nextPos + 3 < len) {
+                    unsigned char b2 = (unsigned char)pt.charAt(nextPos + 1);
+                    unsigned char b3 = (unsigned char)pt.charAt(nextPos + 2);
+                    unsigned char b4 = (unsigned char)pt.charAt(nextPos + 3);
+                    if (b2 == 0x9F && b3 == 0x8F && (b4 >= 0xBB && b4 <= 0xBF)) match = false;
+                }
+            }
+        }
         if (match) return cur;
-        if (forward) { cur++; if (cur >= len) cur = 0; } else { if (cur == 0) cur = len - 1; else cur--; }
+        if (forward) { cur++; if (cur >= len) cur = 0; }
+        else { if (cur == 0) cur = len - 1; else cur--; }
+        count++;
     }
     return std::string::npos;
 }
+
 void Editor::findNext(bool forward) {
     if (searchQuery.empty()) return;
-    size_t startPos = forward ? (cursors.empty() ? 0 : cursors.back().end()) : (cursors.empty() ? 0 : cursors.back().start());
-    size_t matchLen = 0; size_t pos = findText(startPos, searchQuery, forward, searchMatchCase, searchWholeWord, searchRegex, &matchLen);
-    if (pos != std::string::npos) {
-        cursors.clear(); cursors.push_back({ pos + matchLen, pos, getXFromPos(pos + matchLen), getXFromPos(pos), false });
+    size_t currentCursorPos = forward ? (cursors.empty() ? 0 : cursors.back().end()) : (cursors.empty() ? 0 : cursors.back().start());
+    size_t searchStart = currentCursorPos;
+    bool hasWrapped = false;
+    
+    while (true) {
+        size_t matchLen = 0;
+        size_t pos = findText(searchStart, searchQuery, forward, searchMatchCase, searchWholeWord, searchRegex, &matchLen);
+        
+        if (pos == std::string::npos) {
+            if (forward && !hasWrapped) {
+                searchStart = 0;
+                hasWrapped = true;
+                continue;
+            }
+            else if (!forward && !hasWrapped) {
+                searchStart = pt.length();
+                hasWrapped = true;
+                continue;
+            }
+            if (cbBeep) cbBeep();
+            return;
+        }
+        
+        size_t matchEnd = pos + matchLen;
+        if (forward) {
+            if (!hasWrapped && matchEnd <= currentCursorPos) {
+                size_t nextStart = searchStart + 1;
+                if (searchStart + 1 < pt.length() && pt.charAt(searchStart) == '\r' && pt.charAt(searchStart + 1) == '\n') {
+                    nextStart++;
+                }
+                searchStart = nextStart;
+                if (searchStart > pt.length()) {
+                    searchStart = 0;
+                    hasWrapped = true;
+                }
+                continue;
+            }
+        }
+        
+        cursors.clear();
+        cursors.push_back({ matchEnd, pos, getXFromPos(matchEnd), getXFromPos(pos), false });
         ensureCaretVisible();
+        updateTitleBar();
         if (cbNeedsDisplay) cbNeedsDisplay();
-    } else {
-        if (cbBeep) cbBeep();
+        break;
     }
 }
+
 void Editor::replaceNext() {
     if (cursors.empty() || searchQuery.empty()) return;
-    Cursor& c = cursors.back(); if (!c.hasSelection()) { findNext(true); return; }
-    size_t len = c.end() - c.start(); size_t start = c.start();
-    std::string selText = pt.getRange(start, len); bool match = false; std::string replacement = replaceQuery;
+    Cursor& c = cursors.back();
+    if (!c.hasSelection()) { findNext(true); return; }
+    
+    size_t len = c.end() - c.start();
+    size_t start = c.start();
+    std::string selText = pt.getRange(start, len);
+    bool match = false;
+    std::string replacement = replaceQuery;
+    
     if (searchRegex) {
         try {
-            std::string actualQuery = preprocessRegexQuery(searchQuery); std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
-            if (!searchMatchCase) flags |= std::regex_constants::icase; std::regex re(actualQuery, flags); std::smatch m;
-            if (std::regex_match(selText, m, re)) match = true;
-            else if (start > 0) {
-                int backStep = 0; if (pt.charAt(start - 1) == '\n') { backStep = 1; if (start > 1 && pt.charAt(start - 2) == '\r') backStep = 2; } else if (pt.charAt(start - 1) == '\r') backStep = 1;
-                if (backStep > 0) { std::string extText = pt.getRange(start - backStep, len + backStep); if (std::regex_match(extText, m, re)) match = true; }
+            std::string actualQuery = preprocessRegexQuery(searchQuery);
+            std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+            if (!searchMatchCase) flags |= std::regex_constants::icase;
+            std::regex re(actualQuery, flags);
+            std::smatch m;
+            if (std::regex_match(selText, m, re)) {
+                match = true;
             }
-            if (match) replacement = m.format(UnescapeString(replaceQuery, newlineStr));
+            else if (start > 0) {
+                int backStep = 0;
+                if (pt.charAt(start - 1) == '\n') {
+                    backStep = 1;
+                    if (start > 1 && pt.charAt(start - 2) == '\r') backStep = 2;
+                }
+                else if (pt.charAt(start - 1) == '\r') {
+                    backStep = 1;
+                }
+                if (backStep > 0) {
+                    std::string extendedText = pt.getRange(start - backStep, len + backStep);
+                    if (std::regex_match(extendedText, m, re)) {
+                        match = true;
+                    }
+                }
+            }
+            if (match) {
+                std::string fmt = UnescapeString(replaceQuery, newlineStr);
+                replacement = m.format(fmt);
+            }
         } catch (...) {}
     } else {
         if (len == searchQuery.length()) {
@@ -629,53 +884,185 @@ void Editor::replaceNext() {
         }
         if (match) replacement = replaceQuery;
     }
+    
     if (match) {
-        EditBatch batch; batch.beforeCursors = cursors; pt.erase(start, len); batch.ops.push_back({ EditOp::Erase, start, selText });
+        EditBatch batch; batch.beforeCursors = cursors;
+        pt.erase(start, len); batch.ops.push_back({ EditOp::Erase, start, selText });
         pt.insert(start, replacement); batch.ops.push_back({ EditOp::Insert, start, replacement });
-        cursors.clear(); size_t newEnd = start + replacement.size(); cursors.push_back({ newEnd, start, getXFromPos(newEnd), getXFromPos(start), false });
-        batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
+        
+        cursors.clear();
+        size_t newEnd = start + replacement.size();
+        cursors.push_back({ newEnd, start, getXFromPos(newEnd), getXFromPos(start), false });
+        
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
         if (cbNeedsDisplay) cbNeedsDisplay();
-    } else findNext(true);
+        findNext(true);
+    } else {
+        findNext(true);
+    }
 }
+
 void Editor::replaceAll() {
     if (searchQuery.empty()) return;
-    struct Match { size_t start; size_t len; std::string replacementText; }; std::vector<Match> matches;
-    size_t currentPos = 0, docLen = pt.length(); std::string actualQuery = searchQuery;
+    struct Match { size_t start; size_t len; std::string replacementText; };
+    std::vector<Match> matches;
+    size_t docLen = pt.length();
+    
     if (searchRegex) {
-        actualQuery = preprocessRegexQuery(searchQuery); std::string fullText = pt.getRange(0, docLen); std::string fmt = UnescapeString(replaceQuery, newlineStr);
+        std::string fullText = pt.getRange(0, docLen);
+        std::string fmt = UnescapeString(replaceQuery, newlineStr);
+        std::string actualQuery = preprocessRegexQuery(searchQuery);
         try {
-            std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript; if (!searchMatchCase) flags |= std::regex_constants::icase; std::regex re(actualQuery, flags);
             bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
-            auto begin = std::sregex_iterator(fullText.begin(), fullText.end(), re); auto end = std::sregex_iterator();
-            for (auto i = begin; i != end; ++i) {
-                size_t pos = i->position(), len = i->length(); std::string rText = i->format(fmt);
-                if (startsWithCaret) {
-                    std::string matchStr = i->str(); size_t adj = 0;
-                    if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2; else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) adj = 1;
-                    if (adj > 0) { pos += adj; len -= adj; }
+            auto searchStart = fullText.cbegin();
+            std::smatch m;
+            size_t currentOffset = 0;
+            std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
+            std::regex_constants::syntax_option_type reFlags = std::regex_constants::ECMAScript;
+            if (!searchMatchCase) reFlags |= std::regex_constants::icase;
+            std::regex cachedRegex(actualQuery, reFlags);
+
+            while (std::regex_search(searchStart, fullText.cend(), m, cachedRegex, flags)) {
+                size_t matchPos = currentOffset + m.position();
+                size_t anchorLen = 0;
+                if (startsWithCaret && m.size() > 1) {
+                    anchorLen = m.length(1);
                 }
-                matches.push_back({ pos, len, rText });
+                
+                if (startsWithCaret && anchorLen == 1 && matchPos > 0) {
+                    char matchedChar = fullText[matchPos];
+                    char prevChar = fullText[matchPos - 1];
+                    if (matchedChar == '\n' && prevChar == '\r') {
+                        size_t skipStep = 1;
+                        size_t remaining = std::distance(searchStart, fullText.cend());
+                        if (m.position() + skipStep > remaining) break;
+                        std::advance(searchStart, m.position() + skipStep);
+                        currentOffset += m.position() + skipStep;
+                        continue;
+                    }
+                }
+
+                size_t contentPos = matchPos + anchorLen;
+                size_t contentLen = m.length() - anchorLen;
+                bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
+
+                if (endsWithDollar) {
+                    if (contentLen > 0) {
+                        if (fullText[contentPos + contentLen - 1] == '\n') {
+                            contentLen--;
+                            if (contentLen > 0 && fullText[contentPos + contentLen - 1] == '\r') contentLen--;
+                        }
+                    }
+                }
+                
+                // 重複チェック
+                bool isDuplicate = false;
+                if (!matches.empty()) {
+                    const auto& last = matches.back();
+                    if (last.start == contentPos && last.len == 0 && contentLen == 0) {
+                        isDuplicate = true;
+                    }
+                }
+
+                if (isDuplicate) {
+                    size_t step = 1;
+                    if (matchPos + 1 < fullText.size() && fullText[matchPos] == '\r' && fullText[matchPos + 1] == '\n') step = 2;
+                    size_t relativeAdvance = m.position() + step;
+                    size_t remaining = std::distance(searchStart, fullText.cend());
+                    if (relativeAdvance > remaining) break;
+                    std::advance(searchStart, relativeAdvance);
+                    currentOffset += relativeAdvance;
+                    flags |= std::regex_constants::match_not_bol;
+                    continue;
+                }
+
+                std::string rText = m.format(fmt);
+                matches.push_back({ contentPos, contentLen, rText });
+                
+                size_t step = (anchorLen > 0) ? anchorLen : m.length();
+                if (step == 0) {
+                    if (flags & std::regex_constants::match_not_bol) {
+                        if (matchPos + 1 < fullText.size() && fullText[matchPos] == '\r' && fullText[matchPos + 1] == '\n') step = 2;
+                        else step = 1;
+                    }
+                    else {
+                        step = 0;
+                    }
+                }
+                
+                size_t relativeAdvance = m.position() + step;
+                size_t remaining = std::distance(searchStart, fullText.cend());
+                if (relativeAdvance > remaining) break;
+                std::advance(searchStart, relativeAdvance);
+                currentOffset += relativeAdvance;
+                flags |= std::regex_constants::match_not_bol;
             }
-        } catch (...) { return; }
+
+            if (startsWithCaret && !fullText.empty()) {
+                char lastChar = fullText.back();
+                if (lastChar == '\n' || lastChar == '\r') {
+                    bool alreadyMatchedEOF = false;
+                    if (!matches.empty()) {
+                        if (matches.back().start >= fullText.size()) alreadyMatchedEOF = true;
+                    }
+                    if (!alreadyMatchedEOF) {
+                        matches.push_back({ fullText.size(), 0, fmt });
+                    }
+                }
+            }
+        }
+        catch (...) { return; }
     } else {
+        size_t currentPos = 0;
         while (true) {
-            size_t matchLen = 0; size_t pos = findText(currentPos, searchQuery, true, searchMatchCase, searchWholeWord, false, &matchLen);
+            size_t matchLen = 0;
+            size_t pos = findText(currentPos, searchQuery, true, searchMatchCase, searchWholeWord, false, &matchLen);
             if (pos == std::string::npos || pos < currentPos) break;
-            matches.push_back({ pos, matchLen, replaceQuery }); currentPos = pos + matchLen; if (currentPos > docLen) break;
+            matches.push_back({ pos, matchLen, replaceQuery });
+            currentPos = pos + matchLen;
+            if (currentPos > docLen) break;
         }
     }
+
     if (matches.empty()) { if (cbBeep) cbBeep(); return; }
-    EditBatch batch; batch.beforeCursors = cursors;
+
+    EditBatch batch;
+    batch.beforeCursors = cursors;
+    
+    // 後ろから順に適用
     for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
-        size_t start = it->start, len = it->len; std::string deleted = pt.getRange(start, len);
-        pt.erase(start, len); batch.ops.push_back({ EditOp::Erase, start, deleted });
-        pt.insert(start, it->replacementText); batch.ops.push_back({ EditOp::Insert, start, it->replacementText });
+        size_t start = it->start;
+        size_t len = it->len;
+        
+        if (start + len > pt.length()) continue;
+
+        std::string deleted = pt.getRange(start, len);
+        pt.erase(start, len);
+        batch.ops.push_back({ EditOp::Erase, start, deleted });
+        pt.insert(start, it->replacementText);
+        batch.ops.push_back({ EditOp::Insert, start, it->replacementText });
     }
-    size_t finalMatchIdx = matches.size() - 1; long long offsetBeforeFinal = 0;
-    for (size_t i = 0; i < finalMatchIdx; ++i) offsetBeforeFinal += (long long)matches[i].replacementText.size() - (long long)matches[i].len;
-    size_t lastReplaceStart = (size_t)((long long)matches.back().start + offsetBeforeFinal); size_t lastReplaceEnd = lastReplaceStart + matches.back().replacementText.size();
-    cursors.clear(); cursors.push_back({ lastReplaceEnd, lastReplaceStart, getXFromPos(lastReplaceEnd), getXFromPos(lastReplaceStart), false });
-    batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
+
+    size_t finalMatchIdx = matches.size() - 1;
+    long long offsetBeforeFinal = 0;
+    for (size_t i = 0; i < finalMatchIdx; ++i) {
+        offsetBeforeFinal += (long long)matches[i].replacementText.size() - (long long)matches[i].len;
+    }
+    size_t lastReplaceStart = (size_t)((long long)matches.back().start + offsetBeforeFinal);
+    size_t lastReplaceEnd = lastReplaceStart + matches.back().replacementText.size();
+    
+    cursors.clear();
+    cursors.push_back({ lastReplaceEnd, lastReplaceStart, getXFromPos(lastReplaceEnd), getXFromPos(lastReplaceStart), false });
+    
+    batch.afterCursors = cursors;
+    undo.push(batch);
+    rebuildLineStarts();
+    ensureCaretVisible();
+    updateDirtyFlag();
     if (cbNeedsDisplay) cbNeedsDisplay();
     
     if (cbShowReplaceAlert) cbShowReplaceAlert((int)matches.size());
@@ -1127,6 +1514,8 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     int start = vScrollPos; int vis = (int)(vh / lineHeight) + 2; int end = std::min((int)lineStarts.size(), start + vis);
     CGFloat asc = CTFontGetAscent(fontRef);
     CGContextSaveGState(ctx); CGContextClipToRect(ctx, CGRectMake(gutterWidth, 0, vw, vh));
+    
+    // 自動ハイライト (カーソル下の単語)
     auto [autoStr, isWholeWord] = getHighlightTarget();
     if (!autoStr.empty() && autoStr != searchQuery) {
         CGColorRef autoHlColor = isDarkMode ? CGColorCreateGenericRGB(0.35, 0.35, 0.35, 0.5) : CGColorCreateGenericRGB(0.85, 0.85, 0.85, 0.5);
@@ -1141,43 +1530,152 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                 if (shouldHighlight && (docPos + autoStr.length() < pt.length()) && isWordChar(pt.charAt(docPos + autoStr.length()))) shouldHighlight = false;
             }
             if (shouldHighlight) {
-                int li = getLineIdx(docPos);
-                if (li >= start && li < end) {
-                    float y = (float)(li - start) * lineHeight;
-                    float x1 = getXInLine(li, docPos); float x2 = getXInLine(li, docPos + autoStr.length());
-                    CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                size_t currentDrawPos = docPos;
+                size_t remainingLen = autoStr.length();
+                while (remainingLen > 0) {
+                    int li = getLineIdx(currentDrawPos);
+                    size_t lineEndPos = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
+                    size_t lineVisualEnd = lineEndPos;
+                    if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\n') lineVisualEnd--;
+                    if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\r') lineVisualEnd--;
+                    
+                    size_t lenInLine = std::min(remainingLen, lineVisualEnd > currentDrawPos ? lineVisualEnd - currentDrawPos : 0);
+                    if (lenInLine == 0 && remainingLen > 0 && currentDrawPos < lineEndPos) lenInLine = std::min(remainingLen, lineEndPos - currentDrawPos);
+
+                    if (li >= start && li < end) {
+                        float y = (float)(li - start) * lineHeight;
+                        float x1 = getXInLine(li, currentDrawPos);
+                        float x2 = getXInLine(li, currentDrawPos + lenInLine);
+                        CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                    }
+                    size_t consumed = std::min(remainingLen, lineEndPos - currentDrawPos);
+                    if (consumed == 0) break;
+                    currentDrawPos += consumed;
+                    remainingLen -= consumed;
                 }
             }
             searchPos += 1;
         }
         CGColorRelease(autoHlColor);
     }
+
+    // 検索クエリのハイライト
     if (!searchQuery.empty()) {
         CGColorRef hlColor = isDarkMode ? CGColorCreateGenericRGB(0.4, 0.4, 0.0, 0.6) : CGColorCreateGenericRGB(1.0, 1.0, 0.0, 0.4);
         CGContextSetFillColorWithColor(ctx, hlColor);
+        
         size_t searchRangeStart = lineStarts[start];
         size_t searchRangeEnd = (end < lineStarts.size()) ? lineStarts[end] : pt.length();
         std::string visibleText = pt.getRange(searchRangeStart, searchRangeEnd - searchRangeStart);
+        
         if (searchRegex) {
             try {
                 std::string actualQuery = preprocessRegexQuery(searchQuery);
                 std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
                 if (!searchMatchCase) flags |= std::regex_constants::icase;
                 std::regex re(actualQuery, flags);
-                auto words_begin = std::sregex_iterator(visibleText.begin(), visibleText.end(), re);
-                auto words_end = std::sregex_iterator();
-                for (auto i = words_begin; i != words_end; ++i) {
-                    size_t offset = i->position(); size_t len = i->length();
-                    size_t docPos = searchRangeStart + offset;
-                    int li = getLineIdx(docPos);
-                    if (li >= start && li < end) {
-                        float y = (float)(li - start) * lineHeight;
-                        float x1 = getXInLine(li, docPos); float x2 = getXInLine(li, docPos + len);
-                        CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                
+                bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
+                auto searchStart = visibleText.cbegin();
+                std::smatch m;
+                std::regex_constants::match_flag_type matchFlags = std::regex_constants::match_default;
+                
+                while (std::regex_search(searchStart, visibleText.cend(), m, re, matchFlags)) {
+                    size_t matchPos = std::distance(visibleText.cbegin(), searchStart) + m.position();
+                    size_t anchorLen = 0;
+                    
+                    if (startsWithCaret && m.size() > 1) {
+                        anchorLen = m.length(1);
                     }
+                    
+                    if (startsWithCaret && anchorLen == 1 && matchPos > 0) {
+                        char matchedChar = visibleText[matchPos];
+                        char prevChar = visibleText[matchPos - 1];
+                        if (matchedChar == '\n' && prevChar == '\r') {
+                            size_t skipStep = 1;
+                            size_t remaining = std::distance(searchStart, visibleText.cend());
+                            if (m.position() + skipStep > remaining) break;
+                            std::advance(searchStart, m.position() + skipStep);
+                            continue;
+                        }
+                    }
+                    
+                    size_t contentPos = matchPos + anchorLen;
+                    size_t contentLen = m.length() - anchorLen;
+                    bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
+                    
+                    if (endsWithDollar) {
+                        if (contentLen > 0) {
+                            if (visibleText[contentPos + contentLen - 1] == '\n') {
+                                contentLen--;
+                                if (contentLen > 0 && visibleText[contentPos + contentLen - 1] == '\r') contentLen--;
+                            }
+                        }
+                    }
+                    
+                    if (contentLen > 0 || (contentLen == 0 && (startsWithCaret || endsWithDollar))) {
+                        size_t docPos = searchRangeStart + contentPos;
+                        
+                        size_t currentDrawPos = docPos;
+                        size_t remainingLen = contentLen;
+                        
+                        // 幅0マッチ(行頭/行末)の可視化
+                        if (remainingLen == 0) {
+                             int li = getLineIdx(currentDrawPos);
+                             if (li >= start && li < end) {
+                                float y = (float)(li - start) * lineHeight;
+                                float x1 = getXInLine(li, currentDrawPos);
+                                // ★修正: 半角文字の幅(charWidth)を使用
+                                CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, charWidth, lineHeight));
+                             }
+                        } else {
+                            while (remainingLen > 0) {
+                                int li = getLineIdx(currentDrawPos);
+                                size_t lineEndPos = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
+                                size_t lineVisualEnd = lineEndPos;
+                                if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\n') lineVisualEnd--;
+                                if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\r') lineVisualEnd--;
+                                
+                                size_t lenInLine = std::min(remainingLen, lineVisualEnd > currentDrawPos ? lineVisualEnd - currentDrawPos : 0);
+                                if (lenInLine == 0 && remainingLen > 0 && currentDrawPos < lineEndPos) lenInLine = std::min(remainingLen, lineEndPos - currentDrawPos);
+
+                                if (li >= start && li < end) {
+                                    float y = (float)(li - start) * lineHeight;
+                                    float x1 = getXInLine(li, currentDrawPos);
+                                    float x2 = getXInLine(li, currentDrawPos + lenInLine);
+                                    // ★修正: 改行(\n)のみの場合など幅が0になる場合は半角幅(charWidth)を使用
+                                    if (x2 <= x1) x2 = x1 + charWidth;
+                                    CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                                }
+                                
+                                size_t consumed = std::min(remainingLen, lineEndPos - currentDrawPos);
+                                if (consumed == 0) break;
+                                currentDrawPos += consumed;
+                                remainingLen -= consumed;
+                            }
+                        }
+                    }
+                    
+                    size_t advance = (anchorLen > 0) ? anchorLen : m.length();
+                    if (advance == 0) {
+                        bool forceAdvance = false;
+                        if (endsWithDollar || (matchFlags & std::regex_constants::match_not_bol)) {
+                            forceAdvance = true;
+                        }
+                        if (forceAdvance) {
+                            if (matchPos + 1 < visibleText.size() && visibleText[matchPos] == '\r' && visibleText[matchPos + 1] == '\n') advance = 2;
+                            else advance = 1;
+                        }
+                    }
+                    
+                    size_t nextOffset = matchPos + advance;
+                    if (nextOffset > visibleText.length()) break;
+                    searchStart = visibleText.cbegin() + nextOffset;
+                    matchFlags |= std::regex_constants::match_not_bol;
                 }
             } catch (...) {}
         } else {
+            // 通常検索
             std::string q = searchQuery; std::string t = visibleText;
             if (!searchMatchCase) { std::transform(q.begin(), q.end(), q.begin(), ::tolower); std::transform(t.begin(), t.end(), t.begin(), ::tolower); }
             size_t offset = 0;
@@ -1189,11 +1687,28 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                 }
                 if (match) {
                     size_t docPos = searchRangeStart + offset;
-                    int li = getLineIdx(docPos);
-                    if (li >= start && li < end) {
-                        float y = (float)(li - start) * lineHeight;
-                        float x1 = getXInLine(li, docPos); float x2 = getXInLine(li, docPos + q.length());
-                        CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                    size_t currentDrawPos = docPos;
+                    size_t remainingLen = q.length();
+                    while (remainingLen > 0) {
+                        int li = getLineIdx(currentDrawPos);
+                        size_t lineEndPos = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
+                        size_t lineVisualEnd = lineEndPos;
+                        if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\n') lineVisualEnd--;
+                        if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\r') lineVisualEnd--;
+                        
+                        size_t lenInLine = std::min(remainingLen, lineVisualEnd > currentDrawPos ? lineVisualEnd - currentDrawPos : 0);
+                        if (lenInLine == 0 && remainingLen > 0 && currentDrawPos < lineEndPos) lenInLine = std::min(remainingLen, lineEndPos - currentDrawPos);
+
+                        if (li >= start && li < end) {
+                            float y = (float)(li - start) * lineHeight;
+                            float x1 = getXInLine(li, currentDrawPos);
+                            float x2 = getXInLine(li, currentDrawPos + lenInLine);
+                            CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                        }
+                        size_t consumed = std::min(remainingLen, lineEndPos - currentDrawPos);
+                        if (consumed == 0) break;
+                        currentDrawPos += consumed;
+                        remainingLen -= consumed;
                     }
                 }
                 offset += 1;
@@ -1201,6 +1716,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
         CGColorRelease(hlColor);
     }
+
     CGContextSetFillColorWithColor(ctx, colSel); bool isRectMode = (cursors.size() > 1);
     for (const auto& c : cursors) {
         if (isRectMode) {
@@ -1320,8 +1836,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + drawX, (float)(l - start) * lineHeight, 2, lineHeight));
         }
     }
-    CGContextRestoreGState(ctx);
-    CGContextSetFillColorWithColor(ctx, colGutterBg); CGContextFillRect(ctx, CGRectMake(0, 0, gutterWidth, h));
+    CGContextRestoreGState(ctx);    CGContextRestoreGState(ctx);    CGContextSetFillColorWithColor(ctx, colGutterBg); CGContextFillRect(ctx, CGRectMake(0, 0, gutterWidth, h));
     for (int i = start; i < end; ++i) {
         CFStringRef n = CFStringCreateWithCString(NULL, std::to_string(i + 1).c_str(), kCFStringEncodingUTF8);
         if (n) {
