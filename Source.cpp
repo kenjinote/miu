@@ -35,7 +35,7 @@
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "uxtheme.lib")
-const std::wstring APP_VERSION = L"miu v1.0.16";
+const std::wstring APP_VERSION = L"miu v1.0.17";
 enum Encoding {
     ENC_UTF8_NOBOM = 0,
     ENC_UTF8_BOM,
@@ -395,7 +395,8 @@ struct Editor {
                 bool inClass = false;
                 if (i > 0 && query[i - 1] == '[') inClass = true;
                 if (!inClass) {
-                    processed += "((?:^|(?:\\r\\n|[\\r\\n])))";
+                    // 修正: キャプチャグループ (...) に変更して、マッチ判定を行えるようにする
+                    processed += "((?:^|(?:\\r\\n|\\r(?!\\n)|[\\n])))";
                     continue;
                 }
             }
@@ -461,9 +462,22 @@ struct Editor {
     void updateThemeColors() {
         isDarkMode = checkSystemDarkMode();
         D2D1::ColorF accent = getWindowsAccentColor(0.5f);
+        bool isTransparencyEnabled = true;
+        HKEY hKey;
+        DWORD val = 1;
+        DWORD size = sizeof(DWORD);
+        if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            if (RegQueryValueExW(hKey, L"EnableTransparency", NULL, NULL, (LPBYTE)&val, &size) == ERROR_SUCCESS) {
+                isTransparencyEnabled = (val != 0);
+            }
+            RegCloseKey(hKey);
+        }
         int backdropValue = DWMSBT_TRANSIENTWINDOW;
-        HRESULT hrMica = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropValue, sizeof(backdropValue));
-        bool isMicaEnabled = SUCCEEDED(hrMica);
+        bool isMicaEnabled = false;
+        if (isTransparencyEnabled) {
+            HRESULT hrMica = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropValue, sizeof(backdropValue));
+            isMicaEnabled = SUCCEEDED(hrMica);
+        }
         float bgAlpha = isMicaEnabled ? 0.0f : 1.0f;
         if (isDarkMode) {
             background = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
@@ -1098,25 +1112,12 @@ struct Editor {
                     while (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) {
                         size_t currentMatchPos = searchStartIdx + m.position();
                         size_t currentMatchLen = m.length();
-                        size_t currentMatchEnd = currentMatchPos + currentMatchLen;
                         size_t anchorLen = 0;
-                        if (startsWithCaret && m.size() > 1) {
+
+                        if (startsWithCaret && m.size() > 1 && m[1].matched) {
                             anchorLen = m.length(1);
                         }
-                        if (startsWithCaret && anchorLen == 1 && currentMatchPos < fullText.size()) {
-                            if (fullText[currentMatchPos] == '\r') {
-                                if (currentMatchPos + 1 < fullText.size() && fullText[currentMatchPos + 1] == '\n') {
-                                    size_t skipStep = 1;
-                                    size_t dist = std::distance(searchStartIter, fullText.cend());
-                                    size_t advance = 2;
-                                    if (m.position() + advance > dist) break;
-                                    std::advance(searchStartIter, m.position() + advance);
-                                    searchStartIdx += m.position() + advance;
-                                    searchFlags |= std::regex_constants::match_not_bol;
-                                    continue;
-                                }
-                            }
-                        }
+
                         size_t contentPos = currentMatchPos + anchorLen;
                         size_t contentLen = currentMatchLen - anchorLen;
                         bool isValid = false;
@@ -1129,7 +1130,13 @@ struct Editor {
                             }
                             else {
                                 char c = fullText[checkPos];
-                                if (c == '\r' || c == '\n') isAtLineEnd = true;
+                                if (c == '\r' || c == '\n') {
+                                    isAtLineEnd = true;
+                                    // 修正: $が \r と \n の間にマッチした場合は無効とする
+                                    if (contentLen == 0 && c == '\n' && checkPos > 0 && fullText[checkPos - 1] == '\r') {
+                                        isAtLineEnd = false;
+                                    }
+                                }
                             }
                             if (!isAtLineEnd) isValid = false;
                         }
@@ -1146,13 +1153,14 @@ struct Editor {
                             }
                             if (isValid) break;
                         }
+
                         size_t step = currentMatchLen;
                         if (step == 0) {
-                            if (anchorLen == 0) step = 1;
-                            else {
-                            }
+                            if (anchorLen > 0 && !(searchFlags & std::regex_constants::match_not_bol)) step = 0;
+                            else step = 1;
                         }
-                        if (currentMatchPos == searchStartIdx && step == 0) step = 1;
+                        if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = 1;
+
                         size_t dist = std::distance(searchStartIter, fullText.cend());
                         if ((size_t)m.position() + step > dist) break;
                         size_t advance = m.position() + step;
@@ -1165,7 +1173,10 @@ struct Editor {
                             size_t mPos = m.position();
                             size_t mLen = m.length();
                             size_t aLen = 0;
-                            if (startsWithCaret && m.size() > 1) aLen = m.length(1);
+                            if (startsWithCaret && m.size() > 1 && m[1].matched) {
+                                aLen = m.length(1);
+                            }
+
                             bool split = false;
                             if (startsWithCaret && aLen == 1 && mPos < fullText.size() && fullText[mPos] == '\r') {
                                 if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') split = true;
@@ -1178,7 +1189,14 @@ struct Editor {
                                     size_t check = cPos + cLen;
                                     if (check < fullText.size()) {
                                         char c = fullText[check];
-                                        if (c != '\r' && c != '\n') valid = false;
+                                        if (c == '\r' || c == '\n') {
+                                            if (cLen == 0 && c == '\n' && check > 0 && fullText[check - 1] == '\r') {
+                                                valid = false;
+                                            }
+                                        }
+                                        else {
+                                            valid = false;
+                                        }
                                     }
                                 }
                                 if (startsWithCaret && endsWithDollar && cLen == 0 && cPos == fullText.size() && !fullText.empty()) {
@@ -1207,7 +1225,10 @@ struct Editor {
                         size_t mPos = i->position();
                         size_t mLen = i->length();
                         size_t aLen = 0;
-                        if (startsWithCaret && i->size() > 1) aLen = i->length(1);
+                        if (startsWithCaret && i->size() > 1 && (*i)[1].matched) {
+                            aLen = i->length(1);
+                        }
+
                         if (startsWithCaret && aLen == 1 && mPos < fullText.size() && fullText[mPos] == '\r') {
                             if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') continue;
                         }
@@ -1217,7 +1238,15 @@ struct Editor {
                             bool isAtEnd = (contentStart + contentLen >= fullText.size());
                             if (!isAtEnd) {
                                 char c = fullText[contentStart + contentLen];
-                                if (c != '\r' && c != '\n') continue;
+                                if (c == '\r' || c == '\n') {
+                                    if (contentLen == 0 && c == '\n' && contentStart + contentLen > 0 && fullText[contentStart + contentLen - 1] == '\r') {
+                                        // skip match between \r and \n
+                                        continue;
+                                    }
+                                }
+                                else {
+                                    continue;
+                                }
                             }
                         }
                         if (startsWithCaret && endsWithDollar && contentLen == 0 && contentStart == fullText.size() && !fullText.empty()) {
@@ -1355,6 +1384,37 @@ struct Editor {
                 if (!searchMatchCase) flags |= std::regex_constants::icase;
                 std::regex re(actualQuery, flags);
                 std::smatch m;
+
+                // 修正: replaceAllと同様に、置換文字列内のグループ番号($1 -> $2)を補正する
+                std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
+                std::string fmt;
+                for (size_t i = 0; i < rawFmt.size(); ++i) {
+                    if (rawFmt[i] == '$') {
+                        fmt += '$';
+                        if (i + 1 < rawFmt.size()) {
+                            if (isdigit((unsigned char)rawFmt[i + 1])) {
+                                i++;
+                                std::string numStr;
+                                while (i < rawFmt.size() && isdigit((unsigned char)rawFmt[i])) {
+                                    numStr += rawFmt[i];
+                                    i++;
+                                }
+                                i--;
+                                int grp = std::stoi(numStr);
+                                if (grp > 0) grp++; // $0はそのまま、$1以降をずらす
+                                fmt += std::to_string(grp);
+                            }
+                            else {
+                                fmt += rawFmt[i + 1];
+                                i++;
+                            }
+                        }
+                    }
+                    else {
+                        fmt += rawFmt[i];
+                    }
+                }
+
                 if (std::regex_match(selText, m, re)) {
                     match = true;
                 }
@@ -1375,7 +1435,6 @@ struct Editor {
                     }
                 }
                 if (match) {
-                    std::string fmt = UnescapeString(replaceQuery, newlineStr);
                     replacement = m.format(fmt);
                 }
             }
@@ -1427,7 +1486,35 @@ struct Editor {
         if (searchRegex) {
             if (isRegexValid) {
                 std::string fullText = pt.getRange(0, docLen);
-                std::string fmt = UnescapeString(replaceQuery, newlineStr);
+                std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
+                std::string fmt;
+                for (size_t i = 0; i < rawFmt.size(); ++i) {
+                    if (rawFmt[i] == '$') {
+                        fmt += '$';
+                        if (i + 1 < rawFmt.size()) {
+                            if (isdigit((unsigned char)rawFmt[i + 1])) {
+                                i++;
+                                std::string numStr;
+                                while (i < rawFmt.size() && isdigit((unsigned char)rawFmt[i])) {
+                                    numStr += rawFmt[i];
+                                    i++;
+                                }
+                                i--;
+                                int grp = std::stoi(numStr);
+                                if (grp > 0) grp++;
+                                fmt += std::to_string(grp);
+                            }
+                            else {
+                                fmt += rawFmt[i + 1];
+                                i++;
+                            }
+                        }
+                    }
+                    else {
+                        fmt += rawFmt[i];
+                    }
+                }
+
                 try {
                     bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
                     bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
@@ -1439,41 +1526,11 @@ struct Editor {
                         size_t matchPos = currentOffset + m.position();
                         size_t matchLen = m.length();
                         size_t anchorLen = 0;
-                        if (startsWithCaret && m.size() > 1) {
+
+                        if (startsWithCaret && m.size() > 1 && m[1].matched) {
                             anchorLen = m.length(1);
                         }
-                        bool isSplitCRLF = false;
-                        if (startsWithCaret && anchorLen == 1 && matchPos < fullText.size()) {
-                            if (fullText[matchPos] == '\r') {
-                                if (matchPos + 1 < fullText.size() && fullText[matchPos + 1] == '\n') {
-                                    isSplitCRLF = true;
-                                }
-                            }
-                        }
-                        if (isSplitCRLF) {
-                            size_t advance = 1;
-                            if (matchPos + 1 < fullText.size() && fullText[matchPos] == '\r' && fullText[matchPos + 1] == '\n') {
-                                advance = 2;
-                            }
-                            size_t remaining = std::distance(searchStart, fullText.cend());
-                            if (m.position() + advance > remaining) break;
-                            std::advance(searchStart, m.position() + advance);
-                            currentOffset += m.position() + advance;
-                            flags |= std::regex_constants::match_not_bol;
-                            continue;
-                        }
-                        if (startsWithCaret && anchorLen == 1 && matchPos > 0) {
-                            char matchedChar = fullText[matchPos];
-                            char prevChar = fullText[matchPos - 1];
-                            if (matchedChar == '\n' && prevChar == '\r') {
-                                size_t skipStep = 1;
-                                size_t remaining = std::distance(searchStart, fullText.cend());
-                                if (m.position() + skipStep > remaining) break;
-                                std::advance(searchStart, m.position() + skipStep);
-                                currentOffset += m.position() + skipStep;
-                                continue;
-                            }
-                        }
+
                         size_t contentPos = matchPos + anchorLen;
                         size_t contentLen = matchLen - anchorLen;
                         if (endsWithDollar) {
@@ -1493,7 +1550,13 @@ struct Editor {
                             }
                             else {
                                 char c = fullText[checkPos];
-                                if (c == '\r' || c == '\n') isAtLineEnd = true;
+                                if (c == '\r' || c == '\n') {
+                                    isAtLineEnd = true;
+                                    // 修正: $が \r と \n の間にマッチした場合は無効とする
+                                    if (contentLen == 0 && c == '\n' && checkPos > 0 && fullText[checkPos - 1] == '\r') {
+                                        isAtLineEnd = false;
+                                    }
+                                }
                             }
                             if (!isAtLineEnd) isValid = false;
                         }
@@ -1518,15 +1581,11 @@ struct Editor {
                         if (!isValid) {
                             size_t step = (anchorLen > 0) ? anchorLen : matchLen;
                             if (step == 0) {
-                                if (flags & std::regex_constants::match_not_bol) {
-                                    if (matchPos + 1 < fullText.size() && fullText[matchPos] == '\r' && fullText[matchPos + 1] == '\n') step = 2;
-                                    else step = 1;
-                                }
-                                else {
-                                    step = 1;
-                                }
+                                if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                                else step = 1;
                             }
-                            if (step == 0) step = 1;
+                            if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
+
                             size_t relativeAdvance = m.position() + step;
                             size_t remaining = std::distance(searchStart, fullText.cend());
                             if (relativeAdvance > remaining) break;
@@ -1539,14 +1598,11 @@ struct Editor {
                         matches.push_back({ contentPos, contentLen, rText });
                         size_t step = (anchorLen > 0) ? anchorLen : matchLen;
                         if (step == 0) {
-                            if (flags & std::regex_constants::match_not_bol) {
-                                if (matchPos + 1 < fullText.size() && fullText[matchPos] == '\r' && fullText[matchPos + 1] == '\n') step = 2;
-                                else step = 1;
-                            }
-                            else {
-                                step = 0;
-                            }
+                            if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                            else step = 1;
                         }
+                        if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
+
                         size_t relativeAdvance = m.position() + step;
                         size_t remaining = std::distance(searchStart, fullText.cend());
                         if (relativeAdvance > remaining) break;
@@ -1693,7 +1749,7 @@ struct Editor {
             }
         }
         if (shouldUpdate) {
-            searchQuery = candidate;
+            updateSearchQuery(candidate);
         }
         if (hFindDlg) {
             updateFindReplaceUI(hFindDlg, isReplaceMode);
@@ -1974,22 +2030,11 @@ struct Editor {
                                 size_t matchPos = std::distance(text.cbegin(), searchStart) + m.position();
                                 size_t matchLen = m.length();
                                 size_t anchorLen = 0;
-                                if (startsWithCaret && m.size() > 1) {
+
+                                if (startsWithCaret && m.size() > 1 && m[1].matched) {
                                     anchorLen = m.length(1);
                                 }
-                                if (startsWithCaret && anchorLen == 1 && matchPos < text.size()) {
-                                    if (text[matchPos] == '\r') {
-                                        if (matchPos + 1 < text.size() && text[matchPos + 1] == '\n') {
-                                            size_t step = 1;
-                                            size_t dist = std::distance(searchStart, text.cend());
-                                            size_t advance = 2;
-                                            if (m.position() + advance > dist) break;
-                                            std::advance(searchStart, m.position() + advance);
-                                            flags |= std::regex_constants::match_not_bol;
-                                            continue;
-                                        }
-                                    }
-                                }
+
                                 size_t contentPos = matchPos + anchorLen;
                                 size_t contentLen = matchLen - anchorLen;
                                 bool shouldHighlight = true;
@@ -2000,7 +2045,13 @@ struct Editor {
                                     }
                                     else {
                                         char c = text[contentPos + contentLen];
-                                        if (c == '\r' || c == '\n') isAtLineEnd = true;
+                                        if (c == '\r' || c == '\n') {
+                                            isAtLineEnd = true;
+                                            // 修正: $が \r と \n の間にマッチした場合は無効とする
+                                            if (contentLen == 0 && c == '\n' && contentPos + contentLen > 0 && text[contentPos + contentLen - 1] == '\r') {
+                                                isAtLineEnd = false;
+                                            }
+                                        }
                                     }
                                     if (!isAtLineEnd) shouldHighlight = false;
                                     if (shouldHighlight && contentPos > 0 && contentPos < text.size()) {
@@ -2023,30 +2074,37 @@ struct Editor {
                                 if (shouldHighlight) {
                                     if (contentLen > 0 || (contentLen == 0 && (startsWithCaret || endsWithDollar))) {
                                         size_t startU16 = UTF8ToW(text.substr(0, contentPos)).length();
-                                        size_t lenU16 = UTF8ToW(text.substr(contentPos, contentLen)).length();
-                                        UINT32 count = 0;
-                                        layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, 0, 0, &count);
-                                        if (count > 0) {
-                                            std::vector<DWRITE_HIT_TEST_METRICS> metrics(count);
-                                            layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, &metrics[0], count, &count);
-                                            for (const auto& mm : metrics) {
-                                                float top = std::floor((mm.top + lineHeight * 0.5f) / lineHeight) * lineHeight;
-                                                float drawWidth = (mm.width > 0) ? mm.width : charWidth;
-                                                rend->FillRectangle(D2D1::RectF(mm.left, top, mm.left + drawWidth, top + lineHeight), hlBrush);
+                                        if (contentLen == 0) {
+                                            FLOAT px, py;
+                                            DWRITE_HIT_TEST_METRICS m;
+                                            layout->HitTestTextPosition((UINT32)startU16, FALSE, &px, &py, &m);
+                                            float top = std::floor((m.top + lineHeight * 0.5f) / lineHeight) * lineHeight;
+                                            float drawW = (m.width > 0) ? m.width : charWidth;
+                                            rend->FillRectangle(D2D1::RectF(px, top, px + drawW, top + lineHeight), hlBrush);
+                                        }
+                                        else {
+                                            size_t lenU16 = UTF8ToW(text.substr(contentPos, contentLen)).length();
+                                            UINT32 count = 0;
+                                            layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, 0, 0, &count);
+                                            if (count > 0) {
+                                                std::vector<DWRITE_HIT_TEST_METRICS> metrics(count);
+                                                layout->HitTestTextRange((UINT32)startU16, (UINT32)lenU16, 0, 0, &metrics[0], count, &count);
+                                                for (const auto& mm : metrics) {
+                                                    float top = std::floor((mm.top + lineHeight * 0.5f) / lineHeight) * lineHeight;
+                                                    float drawWidth = (mm.width > 0) ? mm.width : charWidth;
+                                                    rend->FillRectangle(D2D1::RectF(mm.left, top, mm.left + drawWidth, top + lineHeight), hlBrush);
+                                                }
                                             }
                                         }
                                     }
                                 }
                                 size_t step = matchLen;
                                 if (step == 0) {
-                                    if (flags & std::regex_constants::match_not_bol) {
-                                        if (matchPos + 1 < text.size() && text[matchPos] == '\r' && text[matchPos + 1] == '\n') step = 2;
-                                        else step = 1;
-                                    }
-                                    else {
-                                        step = 1;
-                                    }
+                                    if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                                    else step = 1;
                                 }
+                                if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
+
                                 size_t advance = m.position() + step;
                                 if (std::distance(searchStart, text.cend()) < (ptrdiff_t)advance) break;
                                 std::advance(searchStart, advance);
@@ -2999,9 +3057,7 @@ struct Editor {
     int ShowTaskDialog(const wchar_t* title, const wchar_t* instruction, const wchar_t* content, TASKDIALOG_COMMON_BUTTON_FLAGS buttons, PCWSTR icon) { TASKDIALOGCONFIG c = { 0 }; c.cbSize = sizeof(c); c.hwndParent = hwnd; c.hInstance = GetModuleHandle(NULL); c.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_POSITION_RELATIVE_TO_WINDOW; c.pszWindowTitle = title; c.pszMainInstruction = instruction; c.pszContent = content; c.dwCommonButtons = buttons; c.pszMainIcon = icon; int n = 0; TaskDialogIndirect(&c, &n, NULL, NULL); return n; }
     bool checkUnsavedChanges() {
         if (!isDirty)return true;
-        SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hAppIcon);
         int r = ShowTaskDialog(GetResString(IDS_CONFIRM_TITLE).c_str(), GetResString(IDS_SAVE_PROMPT).c_str(), currentFilePath.empty() ? GetResString(IDS_UNTITLED).c_str() : currentFilePath.c_str(), TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON, TD_WARNING_ICON);
-        updateWindowIcon();
         if (r == IDCANCEL)
             return false;
         if (r == IDYES) {
