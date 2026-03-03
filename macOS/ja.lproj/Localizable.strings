@@ -46,3 +46,5 @@
 "Line:" = "行:";
 "Line Number:" = "行番号:";
 "Go To" = "指定行";
+"Top" = "先頭";
+"Bottom" = "末尾";

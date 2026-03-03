@@ -1008,6 +1008,8 @@
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Save As", nil), @selector(saveDocumentAs:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Find", nil), @selector(cmdFind:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Replace", nil), @selector(cmdReplace:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Top", nil), @selector(moveToDocStart:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Bottom", nil), @selector(moveToDocEnd:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Go To", nil), @selector(cmdGoToLine:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Undo", nil), @selector(handleUndo:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Redo", nil), @selector(handleRedo:))];

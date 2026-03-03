@@ -48,7 +48,7 @@ std::string AnsiToUtf8(const char* data, size_t len) {
     return res;
 }
 #endif
-const std::wstring APP_VERSION = L"miu v1.0.15";
+const std::wstring APP_VERSION = L"miu v1.0.16";
 const std::wstring APP_TITLE = L"miu";
 bool MappedFile::open(const char* path) {
     fd = ::open(path, O_RDONLY); if (fd == -1) return false;
