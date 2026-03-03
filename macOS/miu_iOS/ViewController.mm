@@ -1288,7 +1288,7 @@
             int currentLine = strongSelf->_editorEngine->getLineIdx(head) + 1;
             strongSelf.goToLineField.text = [NSString stringWithFormat:@"%d", currentLine];
         }
-        [UIView animateWithDuration:0.25 animations:^{
+        [UIView animateWithDuration:0.12 animations:^{
             strongSelf.goToLineContainer.hidden = NO;
             [strongSelf.view layoutIfNeeded];
         } completion:^(BOOL finished) {
@@ -1564,6 +1564,8 @@
         replaceBtnsStack
     ]];
     self.replaceRowStack.spacing = 8;
+    self.replaceRowStack.hidden = YES;
+    self.replaceRowStack.alpha = 0.0;
     [mainStack addArrangedSubview:self.replaceRowStack];
     self.matchCaseBtn = createToggleBtn(NSLocalizedString(@"Match Case", nil), @selector(toggleMatchCase:));
     self.wholeWordBtn = createToggleBtn(NSLocalizedString(@"Whole Word", nil), @selector(toggleWholeWord:));
@@ -1580,6 +1582,7 @@
     optionRow.distribution = UIStackViewDistributionFill;
     [mainStack addArrangedSubview:optionRow];
     self.buttonsWidthConstraint = [searchBtnsStack.widthAnchor constraintEqualToAnchor:replaceBtnsStack.widthAnchor];
+    self.buttonsWidthConstraint.priority = UILayoutPriorityDefaultHigh;
 }
 - (void)updateOptionButtonVisual:(UIButton *)btn isSelected:(BOOL)isSelected {
     btn.selected = isSelected;
@@ -1653,12 +1656,18 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
-    [UIView animateWithDuration:0.25 animations:^{
-        self.searchContainer.hidden = NO;
-        self.replaceRowStack.hidden = YES;
-        self.buttonsWidthConstraint.active = NO;
+    
+    // 1. 先にレイアウト構成要素の状態を確定させる (アニメーションブロックの外)
+    self.searchContainer.hidden = NO;
+    self.replaceRowStack.hidden = YES;
+    self.replaceRowStack.alpha = 0.0;
+    self.buttonsWidthConstraint.active = NO;
+    
+    // 2. 状態変更を反映するためのレイアウト更新をアニメーションさせる
+    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
+        // アニメーション完了後にフォーカス移動
         [self.searchField becomeFirstResponder];
     }];
 }
@@ -1670,13 +1679,25 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
-    [UIView animateWithDuration:0.25 animations:^{
-        self.searchContainer.hidden = NO;
-        self.replaceRowStack.hidden = NO;
-        self.buttonsWidthConstraint.active = YES;
+    
+    // 1. 先にレイアウト構成要素の状態を確定させる
+    self.searchContainer.hidden = NO;
+    self.replaceRowStack.hidden = NO;
+    self.replaceRowStack.alpha = 1.0;
+    self.buttonsWidthConstraint.active = YES;
+
+    // 2. 状態変更を反映するためのレイアウト更新をアニメーションさせる
+    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
-        [self.searchField becomeFirstResponder];
+        // アニメーション完了後にフォーカス移動
+        // 置換モードなら置換フィールドへ、検索文字がなければ検索フィールドへなど、お好みで調整可能
+        if (self.searchField.text.length == 0) {
+            [self.searchField becomeFirstResponder];
+        } else {
+            // ここでは検索フィールドをデフォルトにしますが、ReplaceFieldに飛ばしてもOK
+            [self.searchField becomeFirstResponder];
+        }
     }];
 }
 - (BOOL)canBecomeFirstResponder {
@@ -1692,8 +1713,10 @@
         _editorEngine->isReplaceMode = false;
     }
     [self.editorView becomeFirstResponder];
-    [UIView animateWithDuration:0.25 animations:^{
+    
+    [UIView animateWithDuration:0.15 animations:^{
         self.searchContainer.hidden = YES;
+        // コンテナを隠す際もレイアウト更新を行うときれいに閉じる
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         [self.editorView setNeedsDisplay];
@@ -1721,7 +1744,7 @@
 }
 - (void)closeGoToLine {
     [self.editorView becomeFirstResponder];
-    [UIView animateWithDuration:0.25 animations:^{
+    [UIView animateWithDuration:0.12 animations:^{
         self.goToLineContainer.hidden = YES;
         [self.view layoutIfNeeded];
     }];
