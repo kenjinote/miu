@@ -35,7 +35,7 @@
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "uxtheme.lib")
-const std::wstring APP_VERSION = L"miu v1.0.15";
+const std::wstring APP_VERSION = L"miu v1.0.16";
 enum Encoding {
     ENC_UTF8_NOBOM = 0,
     ENC_UTF8_BOM,
