@@ -1080,6 +1080,8 @@ struct Editor {
                     if (startPos > fullText.size()) startPos = 0;
                     size_t searchStartIdx = startPos;
                     std::regex_constants::match_flag_type searchFlags = std::regex_constants::match_default;
+
+                    // ^にマッチさせるため、直前が改行ならそこから検索を開始する（バックトラック）
                     if (searchStartIdx > 0) {
                         searchFlags |= std::regex_constants::match_not_bol;
                         char prevChar = fullText[searchStartIdx - 1];
@@ -1093,31 +1095,110 @@ struct Editor {
                             searchStartIdx--;
                         }
                     }
+
                     std::string::const_iterator searchStartIter = fullText.begin() + searchStartIdx;
-                    if (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) {
-                        foundPos = searchStartIdx + m.position();
-                        foundLen = m.length();
+
+                    while (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) {
+                        size_t currentMatchPos = searchStartIdx + m.position();
+                        size_t currentMatchLen = m.length();
+                        size_t currentMatchEnd = currentMatchPos + currentMatchLen;
+
+                        // ^ の検索で、改行文字にマッチして幅を持ってしまっている場合の特別判定
+                        bool isNewlineMatchForCaret = false;
+                        if (startsWithCaret && currentMatchLen > 0) {
+                            char firstChar = fullText[currentMatchPos];
+                            if (firstChar == '\r' || firstChar == '\n') {
+                                isNewlineMatchForCaret = true;
+                            }
+                        }
+
+                        // 採用判定
+                        bool isValid = false;
+                        if (isNewlineMatchForCaret) {
+                            // 改行マッチの場合は、マッチの「終わり（次の行頭）」がstartPos以降なら有効
+                            if (currentMatchEnd >= startPos) isValid = true;
+                        }
+                        else {
+                            // 通常は開始位置で判定
+                            if (currentMatchPos >= startPos) isValid = true;
+                        }
+
+                        if (isValid) {
+                            foundPos = currentMatchPos;
+                            foundLen = currentMatchLen;
+
+                            // ^用の改行マッチだった場合、位置を改行後にずらして幅0扱いにする
+                            // これによりカーソルが正しく行頭に移動する
+                            if (isNewlineMatchForCaret) {
+                                foundPos += foundLen;
+                                foundLen = 0;
+                            }
+                            break;
+                        }
+
+                        // 指定位置より手前だった場合はスキップして次へ
+                        size_t step = currentMatchLen;
+                        if (step == 0) step = 1;
+
+                        size_t dist = std::distance(searchStartIter, fullText.cend());
+                        if ((size_t)m.position() + step > dist) break;
+
+                        size_t advance = m.position() + step;
+                        std::advance(searchStartIter, advance);
+                        searchStartIdx += advance;
+                        searchFlags |= std::regex_constants::match_not_bol;
                     }
-                    else if (startPos > 0) {
+
+                    // 見つからなかった場合のラップ検索
+                    if (foundPos == std::string::npos && startPos > 0) {
+                        // ラップ検索時も同様の補正が必要だが、先頭から検索するので単純化
                         if (std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) {
                             foundPos = m.position();
                             foundLen = m.length();
+                            // ラップ時も ^ の改行マッチ補正を入れる
+                            if (startsWithCaret && foundLen > 0) {
+                                char firstChar = fullText[foundPos];
+                                if (firstChar == '\r' || firstChar == '\n') {
+                                    foundPos += foundLen;
+                                    foundLen = 0;
+                                }
+                            }
                         }
                     }
                 }
                 else {
+                    // 後方検索 (Reverse search)
                     auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
                     auto words_end = std::sregex_iterator();
                     size_t bestPos = std::string::npos;
+                    size_t bestLen = 0;
                     size_t limit = (startPos == 0) ? len : startPos;
+
                     for (auto i = words_begin; i != words_end; ++i) {
-                        if (i->position() < (std::ptrdiff_t)limit) {
-                            bestPos = i->position();
-                            foundLen = i->length();
+                        size_t mPos = i->position();
+                        size_t mLen = i->length();
+
+                        // ^補正: 改行マッチなら位置をずらす
+                        if (startsWithCaret && mLen > 0) {
+                            char fc = fullText[mPos];
+                            if (fc == '\r' || fc == '\n') {
+                                mPos += mLen;
+                                mLen = 0;
+                            }
+                        }
+
+                        if (mPos < limit) {
+                            bestPos = mPos;
+                            bestLen = mLen;
                         }
                     }
-                    if (bestPos != std::string::npos) foundPos = bestPos;
+                    if (bestPos != std::string::npos) {
+                        foundPos = bestPos;
+                        foundLen = bestLen;
+                    }
                 }
+
+                // ^ や $ の特殊な補正（ファイル末尾などのエッジケース用）
                 if (foundPos == std::string::npos && startsWithCaret && forward) {
                     if (!fullText.empty()) {
                         char lastChar = fullText.back();
@@ -1128,23 +1209,21 @@ struct Editor {
                             }
                         }
                     }
+                    else if (fullText.empty() && startPos == 0) {
+                        foundPos = 0;
+                        foundLen = 0;
+                    }
                 }
                 if (foundPos != std::string::npos) {
-                    if (startsWithCaret) {
+                    // $ の補正などは既存のまま（^の補正は上記ループ内で処理済みだが、念のため残す）
+                    bool endsWithDollar = (!query.empty() && query.back() == '$');
+                    if (endsWithDollar) {
                         std::string matchStr = fullText.substr(foundPos, foundLen);
                         size_t adj = 0;
-                        if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') {
-                            adj = 2;
-                        }
-                        else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) {
-                            adj = 1;
-                        }
-                        if (adj > 0 && adj == foundLen) {
-                            foundPos += adj;
-                            foundLen -= adj;
-                        }
-                        else if (foundPos > 0 && adj > 0) {
-                            foundPos += adj;
+                        if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2;
+                        else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) adj = 1;
+
+                        if (adj > 0) {
                             foundLen -= adj;
                         }
                     }
@@ -1155,6 +1234,7 @@ struct Editor {
             catch (...) { return std::string::npos; }
             return std::string::npos;
         }
+        // 以下、通常検索ロジック（変更なし）
         size_t qLen = query.length();
         if (outLen) *outLen = qLen;
         auto toLower = [](char c) { return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c; };
@@ -1363,6 +1443,33 @@ struct Editor {
                         }
                         size_t contentPos = matchPos + anchorLen;
                         size_t contentLen = m.length() - anchorLen;
+                        bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
+                        if (endsWithDollar) {
+                            if (contentLen > 0) {
+                                if (fullText[contentPos + contentLen - 1] == '\n') {
+                                    contentLen--;
+                                    if (contentLen > 0 && fullText[contentPos + contentLen - 1] == '\r') contentLen--;
+                                }
+                            }
+                        }
+                        bool isDuplicate = false;
+                        if (!matches.empty()) {
+                            const auto& last = matches.back();
+                            if (last.start == contentPos && last.len == 0 && contentLen == 0) {
+                                isDuplicate = true;
+                            }
+                        }
+                        if (isDuplicate) {
+                            size_t step = 1;
+                            if (matchPos + 1 < fullText.size() && fullText[matchPos] == '\r' && fullText[matchPos + 1] == '\n') step = 2;
+                            size_t relativeAdvance = m.position() + step;
+                            size_t remaining = std::distance(searchStart, fullText.cend());
+                            if (relativeAdvance > remaining) break;
+                            std::advance(searchStart, relativeAdvance);
+                            currentOffset += relativeAdvance;
+                            flags |= std::regex_constants::match_not_bol;
+                            continue;
+                        }
                         std::string rText = m.format(fmt);
                         matches.push_back({ contentPos, contentLen, rText });
                         size_t step = (anchorLen > 0) ? anchorLen : m.length();
@@ -1416,6 +1523,8 @@ struct Editor {
         for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
             size_t start = it->start;
             size_t len = it->len;
+            if (start + len > pt.length()) continue;
+
             std::string deleted = pt.getRange(start, len);
             pt.erase(start, len);
             batch.ops.push_back({ EditOp::Erase, start, deleted });
@@ -1821,7 +1930,16 @@ struct Editor {
                                 }
                                 size_t contentPos = matchPos + anchorLen;
                                 size_t contentLen = m.length() - anchorLen;
-                                if (contentLen > 0 || (contentLen == 0 && startsWithCaret)) {
+                                bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
+                                if (endsWithDollar) {
+                                    if (contentLen > 0) {
+                                        if (text[contentPos + contentLen - 1] == '\n') {
+                                            contentLen--;
+                                            if (contentLen > 0 && text[contentPos + contentLen - 1] == '\r') contentLen--;
+                                        }
+                                    }
+                                }
+                                if (contentLen > 0 || (contentLen == 0 && (startsWithCaret || endsWithDollar))) {
                                     size_t startU16 = UTF8ToW(text.substr(0, contentPos)).length();
                                     size_t lenU16 = UTF8ToW(text.substr(contentPos, contentLen)).length();
                                     UINT32 count = 0;
@@ -1838,12 +1956,16 @@ struct Editor {
                                 }
                                 size_t advance = (anchorLen > 0) ? anchorLen : m.length();
                                 if (advance == 0) {
-                                    if (flags & std::regex_constants::match_not_bol) {
+                                    bool forceAdvance = false;
+                                    // $指定時、または match_not_bol フラグがあるのに幅0マッチした場合は進める
+                                    if (endsWithDollar || (flags & std::regex_constants::match_not_bol)) {
+                                        forceAdvance = true;
+                                    }
+
+                                    if (forceAdvance) {
+                                        // 次の文字が改行なら改行分進める、そうでなければ1文字進める
                                         if (matchPos + 1 < text.size() && text[matchPos] == '\r' && text[matchPos + 1] == '\n') advance = 2;
                                         else advance = 1;
-                                    }
-                                    else {
-                                        advance = 0;
                                     }
                                 }
                                 size_t nextOffset = matchPos + advance;
