@@ -395,7 +395,7 @@ struct Editor {
                 bool inClass = false;
                 if (i > 0 && query[i - 1] == '[') inClass = true;
                 if (!inClass) {
-                    processed += "((?:^|(?:\\r\\n|[\\r\\n])))";
+                    processed += "(?:(?:^|(?:\\r\\n|\\r(?!\\n)|[\\n])))";
                     continue;
                 }
             }
@@ -461,9 +461,22 @@ struct Editor {
     void updateThemeColors() {
         isDarkMode = checkSystemDarkMode();
         D2D1::ColorF accent = getWindowsAccentColor(0.5f);
+        bool isTransparencyEnabled = true;
+        HKEY hKey;
+        DWORD val = 1;
+        DWORD size = sizeof(DWORD);
+        if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize", 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+            if (RegQueryValueExW(hKey, L"EnableTransparency", NULL, NULL, (LPBYTE)&val, &size) == ERROR_SUCCESS) {
+                isTransparencyEnabled = (val != 0);
+            }
+            RegCloseKey(hKey);
+        }
         int backdropValue = DWMSBT_TRANSIENTWINDOW;
-        HRESULT hrMica = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropValue, sizeof(backdropValue));
-        bool isMicaEnabled = SUCCEEDED(hrMica);
+        bool isMicaEnabled = false;
+        if (isTransparencyEnabled) {
+            HRESULT hrMica = DwmSetWindowAttribute(hwnd, DWMWA_SYSTEMBACKDROP_TYPE, &backdropValue, sizeof(backdropValue));
+            isMicaEnabled = SUCCEEDED(hrMica);
+        }
         float bgAlpha = isMicaEnabled ? 0.0f : 1.0f;
         if (isDarkMode) {
             background = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
@@ -1100,8 +1113,21 @@ struct Editor {
                         size_t currentMatchLen = m.length();
                         size_t currentMatchEnd = currentMatchPos + currentMatchLen;
                         size_t anchorLen = 0;
-                        if (startsWithCaret && m.size() > 1) {
-                            anchorLen = m.length(1);
+                        if (startsWithCaret) {
+                            if (currentMatchPos == 0) {
+                                anchorLen = 0;
+                            }
+                            else if (fullText[currentMatchPos] == '\n') {
+                                anchorLen = 1;
+                            }
+                            else if (fullText[currentMatchPos] == '\r') {
+                                if (currentMatchPos + 1 < fullText.size() && fullText[currentMatchPos + 1] == '\n') {
+                                    anchorLen = 2;
+                                }
+                                else {
+                                    anchorLen = 1;
+                                }
+                            }
                         }
                         if (startsWithCaret && anchorLen == 1 && currentMatchPos < fullText.size()) {
                             if (fullText[currentMatchPos] == '\r') {
@@ -1165,7 +1191,14 @@ struct Editor {
                             size_t mPos = m.position();
                             size_t mLen = m.length();
                             size_t aLen = 0;
-                            if (startsWithCaret && m.size() > 1) aLen = m.length(1);
+                            if (startsWithCaret) {
+                                if (mPos == 0) aLen = 0;
+                                else if (fullText[mPos] == '\n') aLen = 1;
+                                else if (fullText[mPos] == '\r') {
+                                    if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') aLen = 2;
+                                    else aLen = 1;
+                                }
+                            }
                             bool split = false;
                             if (startsWithCaret && aLen == 1 && mPos < fullText.size() && fullText[mPos] == '\r') {
                                 if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') split = true;
@@ -1207,7 +1240,14 @@ struct Editor {
                         size_t mPos = i->position();
                         size_t mLen = i->length();
                         size_t aLen = 0;
-                        if (startsWithCaret && i->size() > 1) aLen = i->length(1);
+                        if (startsWithCaret) {
+                            if (mPos == 0) aLen = 0;
+                            else if (fullText[mPos] == '\n') aLen = 1;
+                            else if (fullText[mPos] == '\r') {
+                                if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') aLen = 2;
+                                else aLen = 1;
+                            }
+                        }
                         if (startsWithCaret && aLen == 1 && mPos < fullText.size() && fullText[mPos] == '\r') {
                             if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') continue;
                         }
@@ -1439,8 +1479,13 @@ struct Editor {
                         size_t matchPos = currentOffset + m.position();
                         size_t matchLen = m.length();
                         size_t anchorLen = 0;
-                        if (startsWithCaret && m.size() > 1) {
-                            anchorLen = m.length(1);
+                        if (startsWithCaret) {
+                            if (matchPos == 0) anchorLen = 0;
+                            else if (fullText[matchPos] == '\n') anchorLen = 1;
+                            else if (fullText[matchPos] == '\r') {
+                                if (matchPos + 1 < fullText.size() && fullText[matchPos + 1] == '\n') anchorLen = 2;
+                                else anchorLen = 1;
+                            }
                         }
                         bool isSplitCRLF = false;
                         if (startsWithCaret && anchorLen == 1 && matchPos < fullText.size()) {
@@ -1974,8 +2019,13 @@ struct Editor {
                                 size_t matchPos = std::distance(text.cbegin(), searchStart) + m.position();
                                 size_t matchLen = m.length();
                                 size_t anchorLen = 0;
-                                if (startsWithCaret && m.size() > 1) {
-                                    anchorLen = m.length(1);
+                                if (startsWithCaret) {
+                                    if (matchPos == 0) anchorLen = 0;
+                                    else if (text[matchPos] == '\n') anchorLen = 1;
+                                    else if (text[matchPos] == '\r') {
+                                        if (matchPos + 1 < text.size() && text[matchPos + 1] == '\n') anchorLen = 2;
+                                        else anchorLen = 1;
+                                    }
                                 }
                                 if (startsWithCaret && anchorLen == 1 && matchPos < text.size()) {
                                     if (text[matchPos] == '\r') {
@@ -1988,6 +2038,17 @@ struct Editor {
                                             flags |= std::regex_constants::match_not_bol;
                                             continue;
                                         }
+                                    }
+                                }
+                                if (startsWithCaret && anchorLen == 1 && matchPos > 0) {
+                                    char matchedChar = text[matchPos];
+                                    char prevChar = text[matchPos - 1];
+                                    if (matchedChar == '\n' && prevChar == '\r') {
+                                        size_t skipStep = 1;
+                                        size_t remaining = std::distance(searchStart, text.cend());
+                                        if (m.position() + skipStep > remaining) break;
+                                        std::advance(searchStart, m.position() + skipStep);
+                                        continue;
                                     }
                                 }
                                 size_t contentPos = matchPos + anchorLen;
@@ -2999,9 +3060,7 @@ struct Editor {
     int ShowTaskDialog(const wchar_t* title, const wchar_t* instruction, const wchar_t* content, TASKDIALOG_COMMON_BUTTON_FLAGS buttons, PCWSTR icon) { TASKDIALOGCONFIG c = { 0 }; c.cbSize = sizeof(c); c.hwndParent = hwnd; c.hInstance = GetModuleHandle(NULL); c.dwFlags = TDF_ALLOW_DIALOG_CANCELLATION | TDF_POSITION_RELATIVE_TO_WINDOW; c.pszWindowTitle = title; c.pszMainInstruction = instruction; c.pszContent = content; c.dwCommonButtons = buttons; c.pszMainIcon = icon; int n = 0; TaskDialogIndirect(&c, &n, NULL, NULL); return n; }
     bool checkUnsavedChanges() {
         if (!isDirty)return true;
-        SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hAppIcon);
         int r = ShowTaskDialog(GetResString(IDS_CONFIRM_TITLE).c_str(), GetResString(IDS_SAVE_PROMPT).c_str(), currentFilePath.empty() ? GetResString(IDS_UNTITLED).c_str() : currentFilePath.c_str(), TDCBF_YES_BUTTON | TDCBF_NO_BUTTON | TDCBF_CANCEL_BUTTON, TD_WARNING_ICON);
-        updateWindowIcon();
         if (r == IDCANCEL)
             return false;
         if (r == IDYES) {
