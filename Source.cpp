@@ -1693,7 +1693,7 @@ struct Editor {
             }
         }
         if (shouldUpdate) {
-            searchQuery = candidate;
+            updateSearchQuery(candidate);
         }
         if (hFindDlg) {
             updateFindReplaceUI(hFindDlg, isReplaceMode);
