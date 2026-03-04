@@ -483,7 +483,7 @@ struct Editor {
             background = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
             textColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
             gutterBg = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
-            gutterText = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
+            gutterText = D2D1::ColorF(0.33f, 0.33f, 0.33f, 1.0f);
             selColor = accent;
             caretColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
             autoHlColor = D2D1::ColorF(0.35f, 0.35f, 0.35f, 0.5f);
@@ -493,7 +493,7 @@ struct Editor {
             background = D2D1::ColorF(1.0f, 1.0f, 1.0f, bgAlpha);
             textColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
             gutterBg = D2D1::ColorF(1.0f, 1.0f, 1.0f, bgAlpha);
-            gutterText = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
+            gutterText = D2D1::ColorF(0.66f, 0.66f, 0.66f, 1.0f);
             selColor = accent;
             caretColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
             autoHlColor = D2D1::ColorF(0.85f, 0.85f, 0.85f, 0.5f);
@@ -4000,12 +4000,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nShowCmd) {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance; wc.lpszClassName = L"miu"; wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1)); RegisterClass(&wc);
-    HDC hdc = GetDC(NULL);
-    int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
-    int dpiY = GetDeviceCaps(hdc, LOGPIXELSY);
-    ReleaseDC(NULL, hdc);
-    int initialWidth = MulDiv(800, dpiX, 96);
-    int initialHeight = MulDiv(600, dpiY, 96);
+    UINT dpi = GetDpiForSystem();
+    if (dpi == 0) dpi = 96;
+    int initialWidth = MulDiv(800, dpi, 96);
+    int initialHeight = MulDiv(600, dpi, 96);
     HWND hwnd = CreateWindowEx(WS_EX_NOREDIRECTIONBITMAP, wc.lpszClassName, L"miu", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, initialWidth, initialHeight, NULL, NULL, hInstance, NULL);
     if (!hwnd) return 0; ShowWindow(hwnd, nShowCmd);
     if (g_editor.currentFilePath.empty()) {
