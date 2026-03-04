@@ -1700,6 +1700,15 @@ struct Editor {
             SetFocus(GetDlgItem(hDlg, IDC_FIND_EDIT));
             SendMessage(GetDlgItem(hDlg, IDC_FIND_EDIT), EM_SETSEL, 0, -1);
             return FALSE;
+        case WM_ACTIVATE:
+            if (LOWORD(wParam) == WA_ACTIVE || LOWORD(wParam) == WA_CLICKACTIVE) {
+                HWND hEdit = GetDlgItem(hDlg, IDC_FIND_EDIT);
+                if (hEdit) {
+                    SetFocus(hEdit);
+                    SendMessage(hEdit, EM_SETSEL, 0, -1);
+                }
+            }
+            return FALSE;
         case WM_COMMAND:
             if (LOWORD(wParam) == IDC_FIND_CASE || LOWORD(wParam) == IDC_FIND_WORD || LOWORD(wParam) == IDC_FIND_REGEX) {
                 bool bCase = IsDlgButtonChecked(hDlg, IDC_FIND_CASE) == BST_CHECKED;
