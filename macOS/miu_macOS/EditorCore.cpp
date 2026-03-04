@@ -1515,7 +1515,7 @@ void Editor::updateThemeColors() {
         colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
         colGutterBg = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
 #endif
-        colGutterText = CGColorCreateGenericRGB(0.5, 0.5, 0.5, 1.0);
+        colGutterText = CGColorCreateGenericRGB(0.33, 0.33, 0.33, 1.0);
         colSel = CGColorCreateGenericRGB(0.2, 0.3, 0.5, 1.0);
         colCaret = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
     } else {
@@ -1527,7 +1527,7 @@ void Editor::updateThemeColors() {
         colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.0);
         colGutterBg = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.0);
 #endif
-        colGutterText = CGColorCreateGenericRGB(0.5, 0.5, 0.5, 1.0);
+        colGutterText = CGColorCreateGenericRGB(0.66, 0.66, 0.66, 1.0);
         colSel = CGColorCreateGenericRGB(0.70, 0.80, 1.0, 1.0);
         colCaret = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
     }
