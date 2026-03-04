@@ -3081,6 +3081,14 @@ struct Editor {
         o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0";
         o.nFilterIndex = 1;
         o.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+        std::wstring initialDir;
+        if (!currentFilePath.empty()) {
+            size_t lastSlash = currentFilePath.find_last_of(L"\\/");
+            if (lastSlash != std::wstring::npos) {
+                initialDir = currentFilePath.substr(0, lastSlash);
+                o.lpstrInitialDir = initialDir.c_str();
+            }
+        }
         SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hAppIcon);
         if (GetOpenFileNameW(&o)) {
             return openFileFromPath(f);
@@ -3163,6 +3171,16 @@ struct Editor {
     }
     bool saveFileAs() {
         WCHAR f[MAX_PATH] = { 0 };
+        std::wstring initialDir;
+        if (!currentFilePath.empty()) {
+            std::wstring fileName = currentFilePath;
+            size_t lastSlash = currentFilePath.find_last_of(L"\\/");
+            if (lastSlash != std::wstring::npos) {
+                fileName = currentFilePath.substr(lastSlash + 1);
+                initialDir = currentFilePath.substr(0, lastSlash);
+            }
+            wcscpy_s(f, MAX_PATH, fileName.c_str());
+        }
         OPENFILENAMEW o = { 0 };
         o.lStructSize = sizeof(o);
         o.hwndOwner = hwnd;
@@ -3171,6 +3189,9 @@ struct Editor {
         o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0";
         o.nFilterIndex = 1;
         o.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
+        if (!initialDir.empty()) {
+            o.lpstrInitialDir = initialDir.c_str();
+        }
         SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hAppIcon);
         if (GetSaveFileNameW(&o)) {
             return saveFile(f);
