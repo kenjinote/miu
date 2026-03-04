@@ -1082,6 +1082,9 @@
 }
 - (void)performNewDocument {
     if (!_editorEngine) return;
+    [self.editorView unmarkText];
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->newFile();
     _editorEngine->vScrollPos = 0;
     _editorEngine->hScrollPos = 0;
@@ -1090,6 +1093,8 @@
         _editorEngine->searchQuery = self.searchField.text.UTF8String;
     }
     _editorEngine->ensureCaretVisible();
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
     if (_editorEngine->cbUpdateTitleBar) {
         _editorEngine->cbUpdateTitleBar();
@@ -1423,6 +1428,9 @@
     self.currentDocumentURL = accessGranted ? url : nil;
     if (!_isExportingDocument) {
         std::string path = url.path.UTF8String;
+        [self.editorView unmarkText];
+        [self.editorView.inputDelegate selectionWillChange:self.editorView];
+        [self.editorView.inputDelegate textWillChange:self.editorView];
         bool success = _editorEngine->openFileFromPath(path);
         if (success) {
             _editorEngine->vScrollPos = 0;
@@ -1431,8 +1439,10 @@
             if (self.searchField.text.length > 0) {
                 _editorEngine->searchQuery = self.searchField.text.UTF8String;
             }
-            [self.editorView setNeedsDisplay];
         }
+        [self.editorView.inputDelegate textDidChange:self.editorView];
+        [self.editorView.inputDelegate selectionDidChange:self.editorView];
+        [self.editorView setNeedsDisplay];
     } else {
         std::string path = url.path.UTF8String;
         std::wstring wpath = UTF8ToW(path);
@@ -1656,18 +1666,13 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
-    
-    // 1. 先にレイアウト構成要素の状態を確定させる (アニメーションブロックの外)
     self.searchContainer.hidden = NO;
     self.replaceRowStack.hidden = YES;
     self.replaceRowStack.alpha = 0.0;
     self.buttonsWidthConstraint.active = NO;
-    
-    // 2. 状態変更を反映するためのレイアウト更新をアニメーションさせる
     [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
-        // アニメーション完了後にフォーカス移動
         [self.searchField becomeFirstResponder];
     }];
 }
@@ -1679,23 +1684,16 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
-    
-    // 1. 先にレイアウト構成要素の状態を確定させる
     self.searchContainer.hidden = NO;
     self.replaceRowStack.hidden = NO;
     self.replaceRowStack.alpha = 1.0;
     self.buttonsWidthConstraint.active = YES;
-
-    // 2. 状態変更を反映するためのレイアウト更新をアニメーションさせる
     [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
-        // アニメーション完了後にフォーカス移動
-        // 置換モードなら置換フィールドへ、検索文字がなければ検索フィールドへなど、お好みで調整可能
         if (self.searchField.text.length == 0) {
             [self.searchField becomeFirstResponder];
         } else {
-            // ここでは検索フィールドをデフォルトにしますが、ReplaceFieldに飛ばしてもOK
             [self.searchField becomeFirstResponder];
         }
     }];
@@ -1713,10 +1711,8 @@
         _editorEngine->isReplaceMode = false;
     }
     [self.editorView becomeFirstResponder];
-    
     [UIView animateWithDuration:0.15 animations:^{
         self.searchContainer.hidden = YES;
-        // コンテナを隠す際もレイアウト更新を行うときれいに閉じる
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         [self.editorView setNeedsDisplay];
@@ -1780,28 +1776,40 @@
 }
 - (void)doFindNext {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->findNext(true);
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 - (void)doFindPrev {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->findNext(false);
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 - (void)doReplace {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->replaceQuery = self.replaceField.text.UTF8String;
     _editorEngine->replaceNext();
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 - (void)doReplaceAll {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->replaceQuery = self.replaceField.text.UTF8String;
     _editorEngine->replaceAll();
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 @end
