@@ -428,7 +428,6 @@
         _scrollVelocity.x = 0;
     }
     [self setNeedsDisplay];
-    [self setNeedsLayout];
     [self.inputDelegate selectionDidChange:self];
 }
 - (void)startMomentumScroll {
@@ -1073,6 +1072,7 @@
 @property (nonatomic, strong) UIView *goToLineContainer;
 @property (nonatomic, strong) UITextField *goToLineField;
 @property (nonatomic, strong) UIImageView *titleIconView;
+@property (nonatomic, assign) CGSize lastLayoutSize;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1349,8 +1349,11 @@
             _editorEngine->vScrollPos = 0;
             _editorEngine->hScrollPos = 0;
         } else {
-            _editorEngine->updateMaxLineWidth();
-            _editorEngine->ensureCaretVisible();
+            if (!CGSizeEqualToSize(self.editorView.bounds.size, self.lastLayoutSize)) {
+                _editorEngine->updateMaxLineWidth();
+                _editorEngine->ensureCaretVisible();
+                self.lastLayoutSize = self.editorView.bounds.size; // サイズを更新
+            }
         }
         [self.editorView setNeedsDisplay];
     }
