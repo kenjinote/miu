@@ -45,10 +45,11 @@
 - (BOOL)containsEnd { return _containsEndValue; }
 - (BOOL)isVertical { return _isVerticalValue; }
 @end
-@interface iOSEditorView : UIView <UITextInput, UIGestureRecognizerDelegate>
+@interface iOSEditorView : UIView <UITextInput, UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate>
 @property (nonatomic) Editor *editor;
 @property (nonatomic, copy) void (^onNewDocumentAction)(void);
 @property (nonatomic, copy) void (^onGoToLineAction)(void);
+@property (nonatomic, strong) UIEditMenuInteraction *editMenuInteraction API_AVAILABLE(ios(16.0));
 - (void)jumpToLine:(NSInteger)lineNumber;
 - (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd;
 @end
@@ -101,8 +102,48 @@
         [self addGestureRecognizer:_panRecognizer];
         UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinch:)];
         [self addGestureRecognizer:pinch];
+        if (@available(iOS 16.0, *)) {
+            _editMenuInteraction = [[UIEditMenuInteraction alloc] initWithDelegate:self];
+            [self addInteraction:_editMenuInteraction];
+        }
     }
     return self;
+}
+- (void)showEditMenuAtRect:(CGRect)rect {
+    if (@available(iOS 16.0, *)) {
+        UIEditMenuConfiguration *config = [UIEditMenuConfiguration configurationWithIdentifier:nil sourcePoint:CGPointMake(CGRectGetMidX(rect), CGRectGetMinY(rect))];
+        [self.editMenuInteraction presentEditMenuWithConfiguration:config];
+    } else {
+        // iOS 15以下
+        UIMenuController *menu = [UIMenuController sharedMenuController];
+        if (menu.isMenuVisible) return;
+        [menu showMenuFromView:self rect:rect];
+    }
+}
+- (void)showMenuForCurrentSelection {
+    if (!self.editor || self.editor->cursors.empty()) return;
+    
+    Cursor c = self.editor->cursors.back();
+    CGRect targetRect;
+    
+    if (c.hasSelection()) {
+        // 選択範囲がある場合、選択範囲の矩形（あるいはその一部）をターゲットにする
+        NSArray<UITextSelectionRect *> *rects = [self selectionRectsForRange:self.selectedTextRange];
+        if (rects.count > 0) {
+            // 最初の行の矩形、あるいは全体の包含矩形を使用
+            targetRect = rects.firstObject.rect;
+            for (UITextSelectionRect *r in rects) {
+                targetRect = CGRectUnion(targetRect, r.rect);
+            }
+        } else {
+            targetRect = [self caretRectForPosition:self.selectedTextRange.end];
+        }
+    } else {
+        // カーソルのみの場合、カーソル位置をターゲットにする
+        targetRect = [self caretRectForPosition:self.selectedTextRange.end];
+    }
+    
+    [self showEditMenuAtRect:targetRect];
 }
 - (void)onSingleTap:(UITapGestureRecognizer *)sender {
     if (sender.state == UIGestureRecognizerStateEnded) {
@@ -194,6 +235,7 @@
     if (_isMouseSelecting) {
         _isMouseSelecting = NO;
         _selectionGranularity = 0;
+        [self showMenuForCurrentSelection];
         return;
     }
     [super touchesEnded:touches withEvent:event];
@@ -212,6 +254,9 @@
     self.editor->ensureCaretVisible();
     [self setNeedsDisplay];
     [self becomeFirstResponder];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self showMenuForCurrentSelection];
+    });
 }
 - (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd {
     *outStart = pos;
@@ -1054,6 +1099,20 @@
     [self setNeedsDisplay];
     [self setNeedsLayout];
 }
+#pragma mark - UIEditMenuInteractionDelegate
+
+- (CGRect)editMenuInteraction:(UIEditMenuInteraction *)interaction targetRectForConfiguration:(UIEditMenuConfiguration *)configuration API_AVAILABLE(ios(16.0)) {
+    // メニューの表示位置を調整（カーソルや選択範囲に合わせる）
+    if (!self.editor || self.editor->cursors.empty()) return CGRectZero;
+    Cursor c = self.editor->cursors.back();
+    if (c.hasSelection()) {
+        NSArray *rects = [self selectionRectsForRange:self.selectedTextRange];
+        if (rects.count > 0) return [rects.firstObject rect];
+    }
+    return [self caretRectForPosition:self.selectedTextRange.end];
+}
+
+
 @end
 @interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate>
 @property (nonatomic, strong) iOSEditorView *editorView;
