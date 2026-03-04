@@ -45,10 +45,11 @@
 - (BOOL)containsEnd { return _containsEndValue; }
 - (BOOL)isVertical { return _isVerticalValue; }
 @end
-@interface iOSEditorView : UIView <UITextInput, UIGestureRecognizerDelegate>
+@interface iOSEditorView : UIView <UITextInput, UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate>
 @property (nonatomic) Editor *editor;
 @property (nonatomic, copy) void (^onNewDocumentAction)(void);
 @property (nonatomic, copy) void (^onGoToLineAction)(void);
+@property (nonatomic, strong) UIEditMenuInteraction *editMenuInteraction API_AVAILABLE(ios(16.0));
 - (void)jumpToLine:(NSInteger)lineNumber;
 - (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd;
 @end
@@ -101,8 +102,48 @@
         [self addGestureRecognizer:_panRecognizer];
         UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinch:)];
         [self addGestureRecognizer:pinch];
+        if (@available(iOS 16.0, *)) {
+            _editMenuInteraction = [[UIEditMenuInteraction alloc] initWithDelegate:self];
+            [self addInteraction:_editMenuInteraction];
+        }
     }
     return self;
+}
+- (void)showEditMenuAtRect:(CGRect)rect {
+    if (@available(iOS 16.0, *)) {
+        UIEditMenuConfiguration *config = [UIEditMenuConfiguration configurationWithIdentifier:nil sourcePoint:CGPointMake(CGRectGetMidX(rect), CGRectGetMinY(rect))];
+        [self.editMenuInteraction presentEditMenuWithConfiguration:config];
+    } else {
+        // iOS 15以下
+        UIMenuController *menu = [UIMenuController sharedMenuController];
+        if (menu.isMenuVisible) return;
+        [menu showMenuFromView:self rect:rect];
+    }
+}
+- (void)showMenuForCurrentSelection {
+    if (!self.editor || self.editor->cursors.empty()) return;
+    
+    Cursor c = self.editor->cursors.back();
+    CGRect targetRect;
+    
+    if (c.hasSelection()) {
+        // 選択範囲がある場合、選択範囲の矩形（あるいはその一部）をターゲットにする
+        NSArray<UITextSelectionRect *> *rects = [self selectionRectsForRange:self.selectedTextRange];
+        if (rects.count > 0) {
+            // 最初の行の矩形、あるいは全体の包含矩形を使用
+            targetRect = rects.firstObject.rect;
+            for (UITextSelectionRect *r in rects) {
+                targetRect = CGRectUnion(targetRect, r.rect);
+            }
+        } else {
+            targetRect = [self caretRectForPosition:self.selectedTextRange.end];
+        }
+    } else {
+        // カーソルのみの場合、カーソル位置をターゲットにする
+        targetRect = [self caretRectForPosition:self.selectedTextRange.end];
+    }
+    
+    [self showEditMenuAtRect:targetRect];
 }
 - (void)onSingleTap:(UITapGestureRecognizer *)sender {
     if (sender.state == UIGestureRecognizerStateEnded) {
@@ -194,6 +235,7 @@
     if (_isMouseSelecting) {
         _isMouseSelecting = NO;
         _selectionGranularity = 0;
+        [self showMenuForCurrentSelection];
         return;
     }
     [super touchesEnded:touches withEvent:event];
@@ -212,6 +254,9 @@
     self.editor->ensureCaretVisible();
     [self setNeedsDisplay];
     [self becomeFirstResponder];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self showMenuForCurrentSelection];
+    });
 }
 - (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd {
     *outStart = pos;
@@ -428,7 +473,6 @@
         _scrollVelocity.x = 0;
     }
     [self setNeedsDisplay];
-    [self setNeedsLayout];
     [self.inputDelegate selectionDidChange:self];
 }
 - (void)startMomentumScroll {
@@ -1055,6 +1099,20 @@
     [self setNeedsDisplay];
     [self setNeedsLayout];
 }
+#pragma mark - UIEditMenuInteractionDelegate
+
+- (CGRect)editMenuInteraction:(UIEditMenuInteraction *)interaction targetRectForConfiguration:(UIEditMenuConfiguration *)configuration API_AVAILABLE(ios(16.0)) {
+    // メニューの表示位置を調整（カーソルや選択範囲に合わせる）
+    if (!self.editor || self.editor->cursors.empty()) return CGRectZero;
+    Cursor c = self.editor->cursors.back();
+    if (c.hasSelection()) {
+        NSArray *rects = [self selectionRectsForRange:self.selectedTextRange];
+        if (rects.count > 0) return [rects.firstObject rect];
+    }
+    return [self caretRectForPosition:self.selectedTextRange.end];
+}
+
+
 @end
 @interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate>
 @property (nonatomic, strong) iOSEditorView *editorView;
@@ -1073,6 +1131,7 @@
 @property (nonatomic, strong) UIView *goToLineContainer;
 @property (nonatomic, strong) UITextField *goToLineField;
 @property (nonatomic, strong) UIImageView *titleIconView;
+@property (nonatomic, assign) CGSize lastLayoutSize;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1082,6 +1141,9 @@
 }
 - (void)performNewDocument {
     if (!_editorEngine) return;
+    [self.editorView unmarkText];
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->newFile();
     _editorEngine->vScrollPos = 0;
     _editorEngine->hScrollPos = 0;
@@ -1090,6 +1152,8 @@
         _editorEngine->searchQuery = self.searchField.text.UTF8String;
     }
     _editorEngine->ensureCaretVisible();
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
     if (_editorEngine->cbUpdateTitleBar) {
         _editorEngine->cbUpdateTitleBar();
@@ -1288,7 +1352,7 @@
             int currentLine = strongSelf->_editorEngine->getLineIdx(head) + 1;
             strongSelf.goToLineField.text = [NSString stringWithFormat:@"%d", currentLine];
         }
-        [UIView animateWithDuration:0.25 animations:^{
+        [UIView animateWithDuration:0.12 animations:^{
             strongSelf.goToLineContainer.hidden = NO;
             [strongSelf.view layoutIfNeeded];
         } completion:^(BOOL finished) {
@@ -1344,8 +1408,11 @@
             _editorEngine->vScrollPos = 0;
             _editorEngine->hScrollPos = 0;
         } else {
-            _editorEngine->updateMaxLineWidth();
-            _editorEngine->ensureCaretVisible();
+            if (!CGSizeEqualToSize(self.editorView.bounds.size, self.lastLayoutSize)) {
+                _editorEngine->updateMaxLineWidth();
+                _editorEngine->ensureCaretVisible();
+                self.lastLayoutSize = self.editorView.bounds.size; // サイズを更新
+            }
         }
         [self.editorView setNeedsDisplay];
     }
@@ -1423,6 +1490,9 @@
     self.currentDocumentURL = accessGranted ? url : nil;
     if (!_isExportingDocument) {
         std::string path = url.path.UTF8String;
+        [self.editorView unmarkText];
+        [self.editorView.inputDelegate selectionWillChange:self.editorView];
+        [self.editorView.inputDelegate textWillChange:self.editorView];
         bool success = _editorEngine->openFileFromPath(path);
         if (success) {
             _editorEngine->vScrollPos = 0;
@@ -1431,8 +1501,10 @@
             if (self.searchField.text.length > 0) {
                 _editorEngine->searchQuery = self.searchField.text.UTF8String;
             }
-            [self.editorView setNeedsDisplay];
         }
+        [self.editorView.inputDelegate textDidChange:self.editorView];
+        [self.editorView.inputDelegate selectionDidChange:self.editorView];
+        [self.editorView setNeedsDisplay];
     } else {
         std::string path = url.path.UTF8String;
         std::wstring wpath = UTF8ToW(path);
@@ -1564,6 +1636,8 @@
         replaceBtnsStack
     ]];
     self.replaceRowStack.spacing = 8;
+    self.replaceRowStack.hidden = YES;
+    self.replaceRowStack.alpha = 0.0;
     [mainStack addArrangedSubview:self.replaceRowStack];
     self.matchCaseBtn = createToggleBtn(NSLocalizedString(@"Match Case", nil), @selector(toggleMatchCase:));
     self.wholeWordBtn = createToggleBtn(NSLocalizedString(@"Whole Word", nil), @selector(toggleWholeWord:));
@@ -1580,6 +1654,7 @@
     optionRow.distribution = UIStackViewDistributionFill;
     [mainStack addArrangedSubview:optionRow];
     self.buttonsWidthConstraint = [searchBtnsStack.widthAnchor constraintEqualToAnchor:replaceBtnsStack.widthAnchor];
+    self.buttonsWidthConstraint.priority = UILayoutPriorityDefaultHigh;
 }
 - (void)updateOptionButtonVisual:(UIButton *)btn isSelected:(BOOL)isSelected {
     btn.selected = isSelected;
@@ -1653,10 +1728,11 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
-    [UIView animateWithDuration:0.25 animations:^{
-        self.searchContainer.hidden = NO;
-        self.replaceRowStack.hidden = YES;
-        self.buttonsWidthConstraint.active = NO;
+    self.searchContainer.hidden = NO;
+    self.replaceRowStack.hidden = YES;
+    self.replaceRowStack.alpha = 0.0;
+    self.buttonsWidthConstraint.active = NO;
+    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         [self.searchField becomeFirstResponder];
@@ -1670,13 +1746,18 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
-    [UIView animateWithDuration:0.25 animations:^{
-        self.searchContainer.hidden = NO;
-        self.replaceRowStack.hidden = NO;
-        self.buttonsWidthConstraint.active = YES;
+    self.searchContainer.hidden = NO;
+    self.replaceRowStack.hidden = NO;
+    self.replaceRowStack.alpha = 1.0;
+    self.buttonsWidthConstraint.active = YES;
+    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
-        [self.searchField becomeFirstResponder];
+        if (self.searchField.text.length == 0) {
+            [self.searchField becomeFirstResponder];
+        } else {
+            [self.searchField becomeFirstResponder];
+        }
     }];
 }
 - (BOOL)canBecomeFirstResponder {
@@ -1692,7 +1773,7 @@
         _editorEngine->isReplaceMode = false;
     }
     [self.editorView becomeFirstResponder];
-    [UIView animateWithDuration:0.25 animations:^{
+    [UIView animateWithDuration:0.15 animations:^{
         self.searchContainer.hidden = YES;
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
@@ -1721,7 +1802,7 @@
 }
 - (void)closeGoToLine {
     [self.editorView becomeFirstResponder];
-    [UIView animateWithDuration:0.25 animations:^{
+    [UIView animateWithDuration:0.12 animations:^{
         self.goToLineContainer.hidden = YES;
         [self.view layoutIfNeeded];
     }];
@@ -1757,28 +1838,40 @@
 }
 - (void)doFindNext {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->findNext(true);
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 - (void)doFindPrev {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->findNext(false);
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 - (void)doReplace {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->replaceQuery = self.replaceField.text.UTF8String;
     _editorEngine->replaceNext();
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 - (void)doReplaceAll {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->replaceQuery = self.replaceField.text.UTF8String;
     _editorEngine->replaceAll();
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 @end
