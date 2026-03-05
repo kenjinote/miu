@@ -483,7 +483,7 @@ struct Editor {
             background = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
             textColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
             gutterBg = D2D1::ColorF(0.0f, 0.0f, 0.0f, bgAlpha);
-            gutterText = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
+            gutterText = D2D1::ColorF(0.33f, 0.33f, 0.33f, 1.0f);
             selColor = accent;
             caretColor = D2D1::ColorF(1.0f, 1.0f, 1.0f, 1.0f);
             autoHlColor = D2D1::ColorF(0.35f, 0.35f, 0.35f, 0.5f);
@@ -493,7 +493,7 @@ struct Editor {
             background = D2D1::ColorF(1.0f, 1.0f, 1.0f, bgAlpha);
             textColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
             gutterBg = D2D1::ColorF(1.0f, 1.0f, 1.0f, bgAlpha);
-            gutterText = D2D1::ColorF(0.5f, 0.5f, 0.5f, 1.0f);
+            gutterText = D2D1::ColorF(0.66f, 0.66f, 0.66f, 1.0f);
             selColor = accent;
             caretColor = D2D1::ColorF(0.0f, 0.0f, 0.0f, 1.0f);
             autoHlColor = D2D1::ColorF(0.85f, 0.85f, 0.85f, 0.5f);
@@ -3081,6 +3081,14 @@ struct Editor {
         o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0";
         o.nFilterIndex = 1;
         o.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+        std::wstring initialDir;
+        if (!currentFilePath.empty()) {
+            size_t lastSlash = currentFilePath.find_last_of(L"\\/");
+            if (lastSlash != std::wstring::npos) {
+                initialDir = currentFilePath.substr(0, lastSlash);
+                o.lpstrInitialDir = initialDir.c_str();
+            }
+        }
         SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hAppIcon);
         if (GetOpenFileNameW(&o)) {
             return openFileFromPath(f);
@@ -3163,6 +3171,16 @@ struct Editor {
     }
     bool saveFileAs() {
         WCHAR f[MAX_PATH] = { 0 };
+        std::wstring initialDir;
+        if (!currentFilePath.empty()) {
+            std::wstring fileName = currentFilePath;
+            size_t lastSlash = currentFilePath.find_last_of(L"\\/");
+            if (lastSlash != std::wstring::npos) {
+                fileName = currentFilePath.substr(lastSlash + 1);
+                initialDir = currentFilePath.substr(0, lastSlash);
+            }
+            wcscpy_s(f, MAX_PATH, fileName.c_str());
+        }
         OPENFILENAMEW o = { 0 };
         o.lStructSize = sizeof(o);
         o.hwndOwner = hwnd;
@@ -3171,6 +3189,9 @@ struct Editor {
         o.lpstrFilter = L"All\0*.*\0Text\0*.txt\0";
         o.nFilterIndex = 1;
         o.Flags = OFN_PATHMUSTEXIST | OFN_OVERWRITEPROMPT;
+        if (!initialDir.empty()) {
+            o.lpstrInitialDir = initialDir.c_str();
+        }
         SendMessage(hwnd, WM_SETICON, ICON_SMALL, (LPARAM)hAppIcon);
         if (GetSaveFileNameW(&o)) {
             return saveFile(f);
@@ -4000,12 +4021,10 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPWSTR lpCmdLine, _In_ int nShowCmd) {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     WNDCLASS wc = { 0 }; wc.lpfnWndProc = WndProc; wc.hInstance = hInstance; wc.lpszClassName = L"miu"; wc.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ICON1)); RegisterClass(&wc);
-    HDC hdc = GetDC(NULL);
-    int dpiX = GetDeviceCaps(hdc, LOGPIXELSX);
-    int dpiY = GetDeviceCaps(hdc, LOGPIXELSY);
-    ReleaseDC(NULL, hdc);
-    int initialWidth = MulDiv(800, dpiX, 96);
-    int initialHeight = MulDiv(600, dpiY, 96);
+    UINT dpi = GetDpiForSystem();
+    if (dpi == 0) dpi = 96;
+    int initialWidth = MulDiv(800, dpi, 96);
+    int initialHeight = MulDiv(600, dpi, 96);
     HWND hwnd = CreateWindowEx(WS_EX_NOREDIRECTIONBITMAP, wc.lpszClassName, L"miu", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, initialWidth, initialHeight, NULL, NULL, hInstance, NULL);
     if (!hwnd) return 0; ShowWindow(hwnd, nShowCmd);
     if (g_editor.currentFilePath.empty()) {
