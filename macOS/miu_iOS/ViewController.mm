@@ -474,6 +474,7 @@
     }
     [self setNeedsDisplay];
     [self.inputDelegate selectionDidChange:self];
+    [self checkCaretVisibilityAndDismissKeyboardIfNeeded];
 }
 - (void)startMomentumScroll {
     [self stopMomentumScroll];
@@ -1066,6 +1067,20 @@
 }
 - (void)dismissKeyboard {
     [self resignFirstResponder];
+}
+- (void)checkCaretVisibilityAndDismissKeyboardIfNeeded {
+    if (!self.isFirstResponder) return;
+    if (!self.editor || self.editor->cursors.empty()) return;
+    size_t head = self.editor->cursors.back().head;
+    int li = self.editor->getLineIdx(head);
+    float x = self.editor->getXInLine(li, head);
+    float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
+    float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight;
+    CGRect caretRect = CGRectMake(drawX, drawY, 2.0, self.editor->lineHeight);
+    CGRect visibleRect = self.bounds;
+    if (!CGRectIntersectsRect(visibleRect, caretRect)) {
+        [self dismissKeyboard];
+    }
 }
 - (void)cmdFind:(id)sender {
     [[NSNotificationCenter defaultCenter] postNotificationName:@"miuShowSearch" object:nil];
