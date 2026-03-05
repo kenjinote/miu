@@ -992,6 +992,7 @@
     scrollView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     scrollView.showsHorizontalScrollIndicator = NO;
     scrollView.alwaysBounceHorizontal = YES;
+    scrollView.scrollsToTop = NO;
     [_customAccessoryView addSubview:scrollView];
     UIStackView *stackView = [[UIStackView alloc] init];
     stackView.axis = UILayoutConstraintAxisHorizontal;
@@ -1129,7 +1130,7 @@
 
 
 @end
-@interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate>
+@interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate, UIScrollViewDelegate>
 @property (nonatomic, strong) iOSEditorView *editorView;
 @property (nonatomic, strong) NSURL *currentDocumentURL;
 @property (nonatomic, strong) UIStackView *headerStack;
@@ -1147,6 +1148,7 @@
 @property (nonatomic, strong) UITextField *goToLineField;
 @property (nonatomic, strong) UIImageView *titleIconView;
 @property (nonatomic, assign) CGSize lastLayoutSize;
+@property (nonatomic, strong) UIScrollView *scrollToTopHelper;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1226,7 +1228,7 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor systemBackgroundColor];
+        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor systemBackgroundColor];
     }];
     self.headerStack = [[UIStackView alloc] init];
     self.headerStack.axis = UILayoutConstraintAxisVertical;
@@ -1249,8 +1251,8 @@
     self.titleLabel = [[UILabel alloc] init];
     self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleLabel.textColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor colorWithWhite:0.7 alpha:1.0] : [UIColor secondaryLabelColor];
-        }];
+        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor colorWithWhite:0.7 alpha:1.0] : [UIColor secondaryLabelColor];
+    }];
     self.titleLabel.font = [UIFont boldSystemFontOfSize:13];
     self.titleLabel.textAlignment = NSTextAlignmentCenter;
     self.titleLabel.text = NSLocalizedString(@"Untitled", @"新規ファイル名");
@@ -1258,8 +1260,8 @@
     UIView *topFillView = [[UIView alloc] init];
     topFillView.translatesAutoresizingMaskIntoConstraints = NO;
     topFillView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor secondarySystemBackgroundColor];
-        }];
+        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor secondarySystemBackgroundColor];
+    }];
     [self.view addSubview:topFillView];
     [self.view insertSubview:topFillView belowSubview:self.headerStack];
     [self setupSearchUI];
@@ -1267,8 +1269,8 @@
     self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
     self.editorView.translatesAutoresizingMaskIntoConstraints = NO;
     self.editorView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor colorNamed:@"EditorBgColor"];
-        }];
+        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor colorNamed:@"EditorBgColor"];
+    }];
     [self.view addSubview:self.editorView];
     [self.view sendSubviewToBack:self.editorView];
     UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
@@ -1382,6 +1384,44 @@
     if (@available(iOS 17.0, *)) {
         [self registerForTraitChanges:@[[UITraitUserInterfaceStyle class]] withAction:@selector(updateThemeIfNeeded)];
     }
+    self.scrollToTopHelper = [[UIScrollView alloc] initWithFrame:self.view.bounds];
+    self.scrollToTopHelper.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.scrollToTopHelper.contentSize = CGSizeMake(self.view.bounds.size.width, 2000);
+    self.scrollToTopHelper.contentOffset = CGPointMake(0, 1000);
+    self.scrollToTopHelper.scrollsToTop = YES;
+    self.scrollToTopHelper.delegate = self;
+    self.scrollToTopHelper.showsVerticalScrollIndicator = NO;
+    self.scrollToTopHelper.showsHorizontalScrollIndicator = NO;
+    self.scrollToTopHelper.backgroundColor = [UIColor clearColor];
+    self.scrollToTopHelper.userInteractionEnabled = YES;
+    [self.view insertSubview:self.scrollToTopHelper atIndex:0];
+}
+#pragma mark - UIScrollViewDelegate (Scroll To Top)
+- (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView {
+    if (scrollView == self.scrollToTopHelper) {
+        [self.view endEditing:YES];
+        if (_editorEngine) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self.editorView.inputDelegate selectionWillChange:self.editorView];
+                self->_editorEngine->vScrollPos = 0;
+                self->_editorEngine->hScrollPos = 0;
+                [self.editorView.inputDelegate selectionDidChange:self.editorView];
+                [self.editorView setNeedsDisplay];
+                if (@available(iOS 16.0, *)) {
+                    [self.editorView.editMenuInteraction dismissMenu];
+                } else {
+                    [[UIMenuController sharedMenuController] hideMenuFromView:self.editorView];
+                }
+            });
+        }
+        return YES;
+    }
+    return YES;
+}
+- (void)scrollViewDidScrollToTop:(UIScrollView *)scrollView {
+    if (scrollView == self.scrollToTopHelper) {
+        scrollView.contentOffset = CGPointMake(0, 1000);
+    }
 }
 - (void)confirmSaveIfNeededWithAction:(void(^)(void))action {
     if (!_editorEngine || !_editorEngine->isDirty) {
@@ -1432,11 +1472,21 @@
         [self.editorView setNeedsDisplay];
     }
 }
+// 再帰的にビュー階層をたどり、ダミー以外の scrollsToTop をすべて NO にする
+- (void)disableOtherScrollsToTop:(UIView *)view {
+    if ([view isKindOfClass:[UIScrollView class]] && view != self.scrollToTopHelper) {
+        ((UIScrollView *)view).scrollsToTop = NO;
+    }
+    for (UIView *subview in view.subviews) {
+        [self disableOtherScrollsToTop:subview];
+    }
+}
 - (void)viewDidAppear:(BOOL)animated {
     [super viewDidAppear:animated];
     if (self.editorView) {
         [self.editorView becomeFirstResponder];
     }
+    [self disableOtherScrollsToTop:self.view];
 }
 - (void)keyboardWillShow:(NSNotification *)notification {
     NSDictionary *userInfo = notification.userInfo;
