@@ -182,6 +182,9 @@
 - (void)layoutSubviews {
     [super layoutSubviews];
 }
+- (UIView *)textInputView {
+    return self;
+}
 - (void)drawRect:(CGRect)rect {
     if (!self.editor) return;
     CGContextRef ctx = UIGraphicsGetCurrentContext();
@@ -737,6 +740,9 @@
         if (x2 < x1) x2 = x1;
         float w = x2 - x1;
         if (line != endLine && w == 0) w = self.editor->charWidth / 2;
+        if (w == 0) {
+            w = 2.0;
+        }
         float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x1;
         float drawY = (line - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
         CGRect r = CGRectMake(drawX, drawY, w, self.editor->lineHeight);
