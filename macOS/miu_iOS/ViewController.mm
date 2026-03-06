@@ -1,6 +1,7 @@
 #import "ViewController.h"
 #import "EditorCore.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <GameController/GameController.h>
 @interface iOSTextPosition : UITextPosition <NSCopying>
 @property (nonatomic, assign) size_t index;
 + (instancetype)positionWithIndex:(size_t)index;
@@ -80,6 +81,14 @@
     if (self = [super initWithFrame:frame]) {
         self.contentMode = UIViewContentModeTopLeft;
         self.multipleTouchEnabled = YES;
+        if (@available(iOS 9.0, *)) {
+            self.inputAssistantItem.leadingBarButtonGroups = @[];
+            self.inputAssistantItem.trailingBarButtonGroups = @[];
+        }
+        if (@available(iOS 14.0, *)) {
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(hardwareKeyboardStateChanged:) name:GCKeyboardDidConnectNotification object:nil];
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(hardwareKeyboardStateChanged:) name:GCKeyboardDidDisconnectNotification object:nil];
+        }
         _tokenizer = [[UITextInputStringTokenizer alloc] initWithTextInput:self];
         if (@available(iOS 13.0, *)) {
             UITextInteraction *interaction = [UITextInteraction textInteractionForMode:UITextInteractionModeEditable];
@@ -110,6 +119,20 @@
         }
     }
     return self;
+}
+- (void)hideHelpIfNeeded {
+    if (self.editor && self.editor->showHelpPopup) {
+        self.editor->showHelpPopup = false;
+        [self setNeedsDisplay];
+    }
+}
+- (void)hardwareKeyboardStateChanged:(NSNotification *)note {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self reloadInputViews];
+    });
+}
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 - (void)showEditMenuAtRect:(CGRect)rect {
     if (@available(iOS 16.0, *)) {
@@ -192,6 +215,10 @@
     self.editor->render(ctx, self.bounds.size.width, self.bounds.size.height - self.topRenderMargin);
 }
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    if (self.editor && self.editor->showHelpPopup) {
+        self.editor->showHelpPopup = false;
+        [self setNeedsDisplay];
+    }
     [self stopMomentumScroll];
     UITouch *touch = [touches anyObject];
     if (touch.type == UITouchTypeIndirectPointer || touch.type == UITouchTypePencil) {
@@ -558,6 +585,7 @@
     [self setNeedsDisplay];
 }
 - (void)insertText:(NSString *)text {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
     [self.inputDelegate textWillChange:self];
@@ -571,6 +599,7 @@
     [self setNeedsDisplay];
 }
 - (void)deleteBackward {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
@@ -858,10 +887,12 @@
         [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierCommand action:@selector(moveToDocEnd:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(moveToDocStartAndSelect:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(moveToDocEndAndSelect:)],
+        [UIKeyCommand keyCommandWithInput:@"n" modifierFlags:UIKeyModifierCommand action:@selector(newDocument:)],
         [UIKeyCommand keyCommandWithInput:@"o" modifierFlags:UIKeyModifierCommand action:@selector(openDocument:)],
         [UIKeyCommand keyCommandWithInput:@"s" modifierFlags:UIKeyModifierCommand action:@selector(saveDocument:)],
         [UIKeyCommand keyCommandWithInput:@"s" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(saveDocumentAs:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand action:@selector(cmdFind:)],
+        [UIKeyCommand keyCommandWithInput:@"r" modifierFlags:UIKeyModifierCommand action:@selector(cmdReplace:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand | UIKeyModifierAlternate action:@selector(cmdReplace:)],
         [UIKeyCommand keyCommandWithInput:@"j" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
         [UIKeyCommand keyCommandWithInput:@"g" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
@@ -869,7 +900,8 @@
         [UIKeyCommand keyCommandWithInput:@"+" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
         [UIKeyCommand keyCommandWithInput:@"=" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
         [UIKeyCommand keyCommandWithInput:@"-" modifierFlags:UIKeyModifierCommand action:@selector(zoomOut:)],
-        [UIKeyCommand keyCommandWithInput:@"0" modifierFlags:UIKeyModifierCommand action:@selector(resetZoom:)]
+        [UIKeyCommand keyCommandWithInput:@"0" modifierFlags:UIKeyModifierCommand action:@selector(resetZoom:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputF1 modifierFlags:0 action:@selector(toggleHelp:)]
     ];
     if (@available(iOS 15.0, *)) {
         for (UIKeyCommand *cmd in commands) {
@@ -908,7 +940,8 @@
     }
     if (action == @selector(zoomIn:) ||
         action == @selector(zoomOut:) ||
-        action == @selector(resetZoom:)) {
+        action == @selector(resetZoom:) ||
+        action == @selector(toggleHelp:)) {
         return YES;
     }    
     if (action == @selector(moveLeft:) || action == @selector(moveRight:) ||
@@ -924,6 +957,7 @@
     return [super canPerformAction:action withSender:sender];
 }
 - (void)newDocument:(id)sender {
+    [self hideHelpIfNeeded];
     if (self.onNewDocumentAction) {
         self.onNewDocumentAction();
     }
@@ -944,6 +978,7 @@
     [self setNeedsDisplay];
 }
 - (void)moveCursorTo:(size_t)newPos keepSelection:(BOOL)keep updateX:(BOOL)updateX {
+    [self hideHelpIfNeeded];
     if (!self.editor || self.editor->cursors.empty()) return;
     [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
@@ -1014,6 +1049,7 @@
 - (void)moveToDocEnd:(id)sender { [self moveCursorTo:self.editor->pt.length() keepSelection:NO updateX:YES]; }
 - (void)moveToDocEndAndSelect:(id)sender { [self moveCursorTo:self.editor->pt.length() keepSelection:YES updateX:YES]; }
 - (void)selectWordOrNextOccurrence:(id)sender {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     self.editor->selectNextOccurrence();
     [self.inputDelegate selectionWillChange:self];
@@ -1021,9 +1057,11 @@
     [self setNeedsDisplay];
 }
 - (void)openDocument:(id)sender {
+    [self hideHelpIfNeeded];
     if (self.editor) self.editor->openFile();
 }
 - (void)saveDocument:(id)sender {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     if (self.editor->currentFilePath.empty()) {
         self.editor->saveFileAs();
@@ -1032,6 +1070,7 @@
     }
 }
 - (void)saveDocumentAs:(id)sender {
+    [self hideHelpIfNeeded];
     if (self.editor) self.editor->saveFileAs();
 }
 - (void)copy:(id)sender {
@@ -1082,18 +1121,32 @@
     [self setNeedsDisplay];
 }
 - (void)zoomIn:(id)sender {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self applyNewFontSize:self.editor->currentFontSize + 2.0f];
 }
 - (void)zoomOut:(id)sender {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self applyNewFontSize:self.editor->currentFontSize - 2.0f];
 }
 - (void)resetZoom:(id)sender {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self applyNewFontSize:14.0f];
 }
+- (void)toggleHelp:(id)sender {
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    self.editor->showHelpPopup = !self.editor->showHelpPopup;
+    [self setNeedsDisplay];
+}
 - (UIView *)inputAccessoryView {
+    if (@available(iOS 14.0, *)) {
+        if ([GCKeyboard coalescedKeyboard] != nil) {
+            return nil;
+        }
+    }
     if (_customAccessoryView) return _customAccessoryView;
     CGFloat barHeight = 36.0;
     _customAccessoryView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, barHeight)];
@@ -1199,14 +1252,17 @@
     }
 }
 - (void)cmdFind:(id)sender {
+    [self hideHelpIfNeeded];
     [self hideEditMenuIfNeeded];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"miuShowSearch" object:nil];
 }
 - (void)cmdReplace:(id)sender {
+    [self hideHelpIfNeeded];
     [self hideEditMenuIfNeeded];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"miuShowReplace" object:nil];
 }
 - (void)cmdGoToLine:(id)sender {
+    [self hideHelpIfNeeded];
     if (self.onGoToLineAction) {
         self.onGoToLineAction();
     }
@@ -1427,6 +1483,13 @@
             [self.editorView.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor],
         ]];
     _editorEngine = std::make_shared<Editor>();
+    NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
+    NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
+    if (!appVersion) appVersion = @"0.0.0";
+    NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
+    _editorEngine->appVersionStr = UTF8ToW([versionString UTF8String]);
+    NSString *localizedHelp = NSLocalizedString(@"HelpText_iOS", nil);
+    _editorEngine->helpTextStr = UTF8ToW([localizedHelp UTF8String]);
     __weak typeof(self) weakSelf = self;
     _editorEngine->cbUpdateTitleBar = [weakSelf]() {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -1762,7 +1825,8 @@
 - (void)keyboardWillShow:(NSNotification *)notification {
     NSDictionary *userInfo = notification.userInfo;
     CGRect keyboardFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
-    CGFloat shrinkAmount = keyboardFrame.size.height;
+    CGRect convertedFrame = [self.view convertRect:keyboardFrame fromView:nil];
+    CGFloat shrinkAmount = MAX(0, self.view.bounds.size.height - convertedFrame.origin.y);
     [UIView performWithoutAnimation:^{
         _editorBottomConstraint.constant = -shrinkAmount;
         [self.view layoutIfNeeded];
@@ -1847,6 +1911,14 @@
         std::wstring wpath = UTF8ToW(path);
         _editorEngine->saveFile(wpath);
     }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.editorView becomeFirstResponder];
+    });
+}
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.editorView becomeFirstResponder];
+    });
 }
 - (void)setupSearchUI {
     self.searchContainer = [[UIView alloc] init];
@@ -2118,8 +2190,17 @@
     }];
 }
 - (void)handleEscape:(id)sender {
+    if (_editorEngine && _editorEngine->showHelpPopup) {
+        _editorEngine->showHelpPopup = false;
+        [self.editorView setNeedsDisplay];
+        return;
+    }
     if (!self.searchContainer.hidden) {
         [self closeSearch];
+        return;
+    }
+    if (!self.goToLineContainer.hidden) {
+        [self closeGoToLine];
         return;
     }
     if (_editorEngine && !_editorEngine->cursors.empty()) {

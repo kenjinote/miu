@@ -82,7 +82,6 @@ std::string EUCJPToUtf8(const char* data, size_t len) {
     return res;
 }
 #endif
-const std::wstring APP_VERSION = L"miu v1.0.17";
 const std::wstring APP_TITLE = L"miu";
 bool MappedFile::open(const char* path) {
     fd = ::open(path, O_RDONLY); if (fd == -1) return false;
@@ -680,6 +679,8 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                         }
                         if (isValid) break;
                     }
+                    
+                    // ★修正: 正しいスキップ計算
                     size_t step = currentMatchLen;
                     if (step == 0) {
                         bool isBolCaret = (startsWithCaret && !(searchFlags & std::regex_constants::match_not_bol));
@@ -687,6 +688,7 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                         else step = 1;
                     }
                     if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = 1;
+                    
                     size_t dist = std::distance(searchStartIter, fullText.cend());
                     if ((size_t)m.position() + step > dist) break;
                     size_t advance = m.position() + step;
@@ -1030,6 +1032,7 @@ void Editor::replaceAll() {
                 }
                 size_t contentPos = matchPos + anchorLen;
                 size_t contentLen = matchLen - anchorLen;
+                
                 if (endsWithDollar) {
                     if (contentLen > 0) {
                         if (fullText[contentPos + contentLen - 1] == '\n') {
@@ -1038,6 +1041,7 @@ void Editor::replaceAll() {
                         }
                     }
                 }
+                
                 bool isValid = true;
                 if (endsWithDollar) {
                     bool isAtLineEnd = false;
@@ -1055,47 +1059,38 @@ void Editor::replaceAll() {
                     }
                     if (!isAtLineEnd) isValid = false;
                 }
+                
                 if (isValid && startsWithCaret && endsWithDollar && contentLen == 0 && contentPos == fullText.size() && !fullText.empty()) {
                     bool isAfterNewline = false;
                     if (contentPos > 0) {
                         char c = fullText[contentPos - 1];
-                        if (c == '\r' || c == '\n') {
-                            isAfterNewline = true;
-                        }
+                        if (c == '\r' || c == '\n') isAfterNewline = true;
                     }
                     if (!isAfterNewline) isValid = false;
                 }
+                
                 if (isValid && !matches.empty()) {
                     const auto& last = matches.back();
                     if (last.start == contentPos && last.len == 0 && contentLen == 0) {
                         isValid = false;
                     }
                 }
-                if (!isValid) {
-                    size_t step = matchLen;
-                    if (step == 0) {
-                        bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
-                        if (isBolCaret) step = 0;
-                        else step = 1;
-                    }
-                    if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
-                    size_t relativeAdvance = m.position() + step;
-                    size_t remaining = std::distance(searchStart, fullText.cend());
-                    if (relativeAdvance > remaining) break;
-                    std::advance(searchStart, relativeAdvance);
-                    currentOffset += relativeAdvance;
-                    flags |= std::regex_constants::match_not_bol;
-                    continue;
+                
+                // ★修正: 有効な場合のみ置換リストに追加
+                if (isValid) {
+                    std::string rText = m.format(fmt);
+                    matches.push_back({ contentPos, contentLen, rText });
                 }
-                std::string rText = m.format(fmt);
-                matches.push_back({ contentPos, contentLen, rText });
-                size_t step = (anchorLen > 0) ? anchorLen : matchLen;
+                
+                // ★修正: 古いコードを排除し、正しい1つの計算式に統合
+                size_t step = matchLen;
                 if (step == 0) {
-                    if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                    bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
+                    if (isBolCaret) step = 0;
                     else step = 1;
                 }
                 if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
-
+                
                 size_t relativeAdvance = m.position() + step;
                 size_t remaining = std::distance(searchStart, fullText.cend());
                 if (relativeAdvance > remaining) break;
@@ -1103,6 +1098,7 @@ void Editor::replaceAll() {
                 currentOffset += relativeAdvance;
                 flags |= std::regex_constants::match_not_bol;
             }
+
             if (startsWithCaret && fullText.empty()) {
                 bool alreadyMatched = !matches.empty();
                 if (!alreadyMatched) {
@@ -2022,7 +2018,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
     }
     if (showHelpPopup) {
-        std::wstring fullHelp = APP_VERSION + L"\n\n" + helpTextStr;
+        std::wstring fullHelp = appVersionStr + L"\n\n" + helpTextStr;
         CFStringRef hcf = CFStringCreateWithBytes(NULL, (const UInt8*)fullHelp.data(), fullHelp.size()*sizeof(wchar_t), kCFStringEncodingUTF32LE, false);
         CTFontRef hf = CTFontCreateWithName(CFSTR("Menlo"), 14.0f, NULL);
         CGFloat helpLineHeight = 15.0f;
