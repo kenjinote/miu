@@ -123,6 +123,19 @@
 #pragma clang diagnostic pop
     }
 }
+- (void)hideEditMenuIfNeeded {
+    if (@available(iOS 16.0, *)) {
+        [self.editMenuInteraction dismissMenu];
+    } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        UIMenuController *menu = [UIMenuController sharedMenuController];
+        if (menu.isMenuVisible) {
+            [menu hideMenuFromView:self];
+        }
+#pragma clang diagnostic pop
+    }
+}
 - (void)showMenuForCurrentSelection {
     if (!self.editor || self.editor->cursors.empty()) return;
     Cursor c = self.editor->cursors.back();
@@ -521,6 +534,7 @@
 - (BOOL)hasText { return self.editor && self.editor->pt.length() > 0; }
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate textWillChange:self];
     self.editor->imeComp = markedText ? [markedText UTF8String] : "";
     [self.inputDelegate textDidChange:self];
@@ -538,6 +552,7 @@
 }
 - (void)insertText:(NSString *)text {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate textWillChange:self];
     self.editor->imeComp = "";
     if ([text isEqualToString:@"\n"]) {
@@ -550,6 +565,7 @@
 }
 - (void)deleteBackward {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->backspaceAtCursors();
