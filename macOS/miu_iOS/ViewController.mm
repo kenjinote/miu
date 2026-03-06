@@ -53,6 +53,7 @@
 @property (nonatomic, assign) CGFloat topRenderMargin;
 - (void)jumpToLine:(NSInteger)lineNumber;
 - (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd;
+- (void)showMenuForCurrentSelection;
 @end
 @implementation iOSEditorView {
     CGPoint _lastPanTranslation;
@@ -1391,13 +1392,15 @@
         self.verticalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
         self.verticalScrollBar.layer.cornerRadius = 1.5;
         self.verticalScrollBar.userInteractionEnabled = NO;
-        [self.view addSubview:self.verticalScrollBar];
+        [self.editorView addSubview:self.verticalScrollBar];
         
         self.horizontalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
         self.horizontalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
         self.horizontalScrollBar.layer.cornerRadius = 1.5;
         self.horizontalScrollBar.userInteractionEnabled = NO;
-        [self.view addSubview:self.horizontalScrollBar];        UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
+        [self.editorView addSubview:self.horizontalScrollBar];
+
+        UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
         _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
         [NSLayoutConstraint activateConstraints:@[
             [self.topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -1569,7 +1572,7 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showSearchNotif) name:@"miuShowSearch" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showReplaceNotif) name:@"miuShowReplace" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(closeSearch) name:@"miuCloseSearch" object:nil];
-    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rebuildBlur) name:UIApplicationWillEnterForegroundNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appWillEnterForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
     if (@available(iOS 17.0, *)) {
         [self registerForTraitChanges:@[[UITraitUserInterfaceStyle class]] withAction:@selector(updateThemeIfNeeded)];
     }
@@ -1723,6 +1726,17 @@
     if (self.topFillView.bounds.size.height > 0) {
         [self buildProgressiveBlur];
     }
+}
+- (void)appWillEnterForeground {
+    [self rebuildBlur];
+    if (!self.searchContainer.hidden) {
+        return;
+    }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (self.editorView) {
+            [self.editorView showMenuForCurrentSelection];
+        }
+    });
 }
 - (void)disableOtherScrollsToTop:(UIView *)view {
     if ([view isKindOfClass:[UIScrollView class]] && view != self.scrollToTopHelper) {
