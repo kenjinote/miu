@@ -493,6 +493,9 @@
     [self setNeedsDisplay];
     [self.inputDelegate selectionDidChange:self];
     [self checkCaretVisibilityAndDismissKeyboardIfNeeded];
+    if (self.editor) {
+        self.editor->updateScrollBars();
+    }
 }
 - (void)startMomentumScroll {
     [self stopMomentumScroll];
@@ -1259,6 +1262,8 @@
 @property (nonatomic, strong) UIScrollView *scrollToTopHelper;
 @property (nonatomic, strong) UIView *topFillView;
 @property (nonatomic, strong) NSMutableArray<UIViewPropertyAnimator *> *blurAnimators;
+@property (nonatomic, strong) UIView *verticalScrollBar;   // 縦スクロールバー
+@property (nonatomic, strong) UIView *horizontalScrollBar; // 横スクロールバー
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1382,7 +1387,17 @@
         }];
         [self.view addSubview:self.editorView];
         [self.view sendSubviewToBack:self.editorView];
-        UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
+        self.verticalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
+        self.verticalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
+        self.verticalScrollBar.layer.cornerRadius = 1.5;
+        self.verticalScrollBar.userInteractionEnabled = NO;
+        [self.view addSubview:self.verticalScrollBar];
+        
+        self.horizontalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
+        self.horizontalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
+        self.horizontalScrollBar.layer.cornerRadius = 1.5;
+        self.horizontalScrollBar.userInteractionEnabled = NO;
+        [self.view addSubview:self.horizontalScrollBar];        UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
         _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
         [NSLayoutConstraint activateConstraints:@[
             [self.topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
@@ -1400,7 +1415,7 @@
             [self.editorView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
             _editorBottomConstraint,
             [self.editorView.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
-            [self.editorView.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor]
+            [self.editorView.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor],
         ]];
     _editorEngine = std::make_shared<Editor>();
     __weak typeof(self) weakSelf = self;
@@ -1444,6 +1459,52 @@
             w = strongSelf.editorView.bounds.size.width;
             h = MAX(0.0f, strongSelf.editorView.bounds.size.height - strongSelf.editorView.topRenderMargin);
         }
+    };
+    _editorEngine->cbUpdateScrollers = [weakSelf]() {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(self) strongSelf = weakSelf;
+            if (strongSelf && strongSelf->_editorEngine) {
+                float vw = strongSelf.editorView.bounds.size.width;
+                float vh = MAX(0.0f, strongSelf.editorView.bounds.size.height - strongSelf.editorView.topRenderMargin);
+                float topMargin = strongSelf.editorView.topRenderMargin;
+                
+                // --- 縦スクロールバーの計算 ---
+                // 最大どこまでスクロールできるか（行数ベース）
+                float maxOffsetY = MAX(1.0f, (strongSelf->_editorEngine->lineStarts.size() - 1) * strongSelf->_editorEngine->lineHeight);
+                float totalHeight = maxOffsetY + vh;
+                
+                if (maxOffsetY <= 1.0f || totalHeight <= vh) {
+                    strongSelf.verticalScrollBar.hidden = YES;
+                } else {
+                    strongSelf.verticalScrollBar.hidden = NO;
+                    float barHeight = MAX(20.0f, vh * (vh / totalHeight)); // 画面に収まる割合で高さを決定
+                    float currentOffsetY = strongSelf->_editorEngine->vScrollPos * strongSelf->_editorEngine->lineHeight;
+                    float scrollRatio = MIN(1.0f, MAX(0.0f, currentOffsetY / maxOffsetY));
+                    float barY = topMargin + scrollRatio * (vh - barHeight);
+                    
+                    // 右端に細く表示
+                    strongSelf.verticalScrollBar.frame = CGRectMake(vw - 5.0f, barY, 3.0f, barHeight);
+                }
+                
+                // --- 横スクロールバーの計算 ---
+                float editorVw = vw - strongSelf->_editorEngine->gutterWidth; // 行番号エリアを除外した幅
+                float maxOffsetX = MAX(1.0f, strongSelf->_editorEngine->maxLineWidth - editorVw + strongSelf->_editorEngine->charWidth * 4.0f);
+                float totalWidth = maxOffsetX + editorVw;
+                
+                if (maxOffsetX <= 1.0f || totalWidth <= editorVw) {
+                    strongSelf.horizontalScrollBar.hidden = YES;
+                } else {
+                    strongSelf.horizontalScrollBar.hidden = NO;
+                    float barWidth = MAX(20.0f, editorVw * (editorVw / totalWidth));
+                    float currentOffsetX = strongSelf->_editorEngine->hScrollPos;
+                    float scrollRatio = MIN(1.0f, MAX(0.0f, currentOffsetX / maxOffsetX));
+                    float barX = strongSelf->_editorEngine->gutterWidth + scrollRatio * (editorVw - barWidth);
+                    
+                    // 下端に細く表示
+                    strongSelf.horizontalScrollBar.frame = CGRectMake(barX, strongSelf.editorView.bounds.size.height - 5.0f, barWidth, 3.0f);
+                }
+            }
+        });
     };
     _editorEngine->cbOpenFile = [weakSelf]() -> bool {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -1625,6 +1686,7 @@
             }
         }
         [self.editorView setNeedsDisplay];
+        _editorEngine->updateScrollBars();
     }
 }
 - (void)buildProgressiveBlur {
