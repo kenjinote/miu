@@ -1598,8 +1598,16 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     float vw = std::max(0.0f, w - gutterWidth - visibleVScrollWidth);
     float vh = std::max(0.0f, h - visibleHScrollHeight);
     int start = vScrollPos; int vis = (int)(vh / lineHeight) + 2; int end = std::min((int)lineStarts.size(), start + vis);
+#if TARGET_OS_IOS
+    int renderStart = std::max(0, start - 15);
+#endif
     CGFloat asc = CTFontGetAscent(fontRef);
-    CGContextSaveGState(ctx); CGContextClipToRect(ctx, CGRectMake(gutterWidth, 0, vw, vh));
+    CGContextSaveGState(ctx);
+#if TARGET_OS_IOS
+    CGContextClipToRect(ctx, CGRectMake(gutterWidth, -200.0f, vw, vh + 200.0f));
+#else
+    CGContextClipToRect(ctx, CGRectMake(gutterWidth, 0, vw, vh));
+#endif
     auto [autoStr, isWholeWord] = getHighlightTarget();
     if (!autoStr.empty() && autoStr != searchQuery) {
         CGColorRef autoHlColor = isDarkMode ? CGColorCreateGenericRGB(0.35, 0.35, 0.35, 0.5) : CGColorCreateGenericRGB(0.85, 0.85, 0.85, 0.5);
@@ -1624,7 +1632,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                     if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\r') lineVisualEnd--;
                     size_t lenInLine = std::min(remainingLen, lineVisualEnd > currentDrawPos ? lineVisualEnd - currentDrawPos : 0);
                     if (lenInLine == 0 && remainingLen > 0 && currentDrawPos < lineEndPos) lenInLine = std::min(remainingLen, lineEndPos - currentDrawPos);
+#if TARGET_OS_IOS
+                    if (li >= renderStart && li < end) {
+#else
                     if (li >= start && li < end) {
+#endif
                         float y = (float)(li - start) * lineHeight;
                         float x1 = getXInLine(li, currentDrawPos);
                         float x2 = getXInLine(li, currentDrawPos + lenInLine);
@@ -1705,7 +1717,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                             size_t remainingLen = contentLen;
                             if (remainingLen == 0) {
                                 int li = getLineIdx(currentDrawPos);
+#if TARGET_OS_IOS
+                                if (li >= renderStart && li < end) {
+#else
                                 if (li >= start && li < end) {
+#endif
                                     float y = (float)(li - start) * lineHeight;
                                     float x1 = getXInLine(li, currentDrawPos);
                                     CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, charWidth, lineHeight));
@@ -1720,8 +1736,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                                     
                                     size_t lenInLine = std::min(remainingLen, lineVisualEnd > currentDrawPos ? lineVisualEnd - currentDrawPos : 0);
                                     if (lenInLine == 0 && remainingLen > 0 && currentDrawPos < lineEndPos) lenInLine = std::min(remainingLen, lineEndPos - currentDrawPos);
-                                    
+#if TARGET_OS_IOS
+                                    if (li >= renderStart && li < end) {
+#else
                                     if (li >= start && li < end) {
+#endif
                                         float y = (float)(li - start) * lineHeight;
                                         float x1 = getXInLine(li, currentDrawPos);
                                         float x2 = getXInLine(li, currentDrawPos + lenInLine);
@@ -1771,8 +1790,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                         
                         size_t lenInLine = std::min(remainingLen, lineVisualEnd > currentDrawPos ? lineVisualEnd - currentDrawPos : 0);
                         if (lenInLine == 0 && remainingLen > 0 && currentDrawPos < lineEndPos) lenInLine = std::min(remainingLen, lineEndPos - currentDrawPos);
-
-                        if (li >= start && li < end) {
+#if TARGET_OS_IOS
+                            if (li >= renderStart && li < end) {
+#else
+                            if (li >= start && li < end) {
+#endif
                             float y = (float)(li - start) * lineHeight;
                             float x1 = getXInLine(li, currentDrawPos);
                             float x2 = getXInLine(li, currentDrawPos + lenInLine);
@@ -1798,7 +1820,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             int lHead = getLineIdx(c.head), lAnchor = getLineIdx(c.anchor);
             int startL = std::min(lHead, lAnchor), endL = std::max(lHead, lAnchor);
             for (int l = startL; l <= endL; ++l) {
+#if TARGET_OS_IOS
+                if (l < renderStart || l >= end) continue;
+#else
                 if (l < start || l >= end) continue;
+#endif
                 float y = (float)(l - start) * lineHeight; float drawX = gutterWidth - (float)hScrollPos + visualX1; float drawW = visualX2 - visualX1;
                 CGContextFillRect(ctx, CGRectMake(drawX, y, drawW, lineHeight));
             }
@@ -1806,7 +1832,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             if (!c.hasSelection()) continue;
             size_t pStart = c.start(), pEnd = c.end(); int lStart = getLineIdx(pStart), lEnd = getLineIdx(pEnd);
             for (int l = lStart; l <= lEnd; ++l) {
+#if TARGET_OS_IOS
+                if (l < renderStart || l >= end) continue;
+#else
                 if (l < start || l >= end) continue;
+#endif
                 float y = (float)(l - start) * lineHeight;
                 size_t lineBegin = lineStarts[l], lineEnd = (l + 1 < (int)lineStarts.size() ? lineStarts[l + 1] : pt.length());
                 size_t selS = std::max(pStart, lineBegin), selE = std::min(pEnd, lineEnd);
@@ -1816,7 +1846,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             }
         }
     }
+#if TARGET_OS_IOS
+    for (int i = renderStart; i < end; ++i) {
+#else
     for (int i = start; i < end; ++i) {
+#endif
         size_t s = lineStarts[i], e = (i + 1 < lineStarts.size() ? lineStarts[i + 1] : pt.length());
         std::string ls = pt.getRange(s, std::max((size_t)0, e - s)); size_t imIdx = std::string::npos;
         if (!imeComp.empty() && !cursors.empty() && getLineIdx(cursors.back().head) == i) { size_t cp = cursors.back().head; if (cp >= s && cp <= e) { imIdx = cp - s; ls.insert(imIdx, imeComp); } }
@@ -1912,7 +1946,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     CGContextRestoreGState(ctx);
     CGContextSetFillColorWithColor(ctx, colGutterBg);
     CGContextFillRect(ctx, CGRectMake(0, 0, gutterWidth, h));
+#if TARGET_OS_IOS
+    for (int i = renderStart; i < end; ++i) {
+#else
     for (int i = start; i < end; ++i) {
+#endif
         CFStringRef n = CFStringCreateWithCString(NULL, std::to_string(i + 1).c_str(), kCFStringEncodingUTF8);
         if (n) {
             const void* keys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName };

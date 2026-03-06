@@ -50,6 +50,7 @@
 @property (nonatomic, copy) void (^onNewDocumentAction)(void);
 @property (nonatomic, copy) void (^onGoToLineAction)(void);
 @property (nonatomic, strong) UIEditMenuInteraction *editMenuInteraction API_AVAILABLE(ios(16.0));
+@property (nonatomic, assign) CGFloat topRenderMargin;
 - (void)jumpToLine:(NSInteger)lineNumber;
 - (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd;
 @end
@@ -114,10 +115,12 @@
         UIEditMenuConfiguration *config = [UIEditMenuConfiguration configurationWithIdentifier:nil sourcePoint:CGPointMake(CGRectGetMidX(rect), CGRectGetMinY(rect))];
         [self.editMenuInteraction presentEditMenuWithConfiguration:config];
     } else {
-        // iOS 15以下
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         UIMenuController *menu = [UIMenuController sharedMenuController];
         if (menu.isMenuVisible) return;
         [menu showMenuFromView:self rect:rect];
+#pragma clang diagnostic pop
     }
 }
 - (void)showMenuForCurrentSelection {
@@ -127,10 +130,8 @@
     CGRect targetRect;
     
     if (c.hasSelection()) {
-        // 選択範囲がある場合、選択範囲の矩形（あるいはその一部）をターゲットにする
         NSArray<UITextSelectionRect *> *rects = [self selectionRectsForRange:self.selectedTextRange];
         if (rects.count > 0) {
-            // 最初の行の矩形、あるいは全体の包含矩形を使用
             targetRect = rects.firstObject.rect;
             for (UITextSelectionRect *r in rects) {
                 targetRect = CGRectUnion(targetRect, r.rect);
@@ -139,7 +140,6 @@
             targetRect = [self caretRectForPosition:self.selectedTextRange.end];
         }
     } else {
-        // カーソルのみの場合、カーソル位置をターゲットにする
         targetRect = [self caretRectForPosition:self.selectedTextRange.end];
     }
     
@@ -171,7 +171,8 @@
 - (void)drawRect:(CGRect)rect {
     if (!self.editor) return;
     CGContextRef ctx = UIGraphicsGetCurrentContext();
-    self.editor->render(ctx, self.bounds.size.width, self.bounds.size.height);
+    CGContextTranslateCTM(ctx, 0, self.topRenderMargin);
+    self.editor->render(ctx, self.bounds.size.width, self.bounds.size.height - self.topRenderMargin);
 }
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     [self stopMomentumScroll];
@@ -199,6 +200,7 @@
     if (!_isMouseSelecting || !self.editor) return;
     UITouch *touch = [touches anyObject];
     CGPoint p = [touch locationInView:self];
+    p.y -= self.topRenderMargin;
     size_t rawPos = self.editor->getDocPosFromPoint(p.x, p.y);
     if (self.editor->cursors.empty()) return;
     Cursor &c = self.editor->cursors.back();
@@ -242,6 +244,7 @@
 }
 - (void)handleSingleTapAtPoint:(CGPoint)p {
     if (!self.editor) return;
+    p.y -= self.topRenderMargin;
     size_t pos = self.editor->getDocPosFromPoint(p.x, p.y);
     [self.inputDelegate selectionWillChange:self];
     self.editor->cursors.clear();
@@ -316,6 +319,7 @@
 }
 - (void)handleDoubleTapAtPoint:(CGPoint)p {
     if (!self.editor) return;
+    p.y -= self.topRenderMargin;
     size_t pos = self.editor->getDocPosFromPoint(p.x, p.y);
     size_t start, end;
     [self getSmartWordRangeAtPos:pos outStart:&start outEnd:&end];
@@ -332,6 +336,7 @@
 }
 - (void)handleTripleTapAtPoint:(CGPoint)p {
     if (!self.editor) return;
+    p.y -= self.topRenderMargin;
     size_t pos = self.editor->getDocPosFromPoint(p.x, p.y);
     int lineIdx = self.editor->getLineIdx(pos);
     size_t start = self.editor->lineStarts[lineIdx];
@@ -640,7 +645,7 @@
     int li = self.editor->getLineIdx(start);
     float x = self.editor->getXInLine(li, start);
     float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
-    float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight;
+    float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
     return CGRectMake(drawX, drawY, 2, self.editor->lineHeight);
 }
 - (NSArray<UITextSelectionRect *> *)selectionRectsForRange:(UITextRange *)range {
@@ -667,7 +672,7 @@
         float w = x2 - x1;
         if (line != endLine && w == 0) w = self.editor->charWidth / 2;
         float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x1;
-        float drawY = (line - self.editor->vScrollPos) * self.editor->lineHeight;
+        float drawY = (line - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
         CGRect r = CGRectMake(drawX, drawY, w, self.editor->lineHeight);
         iOSSelectionRect *selRect = [[iOSSelectionRect alloc] init];
         selRect.rectValue = r;
@@ -681,7 +686,9 @@
 }
 - (UITextPosition *)closestPositionToPoint:(CGPoint)point {
     if (!self.editor) return [self beginningOfDocument];
-    size_t idx = self.editor->getDocPosFromPoint(point.x, point.y);
+    CGPoint p = point;
+    p.y -= self.topRenderMargin;
+    size_t idx = self.editor->getDocPosFromPoint(p.x, p.y);
     return [iOSTextPosition positionWithIndex:idx];
 }
 - (UITextPosition *)closestPositionToPoint:(CGPoint)point withinRange:(UITextRange *)range { return [self.beginningOfDocument copy]; }
@@ -695,7 +702,7 @@
     int l = self.editor->getLineIdx(p);
     float x = self.editor->getXInLine(l, p);
     float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
-    float drawY = (l - self.editor->vScrollPos) * self.editor->lineHeight;
+    float drawY = (l - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
     return CGRectMake(drawX, drawY, 0, 0);
 }
 - (UITextAutocorrectionType)autocorrectionType { return UITextAutocorrectionTypeNo; }
@@ -1078,7 +1085,7 @@
     float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
     float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight;
     CGRect caretRect = CGRectMake(drawX, drawY, 2.0, self.editor->lineHeight);
-    CGRect visibleRect = self.bounds;
+    CGRect visibleRect = CGRectMake(0, self.topRenderMargin, self.bounds.size.width, self.bounds.size.height - self.topRenderMargin);
     if (!CGRectIntersectsRect(visibleRect, caretRect)) {
         [self dismissKeyboard];
     }
@@ -1116,9 +1123,7 @@
     [self setNeedsLayout];
 }
 #pragma mark - UIEditMenuInteractionDelegate
-
 - (CGRect)editMenuInteraction:(UIEditMenuInteraction *)interaction targetRectForConfiguration:(UIEditMenuConfiguration *)configuration API_AVAILABLE(ios(16.0)) {
-    // メニューの表示位置を調整（カーソルや選択範囲に合わせる）
     if (!self.editor || self.editor->cursors.empty()) return CGRectZero;
     Cursor c = self.editor->cursors.back();
     if (c.hasSelection()) {
@@ -1127,8 +1132,6 @@
     }
     return [self caretRectForPosition:self.selectedTextRange.end];
 }
-
-
 @end
 @interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate, UIScrollViewDelegate>
 @property (nonatomic, strong) iOSEditorView *editorView;
@@ -1149,6 +1152,8 @@
 @property (nonatomic, strong) UIImageView *titleIconView;
 @property (nonatomic, assign) CGSize lastLayoutSize;
 @property (nonatomic, strong) UIScrollView *scrollToTopHelper;
+@property (nonatomic, strong) UIView *topFillView;
+@property (nonatomic, strong) NSMutableArray<UIViewPropertyAnimator *> *blurAnimators;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1231,68 +1236,67 @@
         return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor systemBackgroundColor];
     }];
     self.headerStack = [[UIStackView alloc] init];
-    self.headerStack.axis = UILayoutConstraintAxisVertical;
-    self.headerStack.translatesAutoresizingMaskIntoConstraints = NO;
-    self.headerStack.layer.zPosition = 10;
-    [self.view addSubview:self.headerStack];
-    self.titleBarView = [[UIView alloc] init];
-    self.titleBarView.backgroundColor = [UIColor clearColor];
-    [self.headerStack addArrangedSubview:self.titleBarView];
-    UIStackView *titleStack = [[UIStackView alloc] init];
-    titleStack.axis = UILayoutConstraintAxisHorizontal;
-    titleStack.alignment = UIStackViewAlignmentCenter;
-    titleStack.spacing = 6.0;
-    titleStack.translatesAutoresizingMaskIntoConstraints = NO;
-    [self.titleBarView addSubview:titleStack];
-    self.titleIconView = [[UIImageView alloc] init];
-    self.titleIconView.contentMode = UIViewContentModeScaleAspectFit;
-    self.titleIconView.translatesAutoresizingMaskIntoConstraints = NO;
-    [titleStack addArrangedSubview:self.titleIconView];
-    self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.textColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor colorWithWhite:0.7 alpha:1.0] : [UIColor secondaryLabelColor];
-    }];
-    self.titleLabel.font = [UIFont boldSystemFontOfSize:13];
-    self.titleLabel.textAlignment = NSTextAlignmentCenter;
-    self.titleLabel.text = NSLocalizedString(@"Untitled", @"新規ファイル名");
-    [titleStack addArrangedSubview:self.titleLabel];
-    UIView *topFillView = [[UIView alloc] init];
-    topFillView.translatesAutoresizingMaskIntoConstraints = NO;
-    topFillView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor secondarySystemBackgroundColor];
-    }];
-    [self.view addSubview:topFillView];
-    [self.view insertSubview:topFillView belowSubview:self.headerStack];
-    [self setupSearchUI];
-    [self setupGoToLineUI];
-    self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
-    self.editorView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.editorView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor colorNamed:@"EditorBgColor"];
-    }];
-    [self.view addSubview:self.editorView];
-    [self.view sendSubviewToBack:self.editorView];
-    UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
-    _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
-    [NSLayoutConstraint activateConstraints:@[
-        [topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [topFillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [topFillView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [topFillView.bottomAnchor constraintEqualToAnchor:self.titleBarView.bottomAnchor],
-        [self.headerStack.topAnchor constraintEqualToAnchor:safeArea.topAnchor constant:-12],
-        [self.headerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.headerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.titleBarView.heightAnchor constraintEqualToConstant:17],
-        [titleStack.centerXAnchor constraintEqualToAnchor:self.titleBarView.centerXAnchor],
-        [titleStack.centerYAnchor constraintEqualToAnchor:self.titleBarView.centerYAnchor],
-        [self.titleIconView.widthAnchor constraintEqualToConstant:16],
-        [self.titleIconView.heightAnchor constraintEqualToConstant:16],
-        [self.editorView.topAnchor constraintEqualToAnchor:self.headerStack.bottomAnchor],
-        _editorBottomConstraint,
-        [self.editorView.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
-        [self.editorView.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor]
-    ]];
+        self.headerStack.axis = UILayoutConstraintAxisVertical;
+        self.headerStack.translatesAutoresizingMaskIntoConstraints = NO;
+        self.headerStack.layer.zPosition = 10;
+        [self.view addSubview:self.headerStack];
+        self.titleBarView = [[UIView alloc] init];
+        self.titleBarView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.titleBarView.backgroundColor = [UIColor clearColor];
+        [self.headerStack addArrangedSubview:self.titleBarView];
+        UIStackView *titleStack = [[UIStackView alloc] init];
+        titleStack.axis = UILayoutConstraintAxisHorizontal;
+        titleStack.alignment = UIStackViewAlignmentCenter;
+        titleStack.spacing = 6.0;
+        titleStack.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.titleBarView addSubview:titleStack];
+        self.titleIconView = [[UIImageView alloc] init];
+        self.titleIconView.contentMode = UIViewContentModeScaleAspectFit;
+        self.titleIconView.translatesAutoresizingMaskIntoConstraints = NO;
+        [titleStack addArrangedSubview:self.titleIconView];
+        self.titleLabel = [[UILabel alloc] init];
+        self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        self.titleLabel.textColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor colorWithWhite:0.7 alpha:1.0] : [UIColor secondaryLabelColor];
+        }];
+        self.titleLabel.font = [UIFont boldSystemFontOfSize:13];
+        self.titleLabel.textAlignment = NSTextAlignmentCenter;
+        self.titleLabel.text = NSLocalizedString(@"Untitled", @"新規ファイル名");
+        [titleStack addArrangedSubview:self.titleLabel];
+        self.topFillView = [[UIView alloc] init];
+        self.topFillView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.topFillView.userInteractionEnabled = NO;
+        [self.view addSubview:self.topFillView];
+        [self.view insertSubview:self.topFillView belowSubview:self.headerStack];
+        [self setupSearchUI];
+        [self setupGoToLineUI];
+        self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
+        self.editorView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.editorView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor colorNamed:@"EditorBgColor"];
+        }];
+        [self.view addSubview:self.editorView];
+        [self.view sendSubviewToBack:self.editorView];
+        UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
+        _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
+        [NSLayoutConstraint activateConstraints:@[
+            [self.topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [self.topFillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.topFillView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [self.topFillView.bottomAnchor constraintEqualToAnchor:self.headerStack.bottomAnchor constant:10],
+            [self.headerStack.topAnchor constraintEqualToAnchor:safeArea.topAnchor constant:-12],
+            [self.headerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.headerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [self.titleBarView.heightAnchor constraintEqualToConstant:17],
+            [titleStack.centerXAnchor constraintEqualToAnchor:self.titleBarView.centerXAnchor],
+            [titleStack.centerYAnchor constraintEqualToAnchor:self.titleBarView.centerYAnchor],
+            [self.titleIconView.widthAnchor constraintEqualToConstant:16],
+            [self.titleIconView.heightAnchor constraintEqualToConstant:16],
+            [self.editorView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            _editorBottomConstraint,
+            [self.editorView.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
+            [self.editorView.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor]
+        ]];
     _editorEngine = std::make_shared<Editor>();
     __weak typeof(self) weakSelf = self;
     _editorEngine->cbUpdateTitleBar = [weakSelf]() {
@@ -1410,7 +1414,10 @@
                 if (@available(iOS 16.0, *)) {
                     [self.editorView.editMenuInteraction dismissMenu];
                 } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
                     [[UIMenuController sharedMenuController] hideMenuFromView:self.editorView];
+#pragma clang diagnostic pop
                 }
             });
         }
@@ -1446,6 +1453,11 @@
     [self presentViewController:alert animated:YES completion:nil];
 }
 - (void)dealloc {
+    if (_blurAnimators) {
+            for (UIViewPropertyAnimator *animator in _blurAnimators) {
+                [animator stopAnimation:YES];
+            }
+        }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 - (void)viewDidLayoutSubviews {
@@ -1458,6 +1470,25 @@
         }
     }
     if (_editorEngine) {
+        CGFloat safeTop = self.view.safeAreaInsets.top;
+        if (safeTop == 0) {
+            UIWindow *firstWindow = nil;
+            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                if ([scene isKindOfClass:[UIWindowScene class]]) {
+                    firstWindow = ((UIWindowScene *)scene).windows.firstObject;
+                    if (firstWindow) break;
+                }
+            }
+            if (firstWindow) {
+                safeTop = firstWindow.safeAreaInsets.top;
+            }
+        }
+        self.editorView.topRenderMargin = safeTop + 15;
+        if (self.topFillView.bounds.size.height > 0) {
+            if (self.topFillView.subviews.count == 0 || self.topFillView.bounds.size.width != self.lastLayoutSize.width) {
+                [self buildProgressiveBlur];
+            }
+        }
         if (!_isFirstLayoutDone) {
             _isFirstLayoutDone = YES;
             _editorEngine->vScrollPos = 0;
@@ -1466,13 +1497,42 @@
             if (!CGSizeEqualToSize(self.editorView.bounds.size, self.lastLayoutSize)) {
                 _editorEngine->updateMaxLineWidth();
                 _editorEngine->ensureCaretVisible();
-                self.lastLayoutSize = self.editorView.bounds.size; // サイズを更新
+                self.lastLayoutSize = self.editorView.bounds.size;
             }
         }
         [self.editorView setNeedsDisplay];
     }
 }
-// 再帰的にビュー階層をたどり、ダミー以外の scrollsToTop をすべて NO にする
+- (void)buildProgressiveBlur {
+    if (self.blurAnimators) {
+        for (UIViewPropertyAnimator *animator in self.blurAnimators) {
+            [animator stopAnimation:YES];
+        }
+    }
+    self.blurAnimators = [NSMutableArray array];
+    [self.topFillView.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
+    int steps = 8;
+    CGFloat stepHeight = self.topFillView.bounds.size.height / (CGFloat)steps;
+    for (int i = steps - 1; i >= 0; i--) {
+        CGFloat fraction = (CGFloat)(steps - i - 1) / (CGFloat)(steps - 1);
+        fraction = pow(fraction, 1.2);
+        fraction *= 0.10;
+        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:nil];
+        blurView.frame = CGRectMake(0, i * stepHeight, self.topFillView.bounds.size.width, stepHeight * 2.0);
+        [self.topFillView addSubview:blurView];
+        UIViewPropertyAnimator *animator = [[UIViewPropertyAnimator alloc] initWithDuration:1 curve:UIViewAnimationCurveLinear animations:^{
+            blurView.effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleRegular];
+        }];
+        animator.fractionComplete = MAX(fraction, 0.001);
+        [animator pauseAnimation];
+        [self.blurAnimators addObject:animator];
+        CAGradientLayer *mask = [CAGradientLayer layer];
+        mask.frame = blurView.bounds;
+        mask.colors = @[(id)[UIColor whiteColor].CGColor, (id)[UIColor clearColor].CGColor];
+        mask.locations = @[@0.5, @1.0];
+        blurView.layer.mask = mask;
+    }
+}
 - (void)disableOtherScrollsToTop:(UIView *)view {
     if ([view isKindOfClass:[UIScrollView class]] && view != self.scrollToTopHelper) {
         ((UIScrollView *)view).scrollsToTop = NO;
