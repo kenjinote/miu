@@ -638,9 +638,40 @@
 - (UITextPosition *)endOfDocument { return [iOSTextPosition positionWithIndex:(self.editor ? self.editor->pt.length() : 0)]; }
 - (UITextRange *)textRangeFromPosition:(UITextPosition *)f toPosition:(UITextPosition *)t { return [iOSTextRange rangeWithStart:((iOSTextPosition*)f).index end:((iOSTextPosition*)t).index]; }
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position offset:(NSInteger)offset {
-    NSInteger newIndex = ((iOSTextPosition*)position).index + offset;
-    if (newIndex < 0) newIndex = 0;
-    return [iOSTextPosition positionWithIndex:newIndex];
+    if (!self.editor) return position;
+    size_t startPos = ((iOSTextPosition*)position).index;
+    
+    if (offset == 0) return position;
+    
+    if (offset > 0) {
+        // 後方のテキストを取得し、UTF-16の文字数からUTF-8のバイト数に変換する
+        size_t remain = self.editor->pt.length() - startPos;
+        size_t fetchLen = MIN(remain, (size_t)4000); // 余裕を持ったバッファ
+        std::string text = self.editor->pt.getRange(startPos, fetchLen);
+        NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
+        
+        if (nsStr && nsStr.length >= offset) {
+            NSString *sub = [nsStr substringToIndex:offset];
+            size_t byteOffset = [sub lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+            return [iOSTextPosition positionWithIndex:startPos + byteOffset];
+        }
+        return [iOSTextPosition positionWithIndex:startPos + remain];
+        
+    } else {
+        // 前方のテキストを取得し、UTF-16の文字数からUTF-8のバイト数に変換する
+        NSInteger absOffset = -offset;
+        size_t fetchLen = MIN(startPos, (size_t)4000);
+        size_t fetchStart = startPos - fetchLen;
+        std::string text = self.editor->pt.getRange(fetchStart, fetchLen);
+        NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
+        
+        if (nsStr && nsStr.length >= absOffset) {
+            NSString *sub = [nsStr substringToIndex:(nsStr.length - absOffset)];
+            size_t byteOffset = [sub lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+            return [iOSTextPosition positionWithIndex:fetchStart + byteOffset];
+        }
+        return [iOSTextPosition positionWithIndex:0];
+    }
 }
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction offset:(NSInteger)offset {
     return position;
@@ -649,7 +680,22 @@
     size_t i1 = ((iOSTextPosition*)p1).index; size_t i2 = ((iOSTextPosition*)p2).index;
     if (i1 < i2) return NSOrderedAscending; if (i1 > i2) return NSOrderedDescending; return NSOrderedSame;
 }
-- (NSInteger)offsetFromPosition:(UITextPosition *)f toPosition:(UITextPosition *)t { return ((iOSTextPosition*)t).index - ((iOSTextPosition*)f).index; }
+- (NSInteger)offsetFromPosition:(UITextPosition *)f toPosition:(UITextPosition *)t {
+    if (!self.editor) return 0;
+    size_t fromIdx = ((iOSTextPosition*)f).index;
+    size_t toIdx = ((iOSTextPosition*)t).index;
+    if (fromIdx == toIdx) return 0;
+    
+    // バイト数の差分ではなく、実際の文字列としての文字数(UTF-16)を返す
+    size_t start = MIN(fromIdx, toIdx);
+    size_t end = MAX(fromIdx, toIdx);
+    std::string text = self.editor->pt.getRange(start, end - start);
+    
+    NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
+    NSInteger charCount = nsStr ? nsStr.length : 1;
+    
+    return (fromIdx <= toIdx) ? charCount : -charCount;
+}
 - (id<UITextInputTokenizer>)tokenizer { return _tokenizer; }
 - (UITextPosition *)positionWithinRange:(UITextRange *)r farthestInDirection:(UITextLayoutDirection)d { return r.start; }
 - (UITextRange *)characterRangeByExtendingPosition:(UITextPosition *)p inDirection:(UITextLayoutDirection)d { return nil; }
@@ -730,6 +776,49 @@
 - (UITextSmartDashesType)smartDashesType { return UITextSmartDashesTypeNo; }
 - (NSUndoManager *)undoManager {
     return nil;
+}
+#pragma mark - Dictation Support (音声入力のバグ回避・強制リセット)
+
+// 1. 音声入力の結果を受け取る
+- (void)insertDictationResult:(NSArray<UIDictationPhrase *> *)dictationResult {
+    NSMutableString *resultString = [NSMutableString string];
+    for (UIDictationPhrase *phrase in dictationResult) {
+        [resultString appendString:phrase.text];
+    }
+    
+    // 変換中のゴミ状態が残っていれば強制クリア
+    if (self.editor && !self.editor->imeComp.empty()) {
+        [self unmarkText];
+    }
+    
+    // システムの複雑な置換（replaceRange）をバイパスし、単純なテキスト入力として流し込む
+    [self insertText:resultString];
+}
+
+// 2. システムによる「青い点線（代替候補）」の自動挿入をブロックする
+- (id)insertDictationResultPlaceholder {
+    return [[NSObject alloc] init]; // ダミーを返してシステムを騙す
+}
+
+// 3. ダミープレースホルダの描画位置（システム要求）
+- (CGRect)frameForDictationResultPlaceholder:(id)placeholder {
+    if (!self.editor || self.editor->cursors.empty()) return CGRectZero;
+    Cursor c = self.editor->cursors.back();
+    return [self caretRectForPosition:[iOSTextPosition positionWithIndex:c.head]];
+}
+
+// 4. ダミープレースホルダの削除（何もしない）
+- (void)removeDictationResultPlaceholder:(id)placeholder willInsertResult:(BOOL)willInsertResult {
+}
+
+// 5. 音声入力が終了したタイミングで、内部の選択状態を強制リセット
+- (void)dictationRecordingDidEnd {
+    [self.inputDelegate selectionDidChange:self];
+}
+
+// 6. 音声認識が失敗した時も強制リセット
+- (void)dictationRecognitionFailed {
+    [self.inputDelegate selectionDidChange:self];
 }
 - (NSArray<UIKeyCommand *> *)keyCommands {
     NSArray<UIKeyCommand *> *commands = @[
