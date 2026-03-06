@@ -845,6 +845,7 @@
 }
 - (void)moveCursorTo:(size_t)newPos keepSelection:(BOOL)keep updateX:(BOOL)updateX {
     if (!self.editor || self.editor->cursors.empty()) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     Cursor c = self.editor->cursors.back();
     c.head = newPos;
@@ -971,6 +972,7 @@
 }
 - (void)handleUndo:(id)sender {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->performUndo();
@@ -981,6 +983,7 @@
 }
 - (void)handleRedo:(id)sender {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->performRedo();
@@ -1119,6 +1122,7 @@
 }
 - (void)jumpToLine:(NSInteger)lineNumber {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     if (lineNumber < 1) lineNumber = 1;
     size_t totalLines = self.editor->lineStarts.size();
     if (lineNumber > totalLines) lineNumber = totalLines;
