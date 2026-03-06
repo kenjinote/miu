@@ -1153,14 +1153,13 @@ struct Editor {
                             }
                             if (isValid) break;
                         }
-
                         size_t step = currentMatchLen;
                         if (step == 0) {
-                            if (anchorLen > 0 && !(searchFlags & std::regex_constants::match_not_bol)) step = 0;
+                            bool isBolCaret = (startsWithCaret && !(searchFlags & std::regex_constants::match_not_bol));
+                            if (isBolCaret) step = 0;
                             else step = 1;
                         }
                         if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = 1;
-
                         size_t dist = std::distance(searchStartIter, fullText.cend());
                         if ((size_t)m.position() + step > dist) break;
                         size_t advance = m.position() + step;
@@ -1577,32 +1576,20 @@ struct Editor {
                             if (last.start == contentPos && last.len == 0 && contentLen == 0) {
                                 isValid = false;
                             }
+                        }                        
+                        // ★修正: 有効な場合のみ置換リストに追加
+                        if (isValid) {
+                            std::string rText = m.format(fmt);
+                            matches.push_back({ contentPos, contentLen, rText });
                         }
-                        if (!isValid) {
-                            size_t step = (anchorLen > 0) ? anchorLen : matchLen;
-                            if (step == 0) {
-                                if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
-                                else step = 1;
-                            }
-                            if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
-
-                            size_t relativeAdvance = m.position() + step;
-                            size_t remaining = std::distance(searchStart, fullText.cend());
-                            if (relativeAdvance > remaining) break;
-                            std::advance(searchStart, relativeAdvance);
-                            currentOffset += relativeAdvance;
-                            flags |= std::regex_constants::match_not_bol;
-                            continue;
-                        }
-                        std::string rText = m.format(fmt);
-                        matches.push_back({ contentPos, contentLen, rText });
-                        size_t step = (anchorLen > 0) ? anchorLen : matchLen;
+                        // ★修正: 古いコードを排除し、正しい1つの計算式に統合
+                        size_t step = matchLen;
                         if (step == 0) {
-                            if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                            bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
+                            if (isBolCaret) step = 0;
                             else step = 1;
                         }
                         if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
-
                         size_t relativeAdvance = m.position() + step;
                         size_t remaining = std::distance(searchStart, fullText.cend());
                         if (relativeAdvance > remaining) break;

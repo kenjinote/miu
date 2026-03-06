@@ -236,7 +236,13 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 - (BOOL)isFlipped { return YES; }
 - (void)viewDidMoveToWindow {
     if (![self window]) return;
-    editor->helpTextStr = UTF8ToW([NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧") UTF8String]);
+    NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
+    NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
+    if (!appVersion) appVersion = @"0.0.0";
+    NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
+    editor->appVersionStr = UTF8ToW([versionString UTF8String]);
+    NSString *localizedHelp = NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧");
+    editor->helpTextStr = UTF8ToW([localizedHelp UTF8String]);
     editor->initGraphics();
     BOOL isDark = [[self.effectiveAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]] isEqualToString:NSAppearanceNameDarkAqua];
     editor->isDarkMode = isDark;

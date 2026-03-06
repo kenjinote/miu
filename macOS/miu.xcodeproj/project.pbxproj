@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		BA5C5FA02F4CA6370029DB67 /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA5C5F9F2F4CA6370029DB67 /* UniformTypeIdentifiers.framework */; };
+		BA7DA6832F5B14E400B2D41C /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA7DA6822F5B14E400B2D41C /* GameController.framework */; };
 		BAA1E1DB2F4AE17800BA3D2C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */; };
 		BABDDE6D2F49E1C000B3E84A /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */; };
 		BABDDE6F2F49E1CC00B3E84A /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */; };
@@ -17,6 +18,7 @@
 /* Begin PBXFileReference section */
 		BA4A72FC2F4C1DC90045F2FD /* miu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = miu.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BA5C5F9F2F4CA6370029DB67 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = DEVELOPER_DIR; };
+		BA7DA6822F5B14E400B2D41C /* GameController.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GameController.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.2.sdk/System/Library/Frameworks/GameController.framework; sourceTree = DEVELOPER_DIR; };
 		BAA1E1DA2F4AE17800BA3D2C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1DC2F4AE1FC00BA3D2C /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1DD2F4AE6CF00BA3D2C /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -69,6 +71,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BA7DA6832F5B14E400B2D41C /* GameController.framework in Frameworks */,
 				BA5C5FA02F4CA6370029DB67 /* UniformTypeIdentifiers.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -108,6 +111,7 @@
 		BABDDE6B2F49E1C000B3E84A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				BA7DA6822F5B14E400B2D41C /* GameController.framework */,
 				BA5C5F9F2F4CA6370029DB67 /* UniformTypeIdentifiers.framework */,
 				BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */,
 				BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */,
@@ -269,7 +273,7 @@
 				INFOPLIST_FILE = miu_iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = miu;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -280,7 +284,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.17;
+				MARKETING_VERSION = 1.0.18;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				SDKROOT = iphoneos;
@@ -302,7 +306,7 @@
 				INFOPLIST_FILE = miu_iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = miu;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.productivity";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -313,7 +317,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.17;
+				MARKETING_VERSION = 1.0.18;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				SDKROOT = iphoneos;

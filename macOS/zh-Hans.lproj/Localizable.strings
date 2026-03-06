@@ -7,6 +7,7 @@
 */
 
 "HelpText" = "F1                    帮助\nCmd+N                 新建\nCmd+O / Drag&Drop     打开\nCmd+S                 保存\nCmd+Shift+S           另存为\nCmd+F                 查找\nCmd+H                 替换\nF3 / Shift+F3         查找下一个/上一个\nCmd+G                 转到行\nCmd+Z/Shift+Z         撤销/重做\nCmd+X/C/V             剪切/复制/粘贴\nCmd+Shift+K           删除行\nCmd+U                 转大写\nCmd+Shift+U           转小写\nOption+Up/Down        移动行\nOption+Shift+Up/Down  复制行\nCmd+D                 选择单词 / 下一个\nCmd+A                 全选\nOption+Drag           矩形选择\nCmd+Wheel/+/-         缩放\nCmd+0                 重置缩放\nCtrl+Cmd+F            全屏\n";
+"HelpText_iOS" = "[ 键盘快捷键 (iPad) ]\n\nCmd + N         : 新建文件\nCmd + O         : 打开文件\nCmd + S         : 保存\nShift + Cmd + S : 另存为\nCmd + F         : 查找\nCmd + R         : 替换\nCmd + G / J     : 转到行\nCmd + D         : 选择下一个匹配项\nCmd + [+ / - / 0]: 放大 / 缩小 / 重置\nF1              : 显示/隐藏帮助\nEsc             : 关闭对话框 / 取消选择";
 "Find" = "查找";
 "Replace" = "替换";
 "Find:" = "查找:";
