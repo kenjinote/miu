@@ -784,7 +784,7 @@
         return YES;
     }
     if (action == @selector(copy:) || action == @selector(cut:)) {
-        return self.editor && !self.editor->cursors.empty() && self.editor->cursors.back().hasSelection();
+        return self.editor && !self.editor->cursors.empty();
     }
     if (action == @selector(paste:)) {
         return [UIPasteboard generalPasteboard].hasStrings;
@@ -938,41 +938,27 @@
 - (void)copy:(id)sender {
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
-    std::string copiedText = "";
-    for (const auto& c : self.editor->cursors) {
-        if (c.hasSelection()) {
-            copiedText += self.editor->pt.getRange(c.start(), c.end() - c.start());
-        }
-    }
-    if (!copiedText.empty()) {
-        [UIPasteboard generalPasteboard].string = [NSString stringWithUTF8String:copiedText.c_str()];
-    }
+    self.editor->copyToClipboard();
 }
 - (void)cut:(id)sender {
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
-    [self copy:sender];
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
-    self.editor->backspaceAtCursors();
+    self.editor->cutToClipboard();
     [self.inputDelegate textDidChange:self];
     [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
-    [self setNeedsLayout];
 }
 - (void)paste:(id)sender {
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
-    NSString *pasteString = [UIPasteboard generalPasteboard].string;
-    if (pasteString.length > 0) {
-        [self.inputDelegate selectionWillChange:self];
-        [self.inputDelegate textWillChange:self];
-        self.editor->insertAtCursors([pasteString UTF8String]);
-        [self.inputDelegate textDidChange:self];
-        [self.inputDelegate selectionDidChange:self];
-        [self setNeedsDisplay];
-        [self setNeedsLayout];
-    }
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->pasteFromClipboard();
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
 }
 - (void)handleUndo:(id)sender {
     if (!self.editor) return;
