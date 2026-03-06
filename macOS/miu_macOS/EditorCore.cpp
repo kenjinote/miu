@@ -682,11 +682,11 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                     }
                     size_t step = currentMatchLen;
                     if (step == 0) {
-                        if (anchorLen > 0 && !(searchFlags & std::regex_constants::match_not_bol)) step = 0;
+                        bool isBolCaret = (startsWithCaret && !(searchFlags & std::regex_constants::match_not_bol));
+                        if (isBolCaret) step = 0;
                         else step = 1;
                     }
                     if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = 1;
-
                     size_t dist = std::distance(searchStartIter, fullText.cend());
                     if ((size_t)m.position() + step > dist) break;
                     size_t advance = m.position() + step;
@@ -1072,13 +1072,13 @@ void Editor::replaceAll() {
                     }
                 }
                 if (!isValid) {
-                    size_t step = (anchorLen > 0) ? anchorLen : matchLen;
+                    size_t step = matchLen;
                     if (step == 0) {
-                        if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                        bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
+                        if (isBolCaret) step = 0;
                         else step = 1;
                     }
                     if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
-
                     size_t relativeAdvance = m.position() + step;
                     size_t remaining = std::distance(searchStart, fullText.cend());
                     if (relativeAdvance > remaining) break;
