@@ -831,6 +831,7 @@
 }
 - (void)selectAll:(id)sender {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     self.editor->cursors.clear();
     Cursor c;
@@ -936,6 +937,7 @@
 }
 - (void)copy:(id)sender {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     std::string copiedText = "";
     for (const auto& c : self.editor->cursors) {
         if (c.hasSelection()) {
@@ -948,6 +950,7 @@
 }
 - (void)cut:(id)sender {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self copy:sender];
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
@@ -959,6 +962,7 @@
 }
 - (void)paste:(id)sender {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     NSString *pasteString = [UIPasteboard generalPasteboard].string;
     if (pasteString.length > 0) {
         [self.inputDelegate selectionWillChange:self];
@@ -1110,9 +1114,11 @@
     }
 }
 - (void)cmdFind:(id)sender {
+    [self hideEditMenuIfNeeded];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"miuShowSearch" object:nil];
 }
 - (void)cmdReplace:(id)sender {
+    [self hideEditMenuIfNeeded];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"miuShowReplace" object:nil];
 }
 - (void)cmdGoToLine:(id)sender {
