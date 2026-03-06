@@ -125,10 +125,8 @@
 }
 - (void)showMenuForCurrentSelection {
     if (!self.editor || self.editor->cursors.empty()) return;
-    
     Cursor c = self.editor->cursors.back();
     CGRect targetRect;
-    
     if (c.hasSelection()) {
         NSArray<UITextSelectionRect *> *rects = [self selectionRectsForRange:self.selectedTextRange];
         if (rects.count > 0) {
@@ -142,7 +140,9 @@
     } else {
         targetRect = [self caretRectForPosition:self.selectedTextRange.end];
     }
-    
+    if (targetRect.size.height == 0) {
+        targetRect.size.height = self.editor->lineHeight;
+    }
     [self showEditMenuAtRect:targetRect];
 }
 - (void)onSingleTap:(UITapGestureRecognizer *)sender {
@@ -1130,7 +1130,11 @@
         NSArray *rects = [self selectionRectsForRange:self.selectedTextRange];
         if (rects.count > 0) return [rects.firstObject rect];
     }
-    return [self caretRectForPosition:self.selectedTextRange.end];
+    CGRect rect = [self caretRectForPosition:self.selectedTextRange.end];
+    if (rect.size.height == 0) {
+        rect.size.height = self.editor->lineHeight;
+    }
+    return rect;
 }
 @end
 @interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate, UIScrollViewDelegate>
