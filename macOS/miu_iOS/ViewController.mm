@@ -765,7 +765,7 @@
     float x = self.editor->getXInLine(l, p);
     float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
     float drawY = (l - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
-    return CGRectMake(drawX, drawY, 0, 0);
+    return CGRectMake(drawX, drawY+self.editor->lineHeight / 2.0, 0, 0);
 }
 - (UITextAutocorrectionType)autocorrectionType { return UITextAutocorrectionTypeNo; }
 - (UITextSpellCheckingType)spellCheckingType {
@@ -1457,6 +1457,24 @@
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf) [strongSelf presentDocumentPickerForSaving];
         return true;
+    };
+    // C++エンジンからiOSのクリップボードに書き込む処理
+    _editorEngine->cbSetClipboard = [](const std::string& text, bool isRect) {
+        if (text.empty()) return;
+        NSString *nsText = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
+        if (nsText) {
+            [UIPasteboard generalPasteboard].string = nsText;
+        }
+    };    
+    // C++エンジンがiOSのクリップボードから読み込む処理
+    _editorEngine->cbGetClipboard = [](bool& isRectMarker) -> std::string {
+        isRectMarker = false;
+        NSString *str = [UIPasteboard generalPasteboard].string;
+        if (!str || str.length == 0) return "";
+        
+        const char *utf8Str = [str UTF8String];
+        if (utf8Str) return std::string(utf8Str);
+        return "";
     };
     BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     _editorEngine->isDarkMode = isDark;
