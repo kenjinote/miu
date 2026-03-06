@@ -1361,7 +1361,7 @@
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf) {
             w = strongSelf.editorView.bounds.size.width;
-            h = strongSelf.editorView.bounds.size.height;
+            h = MAX(0.0f, strongSelf.editorView.bounds.size.height - strongSelf.editorView.topRenderMargin);
         }
     };
     _editorEngine->cbOpenFile = [weakSelf]() -> bool {
