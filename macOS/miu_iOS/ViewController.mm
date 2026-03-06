@@ -1385,6 +1385,7 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showSearchNotif) name:@"miuShowSearch" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showReplaceNotif) name:@"miuShowReplace" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(closeSearch) name:@"miuCloseSearch" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(rebuildBlur) name:UIApplicationWillEnterForegroundNotification object:nil];
     if (@available(iOS 17.0, *)) {
         [self registerForTraitChanges:@[[UITraitUserInterfaceStyle class]] withAction:@selector(updateThemeIfNeeded)];
     }
@@ -1533,6 +1534,11 @@
         blurView.layer.mask = mask;
     }
 }
+- (void)rebuildBlur {
+    if (self.topFillView.bounds.size.height > 0) {
+        [self buildProgressiveBlur];
+    }
+}
 - (void)disableOtherScrollsToTop:(UIView *)view {
     if ([view isKindOfClass:[UIScrollView class]] && view != self.scrollToTopHelper) {
         ((UIScrollView *)view).scrollsToTop = NO;
@@ -1578,6 +1584,7 @@
         _editorEngine->updateThemeColors();
         [self.editorView setNeedsDisplay];
     }
+    [self rebuildBlur];
 }
 - (void)presentDocumentPickerForOpening {
     _isExportingDocument = NO;

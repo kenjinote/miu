@@ -49,9 +49,26 @@ std::string AnsiToUtf8(const char* data, size_t len) {
 }
 std::string ShiftJISToUtf8(const char* data, size_t len) {
     if (len == 0) return "";
-    // kCFStringEncodingDOSJapanese = Shift-JIS (Windows-31J / CP932)
-    CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingDOSJapanese, false);
-    if (!str) return ""; // 変換失敗時
+    CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault,
+                                              (const UInt8*)data,
+                                              len,
+                                              kCFStringEncodingShiftJIS,
+                                              false);
+    if (!str) {
+        str = CFStringCreateWithBytes(kCFAllocatorDefault,
+                                      (const UInt8*)data,
+                                      len,
+                                      kCFStringEncodingDOSJapanese,
+                                      false);
+    }
+    if (!str) {
+        str = CFStringCreateWithBytes(kCFAllocatorDefault,
+                                      (const UInt8*)data,
+                                      len,
+                                      kCFStringEncodingMacJapanese,
+                                      false);
+    }
+    if (!str) return ""; // 変換不能な場合
     std::string res = CFStringToStdString(str);
     CFRelease(str);
     return res;
@@ -1475,27 +1492,27 @@ bool Editor::openFileFromPath(const std::string& p) {
         currentEncoding = DetectEncoding(fileMap->ptr, fileMap->size);
         const char* ptr = fileMap->ptr;
         size_t sz = fileMap->size;
-        std::string conv = "";
+        this->currentFileBuffer = "";
         if (currentEncoding == ENC_UTF16LE) {
-            conv = Utf16ToUtf8(ptr, sz, false);
+            this->currentFileBuffer = Utf16ToUtf8(ptr, sz, false);
         } else if (currentEncoding == ENC_UTF16BE) {
-            conv = Utf16ToUtf8(ptr, sz, true);
+            this->currentFileBuffer = Utf16ToUtf8(ptr, sz, true);
         } else if (currentEncoding == ENC_UTF8_BOM) {
             ptr += 3; sz -= 3;
         } else if (currentEncoding == ENC_UTF8_NOBOM) {
             if (IsProbablyShiftJIS(ptr, sz)) {
 #if defined(__APPLE__)
-                conv = ShiftJISToUtf8(ptr, sz);
+                this->currentFileBuffer = ShiftJISToUtf8(ptr, sz);
 #endif
             }
         } else if (currentEncoding == ENC_ANSI) {
 #if defined(__APPLE__)
-            conv = AnsiToUtf8(ptr, sz);
+            this->currentFileBuffer = AnsiToUtf8(ptr, sz);
 #endif
         }
-        if (!conv.empty()) {
-            pt.initFromFile(conv.data(), conv.size());
-            detectNewlineStyle(conv.data(), conv.size());
+        if (!this->currentFileBuffer.empty()) {
+            pt.initFromFile(this->currentFileBuffer.data(), this->currentFileBuffer.size());
+            detectNewlineStyle(this->currentFileBuffer.data(), this->currentFileBuffer.size());
         } else {
             pt.initFromFile(ptr, sz);
             detectNewlineStyle(ptr, sz);
@@ -1516,6 +1533,7 @@ void Editor::newFile() {
     if(checkUnsavedChanges()){
         pt.initEmpty();
         currentFilePath.clear();
+        this->currentFileBuffer.clear();
         newlineStr = "\n";
         undo.clear();
         isDirty=false;
@@ -1612,7 +1630,12 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     if (!autoStr.empty() && autoStr != searchQuery) {
         CGColorRef autoHlColor = isDarkMode ? CGColorCreateGenericRGB(0.35, 0.35, 0.35, 0.5) : CGColorCreateGenericRGB(0.85, 0.85, 0.85, 0.5);
         CGContextSetFillColorWithColor(ctx, autoHlColor);
-        size_t searchRangeStart = lineStarts[start]; size_t searchRangeEnd = (end < lineStarts.size()) ? lineStarts[end] : pt.length();
+#if TARGET_OS_IOS
+        size_t searchRangeStart = lineStarts[renderStart];
+#else
+        size_t searchRangeStart = lineStarts[start];
+#endif
+        size_t searchRangeEnd = (end < lineStarts.size()) ? lineStarts[end] : pt.length();
         std::string visibleText = pt.getRange(searchRangeStart, searchRangeEnd - searchRangeStart);
         size_t searchPos = 0;
         while ((searchPos = visibleText.find(autoStr, searchPos)) != std::string::npos) {
@@ -1656,7 +1679,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     if (!searchQuery.empty()) {
         CGColorRef hlColor = isDarkMode ? CGColorCreateGenericRGB(0.4, 0.4, 0.0, 0.6) : CGColorCreateGenericRGB(1.0, 1.0, 0.0, 0.4);
         CGContextSetFillColorWithColor(ctx, hlColor);
+#if TARGET_OS_IOS
+        size_t searchRangeStart = lineStarts[renderStart]; // ★ iOSはボカシの裏から検索
+#else
         size_t searchRangeStart = lineStarts[start];
+#endif
         size_t searchRangeEnd = (end < lineStarts.size()) ? lineStarts[end] : pt.length();
         std::string visibleText = pt.getRange(searchRangeStart, searchRangeEnd - searchRangeStart);
         if (searchRegex) {

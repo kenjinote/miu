@@ -150,6 +150,7 @@ struct Editor {
     CTParagraphStyleRef paragraphStyle = nullptr;
 #endif
     std::wstring helpTextStr;
+    std::string currentFileBuffer;
     std::function<void()> cbNeedsDisplay;
     std::function<void()> cbUpdateScrollers;
     std::function<void()> cbUpdateTitleBar;
