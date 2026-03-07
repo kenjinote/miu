@@ -7,6 +7,7 @@
 */
 
 "HelpText" = "F1                    ヘルプ\nCmd+N                 新規作成\nCmd+O / Drag&Drop     開く\nCmd+S                 保存\nCmd+Shift+S           名前を付けて保存\nCmd+F                 検索\nCmd+H                 置換\nF3 / Shift+F3         次/前を検索\nCmd+G                 指定行へ移動\nCmd+Z/Shift+Z         元に戻す/やり直し\nCmd+X/C/V             カット/コピー/ペースト\nCmd+Shift+K           行を削除\nCmd+U                 大文字に変換\nCmd+Shift+U           小文字に変換\nOption+Up/Down        行を移動\nOption+Shift+Up/Down  行をコピー\nCmd+D                 単語を選択 / 次へ\nCmd+A                 すべて選択\nOption+Drag           矩形選択\nCmd+Wheel/+/-         ズーム\nCmd+0                 ズームをリセット\nCtrl+Cmd+F            フルスクリーン\n";
+"HelpText_iOS" = "[ キーボードショートカット (iPad) ]\n\nCmd + N         : 新規作成\nCmd + O         : ファイルを開く\nCmd + S         : 保存\nShift + Cmd + S : 名前を付けて保存\nCmd + F         : 検索\nCmd + R         : 置換\nCmd + G / J     : 行へジャンプ\nCmd + D         : 次の出現箇所を選択\nCmd + [+ / - / 0]: 拡大 / 縮小 / リセット\nF1              : ヘルプの表示/非表示\nEsc             : ダイアログを閉じる / 選択解除";
 "Find" = "検索";
 "Replace" = "置換";
 "Find:" = "検索:";
@@ -28,11 +29,11 @@
 "Quit" = "%@ を終了";
 "New" = "新規";
 "Open" = "開く";
-"Save As" = "名前をつけて保存";
-"Undo" = "取り消し";
-"Redo" = "やり直し";
-"Select All" = "すべて選択";
-"Cut" = "切り取り";
+"Save As" = "別名保存";
+"Undo" = "取り消す";
+"Redo" = "やり直す";
+"Select All" = "全選択";
+"Cut" = "カット";
 "Copy" = "コピー";
 "Paste" = "ペースト";
 "Done" = "完了";
@@ -46,3 +47,5 @@
 "Line:" = "行:";
 "Line Number:" = "行番号:";
 "Go To" = "指定行";
+"Top" = "先頭";
+"Bottom" = "末尾";

@@ -7,6 +7,7 @@
 */
 
 "HelpText" = "F1                    도움말\nCmd+N                 새로 만들기\nCmd+O / Drag&Drop     열기\nCmd+S                 저장\nCmd+Shift+S           다른 이름으로 저장\nCmd+F                 찾기\nCmd+H                 바꾸기\nF3 / Shift+F3         다음/이전 찾기\nCmd+G                 줄로 이동\nCmd+Z/Shift+Z         실행 취소/다시 실행\nCmd+X/C/V             잘라내기/복사/붙여넣기\nCmd+Shift+K           줄 삭제\nCmd+U                 대문자로 변환\nCmd+Shift+U           소문자로 변환\nOption+Up/Down        줄 이동\nOption+Shift+Up/Down  줄 복사\nCmd+D                 단어 선택 / 다음\nCmd+A                 모두 선택\nOption+Drag           사각형 선택\nCmd+Wheel/+/-         확대/축소\nCmd+0                 확대/축소 재설정\nCtrl+Cmd+F            전체 화면\n";
+"HelpText_iOS" = "[ 키보드 단축키 (iPad) ]\n\nCmd + N         : 새 파일\nCmd + O         : 파일 열기\nCmd + S         : 저장\nShift + Cmd + S : 다른 이름으로 저장\nCmd + F         : 찾기\nCmd + R         : 바꾸기\nCmd + G / J     : 줄로 이동\nCmd + D         : 다음 항목 선택\nCmd + [+ / - / 0]: 확대 / 축소 / 초기화\nF1              : 도움말 표시/숨기기\nEsc             : 대화 상자 닫기 / 선택 해제";
 "Find" = "찾기";
 "Replace" = "바꾸기";
 "Find:" = "찾기:";
@@ -28,7 +29,7 @@
 "Quit" = "%@ 종료";
 "New" = "새로 만들기";
 "Open" = "열기";
-"Save As" = "다른 이름으로 저장";
+"Save As" = "별도 저장";
 "Undo" = "실행 취소";
 "Redo" = "다시 실행";
 "Select All" = "전체 선택";
@@ -46,3 +47,5 @@
 "Line:" = "줄:";
 "Line Number:" = "줄 번호:";
 "Go To" = "이동";
+"Top" = "처음";
+"Bottom" = "끝";

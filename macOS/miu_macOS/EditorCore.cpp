@@ -47,8 +47,41 @@ std::string AnsiToUtf8(const char* data, size_t len) {
     if (str) CFRelease(str);
     return res;
 }
+std::string ShiftJISToUtf8(const char* data, size_t len) {
+    if (len == 0) return "";
+    CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault,
+                                              (const UInt8*)data,
+                                              len,
+                                              kCFStringEncodingShiftJIS,
+                                              false);
+    if (!str) {
+        str = CFStringCreateWithBytes(kCFAllocatorDefault,
+                                      (const UInt8*)data,
+                                      len,
+                                      kCFStringEncodingDOSJapanese,
+                                      false);
+    }
+    if (!str) {
+        str = CFStringCreateWithBytes(kCFAllocatorDefault,
+                                      (const UInt8*)data,
+                                      len,
+                                      kCFStringEncodingMacJapanese,
+                                      false);
+    }
+    if (!str) return ""; // 変換不能な場合
+    std::string res = CFStringToStdString(str);
+    CFRelease(str);
+    return res;
+}
+std::string EUCJPToUtf8(const char* data, size_t len) {
+    if (len == 0) return "";
+    CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingEUC_JP, false);
+    if (!str) return "";
+    std::string res = CFStringToStdString(str);
+    CFRelease(str);
+    return res;
+}
 #endif
-const std::wstring APP_VERSION = L"miu v1.0.15";
 const std::wstring APP_TITLE = L"miu";
 bool MappedFile::open(const char* path) {
     fd = ::open(path, O_RDONLY); if (fd == -1) return false;
@@ -57,6 +90,26 @@ bool MappedFile::open(const char* path) {
     ptr = (char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0); return (ptr != MAP_FAILED);
 }
 void MappedFile::close() { if (ptr && ptr != MAP_FAILED) munmap(ptr, size); if (fd != -1) ::close(fd); ptr = nullptr; fd = -1; }
+bool IsProbablyShiftJIS(const char* buf, size_t len) {
+    size_t checkLen = (len > 4096) ? 4096 : len; // 先頭4KBで判定
+    int sjisCount = 0;
+    int utf8Count = 0;
+    for (size_t i = 0; i < checkLen; ++i) {
+        unsigned char c = (unsigned char)buf[i];
+        if (c <= 0x7F) continue; // ASCII
+        if (c >= 0xC2 && c <= 0xF4) utf8Count++;
+        if ((c >= 0x81 && c <= 0x9F) || (c >= 0xE0 && c <= 0xFC)) {
+            if (i + 1 < checkLen) {
+                unsigned char next = (unsigned char)buf[i+1];
+                if ((next >= 0x40 && next <= 0x7E) || (next >= 0x80 && next <= 0xFC)) {
+                    sjisCount++;
+                    i++; // 2バイト分進める
+                }
+            }
+        }
+    }
+    return sjisCount > 0 && sjisCount > utf8Count;
+}
 Encoding DetectEncoding(const char* buf, size_t len) {
     if (len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) return ENC_UTF8_BOM;
     if (len >= 2) {
@@ -506,25 +559,6 @@ std::pair<std::string, bool> Editor::getHighlightTarget() {
     if (end > start) return { pt.getRange(start, end - start), true };
     return { "", true };
 }
-std::string Editor::preprocessRegexQuery(const std::string& query) {
-    std::string processed; processed.reserve(query.size() * 4);
-    for (size_t i = 0; i < query.size(); ++i) {
-        char c = query[i];
-        if (c == '\\' && i + 1 < query.size()) {
-            char next = query[i + 1];
-            if (next == 'n') {
-                bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
-                if (!isPrecededByCR) { processed += "(?:\\r\\n|[\\r\\n])"; i++; continue; }
-            }
-            processed += c; processed += next; i++; continue;
-        } else if (c == '^') {
-            bool inClass = false; if (i > 0 && query[i - 1] == '[') inClass = true;
-            if (!inClass) { processed += "(?:^|(?:\\r\\n|[\\r\\n]))"; continue; }
-        }
-        processed += c;
-    }
-    return processed;
-}
 std::string Editor::UnescapeString(const std::string& s, const std::string& newline) {
     std::string out; out.reserve(s.size());
     for (size_t i = 0; i < s.size(); ++i) {
@@ -533,50 +567,242 @@ std::string Editor::UnescapeString(const std::string& s, const std::string& newl
         } else out += s[i];
     } return out;
 }
+std::string Editor::preprocessRegexQuery(const std::string& query) {
+    std::string processed;
+    processed.reserve(query.size() * 4);
+    for (size_t i = 0; i < query.size(); ++i) {
+        char c = query[i];
+        if (c == '\\') {
+            if (i + 1 < query.size()) {
+                char next = query[i + 1];
+                if (next == 'n') {
+                    bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
+                    if (!isPrecededByCR) {
+                        processed += "(?:\\r\\n|[\\r\\n])";
+                        i++; continue;
+                    }
+                }
+                processed += c; processed += next; i++; continue;
+            }
+        }
+        else if (c == '^') {
+            bool inClass = false;
+            if (i > 0 && query[i - 1] == '[') inClass = true;
+            if (!inClass) {
+                processed += "((?:^|(?:\\r\\n|\\r(?!\\n)|[\\n])))";
+                continue;
+            }
+        }
+        else if (c == '$') {
+            bool inClass = false;
+            if (i > 0 && query[i - 1] == '[') inClass = true;
+            if (!inClass) {
+                processed += "(?=(?:\\r\\n|[\\r\\n]|$))";
+                continue;
+            }
+        }
+        processed += c;
+    }
+    return processed;
+}
 size_t Editor::findText(size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
-    size_t len = pt.length(); std::string actualQuery = query;
+    size_t len = pt.length();
+    std::string actualQuery = query;
+    if (isRegex) actualQuery = preprocessRegexQuery(query);
     if (isRegex) {
-        actualQuery = preprocessRegexQuery(query); std::string fullText = pt.getRange(0, len);
+        std::string fullText = pt.getRange(0, len);
         try {
             std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
             if (!matchCase) flags |= std::regex_constants::icase;
-            std::regex re(actualQuery, flags); std::smatch m; size_t foundPos = std::string::npos; size_t foundLen = 0;
+            std::regex re(actualQuery, flags);
+            std::smatch m;
+            size_t foundPos = std::string::npos;
+            size_t foundLen = 0;
             bool startsWithCaret = (!query.empty() && query[0] == '^');
+            bool endsWithDollar = (!query.empty() && query.back() == '$');
             if (forward) {
-                if (startPos >= fullText.size()) startPos = 0;
-                size_t searchStartIdx = startPos; std::regex_constants::match_flag_type searchFlags = std::regex_constants::match_default;
+                if (startPos > fullText.size()) startPos = 0;
+                size_t searchStartIdx = startPos;
+                std::regex_constants::match_flag_type searchFlags = std::regex_constants::match_default;
                 if (searchStartIdx > 0) {
-                    searchFlags |= std::regex_constants::match_not_bol; char prevChar = fullText[searchStartIdx - 1];
-                    if (prevChar == '\n') { searchStartIdx--; if (searchStartIdx > 0 && fullText[searchStartIdx - 1] == '\r') searchStartIdx--; } else if (prevChar == '\r') searchStartIdx--;
+                    searchFlags |= std::regex_constants::match_not_bol;
+                    char prevChar = fullText[searchStartIdx - 1];
+                    if (prevChar == '\n') {
+                        searchStartIdx--;
+                        if (searchStartIdx > 0 && fullText[searchStartIdx - 1] == '\r') {
+                            searchStartIdx--;
+                        }
+                    }
+                    else if (prevChar == '\r') {
+                        searchStartIdx--;
+                    }
                 }
                 std::string::const_iterator searchStartIter = fullText.begin() + searchStartIdx;
-                if (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) { foundPos = searchStartIdx + m.position(); foundLen = m.length(); }
-                else if (startPos > 0) { if (std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) { foundPos = m.position(); foundLen = m.length(); } }
-            } else {
-                auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re); auto words_end = std::sregex_iterator();
-                size_t bestPos = std::string::npos; size_t limit = (startPos == 0) ? len : startPos;
-                for (auto i = words_begin; i != words_end; ++i) { if (i->position() < (std::ptrdiff_t)limit) { bestPos = i->position(); foundLen = i->length(); } }
-                if (bestPos != std::string::npos) foundPos = bestPos;
+                while (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) {
+                    size_t currentMatchPos = searchStartIdx + m.position();
+                    size_t currentMatchLen = m.length();
+                    size_t anchorLen = 0;
+                    if (startsWithCaret && m.size() > 1 && m[1].matched) {
+                        anchorLen = m.length(1);
+                    }
+                    size_t contentPos = currentMatchPos + anchorLen;
+                    size_t contentLen = currentMatchLen - anchorLen;
+                    bool isValid = false;
+                    if (contentPos >= startPos) isValid = true;
+                    if (isValid && endsWithDollar) {
+                        bool isAtLineEnd = false;
+                        size_t checkPos = contentPos + contentLen;
+                        if (checkPos >= fullText.size()) {
+                            isAtLineEnd = true;
+                        } else {
+                            char c = fullText[checkPos];
+                            if (c == '\r' || c == '\n') {
+                                isAtLineEnd = true;
+                                if (contentLen == 0 && c == '\n' && checkPos > 0 && fullText[checkPos - 1] == '\r') {
+                                    isAtLineEnd = false;
+                                }
+                            }
+                        }
+                        if (!isAtLineEnd) isValid = false;
+                    }
+                    if (isValid) {
+                        foundPos = contentPos;
+                        foundLen = contentLen;
+                        if (startsWithCaret && endsWithDollar && foundLen == 0 && foundPos == fullText.size() && !fullText.empty()) {
+                            bool isAfterNewline = false;
+                            if (foundPos > 0) {
+                                char c = fullText[foundPos - 1];
+                                if (c == '\r' || c == '\n') isAfterNewline = true;
+                            }
+                            if (!isAfterNewline) isValid = false;
+                        }
+                        if (isValid) break;
+                    }
+                    
+                    // ★修正: 正しいスキップ計算
+                    size_t step = currentMatchLen;
+                    if (step == 0) {
+                        bool isBolCaret = (startsWithCaret && !(searchFlags & std::regex_constants::match_not_bol));
+                        if (isBolCaret) step = 0;
+                        else step = 1;
+                    }
+                    if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = 1;
+                    
+                    size_t dist = std::distance(searchStartIter, fullText.cend());
+                    if ((size_t)m.position() + step > dist) break;
+                    size_t advance = m.position() + step;
+                    std::advance(searchStartIter, advance);
+                    searchStartIdx += advance;
+                    searchFlags |= std::regex_constants::match_not_bol;
+                }
+                if (foundPos == std::string::npos && startPos > 0) {
+                    if (std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) {
+                        size_t mPos = m.position();
+                        size_t mLen = m.length();
+                        size_t aLen = 0;
+                        if (startsWithCaret && m.size() > 1 && m[1].matched) {
+                            aLen = m.length(1);
+                        }
+                        bool split = false;
+                        if (startsWithCaret && aLen == 1 && mPos < fullText.size() && fullText[mPos] == '\r') {
+                            if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') split = true;
+                        }
+                        if (!split) {
+                            size_t cPos = mPos + aLen;
+                            size_t cLen = mLen - aLen;
+                            bool valid = true;
+                            if (endsWithDollar) {
+                                size_t check = cPos + cLen;
+                                if (check < fullText.size()) {
+                                    char c = fullText[check];
+                                    if (c == '\r' || c == '\n') {
+                                        if (cLen == 0 && c == '\n' && check > 0 && fullText[check - 1] == '\r') valid = false;
+                                    } else {
+                                        valid = false;
+                                    }
+                                }
+                            }
+                            if (startsWithCaret && endsWithDollar && cLen == 0 && cPos == fullText.size() && !fullText.empty()) {
+                                bool isAfterNL = false;
+                                if (cPos > 0) {
+                                    char c = fullText[cPos - 1];
+                                    if (c == '\r' || c == '\n') isAfterNL = true;
+                                }
+                                if (!isAfterNL) valid = false;
+                            }
+                            if (valid) {
+                                foundPos = cPos;
+                                foundLen = cLen;
+                            }
+                        }
+                    }
+                }
+            }
+            else {
+                auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
+                auto words_end = std::sregex_iterator();
+                size_t bestPos = std::string::npos;
+                size_t bestLen = 0;
+                size_t limit = (startPos == 0) ? len : startPos;
+                for (auto i = words_begin; i != words_end; ++i) {
+                    size_t mPos = i->position();
+                    size_t mLen = i->length();
+                    size_t aLen = 0;
+                    if (startsWithCaret && i->size() > 1 && (*i)[1].matched) {
+                        aLen = i->length(1);
+                    }
+                    if (startsWithCaret && aLen == 1 && mPos < fullText.size() && fullText[mPos] == '\r') {
+                        if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') continue;
+                    }
+                    size_t contentStart = mPos + aLen;
+                    size_t contentLen = mLen - aLen;
+                    if (endsWithDollar) {
+                        bool isAtEnd = (contentStart + contentLen >= fullText.size());
+                        if (!isAtEnd) {
+                            char c = fullText[contentStart + contentLen];
+                            if (c != '\r' && c != '\n') continue;
+                            if (contentLen == 0 && c == '\n' && contentStart + contentLen > 0 && fullText[contentStart + contentLen - 1] == '\r') continue;
+                        }
+                    }
+                    if (startsWithCaret && endsWithDollar && contentLen == 0 && contentStart == fullText.size() && !fullText.empty()) {
+                        bool isAfterNL = false;
+                        if (contentStart > 0) {
+                            char c = fullText[contentStart - 1];
+                            if (c == '\r' || c == '\n') isAfterNL = true;
+                        }
+                        if (!isAfterNL) continue;
+                    }
+                    if (contentStart < limit) {
+                        bestPos = contentStart;
+                        bestLen = contentLen;
+                    }
+                }
+                if (bestPos != std::string::npos) {
+                    foundPos = bestPos;
+                    foundLen = bestLen;
+                }
             }
             if (foundPos != std::string::npos) {
-                if (foundPos > 0 && startsWithCaret) {
-                    std::string matchStr = fullText.substr(foundPos, foundLen); size_t adj = 0;
-                    if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2; else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) adj = 1;
-                    foundPos += adj; foundLen -= adj;
-                }
-                if (outLen) *outLen = foundLen; return foundPos;
+                if (outLen) *outLen = foundLen;
+                return foundPos;
             }
-        } catch (...) { return std::string::npos; }
+        }
+        catch (...) { return std::string::npos; }
         return std::string::npos;
     }
-    size_t qLen = query.length(); if (outLen) *outLen = qLen;
+    size_t qLen = query.length();
+    if (outLen) *outLen = qLen;
     auto toLower = [](char c) { return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c; };
-    size_t cur = startPos; if (forward) { if (cur >= len) cur = 0; } else { if (cur == 0) cur = len; else cur--; }
-    for (size_t count = 0; count < len; ++count) {
+    size_t cur = startPos;
+    if (forward) { if (cur >= len) cur = 0; }
+    else { if (cur == 0) cur = len; else cur--; }
+    size_t count = 0;
+    while (count < len) {
         bool match = true;
         for (size_t i = 0; i < qLen; ++i) {
-            size_t p = cur + i; if (p >= len) { match = false; break; }
+            size_t p = cur + i;
+            if (p >= len) { match = false; break; }
             char c1 = pt.charAt(p); char c2 = query[i];
             if (!matchCase) { c1 = toLower(c1); c2 = toLower(c2); }
             if (c1 != c2) { match = false; break; }
@@ -585,38 +811,144 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
             if (cur > 0 && isWordChar(pt.charAt(cur - 1))) match = false;
             if (match && (cur + qLen < len) && isWordChar(pt.charAt(cur + qLen))) match = false;
         }
+        if (match) {
+            size_t nextPos = cur + qLen;
+            if (nextPos < len) {
+                unsigned char b1 = (unsigned char)pt.charAt(nextPos);
+                if (b1 == 0xE2 && nextPos + 2 < len) {
+                    unsigned char b2 = (unsigned char)pt.charAt(nextPos + 1);
+                    unsigned char b3 = (unsigned char)pt.charAt(nextPos + 2);
+                    if (b2 == 0x80 && b3 == 0x8D) match = false;
+                }
+                else if (b1 == 0xEF && nextPos + 2 < len) {
+                    unsigned char b2 = (unsigned char)pt.charAt(nextPos + 1);
+                    unsigned char b3 = (unsigned char)pt.charAt(nextPos + 2);
+                    if (b2 == 0xB8 && b3 == 0x8F) match = false;
+                }
+                else if (b1 == 0xF0 && nextPos + 3 < len) {
+                    unsigned char b2 = (unsigned char)pt.charAt(nextPos + 1);
+                    unsigned char b3 = (unsigned char)pt.charAt(nextPos + 2);
+                    unsigned char b4 = (unsigned char)pt.charAt(nextPos + 3);
+                    if (b2 == 0x9F && b3 == 0x8F && (b4 >= 0xBB && b4 <= 0xBF)) match = false;
+                }
+            }
+        }
         if (match) return cur;
-        if (forward) { cur++; if (cur >= len) cur = 0; } else { if (cur == 0) cur = len - 1; else cur--; }
+        if (forward) { cur++; if (cur >= len) cur = 0; }
+        else { if (cur == 0) cur = len - 1; else cur--; }
+        count++;
     }
     return std::string::npos;
 }
 void Editor::findNext(bool forward) {
     if (searchQuery.empty()) return;
-    size_t startPos = forward ? (cursors.empty() ? 0 : cursors.back().end()) : (cursors.empty() ? 0 : cursors.back().start());
-    size_t matchLen = 0; size_t pos = findText(startPos, searchQuery, forward, searchMatchCase, searchWholeWord, searchRegex, &matchLen);
-    if (pos != std::string::npos) {
-        cursors.clear(); cursors.push_back({ pos + matchLen, pos, getXFromPos(pos + matchLen), getXFromPos(pos), false });
+    size_t currentCursorPos = forward ? (cursors.empty() ? 0 : cursors.back().end()) : (cursors.empty() ? 0 : cursors.back().start());
+    size_t searchStart = currentCursorPos;
+    bool hasWrapped = false;
+    while (true) {
+        size_t matchLen = 0;
+        size_t pos = findText(searchStart, searchQuery, forward, searchMatchCase, searchWholeWord, searchRegex, &matchLen);
+        if (pos == std::string::npos) {
+            if (forward && !hasWrapped) {
+                searchStart = 0;
+                hasWrapped = true;
+                continue;
+            }
+            else if (!forward && !hasWrapped) {
+                searchStart = pt.length();
+                hasWrapped = true;
+                continue;
+            }
+            if (cbBeep) cbBeep();
+            return;
+        }
+        size_t matchEnd = pos + matchLen;
+        if (forward) {
+            if (!hasWrapped && matchEnd <= currentCursorPos) {
+                size_t nextStart = searchStart + 1;
+                if (searchStart + 1 < pt.length() && pt.charAt(searchStart) == '\r' && pt.charAt(searchStart + 1) == '\n') {
+                    nextStart++;
+                }
+                searchStart = nextStart;
+                if (searchStart > pt.length()) {
+                    searchStart = 0;
+                    hasWrapped = true;
+                }
+                continue;
+            }
+        }
+        cursors.clear();
+        cursors.push_back({ matchEnd, pos, getXFromPos(matchEnd), getXFromPos(pos), false });
         ensureCaretVisible();
+        updateTitleBar();
         if (cbNeedsDisplay) cbNeedsDisplay();
-    } else {
-        if (cbBeep) cbBeep();
+        break;
     }
 }
 void Editor::replaceNext() {
     if (cursors.empty() || searchQuery.empty()) return;
-    Cursor& c = cursors.back(); if (!c.hasSelection()) { findNext(true); return; }
-    size_t len = c.end() - c.start(); size_t start = c.start();
-    std::string selText = pt.getRange(start, len); bool match = false; std::string replacement = replaceQuery;
+    Cursor& c = cursors.back();
+    if (!c.hasSelection()) { findNext(true); return; }
+    size_t len = c.end() - c.start();
+    size_t start = c.start();
+    std::string selText = pt.getRange(start, len);
+    bool match = false;
+    std::string replacement = replaceQuery;
     if (searchRegex) {
         try {
-            std::string actualQuery = preprocessRegexQuery(searchQuery); std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
-            if (!searchMatchCase) flags |= std::regex_constants::icase; std::regex re(actualQuery, flags); std::smatch m;
-            if (std::regex_match(selText, m, re)) match = true;
-            else if (start > 0) {
-                int backStep = 0; if (pt.charAt(start - 1) == '\n') { backStep = 1; if (start > 1 && pt.charAt(start - 2) == '\r') backStep = 2; } else if (pt.charAt(start - 1) == '\r') backStep = 1;
-                if (backStep > 0) { std::string extText = pt.getRange(start - backStep, len + backStep); if (std::regex_match(extText, m, re)) match = true; }
+            std::string actualQuery = preprocessRegexQuery(searchQuery);
+            std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+            if (!searchMatchCase) flags |= std::regex_constants::icase;
+            std::regex re(actualQuery, flags);
+            std::smatch m;
+            std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
+            std::string fmt;
+            for (size_t i = 0; i < rawFmt.size(); ++i) {
+                if (rawFmt[i] == '$') {
+                    fmt += '$';
+                    if (i + 1 < rawFmt.size()) {
+                        if (isdigit((unsigned char)rawFmt[i + 1])) {
+                            i++;
+                            std::string numStr;
+                            while (i < rawFmt.size() && isdigit((unsigned char)rawFmt[i])) {
+                                numStr += rawFmt[i];
+                                i++;
+                            }
+                            i--;
+                            int grp = std::stoi(numStr);
+                            if (grp > 0) grp++;
+                            fmt += std::to_string(grp);
+                        } else {
+                            fmt += rawFmt[i + 1];
+                            i++;
+                        }
+                    }
+                } else {
+                    fmt += rawFmt[i];
+                }
             }
-            if (match) replacement = m.format(UnescapeString(replaceQuery, newlineStr));
+            if (std::regex_match(selText, m, re)) {
+                match = true;
+            }
+            else if (start > 0) {
+                int backStep = 0;
+                if (pt.charAt(start - 1) == '\n') {
+                    backStep = 1;
+                    if (start > 1 && pt.charAt(start - 2) == '\r') backStep = 2;
+                }
+                else if (pt.charAt(start - 1) == '\r') {
+                    backStep = 1;
+                }
+                if (backStep > 0) {
+                    std::string extendedText = pt.getRange(start - backStep, len + backStep);
+                    if (std::regex_match(extendedText, m, re)) {
+                        match = true;
+                    }
+                }
+            }
+            if (match) {
+                replacement = m.format(fmt);
+            }
         } catch (...) {}
     } else {
         if (len == searchQuery.length()) {
@@ -630,54 +962,190 @@ void Editor::replaceNext() {
         if (match) replacement = replaceQuery;
     }
     if (match) {
-        EditBatch batch; batch.beforeCursors = cursors; pt.erase(start, len); batch.ops.push_back({ EditOp::Erase, start, selText });
+        EditBatch batch; batch.beforeCursors = cursors;
+        pt.erase(start, len); batch.ops.push_back({ EditOp::Erase, start, selText });
         pt.insert(start, replacement); batch.ops.push_back({ EditOp::Insert, start, replacement });
-        cursors.clear(); size_t newEnd = start + replacement.size(); cursors.push_back({ newEnd, start, getXFromPos(newEnd), getXFromPos(start), false });
-        batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
+        cursors.clear();
+        size_t newEnd = start + replacement.size();
+        cursors.push_back({ newEnd, start, getXFromPos(newEnd), getXFromPos(start), false });
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        rebuildLineStarts();
+        ensureCaretVisible();
+        updateDirtyFlag();
         if (cbNeedsDisplay) cbNeedsDisplay();
-    } else findNext(true);
+        findNext(true);
+    } else {
+        findNext(true);
+    }
 }
 void Editor::replaceAll() {
     if (searchQuery.empty()) return;
-    struct Match { size_t start; size_t len; std::string replacementText; }; std::vector<Match> matches;
-    size_t currentPos = 0, docLen = pt.length(); std::string actualQuery = searchQuery;
+    struct Match { size_t start; size_t len; std::string replacementText; };
+    std::vector<Match> matches;
+    size_t docLen = pt.length();
     if (searchRegex) {
-        actualQuery = preprocessRegexQuery(searchQuery); std::string fullText = pt.getRange(0, docLen); std::string fmt = UnescapeString(replaceQuery, newlineStr);
-        try {
-            std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript; if (!searchMatchCase) flags |= std::regex_constants::icase; std::regex re(actualQuery, flags);
-            bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
-            auto begin = std::sregex_iterator(fullText.begin(), fullText.end(), re); auto end = std::sregex_iterator();
-            for (auto i = begin; i != end; ++i) {
-                size_t pos = i->position(), len = i->length(); std::string rText = i->format(fmt);
-                if (startsWithCaret) {
-                    std::string matchStr = i->str(); size_t adj = 0;
-                    if (matchStr.size() >= 2 && matchStr[0] == '\r' && matchStr[1] == '\n') adj = 2; else if (matchStr.size() >= 1 && (matchStr[0] == '\n' || matchStr[0] == '\r')) adj = 1;
-                    if (adj > 0) { pos += adj; len -= adj; }
+        std::string fullText = pt.getRange(0, docLen);
+        std::string actualQuery = preprocessRegexQuery(searchQuery);
+        std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
+        std::string fmt;
+        for (size_t i = 0; i < rawFmt.size(); ++i) {
+            if (rawFmt[i] == '$') {
+                fmt += '$';
+                if (i + 1 < rawFmt.size()) {
+                    if (isdigit((unsigned char)rawFmt[i + 1])) {
+                        i++;
+                        std::string numStr;
+                        while (i < rawFmt.size() && isdigit((unsigned char)rawFmt[i])) {
+                            numStr += rawFmt[i];
+                            i++;
+                        }
+                        i--;
+                        int grp = std::stoi(numStr);
+                        if (grp > 0) grp++;
+                        fmt += std::to_string(grp);
+                    } else {
+                        fmt += rawFmt[i + 1];
+                        i++;
+                    }
                 }
-                matches.push_back({ pos, len, rText });
+            } else {
+                fmt += rawFmt[i];
             }
-        } catch (...) { return; }
+        }
+        try {
+            bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
+            bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
+            auto searchStart = fullText.cbegin();
+            std::smatch m;
+            size_t currentOffset = 0;
+            std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
+            std::regex_constants::syntax_option_type reFlags = std::regex_constants::ECMAScript;
+            if (!searchMatchCase) reFlags |= std::regex_constants::icase;
+            std::regex cachedRegex(actualQuery, reFlags);
+            while (std::regex_search(searchStart, fullText.cend(), m, cachedRegex, flags)) {
+                size_t matchPos = currentOffset + m.position();
+                size_t matchLen = m.length();
+                size_t anchorLen = 0;
+                if (startsWithCaret && m.size() > 1 && m[1].matched) {
+                    anchorLen = m.length(1);
+                }
+                size_t contentPos = matchPos + anchorLen;
+                size_t contentLen = matchLen - anchorLen;
+                
+                if (endsWithDollar) {
+                    if (contentLen > 0) {
+                        if (fullText[contentPos + contentLen - 1] == '\n') {
+                            contentLen--;
+                            if (contentLen > 0 && fullText[contentPos + contentLen - 1] == '\r') contentLen--;
+                        }
+                    }
+                }
+                
+                bool isValid = true;
+                if (endsWithDollar) {
+                    bool isAtLineEnd = false;
+                    size_t checkPos = contentPos + contentLen;
+                    if (checkPos >= fullText.size()) {
+                        isAtLineEnd = true;
+                    } else {
+                        char c = fullText[checkPos];
+                        if (c == '\r' || c == '\n') {
+                            isAtLineEnd = true;
+                            if (contentLen == 0 && c == '\n' && checkPos > 0 && fullText[checkPos - 1] == '\r') {
+                                isAtLineEnd = false;
+                            }
+                        }
+                    }
+                    if (!isAtLineEnd) isValid = false;
+                }
+                
+                if (isValid && startsWithCaret && endsWithDollar && contentLen == 0 && contentPos == fullText.size() && !fullText.empty()) {
+                    bool isAfterNewline = false;
+                    if (contentPos > 0) {
+                        char c = fullText[contentPos - 1];
+                        if (c == '\r' || c == '\n') isAfterNewline = true;
+                    }
+                    if (!isAfterNewline) isValid = false;
+                }
+                
+                if (isValid && !matches.empty()) {
+                    const auto& last = matches.back();
+                    if (last.start == contentPos && last.len == 0 && contentLen == 0) {
+                        isValid = false;
+                    }
+                }
+                
+                // ★修正: 有効な場合のみ置換リストに追加
+                if (isValid) {
+                    std::string rText = m.format(fmt);
+                    matches.push_back({ contentPos, contentLen, rText });
+                }
+                
+                // ★修正: 古いコードを排除し、正しい1つの計算式に統合
+                size_t step = matchLen;
+                if (step == 0) {
+                    bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
+                    if (isBolCaret) step = 0;
+                    else step = 1;
+                }
+                if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
+                
+                size_t relativeAdvance = m.position() + step;
+                size_t remaining = std::distance(searchStart, fullText.cend());
+                if (relativeAdvance > remaining) break;
+                std::advance(searchStart, relativeAdvance);
+                currentOffset += relativeAdvance;
+                flags |= std::regex_constants::match_not_bol;
+            }
+
+            if (startsWithCaret && fullText.empty()) {
+                bool alreadyMatched = !matches.empty();
+                if (!alreadyMatched) {
+                    matches.push_back({ 0, 0, fmt });
+                }
+            }
+        }
+        catch (...) { return; }
     } else {
+        size_t currentPos = 0;
         while (true) {
-            size_t matchLen = 0; size_t pos = findText(currentPos, searchQuery, true, searchMatchCase, searchWholeWord, false, &matchLen);
+            size_t matchLen = 0;
+            size_t pos = findText(currentPos, searchQuery, true, searchMatchCase, searchWholeWord, false, &matchLen);
             if (pos == std::string::npos || pos < currentPos) break;
-            matches.push_back({ pos, matchLen, replaceQuery }); currentPos = pos + matchLen; if (currentPos > docLen) break;
+            matches.push_back({ pos, matchLen, replaceQuery });
+            currentPos = pos + matchLen;
+            if (currentPos > docLen) break;
         }
     }
     if (matches.empty()) { if (cbBeep) cbBeep(); return; }
-    EditBatch batch; batch.beforeCursors = cursors;
+    EditBatch batch;
+    batch.beforeCursors = cursors;
     for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
-        size_t start = it->start, len = it->len; std::string deleted = pt.getRange(start, len);
-        pt.erase(start, len); batch.ops.push_back({ EditOp::Erase, start, deleted });
-        pt.insert(start, it->replacementText); batch.ops.push_back({ EditOp::Insert, start, it->replacementText });
+        size_t start = it->start;
+        size_t len = it->len;
+        if (start + len > pt.length()) continue;
+        std::string deleted = pt.getRange(start, len);
+        pt.erase(start, len);
+        batch.ops.push_back({ EditOp::Erase, start, deleted });
+        pt.insert(start, it->replacementText);
+        batch.ops.push_back({ EditOp::Insert, start, it->replacementText });
     }
-    size_t finalMatchIdx = matches.size() - 1; long long offsetBeforeFinal = 0;
-    for (size_t i = 0; i < finalMatchIdx; ++i) offsetBeforeFinal += (long long)matches[i].replacementText.size() - (long long)matches[i].len;
-    size_t lastReplaceStart = (size_t)((long long)matches.back().start + offsetBeforeFinal); size_t lastReplaceEnd = lastReplaceStart + matches.back().replacementText.size();
-    cursors.clear(); cursors.push_back({ lastReplaceEnd, lastReplaceStart, getXFromPos(lastReplaceEnd), getXFromPos(lastReplaceStart), false });
-    batch.afterCursors = cursors; undo.push(batch); rebuildLineStarts(); ensureCaretVisible(); updateDirtyFlag();
+    size_t finalMatchIdx = matches.size() - 1;
+    long long offsetBeforeFinal = 0;
+    for (size_t i = 0; i < finalMatchIdx; ++i) {
+        offsetBeforeFinal += (long long)matches[i].replacementText.size() - (long long)matches[i].len;
+    }
+    size_t lastReplaceStart = (size_t)((long long)matches.back().start + offsetBeforeFinal);
+    size_t lastReplaceEnd = lastReplaceStart + matches.back().replacementText.size();
+    cursors.clear();
+    cursors.push_back({ lastReplaceEnd, lastReplaceStart, getXFromPos(lastReplaceEnd), getXFromPos(lastReplaceStart), false });
+    batch.afterCursors = cursors;
+    undo.push(batch);
+    rebuildLineStarts();
+    ensureCaretVisible();
+    updateDirtyFlag();
     if (cbNeedsDisplay) cbNeedsDisplay();
-    
     if (cbShowReplaceAlert) cbShowReplaceAlert((int)matches.size());
 }
 void Editor::selectNextOccurrence() {
@@ -990,7 +1458,6 @@ void Editor::pasteFromClipboard() {
     bool isRectMarker = false;
     std::string utf8 = cbGetClipboard(isRectMarker);
     if(utf8.empty()) return;
-    
     if (isRectMarker) {
         if (cursors.size() <= 1) {
             size_t basePos = cursors.empty() ? 0 : cursors[0].head; float baseX = getXFromPos(basePos); int startLine = getLineIdx(basePos);
@@ -1018,11 +1485,30 @@ bool Editor::saveFileAs() {
 bool Editor::openFileFromPath(const std::string& p) {
     fileMap.reset(new MappedFile());
     if(fileMap->open(p.c_str())){
-        currentEncoding=DetectEncoding(fileMap->ptr,fileMap->size); const char* ptr=fileMap->ptr; size_t sz=fileMap->size; std::string conv = "";
-        if(currentEncoding==ENC_UTF16LE) conv=Utf16ToUtf8(ptr,sz,false); else if(currentEncoding == ENC_UTF16BE) conv=Utf16ToUtf8(ptr,sz,true); else if(currentEncoding == ENC_ANSI) conv=AnsiToUtf8(ptr,sz); else if(currentEncoding == ENC_UTF8_BOM){ptr+=3;sz-=3;}
-        if(!conv.empty()) {
-            pt.initFromFile(conv.data(),conv.size());
-            detectNewlineStyle(conv.data(), conv.size());
+        currentEncoding = DetectEncoding(fileMap->ptr, fileMap->size);
+        const char* ptr = fileMap->ptr;
+        size_t sz = fileMap->size;
+        this->currentFileBuffer = "";
+        if (currentEncoding == ENC_UTF16LE) {
+            this->currentFileBuffer = Utf16ToUtf8(ptr, sz, false);
+        } else if (currentEncoding == ENC_UTF16BE) {
+            this->currentFileBuffer = Utf16ToUtf8(ptr, sz, true);
+        } else if (currentEncoding == ENC_UTF8_BOM) {
+            ptr += 3; sz -= 3;
+        } else if (currentEncoding == ENC_UTF8_NOBOM) {
+            if (IsProbablyShiftJIS(ptr, sz)) {
+#if defined(__APPLE__)
+                this->currentFileBuffer = ShiftJISToUtf8(ptr, sz);
+#endif
+            }
+        } else if (currentEncoding == ENC_ANSI) {
+#if defined(__APPLE__)
+            this->currentFileBuffer = AnsiToUtf8(ptr, sz);
+#endif
+        }
+        if (!this->currentFileBuffer.empty()) {
+            pt.initFromFile(this->currentFileBuffer.data(), this->currentFileBuffer.size());
+            detectNewlineStyle(this->currentFileBuffer.data(), this->currentFileBuffer.size());
         } else {
             pt.initFromFile(ptr, sz);
             detectNewlineStyle(ptr, sz);
@@ -1043,6 +1529,7 @@ void Editor::newFile() {
     if(checkUnsavedChanges()){
         pt.initEmpty();
         currentFilePath.clear();
+        this->currentFileBuffer.clear();
         newlineStr = "\n";
         undo.clear();
         isDirty=false;
@@ -1090,27 +1577,27 @@ void Editor::updateThemeColors() {
 #if defined(__APPLE__)
     if (colBackground) { CGColorRelease(colBackground); CGColorRelease(colText); CGColorRelease(colGutterBg); CGColorRelease(colGutterText); CGColorRelease(colSel); CGColorRelease(colCaret); }
     if (isDarkMode) {
-        colText = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 1.0);
+        colText = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
 #if TARGET_OS_IOS
         colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
-        colGutterBg = CGColorCreateGenericRGB(0.1, 0.1, 0.1, 1.0);
+        colGutterBg = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
 #elif TARGET_OS_OSX
-        colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.5);
-        colGutterBg = CGColorCreateGenericRGB(0.25, 0.25, 0.25, 0.0);
+        colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
+        colGutterBg = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
 #endif
-        colGutterText = CGColorCreateGenericRGB(0.45, 0.45, 0.45, 1.0);
-        colSel = CGColorCreateGenericRGB(0.1, 0.2, 0.4, 1.0);
+        colGutterText = CGColorCreateGenericRGB(0.33, 0.33, 0.33, 1.0);
+        colSel = CGColorCreateGenericRGB(0.2, 0.3, 0.5, 1.0);
         colCaret = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
     } else {
         colText = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
 #if TARGET_OS_IOS
         colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
-        colGutterBg = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 1.0);
+        colGutterBg = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
 #elif TARGET_OS_OSX
-        colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.5);
-        colGutterBg = CGColorCreateGenericRGB(0.95, 0.95, 0.95, 0.0);
+        colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.0);
+        colGutterBg = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.0);
 #endif
-        colGutterText = CGColorCreateGenericRGB(0.5, 0.5, 0.5, 1.0);
+        colGutterText = CGColorCreateGenericRGB(0.66, 0.66, 0.66, 1.0);
         colSel = CGColorCreateGenericRGB(0.70, 0.80, 1.0, 1.0);
         colCaret = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
     }
@@ -1125,13 +1612,26 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     float vw = std::max(0.0f, w - gutterWidth - visibleVScrollWidth);
     float vh = std::max(0.0f, h - visibleHScrollHeight);
     int start = vScrollPos; int vis = (int)(vh / lineHeight) + 2; int end = std::min((int)lineStarts.size(), start + vis);
+#if TARGET_OS_IOS
+    int renderStart = std::max(0, start - 15);
+#endif
     CGFloat asc = CTFontGetAscent(fontRef);
-    CGContextSaveGState(ctx); CGContextClipToRect(ctx, CGRectMake(gutterWidth, 0, vw, vh));
+    CGContextSaveGState(ctx);
+#if TARGET_OS_IOS
+    CGContextClipToRect(ctx, CGRectMake(gutterWidth, -200.0f, vw, vh + 200.0f));
+#else
+    CGContextClipToRect(ctx, CGRectMake(gutterWidth, 0, vw, vh));
+#endif
     auto [autoStr, isWholeWord] = getHighlightTarget();
     if (!autoStr.empty() && autoStr != searchQuery) {
         CGColorRef autoHlColor = isDarkMode ? CGColorCreateGenericRGB(0.35, 0.35, 0.35, 0.5) : CGColorCreateGenericRGB(0.85, 0.85, 0.85, 0.5);
         CGContextSetFillColorWithColor(ctx, autoHlColor);
-        size_t searchRangeStart = lineStarts[start]; size_t searchRangeEnd = (end < lineStarts.size()) ? lineStarts[end] : pt.length();
+#if TARGET_OS_IOS
+        size_t searchRangeStart = lineStarts[renderStart];
+#else
+        size_t searchRangeStart = lineStarts[start];
+#endif
+        size_t searchRangeEnd = (end < lineStarts.size()) ? lineStarts[end] : pt.length();
         std::string visibleText = pt.getRange(searchRangeStart, searchRangeEnd - searchRangeStart);
         size_t searchPos = 0;
         while ((searchPos = visibleText.find(autoStr, searchPos)) != std::string::npos) {
@@ -1141,11 +1641,31 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                 if (shouldHighlight && (docPos + autoStr.length() < pt.length()) && isWordChar(pt.charAt(docPos + autoStr.length()))) shouldHighlight = false;
             }
             if (shouldHighlight) {
-                int li = getLineIdx(docPos);
-                if (li >= start && li < end) {
-                    float y = (float)(li - start) * lineHeight;
-                    float x1 = getXInLine(li, docPos); float x2 = getXInLine(li, docPos + autoStr.length());
-                    CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                size_t currentDrawPos = docPos;
+                size_t remainingLen = autoStr.length();
+                while (remainingLen > 0) {
+                    int li = getLineIdx(currentDrawPos);
+                    size_t lineEndPos = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
+                    size_t lineVisualEnd = lineEndPos;
+                    if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\n') lineVisualEnd--;
+                    if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\r') lineVisualEnd--;
+                    size_t lenInLine = std::min(remainingLen, lineVisualEnd > currentDrawPos ? lineVisualEnd - currentDrawPos : 0);
+                    if (lenInLine == 0 && remainingLen > 0 && currentDrawPos < lineEndPos) lenInLine = std::min(remainingLen, lineEndPos - currentDrawPos);
+#if TARGET_OS_IOS
+                    if (li >= renderStart && li < end) {
+#else
+                    if (li >= start && li < end) {
+#endif
+                        float y = (float)(li - start) * lineHeight;
+                        float x1 = getXInLine(li, currentDrawPos);
+                        float x2 = getXInLine(li, currentDrawPos + lenInLine);
+                        if (x2 <= x1) x2 = x1 + charWidth;
+                        CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                    }
+                    size_t consumed = std::min(remainingLen, lineEndPos - currentDrawPos);
+                    if (consumed == 0) break;
+                    currentDrawPos += consumed;
+                    remainingLen -= consumed;
                 }
             }
             searchPos += 1;
@@ -1155,7 +1675,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     if (!searchQuery.empty()) {
         CGColorRef hlColor = isDarkMode ? CGColorCreateGenericRGB(0.4, 0.4, 0.0, 0.6) : CGColorCreateGenericRGB(1.0, 1.0, 0.0, 0.4);
         CGContextSetFillColorWithColor(ctx, hlColor);
+#if TARGET_OS_IOS
+        size_t searchRangeStart = lineStarts[renderStart]; // ★ iOSはボカシの裏から検索
+#else
         size_t searchRangeStart = lineStarts[start];
+#endif
         size_t searchRangeEnd = (end < lineStarts.size()) ? lineStarts[end] : pt.length();
         std::string visibleText = pt.getRange(searchRangeStart, searchRangeEnd - searchRangeStart);
         if (searchRegex) {
@@ -1164,17 +1688,107 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                 std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
                 if (!searchMatchCase) flags |= std::regex_constants::icase;
                 std::regex re(actualQuery, flags);
-                auto words_begin = std::sregex_iterator(visibleText.begin(), visibleText.end(), re);
-                auto words_end = std::sregex_iterator();
-                for (auto i = words_begin; i != words_end; ++i) {
-                    size_t offset = i->position(); size_t len = i->length();
-                    size_t docPos = searchRangeStart + offset;
-                    int li = getLineIdx(docPos);
-                    if (li >= start && li < end) {
-                        float y = (float)(li - start) * lineHeight;
-                        float x1 = getXInLine(li, docPos); float x2 = getXInLine(li, docPos + len);
-                        CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
+                bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
+                auto searchStartIter = visibleText.cbegin();
+                std::smatch m;
+                std::regex_constants::match_flag_type matchFlags = std::regex_constants::match_default;
+                size_t lastMatchPos = std::string::npos;
+                while (std::regex_search(searchStartIter, visibleText.cend(), m, re, matchFlags)) {
+                    size_t matchPos = std::distance(visibleText.cbegin(), searchStartIter) + m.position();
+                    size_t matchLen = m.length();
+                    size_t anchorLen = 0;
+                    if (startsWithCaret && m.size() > 1 && m[1].matched) {
+                        anchorLen = m.length(1);
                     }
+                    size_t contentPos = matchPos + anchorLen;
+                    size_t contentLen = matchLen - anchorLen;
+                    bool shouldHighlight = true;
+                    if (contentPos == lastMatchPos && contentLen == 0) {
+                        shouldHighlight = false;
+                    }
+                    if (endsWithDollar) {
+                        bool isAtLineEnd = false;
+                        if (contentPos + contentLen >= visibleText.size()) {
+                            isAtLineEnd = true;
+                        } else {
+                            char c = visibleText[contentPos + contentLen];
+                            if (c == '\r' || c == '\n') {
+                                isAtLineEnd = true;
+                                if (contentLen == 0 && c == '\n' && contentPos + contentLen > 0 && visibleText[contentPos + contentLen - 1] == '\r') {
+                                    isAtLineEnd = false;
+                                }
+                            }
+                        }
+                        if (!isAtLineEnd) shouldHighlight = false;
+                    }
+                    if (shouldHighlight && startsWithCaret && endsWithDollar && contentLen == 0) {
+                        size_t globalPos = searchRangeStart + contentPos;
+                        if (globalPos == pt.length() && pt.length() > 0) {
+                            bool isAfterNewline = false;
+                            if (globalPos > 0) {
+                                char c = pt.charAt(globalPos - 1);
+                                if (c == '\r' || c == '\n') isAfterNewline = true;
+                            }
+                            if (!isAfterNewline) shouldHighlight = false;
+                        }
+                    }
+                    if (shouldHighlight) {
+                        lastMatchPos = contentPos;
+                        if (contentLen > 0 || (contentLen == 0 && (startsWithCaret || endsWithDollar))) {
+                            size_t currentDrawPos = searchRangeStart + contentPos;
+                            size_t remainingLen = contentLen;
+                            if (remainingLen == 0) {
+                                int li = getLineIdx(currentDrawPos);
+#if TARGET_OS_IOS
+                                if (li >= renderStart && li < end) {
+#else
+                                if (li >= start && li < end) {
+#endif
+                                    float y = (float)(li - start) * lineHeight;
+                                    float x1 = getXInLine(li, currentDrawPos);
+                                    CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, charWidth, lineHeight));
+                                }
+                            } else {
+                                while (remainingLen > 0) {
+                                    int li = getLineIdx(currentDrawPos);
+                                    size_t lineEndPos = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
+                                    size_t lineVisualEnd = lineEndPos;
+                                    if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\n') lineVisualEnd--;
+                                    if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\r') lineVisualEnd--;
+                                    
+                                    size_t lenInLine = std::min(remainingLen, lineVisualEnd > currentDrawPos ? lineVisualEnd - currentDrawPos : 0);
+                                    if (lenInLine == 0 && remainingLen > 0 && currentDrawPos < lineEndPos) lenInLine = std::min(remainingLen, lineEndPos - currentDrawPos);
+#if TARGET_OS_IOS
+                                    if (li >= renderStart && li < end) {
+#else
+                                    if (li >= start && li < end) {
+#endif
+                                        float y = (float)(li - start) * lineHeight;
+                                        float x1 = getXInLine(li, currentDrawPos);
+                                        float x2 = getXInLine(li, currentDrawPos + lenInLine);
+                                        if (x2 <= x1) x2 = x1 + charWidth;
+                                        CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                                    }
+                                    size_t consumed = std::min(remainingLen, lineEndPos - currentDrawPos);
+                                    if (consumed == 0) break;
+                                    currentDrawPos += consumed;
+                                    remainingLen -= consumed;
+                                }
+                            }
+                        }
+                    }
+                    size_t step = matchLen;
+                    if (step == 0) {
+                        bool isBolCaret = (startsWithCaret && !(matchFlags & std::regex_constants::match_not_bol));
+                        if (isBolCaret) step = 0;
+                        else step = 1;
+                    }
+                    if (step == 0 && (matchFlags & std::regex_constants::match_not_bol)) step = 1;
+                    size_t advance = m.position() + step;
+                    if (std::distance(searchStartIter, visibleText.cend()) < (ptrdiff_t)advance) break;
+                    std::advance(searchStartIter, advance);
+                    matchFlags |= std::regex_constants::match_not_bol;
                 }
             } catch (...) {}
         } else {
@@ -1188,12 +1802,31 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                     if (match && (offset + q.length() < visibleText.length()) && isWordChar(visibleText[offset + q.length()])) match = false;
                 }
                 if (match) {
-                    size_t docPos = searchRangeStart + offset;
-                    int li = getLineIdx(docPos);
-                    if (li >= start && li < end) {
-                        float y = (float)(li - start) * lineHeight;
-                        float x1 = getXInLine(li, docPos); float x2 = getXInLine(li, docPos + q.length());
-                        CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                    size_t currentDrawPos = searchRangeStart + offset;
+                    size_t remainingLen = q.length();
+                    while (remainingLen > 0) {
+                        int li = getLineIdx(currentDrawPos);
+                        size_t lineEndPos = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
+                        size_t lineVisualEnd = lineEndPos;
+                        if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\n') lineVisualEnd--;
+                        if (lineVisualEnd > lineStarts[li] && pt.charAt(lineVisualEnd - 1) == '\r') lineVisualEnd--;
+                        
+                        size_t lenInLine = std::min(remainingLen, lineVisualEnd > currentDrawPos ? lineVisualEnd - currentDrawPos : 0);
+                        if (lenInLine == 0 && remainingLen > 0 && currentDrawPos < lineEndPos) lenInLine = std::min(remainingLen, lineEndPos - currentDrawPos);
+#if TARGET_OS_IOS
+                            if (li >= renderStart && li < end) {
+#else
+                            if (li >= start && li < end) {
+#endif
+                            float y = (float)(li - start) * lineHeight;
+                            float x1 = getXInLine(li, currentDrawPos);
+                            float x2 = getXInLine(li, currentDrawPos + lenInLine);
+                            CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                        }
+                        size_t consumed = std::min(remainingLen, lineEndPos - currentDrawPos);
+                        if (consumed == 0) break;
+                        currentDrawPos += consumed;
+                        remainingLen -= consumed;
                     }
                 }
                 offset += 1;
@@ -1201,7 +1834,8 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
         CGColorRelease(hlColor);
     }
-    CGContextSetFillColorWithColor(ctx, colSel); bool isRectMode = (cursors.size() > 1);
+    CGContextSetFillColorWithColor(ctx, colSel);
+    bool isRectMode = (cursors.size() > 1);
     for (const auto& c : cursors) {
         if (isRectMode) {
             float visualX1 = std::min(c.desiredX, c.originalAnchorX); float visualX2 = std::max(c.desiredX, c.originalAnchorX);
@@ -1209,7 +1843,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             int lHead = getLineIdx(c.head), lAnchor = getLineIdx(c.anchor);
             int startL = std::min(lHead, lAnchor), endL = std::max(lHead, lAnchor);
             for (int l = startL; l <= endL; ++l) {
+#if TARGET_OS_IOS
+                if (l < renderStart || l >= end) continue;
+#else
                 if (l < start || l >= end) continue;
+#endif
                 float y = (float)(l - start) * lineHeight; float drawX = gutterWidth - (float)hScrollPos + visualX1; float drawW = visualX2 - visualX1;
                 CGContextFillRect(ctx, CGRectMake(drawX, y, drawW, lineHeight));
             }
@@ -1217,7 +1855,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             if (!c.hasSelection()) continue;
             size_t pStart = c.start(), pEnd = c.end(); int lStart = getLineIdx(pStart), lEnd = getLineIdx(pEnd);
             for (int l = lStart; l <= lEnd; ++l) {
+#if TARGET_OS_IOS
+                if (l < renderStart || l >= end) continue;
+#else
                 if (l < start || l >= end) continue;
+#endif
                 float y = (float)(l - start) * lineHeight;
                 size_t lineBegin = lineStarts[l], lineEnd = (l + 1 < (int)lineStarts.size() ? lineStarts[l + 1] : pt.length());
                 size_t selS = std::max(pStart, lineBegin), selE = std::min(pEnd, lineEnd);
@@ -1227,7 +1869,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             }
         }
     }
+#if TARGET_OS_IOS
+    for (int i = renderStart; i < end; ++i) {
+#else
     for (int i = start; i < end; ++i) {
+#endif
         size_t s = lineStarts[i], e = (i + 1 < lineStarts.size() ? lineStarts[i + 1] : pt.length());
         std::string ls = pt.getRange(s, std::max((size_t)0, e - s)); size_t imIdx = std::string::npos;
         if (!imeComp.empty() && !cursors.empty() && getLineIdx(cursors.back().head) == i) { size_t cp = cursors.back().head; if (cp >= s && cp <= e) { imIdx = cp - s; ls.insert(imIdx, imeComp); } }
@@ -1298,7 +1944,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                     CGContextAddLineToPoint(ctx, hLineLeft + arrowSize, cy - arrowSize);
                     CGContextMoveToPoint(ctx, hLineLeft, cy);
                     CGContextAddLineToPoint(ctx, hLineLeft + arrowSize, cy + arrowSize);
-                } else { // LF
+                } else {
                     float stemTop = cy - halfSz * 0.8f;
                     float stemBottom = cy + halfSz * 0.8f;
                     CGContextMoveToPoint(ctx, cx, stemTop);
@@ -1321,8 +1967,13 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
     }
     CGContextRestoreGState(ctx);
-    CGContextSetFillColorWithColor(ctx, colGutterBg); CGContextFillRect(ctx, CGRectMake(0, 0, gutterWidth, h));
+    CGContextSetFillColorWithColor(ctx, colGutterBg);
+    CGContextFillRect(ctx, CGRectMake(0, 0, gutterWidth, h));
+#if TARGET_OS_IOS
+    for (int i = renderStart; i < end; ++i) {
+#else
     for (int i = start; i < end; ++i) {
+#endif
         CFStringRef n = CFStringCreateWithCString(NULL, std::to_string(i + 1).c_str(), kCFStringEncodingUTF8);
         if (n) {
             const void* keys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName };
@@ -1367,7 +2018,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         }
     }
     if (showHelpPopup) {
-        std::wstring fullHelp = APP_VERSION + L"\n\n" + helpTextStr;
+        std::wstring fullHelp = appVersionStr + L"\n\n" + helpTextStr;
         CFStringRef hcf = CFStringCreateWithBytes(NULL, (const UInt8*)fullHelp.data(), fullHelp.size()*sizeof(wchar_t), kCFStringEncodingUTF32LE, false);
         CTFontRef hf = CTFontCreateWithName(CFSTR("Menlo"), 14.0f, NULL);
         CGFloat helpLineHeight = 15.0f;

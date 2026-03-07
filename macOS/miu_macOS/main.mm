@@ -105,10 +105,19 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         editor->cbUpdateTitleBar = [weakSelf]() {
             __strong EditorView *strongSelf = weakSelf;
             if (!strongSelf || !strongSelf->editor) return;
+            NSWindow *window = [strongSelf window];
+            std::wstring currentPathW = strongSelf->editor->currentFilePath;
             std::wstring untitledStr = UTF8ToW([NSLocalizedString(@"Untitled", @"新規ファイル名") UTF8String]);
-            std::wstring t = (strongSelf->editor->isDirty ? L"*" : L"") + (strongSelf->editor->currentFilePath.empty() ? untitledStr : strongSelf->editor->currentFilePath.substr(strongSelf->editor->currentFilePath.find_last_of(L"/")+1)) + L" - " + APP_TITLE;
-            [[strongSelf window] setTitle:[NSString stringWithUTF8String:WToUTF8(t).c_str()]];
-            [[strongSelf window] setDocumentEdited:strongSelf->editor->isDirty];
+            std::wstring fileName = currentPathW.empty() ? untitledStr : currentPathW.substr(currentPathW.find_last_of(L"/") + 1);
+            std::wstring titleText = (strongSelf->editor->isDirty ? L"*" : L"") + fileName;
+            [window setTitle:[NSString stringWithUTF8String:WToUTF8(titleText).c_str()]];
+            [window setDocumentEdited:strongSelf->editor->isDirty];
+            if (!currentPathW.empty()) {
+                NSString *currentPathNS = [NSString stringWithUTF8String:WToUTF8(currentPathW).c_str()];
+                [window setRepresentedURL:[NSURL fileURLWithPath:currentPathNS]];
+            } else {
+                [window setRepresentedURL:[[NSBundle mainBundle] bundleURL]];
+            }
         };
         editor->cbSetClipboard = [](const std::string& text, bool isRect) {
             NSPasteboard *pb = [NSPasteboard generalPasteboard];
@@ -164,14 +173,32 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         [hScroller setAutoresizingMask:NSViewWidthSizable|NSViewMinYMargin];
         [hScroller setTarget:self]; [hScroller setAction:@selector(scrollAction:)]; [self addSubview:hScroller];
         [self registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                         selector:@selector(systemColorsDidChange:)
+                                                             name:NSSystemColorsDidChangeNotification
+                                                           object:nil];
     }
     return self;
+}
+- (void)applySystemHighlightColor {
+    if (!editor) return;
+    if (@available(macOS 10.14, *)) {
+        [self.effectiveAppearance performAsCurrentDrawingAppearance:^{
+            NSColor *highlightColor = [NSColor selectedTextBackgroundColor];
+            NSColor *safeColor = [highlightColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
+            if (!safeColor) safeColor = highlightColor;
+            if (editor->colSel) CGColorRelease(editor->colSel);
+            editor->colSel = [safeColor CGColor];
+            CGColorRetain(editor->colSel);
+        }];
+    }
 }
 - (void)resetCursorRects {
     [super resetCursorRects];
     [self addCursorRect:[self bounds] cursor:[NSCursor IBeamCursor]];
 }
 - (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     if (findTextField) {
         [findTextField setDelegate:nil];
         [findTextField setTarget:nil];
@@ -180,6 +207,10 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         [replaceTextField setDelegate:nil];
         [replaceTextField setTarget:nil];
     }
+}
+- (void)systemColorsDidChange:(NSNotification *)notification {
+    [self applySystemHighlightColor];
+    [self setNeedsDisplay:YES];
 }
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
     NSPasteboard *pboard = [sender draggingPasteboard];
@@ -205,11 +236,19 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 - (BOOL)isFlipped { return YES; }
 - (void)viewDidMoveToWindow {
     if (![self window]) return;
-    editor->helpTextStr = UTF8ToW([NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧") UTF8String]);
+    NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
+    NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
+    if (!appVersion) appVersion = @"0.0.0";
+    NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
+    editor->appVersionStr = UTF8ToW([versionString UTF8String]);
+    NSString *localizedHelp = NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧");
+    editor->helpTextStr = UTF8ToW([localizedHelp UTF8String]);
     editor->initGraphics();
     BOOL isDark = [[self.effectiveAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]] isEqualToString:NSAppearanceNameDarkAqua];
     editor->isDarkMode = isDark;
-    editor->updateThemeColors(); [self updateScrollers];
+    editor->updateThemeColors();
+    [self applySystemHighlightColor];
+    [self updateScrollers];
     [[self window] makeFirstResponder:self];
 }
 - (void)viewDidChangeEffectiveAppearance {
@@ -219,6 +258,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         if (editor->isDarkMode != isDark) {
             editor->isDarkMode = isDark;
             editor->updateThemeColors();
+            [self applySystemHighlightColor];
             [self setNeedsDisplay:YES];
         }
     }
@@ -454,7 +494,11 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 }
 - (void)findNextWithDirection:(BOOL)forward {
     if (editor) {
-        editor->findNext(forward);
+        if (editor->searchQuery.empty()) {
+            [self showFindPanel:NO];
+        } else {
+            editor->findNext(forward);
+        }
     }
 }
 - (BOOL)isReplaceMode {
@@ -589,7 +633,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         editor->ensureCaretVisible(); [self setNeedsDisplay:YES]; return;
     }
     if (code == 99) {
-        editor->findNext(!shift);
+        [self findNextWithDirection:!shift];
         return;
     }
     if (cmd) {
@@ -727,11 +771,16 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     [v setWantsLayer:YES];
     v.layer.backgroundColor = [NSColor clearColor].CGColor;
     v.layer.opaque = NO;
-    if (path) v->editor->openFileFromPath(path); else v->editor->newFile();
+    if (path) {
+        v->editor->openFileFromPath(path);
+    } else {
+        v->editor->newFile();
+        v->editor->showHelpPopup = true;
+    }
     [visualEffectView addSubview:v];
     v.translatesAutoresizingMaskIntoConstraints = NO;
     [NSLayoutConstraint activateConstraints:@[
-        [v.topAnchor constraintEqualToAnchor:visualEffectView.safeAreaLayoutGuide.topAnchor], // タイトルバーの下に合わせる
+        [v.topAnchor constraintEqualToAnchor:visualEffectView.safeAreaLayoutGuide.topAnchor],
         [v.bottomAnchor constraintEqualToAnchor:visualEffectView.bottomAnchor],
         [v.leftAnchor constraintEqualToAnchor:visualEffectView.leftAnchor],
         [v.rightAnchor constraintEqualToAnchor:visualEffectView.rightAnchor]
@@ -761,7 +810,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 - (void)application:(NSApplication *)sender openFiles:(NSArray<NSString *> *)filenames { for (NSString *path in filenames) [self createWindowWithPath:[path UTF8String]]; [sender replyToOpenOrPrint:NSApplicationDelegateReplySuccess]; }
 - (void)newDocument:(id)sender {
     NSWindow *win = [NSApp keyWindow];
-    EditorView *v = [self findEditorViewInWindow:win]; // ここを修正
+    EditorView *v = [self findEditorViewInWindow:win];
     if (v) {
         v->editor->newFile();
     } else {

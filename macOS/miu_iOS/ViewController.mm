@@ -1,6 +1,7 @@
 #import "ViewController.h"
 #import "EditorCore.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
+#import <GameController/GameController.h>
 @interface iOSTextPosition : UITextPosition <NSCopying>
 @property (nonatomic, assign) size_t index;
 + (instancetype)positionWithIndex:(size_t)index;
@@ -45,12 +46,15 @@
 - (BOOL)containsEnd { return _containsEndValue; }
 - (BOOL)isVertical { return _isVerticalValue; }
 @end
-@interface iOSEditorView : UIView <UITextInput, UIGestureRecognizerDelegate>
+@interface iOSEditorView : UIView <UITextInput, UIGestureRecognizerDelegate, UIEditMenuInteractionDelegate>
 @property (nonatomic) Editor *editor;
 @property (nonatomic, copy) void (^onNewDocumentAction)(void);
 @property (nonatomic, copy) void (^onGoToLineAction)(void);
+@property (nonatomic, strong) UIEditMenuInteraction *editMenuInteraction API_AVAILABLE(ios(16.0));
+@property (nonatomic, assign) CGFloat topRenderMargin;
 - (void)jumpToLine:(NSInteger)lineNumber;
 - (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd;
+- (void)showMenuForCurrentSelection;
 @end
 @implementation iOSEditorView {
     CGPoint _lastPanTranslation;
@@ -77,6 +81,14 @@
     if (self = [super initWithFrame:frame]) {
         self.contentMode = UIViewContentModeTopLeft;
         self.multipleTouchEnabled = YES;
+        if (@available(iOS 9.0, *)) {
+            self.inputAssistantItem.leadingBarButtonGroups = @[];
+            self.inputAssistantItem.trailingBarButtonGroups = @[];
+        }
+        if (@available(iOS 14.0, *)) {
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(hardwareKeyboardStateChanged:) name:GCKeyboardDidConnectNotification object:nil];
+            [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(hardwareKeyboardStateChanged:) name:GCKeyboardDidDisconnectNotification object:nil];
+        }
         _tokenizer = [[UITextInputStringTokenizer alloc] initWithTextInput:self];
         if (@available(iOS 13.0, *)) {
             UITextInteraction *interaction = [UITextInteraction textInteractionForMode:UITextInteractionModeEditable];
@@ -101,8 +113,74 @@
         [self addGestureRecognizer:_panRecognizer];
         UIPinchGestureRecognizer *pinch = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(handlePinch:)];
         [self addGestureRecognizer:pinch];
+        if (@available(iOS 16.0, *)) {
+            _editMenuInteraction = [[UIEditMenuInteraction alloc] initWithDelegate:self];
+            [self addInteraction:_editMenuInteraction];
+        }
     }
     return self;
+}
+- (void)hideHelpIfNeeded {
+    if (self.editor && self.editor->showHelpPopup) {
+        self.editor->showHelpPopup = false;
+        [self setNeedsDisplay];
+    }
+}
+- (void)hardwareKeyboardStateChanged:(NSNotification *)note {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self reloadInputViews];
+    });
+}
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+}
+- (void)showEditMenuAtRect:(CGRect)rect {
+    if (@available(iOS 16.0, *)) {
+        UIEditMenuConfiguration *config = [UIEditMenuConfiguration configurationWithIdentifier:nil sourcePoint:CGPointMake(CGRectGetMidX(rect), CGRectGetMinY(rect))];
+        [self.editMenuInteraction presentEditMenuWithConfiguration:config];
+    } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        UIMenuController *menu = [UIMenuController sharedMenuController];
+        if (menu.isMenuVisible) return;
+        [menu showMenuFromView:self rect:rect];
+#pragma clang diagnostic pop
+    }
+}
+- (void)hideEditMenuIfNeeded {
+    if (@available(iOS 16.0, *)) {
+        [self.editMenuInteraction dismissMenu];
+    } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        UIMenuController *menu = [UIMenuController sharedMenuController];
+        if (menu.isMenuVisible) {
+            [menu hideMenuFromView:self];
+        }
+#pragma clang diagnostic pop
+    }
+}
+- (void)showMenuForCurrentSelection {
+    if (!self.editor || self.editor->cursors.empty()) return;
+    Cursor c = self.editor->cursors.back();
+    CGRect targetRect;
+    if (c.hasSelection()) {
+        NSArray<UITextSelectionRect *> *rects = [self selectionRectsForRange:self.selectedTextRange];
+        if (rects.count > 0) {
+            targetRect = rects.firstObject.rect;
+            for (UITextSelectionRect *r in rects) {
+                targetRect = CGRectUnion(targetRect, r.rect);
+            }
+        } else {
+            targetRect = [self caretRectForPosition:self.selectedTextRange.end];
+        }
+    } else {
+        targetRect = [self caretRectForPosition:self.selectedTextRange.end];
+    }
+    if (targetRect.size.height == 0) {
+        targetRect.size.height = self.editor->lineHeight;
+    }
+    [self showEditMenuAtRect:targetRect];
 }
 - (void)onSingleTap:(UITapGestureRecognizer *)sender {
     if (sender.state == UIGestureRecognizerStateEnded) {
@@ -127,12 +205,20 @@
 - (void)layoutSubviews {
     [super layoutSubviews];
 }
+- (UIView *)textInputView {
+    return self;
+}
 - (void)drawRect:(CGRect)rect {
     if (!self.editor) return;
     CGContextRef ctx = UIGraphicsGetCurrentContext();
-    self.editor->render(ctx, self.bounds.size.width, self.bounds.size.height);
+    CGContextTranslateCTM(ctx, 0, self.topRenderMargin);
+    self.editor->render(ctx, self.bounds.size.width, self.bounds.size.height - self.topRenderMargin);
 }
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
+    if (self.editor && self.editor->showHelpPopup) {
+        self.editor->showHelpPopup = false;
+        [self setNeedsDisplay];
+    }
     [self stopMomentumScroll];
     UITouch *touch = [touches anyObject];
     if (touch.type == UITouchTypeIndirectPointer || touch.type == UITouchTypePencil) {
@@ -158,6 +244,7 @@
     if (!_isMouseSelecting || !self.editor) return;
     UITouch *touch = [touches anyObject];
     CGPoint p = [touch locationInView:self];
+    p.y -= self.topRenderMargin;
     size_t rawPos = self.editor->getDocPosFromPoint(p.x, p.y);
     if (self.editor->cursors.empty()) return;
     Cursor &c = self.editor->cursors.back();
@@ -194,12 +281,14 @@
     if (_isMouseSelecting) {
         _isMouseSelecting = NO;
         _selectionGranularity = 0;
+        [self showMenuForCurrentSelection];
         return;
     }
     [super touchesEnded:touches withEvent:event];
 }
 - (void)handleSingleTapAtPoint:(CGPoint)p {
     if (!self.editor) return;
+    p.y -= self.topRenderMargin;
     size_t pos = self.editor->getDocPosFromPoint(p.x, p.y);
     [self.inputDelegate selectionWillChange:self];
     self.editor->cursors.clear();
@@ -212,6 +301,9 @@
     self.editor->ensureCaretVisible();
     [self setNeedsDisplay];
     [self becomeFirstResponder];
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self showMenuForCurrentSelection];
+    });
 }
 - (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd {
     *outStart = pos;
@@ -271,6 +363,7 @@
 }
 - (void)handleDoubleTapAtPoint:(CGPoint)p {
     if (!self.editor) return;
+    p.y -= self.topRenderMargin;
     size_t pos = self.editor->getDocPosFromPoint(p.x, p.y);
     size_t start, end;
     [self getSmartWordRangeAtPos:pos outStart:&start outEnd:&end];
@@ -287,6 +380,7 @@
 }
 - (void)handleTripleTapAtPoint:(CGPoint)p {
     if (!self.editor) return;
+    p.y -= self.topRenderMargin;
     size_t pos = self.editor->getDocPosFromPoint(p.x, p.y);
     int lineIdx = self.editor->getLineIdx(pos);
     size_t start = self.editor->lineStarts[lineIdx];
@@ -428,8 +522,11 @@
         _scrollVelocity.x = 0;
     }
     [self setNeedsDisplay];
-    [self setNeedsLayout];
     [self.inputDelegate selectionDidChange:self];
+    [self checkCaretVisibilityAndDismissKeyboardIfNeeded];
+    if (self.editor) {
+        self.editor->updateScrollBars();
+    }
 }
 - (void)startMomentumScroll {
     [self stopMomentumScroll];
@@ -471,6 +568,7 @@
 - (BOOL)hasText { return self.editor && self.editor->pt.length() > 0; }
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate textWillChange:self];
     self.editor->imeComp = markedText ? [markedText UTF8String] : "";
     [self.inputDelegate textDidChange:self];
@@ -487,7 +585,9 @@
     [self setNeedsDisplay];
 }
 - (void)insertText:(NSString *)text {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate textWillChange:self];
     self.editor->imeComp = "";
     if ([text isEqualToString:@"\n"]) {
@@ -499,7 +599,9 @@
     [self setNeedsDisplay];
 }
 - (void)deleteBackward {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->backspaceAtCursors();
@@ -572,9 +674,40 @@
 - (UITextPosition *)endOfDocument { return [iOSTextPosition positionWithIndex:(self.editor ? self.editor->pt.length() : 0)]; }
 - (UITextRange *)textRangeFromPosition:(UITextPosition *)f toPosition:(UITextPosition *)t { return [iOSTextRange rangeWithStart:((iOSTextPosition*)f).index end:((iOSTextPosition*)t).index]; }
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position offset:(NSInteger)offset {
-    NSInteger newIndex = ((iOSTextPosition*)position).index + offset;
-    if (newIndex < 0) newIndex = 0;
-    return [iOSTextPosition positionWithIndex:newIndex];
+    if (!self.editor) return position;
+    size_t startPos = ((iOSTextPosition*)position).index;
+    
+    if (offset == 0) return position;
+    
+    if (offset > 0) {
+        // 後方のテキストを取得し、UTF-16の文字数からUTF-8のバイト数に変換する
+        size_t remain = self.editor->pt.length() - startPos;
+        size_t fetchLen = MIN(remain, (size_t)4000); // 余裕を持ったバッファ
+        std::string text = self.editor->pt.getRange(startPos, fetchLen);
+        NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
+        
+        if (nsStr && nsStr.length >= offset) {
+            NSString *sub = [nsStr substringToIndex:offset];
+            size_t byteOffset = [sub lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+            return [iOSTextPosition positionWithIndex:startPos + byteOffset];
+        }
+        return [iOSTextPosition positionWithIndex:startPos + remain];
+        
+    } else {
+        // 前方のテキストを取得し、UTF-16の文字数からUTF-8のバイト数に変換する
+        NSInteger absOffset = -offset;
+        size_t fetchLen = MIN(startPos, (size_t)4000);
+        size_t fetchStart = startPos - fetchLen;
+        std::string text = self.editor->pt.getRange(fetchStart, fetchLen);
+        NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
+        
+        if (nsStr && nsStr.length >= absOffset) {
+            NSString *sub = [nsStr substringToIndex:(nsStr.length - absOffset)];
+            size_t byteOffset = [sub lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+            return [iOSTextPosition positionWithIndex:fetchStart + byteOffset];
+        }
+        return [iOSTextPosition positionWithIndex:0];
+    }
 }
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction offset:(NSInteger)offset {
     return position;
@@ -583,7 +716,22 @@
     size_t i1 = ((iOSTextPosition*)p1).index; size_t i2 = ((iOSTextPosition*)p2).index;
     if (i1 < i2) return NSOrderedAscending; if (i1 > i2) return NSOrderedDescending; return NSOrderedSame;
 }
-- (NSInteger)offsetFromPosition:(UITextPosition *)f toPosition:(UITextPosition *)t { return ((iOSTextPosition*)t).index - ((iOSTextPosition*)f).index; }
+- (NSInteger)offsetFromPosition:(UITextPosition *)f toPosition:(UITextPosition *)t {
+    if (!self.editor) return 0;
+    size_t fromIdx = ((iOSTextPosition*)f).index;
+    size_t toIdx = ((iOSTextPosition*)t).index;
+    if (fromIdx == toIdx) return 0;
+    
+    // バイト数の差分ではなく、実際の文字列としての文字数(UTF-16)を返す
+    size_t start = MIN(fromIdx, toIdx);
+    size_t end = MAX(fromIdx, toIdx);
+    std::string text = self.editor->pt.getRange(start, end - start);
+    
+    NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
+    NSInteger charCount = nsStr ? nsStr.length : 1;
+    
+    return (fromIdx <= toIdx) ? charCount : -charCount;
+}
 - (id<UITextInputTokenizer>)tokenizer { return _tokenizer; }
 - (UITextPosition *)positionWithinRange:(UITextRange *)r farthestInDirection:(UITextLayoutDirection)d { return r.start; }
 - (UITextRange *)characterRangeByExtendingPosition:(UITextPosition *)p inDirection:(UITextLayoutDirection)d { return nil; }
@@ -595,7 +743,7 @@
     int li = self.editor->getLineIdx(start);
     float x = self.editor->getXInLine(li, start);
     float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
-    float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight;
+    float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
     return CGRectMake(drawX, drawY, 2, self.editor->lineHeight);
 }
 - (NSArray<UITextSelectionRect *> *)selectionRectsForRange:(UITextRange *)range {
@@ -621,8 +769,11 @@
         if (x2 < x1) x2 = x1;
         float w = x2 - x1;
         if (line != endLine && w == 0) w = self.editor->charWidth / 2;
+        if (w == 0) {
+            w = 2.0;
+        }
         float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x1;
-        float drawY = (line - self.editor->vScrollPos) * self.editor->lineHeight;
+        float drawY = (line - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
         CGRect r = CGRectMake(drawX, drawY, w, self.editor->lineHeight);
         iOSSelectionRect *selRect = [[iOSSelectionRect alloc] init];
         selRect.rectValue = r;
@@ -636,7 +787,9 @@
 }
 - (UITextPosition *)closestPositionToPoint:(CGPoint)point {
     if (!self.editor) return [self beginningOfDocument];
-    size_t idx = self.editor->getDocPosFromPoint(point.x, point.y);
+    CGPoint p = point;
+    p.y -= self.topRenderMargin;
+    size_t idx = self.editor->getDocPosFromPoint(p.x, p.y);
     return [iOSTextPosition positionWithIndex:idx];
 }
 - (UITextPosition *)closestPositionToPoint:(CGPoint)point withinRange:(UITextRange *)range { return [self.beginningOfDocument copy]; }
@@ -650,8 +803,8 @@
     int l = self.editor->getLineIdx(p);
     float x = self.editor->getXInLine(l, p);
     float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
-    float drawY = (l - self.editor->vScrollPos) * self.editor->lineHeight;
-    return CGRectMake(drawX, drawY, 0, 0);
+    float drawY = (l - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
+    return CGRectMake(drawX, drawY+self.editor->lineHeight / 2.0, 0, 0);
 }
 - (UITextAutocorrectionType)autocorrectionType { return UITextAutocorrectionTypeNo; }
 - (UITextSpellCheckingType)spellCheckingType {
@@ -662,6 +815,49 @@
 - (UITextSmartDashesType)smartDashesType { return UITextSmartDashesTypeNo; }
 - (NSUndoManager *)undoManager {
     return nil;
+}
+#pragma mark - Dictation Support (音声入力のバグ回避・強制リセット)
+
+// 1. 音声入力の結果を受け取る
+- (void)insertDictationResult:(NSArray<UIDictationPhrase *> *)dictationResult {
+    NSMutableString *resultString = [NSMutableString string];
+    for (UIDictationPhrase *phrase in dictationResult) {
+        [resultString appendString:phrase.text];
+    }
+    
+    // 変換中のゴミ状態が残っていれば強制クリア
+    if (self.editor && !self.editor->imeComp.empty()) {
+        [self unmarkText];
+    }
+    
+    // システムの複雑な置換（replaceRange）をバイパスし、単純なテキスト入力として流し込む
+    [self insertText:resultString];
+}
+
+// 2. システムによる「青い点線（代替候補）」の自動挿入をブロックする
+- (id)insertDictationResultPlaceholder {
+    return [[NSObject alloc] init]; // ダミーを返してシステムを騙す
+}
+
+// 3. ダミープレースホルダの描画位置（システム要求）
+- (CGRect)frameForDictationResultPlaceholder:(id)placeholder {
+    if (!self.editor || self.editor->cursors.empty()) return CGRectZero;
+    Cursor c = self.editor->cursors.back();
+    return [self caretRectForPosition:[iOSTextPosition positionWithIndex:c.head]];
+}
+
+// 4. ダミープレースホルダの削除（何もしない）
+- (void)removeDictationResultPlaceholder:(id)placeholder willInsertResult:(BOOL)willInsertResult {
+}
+
+// 5. 音声入力が終了したタイミングで、内部の選択状態を強制リセット
+- (void)dictationRecordingDidEnd {
+    [self.inputDelegate selectionDidChange:self];
+}
+
+// 6. 音声認識が失敗した時も強制リセット
+- (void)dictationRecognitionFailed {
+    [self.inputDelegate selectionDidChange:self];
 }
 - (NSArray<UIKeyCommand *> *)keyCommands {
     NSArray<UIKeyCommand *> *commands = @[
@@ -691,10 +887,12 @@
         [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierCommand action:@selector(moveToDocEnd:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(moveToDocStartAndSelect:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(moveToDocEndAndSelect:)],
+        [UIKeyCommand keyCommandWithInput:@"n" modifierFlags:UIKeyModifierCommand action:@selector(newDocument:)],
         [UIKeyCommand keyCommandWithInput:@"o" modifierFlags:UIKeyModifierCommand action:@selector(openDocument:)],
         [UIKeyCommand keyCommandWithInput:@"s" modifierFlags:UIKeyModifierCommand action:@selector(saveDocument:)],
         [UIKeyCommand keyCommandWithInput:@"s" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(saveDocumentAs:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand action:@selector(cmdFind:)],
+        [UIKeyCommand keyCommandWithInput:@"r" modifierFlags:UIKeyModifierCommand action:@selector(cmdReplace:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand | UIKeyModifierAlternate action:@selector(cmdReplace:)],
         [UIKeyCommand keyCommandWithInput:@"j" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
         [UIKeyCommand keyCommandWithInput:@"g" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
@@ -702,7 +900,8 @@
         [UIKeyCommand keyCommandWithInput:@"+" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
         [UIKeyCommand keyCommandWithInput:@"=" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
         [UIKeyCommand keyCommandWithInput:@"-" modifierFlags:UIKeyModifierCommand action:@selector(zoomOut:)],
-        [UIKeyCommand keyCommandWithInput:@"0" modifierFlags:UIKeyModifierCommand action:@selector(resetZoom:)]
+        [UIKeyCommand keyCommandWithInput:@"0" modifierFlags:UIKeyModifierCommand action:@selector(resetZoom:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputF1 modifierFlags:0 action:@selector(toggleHelp:)]
     ];
     if (@available(iOS 15.0, *)) {
         for (UIKeyCommand *cmd in commands) {
@@ -716,7 +915,7 @@
         return YES;
     }
     if (action == @selector(copy:) || action == @selector(cut:)) {
-        return self.editor && !self.editor->cursors.empty() && self.editor->cursors.back().hasSelection();
+        return self.editor && !self.editor->cursors.empty();
     }
     if (action == @selector(paste:)) {
         return [UIPasteboard generalPasteboard].hasStrings;
@@ -741,7 +940,8 @@
     }
     if (action == @selector(zoomIn:) ||
         action == @selector(zoomOut:) ||
-        action == @selector(resetZoom:)) {
+        action == @selector(resetZoom:) ||
+        action == @selector(toggleHelp:)) {
         return YES;
     }    
     if (action == @selector(moveLeft:) || action == @selector(moveRight:) ||
@@ -757,12 +957,14 @@
     return [super canPerformAction:action withSender:sender];
 }
 - (void)newDocument:(id)sender {
+    [self hideHelpIfNeeded];
     if (self.onNewDocumentAction) {
         self.onNewDocumentAction();
     }
 }
 - (void)selectAll:(id)sender {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     self.editor->cursors.clear();
     Cursor c;
@@ -776,7 +978,9 @@
     [self setNeedsDisplay];
 }
 - (void)moveCursorTo:(size_t)newPos keepSelection:(BOOL)keep updateX:(BOOL)updateX {
+    [self hideHelpIfNeeded];
     if (!self.editor || self.editor->cursors.empty()) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     Cursor c = self.editor->cursors.back();
     c.head = newPos;
@@ -845,6 +1049,7 @@
 - (void)moveToDocEnd:(id)sender { [self moveCursorTo:self.editor->pt.length() keepSelection:NO updateX:YES]; }
 - (void)moveToDocEndAndSelect:(id)sender { [self moveCursorTo:self.editor->pt.length() keepSelection:YES updateX:YES]; }
 - (void)selectWordOrNextOccurrence:(id)sender {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     self.editor->selectNextOccurrence();
     [self.inputDelegate selectionWillChange:self];
@@ -852,9 +1057,11 @@
     [self setNeedsDisplay];
 }
 - (void)openDocument:(id)sender {
+    [self hideHelpIfNeeded];
     if (self.editor) self.editor->openFile();
 }
 - (void)saveDocument:(id)sender {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     if (self.editor->currentFilePath.empty()) {
         self.editor->saveFileAs();
@@ -863,46 +1070,37 @@
     }
 }
 - (void)saveDocumentAs:(id)sender {
+    [self hideHelpIfNeeded];
     if (self.editor) self.editor->saveFileAs();
 }
 - (void)copy:(id)sender {
     if (!self.editor) return;
-    std::string copiedText = "";
-    for (const auto& c : self.editor->cursors) {
-        if (c.hasSelection()) {
-            copiedText += self.editor->pt.getRange(c.start(), c.end() - c.start());
-        }
-    }
-    if (!copiedText.empty()) {
-        [UIPasteboard generalPasteboard].string = [NSString stringWithUTF8String:copiedText.c_str()];
-    }
+    [self hideEditMenuIfNeeded];
+    self.editor->copyToClipboard();
 }
 - (void)cut:(id)sender {
     if (!self.editor) return;
-    [self copy:sender];
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
-    self.editor->backspaceAtCursors();
+    self.editor->cutToClipboard();
     [self.inputDelegate textDidChange:self];
     [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
-    [self setNeedsLayout];
 }
 - (void)paste:(id)sender {
     if (!self.editor) return;
-    NSString *pasteString = [UIPasteboard generalPasteboard].string;
-    if (pasteString.length > 0) {
-        [self.inputDelegate selectionWillChange:self];
-        [self.inputDelegate textWillChange:self];
-        self.editor->insertAtCursors([pasteString UTF8String]);
-        [self.inputDelegate textDidChange:self];
-        [self.inputDelegate selectionDidChange:self];
-        [self setNeedsDisplay];
-        [self setNeedsLayout];
-    }
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->pasteFromClipboard();
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
 }
 - (void)handleUndo:(id)sender {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->performUndo();
@@ -913,6 +1111,7 @@
 }
 - (void)handleRedo:(id)sender {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->performRedo();
@@ -922,18 +1121,32 @@
     [self setNeedsDisplay];
 }
 - (void)zoomIn:(id)sender {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self applyNewFontSize:self.editor->currentFontSize + 2.0f];
 }
 - (void)zoomOut:(id)sender {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self applyNewFontSize:self.editor->currentFontSize - 2.0f];
 }
 - (void)resetZoom:(id)sender {
+    [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self applyNewFontSize:14.0f];
 }
+- (void)toggleHelp:(id)sender {
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    self.editor->showHelpPopup = !self.editor->showHelpPopup;
+    [self setNeedsDisplay];
+}
 - (UIView *)inputAccessoryView {
+    if (@available(iOS 14.0, *)) {
+        if ([GCKeyboard coalescedKeyboard] != nil) {
+            return nil;
+        }
+    }
     if (_customAccessoryView) return _customAccessoryView;
     CGFloat barHeight = 36.0;
     _customAccessoryView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, barHeight)];
@@ -947,6 +1160,7 @@
     scrollView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     scrollView.showsHorizontalScrollIndicator = NO;
     scrollView.alwaysBounceHorizontal = YES;
+    scrollView.scrollsToTop = NO;
     [_customAccessoryView addSubview:scrollView];
     UIStackView *stackView = [[UIStackView alloc] init];
     stackView.axis = UILayoutConstraintAxisHorizontal;
@@ -1008,6 +1222,8 @@
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Save As", nil), @selector(saveDocumentAs:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Find", nil), @selector(cmdFind:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Replace", nil), @selector(cmdReplace:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Top", nil), @selector(moveToDocStart:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Bottom", nil), @selector(moveToDocEnd:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Go To", nil), @selector(cmdGoToLine:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Undo", nil), @selector(handleUndo:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Redo", nil), @selector(handleRedo:))];
@@ -1021,19 +1237,39 @@
 - (void)dismissKeyboard {
     [self resignFirstResponder];
 }
+- (void)checkCaretVisibilityAndDismissKeyboardIfNeeded {
+    if (!self.isFirstResponder) return;
+    if (!self.editor || self.editor->cursors.empty()) return;
+    size_t head = self.editor->cursors.back().head;
+    int li = self.editor->getLineIdx(head);
+    float x = self.editor->getXInLine(li, head);
+    float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
+    float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight;
+    CGRect caretRect = CGRectMake(drawX, drawY, 2.0, self.editor->lineHeight);
+    CGRect visibleRect = CGRectMake(0, self.topRenderMargin, self.bounds.size.width, self.bounds.size.height - self.topRenderMargin);
+    if (!CGRectIntersectsRect(visibleRect, caretRect)) {
+        [self dismissKeyboard];
+    }
+}
 - (void)cmdFind:(id)sender {
+    [self hideHelpIfNeeded];
+    [self hideEditMenuIfNeeded];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"miuShowSearch" object:nil];
 }
 - (void)cmdReplace:(id)sender {
+    [self hideHelpIfNeeded];
+    [self hideEditMenuIfNeeded];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"miuShowReplace" object:nil];
 }
 - (void)cmdGoToLine:(id)sender {
+    [self hideHelpIfNeeded];
     if (self.onGoToLineAction) {
         self.onGoToLineAction();
     }
 }
 - (void)jumpToLine:(NSInteger)lineNumber {
     if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
     if (lineNumber < 1) lineNumber = 1;
     size_t totalLines = self.editor->lineStarts.size();
     if (lineNumber > totalLines) lineNumber = totalLines;
@@ -1053,8 +1289,22 @@
     [self setNeedsDisplay];
     [self setNeedsLayout];
 }
+#pragma mark - UIEditMenuInteractionDelegate
+- (CGRect)editMenuInteraction:(UIEditMenuInteraction *)interaction targetRectForConfiguration:(UIEditMenuConfiguration *)configuration API_AVAILABLE(ios(16.0)) {
+    if (!self.editor || self.editor->cursors.empty()) return CGRectZero;
+    Cursor c = self.editor->cursors.back();
+    if (c.hasSelection()) {
+        NSArray *rects = [self selectionRectsForRange:self.selectedTextRange];
+        if (rects.count > 0) return [rects.firstObject rect];
+    }
+    CGRect rect = [self caretRectForPosition:self.selectedTextRange.end];
+    if (rect.size.height == 0) {
+        rect.size.height = self.editor->lineHeight;
+    }
+    return rect;
+}
 @end
-@interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate>
+@interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate, UIScrollViewDelegate>
 @property (nonatomic, strong) iOSEditorView *editorView;
 @property (nonatomic, strong) NSURL *currentDocumentURL;
 @property (nonatomic, strong) UIStackView *headerStack;
@@ -1070,6 +1320,13 @@
 @property (nonatomic, strong) NSLayoutConstraint *buttonsWidthConstraint;
 @property (nonatomic, strong) UIView *goToLineContainer;
 @property (nonatomic, strong) UITextField *goToLineField;
+@property (nonatomic, strong) UIImageView *titleIconView;
+@property (nonatomic, assign) CGSize lastLayoutSize;
+@property (nonatomic, strong) UIScrollView *scrollToTopHelper;
+@property (nonatomic, strong) UIView *topFillView;
+@property (nonatomic, strong) NSMutableArray<UIViewPropertyAnimator *> *blurAnimators;
+@property (nonatomic, strong) UIView *verticalScrollBar;   // 縦スクロールバー
+@property (nonatomic, strong) UIView *horizontalScrollBar; // 横スクロールバー
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1079,6 +1336,9 @@
 }
 - (void)performNewDocument {
     if (!_editorEngine) return;
+    [self.editorView unmarkText];
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->newFile();
     _editorEngine->vScrollPos = 0;
     _editorEngine->hScrollPos = 0;
@@ -1087,6 +1347,8 @@
         _editorEngine->searchQuery = self.searchField.text.UTF8String;
     }
     _editorEngine->ensureCaretVisible();
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
     if (_editorEngine->cbUpdateTitleBar) {
         _editorEngine->cbUpdateTitleBar();
@@ -1144,72 +1406,113 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     self.view.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor systemBackgroundColor];
+        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor systemBackgroundColor];
     }];
     self.headerStack = [[UIStackView alloc] init];
-    self.headerStack.axis = UILayoutConstraintAxisVertical;
-    self.headerStack.translatesAutoresizingMaskIntoConstraints = NO;
-    self.headerStack.layer.zPosition = 10;
-    [self.view addSubview:self.headerStack];
-    self.titleBarView = [[UIView alloc] init];
-    self.titleBarView.backgroundColor = [UIColor clearColor];
-    [self.headerStack addArrangedSubview:self.titleBarView];
-    self.titleLabel = [[UILabel alloc] init];
-    self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-    self.titleLabel.textColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+        self.headerStack.axis = UILayoutConstraintAxisVertical;
+        self.headerStack.translatesAutoresizingMaskIntoConstraints = NO;
+        self.headerStack.layer.zPosition = 10;
+        [self.view addSubview:self.headerStack];
+        self.titleBarView = [[UIView alloc] init];
+        self.titleBarView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.titleBarView.backgroundColor = [UIColor clearColor];
+        [self.headerStack addArrangedSubview:self.titleBarView];
+        UIStackView *titleStack = [[UIStackView alloc] init];
+        titleStack.axis = UILayoutConstraintAxisHorizontal;
+        titleStack.alignment = UIStackViewAlignmentCenter;
+        titleStack.spacing = 6.0;
+        titleStack.translatesAutoresizingMaskIntoConstraints = NO;
+        [self.titleBarView addSubview:titleStack];
+        self.titleIconView = [[UIImageView alloc] init];
+        self.titleIconView.contentMode = UIViewContentModeScaleAspectFit;
+        self.titleIconView.translatesAutoresizingMaskIntoConstraints = NO;
+        [titleStack addArrangedSubview:self.titleIconView];
+        self.titleLabel = [[UILabel alloc] init];
+        self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        self.titleLabel.textColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
             return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor colorWithWhite:0.7 alpha:1.0] : [UIColor secondaryLabelColor];
         }];
-    self.titleLabel.font = [UIFont boldSystemFontOfSize:13];
-    self.titleLabel.textAlignment = NSTextAlignmentCenter;
-    self.titleLabel.text = NSLocalizedString(@"Untitled", @"新規ファイル名");
-    [self.titleBarView addSubview:self.titleLabel];
-    UIView *topFillView = [[UIView alloc] init];
-    topFillView.translatesAutoresizingMaskIntoConstraints = NO;
-    topFillView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor secondarySystemBackgroundColor];
-        }];
-    [self.view addSubview:topFillView];
-    [self.view insertSubview:topFillView belowSubview:self.headerStack];
-    [self setupSearchUI];
-    [self setupGoToLineUI];
-    self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
-    self.editorView.translatesAutoresizingMaskIntoConstraints = NO;
-    self.editorView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+        self.titleLabel.font = [UIFont boldSystemFontOfSize:13];
+        self.titleLabel.textAlignment = NSTextAlignmentCenter;
+        self.titleLabel.text = NSLocalizedString(@"Untitled", @"新規ファイル名");
+        [titleStack addArrangedSubview:self.titleLabel];
+        self.topFillView = [[UIView alloc] init];
+        self.topFillView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.topFillView.userInteractionEnabled = NO;
+        [self.view addSubview:self.topFillView];
+        [self.view insertSubview:self.topFillView belowSubview:self.headerStack];
+        [self setupSearchUI];
+        [self setupGoToLineUI];
+        self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
+        self.editorView.translatesAutoresizingMaskIntoConstraints = NO;
+        self.editorView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
             return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor colorNamed:@"EditorBgColor"];
         }];
-    [self.view addSubview:self.editorView];
-    [self.view sendSubviewToBack:self.editorView];
-    UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
-    _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
-    [NSLayoutConstraint activateConstraints:@[
-        [topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-        [topFillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [topFillView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [topFillView.bottomAnchor constraintEqualToAnchor:self.titleBarView.bottomAnchor],
-        [self.headerStack.topAnchor constraintEqualToAnchor:safeArea.topAnchor constant:-12],
-        [self.headerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-        [self.headerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-        [self.titleBarView.heightAnchor constraintEqualToConstant:17],
-        [self.titleLabel.centerXAnchor constraintEqualToAnchor:self.titleBarView.centerXAnchor],
-        [self.titleLabel.topAnchor constraintEqualToAnchor:self.titleBarView.topAnchor],
-        [self.editorView.topAnchor constraintEqualToAnchor:self.headerStack.bottomAnchor],
-        _editorBottomConstraint,
-        [self.editorView.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
-        [self.editorView.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor]
-    ]];
+        [self.view addSubview:self.editorView];
+        [self.view sendSubviewToBack:self.editorView];
+        self.verticalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
+        self.verticalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
+        self.verticalScrollBar.layer.cornerRadius = 1.5;
+        self.verticalScrollBar.userInteractionEnabled = NO;
+        [self.editorView addSubview:self.verticalScrollBar];
+        
+        self.horizontalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
+        self.horizontalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
+        self.horizontalScrollBar.layer.cornerRadius = 1.5;
+        self.horizontalScrollBar.userInteractionEnabled = NO;
+        [self.editorView addSubview:self.horizontalScrollBar];
+
+        UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
+        _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
+        [NSLayoutConstraint activateConstraints:@[
+            [self.topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            [self.topFillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.topFillView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [self.topFillView.bottomAnchor constraintEqualToAnchor:self.headerStack.bottomAnchor constant:10],
+            [self.headerStack.topAnchor constraintEqualToAnchor:safeArea.topAnchor constant:-12],
+            [self.headerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.headerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            [self.titleBarView.heightAnchor constraintEqualToConstant:17],
+            [titleStack.centerXAnchor constraintEqualToAnchor:self.titleBarView.centerXAnchor],
+            [titleStack.centerYAnchor constraintEqualToAnchor:self.titleBarView.centerYAnchor],
+            [self.titleIconView.widthAnchor constraintEqualToConstant:16],
+            [self.titleIconView.heightAnchor constraintEqualToConstant:16],
+            [self.editorView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+            _editorBottomConstraint,
+            [self.editorView.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
+            [self.editorView.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor],
+        ]];
     _editorEngine = std::make_shared<Editor>();
+    NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
+    NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
+    if (!appVersion) appVersion = @"0.0.0";
+    NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
+    _editorEngine->appVersionStr = UTF8ToW([versionString UTF8String]);
+    NSString *localizedHelp = NSLocalizedString(@"HelpText_iOS", nil);
+    _editorEngine->helpTextStr = UTF8ToW([localizedHelp UTF8String]);
     __weak typeof(self) weakSelf = self;
     _editorEngine->cbUpdateTitleBar = [weakSelf]() {
         dispatch_async(dispatch_get_main_queue(), ^{
             __strong typeof(self) strongSelf = weakSelf;
             if (strongSelf && strongSelf->_editorEngine) {
                 NSString *fileName = NSLocalizedString(@"Untitled", @"新規ファイル名");
+                UIImage *iconImage = nil;
                 if (!strongSelf->_editorEngine->currentFilePath.empty()) {
                     std::string utf8Name = WToUTF8(strongSelf->_editorEngine->currentFilePath);
-                    fileName = [[NSString stringWithUTF8String:utf8Name.c_str()] lastPathComponent];
+                    NSString *fullPath = [NSString stringWithUTF8String:utf8Name.c_str()];
+                    fileName = [fullPath lastPathComponent];
+                    NSURL *fileURL = [NSURL fileURLWithPath:fullPath];
+                    UIDocumentInteractionController *docController = [UIDocumentInteractionController interactionControllerWithURL:fileURL];
+                    if (docController.icons.count > 0) {
+                        iconImage = docController.icons.lastObject;
+                    }
+                } else {
+                    iconImage = [UIImage imageNamed:@"TitleIcon"];
                 }
                 NSString *dirtyMark = strongSelf->_editorEngine->isDirty ? @"*" : @"";
                 strongSelf.titleLabel.text = [NSString stringWithFormat:@"%@%@", dirtyMark, fileName];
+                strongSelf.titleIconView.image = iconImage;
+                strongSelf.titleIconView.hidden = (iconImage == nil);
             }
         });
     };
@@ -1226,8 +1529,54 @@
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf) {
             w = strongSelf.editorView.bounds.size.width;
-            h = strongSelf.editorView.bounds.size.height;
+            h = MAX(0.0f, strongSelf.editorView.bounds.size.height - strongSelf.editorView.topRenderMargin);
         }
+    };
+    _editorEngine->cbUpdateScrollers = [weakSelf]() {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(self) strongSelf = weakSelf;
+            if (strongSelf && strongSelf->_editorEngine) {
+                float vw = strongSelf.editorView.bounds.size.width;
+                float vh = MAX(0.0f, strongSelf.editorView.bounds.size.height - strongSelf.editorView.topRenderMargin);
+                float topMargin = strongSelf.editorView.topRenderMargin;
+                
+                // --- 縦スクロールバーの計算 ---
+                // 最大どこまでスクロールできるか（行数ベース）
+                float maxOffsetY = MAX(1.0f, (strongSelf->_editorEngine->lineStarts.size() - 1) * strongSelf->_editorEngine->lineHeight);
+                float totalHeight = maxOffsetY + vh;
+                
+                if (maxOffsetY <= 1.0f || totalHeight <= vh) {
+                    strongSelf.verticalScrollBar.hidden = YES;
+                } else {
+                    strongSelf.verticalScrollBar.hidden = NO;
+                    float barHeight = MAX(20.0f, vh * (vh / totalHeight)); // 画面に収まる割合で高さを決定
+                    float currentOffsetY = strongSelf->_editorEngine->vScrollPos * strongSelf->_editorEngine->lineHeight;
+                    float scrollRatio = MIN(1.0f, MAX(0.0f, currentOffsetY / maxOffsetY));
+                    float barY = topMargin + scrollRatio * (vh - barHeight);
+                    
+                    // 右端に細く表示
+                    strongSelf.verticalScrollBar.frame = CGRectMake(vw - 5.0f, barY, 3.0f, barHeight);
+                }
+                
+                // --- 横スクロールバーの計算 ---
+                float editorVw = vw - strongSelf->_editorEngine->gutterWidth; // 行番号エリアを除外した幅
+                float maxOffsetX = MAX(1.0f, strongSelf->_editorEngine->maxLineWidth - editorVw + strongSelf->_editorEngine->charWidth * 4.0f);
+                float totalWidth = maxOffsetX + editorVw;
+                
+                if (maxOffsetX <= 1.0f || totalWidth <= editorVw) {
+                    strongSelf.horizontalScrollBar.hidden = YES;
+                } else {
+                    strongSelf.horizontalScrollBar.hidden = NO;
+                    float barWidth = MAX(20.0f, editorVw * (editorVw / totalWidth));
+                    float currentOffsetX = strongSelf->_editorEngine->hScrollPos;
+                    float scrollRatio = MIN(1.0f, MAX(0.0f, currentOffsetX / maxOffsetX));
+                    float barX = strongSelf->_editorEngine->gutterWidth + scrollRatio * (editorVw - barWidth);
+                    
+                    // 下端に細く表示
+                    strongSelf.horizontalScrollBar.frame = CGRectMake(barX, strongSelf.editorView.bounds.size.height - 5.0f, barWidth, 3.0f);
+                }
+            }
+        });
     };
     _editorEngine->cbOpenFile = [weakSelf]() -> bool {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -1241,6 +1590,24 @@
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf) [strongSelf presentDocumentPickerForSaving];
         return true;
+    };
+    // C++エンジンからiOSのクリップボードに書き込む処理
+    _editorEngine->cbSetClipboard = [](const std::string& text, bool isRect) {
+        if (text.empty()) return;
+        NSString *nsText = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
+        if (nsText) {
+            [UIPasteboard generalPasteboard].string = nsText;
+        }
+    };    
+    // C++エンジンがiOSのクリップボードから読み込む処理
+    _editorEngine->cbGetClipboard = [](bool& isRectMarker) -> std::string {
+        isRectMarker = false;
+        NSString *str = [UIPasteboard generalPasteboard].string;
+        if (!str || str.length == 0) return "";
+        
+        const char *utf8Str = [str UTF8String];
+        if (utf8Str) return std::string(utf8Str);
+        return "";
     };
     BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     _editorEngine->isDarkMode = isDark;
@@ -1262,7 +1629,7 @@
             int currentLine = strongSelf->_editorEngine->getLineIdx(head) + 1;
             strongSelf.goToLineField.text = [NSString stringWithFormat:@"%d", currentLine];
         }
-        [UIView animateWithDuration:0.25 animations:^{
+        [UIView animateWithDuration:0.12 animations:^{
             strongSelf.goToLineContainer.hidden = NO;
             [strongSelf.view layoutIfNeeded];
         } completion:^(BOOL finished) {
@@ -1274,8 +1641,50 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showSearchNotif) name:@"miuShowSearch" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showReplaceNotif) name:@"miuShowReplace" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(closeSearch) name:@"miuCloseSearch" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appWillEnterForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
     if (@available(iOS 17.0, *)) {
         [self registerForTraitChanges:@[[UITraitUserInterfaceStyle class]] withAction:@selector(updateThemeIfNeeded)];
+    }
+    self.scrollToTopHelper = [[UIScrollView alloc] initWithFrame:self.view.bounds];
+    self.scrollToTopHelper.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    self.scrollToTopHelper.contentSize = CGSizeMake(self.view.bounds.size.width, 2000);
+    self.scrollToTopHelper.contentOffset = CGPointMake(0, 1000);
+    self.scrollToTopHelper.scrollsToTop = YES;
+    self.scrollToTopHelper.delegate = self;
+    self.scrollToTopHelper.showsVerticalScrollIndicator = NO;
+    self.scrollToTopHelper.showsHorizontalScrollIndicator = NO;
+    self.scrollToTopHelper.backgroundColor = [UIColor clearColor];
+    self.scrollToTopHelper.userInteractionEnabled = YES;
+    [self.view insertSubview:self.scrollToTopHelper atIndex:0];
+}
+#pragma mark - UIScrollViewDelegate (Scroll To Top)
+- (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView {
+    if (scrollView == self.scrollToTopHelper) {
+        [self.view endEditing:YES];
+        if (_editorEngine) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self.editorView.inputDelegate selectionWillChange:self.editorView];
+                self->_editorEngine->vScrollPos = 0;
+                self->_editorEngine->hScrollPos = 0;
+                [self.editorView.inputDelegate selectionDidChange:self.editorView];
+                [self.editorView setNeedsDisplay];
+                if (@available(iOS 16.0, *)) {
+                    [self.editorView.editMenuInteraction dismissMenu];
+                } else {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+                    [[UIMenuController sharedMenuController] hideMenuFromView:self.editorView];
+#pragma clang diagnostic pop
+                }
+            });
+        }
+        return YES;
+    }
+    return YES;
+}
+- (void)scrollViewDidScrollToTop:(UIScrollView *)scrollView {
+    if (scrollView == self.scrollToTopHelper) {
+        scrollView.contentOffset = CGPointMake(0, 1000);
     }
 }
 - (void)confirmSaveIfNeededWithAction:(void(^)(void))action {
@@ -1301,21 +1710,109 @@
     [self presentViewController:alert animated:YES completion:nil];
 }
 - (void)dealloc {
+    if (_blurAnimators) {
+            for (UIViewPropertyAnimator *animator in _blurAnimators) {
+                [animator stopAnimation:YES];
+            }
+        }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    
+    BOOL isLandscape = self.view.bounds.size.width > self.view.bounds.size.height;
+    for (NSLayoutConstraint *c in self.titleBarView.constraints) {
+        if (c.firstAttribute == NSLayoutAttributeHeight && c.relation == NSLayoutRelationEqual) {
+            c.constant = isLandscape ? 0 : 17;
+            break;
+        }
+    }
     if (_editorEngine) {
+        CGFloat safeTop = self.view.safeAreaInsets.top;
+        if (safeTop == 0) {
+            UIWindow *firstWindow = nil;
+            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                if ([scene isKindOfClass:[UIWindowScene class]]) {
+                    firstWindow = ((UIWindowScene *)scene).windows.firstObject;
+                    if (firstWindow) break;
+                }
+            }
+            if (firstWindow) {
+                safeTop = firstWindow.safeAreaInsets.top;
+            }
+        }
+        self.editorView.topRenderMargin = safeTop + 15;
+        if (self.topFillView.bounds.size.height > 0) {
+            if (self.topFillView.subviews.count == 0 || self.topFillView.bounds.size.width != self.lastLayoutSize.width) {
+                [self buildProgressiveBlur];
+            }
+        }
         if (!_isFirstLayoutDone) {
             _isFirstLayoutDone = YES;
             _editorEngine->vScrollPos = 0;
             _editorEngine->hScrollPos = 0;
         } else {
-            _editorEngine->updateMaxLineWidth();
-            _editorEngine->ensureCaretVisible();
+            if (!CGSizeEqualToSize(self.editorView.bounds.size, self.lastLayoutSize)) {
+                _editorEngine->updateMaxLineWidth();
+                _editorEngine->ensureCaretVisible();
+                self.lastLayoutSize = self.editorView.bounds.size;
+            }
         }
         [self.editorView setNeedsDisplay];
+        _editorEngine->updateScrollBars();
+    }
+}
+- (void)buildProgressiveBlur {
+    if (self.blurAnimators) {
+        for (UIViewPropertyAnimator *animator in self.blurAnimators) {
+            [animator stopAnimation:YES];
+        }
+    }
+    self.blurAnimators = [NSMutableArray array];
+    [self.topFillView.subviews makeObjectsPerformSelector:@selector(removeFromSuperview)];
+    int steps = 8;
+    CGFloat stepHeight = self.topFillView.bounds.size.height / (CGFloat)steps;
+    for (int i = steps - 1; i >= 0; i--) {
+        CGFloat fraction = (CGFloat)(steps - i - 1) / (CGFloat)(steps - 1);
+        fraction = pow(fraction, 1.2);
+        fraction *= 0.10;
+        UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithEffect:nil];
+        blurView.frame = CGRectMake(0, i * stepHeight, self.topFillView.bounds.size.width, stepHeight * 2.0);
+        [self.topFillView addSubview:blurView];
+        UIViewPropertyAnimator *animator = [[UIViewPropertyAnimator alloc] initWithDuration:1 curve:UIViewAnimationCurveLinear animations:^{
+            blurView.effect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleRegular];
+        }];
+        animator.fractionComplete = MAX(fraction, 0.001);
+        [animator pauseAnimation];
+        [self.blurAnimators addObject:animator];
+        CAGradientLayer *mask = [CAGradientLayer layer];
+        mask.frame = blurView.bounds;
+        mask.colors = @[(id)[UIColor whiteColor].CGColor, (id)[UIColor clearColor].CGColor];
+        mask.locations = @[@0.5, @1.0];
+        blurView.layer.mask = mask;
+    }
+}
+- (void)rebuildBlur {
+    if (self.topFillView.bounds.size.height > 0) {
+        [self buildProgressiveBlur];
+    }
+}
+- (void)appWillEnterForeground {
+    [self rebuildBlur];
+    if (!self.searchContainer.hidden) {
+        return;
+    }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (self.editorView) {
+            [self.editorView showMenuForCurrentSelection];
+        }
+    });
+}
+- (void)disableOtherScrollsToTop:(UIView *)view {
+    if ([view isKindOfClass:[UIScrollView class]] && view != self.scrollToTopHelper) {
+        ((UIScrollView *)view).scrollsToTop = NO;
+    }
+    for (UIView *subview in view.subviews) {
+        [self disableOtherScrollsToTop:subview];
     }
 }
 - (void)viewDidAppear:(BOOL)animated {
@@ -1323,11 +1820,13 @@
     if (self.editorView) {
         [self.editorView becomeFirstResponder];
     }
+    [self disableOtherScrollsToTop:self.view];
 }
 - (void)keyboardWillShow:(NSNotification *)notification {
     NSDictionary *userInfo = notification.userInfo;
     CGRect keyboardFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
-    CGFloat shrinkAmount = keyboardFrame.size.height;
+    CGRect convertedFrame = [self.view convertRect:keyboardFrame fromView:nil];
+    CGFloat shrinkAmount = MAX(0, self.view.bounds.size.height - convertedFrame.origin.y);
     [UIView performWithoutAnimation:^{
         _editorBottomConstraint.constant = -shrinkAmount;
         [self.view layoutIfNeeded];
@@ -1354,6 +1853,7 @@
         _editorEngine->updateThemeColors();
         [self.editorView setNeedsDisplay];
     }
+    [self rebuildBlur];
 }
 - (void)presentDocumentPickerForOpening {
     _isExportingDocument = NO;
@@ -1391,6 +1891,9 @@
     self.currentDocumentURL = accessGranted ? url : nil;
     if (!_isExportingDocument) {
         std::string path = url.path.UTF8String;
+        [self.editorView unmarkText];
+        [self.editorView.inputDelegate selectionWillChange:self.editorView];
+        [self.editorView.inputDelegate textWillChange:self.editorView];
         bool success = _editorEngine->openFileFromPath(path);
         if (success) {
             _editorEngine->vScrollPos = 0;
@@ -1399,13 +1902,23 @@
             if (self.searchField.text.length > 0) {
                 _editorEngine->searchQuery = self.searchField.text.UTF8String;
             }
-            [self.editorView setNeedsDisplay];
         }
+        [self.editorView.inputDelegate textDidChange:self.editorView];
+        [self.editorView.inputDelegate selectionDidChange:self.editorView];
+        [self.editorView setNeedsDisplay];
     } else {
         std::string path = url.path.UTF8String;
         std::wstring wpath = UTF8ToW(path);
         _editorEngine->saveFile(wpath);
     }
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.editorView becomeFirstResponder];
+    });
+}
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.editorView becomeFirstResponder];
+    });
 }
 - (void)setupSearchUI {
     self.searchContainer = [[UIView alloc] init];
@@ -1532,6 +2045,8 @@
         replaceBtnsStack
     ]];
     self.replaceRowStack.spacing = 8;
+    self.replaceRowStack.hidden = YES;
+    self.replaceRowStack.alpha = 0.0;
     [mainStack addArrangedSubview:self.replaceRowStack];
     self.matchCaseBtn = createToggleBtn(NSLocalizedString(@"Match Case", nil), @selector(toggleMatchCase:));
     self.wholeWordBtn = createToggleBtn(NSLocalizedString(@"Whole Word", nil), @selector(toggleWholeWord:));
@@ -1548,6 +2063,7 @@
     optionRow.distribution = UIStackViewDistributionFill;
     [mainStack addArrangedSubview:optionRow];
     self.buttonsWidthConstraint = [searchBtnsStack.widthAnchor constraintEqualToAnchor:replaceBtnsStack.widthAnchor];
+    self.buttonsWidthConstraint.priority = UILayoutPriorityDefaultHigh;
 }
 - (void)updateOptionButtonVisual:(UIButton *)btn isSelected:(BOOL)isSelected {
     btn.selected = isSelected;
@@ -1621,10 +2137,11 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
-    [UIView animateWithDuration:0.25 animations:^{
-        self.searchContainer.hidden = NO;
-        self.replaceRowStack.hidden = YES;
-        self.buttonsWidthConstraint.active = NO;
+    self.searchContainer.hidden = NO;
+    self.replaceRowStack.hidden = YES;
+    self.replaceRowStack.alpha = 0.0;
+    self.buttonsWidthConstraint.active = NO;
+    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
         [self.searchField becomeFirstResponder];
@@ -1638,13 +2155,18 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
-    [UIView animateWithDuration:0.25 animations:^{
-        self.searchContainer.hidden = NO;
-        self.replaceRowStack.hidden = NO;
-        self.buttonsWidthConstraint.active = YES;
+    self.searchContainer.hidden = NO;
+    self.replaceRowStack.hidden = NO;
+    self.replaceRowStack.alpha = 1.0;
+    self.buttonsWidthConstraint.active = YES;
+    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
-        [self.searchField becomeFirstResponder];
+        if (self.searchField.text.length == 0) {
+            [self.searchField becomeFirstResponder];
+        } else {
+            [self.searchField becomeFirstResponder];
+        }
     }];
 }
 - (BOOL)canBecomeFirstResponder {
@@ -1660,7 +2182,7 @@
         _editorEngine->isReplaceMode = false;
     }
     [self.editorView becomeFirstResponder];
-    [UIView animateWithDuration:0.25 animations:^{
+    [UIView animateWithDuration:0.15 animations:^{
         self.searchContainer.hidden = YES;
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
@@ -1668,8 +2190,17 @@
     }];
 }
 - (void)handleEscape:(id)sender {
+    if (_editorEngine && _editorEngine->showHelpPopup) {
+        _editorEngine->showHelpPopup = false;
+        [self.editorView setNeedsDisplay];
+        return;
+    }
     if (!self.searchContainer.hidden) {
         [self closeSearch];
+        return;
+    }
+    if (!self.goToLineContainer.hidden) {
+        [self closeGoToLine];
         return;
     }
     if (_editorEngine && !_editorEngine->cursors.empty()) {
@@ -1689,7 +2220,7 @@
 }
 - (void)closeGoToLine {
     [self.editorView becomeFirstResponder];
-    [UIView animateWithDuration:0.25 animations:^{
+    [UIView animateWithDuration:0.12 animations:^{
         self.goToLineContainer.hidden = YES;
         [self.view layoutIfNeeded];
     }];
@@ -1725,28 +2256,40 @@
 }
 - (void)doFindNext {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->findNext(true);
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 - (void)doFindPrev {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->findNext(false);
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 - (void)doReplace {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->replaceQuery = self.replaceField.text.UTF8String;
     _editorEngine->replaceNext();
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 - (void)doReplaceAll {
     if (!_editorEngine || self.searchField.text.length == 0) return;
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->replaceQuery = self.replaceField.text.UTF8String;
     _editorEngine->replaceAll();
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 @end

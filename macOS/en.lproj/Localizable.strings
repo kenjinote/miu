@@ -7,6 +7,7 @@
 */
 
 "HelpText" = "F1                    Help\nCmd+N                 New\nCmd+O / Drag&Drop     Open\nCmd+S                 Save\nCmd+Shift+S           Save As\nCmd+F                 Find\nCmd+H                 Replace\nF3 / Shift+F3         Find Next/Prev\nCmd+G                 Go To Line\nCmd+Z/Shift+Z         Undo/Redo\nCmd+X/C/V             Cut/Copy/Paste\nCmd+Shift+K           Delete Line\nCmd+U                 Upper Case\nCmd+Shift+U           Lower Case\nOption+Up/Down        Move Line\nOption+Shift+Up/Down  Copy Line\nCmd+D                 Select Word / Next\nCmd+A                 Select All\nOption+Drag           Rect Select\nCmd+Wheel/+/-         Zoom\nCmd+0                 Reset Zoom\nCtrl+Cmd+F            Full Screen\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New File\nCmd + O         : Open File\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom In / Out / Reset\nF1              : Toggle Help\nEsc             : Close Dialogs / Clear Selection";
 "Find" = "Find";
 "Replace" = "Replace";
 "Find:" = "Find:";
@@ -46,3 +47,5 @@
 "Line:" = "Line:";
 "Line Number:" = "Line Number:";
 "Go To" = "Go To";
+"Top" = "Top";
+"Bottom" = "Bottom";

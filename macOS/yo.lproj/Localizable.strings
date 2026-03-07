@@ -7,6 +7,7 @@
 */
 
 "HelpText" = "F1                    Ìrànwọ́\nCmd+N                 Tuntun\nCmd+O / Drag&Drop     Ṣí i\nCmd+S                 Fipamọ́\nCmd+Shift+S           Fipamọ́ Gẹ́gẹ́ Bí\nCmd+F                 Wá a\nCmd+H                 Rọ́pò\nF3 / Shift+F3         Wá Tókàn/Tẹ́lẹ̀\nCmd+G                 Lọ Sí Láyìnì\nCmd+Z/Shift+Z         Dápadà/Túnṣe\nCmd+X/C/V             Gé/Ṣẹ́dà/Lẹ̀mọ́\nCmd+Shift+K           Pa Láyìnì Rẹ́\nCmd+U                 Lẹ́tà Ńlá\nCmd+Shift+U           Lẹ́tà Kékeré\nOption+Up/Down        Gbé Láyìnì\nOption+Shift+Up/Down  Ṣẹ́dà Láyìnì\nCmd+D                 Yan Ọ̀rọ̀ / Tókàn\nCmd+A                 Yan Gbogbo Rẹ̀\nOption+Drag           Ìyàn Rẹkítáńgùlù\nCmd+Wheel/+/-         Súùmu\nCmd+0                 Súùmu Bóṣewà\nCtrl+Cmd+F            Ìbòjú Kíkún\n";
+"HelpText_iOS" = "[ Àwọn Ọna Abujá Kíìbọ́ọ̀dù (iPad) ]\n\nCmd + N         : Fáìlì Tuntun\nCmd + O         : Ṣí Fáìlì\nCmd + S         : Fi pamọ́\nShift + Cmd + S : Fi pamọ́ gẹ́gẹ́ bí\nCmd + F         : Wá a\nCmd + R         : Rọ́pò rẹ̀\nCmd + G / J     : Lọ sí Laini\nCmd + D         : Yan Èyí tó tẹ̀lé e\nCmd + [+ / - / 0]: Sun-un / Ṣe ìdápadà rẹ̀\nF1              : Ṣí/Pa Ìrànwọ́\nEsc             : Pa Àpótí Ọ̀rọ̀ / Pa Ìyàn rẹ";
 "Find" = "Wá a";
 "Replace" = "Rọ́pò";
 "Find:" = "Wá a:";
@@ -46,3 +47,5 @@
 "Line:" = "Ìlà:";
 "Line Number:" = "Nọ́mbà Ìlà:";
 "Go To" = "Lọ sí";
+"Top" = "Òkè";
+"Bottom" = "Ìsàlẹ̀";
