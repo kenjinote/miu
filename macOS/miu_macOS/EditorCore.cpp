@@ -90,25 +90,31 @@ bool MappedFile::open(const char* path) {
     ptr = (char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0); return (ptr != MAP_FAILED);
 }
 void MappedFile::close() { if (ptr && ptr != MAP_FAILED) munmap(ptr, size); if (fd != -1) ::close(fd); ptr = nullptr; fd = -1; }
-bool IsProbablyShiftJIS(const char* buf, size_t len) {
-    size_t checkLen = (len > 4096) ? 4096 : len; // 先頭4KBで判定
-    int sjisCount = 0;
-    int utf8Count = 0;
-    for (size_t i = 0; i < checkLen; ++i) {
-        unsigned char c = (unsigned char)buf[i];
-        if (c <= 0x7F) continue; // ASCII
-        if (c >= 0xC2 && c <= 0xF4) utf8Count++;
-        if ((c >= 0x81 && c <= 0x9F) || (c >= 0xE0 && c <= 0xFC)) {
-            if (i + 1 < checkLen) {
-                unsigned char next = (unsigned char)buf[i+1];
-                if ((next >= 0x40 && next <= 0x7E) || (next >= 0x80 && next <= 0xFC)) {
-                    sjisCount++;
-                    i++; // 2バイト分進める
-                }
-            }
+bool IsValidUtf8(const char* buf, size_t len) {
+    if (len == 0) return true;
+    size_t check_len = (len > 4096) ? 4096 : len;
+    size_t i = 0;
+    while (i < check_len) {
+        unsigned char c = buf[i];
+        if (c <= 0x7F) {
+            i++;
+        } else if (c >= 0xC2 && c <= 0xDF) {
+            if (i + 1 >= check_len) break; 
+            if ((buf[i+1] & 0xC0) != 0x80) return false;
+            i += 2;
+        } else if (c >= 0xE0 && c <= 0xEF) {
+            if (i + 2 >= check_len) break;
+            if ((buf[i+1] & 0xC0) != 0x80 || (buf[i+2] & 0xC0) != 0x80) return false;
+            i += 3;
+        } else if (c >= 0xF0 && c <= 0xF4) {
+            if (i + 3 >= check_len) break;
+            if ((buf[i+1] & 0xC0) != 0x80 || (buf[i+2] & 0xC0) != 0x80 || (buf[i+3] & 0xC0) != 0x80) return false;
+            i += 4;
+        } else {
+            return false;
         }
     }
-    return sjisCount > 0 && sjisCount > utf8Count;
+    return true;
 }
 Encoding DetectEncoding(const char* buf, size_t len) {
     if (len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) return ENC_UTF8_BOM;
@@ -116,7 +122,10 @@ Encoding DetectEncoding(const char* buf, size_t len) {
         if ((unsigned char)buf[0] == 0xFF && (unsigned char)buf[1] == 0xFE) return ENC_UTF16LE;
         if ((unsigned char)buf[0] == 0xFE && (unsigned char)buf[1] == 0xFF) return ENC_UTF16BE;
     }
-    return ENC_UTF8_NOBOM;
+    if (IsValidUtf8(buf, len)) {
+        return ENC_UTF8_NOBOM;
+    }
+    return ENC_ANSI;
 }
 std::string ConvertCase(const std::string& s, bool toUpper) {
     std::wstring w = UTF8ToW(s);
@@ -1496,14 +1505,12 @@ bool Editor::openFileFromPath(const std::string& p) {
         } else if (currentEncoding == ENC_UTF8_BOM) {
             ptr += 3; sz -= 3;
         } else if (currentEncoding == ENC_UTF8_NOBOM) {
-            if (IsProbablyShiftJIS(ptr, sz)) {
-#if defined(__APPLE__)
-                this->currentFileBuffer = ShiftJISToUtf8(ptr, sz);
-#endif
-            }
         } else if (currentEncoding == ENC_ANSI) {
 #if defined(__APPLE__)
-            this->currentFileBuffer = AnsiToUtf8(ptr, sz);
+            this->currentFileBuffer = ShiftJISToUtf8(ptr, sz);
+            if (this->currentFileBuffer.empty()) {
+                this->currentFileBuffer = AnsiToUtf8(ptr, sz);
+            }
 #endif
         }
         if (!this->currentFileBuffer.empty()) {
