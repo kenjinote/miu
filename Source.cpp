@@ -24,6 +24,7 @@
 #include <sstream>
 #include <regex> 
 #include <cstring>
+#include "compact_enc_det/compact_enc_det.h"
 #include "resource.h"
 #pragma comment(lib, "d2d1.lib")
 #pragma comment(lib, "d3d11.lib")
@@ -35,13 +36,18 @@
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "uxtheme.lib")
+#pragma comment(lib, "ced.lib")
 const std::wstring APP_VERSION = L"miu v1.0.17";
-enum Encoding {
+enum MiuEncoding {
     ENC_UTF8_NOBOM = 0,
     ENC_UTF8_BOM,
     ENC_UTF16LE,
     ENC_UTF16BE,
-    ENC_ANSI
+    ENC_LOCAL
+};
+struct DetectResult {
+    MiuEncoding type;
+    UINT codePage;
 };
 static void SwapBytes(wchar_t* buf, size_t count) {
     for (size_t i = 0; i < count; ++i) {
@@ -79,34 +85,47 @@ static bool IsValidUtf8(const char* buf, size_t len) {
     }
     return true;
 }
-static Encoding DetectEncoding(const char* buf, size_t len) {
+static UINT MapCedEncodingToCodePage(Encoding enc) {
+    switch (enc) {
+    case JAPANESE_SHIFT_JIS: return 932;
+    case JAPANESE_EUC_JP:    return 51932;
+    case CHINESE_GB:         return 936;
+    case CHINESE_BIG5:       return 950;
+    case KOREAN_EUC_KR:      return 949;
+    case RUSSIAN_CP1251:     return 1251;
+    case LATIN1:             return 1252;
+    case ASCII_7BIT:         return CP_UTF8;
+    default:                 return CP_ACP;
+    }
+}
+static DetectResult DetectEncodingEx(const char* buf, size_t len) {
+    DetectResult res = { ENC_UTF8_NOBOM, CP_UTF8 };
     if (len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) {
-        return ENC_UTF8_BOM;
+        res.type = ENC_UTF8_BOM; return res;
     }
     if (len >= 2) {
-        if ((unsigned char)buf[0] == 0xFF && (unsigned char)buf[1] == 0xFE) {
-            return ENC_UTF16LE;
-        }
-        if ((unsigned char)buf[0] == 0xFE && (unsigned char)buf[1] == 0xFF) {
-            return ENC_UTF16BE;
-        }
+        if ((unsigned char)buf[0] == 0xFF && (unsigned char)buf[1] == 0xFE) { res.type = ENC_UTF16LE; return res; }
+        if ((unsigned char)buf[0] == 0xFE && (unsigned char)buf[1] == 0xFF) { res.type = ENC_UTF16BE; return res; }
     }
     if (IsValidUtf8(buf, len)) {
-        return ENC_UTF8_NOBOM;
+        res.type = ENC_UTF8_NOBOM; return res;
     }
-    return ENC_ANSI;
-}
-static std::string AnsiToUtf8(const char* data, size_t len) {
-    if (len == 0) return "";
-    int wLen = MultiByteToWideChar(CP_ACP, 0, data, (int)len, NULL, 0);
-    if (wLen <= 0) return "";
-    std::vector<wchar_t> wBuf(wLen);
-    MultiByteToWideChar(CP_ACP, 0, data, (int)len, wBuf.data(), wLen);
-    int uLen = WideCharToMultiByte(CP_UTF8, 0, wBuf.data(), wLen, NULL, 0, NULL, NULL);
-    if (uLen <= 0) return "";
-    std::string ret; ret.resize(uLen);
-    WideCharToMultiByte(CP_UTF8, 0, wBuf.data(), wLen, &ret[0], uLen, NULL, NULL);
-    return ret;
+    int bytes_consumed = 0;
+    bool is_reliable = false;
+    size_t ced_len = (len > 65536) ? 65536 : len;
+    Encoding ced_enc = CompactEncDet::DetectEncoding(
+        buf, static_cast<int>(ced_len),
+        nullptr, nullptr, nullptr,
+        UNKNOWN_ENCODING,
+        UNKNOWN_LANGUAGE,
+        CompactEncDet::WEB_CORPUS,
+        false,
+        &bytes_consumed,
+        &is_reliable
+    );
+    res.type = ENC_LOCAL;
+    res.codePage = MapCedEncodingToCodePage(ced_enc);
+    return res;
 }
 static std::wstring UTF8ToW(const std::string& s) {
     if (s.empty()) return {};
@@ -116,13 +135,25 @@ static std::wstring UTF8ToW(const std::string& s) {
     MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), &w[0], n);
     return w;
 }
-static std::string Utf8ToAnsi(const std::string& utf8) {
+static std::string LocalToUtf8(const char* data, size_t len, UINT cp) {
+    if (len == 0) return "";
+    int wLen = MultiByteToWideChar(cp, 0, data, (int)len, NULL, 0);
+    if (wLen <= 0) return "";
+    std::vector<wchar_t> wBuf(wLen);
+    MultiByteToWideChar(cp, 0, data, (int)len, wBuf.data(), wLen);
+    int uLen = WideCharToMultiByte(CP_UTF8, 0, wBuf.data(), wLen, NULL, 0, NULL, NULL);
+    if (uLen <= 0) return "";
+    std::string ret; ret.resize(uLen);
+    WideCharToMultiByte(CP_UTF8, 0, wBuf.data(), wLen, &ret[0], uLen, NULL, NULL);
+    return ret;
+}
+static std::string Utf8ToLocal(const std::string& utf8, UINT cp) {
     if (utf8.empty()) return "";
     std::wstring w = UTF8ToW(utf8);
-    int len = WideCharToMultiByte(CP_ACP, 0, w.c_str(), (int)w.size(), NULL, 0, NULL, NULL);
+    int len = WideCharToMultiByte(cp, 0, w.c_str(), (int)w.size(), NULL, 0, NULL, NULL);
     if (len <= 0) return "";
     std::string ret; ret.resize(len);
-    WideCharToMultiByte(CP_ACP, 0, w.c_str(), (int)w.size(), &ret[0], len, NULL, NULL);
+    WideCharToMultiByte(cp, 0, w.c_str(), (int)w.size(), &ret[0], len, NULL, NULL);
     return ret;
 }
 static std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
@@ -361,7 +392,8 @@ struct Editor {
     bool isVScrollHover = false;
     bool isHScrollHover = false;
     bool isTrackingMouse = false;
-    Encoding currentEncoding = ENC_UTF8_NOBOM;
+    MiuEncoding currentEncoding = ENC_UTF8_NOBOM;
+    UINT currentCodePage = CP_UTF8;
     std::string convertedBuffer;
     std::string newlineStr = "\r\n";
     void updateSearchQuery(const std::string& newQuery) {
@@ -420,7 +452,6 @@ struct Editor {
                 bool inClass = false;
                 if (i > 0 && query[i - 1] == '[') inClass = true;
                 if (!inClass) {
-                    // 修正: キャプチャグループ (...) に変更して、マッチ判定を行えるようにする
                     processed += "((?:^|(?:\\r\\n|\\r(?!\\n)|[\\n])))";
                     continue;
                 }
@@ -1157,7 +1188,6 @@ struct Editor {
                                 char c = fullText[checkPos];
                                 if (c == '\r' || c == '\n') {
                                     isAtLineEnd = true;
-                                    // 修正: $が \r と \n の間にマッチした場合は無効とする
                                     if (contentLen == 0 && c == '\n' && checkPos > 0 && fullText[checkPos - 1] == '\r') {
                                         isAtLineEnd = false;
                                     }
@@ -1264,7 +1294,6 @@ struct Editor {
                                 char c = fullText[contentStart + contentLen];
                                 if (c == '\r' || c == '\n') {
                                     if (contentLen == 0 && c == '\n' && contentStart + contentLen > 0 && fullText[contentStart + contentLen - 1] == '\r') {
-                                        // skip match between \r and \n
                                         continue;
                                     }
                                 }
@@ -1408,8 +1437,6 @@ struct Editor {
                 if (!searchMatchCase) flags |= std::regex_constants::icase;
                 std::regex re(actualQuery, flags);
                 std::smatch m;
-
-                // 修正: replaceAllと同様に、置換文字列内のグループ番号($1 -> $2)を補正する
                 std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
                 std::string fmt;
                 for (size_t i = 0; i < rawFmt.size(); ++i) {
@@ -1425,7 +1452,7 @@ struct Editor {
                                 }
                                 i--;
                                 int grp = std::stoi(numStr);
-                                if (grp > 0) grp++; // $0はそのまま、$1以降をずらす
+                                if (grp > 0) grp++;
                                 fmt += std::to_string(grp);
                             }
                             else {
@@ -1576,7 +1603,6 @@ struct Editor {
                                 char c = fullText[checkPos];
                                 if (c == '\r' || c == '\n') {
                                     isAtLineEnd = true;
-                                    // 修正: $が \r と \n の間にマッチした場合は無効とする
                                     if (contentLen == 0 && c == '\n' && checkPos > 0 && fullText[checkPos - 1] == '\r') {
                                         isAtLineEnd = false;
                                     }
@@ -1602,12 +1628,10 @@ struct Editor {
                                 isValid = false;
                             }
                         }                        
-                        // ★修正: 有効な場合のみ置換リストに追加
                         if (isValid) {
                             std::string rText = m.format(fmt);
                             matches.push_back({ contentPos, contentLen, rText });
                         }
-                        // ★修正: 古いコードを排除し、正しい1つの計算式に統合
                         size_t step = matchLen;
                         if (step == 0) {
                             bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
@@ -2059,7 +2083,6 @@ struct Editor {
                                         char c = text[contentPos + contentLen];
                                         if (c == '\r' || c == '\n') {
                                             isAtLineEnd = true;
-                                            // 修正: $が \r と \n の間にマッチした場合は無効とする
                                             if (contentLen == 0 && c == '\n' && contentPos + contentLen > 0 && text[contentPos + contentLen - 1] == '\r') {
                                                 isAtLineEnd = false;
                                             }
@@ -3134,10 +3157,10 @@ struct Editor {
             DWORD bytesToWrite = (DWORD)(wStr.size() * sizeof(wchar_t));
             if (!WriteFile(h, wStr.data(), bytesToWrite, &w, NULL) || w != bytesToWrite) ok = false;
         }
-        else if (currentEncoding == ENC_ANSI) {
-            std::string ansi = Utf8ToAnsi(contentUtf8);
-            if (!ansi.empty()) {
-                if (!WriteFile(h, ansi.data(), (DWORD)ansi.size(), &w, NULL) || w != ansi.size()) ok = false;
+        else if (currentEncoding == ENC_LOCAL) {
+            std::string localStr = Utf8ToLocal(contentUtf8, currentCodePage);
+            if (!localStr.empty()) {
+                if (!WriteFile(h, localStr.data(), (DWORD)localStr.size(), &w, NULL) || w != localStr.size()) ok = false;
             }
         }
         else {
@@ -3261,7 +3284,9 @@ struct Editor {
     bool openFileFromPath(const std::wstring& path) {
         fileMap.reset(new MappedFile());
         if (fileMap->open(path.c_str())) {
-            currentEncoding = DetectEncoding(fileMap->ptr, fileMap->size);
+            DetectResult encRes = DetectEncodingEx(fileMap->ptr, fileMap->size);
+            currentEncoding = encRes.type;
+            currentCodePage = encRes.codePage;
             convertedBuffer.clear();
             const char* ptr = fileMap->ptr;
             size_t size = fileMap->size;
@@ -3281,8 +3306,8 @@ struct Editor {
                 pt.initFromFile(convertedBuffer.data(), convertedBuffer.size());
                 detectNewlineStyle(convertedBuffer.data(), convertedBuffer.size());
                 break;
-            case ENC_ANSI:
-                convertedBuffer = AnsiToUtf8(ptr, size);
+            case ENC_LOCAL:
+                convertedBuffer = LocalToUtf8(ptr, size, currentCodePage);
                 pt.initFromFile(convertedBuffer.data(), convertedBuffer.size());
                 detectNewlineStyle(convertedBuffer.data(), convertedBuffer.size());
                 break;
