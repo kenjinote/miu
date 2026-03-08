@@ -227,6 +227,8 @@ struct Editor {
     void getWordBoundaries(size_t pos, size_t& start, size_t& end);
     void initGraphics();
     void updateThemeColors();
+    size_t countUTF16Length(size_t start, size_t byteLen);
+    size_t getPositionByUTF16Offset(size_t startPos, int offset);
 #if defined(__APPLE__)
     void render(CGContextRef ctx, float w, float h);
 #endif

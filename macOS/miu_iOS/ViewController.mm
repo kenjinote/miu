@@ -677,30 +677,8 @@
     if (!self.editor) return position;
     size_t startPos = ((iOSTextPosition*)position).index;
     if (offset == 0) return position;
-    if (offset > 0) {
-        size_t remain = self.editor->pt.length() - startPos;
-        size_t fetchLen = MIN(remain, (size_t)4000);
-        std::string text = self.editor->pt.getRange(startPos, fetchLen);
-        NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
-        if (nsStr && nsStr.length >= offset) {
-            NSString *sub = [nsStr substringToIndex:offset];
-            size_t byteOffset = [sub lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
-            return [iOSTextPosition positionWithIndex:startPos + byteOffset];
-        }
-        return [iOSTextPosition positionWithIndex:startPos + remain];
-    } else {
-        NSInteger absOffset = -offset;
-        size_t fetchLen = MIN(startPos, (size_t)4000);
-        size_t fetchStart = startPos - fetchLen;
-        std::string text = self.editor->pt.getRange(fetchStart, fetchLen);
-        NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
-        if (nsStr && nsStr.length >= absOffset) {
-            NSString *sub = [nsStr substringToIndex:(nsStr.length - absOffset)];
-            size_t byteOffset = [sub lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
-            return [iOSTextPosition positionWithIndex:fetchStart + byteOffset];
-        }
-        return [iOSTextPosition positionWithIndex:0];
-    }
+    size_t newPos = self.editor->getPositionByUTF16Offset(startPos, (int)offset);
+    return [iOSTextPosition positionWithIndex:newPos];
 }
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction offset:(NSInteger)offset {
     return position;
@@ -716,10 +694,8 @@
     if (fromIdx == toIdx) return 0;
     size_t start = MIN(fromIdx, toIdx);
     size_t end = MAX(fromIdx, toIdx);
-    std::string text = self.editor->pt.getRange(start, end - start);
-    NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
-    NSInteger charCount = nsStr ? nsStr.length : 1;
-    return (fromIdx <= toIdx) ? charCount : -charCount;
+    size_t charCount = self.editor->countUTF16Length(start, end - start);
+    return (fromIdx <= toIdx) ? (NSInteger)charCount : -(NSInteger)charCount;
 }
 - (id<UITextInputTokenizer>)tokenizer { return _tokenizer; }
 - (UITextPosition *)positionWithinRange:(UITextRange *)r farthestInDirection:(UITextLayoutDirection)d { return r.start; }
@@ -931,6 +907,7 @@
 }
 - (void)newDocument:(id)sender {
     [self hideHelpIfNeeded];
+    [self hideEditMenuIfNeeded];
     if (self.onNewDocumentAction) {
         self.onNewDocumentAction();
     }
@@ -1300,6 +1277,8 @@
 @property (nonatomic, strong) NSMutableArray<UIViewPropertyAnimator *> *blurAnimators;
 @property (nonatomic, strong) UIView *verticalScrollBar;
 @property (nonatomic, strong) UIView *horizontalScrollBar;
+@property (nonatomic, strong) UIStackView *footerStack;
+@property (nonatomic, strong) NSLayoutConstraint *footerBottomConstraint;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1335,7 +1314,7 @@
     bottomLine.backgroundColor = [UIColor separatorColor];
     bottomLine.translatesAutoresizingMaskIntoConstraints = NO;
     [self.goToLineContainer addSubview:bottomLine];
-    [self.headerStack addArrangedSubview:self.goToLineContainer];
+    [self.footerStack addArrangedSubview:self.goToLineContainer];
     UIStackView *mainStack = [[UIStackView alloc] init];
     mainStack.axis = UILayoutConstraintAxisHorizontal;
     mainStack.spacing = 12;
@@ -1414,6 +1393,15 @@
         self.topFillView.userInteractionEnabled = NO;
         [self.view addSubview:self.topFillView];
         [self.view insertSubview:self.topFillView belowSubview:self.headerStack];
+    
+        self.footerStack = [[UIStackView alloc] init];
+        self.footerStack.axis = UILayoutConstraintAxisVertical;
+        self.footerStack.translatesAutoresizingMaskIntoConstraints = NO;
+        self.footerStack.layer.zPosition = 10;
+        [self.view addSubview:self.footerStack];
+    
+    
+    
         [self setupSearchUI];
         [self setupGoToLineUI];
         self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
@@ -1434,9 +1422,9 @@
         self.horizontalScrollBar.layer.cornerRadius = 1.5;
         self.horizontalScrollBar.userInteractionEnabled = NO;
         [self.editorView addSubview:self.horizontalScrollBar];
-
         UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
-        _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
+        _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.footerStack.topAnchor];
+        self.footerBottomConstraint = [self.footerStack.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
         [NSLayoutConstraint activateConstraints:@[
             [self.topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
             [self.topFillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -1454,6 +1442,9 @@
             _editorBottomConstraint,
             [self.editorView.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
             [self.editorView.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor],
+            [self.footerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.footerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            self.footerBottomConstraint
         ]];
     _editorEngine = std::make_shared<Editor>();
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
@@ -1589,12 +1580,14 @@
             int currentLine = strongSelf->_editorEngine->getLineIdx(head) + 1;
             strongSelf.goToLineField.text = [NSString stringWithFormat:@"%d", currentLine];
         }
-        [UIView animateWithDuration:0.12 animations:^{
+        [UIView performWithoutAnimation:^{
+            [strongSelf.goToLineField becomeFirstResponder];
+            [strongSelf.view layoutIfNeeded];
+        }];
+        [UIView animateWithDuration:0.1 animations:^{
             strongSelf.goToLineContainer.hidden = NO;
             [strongSelf.view layoutIfNeeded];
-        } completion:^(BOOL finished) {
-            [strongSelf.goToLineField becomeFirstResponder];
-        }];
+        } completion:nil];
     };
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
@@ -1788,7 +1781,7 @@
     CGRect convertedFrame = [self.view convertRect:keyboardFrame fromView:nil];
     CGFloat shrinkAmount = MAX(0, self.view.bounds.size.height - convertedFrame.origin.y);
     [UIView performWithoutAnimation:^{
-        _editorBottomConstraint.constant = -shrinkAmount;
+        self.footerBottomConstraint.constant = -shrinkAmount;
         [self.view layoutIfNeeded];
         if (_editorEngine) {
             _editorEngine->ensureCaretVisible();
@@ -1798,7 +1791,7 @@
 }
 - (void)keyboardWillHide:(NSNotification *)notification {
     [UIView performWithoutAnimation:^{
-        _editorBottomConstraint.constant = 0;
+        self.footerBottomConstraint.constant = 0;
         [self.view layoutIfNeeded];
         if (_editorEngine) {
             _editorEngine->ensureCaretVisible();
@@ -1888,7 +1881,7 @@
     bottomLine.backgroundColor = [UIColor separatorColor];
     bottomLine.translatesAutoresizingMaskIntoConstraints = NO;
     [self.searchContainer addSubview:bottomLine];
-    [self.headerStack addArrangedSubview:self.searchContainer];
+    [self.footerStack addArrangedSubview:self.searchContainer];
     UIStackView *mainStack = [[UIStackView alloc] init];
     mainStack.axis = UILayoutConstraintAxisVertical;
     mainStack.spacing = 8;
@@ -2097,15 +2090,17 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
+    [UIView performWithoutAnimation:^{
+        [self.searchField becomeFirstResponder];
+        [self.view layoutIfNeeded];
+    }];
     self.searchContainer.hidden = NO;
     self.replaceRowStack.hidden = YES;
     self.replaceRowStack.alpha = 0.0;
     self.buttonsWidthConstraint.active = NO;
-    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+    [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
-    } completion:^(BOOL finished) {
-        [self.searchField becomeFirstResponder];
-    }];
+    } completion:nil];
 }
 - (void)showReplaceNotif {
     if (_editorEngine) {
@@ -2115,19 +2110,21 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
+    [UIView performWithoutAnimation:^{
+        if (self.searchField.text.length == 0) {
+            [self.searchField becomeFirstResponder];
+        } else {
+            [self.replaceField becomeFirstResponder];
+        }
+        [self.view layoutIfNeeded];
+    }];
     self.searchContainer.hidden = NO;
     self.replaceRowStack.hidden = NO;
     self.replaceRowStack.alpha = 1.0;
     self.buttonsWidthConstraint.active = YES;
-    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+    [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
-    } completion:^(BOOL finished) {
-        if (self.searchField.text.length == 0) {
-            [self.searchField becomeFirstResponder];
-        } else {
-            [self.searchField becomeFirstResponder];
-        }
-    }];
+    } completion:nil];
 }
 - (BOOL)canBecomeFirstResponder {
     return YES;
@@ -2142,7 +2139,7 @@
         _editorEngine->isReplaceMode = false;
     }
     [self.editorView becomeFirstResponder];
-    [UIView animateWithDuration:0.15 animations:^{
+    [UIView animateWithDuration:0.08 animations:^{
         self.searchContainer.hidden = YES;
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
@@ -2180,7 +2177,7 @@
 }
 - (void)closeGoToLine {
     [self.editorView becomeFirstResponder];
-    [UIView animateWithDuration:0.12 animations:^{
+    [UIView animateWithDuration:0.08 animations:^{
         self.goToLineContainer.hidden = YES;
         [self.view layoutIfNeeded];
     }];

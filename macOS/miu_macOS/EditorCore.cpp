@@ -2091,6 +2091,67 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     }
 }
 #endif
+size_t Editor::countUTF16Length(size_t start, size_t byteLen) {
+    size_t end = std::min(start + byteLen, pt.length());
+    size_t utf16Count = 0;
+    size_t p = start;
+    while (p < end) {
+        unsigned char c = pt.charAt(p);
+        if (c < 0x80) {
+            p += 1; utf16Count += 1;
+        } else if ((c & 0xE0) == 0xC0) {
+            p += 2; utf16Count += 1;
+        } else if ((c & 0xF0) == 0xE0) {
+            p += 3; utf16Count += 1;
+        } else if ((c & 0xF8) == 0xF0) {
+            p += 4; utf16Count += 2;
+        } else {
+            p += 1; utf16Count += 1;
+        }
+    }
+    return utf16Count;
+}
+
+size_t Editor::getPositionByUTF16Offset(size_t startPos, int offset) {
+    if (offset == 0) return startPos;
+    size_t docLen = pt.length();
+    if (offset > 0) {
+        size_t p = startPos;
+        int count = 0;
+        while (p < docLen && count < offset) {
+            unsigned char c = pt.charAt(p);
+            if (c < 0x80) {
+                p += 1; count += 1;
+            } else if ((c & 0xE0) == 0xC0) {
+                p += 2; count += 1;
+            } else if ((c & 0xF0) == 0xE0) {
+                p += 3; count += 1;
+            } else if ((c & 0xF8) == 0xF0) {
+                p += 4; count += 2;
+            } else {
+                p += 1; count += 1;
+            }
+        }
+        return std::min(p, docLen);
+    } else {
+        size_t p = startPos;
+        int count = 0;
+        int target = -offset;
+        while (p > 0 && count < target) {
+            p--;
+            while (p > 0 && (pt.charAt(p) & 0xC0) == 0x80) {
+                p--;
+            }
+            unsigned char c = pt.charAt(p);
+            if ((c & 0xF8) == 0xF0) {
+                count += 2;
+            } else {
+                count += 1;
+            }
+        }
+        return p;
+    }
+}
 Editor::~Editor() {
 #if defined(__APPLE__)
     if (colBackground) CGColorRelease(colBackground);
