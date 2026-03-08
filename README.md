@@ -36,8 +36,8 @@
 02. cd compact_enc_det
 
 03. cmake . -G "Visual Studio 18 2026" -A x64  
-   ( iOS用は 'cmake .. -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES="arm64" -DCMAKE_POLICY_VERSION_MINIMUM=3.5' )  
-   ( macOS用は 'cmake .. -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_POLICY_VERSION_MINIMUM=3.5' )  
+   ( iOS用は 'cmake . -G Xcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES="arm64" -DCMAKE_POLICY_VERSION_MINIMUM=3.5' )  
+   ( macOS用は 'cmake . -G Xcode -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_POLICY_VERSION_MINIMUM=3.5' )  
 5. cmake --build . --config Release
 
 生成された ced.lib をプロジェクトのライブラリパスに配置してください。
