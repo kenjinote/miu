@@ -366,5 +366,6 @@ FodyWeavers.xsd
 /image/50x50.png
 /installer/miu/Media
 .DS_Store
+*.lib
 libced.a
 
