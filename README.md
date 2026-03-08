@@ -33,9 +33,9 @@
 
 01. git clone https://github.com/google/compact_enc_det.git
 
-02. cd compact_enc_det && mkdir build && cd build
+02. cd compact_enc_det
 
-03. cmake .. -G "Visual Studio 18 2026" -A x64
+03. cmake . -G "Visual Studio 18 2026" -A x64
 
 04. cmake --build . --config Release
 
