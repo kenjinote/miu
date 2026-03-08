@@ -676,31 +676,24 @@
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position offset:(NSInteger)offset {
     if (!self.editor) return position;
     size_t startPos = ((iOSTextPosition*)position).index;
-    
     if (offset == 0) return position;
-    
     if (offset > 0) {
-        // 後方のテキストを取得し、UTF-16の文字数からUTF-8のバイト数に変換する
         size_t remain = self.editor->pt.length() - startPos;
-        size_t fetchLen = MIN(remain, (size_t)4000); // 余裕を持ったバッファ
+        size_t fetchLen = MIN(remain, (size_t)4000);
         std::string text = self.editor->pt.getRange(startPos, fetchLen);
         NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
-        
         if (nsStr && nsStr.length >= offset) {
             NSString *sub = [nsStr substringToIndex:offset];
             size_t byteOffset = [sub lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
             return [iOSTextPosition positionWithIndex:startPos + byteOffset];
         }
         return [iOSTextPosition positionWithIndex:startPos + remain];
-        
     } else {
-        // 前方のテキストを取得し、UTF-16の文字数からUTF-8のバイト数に変換する
         NSInteger absOffset = -offset;
         size_t fetchLen = MIN(startPos, (size_t)4000);
         size_t fetchStart = startPos - fetchLen;
         std::string text = self.editor->pt.getRange(fetchStart, fetchLen);
         NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
-        
         if (nsStr && nsStr.length >= absOffset) {
             NSString *sub = [nsStr substringToIndex:(nsStr.length - absOffset)];
             size_t byteOffset = [sub lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
@@ -721,15 +714,11 @@
     size_t fromIdx = ((iOSTextPosition*)f).index;
     size_t toIdx = ((iOSTextPosition*)t).index;
     if (fromIdx == toIdx) return 0;
-    
-    // バイト数の差分ではなく、実際の文字列としての文字数(UTF-16)を返す
     size_t start = MIN(fromIdx, toIdx);
     size_t end = MAX(fromIdx, toIdx);
     std::string text = self.editor->pt.getRange(start, end - start);
-    
     NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
     NSInteger charCount = nsStr ? nsStr.length : 1;
-    
     return (fromIdx <= toIdx) ? charCount : -charCount;
 }
 - (id<UITextInputTokenizer>)tokenizer { return _tokenizer; }
@@ -817,45 +806,29 @@
     return nil;
 }
 #pragma mark - Dictation Support (音声入力のバグ回避・強制リセット)
-
-// 1. 音声入力の結果を受け取る
 - (void)insertDictationResult:(NSArray<UIDictationPhrase *> *)dictationResult {
     NSMutableString *resultString = [NSMutableString string];
     for (UIDictationPhrase *phrase in dictationResult) {
         [resultString appendString:phrase.text];
     }
-    
-    // 変換中のゴミ状態が残っていれば強制クリア
     if (self.editor && !self.editor->imeComp.empty()) {
         [self unmarkText];
     }
-    
-    // システムの複雑な置換（replaceRange）をバイパスし、単純なテキスト入力として流し込む
     [self insertText:resultString];
 }
-
-// 2. システムによる「青い点線（代替候補）」の自動挿入をブロックする
 - (id)insertDictationResultPlaceholder {
-    return [[NSObject alloc] init]; // ダミーを返してシステムを騙す
+    return [[NSObject alloc] init];
 }
-
-// 3. ダミープレースホルダの描画位置（システム要求）
 - (CGRect)frameForDictationResultPlaceholder:(id)placeholder {
     if (!self.editor || self.editor->cursors.empty()) return CGRectZero;
     Cursor c = self.editor->cursors.back();
     return [self caretRectForPosition:[iOSTextPosition positionWithIndex:c.head]];
 }
-
-// 4. ダミープレースホルダの削除（何もしない）
 - (void)removeDictationResultPlaceholder:(id)placeholder willInsertResult:(BOOL)willInsertResult {
 }
-
-// 5. 音声入力が終了したタイミングで、内部の選択状態を強制リセット
 - (void)dictationRecordingDidEnd {
     [self.inputDelegate selectionDidChange:self];
 }
-
-// 6. 音声認識が失敗した時も強制リセット
 - (void)dictationRecognitionFailed {
     [self.inputDelegate selectionDidChange:self];
 }
@@ -1325,8 +1298,8 @@
 @property (nonatomic, strong) UIScrollView *scrollToTopHelper;
 @property (nonatomic, strong) UIView *topFillView;
 @property (nonatomic, strong) NSMutableArray<UIViewPropertyAnimator *> *blurAnimators;
-@property (nonatomic, strong) UIView *verticalScrollBar;   // 縦スクロールバー
-@property (nonatomic, strong) UIView *horizontalScrollBar; // 横スクロールバー
+@property (nonatomic, strong) UIView *verticalScrollBar;
+@property (nonatomic, strong) UIView *horizontalScrollBar;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1539,30 +1512,21 @@
                 float vw = strongSelf.editorView.bounds.size.width;
                 float vh = MAX(0.0f, strongSelf.editorView.bounds.size.height - strongSelf.editorView.topRenderMargin);
                 float topMargin = strongSelf.editorView.topRenderMargin;
-                
-                // --- 縦スクロールバーの計算 ---
-                // 最大どこまでスクロールできるか（行数ベース）
                 float maxOffsetY = MAX(1.0f, (strongSelf->_editorEngine->lineStarts.size() - 1) * strongSelf->_editorEngine->lineHeight);
                 float totalHeight = maxOffsetY + vh;
-                
                 if (maxOffsetY <= 1.0f || totalHeight <= vh) {
                     strongSelf.verticalScrollBar.hidden = YES;
                 } else {
                     strongSelf.verticalScrollBar.hidden = NO;
-                    float barHeight = MAX(20.0f, vh * (vh / totalHeight)); // 画面に収まる割合で高さを決定
+                    float barHeight = MAX(20.0f, vh * (vh / totalHeight));
                     float currentOffsetY = strongSelf->_editorEngine->vScrollPos * strongSelf->_editorEngine->lineHeight;
                     float scrollRatio = MIN(1.0f, MAX(0.0f, currentOffsetY / maxOffsetY));
                     float barY = topMargin + scrollRatio * (vh - barHeight);
-                    
-                    // 右端に細く表示
                     strongSelf.verticalScrollBar.frame = CGRectMake(vw - 5.0f, barY, 3.0f, barHeight);
                 }
-                
-                // --- 横スクロールバーの計算 ---
-                float editorVw = vw - strongSelf->_editorEngine->gutterWidth; // 行番号エリアを除外した幅
+                float editorVw = vw - strongSelf->_editorEngine->gutterWidth;
                 float maxOffsetX = MAX(1.0f, strongSelf->_editorEngine->maxLineWidth - editorVw + strongSelf->_editorEngine->charWidth * 4.0f);
                 float totalWidth = maxOffsetX + editorVw;
-                
                 if (maxOffsetX <= 1.0f || totalWidth <= editorVw) {
                     strongSelf.horizontalScrollBar.hidden = YES;
                 } else {
@@ -1571,8 +1535,6 @@
                     float currentOffsetX = strongSelf->_editorEngine->hScrollPos;
                     float scrollRatio = MIN(1.0f, MAX(0.0f, currentOffsetX / maxOffsetX));
                     float barX = strongSelf->_editorEngine->gutterWidth + scrollRatio * (editorVw - barWidth);
-                    
-                    // 下端に細く表示
                     strongSelf.horizontalScrollBar.frame = CGRectMake(barX, strongSelf.editorView.bounds.size.height - 5.0f, barWidth, 3.0f);
                 }
             }
@@ -1591,7 +1553,6 @@
         if (strongSelf) [strongSelf presentDocumentPickerForSaving];
         return true;
     };
-    // C++エンジンからiOSのクリップボードに書き込む処理
     _editorEngine->cbSetClipboard = [](const std::string& text, bool isRect) {
         if (text.empty()) return;
         NSString *nsText = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
@@ -1599,7 +1560,6 @@
             [UIPasteboard generalPasteboard].string = nsText;
         }
     };    
-    // C++エンジンがiOSのクリップボードから読み込む処理
     _editorEngine->cbGetClipboard = [](bool& isRectMarker) -> std::string {
         isRectMarker = false;
         NSString *str = [UIPasteboard generalPasteboard].string;

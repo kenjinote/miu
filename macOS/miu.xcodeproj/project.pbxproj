@@ -10,8 +10,8 @@
 		BA5C5FA02F4CA6370029DB67 /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA5C5F9F2F4CA6370029DB67 /* UniformTypeIdentifiers.framework */; };
 		BA7DA6832F5B14E400B2D41C /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BA7DA6822F5B14E400B2D41C /* GameController.framework */; };
 		BAA1E1DB2F4AE17800BA3D2C /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */; };
-		BAAFAEB32F5DB6740078A075 /* libced.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BAAFAEB22F5DB6740078A075 /* libced.a */; };
 		BAAFAEB42F5DB6740078A075 /* libced.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BAAFAEB22F5DB6740078A075 /* libced.a */; };
+		BAAFAEB62F5DCEA50078A075 /* libced_iOS.a in Frameworks */ = {isa = PBXBuildFile; fileRef = BAAFAEB52F5DCEA50078A075 /* libced_iOS.a */; };
 		BABDDE6D2F49E1C000B3E84A /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */; };
 		BABDDE6F2F49E1CC00B3E84A /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */; };
 		BAF7CE7F2F535F4B00447839 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */; };
@@ -28,6 +28,7 @@
 		BAA1E1DF2F4AE79500BA3D2C /* yo */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = yo; path = yo.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1E02F4AE7CA00BA3D2C /* hy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hy; path = hy.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAAFAEB22F5DB6740078A075 /* libced.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libced.a; sourceTree = "<group>"; };
+		BAAFAEB52F5DCEA50078A075 /* libced_iOS.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libced_iOS.a; sourceTree = "<group>"; };
 		BABDDE562F49D3BC00B3E84A /* miu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = miu.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
@@ -74,9 +75,9 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BAAFAEB62F5DCEA50078A075 /* libced_iOS.a in Frameworks */,
 				BA7DA6832F5B14E400B2D41C /* GameController.framework in Frameworks */,
 				BA5C5FA02F4CA6370029DB67 /* UniformTypeIdentifiers.framework in Frameworks */,
-				BAAFAEB32F5DB6740078A075 /* libced.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -117,6 +118,7 @@
 			isa = PBXGroup;
 			children = (
 				BAAFAEB22F5DB6740078A075 /* libced.a */,
+				BAAFAEB52F5DCEA50078A075 /* libced_iOS.a */,
 				BA7DA6822F5B14E400B2D41C /* GameController.framework */,
 				BA5C5F9F2F4CA6370029DB67 /* UniformTypeIdentifiers.framework */,
 				BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */,
