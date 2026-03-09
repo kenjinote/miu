@@ -29,10 +29,11 @@ struct GlyphInfo {
     float width, height;
     float bearingX, bearingY;
     float advance;
+    bool isColor;
 };
 
 struct TextAtlas {
-    int width = 1024;
+    int width = 2048;
     int height = 1024;
     std::vector<uint8_t> pixels;
     std::unordered_map<uint32_t, GlyphInfo> glyphs;
@@ -41,57 +42,150 @@ struct TextAtlas {
     int currentY = 0;
     int maxRowHeight = 0;
 
+    bool isDirty = false;
+    int dirtyMinX = 0, dirtyMinY = 0, dirtyMaxX = 0, dirtyMaxY = 0;
+
     void init() {
-        pixels.resize(width * height, 0);
+        pixels.resize(width * height * 4, 0);
     }
 
-    bool loadChar(FT_Face face, uint32_t charCode) {
+    bool loadChar(FT_Face mainFace, FT_Face emojiFace, uint32_t charCode) {
         if (glyphs.count(charCode) > 0) return true;
 
-        if (FT_Load_Char(face, charCode, FT_LOAD_RENDER)) {
-            LOGE("文字のロードに失敗: %u", charCode);
-            return false;
-        }
+        FT_Face targetFace = mainFace;
 
-        FT_Bitmap* bmp = &face->glyph->bitmap;
+        // 1. まずメインフォントで文字を探す
+        FT_UInt glyphIndex = FT_Get_Char_Index(mainFace, charCode);
 
-        if (currentX + bmp->width + 1 >= width) {
-            currentX = 0;
-            currentY += maxRowHeight + 1;
-            maxRowHeight = 0;
-        }
-
-        if (currentY + bmp->rows + 1 >= height) {
-            LOGE("テクスチャアトラスの容量が一杯です！");
-            return false;
-        }
-
-        for (unsigned int row = 0; row < bmp->rows; ++row) {
-            for (unsigned int col = 0; col < bmp->width; ++col) {
-                pixels[(currentY + row) * width + (currentX + col)] = bmp->buffer[row * bmp->pitch + col];
+        // 2. メインフォントに文字がなく、絵文字フォントがある場合
+        if (glyphIndex == 0 && emojiFace != nullptr) {
+            FT_UInt emojiIndex = FT_Get_Char_Index(emojiFace, charCode);
+            if (emojiIndex != 0) {
+                targetFace = emojiFace; // 絵文字フォントへ切り替え
+                glyphIndex = emojiIndex;
             }
         }
 
+        // 豆腐（.notdef）さえ無い緊急事態
+        if (glyphIndex == 0 && charCode != 0) {
+            FT_Load_Glyph(mainFace, 0, FT_LOAD_RENDER | FT_LOAD_COLOR);
+            targetFace = mainFace;
+        } else {
+            // 3. グリフをロード (NotoColorEmojiの場合、ここでPNGが展開される)
+            if (FT_Load_Glyph(targetFace, glyphIndex, FT_LOAD_RENDER | FT_LOAD_COLOR) != 0) {
+                FT_Load_Glyph(mainFace, 0, FT_LOAD_RENDER | FT_LOAD_COLOR); // ロードエラーならメイン豆腐
+                targetFace = mainFace;
+            }
+        }
+
+        FT_Bitmap* bmp = &targetFace->glyph->bitmap;
+
+        // ★★★ 今回の肝： advance（文字幅）はあるが、Bitmapが無い（展開失敗）の場合 ★★★
+        if ((bmp->width == 0 || bmp->rows == 0) && targetFace->glyph->advance.x != 0 && charCode != 0 && glyphIndex != 0) {
+            LOGE("😎グリフ展開失敗（豆腐フォールバック）: cp:%x avance:%ld font:%s",
+                 charCode, targetFace->glyph->advance.x, (targetFace == mainFace) ? "Main" : "Emoji");
+
+            // 強制的にメインフォントの豆腐をロード
+            if (FT_Load_Glyph(mainFace, 0, FT_LOAD_RENDER | FT_LOAD_COLOR) == 0) {
+                targetFace = mainFace;
+                bmp = &targetFace->glyph->bitmap;
+            } else {
+                return false; // それでもダメなら表示不能
+            }
+        }
+
+        bool isColorGlyph = (bmp->pixel_mode == FT_PIXEL_MODE_BGRA);
+
+        if (currentX + bmp->width + 1 >= width) {
+            currentX = 0; currentY += maxRowHeight + 1; maxRowHeight = 0;
+        }
+        if (currentY + bmp->rows + 1 >= height) { LOGE("アトラスオーバー"); return false; }
+
+        for (unsigned int row = 0; row < bmp->rows; ++row) {
+            for (unsigned int col = 0; col < bmp->width; ++col) {
+                size_t dstIdx = ((currentY + row) * width + (currentX + col)) * 4;
+                if (isColorGlyph) {
+                    uint8_t* bgr = &bmp->buffer[row * bmp->pitch + col * 4];
+                    pixels[dstIdx + 0] = bgr[2]; // R
+                    pixels[dstIdx + 1] = bgr[1]; // G
+                    pixels[dstIdx + 2] = bgr[0]; // B
+                    pixels[dstIdx + 3] = bgr[3]; // A
+                } else {
+                    uint8_t gray = bmp->buffer[row * bmp->pitch + col];
+                    pixels[dstIdx + 0] = gray; pixels[dstIdx + 1] = gray; pixels[dstIdx + 2] = gray; pixels[dstIdx + 3] = gray;
+                }
+            }
+        }
+
+        if (!isDirty) {
+            dirtyMinX = currentX; dirtyMaxX = currentX + bmp->width;
+            dirtyMinY = currentY; dirtyMaxY = currentY + bmp->rows;
+            isDirty = true;
+        } else {
+            if (currentX < dirtyMinX) dirtyMinX = currentX;
+            if (currentX + (int)bmp->width > dirtyMaxX) dirtyMaxX = currentX + (int)bmp->width;
+            if (currentY < dirtyMinY) dirtyMinY = currentY;
+            if (currentY + (int)bmp->rows > dirtyMaxY) dirtyMaxY = currentY + (int)bmp->rows;
+        }
+
+        float scale = 1.0f;
+        if (isColorGlyph && bmp->rows > 0) {
+            scale = 48.0f / (float)bmp->rows; // カラー絵文字のみ縮小
+        }
+
         GlyphInfo info;
-        info.width = (float)bmp->width;
-        info.height = (float)bmp->rows;
-        info.bearingX = (float)face->glyph->bitmap_left;
-        info.bearingY = (float)face->glyph->bitmap_top;
-        info.advance = (float)(face->glyph->advance.x >> 6);
+        info.width = (float)bmp->width * scale;
+        info.height = (float)bmp->rows * scale;
+        info.bearingX = (float)targetFace->glyph->bitmap_left * scale;
+        info.bearingY = (float)targetFace->glyph->bitmap_top * scale;
+        info.advance = (float)(targetFace->glyph->advance.x >> 6) * scale;
 
-        info.u0 = (float)currentX / (float)width;
-        info.v0 = (float)currentY / (float)height;
-        info.u1 = (float)(currentX + bmp->width) / (float)width;
-        info.v1 = (float)(currentY + bmp->rows) / (float)height;
-
+        info.u0 = (float)currentX / (float)width; info.v0 = (float)currentY / (float)height;
+        info.u1 = (float)(currentX + bmp->width) / (float)width; info.v1 = (float)(currentY + bmp->rows) / (float)height;
+        info.isColor = isColorGlyph;
         glyphs[charCode] = info;
 
         currentX += bmp->width + 1;
         if (bmp->rows > maxRowHeight) maxRowHeight = bmp->rows;
-
         return true;
     }
 };
+
+uint32_t decodeUtf8(const char** ptr, const char* end) {
+    if (*ptr >= end) return 0;
+    unsigned char c = **ptr;
+    (*ptr)++;
+
+    // 1バイト文字 (ASCII)
+    if (c < 0x80) return c;
+
+    // 2バイト文字
+    if ((c & 0xE0) == 0xC0) {
+        if (*ptr >= end) return 0;
+        uint32_t cp = (c & 0x1F) << 6;
+        cp |= (**ptr & 0x3F);
+        (*ptr)++;
+        return cp;
+    }
+    // 3バイト文字 (日本語の大部分)
+    if ((c & 0xF0) == 0xE0) {
+        if (*ptr + 1 >= end) { *ptr = end; return 0; }
+        uint32_t cp = (c & 0x0F) << 12;
+        cp |= (**ptr & 0x3F) << 6; (*ptr)++;
+        cp |= (**ptr & 0x3F);      (*ptr)++;
+        return cp;
+    }
+    // 4バイト文字 (絵文字や一部の特殊漢字)
+    if ((c & 0xF8) == 0xF0) {
+        if (*ptr + 2 >= end) { *ptr = end; return 0; }
+        uint32_t cp = (c & 0x07) << 18;
+        cp |= (**ptr & 0x3F) << 12; (*ptr)++;
+        cp |= (**ptr & 0x3F) << 6;  (*ptr)++;
+        cp |= (**ptr & 0x3F);       (*ptr)++;
+        return cp;
+    }
+    return '?'; // 不正なバイト列のフォールバック
+}
 
 std::vector<uint8_t> loadSystemFont() {
     const char* paths[] = {
@@ -258,6 +352,7 @@ struct UndoManager {
 struct Vertex {
     float pos[2]; // 画面上のX, Y座標
     float uv[2];  // テクスチャ上のU, V座標
+    int isColor;
 };
 
 // 毎フレームGPUに送る軽量な設定データ（Push Constants）
@@ -297,8 +392,10 @@ struct Engine {
 
 // --- 追加するフォント関連変数 ---
     FT_Library ftLibrary;
-    FT_Face ftFace;
-    std::vector<uint8_t> fontData;
+    FT_Face ftFaceMain;
+    FT_Face ftFaceEmoji = nullptr; // ★今回追加 (NotoColorEmoji)
+    std::vector<uint8_t> fontDataMain;  // データも保持
+    std::vector<uint8_t> fontDataEmoji; // 絵文字フォントデータ
     TextAtlas atlas;
 
     VkSwapchainKHR swapchain;
@@ -332,6 +429,9 @@ struct Engine {
     VkBuffer vertexBuffer = VK_NULL_HANDLE;
     VkDeviceMemory vertexBufferMemory = VK_NULL_HANDLE;
     uint32_t vertexCount = 0;
+
+    VkBuffer atlasStagingBuffer = VK_NULL_HANDLE;
+    VkDeviceMemory atlasStagingMemory = VK_NULL_HANDLE;
 };
 
 // ============================================================================
@@ -351,6 +451,9 @@ void cleanupVulkan(Engine* engine) {
     if (engine->vertexBuffer != VK_NULL_HANDLE) vkDestroyBuffer(engine->device, engine->vertexBuffer, nullptr);
     if (engine->vertexBufferMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->vertexBufferMemory, nullptr);
 
+    if (engine->atlasStagingBuffer != VK_NULL_HANDLE) vkDestroyBuffer(engine->device, engine->atlasStagingBuffer, nullptr);
+    if (engine->atlasStagingMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->atlasStagingMemory, nullptr);
+
     if (engine->pipelineLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(engine->device, engine->pipelineLayout, nullptr);
     if (engine->descriptorPool != VK_NULL_HANDLE) vkDestroyDescriptorPool(engine->device, engine->descriptorPool, nullptr);
     if (engine->descriptorSetLayout != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(engine->device, engine->descriptorSetLayout, nullptr);
@@ -360,7 +463,8 @@ void cleanupVulkan(Engine* engine) {
     if (engine->fontImage != VK_NULL_HANDLE) vkDestroyImage(engine->device, engine->fontImage, nullptr);
     if (engine->fontImageMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->fontImageMemory, nullptr);
 
-    if (engine->ftFace) { FT_Done_Face(engine->ftFace); engine->ftFace = nullptr; }
+    if (engine->ftFaceMain) { FT_Done_Face(engine->ftFaceMain); engine->ftFaceMain = nullptr; }
+    if (engine->ftFaceEmoji) { FT_Done_Face(engine->ftFaceEmoji); engine->ftFaceEmoji = nullptr; }
     if (engine->ftLibrary) { FT_Done_FreeType(engine->ftLibrary); engine->ftLibrary = nullptr; }
 
     if (engine->imageAvailableSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(engine->device, engine->imageAvailableSemaphore, nullptr);
@@ -474,32 +578,29 @@ void copyBufferToImage(Engine* engine, VkBuffer buffer, VkImage image, uint32_t 
 }
 
 bool createTextTexture(Engine* engine) {
-    VkDeviceSize imageSize = engine->atlas.width * engine->atlas.height;
+    // ★修正：RGBAなのでピクセル数 × 4バイト 必要
+    VkDeviceSize imageSize = (VkDeviceSize)engine->atlas.width * engine->atlas.height * 4;
     if (imageSize == 0 || engine->atlas.pixels.empty()) return false;
 
-    // 1. CPUとGPUの橋渡し用バッファ（ステージングバッファ）の作成
     VkBuffer stagingBuffer; VkDeviceMemory stagingBufferMemory;
     createBuffer(engine, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
 
-    // 2. ピクセルデータをバッファにコピー
     void* data;
     vkMapMemory(engine->device, stagingBufferMemory, 0, imageSize, 0, &data);
     memcpy(data, engine->atlas.pixels.data(), static_cast<size_t>(imageSize));
     vkUnmapMemory(engine->device, stagingBufferMemory);
 
-    // 3. GPU上に最適な形式でImageを作成（R8_UNORM: 1チャンネルのグレースケール）
     VkImageCreateInfo imageInfo = {VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO};
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
     imageInfo.extent.width = engine->atlas.width; imageInfo.extent.height = engine->atlas.height; imageInfo.extent.depth = 1;
     imageInfo.mipLevels = 1; imageInfo.arrayLayers = 1;
-    imageInfo.format = VK_FORMAT_R8_UNORM;
+    imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM; // RGBAフォーマット
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT; imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     if (vkCreateImage(engine->device, &imageInfo, nullptr, &engine->fontImage) != VK_SUCCESS) return false;
 
-    // メモリ割り当てとバインド
     VkMemoryRequirements memRequirements; vkGetImageMemoryRequirements(engine->device, engine->fontImage, &memRequirements);
     VkMemoryAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO};
     allocInfo.allocationSize = memRequirements.size;
@@ -507,23 +608,19 @@ bool createTextTexture(Engine* engine) {
     vkAllocateMemory(engine->device, &allocInfo, nullptr, &engine->fontImageMemory);
     vkBindImageMemory(engine->device, engine->fontImage, engine->fontImageMemory, 0);
 
-    // 4. 画像を「データ受信待ち」にして、バッファからコピーし、最後に「シェーダ読取用」にする
     transitionImageLayout(engine, engine->fontImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     copyBufferToImage(engine, stagingBuffer, engine->fontImage, engine->atlas.width, engine->atlas.height);
     transitionImageLayout(engine, engine->fontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
-    // 一時バッファの破棄
     vkDestroyBuffer(engine->device, stagingBuffer, nullptr);
     vkFreeMemory(engine->device, stagingBufferMemory, nullptr);
 
-    // 5. 画像へアクセスするための ImageView の作成
     VkImageViewCreateInfo viewInfo = {VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
-    viewInfo.image = engine->fontImage; viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; viewInfo.format = VK_FORMAT_R8_UNORM;
+    viewInfo.image = engine->fontImage; viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D; viewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = 1; viewInfo.subresourceRange.baseArrayLayer = 0; viewInfo.subresourceRange.layerCount = 1;
     if (vkCreateImageView(engine->device, &viewInfo, nullptr, &engine->fontImageView) != VK_SUCCESS) return false;
 
-    // 6. 拡大縮小時の滑らかさを決める Sampler の作成
     VkSamplerCreateInfo samplerInfo = {VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO};
     samplerInfo.magFilter = VK_FILTER_LINEAR; samplerInfo.minFilter = VK_FILTER_LINEAR;
     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE; samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE; samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
@@ -741,13 +838,20 @@ bool createGraphicsPipeline(Engine* engine) {
     VkVertexInputBindingDescription bindingDescription = {};
     bindingDescription.binding = 0; bindingDescription.stride = sizeof(Vertex); bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    VkVertexInputAttributeDescription attributeDescriptions[2] = {};
+    VkVertexInputAttributeDescription attributeDescriptions[3] = {}; // ★配列を3に
     attributeDescriptions[0].binding = 0; attributeDescriptions[0].location = 0; attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT; attributeDescriptions[0].offset = offsetof(Vertex, pos);
     attributeDescriptions[1].binding = 0; attributeDescriptions[1].location = 1; attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT; attributeDescriptions[1].offset = offsetof(Vertex, uv);
 
+    // --- ★今回追加：isColor フラグ ---
+    attributeDescriptions[2].binding = 0; attributeDescriptions[2].location = 2; // シェーダの location = 2
+    attributeDescriptions[2].format = VK_FORMAT_R32_SINT; // 整数型(int)
+    attributeDescriptions[2].offset = offsetof(Vertex, isColor);
+
+    // vertexInputInfo の属性数を3にする
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
     vertexInputInfo.vertexBindingDescriptionCount = 1; vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.vertexAttributeDescriptionCount = 2; vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
+    vertexInputInfo.vertexAttributeDescriptionCount = 3; // ★ここを3へ
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; inputAssembly.primitiveRestartEnable = VK_FALSE;
@@ -833,25 +937,45 @@ bool initVulkan(Engine* engine) {
     if (!createCommandBuffers(engine)) return false;
     if (!createSyncObjects(engine)) return false;
 
-    // --- 頂点バッファの作成 (10,000文字 = 60,000頂点分を確保) ---
     VkDeviceSize bufferSize = sizeof(Vertex) * 60000;
     createBuffer(engine, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->vertexBuffer, engine->vertexBufferMemory);
 
-    // --- FreeType初期化（重複を削除し1回だけにしました） ---
+    // ★修正：RGBAなので * 4 を追加
+    createBuffer(engine, engine->atlas.width * engine->atlas.height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->atlasStagingBuffer, engine->atlasStagingMemory);
+
     if (FT_Init_FreeType(&engine->ftLibrary)) {
         LOGE("FreeTypeの初期化に失敗！"); return false;
     }
-    engine->fontData = loadSystemFont();
-    if (!engine->fontData.empty()) {
-        if (FT_New_Memory_Face(engine->ftLibrary, engine->fontData.data(), engine->fontData.size(), 0, &engine->ftFace) == 0) {
-            FT_Set_Pixel_Sizes(engine->ftFace, 0, 48);
-            engine->atlas.init();
-            for (uint32_t i = 32; i < 127; ++i) engine->atlas.loadChar(engine->ftFace, i);
-            engine->atlas.loadChar(engine->ftFace, 0x3042); // 「あ」
 
-            createTextTexture(engine); // GPUへ転送
+    // ★必須：アトラスの配列メモリを確保
+    engine->atlas.init();
+
+    engine->fontDataMain = loadSystemFont();
+    if (!engine->fontDataMain.empty()) {
+        if (FT_New_Memory_Face(engine->ftLibrary, engine->fontDataMain.data(), engine->fontDataMain.size(), 0, &engine->ftFaceMain) == 0) {
+            FT_Set_Pixel_Sizes(engine->ftFaceMain, 0, 48);
         }
     }
+
+    const char* emojiPath = "/system/fonts/NotoColorEmoji.ttf";
+    std::ifstream emojiFile(emojiPath, std::ios::binary | std::ios::ate);
+    if (emojiFile.is_open()) {
+        size_t size = emojiFile.tellg();
+        engine->fontDataEmoji.resize(size);
+        emojiFile.seekg(0, std::ios::beg); emojiFile.read((char*)engine->fontDataEmoji.data(), size);
+
+        if (FT_New_Memory_Face(engine->ftLibrary, engine->fontDataEmoji.data(), engine->fontDataEmoji.size(), 0, &engine->ftFaceEmoji) == 0) {
+            // ★修正3: ビットマップフォントの場合は固定サイズを選択する
+            if (FT_HAS_FIXED_SIZES(engine->ftFaceEmoji)) {
+                FT_Select_Size(engine->ftFaceEmoji, 0); // 用意されている最初のサイズ（Androidでは通常109px）を選択
+            } else {
+                FT_Set_Pixel_Sizes(engine->ftFaceEmoji, 0, 48);
+            }
+        }
+    }
+
+    // ★必須：ここで初期テクスチャをGPUに作成
+    if (!createTextTexture(engine)) return false;
 
     if (!createDescriptors(engine)) return false;
     if (!createPipelineLayout(engine)) return false;
@@ -860,42 +984,58 @@ bool initVulkan(Engine* engine) {
     return true;
 }
 
-// 毎フレーム、テキストから頂点データを計算してGPUバッファに送る
 void updateTextVertices(Engine* engine) {
     std::vector<Vertex> vertices;
-    float x = 50.0f; // 左からのマージン
-    float y = 100.0f; // 上からのマージン
+    float x = 50.0f;
+    float y = 100.0f;
 
-    // PieceTableからテキスト全体を取得
     size_t len = engine->pt.length();
     std::string text = engine->pt.getRange(0, len);
 
-    for (char c : text) {
-        if (c == '\n') {
+    const char* ptr = text.data();
+    const char* end = ptr + text.size();
+
+    while (ptr < end) {
+        if (*ptr == '\r') {
+            ptr++;
+            if (ptr < end && *ptr == '\n') ptr++;
+            x = 50.0f;
+            y += engine->lineHeight;
+            continue;
+        }
+        if (*ptr == '\n') {
+            ptr++;
             x = 50.0f;
             y += engine->lineHeight;
             continue;
         }
 
-        // 簡易的なASCII文字の描画（今回はUTF-8デコードを省略し1バイトずつ処理）
-        uint32_t charCode = (uint8_t)c;
-        if (engine->atlas.glyphs.count(charCode) == 0) continue; // アトラスに無い文字はスキップ
+        uint32_t charCode = decodeUtf8(&ptr, end);
+        if (charCode == 0) break;
+
+        // アトラスに無い文字は動的ロード（メインと絵文字の両方のフォントを渡す）
+        if (engine->atlas.glyphs.count(charCode) == 0) {
+            engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, charCode);
+        }
+
+        if (engine->atlas.glyphs.count(charCode) == 0) continue;
 
         GlyphInfo& info = engine->atlas.glyphs[charCode];
+        int isColorFlag = info.isColor ? 1 : 0;
 
         float xpos = x + info.bearingX;
         float ypos = y - info.bearingY;
         float w = info.width;
         float h = info.height;
 
-        // 1文字につき四角形（三角形2つ = 6頂点）を作成
-        vertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}});
-        vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}});
-        vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}});
+        // 三角形2つ（6頂点）を追加（3番目の要素 isColorFlag も正しく設定）
+        vertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, isColorFlag});
+        vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag});
+        vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag});
 
-        vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}});
-        vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}});
-        vertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}});
+        vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag});
+        vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag});
+        vertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag});
 
         x += info.advance;
     }
@@ -903,7 +1043,6 @@ void updateTextVertices(Engine* engine) {
     engine->vertexCount = static_cast<uint32_t>(vertices.size());
     if (engine->vertexCount == 0) return;
 
-    // 生成した頂点データをVulkanのバッファ（メモリ）にコピー
     void* data;
     vkMapMemory(engine->device, engine->vertexBufferMemory, 0, sizeof(Vertex) * engine->vertexCount, 0, &data);
     memcpy(data, vertices.data(), sizeof(Vertex) * engine->vertexCount);
@@ -912,66 +1051,104 @@ void updateTextVertices(Engine* engine) {
 
 void renderFrame(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE || !engine->isWindowReady) return;
+
+    // 1. まず前のフレームの描画が終わるのを待つ
     vkWaitForFences(engine->device, 1, &engine->inFlightFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(engine->device, 1, &engine->inFlightFence);
 
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(engine->device, engine->swapchain, UINT64_MAX, engine->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-    if (result != VK_SUCCESS) return;
+
+    // ★修正1: Androidで頻発する SUBOPTIMAL は「成功」としてそのまま描画を続行させる
+    if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        return;
+    }
+
+    // ★修正2: 確実に描画が行われることが確定してから、フェンス（待機フラグ）を下ろす！
+    // これにより永遠に待ち続けるデッドロックを防止します
+    vkResetFences(engine->device, 1, &engine->inFlightFence);
 
     vkResetCommandBuffer(engine->commandBuffers[imageIndex], 0);
     VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(engine->commandBuffers[imageIndex], &beginInfo);
 
+    // ==========================================================
+    // 1. データの準備・転送 (必ず RenderPass の外で行う！)
+    // ==========================================================
+    updateTextVertices(engine); // 頂点を更新し、未知の文字をアトラスに追加
+
+    if (engine->atlas.isDirty) {
+        uint32_t dx = engine->atlas.dirtyMinX;
+        uint32_t dy = engine->atlas.dirtyMinY;
+        uint32_t dw = engine->atlas.dirtyMaxX - engine->atlas.dirtyMinX;
+        uint32_t dh = engine->atlas.dirtyMaxY - engine->atlas.dirtyMinY;
+
+        // 安全対策：更新領域のサイズが0より大きい場合のみ転送
+        if (dw > 0 && dh > 0) {
+            void* mapData = nullptr;
+            if (vkMapMemory(engine->device, engine->atlasStagingMemory, 0, dw * dh * 4, 0, &mapData) == VK_SUCCESS) {
+                uint8_t* dst = (uint8_t*)mapData;
+                const uint8_t* src = engine->atlas.pixels.data();
+                for (uint32_t row = 0; row < dh; ++row) {
+                    memcpy(dst + (row * dw) * 4, src + ((dy + row) * engine->atlas.width + dx) * 4, dw * 4);
+                }
+                vkUnmapMemory(engine->device, engine->atlasStagingMemory);
+
+                VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
+                barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED; barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                barrier.image = engine->fontImage;
+                barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                barrier.subresourceRange.levelCount = 1; barrier.subresourceRange.layerCount = 1;
+                barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT; barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                vkCmdPipelineBarrier(engine->commandBuffers[imageIndex], VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
+                VkBufferImageCopy region = {};
+                region.bufferOffset = 0; region.bufferRowLength = dw; region.bufferImageHeight = dh;
+                region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; region.imageSubresource.layerCount = 1;
+                region.imageOffset = {(int32_t)dx, (int32_t)dy, 0}; region.imageExtent = {dw, dh, 1};
+                vkCmdCopyBufferToImage(engine->commandBuffers[imageIndex], engine->atlasStagingBuffer, engine->fontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
+                barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+                barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                vkCmdPipelineBarrier(engine->commandBuffers[imageIndex], VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+            }
+        }
+        engine->atlas.isDirty = false;
+    }
+
     VkRenderPassBeginInfo rpBegin = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
-    rpBegin.renderPass = engine->renderPass; rpBegin.framebuffer = engine->framebuffers[imageIndex]; rpBegin.renderArea.extent = engine->swapchainExtent;
-    VkClearValue clearColor = {{{0.1f, 0.1f, 0.1f, 1.0f}}}; // ダークモード背景色相当
-    rpBegin.clearValueCount = 1; rpBegin.pClearValues = &clearColor;
+    rpBegin.renderPass = engine->renderPass;
+    rpBegin.framebuffer = engine->framebuffers[imageIndex];
+    rpBegin.renderArea.extent = engine->swapchainExtent;
+    VkClearValue clearColor = {{{0.1f, 0.1f, 0.1f, 1.0f}}};
+    rpBegin.clearValueCount = 1;
+    rpBegin.pClearValues = &clearColor;
 
     vkCmdBeginRenderPass(engine->commandBuffers[imageIndex], &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
 
-
-
-// ========================================================================
-    // テキストの描画処理
-    // ========================================================================
-    updateTextVertices(engine); // 頂点を更新
-
     vkCmdBindPipeline(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->graphicsPipeline);
 
-
     VkViewport viewport = {};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = (float)engine->swapchainExtent.width;
-    viewport.height = (float)engine->swapchainExtent.height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    viewport.width = (float)engine->swapchainExtent.width; viewport.height = (float)engine->swapchainExtent.height; viewport.maxDepth = 1.0f;
     vkCmdSetViewport(engine->commandBuffers[imageIndex], 0, 1, &viewport);
 
-    VkRect2D scissor = {};
-    scissor.offset = {0, 0};
-    scissor.extent = engine->swapchainExtent;
+    VkRect2D scissor = {}; scissor.extent = engine->swapchainExtent;
     vkCmdSetScissor(engine->commandBuffers[imageIndex], 0, 1, &scissor);
 
-
-    VkDeviceSize offsets[] = {0};
-    vkCmdBindVertexBuffers(engine->commandBuffers[imageIndex], 0, 1, &engine->vertexBuffer, offsets);
-
-    vkCmdBindDescriptorSets(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->pipelineLayout, 0, 1, &engine->descriptorSet, 0, nullptr);
-
-    // 画面サイズと文字色（白）をシェーダに送信
-    PushConstants pc;
-    pc.screenWidth = (float)engine->swapchainExtent.width;
-    pc.screenHeight = (float)engine->swapchainExtent.height;
-    pc.color[0] = 1.0f; pc.color[1] = 1.0f; pc.color[2] = 1.0f; pc.color[3] = 1.0f;
-    vkCmdPushConstants(engine->commandBuffers[imageIndex], engine->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pc);
-
     if (engine->vertexCount > 0) {
+        VkDeviceSize offsets[] = {0};
+        vkCmdBindVertexBuffers(engine->commandBuffers[imageIndex], 0, 1, &engine->vertexBuffer, offsets);
+        vkCmdBindDescriptorSets(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->pipelineLayout, 0, 1, &engine->descriptorSet, 0, nullptr);
+
+        PushConstants pc;
+        pc.screenWidth = (float)engine->swapchainExtent.width; pc.screenHeight = (float)engine->swapchainExtent.height;
+        pc.color[0] = 1.0f; pc.color[1] = 1.0f; pc.color[2] = 1.0f; pc.color[3] = 1.0f;
+        vkCmdPushConstants(engine->commandBuffers[imageIndex], engine->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pc);
+
         vkCmdDraw(engine->commandBuffers[imageIndex], engine->vertexCount, 1, 0, 0);
     }
-
-
 
     vkCmdEndRenderPass(engine->commandBuffers[imageIndex]);
     vkEndCommandBuffer(engine->commandBuffers[imageIndex]);
@@ -1028,9 +1205,9 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
                 LOGI("ウィンドウ生成。Vulkan初期化開始。");
                 if (initVulkan(engine)) {
                     engine->isWindowReady = true;
-                    // テスト用: 初期テキストの挿入
+                    // --- テスト文字列を日本語に変更 ---
                     engine->pt.initEmpty();
-                    engine->pt.insert(0, "Welcome to miu Android!\nThis is the core PieceTable running.");
+                    engine->pt.insert(0, "😎薇にちは、miu Android！\r\n爆速UTF-8デコーダが稼働中です。");
                     engine->cursors.push_back({0, 0, 0.0f});
                 }
             }
@@ -1052,22 +1229,33 @@ void android_main(struct android_app* app) {
     engine.app = app;
     app->userData = &engine;
     app->onAppCmd = onAppCmd;
-    app->onInputEvent = handleInput; // 入力コールバックを登録
+    app->onInputEvent = handleInput;
 
+    // イベントループ
     while (true) {
         int events;
         struct android_poll_source* source;
+
+        // isWindowReady が true（画面表示中）なら timeout=0 でノンブロッキング（全力でループを回す）
+        // false（裏に回っている時）なら timeout=-1 でOSからのイベントを待つ（一時停止）
         int timeout = engine.isWindowReady ? 0 : -1;
 
         while (ALooper_pollOnce(timeout, nullptr, &events, (void**)&source) >= 0) {
-            if (source != nullptr) source->process(app, source);
+            if (source != nullptr) {
+                source->process(app, source);
+            }
+
+            // アプリ終了要求が来た場合
             if (app->destroyRequested != 0) {
                 cleanupVulkan(&engine);
                 return;
             }
+
+            // イベントを処理した結果、ウィンドウ状態が変わったかもしれないのでタイムアウトを再評価
             timeout = engine.isWindowReady ? 0 : -1;
         }
 
+        // ウィンドウが準備完了している時だけ、毎フレーム描画する
         if (engine.isWindowReady) {
             renderFrame(&engine);
         }
