@@ -676,38 +676,9 @@
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position offset:(NSInteger)offset {
     if (!self.editor) return position;
     size_t startPos = ((iOSTextPosition*)position).index;
-    
     if (offset == 0) return position;
-    
-    if (offset > 0) {
-        // 後方のテキストを取得し、UTF-16の文字数からUTF-8のバイト数に変換する
-        size_t remain = self.editor->pt.length() - startPos;
-        size_t fetchLen = MIN(remain, (size_t)4000); // 余裕を持ったバッファ
-        std::string text = self.editor->pt.getRange(startPos, fetchLen);
-        NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
-        
-        if (nsStr && nsStr.length >= offset) {
-            NSString *sub = [nsStr substringToIndex:offset];
-            size_t byteOffset = [sub lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
-            return [iOSTextPosition positionWithIndex:startPos + byteOffset];
-        }
-        return [iOSTextPosition positionWithIndex:startPos + remain];
-        
-    } else {
-        // 前方のテキストを取得し、UTF-16の文字数からUTF-8のバイト数に変換する
-        NSInteger absOffset = -offset;
-        size_t fetchLen = MIN(startPos, (size_t)4000);
-        size_t fetchStart = startPos - fetchLen;
-        std::string text = self.editor->pt.getRange(fetchStart, fetchLen);
-        NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
-        
-        if (nsStr && nsStr.length >= absOffset) {
-            NSString *sub = [nsStr substringToIndex:(nsStr.length - absOffset)];
-            size_t byteOffset = [sub lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
-            return [iOSTextPosition positionWithIndex:fetchStart + byteOffset];
-        }
-        return [iOSTextPosition positionWithIndex:0];
-    }
+    size_t newPos = self.editor->getPositionByUTF16Offset(startPos, (int)offset);
+    return [iOSTextPosition positionWithIndex:newPos];
 }
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position inDirection:(UITextLayoutDirection)direction offset:(NSInteger)offset {
     return position;
@@ -721,16 +692,10 @@
     size_t fromIdx = ((iOSTextPosition*)f).index;
     size_t toIdx = ((iOSTextPosition*)t).index;
     if (fromIdx == toIdx) return 0;
-    
-    // バイト数の差分ではなく、実際の文字列としての文字数(UTF-16)を返す
     size_t start = MIN(fromIdx, toIdx);
     size_t end = MAX(fromIdx, toIdx);
-    std::string text = self.editor->pt.getRange(start, end - start);
-    
-    NSString *nsStr = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
-    NSInteger charCount = nsStr ? nsStr.length : 1;
-    
-    return (fromIdx <= toIdx) ? charCount : -charCount;
+    size_t charCount = self.editor->countUTF16Length(start, end - start);
+    return (fromIdx <= toIdx) ? (NSInteger)charCount : -(NSInteger)charCount;
 }
 - (id<UITextInputTokenizer>)tokenizer { return _tokenizer; }
 - (UITextPosition *)positionWithinRange:(UITextRange *)r farthestInDirection:(UITextLayoutDirection)d { return r.start; }
@@ -817,45 +782,29 @@
     return nil;
 }
 #pragma mark - Dictation Support (音声入力のバグ回避・強制リセット)
-
-// 1. 音声入力の結果を受け取る
 - (void)insertDictationResult:(NSArray<UIDictationPhrase *> *)dictationResult {
     NSMutableString *resultString = [NSMutableString string];
     for (UIDictationPhrase *phrase in dictationResult) {
         [resultString appendString:phrase.text];
     }
-    
-    // 変換中のゴミ状態が残っていれば強制クリア
     if (self.editor && !self.editor->imeComp.empty()) {
         [self unmarkText];
     }
-    
-    // システムの複雑な置換（replaceRange）をバイパスし、単純なテキスト入力として流し込む
     [self insertText:resultString];
 }
-
-// 2. システムによる「青い点線（代替候補）」の自動挿入をブロックする
 - (id)insertDictationResultPlaceholder {
-    return [[NSObject alloc] init]; // ダミーを返してシステムを騙す
+    return [[NSObject alloc] init];
 }
-
-// 3. ダミープレースホルダの描画位置（システム要求）
 - (CGRect)frameForDictationResultPlaceholder:(id)placeholder {
     if (!self.editor || self.editor->cursors.empty()) return CGRectZero;
     Cursor c = self.editor->cursors.back();
     return [self caretRectForPosition:[iOSTextPosition positionWithIndex:c.head]];
 }
-
-// 4. ダミープレースホルダの削除（何もしない）
 - (void)removeDictationResultPlaceholder:(id)placeholder willInsertResult:(BOOL)willInsertResult {
 }
-
-// 5. 音声入力が終了したタイミングで、内部の選択状態を強制リセット
 - (void)dictationRecordingDidEnd {
     [self.inputDelegate selectionDidChange:self];
 }
-
-// 6. 音声認識が失敗した時も強制リセット
 - (void)dictationRecognitionFailed {
     [self.inputDelegate selectionDidChange:self];
 }
@@ -958,6 +907,7 @@
 }
 - (void)newDocument:(id)sender {
     [self hideHelpIfNeeded];
+    [self hideEditMenuIfNeeded];
     if (self.onNewDocumentAction) {
         self.onNewDocumentAction();
     }
@@ -1325,8 +1275,10 @@
 @property (nonatomic, strong) UIScrollView *scrollToTopHelper;
 @property (nonatomic, strong) UIView *topFillView;
 @property (nonatomic, strong) NSMutableArray<UIViewPropertyAnimator *> *blurAnimators;
-@property (nonatomic, strong) UIView *verticalScrollBar;   // 縦スクロールバー
-@property (nonatomic, strong) UIView *horizontalScrollBar; // 横スクロールバー
+@property (nonatomic, strong) UIView *verticalScrollBar;
+@property (nonatomic, strong) UIView *horizontalScrollBar;
+@property (nonatomic, strong) UIStackView *footerStack;
+@property (nonatomic, strong) NSLayoutConstraint *footerBottomConstraint;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -1362,7 +1314,7 @@
     bottomLine.backgroundColor = [UIColor separatorColor];
     bottomLine.translatesAutoresizingMaskIntoConstraints = NO;
     [self.goToLineContainer addSubview:bottomLine];
-    [self.headerStack addArrangedSubview:self.goToLineContainer];
+    [self.footerStack addArrangedSubview:self.goToLineContainer];
     UIStackView *mainStack = [[UIStackView alloc] init];
     mainStack.axis = UILayoutConstraintAxisHorizontal;
     mainStack.spacing = 12;
@@ -1441,6 +1393,15 @@
         self.topFillView.userInteractionEnabled = NO;
         [self.view addSubview:self.topFillView];
         [self.view insertSubview:self.topFillView belowSubview:self.headerStack];
+    
+        self.footerStack = [[UIStackView alloc] init];
+        self.footerStack.axis = UILayoutConstraintAxisVertical;
+        self.footerStack.translatesAutoresizingMaskIntoConstraints = NO;
+        self.footerStack.layer.zPosition = 10;
+        [self.view addSubview:self.footerStack];
+    
+    
+    
         [self setupSearchUI];
         [self setupGoToLineUI];
         self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
@@ -1461,9 +1422,9 @@
         self.horizontalScrollBar.layer.cornerRadius = 1.5;
         self.horizontalScrollBar.userInteractionEnabled = NO;
         [self.editorView addSubview:self.horizontalScrollBar];
-
         UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
-        _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
+        _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.footerStack.topAnchor];
+        self.footerBottomConstraint = [self.footerStack.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
         [NSLayoutConstraint activateConstraints:@[
             [self.topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
             [self.topFillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
@@ -1481,6 +1442,9 @@
             _editorBottomConstraint,
             [self.editorView.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
             [self.editorView.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor],
+            [self.footerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+            [self.footerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+            self.footerBottomConstraint
         ]];
     _editorEngine = std::make_shared<Editor>();
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
@@ -1539,30 +1503,21 @@
                 float vw = strongSelf.editorView.bounds.size.width;
                 float vh = MAX(0.0f, strongSelf.editorView.bounds.size.height - strongSelf.editorView.topRenderMargin);
                 float topMargin = strongSelf.editorView.topRenderMargin;
-                
-                // --- 縦スクロールバーの計算 ---
-                // 最大どこまでスクロールできるか（行数ベース）
                 float maxOffsetY = MAX(1.0f, (strongSelf->_editorEngine->lineStarts.size() - 1) * strongSelf->_editorEngine->lineHeight);
                 float totalHeight = maxOffsetY + vh;
-                
                 if (maxOffsetY <= 1.0f || totalHeight <= vh) {
                     strongSelf.verticalScrollBar.hidden = YES;
                 } else {
                     strongSelf.verticalScrollBar.hidden = NO;
-                    float barHeight = MAX(20.0f, vh * (vh / totalHeight)); // 画面に収まる割合で高さを決定
+                    float barHeight = MAX(20.0f, vh * (vh / totalHeight));
                     float currentOffsetY = strongSelf->_editorEngine->vScrollPos * strongSelf->_editorEngine->lineHeight;
                     float scrollRatio = MIN(1.0f, MAX(0.0f, currentOffsetY / maxOffsetY));
                     float barY = topMargin + scrollRatio * (vh - barHeight);
-                    
-                    // 右端に細く表示
                     strongSelf.verticalScrollBar.frame = CGRectMake(vw - 5.0f, barY, 3.0f, barHeight);
                 }
-                
-                // --- 横スクロールバーの計算 ---
-                float editorVw = vw - strongSelf->_editorEngine->gutterWidth; // 行番号エリアを除外した幅
+                float editorVw = vw - strongSelf->_editorEngine->gutterWidth;
                 float maxOffsetX = MAX(1.0f, strongSelf->_editorEngine->maxLineWidth - editorVw + strongSelf->_editorEngine->charWidth * 4.0f);
                 float totalWidth = maxOffsetX + editorVw;
-                
                 if (maxOffsetX <= 1.0f || totalWidth <= editorVw) {
                     strongSelf.horizontalScrollBar.hidden = YES;
                 } else {
@@ -1571,8 +1526,6 @@
                     float currentOffsetX = strongSelf->_editorEngine->hScrollPos;
                     float scrollRatio = MIN(1.0f, MAX(0.0f, currentOffsetX / maxOffsetX));
                     float barX = strongSelf->_editorEngine->gutterWidth + scrollRatio * (editorVw - barWidth);
-                    
-                    // 下端に細く表示
                     strongSelf.horizontalScrollBar.frame = CGRectMake(barX, strongSelf.editorView.bounds.size.height - 5.0f, barWidth, 3.0f);
                 }
             }
@@ -1591,7 +1544,6 @@
         if (strongSelf) [strongSelf presentDocumentPickerForSaving];
         return true;
     };
-    // C++エンジンからiOSのクリップボードに書き込む処理
     _editorEngine->cbSetClipboard = [](const std::string& text, bool isRect) {
         if (text.empty()) return;
         NSString *nsText = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
@@ -1599,7 +1551,6 @@
             [UIPasteboard generalPasteboard].string = nsText;
         }
     };    
-    // C++エンジンがiOSのクリップボードから読み込む処理
     _editorEngine->cbGetClipboard = [](bool& isRectMarker) -> std::string {
         isRectMarker = false;
         NSString *str = [UIPasteboard generalPasteboard].string;
@@ -1629,12 +1580,14 @@
             int currentLine = strongSelf->_editorEngine->getLineIdx(head) + 1;
             strongSelf.goToLineField.text = [NSString stringWithFormat:@"%d", currentLine];
         }
-        [UIView animateWithDuration:0.12 animations:^{
+        [UIView performWithoutAnimation:^{
+            [strongSelf.goToLineField becomeFirstResponder];
+            [strongSelf.view layoutIfNeeded];
+        }];
+        [UIView animateWithDuration:0.1 animations:^{
             strongSelf.goToLineContainer.hidden = NO;
             [strongSelf.view layoutIfNeeded];
-        } completion:^(BOOL finished) {
-            [strongSelf.goToLineField becomeFirstResponder];
-        }];
+        } completion:nil];
     };
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
@@ -1828,7 +1781,7 @@
     CGRect convertedFrame = [self.view convertRect:keyboardFrame fromView:nil];
     CGFloat shrinkAmount = MAX(0, self.view.bounds.size.height - convertedFrame.origin.y);
     [UIView performWithoutAnimation:^{
-        _editorBottomConstraint.constant = -shrinkAmount;
+        self.footerBottomConstraint.constant = -shrinkAmount;
         [self.view layoutIfNeeded];
         if (_editorEngine) {
             _editorEngine->ensureCaretVisible();
@@ -1838,7 +1791,7 @@
 }
 - (void)keyboardWillHide:(NSNotification *)notification {
     [UIView performWithoutAnimation:^{
-        _editorBottomConstraint.constant = 0;
+        self.footerBottomConstraint.constant = 0;
         [self.view layoutIfNeeded];
         if (_editorEngine) {
             _editorEngine->ensureCaretVisible();
@@ -1928,7 +1881,7 @@
     bottomLine.backgroundColor = [UIColor separatorColor];
     bottomLine.translatesAutoresizingMaskIntoConstraints = NO;
     [self.searchContainer addSubview:bottomLine];
-    [self.headerStack addArrangedSubview:self.searchContainer];
+    [self.footerStack addArrangedSubview:self.searchContainer];
     UIStackView *mainStack = [[UIStackView alloc] init];
     mainStack.axis = UILayoutConstraintAxisVertical;
     mainStack.spacing = 8;
@@ -2137,15 +2090,17 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
+    [UIView performWithoutAnimation:^{
+        [self.searchField becomeFirstResponder];
+        [self.view layoutIfNeeded];
+    }];
     self.searchContainer.hidden = NO;
     self.replaceRowStack.hidden = YES;
     self.replaceRowStack.alpha = 0.0;
     self.buttonsWidthConstraint.active = NO;
-    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+    [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
-    } completion:^(BOOL finished) {
-        [self.searchField becomeFirstResponder];
-    }];
+    } completion:nil];
 }
 - (void)showReplaceNotif {
     if (_editorEngine) {
@@ -2155,19 +2110,21 @@
         [self updateOptionButtonVisual:self.regexBtn isSelected:_editorEngine->searchRegex];
     }
     [self prepareSearchQuery];
+    [UIView performWithoutAnimation:^{
+        if (self.searchField.text.length == 0) {
+            [self.searchField becomeFirstResponder];
+        } else {
+            [self.replaceField becomeFirstResponder];
+        }
+        [self.view layoutIfNeeded];
+    }];
     self.searchContainer.hidden = NO;
     self.replaceRowStack.hidden = NO;
     self.replaceRowStack.alpha = 1.0;
     self.buttonsWidthConstraint.active = YES;
-    [UIView animateWithDuration:0.2 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
+    [UIView animateWithDuration:0.1 delay:0 options:UIViewAnimationOptionCurveEaseOut animations:^{
         [self.view layoutIfNeeded];
-    } completion:^(BOOL finished) {
-        if (self.searchField.text.length == 0) {
-            [self.searchField becomeFirstResponder];
-        } else {
-            [self.searchField becomeFirstResponder];
-        }
-    }];
+    } completion:nil];
 }
 - (BOOL)canBecomeFirstResponder {
     return YES;
@@ -2182,7 +2139,7 @@
         _editorEngine->isReplaceMode = false;
     }
     [self.editorView becomeFirstResponder];
-    [UIView animateWithDuration:0.15 animations:^{
+    [UIView animateWithDuration:0.08 animations:^{
         self.searchContainer.hidden = YES;
         [self.view layoutIfNeeded];
     } completion:^(BOOL finished) {
@@ -2220,7 +2177,7 @@
 }
 - (void)closeGoToLine {
     [self.editorView becomeFirstResponder];
-    [UIView animateWithDuration:0.12 animations:^{
+    [UIView animateWithDuration:0.08 animations:^{
         self.goToLineContainer.hidden = YES;
         [self.view layoutIfNeeded];
     }];

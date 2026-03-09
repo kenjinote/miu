@@ -41,45 +41,43 @@ std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
     if (str) CFRelease(str);
     return res;
 }
-std::string AnsiToUtf8(const char* data, size_t len) {
-    CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingWindowsLatin1, false);
-    std::string res = CFStringToStdString(str);
-    if (str) CFRelease(str);
-    return res;
-}
-std::string ShiftJISToUtf8(const char* data, size_t len) {
-    if (len == 0) return "";
-    CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault,
-                                              (const UInt8*)data,
-                                              len,
-                                              kCFStringEncodingShiftJIS,
-                                              false);
-    if (!str) {
-        str = CFStringCreateWithBytes(kCFAllocatorDefault,
-                                      (const UInt8*)data,
-                                      len,
-                                      kCFStringEncodingDOSJapanese,
-                                      false);
+static CFStringEncoding MapCedEncodingToCFEncoding(Encoding enc) {
+    switch (enc) {
+        case JAPANESE_SHIFT_JIS: return kCFStringEncodingDOSJapanese;
+        case JAPANESE_EUC_JP:    return kCFStringEncodingEUC_JP;
+        case CHINESE_GB:         return kCFStringEncodingGB_18030_2000;
+        case CHINESE_BIG5:       return kCFStringEncodingBig5;
+        case KOREAN_EUC_KR:      return kCFStringEncodingEUC_KR;
+        case RUSSIAN_CP1251:     return kCFStringEncodingWindowsCyrillic;
+        case LATIN1:             return kCFStringEncodingWindowsLatin1;
+        case ASCII_7BIT:         return kCFStringEncodingUTF8;
+        default:                 return kCFStringEncodingUTF8;
     }
-    if (!str) {
-        str = CFStringCreateWithBytes(kCFAllocatorDefault,
-                                      (const UInt8*)data,
-                                      len,
-                                      kCFStringEncodingMacJapanese,
-                                      false);
-    }
-    if (!str) return ""; // 変換不能な場合
-    std::string res = CFStringToStdString(str);
-    CFRelease(str);
-    return res;
 }
-std::string EUCJPToUtf8(const char* data, size_t len) {
+static std::string LocalToUtf8(const char* data, size_t len, CFStringEncoding encoding) {
     if (len == 0) return "";
-    CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingEUC_JP, false);
+    CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, encoding, false);
+    if (!str && encoding == kCFStringEncodingDOSJapanese) {
+        str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingShiftJIS, false);
+        if (!str) str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingMacJapanese, false);
+    }
     if (!str) return "";
     std::string res = CFStringToStdString(str);
     CFRelease(str);
     return res;
+}
+static std::string Utf8ToLocal(const std::string& utf8, CFStringEncoding encoding) {
+    if (utf8.empty()) return "";
+    CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)utf8.data(), utf8.size(), kCFStringEncodingUTF8, false);
+    if (!str) return "";
+    CFIndex len = CFStringGetLength(str);
+    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(len, encoding) + 1;
+    std::vector<char> buf(maxSize);
+    CFIndex usedBufLen = 0;
+    CFStringGetBytes(str, CFRangeMake(0, len), encoding, 0, false, (UInt8*)buf.data(), maxSize, &usedBufLen);
+    CFRelease(str);
+    if (usedBufLen > 0) return std::string(buf.data(), usedBufLen);
+    return "";
 }
 #endif
 const std::wstring APP_TITLE = L"miu";
@@ -99,7 +97,7 @@ bool IsValidUtf8(const char* buf, size_t len) {
         if (c <= 0x7F) {
             i++;
         } else if (c >= 0xC2 && c <= 0xDF) {
-            if (i + 1 >= check_len) break; 
+            if (i + 1 >= check_len) break;
             if ((buf[i+1] & 0xC0) != 0x80) return false;
             i += 2;
         } else if (c >= 0xE0 && c <= 0xEF) {
@@ -116,16 +114,40 @@ bool IsValidUtf8(const char* buf, size_t len) {
     }
     return true;
 }
-Encoding DetectEncoding(const char* buf, size_t len) {
-    if (len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) return ENC_UTF8_BOM;
+static DetectResult DetectEncodingEx(const char* buf, size_t len) {
+#if defined(__APPLE__)
+    DetectResult res = { ENC_UTF8_NOBOM, kCFStringEncodingUTF8 };
+#else
+    DetectResult res = { ENC_UTF8_NOBOM, 0 };
+#endif
+    if (len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) {
+        res.type = ENC_UTF8_BOM; return res;
+    }
     if (len >= 2) {
-        if ((unsigned char)buf[0] == 0xFF && (unsigned char)buf[1] == 0xFE) return ENC_UTF16LE;
-        if ((unsigned char)buf[0] == 0xFE && (unsigned char)buf[1] == 0xFF) return ENC_UTF16BE;
+        if ((unsigned char)buf[0] == 0xFF && (unsigned char)buf[1] == 0xFE) { res.type = ENC_UTF16LE; return res; }
+        if ((unsigned char)buf[0] == 0xFE && (unsigned char)buf[1] == 0xFF) { res.type = ENC_UTF16BE; return res; }
     }
     if (IsValidUtf8(buf, len)) {
-        return ENC_UTF8_NOBOM;
+        res.type = ENC_UTF8_NOBOM; return res;
     }
-    return ENC_ANSI;
+    int bytes_consumed = 0;
+    bool is_reliable = false;
+    size_t ced_len = (len > 65536) ? 65536 : len;
+    Encoding ced_enc = CompactEncDet::DetectEncoding(
+        buf, static_cast<int>(ced_len),
+        nullptr, nullptr, nullptr,
+        UNKNOWN_ENCODING,
+        UNKNOWN_LANGUAGE,
+        CompactEncDet::WEB_CORPUS,
+        false,
+        &bytes_consumed,
+        &is_reliable
+    );
+    res.type = ENC_LOCAL;
+#if defined(__APPLE__)
+    res.codePage = MapCedEncodingToCFEncoding(ced_enc);
+#endif
+    return res;
 }
 std::string ConvertCase(const std::string& s, bool toUpper) {
     std::wstring w = UTF8ToW(s);
@@ -688,8 +710,6 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                         }
                         if (isValid) break;
                     }
-                    
-                    // ★修正: 正しいスキップ計算
                     size_t step = currentMatchLen;
                     if (step == 0) {
                         bool isBolCaret = (startsWithCaret && !(searchFlags & std::regex_constants::match_not_bol));
@@ -1050,7 +1070,6 @@ void Editor::replaceAll() {
                         }
                     }
                 }
-                
                 bool isValid = true;
                 if (endsWithDollar) {
                     bool isAtLineEnd = false;
@@ -1068,7 +1087,6 @@ void Editor::replaceAll() {
                     }
                     if (!isAtLineEnd) isValid = false;
                 }
-                
                 if (isValid && startsWithCaret && endsWithDollar && contentLen == 0 && contentPos == fullText.size() && !fullText.empty()) {
                     bool isAfterNewline = false;
                     if (contentPos > 0) {
@@ -1077,21 +1095,16 @@ void Editor::replaceAll() {
                     }
                     if (!isAfterNewline) isValid = false;
                 }
-                
                 if (isValid && !matches.empty()) {
                     const auto& last = matches.back();
                     if (last.start == contentPos && last.len == 0 && contentLen == 0) {
                         isValid = false;
                     }
                 }
-                
-                // ★修正: 有効な場合のみ置換リストに追加
                 if (isValid) {
                     std::string rText = m.format(fmt);
                     matches.push_back({ contentPos, contentLen, rText });
                 }
-                
-                // ★修正: 古いコードを排除し、正しい1つの計算式に統合
                 size_t step = matchLen;
                 if (step == 0) {
                     bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
@@ -1099,7 +1112,6 @@ void Editor::replaceAll() {
                     else step = 1;
                 }
                 if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
-                
                 size_t relativeAdvance = m.position() + step;
                 size_t remaining = std::distance(searchStart, fullText.cend());
                 if (relativeAdvance > remaining) break;
@@ -1107,7 +1119,6 @@ void Editor::replaceAll() {
                 currentOffset += relativeAdvance;
                 flags |= std::regex_constants::match_not_bol;
             }
-
             if (startsWithCaret && fullText.empty()) {
                 bool alreadyMatched = !matches.empty();
                 if (!alreadyMatched) {
@@ -1485,7 +1496,27 @@ bool Editor::checkUnsavedChanges() {
     return true;
 }
 bool Editor::saveFile(const std::wstring& p) {
-    std::string s = pt.getRange(0,pt.length()); std::ofstream f(WToUTF8(p), std::ios::binary); if(!f) return false; f.write(s.data(), s.size()); f.close(); currentFilePath=p; undo.markSaved(); isDirty=false; updateTitleBar(); return true;
+    std::string contentUtf8 = pt.getRange(0, pt.length());
+    std::ofstream f(WToUTF8(p), std::ios::binary);
+    if(!f) return false;
+    
+    if (currentEncoding == ENC_LOCAL) {
+#if defined(__APPLE__)
+        std::string localStr = Utf8ToLocal(contentUtf8, currentCodePage);
+        if (!localStr.empty()) {
+            f.write(localStr.data(), localStr.size());
+        } else {
+            f.write(contentUtf8.data(), contentUtf8.size());
+        }
+#endif
+    } else if (currentEncoding == ENC_UTF8_BOM) {
+        unsigned char bom[] = { 0xEF, 0xBB, 0xBF };
+        f.write((char*)bom, 3);
+        f.write(contentUtf8.data(), contentUtf8.size());
+    } else {
+        f.write(contentUtf8.data(), contentUtf8.size());
+    }
+    f.close(); currentFilePath=p; undo.markSaved(); isDirty=false; updateTitleBar(); return true;
 }
 bool Editor::saveFileAs() {
     if (cbSaveFileAs) return cbSaveFileAs();
@@ -1494,7 +1525,9 @@ bool Editor::saveFileAs() {
 bool Editor::openFileFromPath(const std::string& p) {
     fileMap.reset(new MappedFile());
     if(fileMap->open(p.c_str())){
-        currentEncoding = DetectEncoding(fileMap->ptr, fileMap->size);
+        DetectResult encRes = DetectEncodingEx(fileMap->ptr, fileMap->size);
+        currentEncoding = encRes.type;
+        currentCodePage = encRes.codePage;
         const char* ptr = fileMap->ptr;
         size_t sz = fileMap->size;
         this->currentFileBuffer = "";
@@ -1504,13 +1537,9 @@ bool Editor::openFileFromPath(const std::string& p) {
             this->currentFileBuffer = Utf16ToUtf8(ptr, sz, true);
         } else if (currentEncoding == ENC_UTF8_BOM) {
             ptr += 3; sz -= 3;
-        } else if (currentEncoding == ENC_UTF8_NOBOM) {
-        } else if (currentEncoding == ENC_ANSI) {
+        } else if (currentEncoding == ENC_LOCAL) {
 #if defined(__APPLE__)
-            this->currentFileBuffer = ShiftJISToUtf8(ptr, sz);
-            if (this->currentFileBuffer.empty()) {
-                this->currentFileBuffer = AnsiToUtf8(ptr, sz);
-            }
+            this->currentFileBuffer = LocalToUtf8(ptr, sz, currentCodePage);
 #endif
         }
         if (!this->currentFileBuffer.empty()) {
@@ -1683,7 +1712,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         CGColorRef hlColor = isDarkMode ? CGColorCreateGenericRGB(0.4, 0.4, 0.0, 0.6) : CGColorCreateGenericRGB(1.0, 1.0, 0.0, 0.4);
         CGContextSetFillColorWithColor(ctx, hlColor);
 #if TARGET_OS_IOS
-        size_t searchRangeStart = lineStarts[renderStart]; // ★ iOSはボカシの裏から検索
+        size_t searchRangeStart = lineStarts[renderStart];
 #else
         size_t searchRangeStart = lineStarts[start];
 #endif
@@ -2062,6 +2091,67 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     }
 }
 #endif
+size_t Editor::countUTF16Length(size_t start, size_t byteLen) {
+    size_t end = std::min(start + byteLen, pt.length());
+    size_t utf16Count = 0;
+    size_t p = start;
+    while (p < end) {
+        unsigned char c = pt.charAt(p);
+        if (c < 0x80) {
+            p += 1; utf16Count += 1;
+        } else if ((c & 0xE0) == 0xC0) {
+            p += 2; utf16Count += 1;
+        } else if ((c & 0xF0) == 0xE0) {
+            p += 3; utf16Count += 1;
+        } else if ((c & 0xF8) == 0xF0) {
+            p += 4; utf16Count += 2;
+        } else {
+            p += 1; utf16Count += 1;
+        }
+    }
+    return utf16Count;
+}
+
+size_t Editor::getPositionByUTF16Offset(size_t startPos, int offset) {
+    if (offset == 0) return startPos;
+    size_t docLen = pt.length();
+    if (offset > 0) {
+        size_t p = startPos;
+        int count = 0;
+        while (p < docLen && count < offset) {
+            unsigned char c = pt.charAt(p);
+            if (c < 0x80) {
+                p += 1; count += 1;
+            } else if ((c & 0xE0) == 0xC0) {
+                p += 2; count += 1;
+            } else if ((c & 0xF0) == 0xE0) {
+                p += 3; count += 1;
+            } else if ((c & 0xF8) == 0xF0) {
+                p += 4; count += 2;
+            } else {
+                p += 1; count += 1;
+            }
+        }
+        return std::min(p, docLen);
+    } else {
+        size_t p = startPos;
+        int count = 0;
+        int target = -offset;
+        while (p > 0 && count < target) {
+            p--;
+            while (p > 0 && (pt.charAt(p) & 0xC0) == 0x80) {
+                p--;
+            }
+            unsigned char c = pt.charAt(p);
+            if ((c & 0xF8) == 0xF0) {
+                count += 2;
+            } else {
+                count += 1;
+            }
+        }
+        return p;
+    }
+}
 Editor::~Editor() {
 #if defined(__APPLE__)
     if (colBackground) CGColorRelease(colBackground);

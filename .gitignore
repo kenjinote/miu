@@ -367,3 +367,5 @@ FodyWeavers.xsd
 /installer/miu/Media
 .DS_Store
 *.lib
+libced.a
+libced_iOS.a

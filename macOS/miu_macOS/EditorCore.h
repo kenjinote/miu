@@ -17,13 +17,23 @@
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreText/CoreText.h>
 #endif
+#include "compact_enc_det/compact_enc_det.h"
 extern const std::wstring APP_VERSION;
 extern const std::wstring APP_TITLE;
-enum Encoding { ENC_UTF8_NOBOM = 0, ENC_UTF8_BOM, ENC_UTF16LE, ENC_UTF16BE, ENC_ANSI };
+enum MiuEncoding {
+    ENC_UTF8_NOBOM = 0,
+    ENC_UTF8_BOM,
+    ENC_UTF16LE,
+    ENC_UTF16BE,
+    ENC_LOCAL
+};
+struct DetectResult {
+    MiuEncoding type;
+    uint32_t codePage;
+};
 std::string WToUTF8(const std::wstring& w);
 std::wstring UTF8ToW(const std::string& s);
 std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian);
-std::string AnsiToUtf8(const char* data, size_t len);
 Encoding DetectEncoding(const char* buf, size_t len);
 std::string ConvertCase(const std::string& s, bool toUpper);
 struct Piece { bool isOriginal; size_t start; size_t len; };
@@ -119,7 +129,8 @@ struct Editor {
     UndoManager undo;
     std::unique_ptr<MappedFile> fileMap;
     std::wstring currentFilePath;
-    Encoding currentEncoding = ENC_UTF8_NOBOM;
+    MiuEncoding currentEncoding = ENC_UTF8_NOBOM;
+    uint32_t currentCodePage = 0;
     bool isDirty = false;
     bool isDarkMode = false;
     bool showHelpPopup = false;
@@ -216,6 +227,8 @@ struct Editor {
     void getWordBoundaries(size_t pos, size_t& start, size_t& end);
     void initGraphics();
     void updateThemeColors();
+    size_t countUTF16Length(size_t start, size_t byteLen);
+    size_t getPositionByUTF16Offset(size_t startPos, int offset);
 #if defined(__APPLE__)
     void render(CGContextRef ctx, float w, float h);
 #endif
