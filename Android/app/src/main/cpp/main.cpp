@@ -7,6 +7,7 @@
 #include <memory>
 #include <unordered_map>
 #include <fstream>
+#include <chrono>
 
 // --- FreeType のインクルード ---
 #include <ft2build.h>
@@ -301,13 +302,18 @@ struct UndoManager {
     void push(const EditBatch& batch) { undoStack.push_back(batch); redoStack.clear(); }
 };
 
-// ============================================================================
-// [2] Vulkan & Android システム構造体 (WindowsのEditorクラスに相当)
-// ============================================================================
+int64_t getCurrentTimeMs() {
+    return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+}
 
-// ============================================================================
-// 描画用データ構造体 (Engine構造体の上に配置)
-// ============================================================================
+bool isWordChar(char c) {
+    // アルファベット、数字、アンダースコア、およびマルチバイト文字（日本語など）を単語とみなす
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+           (c >= '0' && c <= '9') || c == '_' ||
+           (unsigned char)c >= 0x80;
+}
+
 struct Vertex {
     float pos[2]; // 画面上のX, Y座標
     float uv[2];  // テクスチャ上のU, V座標
@@ -337,6 +343,11 @@ struct Engine {
     float scrollY = 0.0f; // ピクセル単位の縦スクロール量
     float maxLineWidth = 0.0f;
     float bottomInset = 0.0f; // キーボードの高さ
+
+    int64_t lastClickTime = 0;
+    int clickCount = 0;
+    float lastClickX = 0.0f;
+    float lastClickY = 0.0f;
 
     float lastTouchX = 0.0f;
     float lastTouchY = 0.0f;
@@ -530,6 +541,45 @@ size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
     }
 
     return currentPos;
+}
+
+// 指定された位置の単語を選択状態(headとanchorを分離)にする
+void selectWordAt(Engine* engine, size_t pos) {
+    if (pos >= engine->pt.length()) {
+        engine->cursors.clear();
+        engine->cursors.push_back({ pos, pos, getXFromPos(engine, pos) });
+        return;
+    }
+
+    char c = engine->pt.charAt(pos);
+    // 改行文字をダブルタップした場合は選択しない
+    if (c == '\n' || c == '\r') {
+        engine->cursors.clear();
+        engine->cursors.push_back({ pos, pos, getXFromPos(engine, pos) });
+        return;
+    }
+
+    bool targetType = isWordChar(c);
+    size_t start = pos;
+    // 左方向に単語の先頭を探す
+    while (start > 0) {
+        char p = engine->pt.charAt(start - 1);
+        if (isWordChar(p) != targetType || p == '\n' || p == '\r') break;
+        start--;
+    }
+
+    // 右方向に単語の末尾を探す
+    size_t end = pos;
+    size_t len = engine->pt.length();
+    while (end < len) {
+        char p = engine->pt.charAt(end);
+        if (isWordChar(p) != targetType || p == '\n' || p == '\r') break;
+        end++;
+    }
+
+    // 選択範囲としてカーソルをセット (head=終点, anchor=始点)
+    engine->cursors.clear();
+    engine->cursors.push_back({ end, start, getXFromPos(engine, end) });
 }
 
 // カーソルが画面内に収まるようにスクロール量を自動調整する
@@ -1332,12 +1382,27 @@ void updateTextVertices(Engine* engine) {
 
         bool isComposingChar = (hasIME && currentByteOffset >= mainCaretPos && currentByteOffset < mainCaretPos + engine->imeComp.size());
 
+        // --- 現在の文字が選択範囲内かチェック ---
+        bool isSelected = false;
+        if (!engine->cursors.empty() && engine->cursors.back().hasSelection()) {
+            size_t selStart = engine->cursors.back().start();
+            size_t selEnd = engine->cursors.back().end();
+            if (currentByteOffset >= selStart && currentByteOffset < selEnd) {
+                isSelected = true;
+            }
+        }
+
         if (isComposingChar) {
             float bgY = y - engine->lineHeight * 0.8f;
             addRect(bgVertices, x, bgY, advance, engine->lineHeight, 0.2f, 0.6f, 1.0f, 0.3f);
 
             float lineY = y + engine->lineHeight * 0.1f;
             addRect(lineVertices, x, lineY, advance, 2.0f, textR, textG, textB, 1.0f);
+        }
+
+        else if (isSelected) {
+            float bgY = y - engine->lineHeight * 0.8f;
+            addRect(bgVertices, x, bgY, advance, engine->lineHeight, 0.2f, 0.4f, 1.0f, 0.5f); // 薄い青色
         }
 
         float isColorFlag = info.isColor ? 1.0f : 0.0f;
@@ -1585,9 +1650,17 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
         float y = AMotionEvent_getY(event, 0);
 
         if (action == AMOTION_EVENT_ACTION_DOWN) {
-            // タッチ開始位置を記録
-            engine->lastTouchX = x;
-            engine->lastTouchY = y;
+            int64_t now = getCurrentTimeMs();
+            if (now - engine->lastClickTime < 400 &&
+                std::abs(x - engine->lastClickX) < 30.0f &&
+                std::abs(y - engine->lastClickY) < 30.0f) {
+                engine->clickCount++;
+            } else {
+                engine->clickCount = 1;
+            }
+            engine->lastClickTime = now;
+            engine->lastClickX = x;
+            engine->lastClickY = y;
             engine->isDragging = false;
 
             // キーボードを出す処理
@@ -1599,6 +1672,17 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             env->DeleteLocalRef(activityClass);
             app->activity->vm->DetachCurrentThread();
 
+            // ==========================================================
+            // ★修正: 指が触れた瞬間にカーソル移動または単語選択を行う
+            // ==========================================================
+            size_t targetPos = getDocPosFromPoint(engine, x, y);
+            if (engine->clickCount == 2) {
+                selectWordAt(engine, targetPos); // ダブルタップなら単語選択
+            } else {
+                // シングルタップなら通常のカーソル移動
+                engine->cursors.clear();
+                engine->cursors.push_back({ targetPos, targetPos, getXFromPos(engine, targetPos) });
+            }
         } else if (action == AMOTION_EVENT_ACTION_MOVE) {
             float dx = x - engine->lastTouchX;
             float dy = y - engine->lastTouchY;
@@ -1638,12 +1722,6 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 engine->lastTouchY = y;
             }
         } else if (action == AMOTION_EVENT_ACTION_UP) {
-            if (!engine->isDragging) {
-                // ドラッグしていなかった（単なるタップだった）場合はカーソルを移動
-                size_t targetPos = getDocPosFromPoint(engine, x, y);
-                engine->cursors.clear();
-                engine->cursors.push_back({ targetPos, targetPos, getXFromPos(engine, targetPos) });
-            }
             engine->isDragging = false;
         }
         return 1;
