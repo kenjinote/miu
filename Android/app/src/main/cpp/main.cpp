@@ -48,6 +48,16 @@ struct TextAtlas {
 
     void init() {
         pixels.resize(width * height * 4, 0);
+        // ★追加：アトラスの左上(0,0)に2x2の純白ピクセルを書き込んでおく
+        for (int y = 0; y < 2; ++y) {
+            for (int x = 0; x < 2; ++x) {
+                int idx = (y * width + x) * 4;
+                pixels[idx + 0] = 255; pixels[idx + 1] = 255; pixels[idx + 2] = 255; pixels[idx + 3] = 255;
+            }
+        }
+        currentX = 3; // 文字は(3,0)から配置スタート
+        currentY = 0;
+        maxRowHeight = 2;
     }
 
     bool loadChar(FT_Face mainFace, FT_Face emojiFace, uint32_t charCode) {
@@ -302,6 +312,7 @@ struct Vertex {
     float pos[2]; // 画面上のX, Y座標
     float uv[2];  // テクスチャ上のU, V座標
     float isColor;
+    float color[4]; // ★追加
 };
 
 // 毎フレームGPUに送る軽量な設定データ（Push Constants）
@@ -1021,19 +1032,22 @@ bool createGraphicsPipeline(Engine* engine) {
     VkVertexInputBindingDescription bindingDescription = {};
     bindingDescription.binding = 0; bindingDescription.stride = sizeof(Vertex); bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-    VkVertexInputAttributeDescription attributeDescriptions[3] = {}; // ★配列を3に
+    VkVertexInputAttributeDescription attributeDescriptions[4] = {};
     attributeDescriptions[0].binding = 0; attributeDescriptions[0].location = 0; attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT; attributeDescriptions[0].offset = offsetof(Vertex, pos);
     attributeDescriptions[1].binding = 0; attributeDescriptions[1].location = 1; attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT; attributeDescriptions[1].offset = offsetof(Vertex, uv);
+    attributeDescriptions[2].binding = 0; attributeDescriptions[2].location = 2; attributeDescriptions[2].format = VK_FORMAT_R32_SFLOAT; attributeDescriptions[2].offset = offsetof(Vertex, isColor);
 
-    // --- ★今回追加：isColor フラグ ---
-    attributeDescriptions[2].binding = 0; attributeDescriptions[2].location = 2; // シェーダの location = 2
-    attributeDescriptions[2].format = VK_FORMAT_R32_SFLOAT; // 整数型(int)
-    attributeDescriptions[2].offset = offsetof(Vertex, isColor);
+    // ★追加: 頂点カラーの設定
+    attributeDescriptions[3].binding = 0;
+    attributeDescriptions[3].location = 3;
+    attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[3].offset = offsetof(Vertex, color);
 
     // vertexInputInfo の属性数を3にする
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
-    vertexInputInfo.vertexBindingDescriptionCount = 1; vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.vertexAttributeDescriptionCount = 3; // ★ここを3へ
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = 4; // ★ここを 4 に変更
     vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
@@ -1169,60 +1183,142 @@ bool initVulkan(Engine* engine) {
 }
 
 void updateTextVertices(Engine* engine) {
-    std::vector<Vertex> vertices;
-    float x = 50.0f;
+    float x = engine->gutterWidth;
     float y = 100.0f;
 
     size_t len = engine->pt.length();
     std::string text = engine->pt.getRange(0, len);
 
+    size_t mainCaretPos = engine->cursors.empty() ? 0 : engine->cursors.back().head;
+    bool hasIME = !engine->imeComp.empty();
+
+    if (hasIME) {
+        if (mainCaretPos <= text.size()) text.insert(mainCaretPos, engine->imeComp);
+        else text.append(engine->imeComp);
+    }
+
+    // ==========================================================
+    // ★追加: カーソルの「視覚的な位置」を計算 (IME挿入によるズレを補正)
+    // ==========================================================
+    std::vector<size_t> visualCursors;
+    for (const auto& c : engine->cursors) {
+        size_t vPos = c.head;
+        // メインカーソル以降の位置にあるカーソルは、変換中文字列の長さ分だけ右にズレる
+        if (hasIME && vPos >= mainCaretPos) {
+            vPos += engine->imeComp.size();
+        }
+        visualCursors.push_back(vPos);
+    }
+
     const char* ptr = text.data();
     const char* end = ptr + text.size();
+    size_t currentByteOffset = 0;
+
+    std::vector<Vertex> bgVertices;
+    std::vector<Vertex> lineVertices;
+    std::vector<Vertex> charVertices;
+    std::vector<Vertex> cursorVertices; // ★追加: カーソル描画用バッファ
+
+    float whiteU = 1.0f / engine->atlas.width;
+    float whiteV = 1.0f / engine->atlas.height;
+
+    auto addRect = [&](std::vector<Vertex>& verts, float rx, float ry, float rw, float rh, float r, float g, float b, float a) {
+        verts.push_back({{rx,      ry     }, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
+        verts.push_back({{rx,      ry + rh}, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
+        verts.push_back({{rx + rw, ry     }, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
+        verts.push_back({{rx + rw, ry     }, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
+        verts.push_back({{rx,      ry + rh}, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
+        verts.push_back({{rx + rw, ry + rh}, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
+    };
+
+    float textR = 1.0f, textG = 1.0f, textB = 1.0f, textA = 1.0f;
+    float cursorWidth = 5.0f;
 
     while (ptr < end) {
+        // ==========================================================
+        // ★追加: 文字を処理する前に、現在位置にカーソルがあるか判定して描画
+        // ==========================================================
+        for (size_t vPos : visualCursors) {
+            if (currentByteOffset == vPos) {
+                float curY = y - engine->lineHeight * 0.8f;
+                // 幅2.0f、高さlineHeightの白い矩形を追加
+                addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight, textR, textG, textB, 1.0f);
+            }
+        }
+
+        const char* prevPtr = ptr;
+
         if (*ptr == '\r') {
-            ptr++;
-            if (ptr < end && *ptr == '\n') ptr++;
-            x = 50.0f;
-            y += engine->lineHeight;
+            ptr++; currentByteOffset += (ptr - prevPtr);
+            if (ptr < end && *ptr == '\n') { prevPtr = ptr; ptr++; currentByteOffset += (ptr - prevPtr); }
+            x = engine->gutterWidth; y += engine->lineHeight;
             continue;
         }
         if (*ptr == '\n') {
-            ptr++;
-            x = 50.0f;
-            y += engine->lineHeight;
+            ptr++; currentByteOffset += (ptr - prevPtr);
+            x = engine->gutterWidth; y += engine->lineHeight;
             continue;
         }
 
-        uint32_t charCode = decodeUtf8(&ptr, end);
-        if (charCode == 0) break;
+        uint32_t cp = decodeUtf8(&ptr, end);
+        if (cp == 0) break;
+        size_t charBytes = ptr - prevPtr;
 
-        // アトラスに無い文字は動的ロード（メインと絵文字の両方のフォントを渡す）
-        if (engine->atlas.glyphs.count(charCode) == 0) {
-            engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, charCode);
+        if (engine->atlas.glyphs.count(cp) == 0 && engine->ftFaceMain != nullptr) {
+            engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
         }
 
-        if (engine->atlas.glyphs.count(charCode) == 0) continue;
+        if (engine->atlas.glyphs.count(cp) == 0) {
+            currentByteOffset += charBytes;
+            continue;
+        }
 
-        GlyphInfo& info = engine->atlas.glyphs[charCode];
+        GlyphInfo& info = engine->atlas.glyphs[cp];
+        float advance = info.advance;
+
+        bool isComposingChar = (hasIME && currentByteOffset >= mainCaretPos && currentByteOffset < mainCaretPos + engine->imeComp.size());
+
+        if (isComposingChar) {
+            float bgY = y - engine->lineHeight * 0.8f;
+            addRect(bgVertices, x, bgY, advance, engine->lineHeight, 0.2f, 0.6f, 1.0f, 0.3f);
+
+            float lineY = y + engine->lineHeight * 0.1f;
+            addRect(lineVertices, x, lineY, advance, 2.0f, textR, textG, textB, 1.0f);
+        }
+
         float isColorFlag = info.isColor ? 1.0f : 0.0f;
-
         float xpos = x + info.bearingX;
         float ypos = y - info.bearingY;
         float w = info.width;
         float h = info.height;
 
-        // 三角形2つ（6頂点）を追加（3番目の要素 isColorFlag も正しく設定）
-        vertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, isColorFlag});
-        vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag});
-        vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag});
+        charVertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, isColorFlag, {textR, textG, textB, textA}});
+        charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {textR, textG, textB, textA}});
+        charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {textR, textG, textB, textA}});
+        charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {textR, textG, textB, textA}});
+        charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {textR, textG, textB, textA}});
+        charVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag, {textR, textG, textB, textA}});
 
-        vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag});
-        vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag});
-        vertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag});
-
-        x += info.advance;
+        x += advance;
+        currentByteOffset += charBytes;
     }
+
+    // ==========================================================
+    // ★追加: テキストの「一番最後（末尾）」にカーソルがある場合の処理
+    // ==========================================================
+    for (size_t vPos : visualCursors) {
+        if (currentByteOffset == vPos) {
+            float curY = y - engine->lineHeight * 0.8f;
+            addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight, textR, textG, textB, 1.0f);
+        }
+    }
+
+    // すべての頂点を 1つの配列に結合 (背景 → 下線 → 文字 → カーソル の順)
+    std::vector<Vertex> vertices;
+    vertices.insert(vertices.end(), bgVertices.begin(), bgVertices.end());
+    vertices.insert(vertices.end(), lineVertices.begin(), lineVertices.end());
+    vertices.insert(vertices.end(), charVertices.begin(), charVertices.end());
+    vertices.insert(vertices.end(), cursorVertices.begin(), cursorVertices.end()); // ★ カーソルは文字の上に描画
 
     engine->vertexCount = static_cast<uint32_t>(vertices.size());
     if (engine->vertexCount == 0) return;
@@ -1385,19 +1481,6 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             LOGI("Touch Down: x=%f, y=%f, newCursorPos=%zu", x, y, targetPos);
         }
         return 1;
-    }
-        // ハードウェアキーボード等の処理
-    else if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_KEY) {
-        if (AKeyEvent_getAction(event) == AKEY_EVENT_ACTION_DOWN) {
-            int32_t keyCode = AKeyEvent_getKeyCode(event);
-            if (keyCode == AKEYCODE_DEL) {
-                backspaceAtCursors(engine);
-                return 1;
-            } else if (keyCode == AKEYCODE_ENTER) {
-                insertAtCursors(engine, "\n");
-                return 1;
-            }
-        }
     }
     return 0;
 }
