@@ -81,7 +81,7 @@ struct TextAtlas {
         FT_Bitmap* bmp = &targetFace->glyph->bitmap;
 
         // ★★★ 今回の肝： advance（文字幅）はあるが、Bitmapが無い（展開失敗）の場合 ★★★
-        if ((bmp->width == 0 || bmp->rows == 0) && targetFace->glyph->advance.x != 0 && charCode != 0 && glyphIndex != 0) {
+        if (charCode != 0x20 && charCode != 0xA0 && (bmp->width == 0 || bmp->rows == 0) && targetFace->glyph->advance.x != 0 && charCode != 0 && glyphIndex != 0) {
             LOGE("😎グリフ展開失敗（豆腐フォールバック）: cp:%x avance:%ld font:%s",
                  charCode, targetFace->glyph->advance.x, (targetFace == mainFace) ? "Main" : "Emoji");
 
@@ -352,7 +352,7 @@ struct UndoManager {
 struct Vertex {
     float pos[2]; // 画面上のX, Y座標
     float uv[2];  // テクスチャ上のU, V座標
-    int isColor;
+    float isColor;
 };
 
 // 毎フレームGPUに送る軽量な設定データ（Push Constants）
@@ -443,9 +443,13 @@ struct Engine {
 // 変更なしでそのままここに配置します。
 
 void cleanupVulkan(Engine* engine) {
-    if (engine->graphicsPipeline != VK_NULL_HANDLE) vkDestroyPipeline(engine->device, engine->graphicsPipeline, nullptr);
-
     if (engine->device == VK_NULL_HANDLE) return;
+
+    if (engine->graphicsPipeline != VK_NULL_HANDLE) {
+        vkDestroyPipeline(engine->device, engine->graphicsPipeline, nullptr);
+        engine->graphicsPipeline = VK_NULL_HANDLE; // ★念のためNULLを入れる
+    }
+
     vkDeviceWaitIdle(engine->device);
 
     if (engine->vertexBuffer != VK_NULL_HANDLE) vkDestroyBuffer(engine->device, engine->vertexBuffer, nullptr);
@@ -819,6 +823,19 @@ VkShaderModule createShaderModule(Engine* engine, const std::vector<uint32_t>& c
     return shaderModule;
 }
 
+std::vector<uint8_t> loadAsset(Engine* engine, const char* filename) {
+    AAsset* asset = AAssetManager_open(engine->app->activity->assetManager, filename, AASSET_MODE_BUFFER);
+    if (!asset) {
+        LOGE("アセットの読み込みに失敗: %s", filename);
+        return {};
+    }
+    size_t size = AAsset_getLength(asset);
+    std::vector<uint8_t> buffer(size);
+    AAsset_read(asset, buffer.data(), size);
+    AAsset_close(asset);
+    return buffer;
+}
+
 // グラフィックスパイプラインの構築
 bool createGraphicsPipeline(Engine* engine) {
     auto vertCode = loadShaderAsset(engine, "shaders/text.vert.spv");
@@ -844,7 +861,7 @@ bool createGraphicsPipeline(Engine* engine) {
 
     // --- ★今回追加：isColor フラグ ---
     attributeDescriptions[2].binding = 0; attributeDescriptions[2].location = 2; // シェーダの location = 2
-    attributeDescriptions[2].format = VK_FORMAT_R32_SINT; // 整数型(int)
+    attributeDescriptions[2].format = VK_FORMAT_R32_SFLOAT; // 整数型(int)
     attributeDescriptions[2].offset = offsetof(Vertex, isColor);
 
     // vertexInputInfo の属性数を3にする
@@ -957,20 +974,21 @@ bool initVulkan(Engine* engine) {
         }
     }
 
-    const char* emojiPath = "/system/fonts/NotoColorEmoji.ttf";
-    std::ifstream emojiFile(emojiPath, std::ios::binary | std::ios::ate);
-    if (emojiFile.is_open()) {
-        size_t size = emojiFile.tellg();
-        engine->fontDataEmoji.resize(size);
-        emojiFile.seekg(0, std::ios::beg); emojiFile.read((char*)engine->fontDataEmoji.data(), size);
+    engine->fontDataEmoji = loadAsset(engine, "fonts/NotoColorEmoji.ttf");
 
+    if (!engine->fontDataEmoji.empty()) {
         if (FT_New_Memory_Face(engine->ftLibrary, engine->fontDataEmoji.data(), engine->fontDataEmoji.size(), 0, &engine->ftFaceEmoji) == 0) {
-            // ★修正3: ビットマップフォントの場合は固定サイズを選択する
+
+            // ビットマップフォントの場合は固定サイズを選択する
             if (FT_HAS_FIXED_SIZES(engine->ftFaceEmoji)) {
-                FT_Select_Size(engine->ftFaceEmoji, 0); // 用意されている最初のサイズ（Androidでは通常109px）を選択
+                FT_Select_Size(engine->ftFaceEmoji, 0); // 用意されている最初のサイズ（109px）を選択
+                LOGI("絵文字フォントの読み込み成功（固定サイズ選択）");
             } else {
                 FT_Set_Pixel_Sizes(engine->ftFaceEmoji, 0, 48);
+                LOGI("絵文字フォントの読み込み成功（動的サイズ設定）");
             }
+        } else {
+            LOGE("絵文字フォントのFT_Face生成に失敗");
         }
     }
 
@@ -1021,7 +1039,7 @@ void updateTextVertices(Engine* engine) {
         if (engine->atlas.glyphs.count(charCode) == 0) continue;
 
         GlyphInfo& info = engine->atlas.glyphs[charCode];
-        int isColorFlag = info.isColor ? 1 : 0;
+        float isColorFlag = info.isColor ? 1.0f : 0.0f;
 
         float xpos = x + info.bearingX;
         float ypos = y - info.bearingY;
