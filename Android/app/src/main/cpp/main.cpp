@@ -333,6 +333,15 @@ struct Engine {
     std::vector<size_t> lineStarts;
     std::string imeComp; // ★IME変換中の未確定文字列
 
+    float scrollX = 0.0f; // ピクセル単位の横スクロール量
+    float scrollY = 0.0f; // ピクセル単位の縦スクロール量
+    float maxLineWidth = 0.0f;
+    float bottomInset = 0.0f; // キーボードの高さ
+
+    float lastTouchX = 0.0f;
+    float lastTouchY = 0.0f;
+    bool isDragging = false;
+
     int vScrollPos = 0;
     int hScrollPos = 0;
     float lineHeight = 60.0f;
@@ -470,31 +479,30 @@ float getXFromPos(Engine* engine, size_t pos) {
 }
 // タッチされたピクセル座標(X, Y)から、PieceTable上の文字インデックス(pos)を計算する
 size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
-    // 1. Y座標から「何行目をタップしたか」を割り出す
-    // （※将来的にスケーリング(dpiScale)を入れる場合はここで補正します）
-    float virtualY = touchY + (engine->vScrollPos * engine->lineHeight);
+    // 1. タップされたY座標にスクロール量を足して「仮想Y座標」にする
+    float virtualY = touchY + engine->scrollY - 100.0f; // 100.0fの余白分を引く
+    if (virtualY < 0.0f) virtualY = 0.0f;
+
     int lineIdx = (int)(virtualY / engine->lineHeight);
 
     if (lineIdx < 0) return 0;
     if (lineIdx >= engine->lineStarts.size()) return engine->pt.length();
 
-    // 2. その行の開始位置と終了位置を取得
     size_t start = engine->lineStarts[lineIdx];
     size_t end = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
 
-    // 改行文字自体はタップ判定から除外
     if (end > start && engine->pt.charAt(end - 1) == '\n') end--;
     if (end > start && engine->pt.charAt(end - 1) == '\r') end--;
 
     size_t len = end - start;
-    if (len == 0) return start; // 空行をタップした場合は行頭へ
+    if (len == 0) return start;
 
     std::string lineStr = engine->pt.getRange(start, len);
     const char* ptr = lineStr.data();
     const char* strEnd = ptr + lineStr.size();
 
-    // 3. X座標を先頭から順に足していき、タップ位置に最も近い文字を探す
-    float currentX = engine->gutterWidth - engine->hScrollPos; // 描画開始のX座標
+    // 2. X座標のスタート位置にもスクロールを考慮
+    float currentX = engine->gutterWidth - engine->scrollX;
     size_t currentPos = start;
 
     while (ptr < strEnd) {
@@ -524,10 +532,42 @@ size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
     return currentPos;
 }
 
-
+// カーソルが画面内に収まるようにスクロール量を自動調整する
 void ensureCaretVisible(Engine* engine) {
-    // 画面内にカーソルが入るようにスクロール位置を調整するロジック
-    // (Windows版の移植。Androidの画面サイズに合わせて後ほど微調整)
+    if (engine->cursors.empty()) return;
+    size_t pos = engine->cursors.back().head;
+
+    int lineIdx = getLineIdx(engine, pos);
+    float caretY = 100.0f + lineIdx * engine->lineHeight;
+    float caretX = getXFromPos(engine, pos);
+
+    float winW = 1080.0f;
+    float winH = 2000.0f;
+    if (engine->app->window != nullptr) {
+        winW = (float)ANativeWindow_getWidth(engine->app->window);
+        winH = (float)ANativeWindow_getHeight(engine->app->window);
+    }
+
+    // ★修正: 画面の高さからキーボードの高さ(bottomInset)を引いたものを可視領域とする
+    float visibleH = winH - engine->bottomInset;
+    if (visibleH < winH * 0.3f) visibleH = winH * 0.5f; // 念のための安全策
+
+    // --- 縦(Y)スクロールの調整 ---
+    if (caretY < engine->scrollY + 100.0f) {
+        engine->scrollY = caretY - 100.0f;
+    } else if (caretY + engine->lineHeight > engine->scrollY + visibleH) {
+        // ★キーボードの真上(visibleH)にカーソルが来るようにスクロール
+        engine->scrollY = caretY + engine->lineHeight - visibleH;
+    }
+    // --- 横(X)スクロールの調整 ---
+    if (caretX < engine->scrollX) {
+        engine->scrollX = caretX;
+    } else if (caretX + engine->charWidth * 2.0f > engine->scrollX + winW - engine->gutterWidth) {
+        engine->scrollX = caretX + engine->charWidth * 2.0f - (winW - engine->gutterWidth);
+    }
+
+    if (engine->scrollX < 0.0f) engine->scrollX = 0.0f;
+    if (engine->scrollY < 0.0f) engine->scrollY = 0.0f;
 }
 
 void insertAtCursors(Engine* engine, const std::string& text) {
@@ -555,6 +595,7 @@ void insertAtCursors(Engine* engine, const std::string& text) {
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
     rebuildLineStarts(engine);
+    ensureCaretVisible(engine);
 }
 
 void backspaceAtCursors(Engine* engine) {
@@ -572,6 +613,7 @@ void backspaceAtCursors(Engine* engine) {
         c.anchor = c.head;
         rebuildLineStarts(engine);
     }
+    ensureCaretVisible(engine);
 }
 
 // ============================================================================
@@ -607,6 +649,12 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteSurroundingText(JNIEn
     if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
     g_imeQueue.push_back({ ImeEvent::Delete, "" });
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateVisibleHeight(JNIEnv* env, jobject thiz, jint bottomInset) {
+    if (!g_engine) return;
+    g_engine->bottomInset = (float)bottomInset;
+    // 高さが変わったらカーソルが隠れないように再調整する
+    ensureCaretVisible(g_engine);
 }
 }
 
@@ -1183,8 +1231,10 @@ bool initVulkan(Engine* engine) {
 }
 
 void updateTextVertices(Engine* engine) {
-    float x = engine->gutterWidth;
-    float y = 100.0f;
+    float x = engine->gutterWidth - engine->scrollX;
+    float y = 100.0f - engine->scrollY; // 100.0fは上部の余白
+
+    engine->maxLineWidth = engine->gutterWidth;
 
     size_t len = engine->pt.length();
     std::string text = engine->pt.getRange(0, len);
@@ -1251,12 +1301,16 @@ void updateTextVertices(Engine* engine) {
         if (*ptr == '\r') {
             ptr++; currentByteOffset += (ptr - prevPtr);
             if (ptr < end && *ptr == '\n') { prevPtr = ptr; ptr++; currentByteOffset += (ptr - prevPtr); }
-            x = engine->gutterWidth; y += engine->lineHeight;
+            // ★修正: ここで scrollX を引く
+            x = engine->gutterWidth - engine->scrollX;
+            y += engine->lineHeight;
             continue;
         }
         if (*ptr == '\n') {
             ptr++; currentByteOffset += (ptr - prevPtr);
-            x = engine->gutterWidth; y += engine->lineHeight;
+            // ★修正: ここで scrollX を引く
+            x = engine->gutterWidth - engine->scrollX;
+            y += engine->lineHeight;
             continue;
         }
 
@@ -1301,6 +1355,13 @@ void updateTextVertices(Engine* engine) {
 
         x += advance;
         currentByteOffset += charBytes;
+
+        // ★追加: 現在の文字の右端の「絶対座標（スクロール無し状態の座標）」を計算して最大幅を更新
+        float absoluteX = x + engine->scrollX;
+        if (absoluteX > engine->maxLineWidth) {
+            engine->maxLineWidth = absoluteX;
+        }
+
     }
 
     // ==========================================================
@@ -1312,13 +1373,75 @@ void updateTextVertices(Engine* engine) {
             addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight, textR, textG, textB, 1.0f);
         }
     }
+    std::vector<Vertex> gutterBgVertices;
+    std::vector<Vertex> gutterTextVertices;
+    float winH = 5000.0f; // 十分な高さを確保
+    if (engine->app->window != nullptr) {
+        winH = (float)ANativeWindow_getHeight(engine->app->window);
+    }
+    // ① ガターの背景を描画（少し暗いグレーに。横スクロール時も左端に固定）
+    addRect(gutterBgVertices, 0.0f, 0.0f, engine->gutterWidth, winH, 0.15f, 0.15f, 0.15f, 1.0f);
+    float gutterTextR = 0.6f, gutterTextG = 0.6f, gutterTextB = 0.6f;
+    // ② 各行の行番号テキストを描画
+    for (int i = 0; i < engine->lineStarts.size(); ++i) {
+        // スクロールを反映した行のY座標
+        float lineY = 100.0f - engine->scrollY + i * engine->lineHeight;
 
-    // すべての頂点を 1つの配列に結合 (背景 → 下線 → 文字 → カーソル の順)
+        // 画面外なら描画をスキップ（カリング）
+        if (lineY + engine->lineHeight < 0.0f || lineY > winH) continue;
+
+        std::string lineNumStr = std::to_string(i + 1);
+
+        // 右寄せにするための文字列幅計算
+        float numWidth = 0;
+        for(char c : lineNumStr) {
+            uint32_t cp = c;
+            if (engine->atlas.glyphs.count(cp) == 0 && engine->ftFaceMain != nullptr) {
+                engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
+            }
+            if (engine->atlas.glyphs.count(cp) > 0) numWidth += engine->atlas.glyphs[cp].advance;
+            else numWidth += engine->charWidth;
+        }
+
+        // ガターの右端から少し(10px)内側に配置
+        float numX = engine->gutterWidth - 10.0f - numWidth;
+
+        // 行番号の頂点生成
+        for(char c : lineNumStr) {
+            uint32_t cp = c;
+            if (engine->atlas.glyphs.count(cp) > 0) {
+                GlyphInfo& info = engine->atlas.glyphs[cp];
+                float xpos = numX + info.bearingX;
+                float ypos = lineY - info.bearingY;
+                float w = info.width;
+                float h = info.height;
+
+                gutterTextVertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
+                gutterTextVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
+                gutterTextVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
+                gutterTextVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
+                gutterTextVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
+                gutterTextVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
+
+                numX += info.advance;
+            } else {
+                numX += engine->charWidth;
+            }
+        }
+    }
+    // --- ↑ここまで追加 ---
+
+    // ★修正：すべての頂点を 1つの配列に結合する順番を調整
+    // (背景 → 下線 → 文字 → カーソル → ガター背景 → ガター文字 の順にすることで、横スクロール時に本文がガターの下に隠れる！)
     std::vector<Vertex> vertices;
     vertices.insert(vertices.end(), bgVertices.begin(), bgVertices.end());
     vertices.insert(vertices.end(), lineVertices.begin(), lineVertices.end());
     vertices.insert(vertices.end(), charVertices.begin(), charVertices.end());
-    vertices.insert(vertices.end(), cursorVertices.begin(), cursorVertices.end()); // ★ カーソルは文字の上に描画
+    vertices.insert(vertices.end(), cursorVertices.begin(), cursorVertices.end());
+
+    // ガターは最前面に描画
+    vertices.insert(vertices.end(), gutterBgVertices.begin(), gutterBgVertices.end());
+    vertices.insert(vertices.end(), gutterTextVertices.begin(), gutterTextVertices.end());
 
     engine->vertexCount = static_cast<uint32_t>(vertices.size());
     if (engine->vertexCount == 0) return;
@@ -1450,35 +1573,78 @@ void renderFrame(Engine* engine) {
 // ============================================================================
 
 // Androidからのタッチやキーボード入力を処理するコールバック
+// ============================================================================
+// Android イベントハンドラ (AInputEvent)
+// ============================================================================
 static int32_t handleInput(struct android_app* app, AInputEvent* event) {
     Engine* engine = (Engine*)app->userData;
 
-    // タッチイベントの処理
     if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
-        if (AMotionEvent_getAction(event) == AMOTION_EVENT_ACTION_DOWN) {
-            // キーボードを表示
+        int32_t action = AMotionEvent_getAction(event) & AMOTION_EVENT_ACTION_MASK;
+        float x = AMotionEvent_getX(event, 0);
+        float y = AMotionEvent_getY(event, 0);
+
+        if (action == AMOTION_EVENT_ACTION_DOWN) {
+            // タッチ開始位置を記録
+            engine->lastTouchX = x;
+            engine->lastTouchY = y;
+            engine->isDragging = false;
+
+            // キーボードを出す処理
             JNIEnv* env = nullptr;
             app->activity->vm->AttachCurrentThread(&env, nullptr);
             jclass activityClass = env->GetObjectClass(app->activity->clazz);
             jmethodID showImeMethod = env->GetMethodID(activityClass, "showSoftwareKeyboard", "()V");
-            if (showImeMethod) {
-                env->CallVoidMethod(app->activity->clazz, showImeMethod);
-            }
+            if (showImeMethod) env->CallVoidMethod(app->activity->clazz, showImeMethod);
             env->DeleteLocalRef(activityClass);
             app->activity->vm->DetachCurrentThread();
 
-            // ★ タッチ座標を取得し、カーソル位置を更新する
-            float x = AMotionEvent_getX(event, 0);
-            float y = AMotionEvent_getY(event, 0);
+        } else if (action == AMOTION_EVENT_ACTION_MOVE) {
+            float dx = x - engine->lastTouchX;
+            float dy = y - engine->lastTouchY;
 
-            size_t targetPos = getDocPosFromPoint(engine, x, y);
+            if (!engine->isDragging && (std::abs(dx) > 10.0f || std::abs(dy) > 10.0f)) {
+                engine->isDragging = true;
+            }
 
-            // スレッドセーフにカーソルを更新（描画スレッドと競合しないよう念のためキューに入れても良いですが、
-            // 単一タップなら直接上書きでもひとまず動きます）
-            engine->cursors.clear();
-            engine->cursors.push_back({ targetPos, targetPos, getXFromPos(engine, targetPos) });
+            if (engine->isDragging) {
+                engine->scrollX -= dx;
+                engine->scrollY -= dy;
 
-            LOGI("Touch Down: x=%f, y=%f, newCursorPos=%zu", x, y, targetPos);
+                // ① マイナス方向（一番上・一番左）の制限
+                if (engine->scrollX < 0.0f) engine->scrollX = 0.0f;
+                if (engine->scrollY < 0.0f) engine->scrollY = 0.0f;
+
+                // ② プラス方向（一番下・一番右）の制限
+                if (app->window != nullptr) {
+                    float winW = (float)ANativeWindow_getWidth(app->window);
+                    float winH = (float)ANativeWindow_getHeight(app->window);
+
+                    // ★修正: 実質的な画面の高さを計算
+                    float visibleH = winH - engine->bottomInset;
+
+                    // 縦の最大スクロール量 (行数 × 行の高さ + 上の余白100 + 下に1行分の遊び)
+                    float contentH = engine->lineStarts.size() * engine->lineHeight + 100.0f + engine->lineHeight;
+
+                    // ★修正: winH ではなく visibleH を引くことで、キーボード分余計にスクロールできるようにする
+                    float maxScrollY = std::max(0.0f, contentH - visibleH);
+
+                    float maxScrollX = std::max(0.0f, engine->maxLineWidth - winW + engine->charWidth * 2.0f);
+
+                    if (engine->scrollY > maxScrollY) engine->scrollY = maxScrollY;
+                    if (engine->scrollX > maxScrollX) engine->scrollX = maxScrollX;
+                }
+                engine->lastTouchX = x;
+                engine->lastTouchY = y;
+            }
+        } else if (action == AMOTION_EVENT_ACTION_UP) {
+            if (!engine->isDragging) {
+                // ドラッグしていなかった（単なるタップだった）場合はカーソルを移動
+                size_t targetPos = getDocPosFromPoint(engine, x, y);
+                engine->cursors.clear();
+                engine->cursors.push_back({ targetPos, targetPos, getXFromPos(engine, targetPos) });
+            }
+            engine->isDragging = false;
         }
         return 1;
     }
@@ -1519,6 +1685,10 @@ void android_main(struct android_app* app) {
     app->onAppCmd = onAppCmd;
     app->onInputEvent = handleInput;
     g_engine = &engine;
+
+    engine.pt.initEmpty(); // 空のドキュメントとして初期化
+    rebuildLineStarts(&engine); // 1行目(0文字目スタート)のデータを作成
+    engine.cursors.push_back({0, 0, 0.0f}); // カーソルを先頭に配置
 
     while (true) {
         int events;
