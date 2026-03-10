@@ -1,8 +1,9 @@
 #include <android_native_app_glue.h>
 #include <android/log.h>
-#include <algorithm>
+#include <jni.h> // ★JNI連携用
 #include <vector>
 #include <string>
+#include <algorithm>
 #include <memory>
 #include <unordered_map>
 #include <fstream>
@@ -213,33 +214,12 @@ std::vector<uint8_t> loadSystemFont() {
 // エディタコアロジック (PieceTable等)
 // ============================================================================
 
-struct Piece {
-    bool isOriginal;
-    size_t start;
-    size_t len;
-};
-
+struct Piece { bool isOriginal; size_t start; size_t len; };
 struct PieceTable {
-    const char* origPtr = nullptr;
-    size_t origSize = 0;
-    std::string addBuf;
-    std::vector<Piece> pieces;
-
-    void initFromFile(const char* data, size_t size) {
-        origPtr = data; origSize = size;
-        pieces.clear(); addBuf.clear();
-        if (size > 0) pieces.push_back({ true, 0, size });
-    }
-
-    void initEmpty() {
-        origPtr = nullptr; origSize = 0;
-        pieces.clear(); addBuf.clear();
-    }
-
-    size_t length() const {
-        size_t s = 0; for (auto& p : pieces) s += p.len; return s;
-    }
-
+    const char* origPtr = nullptr; size_t origSize = 0;
+    std::string addBuf; std::vector<Piece> pieces;
+    void initEmpty() { origPtr = nullptr; origSize = 0; pieces.clear(); addBuf.clear(); }
+    size_t length() const { size_t s = 0; for (auto& p : pieces) s += p.len; return s; }
     std::string getRange(size_t pos, size_t count) const {
         std::string out; out.reserve(std::min(count, (size_t)4096));
         size_t cur = 0;
@@ -255,27 +235,21 @@ struct PieceTable {
         }
         return out;
     }
-
     void insert(size_t pos, const std::string& s) {
         if (s.empty()) return;
         size_t cur = 0; size_t idx = 0;
         while (idx < pieces.size() && cur + pieces[idx].len < pos) { cur += pieces[idx].len; ++idx; }
         if (idx < pieces.size()) {
-            Piece p = pieces[idx];
-            size_t offsetInPiece = pos - cur;
+            Piece p = pieces[idx]; size_t offsetInPiece = pos - cur;
             if (offsetInPiece > 0 && offsetInPiece < p.len) {
                 pieces[idx] = { p.isOriginal, p.start, offsetInPiece };
                 pieces.insert(pieces.begin() + idx + 1, { p.isOriginal, p.start + offsetInPiece, p.len - offsetInPiece });
                 idx++;
-            }
-            else if (offsetInPiece == p.len) idx++;
-        }
-        else idx = pieces.size();
+            } else if (offsetInPiece == p.len) idx++;
+        } else idx = pieces.size();
         size_t addStart = addBuf.size(); addBuf.append(s);
         pieces.insert(pieces.begin() + idx, { false, addStart, s.size() });
-        coalesceAround(idx);
     }
-
     void erase(size_t pos, size_t count) {
         if (count == 0) return;
         size_t cur = 0; size_t idx = 0;
@@ -292,30 +266,14 @@ struct PieceTable {
             if (pieces[idx].len <= remaining) { remaining -= pieces[idx].len; pieces.erase(pieces.begin() + idx); }
             else { pieces[idx].start += remaining; pieces[idx].len -= remaining; remaining = 0; }
         }
-        coalesceAround(idx > 0 ? idx - 1 : 0);
     }
-
-    void coalesceAround(size_t idx) {
-        if (pieces.empty()) return;
-        if (idx >= pieces.size()) idx = pieces.size() - 1;
-        if (idx > 0) {
-            Piece& a = pieces[idx - 1]; Piece& b = pieces[idx];
-            if (!a.isOriginal && !b.isOriginal && (a.start + a.len == b.start)) { a.len += b.len; pieces.erase(pieces.begin() + idx); idx--; }
-        }
-        if (idx + 1 < pieces.size()) {
-            Piece& a = pieces[idx]; Piece& b = pieces[idx + 1];
-            if (!a.isOriginal && !b.isOriginal && (a.start + a.len == b.start)) { a.len += b.len; pieces.erase(pieces.begin() + idx + 1); }
-        }
-    }
-
     char charAt(size_t pos) const {
         size_t cur = 0;
         for (const auto& p : pieces) {
             if (cur + p.len <= pos) { cur += p.len; continue; }
-            size_t local = pos - cur;
-            if (p.isOriginal) return origPtr[p.start + local]; else return addBuf[p.start + local];
+            return p.isOriginal ? origPtr[p.start + (pos - cur)] : addBuf[p.start + (pos - cur)];
         }
-        return ' ';
+        return '\0';
     }
 };
 
@@ -324,22 +282,13 @@ struct Cursor {
     size_t start() const { return std::min(head, anchor); }
     size_t end() const { return std::max(head, anchor); }
     bool hasSelection() const { return head != anchor; }
-    void clearSelection() { anchor = head; }
 };
 
 struct EditOp { enum Type { Insert, Erase } type; size_t pos; std::string text; };
 struct EditBatch { std::vector<EditOp> ops; std::vector<Cursor> beforeCursors; std::vector<Cursor> afterCursors; };
-
 struct UndoManager {
-    std::vector<EditBatch> undoStack; std::vector<EditBatch> redoStack; int savePoint = 0;
-    void clear() { undoStack.clear(); redoStack.clear(); savePoint = 0; }
-    void markSaved() { savePoint = (int)undoStack.size(); }
-    bool isModified() const { return (int)undoStack.size() != savePoint; }
-    void push(const EditBatch& batch) { if (savePoint > (int)undoStack.size()) savePoint = -1; undoStack.push_back(batch); redoStack.clear(); }
-    bool canUndo() const { return !undoStack.empty(); }
-    bool canRedo() const { return !redoStack.empty(); }
-    EditBatch popUndo() { EditBatch e = undoStack.back(); undoStack.pop_back(); redoStack.push_back(e); return e; }
-    EditBatch popRedo() { EditBatch e = redoStack.back(); redoStack.pop_back(); undoStack.push_back(e); return e; }
+    std::vector<EditBatch> undoStack; std::vector<EditBatch> redoStack;
+    void push(const EditBatch& batch) { undoStack.push_back(batch); redoStack.clear(); }
 };
 
 // ============================================================================
@@ -365,22 +314,21 @@ struct PushConstants {
 
 struct Engine {
     struct android_app* app;
-    bool isWindowReady;
+    bool isWindowReady = false;
 
-    // --- エディタの状態 ---
     PieceTable pt;
     UndoManager undo;
     std::vector<Cursor> cursors;
     std::vector<size_t> lineStarts;
-    bool isDirty = false;
+    std::string imeComp; // ★IME変換中の未確定文字列
+
     int vScrollPos = 0;
     int hScrollPos = 0;
-    float maxLineWidth = 100.0f;
-    float gutterWidth = 50.0f;
+    float lineHeight = 60.0f;
+    float charWidth = 24.0f;
+    float gutterWidth = 100.0f;
 
     float currentFontSize = 48.0f; // 21.0f から 48.0f へ
-    float lineHeight = 60.0f;      // 26.25f から 60.0f へ (48の1.25倍)
-    float charWidth = 24.0f;       // 10.0f から 24.0f へ (48の半分程度)
 
     // --- Vulkan オブジェクト ---
     VkInstance instance;
@@ -433,6 +381,168 @@ struct Engine {
     VkBuffer atlasStagingBuffer = VK_NULL_HANDLE;
     VkDeviceMemory atlasStagingMemory = VK_NULL_HANDLE;
 };
+
+
+#include <mutex>
+#include <deque>
+
+// 入力イベントのリスト
+struct ImeEvent {
+    enum Type { Commit, Composing, Delete } type;
+    std::string text;
+};
+
+std::mutex g_imeMutex;
+std::deque<ImeEvent> g_imeQueue;
+
+
+
+Engine* g_engine = nullptr;
+
+// ============================================================================
+// 3. Android用: テキストレイアウトとカーソル制御
+// ============================================================================
+void rebuildLineStarts(Engine* engine) {
+    engine->lineStarts.clear();
+    engine->lineStarts.push_back(0);
+    size_t totalLen = engine->pt.length();
+    for (size_t i = 0; i < totalLen; ++i) {
+        if (engine->pt.charAt(i) == '\n') {
+            engine->lineStarts.push_back(i + 1);
+        }
+    }
+}
+
+int getLineIdx(Engine* engine, size_t pos) {
+    if (engine->lineStarts.empty()) return 0;
+    auto it = std::upper_bound(engine->lineStarts.begin(), engine->lineStarts.end(), pos);
+    int idx = (int)std::distance(engine->lineStarts.begin(), it) - 1;
+    return std::max(0, std::min(idx, (int)engine->lineStarts.size() - 1));
+}
+
+// ★ DirectWrite の layout->HitTestTextPosition の代わり
+float getXFromPos(Engine* engine, size_t pos) {
+    int lineIdx = getLineIdx(engine, pos);
+    // 安全対策：行インデックスの範囲外アクセス防止
+    if (lineIdx < 0 || lineIdx >= engine->lineStarts.size()) return 0.0f;
+
+    size_t start = engine->lineStarts[lineIdx];
+    size_t len = pos - start;
+    if (len <= 0) return 0.0f;
+
+    std::string text = engine->pt.getRange(start, len);
+    const char* ptr = text.data();
+    const char* end = ptr + text.size();
+    float x = 0.0f;
+
+    while (ptr < end) {
+        uint32_t cp = decodeUtf8(&ptr, end);
+        if (cp == 0) break;
+
+        // ★修正：アトラスに無い文字は、ここで動的にロードを試みる
+        if (engine->atlas.glyphs.count(cp) == 0) {
+            // ftFaceMain や ftFaceEmoji が null の場合でもクラッシュしないようチェック
+            if (engine->ftFaceMain != nullptr) {
+                engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
+            }
+        }
+
+        // ロードに成功したか、すでに存在する場合はその幅を足す
+        if (engine->atlas.glyphs.count(cp) > 0) {
+            x += engine->atlas.glyphs[cp].advance;
+        } else {
+            // ロードできなかった場合（豆腐すら出ない異常事態）はデフォルト幅
+            x += engine->charWidth;
+        }
+    }
+    return x;
+}
+
+void ensureCaretVisible(Engine* engine) {
+    // 画面内にカーソルが入るようにスクロール位置を調整するロジック
+    // (Windows版の移植。Androidの画面サイズに合わせて後ほど微調整)
+}
+
+void insertAtCursors(Engine* engine, const std::string& text) {
+    if (engine->cursors.empty() || text.empty()) return; // 空文字の挿入は無視
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+
+    // シンプル化のため、最初のカーソルにのみ挿入する処理（マルチカーソル対応はWindows版準拠で拡張可）
+    Cursor& c = engine->cursors.back();
+    if (c.hasSelection()) {
+        size_t s = c.start(); size_t l = c.end() - s;
+        std::string d = engine->pt.getRange(s, l);
+        engine->pt.erase(s, l);
+        batch.ops.push_back({ EditOp::Erase, s, d });
+        c.head = s; c.anchor = s;
+    }
+
+    engine->pt.insert(c.head, text);
+    batch.ops.push_back({ EditOp::Insert, c.head, text });
+
+    c.head += text.size();
+    c.anchor = c.head;
+    c.desiredX = getXFromPos(engine, c.head);
+
+    batch.afterCursors = engine->cursors;
+    engine->undo.push(batch);
+    rebuildLineStarts(engine);
+}
+
+void backspaceAtCursors(Engine* engine) {
+    if (engine->cursors.empty()) return;
+    Cursor& c = engine->cursors.back();
+    if (c.head > 0 && !c.hasSelection()) {
+        // UTF-8の文字境界を考慮したバックスペース
+        size_t eraseLen = 1;
+        while (c.head - eraseLen > 0 && (engine->pt.charAt(c.head - eraseLen) & 0xC0) == 0x80) {
+            eraseLen++; // マルチバイト文字の先頭バイトを探す
+        }
+        std::string d = engine->pt.getRange(c.head - eraseLen, eraseLen);
+        engine->pt.erase(c.head - eraseLen, eraseLen);
+        c.head -= eraseLen;
+        c.anchor = c.head;
+        rebuildLineStarts(engine);
+    }
+}
+
+// ============================================================================
+// 4. JNIによるIME・キーボード連携 (Java/Kotlinからの呼び出し口)
+// ============================================================================
+// ============================================================================
+// JNIによるIME・キーボード連携 (Javaからの呼び出し口)
+// ============================================================================
+#include <jni.h>
+
+extern "C" {
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_commitText(JNIEnv* env, jobject thiz, jstring text) {
+    if (!g_engine) return;
+    const char* str = env->GetStringUTFChars(text, nullptr);
+    if (str) {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        g_imeQueue.push_back({ ImeEvent::Commit, str });
+        env->ReleaseStringUTFChars(text, str);
+    }
+}
+
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_setComposingText(JNIEnv* env, jobject thiz, jstring text) {
+    if (!g_engine) return;
+    const char* str = env->GetStringUTFChars(text, nullptr);
+    if (str) {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        g_imeQueue.push_back({ ImeEvent::Composing, str });
+        env->ReleaseStringUTFChars(text, str);
+    }
+}
+
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteSurroundingText(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_imeQueue.push_back({ ImeEvent::Delete, "" });
+}
+}
+
 
 // ============================================================================
 // [3] Vulkan 初期化・破棄・描画ロジック (前回の内容)
@@ -1191,26 +1301,41 @@ void renderFrame(Engine* engine) {
 static int32_t handleInput(struct android_app* app, AInputEvent* event) {
     Engine* engine = (Engine*)app->userData;
 
-    // タッチイベントの処理 (Windowsの WM_LBUTTONDOWN 等に相当)
+    // タッチイベントの処理
     if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
-        int32_t action = AMotionEvent_getAction(event);
-        if (action == AMOTION_EVENT_ACTION_DOWN) {
+        if (AMotionEvent_getAction(event) == AMOTION_EVENT_ACTION_DOWN) {
+
+            // JNIを経由して Kotlin側の showSoftwareKeyboard() を呼び出す
+            JNIEnv* env = nullptr;
+            app->activity->vm->AttachCurrentThread(&env, nullptr);
+            jclass activityClass = env->GetObjectClass(app->activity->clazz);
+            jmethodID showImeMethod = env->GetMethodID(activityClass, "showSoftwareKeyboard", "()V");
+            if (showImeMethod) {
+                env->CallVoidMethod(app->activity->clazz, showImeMethod);
+            }
+            env->DeleteLocalRef(activityClass);
+            app->activity->vm->DetachCurrentThread();
+
             float x = AMotionEvent_getX(event, 0);
             float y = AMotionEvent_getY(event, 0);
             LOGI("Touch Down: x=%f, y=%f", x, y);
-            // 今後、ここに getDocPosFromPoint などを呼び出すロジックを接続します
-        }
-        return 1; // 処理済み
-    }
-        // キーボードイベントの処理 (Windowsの WM_KEYDOWN, WM_CHAR 等に相当)
-    else if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_KEY) {
-        int32_t action = AKeyEvent_getAction(event);
-        if (action == AKEY_EVENT_ACTION_DOWN) {
-            int32_t keyCode = AKeyEvent_getKeyCode(event);
-            LOGI("Key Down: %d", keyCode);
-            // 今後、ここに insertAtCursors や Delete 処理を接続します
+
+            // TODO: 今後、ここでタッチ座標からカーソル位置を移動する処理を記述
         }
         return 1;
+    }
+        // ハードウェアキーボード等の処理
+    else if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_KEY) {
+        if (AKeyEvent_getAction(event) == AKEY_EVENT_ACTION_DOWN) {
+            int32_t keyCode = AKeyEvent_getKeyCode(event);
+            if (keyCode == AKEYCODE_DEL) {
+                backspaceAtCursors(engine);
+                return 1;
+            } else if (keyCode == AKEYCODE_ENTER) {
+                insertAtCursors(engine, "\n");
+                return 1;
+            }
+        }
     }
     return 0;
 }
@@ -1248,33 +1373,38 @@ void android_main(struct android_app* app) {
     app->userData = &engine;
     app->onAppCmd = onAppCmd;
     app->onInputEvent = handleInput;
+    g_engine = &engine;
 
-    // イベントループ
     while (true) {
         int events;
         struct android_poll_source* source;
-
-        // isWindowReady が true（画面表示中）なら timeout=0 でノンブロッキング（全力でループを回す）
-        // false（裏に回っている時）なら timeout=-1 でOSからのイベントを待つ（一時停止）
         int timeout = engine.isWindowReady ? 0 : -1;
 
         while (ALooper_pollOnce(timeout, nullptr, &events, (void**)&source) >= 0) {
-            if (source != nullptr) {
-                source->process(app, source);
-            }
-
-            // アプリ終了要求が来た場合
-            if (app->destroyRequested != 0) {
-                cleanupVulkan(&engine);
-                return;
-            }
-
-            // イベントを処理した結果、ウィンドウ状態が変わったかもしれないのでタイムアウトを再評価
+            if (source != nullptr) source->process(app, source);
+            if (app->destroyRequested != 0) { cleanupVulkan(&engine); return; }
             timeout = engine.isWindowReady ? 0 : -1;
         }
 
-        // ウィンドウが準備完了している時だけ、毎フレーム描画する
         if (engine.isWindowReady) {
+            // ★描画の直前に、安全に入力イベントを処理する
+            {
+                std::lock_guard<std::mutex> lock(g_imeMutex);
+                while (!g_imeQueue.empty()) {
+                    ImeEvent ev = g_imeQueue.front();
+                    g_imeQueue.pop_front();
+
+                    if (ev.type == ImeEvent::Commit) {
+                        engine.imeComp.clear();
+                        insertAtCursors(&engine, ev.text);
+                    } else if (ev.type == ImeEvent::Composing) {
+                        engine.imeComp = ev.text;
+                    } else if (ev.type == ImeEvent::Delete) {
+                        backspaceAtCursors(&engine);
+                    }
+                }
+            }
+
             renderFrame(&engine);
         }
     }
