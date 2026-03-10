@@ -457,6 +457,62 @@ float getXFromPos(Engine* engine, size_t pos) {
     }
     return x;
 }
+// タッチされたピクセル座標(X, Y)から、PieceTable上の文字インデックス(pos)を計算する
+size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
+    // 1. Y座標から「何行目をタップしたか」を割り出す
+    // （※将来的にスケーリング(dpiScale)を入れる場合はここで補正します）
+    float virtualY = touchY + (engine->vScrollPos * engine->lineHeight);
+    int lineIdx = (int)(virtualY / engine->lineHeight);
+
+    if (lineIdx < 0) return 0;
+    if (lineIdx >= engine->lineStarts.size()) return engine->pt.length();
+
+    // 2. その行の開始位置と終了位置を取得
+    size_t start = engine->lineStarts[lineIdx];
+    size_t end = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
+
+    // 改行文字自体はタップ判定から除外
+    if (end > start && engine->pt.charAt(end - 1) == '\n') end--;
+    if (end > start && engine->pt.charAt(end - 1) == '\r') end--;
+
+    size_t len = end - start;
+    if (len == 0) return start; // 空行をタップした場合は行頭へ
+
+    std::string lineStr = engine->pt.getRange(start, len);
+    const char* ptr = lineStr.data();
+    const char* strEnd = ptr + lineStr.size();
+
+    // 3. X座標を先頭から順に足していき、タップ位置に最も近い文字を探す
+    float currentX = engine->gutterWidth - engine->hScrollPos; // 描画開始のX座標
+    size_t currentPos = start;
+
+    while (ptr < strEnd) {
+        const char* prevPtr = ptr;
+        uint32_t cp = decodeUtf8(&ptr, strEnd);
+        if (cp == 0) break;
+
+        // アトラスに無い文字は動的にロード（getXFromPosと同じ安全対策）
+        if (engine->atlas.glyphs.count(cp) == 0 && engine->ftFaceMain != nullptr) {
+            engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
+        }
+
+        float advance = engine->charWidth;
+        if (engine->atlas.glyphs.count(cp) > 0) {
+            advance = engine->atlas.glyphs[cp].advance;
+        }
+
+        // ★ タッチされたX座標が、この文字の「中心」より左なら、この文字の直前にカーソルを置く
+        if (touchX < currentX + (advance / 2.0f)) {
+            break;
+        }
+
+        currentX += advance;
+        currentPos += (ptr - prevPtr); // UTF-8のバイト数分だけインデックスを進める
+    }
+
+    return currentPos;
+}
+
 
 void ensureCaretVisible(Engine* engine) {
     // 画面内にカーソルが入るようにスクロール位置を調整するロジック
@@ -1304,8 +1360,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
     // タッチイベントの処理
     if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
         if (AMotionEvent_getAction(event) == AMOTION_EVENT_ACTION_DOWN) {
-
-            // JNIを経由して Kotlin側の showSoftwareKeyboard() を呼び出す
+            // キーボードを表示
             JNIEnv* env = nullptr;
             app->activity->vm->AttachCurrentThread(&env, nullptr);
             jclass activityClass = env->GetObjectClass(app->activity->clazz);
@@ -1316,11 +1371,18 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             env->DeleteLocalRef(activityClass);
             app->activity->vm->DetachCurrentThread();
 
+            // ★ タッチ座標を取得し、カーソル位置を更新する
             float x = AMotionEvent_getX(event, 0);
             float y = AMotionEvent_getY(event, 0);
-            LOGI("Touch Down: x=%f, y=%f", x, y);
 
-            // TODO: 今後、ここでタッチ座標からカーソル位置を移動する処理を記述
+            size_t targetPos = getDocPosFromPoint(engine, x, y);
+
+            // スレッドセーフにカーソルを更新（描画スレッドと競合しないよう念のためキューに入れても良いですが、
+            // 単一タップなら直接上書きでもひとまず動きます）
+            engine->cursors.clear();
+            engine->cursors.push_back({ targetPos, targetPos, getXFromPos(engine, targetPos) });
+
+            LOGI("Touch Down: x=%f, y=%f, newCursorPos=%zu", x, y, targetPos);
         }
         return 1;
     }
