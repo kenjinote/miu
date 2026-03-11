@@ -69,6 +69,17 @@ public class MainActivity extends NativeActivity {
             }
         });
     }
+    public void hideSoftwareKeyboard() {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                if (imm != null) {
+                    imm.hideSoftInputFromWindow(getWindow().getDecorView().getWindowToken(), 0);
+                }
+            }
+        });
+    }
 
     // =========================================================
     // IMEと通信するためのカスタムビュー
