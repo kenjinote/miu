@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <fstream>
 #include <chrono>
-#include <cmath>
+#include <cmath> // 慣性スクロール等の数学関数用
 
 // --- FreeType のインクルード ---
 #include <ft2build.h>
@@ -20,7 +20,7 @@
 #include <vulkan/vulkan.h>
 
 // ============================================================================
-// ログ出力マクロ (これを必ず一番上に配置します)
+// ログ出力マクロ
 // ============================================================================
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "miu", __VA_ARGS__))
 #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "miu", __VA_ARGS__))
@@ -51,14 +51,13 @@ struct TextAtlas {
 
     void init() {
         pixels.resize(width * height * 4, 0);
-        // ★追加：アトラスの左上(0,0)に2x2の純白ピクセルを書き込んでおく
         for (int y = 0; y < 2; ++y) {
             for (int x = 0; x < 2; ++x) {
                 int idx = (y * width + x) * 4;
                 pixels[idx + 0] = 255; pixels[idx + 1] = 255; pixels[idx + 2] = 255; pixels[idx + 3] = 255;
             }
         }
-        currentX = 3; // 文字は(3,0)から配置スタート
+        currentX = 3;
         currentY = 0;
         maxRowHeight = 2;
     }
@@ -67,44 +66,35 @@ struct TextAtlas {
         if (glyphs.count(charCode) > 0) return true;
 
         FT_Face targetFace = mainFace;
-
-        // 1. まずメインフォントで文字を探す
         FT_UInt glyphIndex = FT_Get_Char_Index(mainFace, charCode);
 
-        // 2. メインフォントに文字がなく、絵文字フォントがある場合
         if (glyphIndex == 0 && emojiFace != nullptr) {
             FT_UInt emojiIndex = FT_Get_Char_Index(emojiFace, charCode);
             if (emojiIndex != 0) {
-                targetFace = emojiFace; // 絵文字フォントへ切り替え
+                targetFace = emojiFace;
                 glyphIndex = emojiIndex;
             }
         }
 
-        // 豆腐（.notdef）さえ無い緊急事態
         if (glyphIndex == 0 && charCode != 0) {
             FT_Load_Glyph(mainFace, 0, FT_LOAD_RENDER | FT_LOAD_COLOR);
             targetFace = mainFace;
         } else {
-            // 3. グリフをロード (NotoColorEmojiの場合、ここでPNGが展開される)
             if (FT_Load_Glyph(targetFace, glyphIndex, FT_LOAD_RENDER | FT_LOAD_COLOR) != 0) {
-                FT_Load_Glyph(mainFace, 0, FT_LOAD_RENDER | FT_LOAD_COLOR); // ロードエラーならメイン豆腐
+                FT_Load_Glyph(mainFace, 0, FT_LOAD_RENDER | FT_LOAD_COLOR);
                 targetFace = mainFace;
             }
         }
 
         FT_Bitmap* bmp = &targetFace->glyph->bitmap;
 
-        // ★★★ 今回の肝： advance（文字幅）はあるが、Bitmapが無い（展開失敗）の場合 ★★★
         if (charCode != 0x20 && charCode != 0xA0 && (bmp->width == 0 || bmp->rows == 0) && targetFace->glyph->advance.x != 0 && charCode != 0 && glyphIndex != 0) {
-            LOGE("😎グリフ展開失敗（豆腐フォールバック）: cp:%x avance:%ld font:%s",
-                 charCode, targetFace->glyph->advance.x, (targetFace == mainFace) ? "Main" : "Emoji");
-
-            // 強制的にメインフォントの豆腐をロード
+            LOGE("グリフ展開失敗: cp:%x", charCode);
             if (FT_Load_Glyph(mainFace, 0, FT_LOAD_RENDER | FT_LOAD_COLOR) == 0) {
                 targetFace = mainFace;
                 bmp = &targetFace->glyph->bitmap;
             } else {
-                return false; // それでもダメなら表示不能
+                return false;
             }
         }
 
@@ -120,10 +110,10 @@ struct TextAtlas {
                 size_t dstIdx = ((currentY + row) * width + (currentX + col)) * 4;
                 if (isColorGlyph) {
                     uint8_t* bgr = &bmp->buffer[row * bmp->pitch + col * 4];
-                    pixels[dstIdx + 0] = bgr[2]; // R
-                    pixels[dstIdx + 1] = bgr[1]; // G
-                    pixels[dstIdx + 2] = bgr[0]; // B
-                    pixels[dstIdx + 3] = bgr[3]; // A
+                    pixels[dstIdx + 0] = bgr[2];
+                    pixels[dstIdx + 1] = bgr[1];
+                    pixels[dstIdx + 2] = bgr[0];
+                    pixels[dstIdx + 3] = bgr[3];
                 } else {
                     uint8_t gray = bmp->buffer[row * bmp->pitch + col];
                     pixels[dstIdx + 0] = gray; pixels[dstIdx + 1] = gray; pixels[dstIdx + 2] = gray; pixels[dstIdx + 3] = gray;
@@ -144,7 +134,7 @@ struct TextAtlas {
 
         float scale = 1.0f;
         if (isColorGlyph && bmp->rows > 0) {
-            scale = 48.0f / (float)bmp->rows; // カラー絵文字のみ縮小
+            scale = 48.0f / (float)bmp->rows;
         }
 
         GlyphInfo info;
@@ -169,11 +159,7 @@ uint32_t decodeUtf8(const char** ptr, const char* end) {
     if (*ptr >= end) return 0;
     unsigned char c = **ptr;
     (*ptr)++;
-
-    // 1バイト文字 (ASCII)
     if (c < 0x80) return c;
-
-    // 2バイト文字
     if ((c & 0xE0) == 0xC0) {
         if (*ptr >= end) return 0;
         uint32_t cp = (c & 0x1F) << 6;
@@ -181,7 +167,6 @@ uint32_t decodeUtf8(const char** ptr, const char* end) {
         (*ptr)++;
         return cp;
     }
-    // 3バイト文字 (日本語の大部分)
     if ((c & 0xF0) == 0xE0) {
         if (*ptr + 1 >= end) { *ptr = end; return 0; }
         uint32_t cp = (c & 0x0F) << 12;
@@ -189,7 +174,6 @@ uint32_t decodeUtf8(const char** ptr, const char* end) {
         cp |= (**ptr & 0x3F);      (*ptr)++;
         return cp;
     }
-    // 4バイト文字 (絵文字や一部の特殊漢字)
     if ((c & 0xF8) == 0xF0) {
         if (*ptr + 2 >= end) { *ptr = end; return 0; }
         uint32_t cp = (c & 0x07) << 18;
@@ -198,7 +182,7 @@ uint32_t decodeUtf8(const char** ptr, const char* end) {
         cp |= (**ptr & 0x3F);       (*ptr)++;
         return cp;
     }
-    return '?'; // 不正なバイト列のフォールバック
+    return '?';
 }
 
 std::vector<uint8_t> loadSystemFont() {
@@ -207,7 +191,6 @@ std::vector<uint8_t> loadSystemFont() {
             "/system/fonts/NotoSansJP-Regular.otf",
             "/system/fonts/Roboto-Regular.ttf"
     };
-
     for (const char* path : paths) {
         std::ifstream file(path, std::ios::binary | std::ios::ate);
         if (file.is_open()) {
@@ -215,18 +198,15 @@ std::vector<uint8_t> loadSystemFont() {
             std::vector<uint8_t> buffer(size);
             file.seekg(0, std::ios::beg);
             file.read((char*)buffer.data(), size);
-            LOGI("フォント読み込み成功: %s (%zu bytes)", path, size);
             return buffer;
         }
     }
-    LOGE("システムフォントが見つかりませんでした。");
     return {};
 }
 
 // ============================================================================
 // エディタコアロジック (PieceTable等)
 // ============================================================================
-
 struct Piece { bool isOriginal; size_t start; size_t len; };
 struct PieceTable {
     const char* origPtr = nullptr; size_t origSize = 0;
@@ -310,25 +290,23 @@ int64_t getCurrentTimeMs() {
 }
 
 bool isWordChar(char c) {
-    // アルファベット、数字、アンダースコア、およびマルチバイト文字（日本語など）を単語とみなす
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
            (c >= '0' && c <= '9') || c == '_' ||
            (unsigned char)c >= 0x80;
 }
 
 struct Vertex {
-    float pos[2]; // 画面上のX, Y座標
-    float uv[2];  // テクスチャ上のU, V座標
+    float pos[2];
+    float uv[2];
     float isColor;
-    float color[4]; // ★追加
+    float color[4];
 };
 
-// 毎フレームGPUに送る軽量な設定データ（Push Constants）
 struct PushConstants {
     float screenWidth;
     float screenHeight;
-    float padding[2]; // ★GPUのルール（16バイト区切り）に合わせるための隙間
-    float color[4];   // 文字色 (R, G, B, A)
+    float padding[2];
+    float color[4];
 };
 
 struct Engine {
@@ -339,12 +317,15 @@ struct Engine {
     UndoManager undo;
     std::vector<Cursor> cursors;
     std::vector<size_t> lineStarts;
-    std::string imeComp; // ★IME変換中の未確定文字列
+    std::string imeComp;
 
-    float scrollX = 0.0f; // ピクセル単位の横スクロール量
-    float scrollY = 0.0f; // ピクセル単位の縦スクロール量
+    float scrollX = 0.0f;
+    float scrollY = 0.0f;
     float maxLineWidth = 0.0f;
+
+    // UI情報・マージン
     float bottomInset = 0.0f; // キーボードの高さ
+    float topMargin = 100.0f; // ★時計エリア(ステータスバー)の高さ+遊び
 
     int64_t lastClickTime = 0;
     int clickCount = 0;
@@ -355,23 +336,24 @@ struct Engine {
     float lastTouchY = 0.0f;
     bool isDragging = false;
 
+    // 慣性スクロール・ピンチ関連
+    bool isFlinging = false;
+    float velocityX = 0.0f;
+    float velocityY = 0.0f;
+    int64_t lastMoveTime = 0;
+    bool isPinching = false;
+    float lastPinchDistance = 0.0f;
+    bool isKeyboardShowing = false;
+
     int vScrollPos = 0;
     int hScrollPos = 0;
     float lineHeight = 60.0f;
     float charWidth = 24.0f;
     float gutterWidth = 100.0f;
 
-    float currentFontSize = 48.0f; // 21.0f から 48.0f へ
+    float currentFontSize = 48.0f;
 
-    bool isPinching = false;
-    float lastPinchDistance = 0.0f;
-    bool isKeyboardShowing = false;
-
-    bool isFlinging = false;   // 慣性スクロール中かどうか
-    float velocityX = 0.0f;    // X方向の速度 (px / ミリ秒)
-    float velocityY = 0.0f;    // Y方向の速度 (px / ミリ秒)
-    int64_t lastMoveTime = 0;  // 最後にタッチ移動した時刻
-
+    // テーマカラー
     bool isDarkMode = false;
     float bgColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     float textColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -388,12 +370,11 @@ struct Engine {
     VkQueue graphicsQueue;
     uint32_t queueFamilyIndex;
 
-// --- 追加するフォント関連変数 ---
     FT_Library ftLibrary;
     FT_Face ftFaceMain;
-    FT_Face ftFaceEmoji = nullptr; // ★今回追加 (NotoColorEmoji)
-    std::vector<uint8_t> fontDataMain;  // データも保持
-    std::vector<uint8_t> fontDataEmoji; // 絵文字フォントデータ
+    FT_Face ftFaceEmoji = nullptr;
+    std::vector<uint8_t> fontDataMain;
+    std::vector<uint8_t> fontDataEmoji;
     TextAtlas atlas;
 
     VkSwapchainKHR swapchain;
@@ -411,13 +392,11 @@ struct Engine {
     VkSemaphore renderFinishedSemaphore;
     VkFence inFlightFence;
 
-    // GPU用フォントテクスチャリソース
     VkImage fontImage = VK_NULL_HANDLE;
     VkDeviceMemory fontImageMemory = VK_NULL_HANDLE;
     VkImageView fontImageView = VK_NULL_HANDLE;
     VkSampler fontSampler = VK_NULL_HANDLE;
 
-    // --- 今回追加するパイプライン関連変数 ---
     VkDescriptorSetLayout descriptorSetLayout = VK_NULL_HANDLE;
     VkDescriptorPool descriptorPool = VK_NULL_HANDLE;
     VkDescriptorSet descriptorSet = VK_NULL_HANDLE;
@@ -434,26 +413,22 @@ struct Engine {
 
 void updateThemeColors(Engine* engine) {
     if (!engine->app || !engine->app->config) return;
-
-    // システムのナイトモード（ダークテーマ）設定を取得
     int32_t uiMode = AConfiguration_getUiModeNight(engine->app->config);
     engine->isDarkMode = (uiMode == ACONFIGURATION_UI_MODE_NIGHT_YES);
 
     if (engine->isDarkMode) {
-        // ダークモードの色味 (Windows版準拠)
         engine->bgColor[0] = 0.0f; engine->bgColor[1] = 0.0f; engine->bgColor[2] = 0.0f; engine->bgColor[3] = 1.0f;
         engine->textColor[0] = 1.0f; engine->textColor[1] = 1.0f; engine->textColor[2] = 1.0f; engine->textColor[3] = 1.0f;
         engine->gutterBgColor[0] = 0.0f; engine->gutterBgColor[1] = 0.0f; engine->gutterBgColor[2] = 0.0f; engine->gutterBgColor[3] = 1.0f;
         engine->gutterTextColor[0] = 0.33f; engine->gutterTextColor[1] = 0.33f; engine->gutterTextColor[2] = 0.33f; engine->gutterTextColor[3] = 1.0f;
-        engine->selColor[0] = 0.0f; engine->selColor[1] = 0.47f; engine->selColor[2] = 0.84f; engine->selColor[3] = 0.5f; // アクセントカラー
+        engine->selColor[0] = 0.0f; engine->selColor[1] = 0.47f; engine->selColor[2] = 0.84f; engine->selColor[3] = 0.5f;
         engine->caretColor[0] = 1.0f; engine->caretColor[1] = 1.0f; engine->caretColor[2] = 1.0f; engine->caretColor[3] = 1.0f;
     } else {
-        // ライトモードの色味 (Windows版準拠)
         engine->bgColor[0] = 1.0f; engine->bgColor[1] = 1.0f; engine->bgColor[2] = 1.0f; engine->bgColor[3] = 1.0f;
         engine->textColor[0] = 0.0f; engine->textColor[1] = 0.0f; engine->textColor[2] = 0.0f; engine->textColor[3] = 1.0f;
         engine->gutterBgColor[0] = 1.0f; engine->gutterBgColor[1] = 1.0f; engine->gutterBgColor[2] = 1.0f; engine->gutterBgColor[3] = 1.0f;
         engine->gutterTextColor[0] = 0.66f; engine->gutterTextColor[1] = 0.66f; engine->gutterTextColor[2] = 0.66f; engine->gutterTextColor[3] = 1.0f;
-        engine->selColor[0] = 0.7f; engine->selColor[1] = 0.8f; engine->selColor[2] = 1.0f; engine->selColor[3] = 0.5f; // アクセントカラー
+        engine->selColor[0] = 0.7f; engine->selColor[1] = 0.8f; engine->selColor[2] = 1.0f; engine->selColor[3] = 0.5f;
         engine->caretColor[0] = 0.0f; engine->caretColor[1] = 0.0f; engine->caretColor[2] = 0.0f; engine->caretColor[3] = 1.0f;
     }
 }
@@ -461,7 +436,6 @@ void updateThemeColors(Engine* engine) {
 #include <mutex>
 #include <deque>
 
-// 入力イベントのリスト
 struct ImeEvent {
     enum Type { Commit, Composing, Delete } type;
     std::string text;
@@ -469,10 +443,11 @@ struct ImeEvent {
 
 std::mutex g_imeMutex;
 std::deque<ImeEvent> g_imeQueue;
-
-
-
 Engine* g_engine = nullptr;
+
+// ============================================================================
+// 3. Android用: テキストレイアウトとカーソル制御
+// ============================================================================
 
 void updateGutterWidth(Engine* engine) {
     int totalLines = (int)engine->lineStarts.size();
@@ -486,9 +461,7 @@ void updateGutterWidth(Engine* engine) {
     // Windows版と同様に、(桁数 * 文字幅) + 1文字分の余白 を設定
     engine->gutterWidth = (float)(digits * engine->charWidth) + (engine->charWidth * 1.0f);
 }
-// ============================================================================
-// 3. Android用: テキストレイアウトとカーソル制御
-// ============================================================================
+
 void rebuildLineStarts(Engine* engine) {
     engine->lineStarts.clear();
     engine->lineStarts.push_back(0);
@@ -498,7 +471,6 @@ void rebuildLineStarts(Engine* engine) {
             engine->lineStarts.push_back(i + 1);
         }
     }
-    // ★追加: 行数が再構築されたらガター幅も更新する
     updateGutterWidth(engine);
 }
 
@@ -509,39 +481,8 @@ int getLineIdx(Engine* engine, size_t pos) {
     return std::max(0, std::min(idx, (int)engine->lineStarts.size() - 1));
 }
 
-void checkKeyboardVisibility(Engine* engine) {
-    if (engine->isKeyboardShowing && !engine->cursors.empty() && engine->app->window != nullptr) {
-        size_t pos = engine->cursors.back().head;
-        int lineIdx = getLineIdx(engine, pos);
-
-        float scale = engine->currentFontSize / 48.0f;
-        float currentLineHeight = 60.0f * scale;
-
-        float caretY = 100.0f + lineIdx * currentLineHeight;
-        float displayY = caretY - engine->scrollY;
-
-        float winH = (float)ANativeWindow_getHeight(engine->app->window);
-        float visibleH = winH - engine->bottomInset;
-
-        bool isOutsideY = (displayY + currentLineHeight < 100.0f) || (displayY > visibleH);
-
-        if (isOutsideY) {
-            engine->isKeyboardShowing = false;
-            JNIEnv* env = nullptr;
-            engine->app->activity->vm->AttachCurrentThread(&env, nullptr);
-            jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
-            jmethodID hideImeMethod = env->GetMethodID(activityClass, "hideSoftwareKeyboard", "()V");
-            if (hideImeMethod) env->CallVoidMethod(engine->app->activity->clazz, hideImeMethod);
-            env->DeleteLocalRef(activityClass);
-            engine->app->activity->vm->DetachCurrentThread();
-        }
-    }
-}
-
-// ★ DirectWrite の layout->HitTestTextPosition の代わり
 float getXFromPos(Engine* engine, size_t pos) {
     int lineIdx = getLineIdx(engine, pos);
-    // 安全対策：行インデックスの範囲外アクセス防止
     if (lineIdx < 0 || lineIdx >= engine->lineStarts.size()) return 0.0f;
 
     size_t start = engine->lineStarts[lineIdx];
@@ -552,37 +493,29 @@ float getXFromPos(Engine* engine, size_t pos) {
     const char* ptr = text.data();
     const char* end = ptr + text.size();
     float x = 0.0f;
-    float scale = engine->currentFontSize / 48.0f; // ★追加
+    float scale = engine->currentFontSize / 48.0f;
 
     while (ptr < end) {
         uint32_t cp = decodeUtf8(&ptr, end);
         if (cp == 0) break;
-
-        // ★修正：アトラスに無い文字は、ここで動的にロードを試みる
-        if (engine->atlas.glyphs.count(cp) == 0) {
-            // ftFaceMain や ftFaceEmoji が null の場合でもクラッシュしないようチェック
-            if (engine->ftFaceMain != nullptr) {
-                engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
-            }
+        if (engine->atlas.glyphs.count(cp) == 0 && engine->ftFaceMain != nullptr) {
+            engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
         }
-
         if (engine->atlas.glyphs.count(cp) > 0) {
-            x += engine->atlas.glyphs[cp].advance * scale; // ★ scale を掛ける
+            x += engine->atlas.glyphs[cp].advance * scale;
         } else {
-            x += engine->charWidth; // ※charWidthはタッチハンドラでスケール適用済み
+            x += engine->charWidth;
         }
     }
     return x;
 }
 
-// タッチされたピクセル座標(X, Y)から、PieceTable上の文字インデックス(pos)を計算する
 size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
-    // 1. タップされたY座標にスクロール量を足して「仮想Y座標」にする
-    float virtualY = touchY + engine->scrollY - 100.0f; // 100.0fの余白分を引く
+    // タップ位置を特定する際も、topMarginを考慮
+    float virtualY = touchY + engine->scrollY - engine->topMargin;
     if (virtualY < 0.0f) virtualY = 0.0f;
 
     int lineIdx = (int)(virtualY / engine->lineHeight);
-
     if (lineIdx < 0) return 0;
     if (lineIdx >= engine->lineStarts.size()) return engine->pt.length();
 
@@ -599,7 +532,6 @@ size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
     const char* ptr = lineStr.data();
     const char* strEnd = ptr + lineStr.size();
 
-    // 2. X座標のスタート位置にもスクロールを考慮
     float currentX = engine->gutterWidth - engine->scrollX;
     size_t currentPos = start;
     float scale = engine->currentFontSize / 48.0f;
@@ -608,55 +540,41 @@ size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
         const char* prevPtr = ptr;
         uint32_t cp = decodeUtf8(&ptr, strEnd);
         if (cp == 0) break;
-
-        // アトラスに無い文字は動的にロード（getXFromPosと同じ安全対策）
         if (engine->atlas.glyphs.count(cp) == 0 && engine->ftFaceMain != nullptr) {
             engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
         }
-
         float advance = engine->charWidth;
         if (engine->atlas.glyphs.count(cp) > 0) {
-            advance = engine->atlas.glyphs[cp].advance * scale; // ★ scale を掛ける
+            advance = engine->atlas.glyphs[cp].advance * scale;
         }
-
-        // ★ タッチされたX座標が、この文字の「中心」より左なら、この文字の直前にカーソルを置く
         if (touchX < currentX + (advance / 2.0f)) {
             break;
         }
-
         currentX += advance;
-        currentPos += (ptr - prevPtr); // UTF-8のバイト数分だけインデックスを進める
+        currentPos += (ptr - prevPtr);
     }
-
     return currentPos;
 }
 
-// 指定された位置の単語を選択状態(headとanchorを分離)にする
 void selectWordAt(Engine* engine, size_t pos) {
     if (pos >= engine->pt.length()) {
         engine->cursors.clear();
         engine->cursors.push_back({ pos, pos, getXFromPos(engine, pos) });
         return;
     }
-
     char c = engine->pt.charAt(pos);
-    // 改行文字をダブルタップした場合は選択しない
     if (c == '\n' || c == '\r') {
         engine->cursors.clear();
         engine->cursors.push_back({ pos, pos, getXFromPos(engine, pos) });
         return;
     }
-
     bool targetType = isWordChar(c);
     size_t start = pos;
-    // 左方向に単語の先頭を探す
     while (start > 0) {
         char p = engine->pt.charAt(start - 1);
         if (isWordChar(p) != targetType || p == '\n' || p == '\r') break;
         start--;
     }
-
-    // 右方向に単語の末尾を探す
     size_t end = pos;
     size_t len = engine->pt.length();
     while (end < len) {
@@ -664,19 +582,15 @@ void selectWordAt(Engine* engine, size_t pos) {
         if (isWordChar(p) != targetType || p == '\n' || p == '\r') break;
         end++;
     }
-
-    // 選択範囲としてカーソルをセット (head=終点, anchor=始点)
     engine->cursors.clear();
     engine->cursors.push_back({ end, start, getXFromPos(engine, end) });
 }
 
-// カーソルが画面内に収まるようにスクロール量を自動調整する
 void ensureCaretVisible(Engine* engine) {
     if (engine->cursors.empty()) return;
     size_t pos = engine->cursors.back().head;
-
     int lineIdx = getLineIdx(engine, pos);
-    float caretY = 100.0f + lineIdx * engine->lineHeight;
+    float caretY = engine->topMargin + lineIdx * engine->lineHeight;
     float caretX = getXFromPos(engine, pos);
 
     float winW = 1080.0f;
@@ -686,18 +600,15 @@ void ensureCaretVisible(Engine* engine) {
         winH = (float)ANativeWindow_getHeight(engine->app->window);
     }
 
-    // ★修正: 画面の高さからキーボードの高さ(bottomInset)を引いたものを可視領域とする
     float visibleH = winH - engine->bottomInset;
-    if (visibleH < winH * 0.3f) visibleH = winH * 0.5f; // 念のための安全策
+    if (visibleH < winH * 0.3f) visibleH = winH * 0.5f;
 
-    // --- 縦(Y)スクロールの調整 ---
-    if (caretY < engine->scrollY + 100.0f) {
-        engine->scrollY = caretY - 100.0f;
+    if (caretY < engine->scrollY + engine->topMargin) {
+        engine->scrollY = caretY - engine->topMargin;
     } else if (caretY + engine->lineHeight > engine->scrollY + visibleH) {
-        // ★キーボードの真上(visibleH)にカーソルが来るようにスクロール
         engine->scrollY = caretY + engine->lineHeight - visibleH;
     }
-    // --- 横(X)スクロールの調整 ---
+
     if (caretX < engine->scrollX) {
         engine->scrollX = caretX;
     } else if (caretX + engine->charWidth * 2.0f > engine->scrollX + winW - engine->gutterWidth) {
@@ -709,11 +620,10 @@ void ensureCaretVisible(Engine* engine) {
 }
 
 void insertAtCursors(Engine* engine, const std::string& text) {
-    if (engine->cursors.empty() || text.empty()) return; // 空文字の挿入は無視
+    if (engine->cursors.empty() || text.empty()) return;
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
 
-    // シンプル化のため、最初のカーソルにのみ挿入する処理（マルチカーソル対応はWindows版準拠で拡張可）
     Cursor& c = engine->cursors.back();
     if (c.hasSelection()) {
         size_t s = c.start(); size_t l = c.end() - s;
@@ -725,7 +635,6 @@ void insertAtCursors(Engine* engine, const std::string& text) {
 
     engine->pt.insert(c.head, text);
     batch.ops.push_back({ EditOp::Insert, c.head, text });
-
     c.head += text.size();
     c.anchor = c.head;
     c.desiredX = getXFromPos(engine, c.head);
@@ -740,10 +649,9 @@ void backspaceAtCursors(Engine* engine) {
     if (engine->cursors.empty()) return;
     Cursor& c = engine->cursors.back();
     if (c.head > 0 && !c.hasSelection()) {
-        // UTF-8の文字境界を考慮したバックスペース
         size_t eraseLen = 1;
         while (c.head - eraseLen > 0 && (engine->pt.charAt(c.head - eraseLen) & 0xC0) == 0x80) {
-            eraseLen++; // マルチバイト文字の先頭バイトを探す
+            eraseLen++;
         }
         std::string d = engine->pt.getRange(c.head - eraseLen, eraseLen);
         engine->pt.erase(c.head - eraseLen, eraseLen);
@@ -755,13 +663,8 @@ void backspaceAtCursors(Engine* engine) {
 }
 
 // ============================================================================
-// 4. JNIによるIME・キーボード連携 (Java/Kotlinからの呼び出し口)
+// 4. JNIによるIME・キーボード連携
 // ============================================================================
-// ============================================================================
-// JNIによるIME・キーボード連携 (Javaからの呼び出し口)
-// ============================================================================
-#include <jni.h>
-
 extern "C" {
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_commitText(JNIEnv* env, jobject thiz, jstring text) {
     if (!g_engine) return;
@@ -788,45 +691,39 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteSurroundingText(JNIEn
     std::lock_guard<std::mutex> lock(g_imeMutex);
     g_imeQueue.push_back({ ImeEvent::Delete, "" });
 }
+
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateVisibleHeight(JNIEnv* env, jobject thiz, jint bottomInset) {
     if (!g_engine) return;
-
     float oldInset = g_engine->bottomInset;
     g_engine->bottomInset = (float)bottomInset;
-
-    // キーボードが出ているかのフラグを同期
     g_engine->isKeyboardShowing = (bottomInset > 0);
-
-    // ★修正: キーボードが出現した（高さが増えた）時のみカーソルが見えるようにスクロールし、
-    // キーボードが閉じた（高さが減った）時は現在のスクロール位置を維持する。
     if (g_engine->bottomInset > oldInset) {
         ensureCaretVisible(g_engine);
     }
 }
+
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateTopMargin(JNIEnv* env, jobject thiz, jint topMargin) {
+    if (!g_engine) return;
+    g_engine->topMargin = (float)topMargin;
+    ensureCaretVisible(g_engine);
+}
 }
 
 
 // ============================================================================
-// [3] Vulkan 初期化・破棄・描画ロジック (前回の内容)
+// [3] Vulkan 初期化・破棄・描画ロジック
 // ============================================================================
-
-// ※コードが長くなるため、前回の cleanupVulkan, createSwapchain, createRenderPass,
-// createFramebuffers, createCommandBuffers, createSyncObjects, initVulkan は
-// 変更なしでそのままここに配置します。
 
 void cleanupVulkan(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE) return;
-
     if (engine->graphicsPipeline != VK_NULL_HANDLE) {
         vkDestroyPipeline(engine->device, engine->graphicsPipeline, nullptr);
-        engine->graphicsPipeline = VK_NULL_HANDLE; // ★念のためNULLを入れる
+        engine->graphicsPipeline = VK_NULL_HANDLE;
     }
-
     vkDeviceWaitIdle(engine->device);
 
     if (engine->vertexBuffer != VK_NULL_HANDLE) vkDestroyBuffer(engine->device, engine->vertexBuffer, nullptr);
     if (engine->vertexBufferMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->vertexBufferMemory, nullptr);
-
     if (engine->atlasStagingBuffer != VK_NULL_HANDLE) vkDestroyBuffer(engine->device, engine->atlasStagingBuffer, nullptr);
     if (engine->atlasStagingMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->atlasStagingMemory, nullptr);
 
@@ -862,20 +759,14 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
     for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-            return i;
-        }
+        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) return i;
     }
-    LOGE("適切なメモリタイプが見つかりません！");
     return 0;
 }
 
-// --- バッファ（データの一時置き場）を作成する関数 ---
 void createBuffer(Engine* engine, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
     VkBufferCreateInfo bufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
-    bufferInfo.size = size;
-    bufferInfo.usage = usage;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferInfo.size = size; bufferInfo.usage = usage; bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     vkCreateBuffer(engine->device, &bufferInfo, nullptr, &buffer);
 
     VkMemoryRequirements memRequirements;
@@ -889,16 +780,11 @@ void createBuffer(Engine* engine, VkDeviceSize size, VkBufferUsageFlags usage, V
     vkBindBufferMemory(engine->device, buffer, bufferMemory, 0);
 }
 
-// --- 単発コマンド（データ転送など）を開始・終了する関数 ---
 VkCommandBuffer beginSingleTimeCommands(Engine* engine) {
     VkCommandBufferAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandPool = engine->commandPool;
-    allocInfo.commandBufferCount = 1;
-
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; allocInfo.commandPool = engine->commandPool; allocInfo.commandBufferCount = 1;
     VkCommandBuffer commandBuffer;
     vkAllocateCommandBuffers(engine->device, &allocInfo, &commandBuffer);
-
     VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     vkBeginCommandBuffer(commandBuffer, &beginInfo);
@@ -908,15 +794,12 @@ VkCommandBuffer beginSingleTimeCommands(Engine* engine) {
 void endSingleTimeCommands(Engine* engine, VkCommandBuffer commandBuffer) {
     vkEndCommandBuffer(commandBuffer);
     VkSubmitInfo submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
-
+    submitInfo.commandBufferCount = 1; submitInfo.pCommandBuffers = &commandBuffer;
     vkQueueSubmit(engine->graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(engine->graphicsQueue); // 完了まで待機
+    vkQueueWaitIdle(engine->graphicsQueue);
     vkFreeCommandBuffers(engine->device, engine->commandPool, 1, &commandBuffer);
 }
 
-// --- 画像のレイアウト（用途）を変換する関数 ---
 void transitionImageLayout(Engine* engine, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands(engine);
     VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
@@ -935,13 +818,12 @@ void transitionImageLayout(Engine* engine, VkImage image, VkImageLayout oldLayou
         barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT; destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
     } else {
-        LOGE("未対応のレイアウト遷移です！"); return;
+        return;
     }
     vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
     endSingleTimeCommands(engine, commandBuffer);
 }
 
-// --- バッファから画像へデータをコピーする関数 ---
 void copyBufferToImage(Engine* engine, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands(engine);
     VkBufferImageCopy region = {};
@@ -954,7 +836,6 @@ void copyBufferToImage(Engine* engine, VkBuffer buffer, VkImage image, uint32_t 
 }
 
 bool createTextTexture(Engine* engine) {
-    // ★修正：RGBAなのでピクセル数 × 4バイト 必要
     VkDeviceSize imageSize = (VkDeviceSize)engine->atlas.width * engine->atlas.height * 4;
     if (imageSize == 0 || engine->atlas.pixels.empty()) return false;
 
@@ -970,7 +851,7 @@ bool createTextTexture(Engine* engine) {
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
     imageInfo.extent.width = engine->atlas.width; imageInfo.extent.height = engine->atlas.height; imageInfo.extent.depth = 1;
     imageInfo.mipLevels = 1; imageInfo.arrayLayers = 1;
-    imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM; // RGBAフォーマット
+    imageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     imageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
@@ -1005,7 +886,6 @@ bool createTextTexture(Engine* engine) {
     samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     if (vkCreateSampler(engine->device, &samplerInfo, nullptr, &engine->fontSampler) != VK_SUCCESS) return false;
 
-    LOGI("GPUテクスチャ転送完了！");
     return true;
 }
 
@@ -1095,90 +975,56 @@ bool createSyncObjects(Engine* engine) {
            vkCreateFence(engine->device, &fenceInfo, nullptr, &engine->inFlightFence) == VK_SUCCESS;
 }
 
-// --- テクスチャをシェーダに渡すための「窓口」を作成 ---
 bool createDescriptors(Engine* engine) {
-    // 1. どんなデータを渡すかの設計図 (テクスチャ1枚)
     VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
-    samplerLayoutBinding.binding = 0;
-    samplerLayoutBinding.descriptorCount = 1;
+    samplerLayoutBinding.binding = 0; samplerLayoutBinding.descriptorCount = 1;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO};
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &samplerLayoutBinding;
-
+    layoutInfo.bindingCount = 1; layoutInfo.pBindings = &samplerLayoutBinding;
     if (vkCreateDescriptorSetLayout(engine->device, &layoutInfo, nullptr, &engine->descriptorSetLayout) != VK_SUCCESS) return false;
 
-    // 2. 窓口の実体を確保するためのプール
     VkDescriptorPoolSize poolSize = {};
-    poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    poolSize.descriptorCount = 1;
-
+    poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; poolSize.descriptorCount = 1;
     VkDescriptorPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes = &poolSize;
-    poolInfo.maxSets = 1;
-
+    poolInfo.poolSizeCount = 1; poolInfo.pPoolSizes = &poolSize; poolInfo.maxSets = 1;
     if (vkCreateDescriptorPool(engine->device, &poolInfo, nullptr, &engine->descriptorPool) != VK_SUCCESS) return false;
 
-    // 3. 窓口の実体（ディスクリプタセット）を割り当て
     VkDescriptorSetAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
-    allocInfo.descriptorPool = engine->descriptorPool;
-    allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &engine->descriptorSetLayout;
-
+    allocInfo.descriptorPool = engine->descriptorPool; allocInfo.descriptorSetCount = 1; allocInfo.pSetLayouts = &engine->descriptorSetLayout;
     if (vkAllocateDescriptorSets(engine->device, &allocInfo, &engine->descriptorSet) != VK_SUCCESS) return false;
 
-    // 4. 先ほど作ったフォントテクスチャを窓口に接続！
     VkDescriptorImageInfo imageInfo = {};
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    imageInfo.imageView = engine->fontImageView;
-    imageInfo.sampler = engine->fontSampler;
+    imageInfo.imageView = engine->fontImageView; imageInfo.sampler = engine->fontSampler;
 
     VkWriteDescriptorSet descriptorWrite = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
-    descriptorWrite.dstSet = engine->descriptorSet;
-    descriptorWrite.dstBinding = 0;
-    descriptorWrite.dstArrayElement = 0;
+    descriptorWrite.dstSet = engine->descriptorSet; descriptorWrite.dstBinding = 0; descriptorWrite.dstArrayElement = 0;
     descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    descriptorWrite.descriptorCount = 1;
-    descriptorWrite.pImageInfo = &imageInfo;
-
+    descriptorWrite.descriptorCount = 1; descriptorWrite.pImageInfo = &imageInfo;
     vkUpdateDescriptorSets(engine->device, 1, &descriptorWrite, 0, nullptr);
 
-    LOGI("ディスクリプタセットの作成完了");
     return true;
 }
 
-// --- シェーダ全体の設定（パイプラインレイアウト）を作成 ---
 bool createPipelineLayout(Engine* engine) {
-    // PushConstants (画面サイズなどの軽量データ) の設定
     VkPushConstantRange pushConstantRange = {};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    pushConstantRange.offset = 0;
-    pushConstantRange.size = sizeof(PushConstants);
+    pushConstantRange.offset = 0; pushConstantRange.size = sizeof(PushConstants);
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-    pipelineLayoutInfo.setLayoutCount = 1;
-    pipelineLayoutInfo.pSetLayouts = &engine->descriptorSetLayout;
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
-    pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
-
+    pipelineLayoutInfo.setLayoutCount = 1; pipelineLayoutInfo.pSetLayouts = &engine->descriptorSetLayout;
+    pipelineLayoutInfo.pushConstantRangeCount = 1; pipelineLayoutInfo.pPushConstantRanges = &pushConstantRange;
     if (vkCreatePipelineLayout(engine->device, &pipelineLayoutInfo, nullptr, &engine->pipelineLayout) != VK_SUCCESS) return false;
-
-    LOGI("パイプラインレイアウトの作成完了");
     return true;
 }
 
 #include <android/asset_manager.h>
 
-// アセットからコンパイル済みシェーダ(.spv)を読み込む
 std::vector<uint32_t> loadShaderAsset(Engine* engine, const char* filename) {
     AAsset* asset = AAssetManager_open(engine->app->activity->assetManager, filename, AASSET_MODE_BUFFER);
-    if (!asset) {
-        LOGE("シェーダの読み込みに失敗: %s", filename);
-        return {};
-    }
+    if (!asset) return {};
     size_t size = AAsset_getLength(asset);
     std::vector<uint32_t> buffer(size / sizeof(uint32_t));
     AAsset_read(asset, buffer.data(), size);
@@ -1188,8 +1034,7 @@ std::vector<uint32_t> loadShaderAsset(Engine* engine, const char* filename) {
 
 VkShaderModule createShaderModule(Engine* engine, const std::vector<uint32_t>& code) {
     VkShaderModuleCreateInfo createInfo = {VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
-    createInfo.codeSize = code.size() * sizeof(uint32_t);
-    createInfo.pCode = code.data();
+    createInfo.codeSize = code.size() * sizeof(uint32_t); createInfo.pCode = code.data();
     VkShaderModule shaderModule;
     vkCreateShaderModule(engine->device, &createInfo, nullptr, &shaderModule);
     return shaderModule;
@@ -1197,10 +1042,7 @@ VkShaderModule createShaderModule(Engine* engine, const std::vector<uint32_t>& c
 
 std::vector<uint8_t> loadAsset(Engine* engine, const char* filename) {
     AAsset* asset = AAssetManager_open(engine->app->activity->assetManager, filename, AASSET_MODE_BUFFER);
-    if (!asset) {
-        LOGE("アセットの読み込みに失敗: %s", filename);
-        return {};
-    }
+    if (!asset) return {};
     size_t size = AAsset_getLength(asset);
     std::vector<uint8_t> buffer(size);
     AAsset_read(asset, buffer.data(), size);
@@ -1208,7 +1050,6 @@ std::vector<uint8_t> loadAsset(Engine* engine, const char* filename) {
     return buffer;
 }
 
-// グラフィックスパイプラインの構築
 bool createGraphicsPipeline(Engine* engine) {
     auto vertCode = loadShaderAsset(engine, "shaders/text.vert.spv");
     auto fragCode = loadShaderAsset(engine, "shaders/text.frag.spv");
@@ -1223,7 +1064,6 @@ bool createGraphicsPipeline(Engine* engine) {
     fragStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT; fragStageInfo.module = fragModule; fragStageInfo.pName = "main";
     VkPipelineShaderStageCreateInfo shaderStages[] = {vertStageInfo, fragStageInfo};
 
-    // 頂点データのレイアウト設定
     VkVertexInputBindingDescription bindingDescription = {};
     bindingDescription.binding = 0; bindingDescription.stride = sizeof(Vertex); bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
@@ -1231,19 +1071,11 @@ bool createGraphicsPipeline(Engine* engine) {
     attributeDescriptions[0].binding = 0; attributeDescriptions[0].location = 0; attributeDescriptions[0].format = VK_FORMAT_R32G32_SFLOAT; attributeDescriptions[0].offset = offsetof(Vertex, pos);
     attributeDescriptions[1].binding = 0; attributeDescriptions[1].location = 1; attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT; attributeDescriptions[1].offset = offsetof(Vertex, uv);
     attributeDescriptions[2].binding = 0; attributeDescriptions[2].location = 2; attributeDescriptions[2].format = VK_FORMAT_R32_SFLOAT; attributeDescriptions[2].offset = offsetof(Vertex, isColor);
+    attributeDescriptions[3].binding = 0; attributeDescriptions[3].location = 3; attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT; attributeDescriptions[3].offset = offsetof(Vertex, color);
 
-    // ★追加: 頂点カラーの設定
-    attributeDescriptions[3].binding = 0;
-    attributeDescriptions[3].location = 3;
-    attributeDescriptions[3].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-    attributeDescriptions[3].offset = offsetof(Vertex, color);
-
-    // vertexInputInfo の属性数を3にする
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO};
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.vertexAttributeDescriptionCount = 4; // ★ここを 4 に変更
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
+    vertexInputInfo.vertexBindingDescriptionCount = 1; vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = 4; vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions;
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO};
     inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; inputAssembly.primitiveRestartEnable = VK_FALSE;
@@ -1258,7 +1090,6 @@ bool createGraphicsPipeline(Engine* engine) {
     VkPipelineMultisampleStateCreateInfo multisampling = {VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO};
     multisampling.sampleShadingEnable = VK_FALSE; multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-    // ★アルファブレンド（文字の背景の透過）を有効化
     VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable = VK_TRUE;
@@ -1288,7 +1119,6 @@ bool createGraphicsPipeline(Engine* engine) {
     vkDestroyShaderModule(engine->device, fragModule, nullptr);
     vkDestroyShaderModule(engine->device, vertModule, nullptr);
 
-    LOGI("グラフィックスパイプラインの作成完了！");
     return true;
 }
 
@@ -1331,15 +1161,10 @@ bool initVulkan(Engine* engine) {
 
     VkDeviceSize bufferSize = sizeof(Vertex) * 60000;
     createBuffer(engine, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->vertexBuffer, engine->vertexBufferMemory);
-
-    // ★修正：RGBAなので * 4 を追加
     createBuffer(engine, engine->atlas.width * engine->atlas.height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->atlasStagingBuffer, engine->atlasStagingMemory);
 
-    if (FT_Init_FreeType(&engine->ftLibrary)) {
-        LOGE("FreeTypeの初期化に失敗！"); return false;
-    }
+    if (FT_Init_FreeType(&engine->ftLibrary)) return false;
 
-    // ★必須：アトラスの配列メモリを確保
     engine->atlas.init();
 
     engine->fontDataMain = loadSystemFont();
@@ -1350,26 +1175,17 @@ bool initVulkan(Engine* engine) {
     }
 
     engine->fontDataEmoji = loadAsset(engine, "fonts/NotoColorEmoji.ttf");
-
     if (!engine->fontDataEmoji.empty()) {
         if (FT_New_Memory_Face(engine->ftLibrary, engine->fontDataEmoji.data(), engine->fontDataEmoji.size(), 0, &engine->ftFaceEmoji) == 0) {
-
-            // ビットマップフォントの場合は固定サイズを選択する
             if (FT_HAS_FIXED_SIZES(engine->ftFaceEmoji)) {
-                FT_Select_Size(engine->ftFaceEmoji, 0); // 用意されている最初のサイズ（109px）を選択
-                LOGI("絵文字フォントの読み込み成功（固定サイズ選択）");
+                FT_Select_Size(engine->ftFaceEmoji, 0);
             } else {
                 FT_Set_Pixel_Sizes(engine->ftFaceEmoji, 0, 48);
-                LOGI("絵文字フォントの読み込み成功（動的サイズ設定）");
             }
-        } else {
-            LOGE("絵文字フォントのFT_Face生成に失敗");
         }
     }
 
-    // ★必須：ここで初期テクスチャをGPUに作成
     if (!createTextTexture(engine)) return false;
-
     if (!createDescriptors(engine)) return false;
     if (!createPipelineLayout(engine)) return false;
     if (!createGraphicsPipeline(engine)) return false;
@@ -1378,8 +1194,13 @@ bool initVulkan(Engine* engine) {
 }
 
 void updateTextVertices(Engine* engine) {
+    float scale = engine->currentFontSize / 48.0f;
+
+    // ★修正：テキストのベースライン（描画基準となるY座標）をトップマージンから下にずらす
+    // (これをしないと文字の上半分がマージン領域にはみ出し、グラデーションの影に被ってしまいます)
+    float baselineOffset = engine->lineHeight * 0.8f;
     float x = engine->gutterWidth - engine->scrollX;
-    float y = 100.0f - engine->scrollY; // 100.0fは上部の余白
+    float y = engine->topMargin + baselineOffset - engine->scrollY;
 
     engine->maxLineWidth = engine->gutterWidth;
 
@@ -1394,13 +1215,9 @@ void updateTextVertices(Engine* engine) {
         else text.append(engine->imeComp);
     }
 
-    // ==========================================================
-    // ★追加: カーソルの「視覚的な位置」を計算 (IME挿入によるズレを補正)
-    // ==========================================================
     std::vector<size_t> visualCursors;
     for (const auto& c : engine->cursors) {
         size_t vPos = c.head;
-        // メインカーソル以降の位置にあるカーソルは、変換中文字列の長さ分だけ右にズレる
         if (hasIME && vPos >= mainCaretPos) {
             vPos += engine->imeComp.size();
         }
@@ -1414,7 +1231,7 @@ void updateTextVertices(Engine* engine) {
     std::vector<Vertex> bgVertices;
     std::vector<Vertex> lineVertices;
     std::vector<Vertex> charVertices;
-    std::vector<Vertex> cursorVertices; // ★追加: カーソル描画用バッファ
+    std::vector<Vertex> cursorVertices;
 
     float whiteU = 1.0f / engine->atlas.width;
     float whiteV = 1.0f / engine->atlas.height;
@@ -1429,19 +1246,12 @@ void updateTextVertices(Engine* engine) {
     };
 
     float textR = engine->textColor[0], textG = engine->textColor[1], textB = engine->textColor[2], textA = engine->textColor[3];
-
-    float scale = engine->currentFontSize / 48.0f; // ★追加
-    float cursorWidth = std::max(2.0f, 5.0f * scale); // ★カーソルの太さもズームに合わせる
-
+    float cursorWidth = std::max(2.0f, 5.0f * scale);
 
     while (ptr < end) {
-        // ==========================================================
-        // ★追加: 文字を処理する前に、現在位置にカーソルがあるか判定して描画
-        // ==========================================================
         for (size_t vPos : visualCursors) {
             if (currentByteOffset == vPos) {
                 float curY = y - engine->lineHeight * 0.8f;
-                // ★カーソルの色を反映
                 addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight,
                         engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
             }
@@ -1452,14 +1262,12 @@ void updateTextVertices(Engine* engine) {
         if (*ptr == '\r') {
             ptr++; currentByteOffset += (ptr - prevPtr);
             if (ptr < end && *ptr == '\n') { prevPtr = ptr; ptr++; currentByteOffset += (ptr - prevPtr); }
-            // ★修正: ここで scrollX を引く
             x = engine->gutterWidth - engine->scrollX;
             y += engine->lineHeight;
             continue;
         }
         if (*ptr == '\n') {
             ptr++; currentByteOffset += (ptr - prevPtr);
-            // ★修正: ここで scrollX を引く
             x = engine->gutterWidth - engine->scrollX;
             y += engine->lineHeight;
             continue;
@@ -1479,11 +1287,9 @@ void updateTextVertices(Engine* engine) {
         }
 
         GlyphInfo& info = engine->atlas.glyphs[cp];
-        float advance = info.advance * scale; // ★ scale を掛ける
+        float advance = info.advance * scale;
 
         bool isComposingChar = (hasIME && currentByteOffset >= mainCaretPos && currentByteOffset < mainCaretPos + engine->imeComp.size());
-
-        // --- 現在の文字が選択範囲内かチェック ---
         bool isSelected = false;
         if (!engine->cursors.empty() && engine->cursors.back().hasSelection()) {
             size_t selStart = engine->cursors.back().start();
@@ -1496,19 +1302,16 @@ void updateTextVertices(Engine* engine) {
         if (isComposingChar) {
             float bgY = y - engine->lineHeight * 0.8f;
             addRect(bgVertices, x, bgY, advance, engine->lineHeight, 0.2f, 0.6f, 1.0f, 0.3f);
-
             float lineY = y + engine->lineHeight * 0.1f;
             addRect(lineVertices, x, lineY, advance, 2.0f, textR, textG, textB, 1.0f);
         }
         else if (isSelected) {
             float bgY = y - engine->lineHeight * 0.8f;
-            // ★選択範囲の色を反映
             addRect(bgVertices, x, bgY, advance, engine->lineHeight,
                     engine->selColor[0], engine->selColor[1], engine->selColor[2], engine->selColor[3]);
         }
 
         float isColorFlag = info.isColor ? 1.0f : 0.0f;
-        // ★ 描画する文字の幅・高さ・位置に scale を掛ける
         float xpos = x + info.bearingX * scale;
         float ypos = y - info.bearingY * scale;
         float w = info.width * scale;
@@ -1524,25 +1327,20 @@ void updateTextVertices(Engine* engine) {
         x += advance;
         currentByteOffset += charBytes;
 
-        // ★追加: 現在の文字の右端の「絶対座標（スクロール無し状態の座標）」を計算して最大幅を更新
         float absoluteX = x + engine->scrollX;
         if (absoluteX > engine->maxLineWidth) {
             engine->maxLineWidth = absoluteX;
         }
-
     }
 
-    // ==========================================================
-    // ★追加: テキストの「一番最後（末尾）」にカーソルがある場合の処理
-    // ==========================================================
     for (size_t vPos : visualCursors) {
         if (currentByteOffset == vPos) {
             float curY = y - engine->lineHeight * 0.8f;
-            // ★カーソルの色を反映
             addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight,
                     engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
         }
     }
+
     std::vector<Vertex> gutterBgVertices;
     std::vector<Vertex> gutterTextVertices;
     float winH = 5000.0f;
@@ -1550,23 +1348,18 @@ void updateTextVertices(Engine* engine) {
         winH = (float)ANativeWindow_getHeight(engine->app->window);
     }
 
-    // ★ガター（行番号領域）の背景色を反映
     addRect(gutterBgVertices, 0.0f, 0.0f, engine->gutterWidth, winH,
             engine->gutterBgColor[0], engine->gutterBgColor[1], engine->gutterBgColor[2], engine->gutterBgColor[3]);
 
-    // ★行番号のテキスト色を反映
     float gutterTextR = engine->gutterTextColor[0], gutterTextG = engine->gutterTextColor[1], gutterTextB = engine->gutterTextColor[2];
-    // ② 各行の行番号テキストを描画
-    for (int i = 0; i < engine->lineStarts.size(); ++i) {
-        // スクロールを反映した行のY座標
-        float lineY = 100.0f - engine->scrollY + i * engine->lineHeight;
 
-        // 画面外なら描画をスキップ（カリング）
-        if (lineY + engine->lineHeight < 0.0f || lineY > winH) continue;
+    for (int i = 0; i < engine->lineStarts.size(); ++i) {
+        // ★修正：行番号描画におけるカリングの正確な判定
+        float lineTop = engine->topMargin - engine->scrollY + i * engine->lineHeight;
+        if (lineTop + engine->lineHeight < 0.0f || lineTop > winH) continue;
 
         std::string lineNumStr = std::to_string(i + 1);
 
-        // 右寄せにするための文字列幅計算
         float numWidth = 0;
         for(char c : lineNumStr) {
             uint32_t cp = c;
@@ -1577,18 +1370,15 @@ void updateTextVertices(Engine* engine) {
             else numWidth += engine->charWidth;
         }
 
-        // =========================================================
-        // ★修正: ガターの右端からの余白を固定10pxから、半文字分(Windows版互換)に変更
-        // =========================================================
         float rightMargin = engine->charWidth * 0.5f;
         float numX = engine->gutterWidth - rightMargin - numWidth;
 
-        // 行番号の頂点生成
+        // ベースラインに合わせて文字を描画
+        float lineY = lineTop + baselineOffset;
         for(char c : lineNumStr) {
             uint32_t cp = c;
             if (engine->atlas.glyphs.count(cp) > 0) {
                 GlyphInfo& info = engine->atlas.glyphs[cp];
-                // ★ ガター文字のサイズ・位置にも scale を掛ける
                 float xpos = numX + info.bearingX * scale;
                 float ypos = lineY - info.bearingY * scale;
                 float w = info.width * scale;
@@ -1607,19 +1397,47 @@ void updateTextVertices(Engine* engine) {
             }
         }
     }
-    // --- ↑ここまで追加 ---
 
-    // ★修正：すべての頂点を 1つの配列に結合する順番を調整
-    // (背景 → 下線 → 文字 → カーソル → ガター背景 → ガター文字 の順にすることで、横スクロール時に本文がガターの下に隠れる！)
     std::vector<Vertex> vertices;
     vertices.insert(vertices.end(), bgVertices.begin(), bgVertices.end());
     vertices.insert(vertices.end(), lineVertices.begin(), lineVertices.end());
     vertices.insert(vertices.end(), charVertices.begin(), charVertices.end());
     vertices.insert(vertices.end(), cursorVertices.begin(), cursorVertices.end());
 
-    // ガターは最前面に描画
     vertices.insert(vertices.end(), gutterBgVertices.begin(), gutterBgVertices.end());
     vertices.insert(vertices.end(), gutterTextVertices.begin(), gutterTextVertices.end());
+
+    // ==========================================================
+    // ★追加: 画面上部（時計エリア）を隠すフェードアウト矩形
+    // ==========================================================
+    float topH = engine->topMargin;
+    float bgR = engine->bgColor[0], bgG = engine->bgColor[1], bgB = engine->bgColor[2];
+    float winWidth = 5000.0f;
+
+    // 時計エリアの高さ(topH)のうち、上半分を完全不透明、下半分をグラデーションにします。
+    // (テキスト自体がtopHよりも下に描画されるようになったため、1行目には絶対に被りません)
+    float fadeHeight = topH * 0.8f;
+    float solidHeight = topH - fadeHeight;
+
+    if (solidHeight > 0.0f) {
+        vertices.push_back({{0.0f,     0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+        vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+        vertices.push_back({{winWidth, 0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+
+        vertices.push_back({{winWidth, 0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+        vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+        vertices.push_back({{winWidth, solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+    }
+
+    if (fadeHeight > 0.0f) {
+        vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+        vertices.push_back({{0.0f,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
+        vertices.push_back({{winWidth, solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+
+        vertices.push_back({{winWidth, solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+        vertices.push_back({{0.0f,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
+        vertices.push_back({{winWidth, topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
+    }
 
     engine->vertexCount = static_cast<uint32_t>(vertices.size());
     if (engine->vertexCount == 0) return;
@@ -1633,29 +1451,22 @@ void updateTextVertices(Engine* engine) {
 void renderFrame(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE || !engine->isWindowReady) return;
 
-    // 1. まず前のフレームの描画が終わるのを待つ
     vkWaitForFences(engine->device, 1, &engine->inFlightFence, VK_TRUE, UINT64_MAX);
 
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(engine->device, engine->swapchain, UINT64_MAX, engine->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
-    // ★修正1: Androidで頻発する SUBOPTIMAL は「成功」としてそのまま描画を続行させる
     if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
         return;
     }
 
-    // ★修正2: 確実に描画が行われることが確定してから、フェンス（待機フラグ）を下ろす！
-    // これにより永遠に待ち続けるデッドロックを防止します
     vkResetFences(engine->device, 1, &engine->inFlightFence);
 
     vkResetCommandBuffer(engine->commandBuffers[imageIndex], 0);
     VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(engine->commandBuffers[imageIndex], &beginInfo);
 
-    // ==========================================================
-    // 1. データの準備・転送 (必ず RenderPass の外で行う！)
-    // ==========================================================
-    updateTextVertices(engine); // 頂点を更新し、未知の文字をアトラスに追加
+    updateTextVertices(engine);
 
     if (engine->atlas.isDirty) {
         uint32_t dx = engine->atlas.dirtyMinX;
@@ -1663,7 +1474,6 @@ void renderFrame(Engine* engine) {
         uint32_t dw = engine->atlas.dirtyMaxX - engine->atlas.dirtyMinX;
         uint32_t dh = engine->atlas.dirtyMaxY - engine->atlas.dirtyMinY;
 
-        // 安全対策：更新領域のサイズが0より大きい場合のみ転送
         if (dw > 0 && dh > 0) {
             void* mapData = nullptr;
             if (vkMapMemory(engine->device, engine->atlasStagingMemory, 0, dw * dh * 4, 0, &mapData) == VK_SUCCESS) {
@@ -1709,7 +1519,6 @@ void renderFrame(Engine* engine) {
     rpBegin.pClearValues = &clearColor;
 
     vkCmdBeginRenderPass(engine->commandBuffers[imageIndex], &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
-
     vkCmdBindPipeline(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->graphicsPipeline);
 
     VkViewport viewport = {};
@@ -1726,15 +1535,12 @@ void renderFrame(Engine* engine) {
 
         PushConstants pc;
         pc.screenWidth = (float)engine->swapchainExtent.width; pc.screenHeight = (float)engine->swapchainExtent.height;
-
-        // ★必要に応じてPushConstantsのカラーもテーマに合わせる（シェーダー側で文字色に乗算している場合）
         pc.color[0] = engine->textColor[0];
         pc.color[1] = engine->textColor[1];
         pc.color[2] = engine->textColor[2];
         pc.color[3] = engine->textColor[3];
 
         vkCmdPushConstants(engine->commandBuffers[imageIndex], engine->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pc);
-
         vkCmdDraw(engine->commandBuffers[imageIndex], engine->vertexCount, 1, 0, 0);
     }
 
@@ -1754,13 +1560,38 @@ void renderFrame(Engine* engine) {
 }
 
 // ============================================================================
-// [4] Android 入力・イベントハンドラ (WindowsのWndProcに相当)
+// 4. Android 入力・イベントハンドラ
 // ============================================================================
 
-// Androidからのタッチやキーボード入力を処理するコールバック
-// ============================================================================
-// Android イベントハンドラ (AInputEvent)
-// ============================================================================
+void checkKeyboardVisibility(Engine* engine) {
+    if (engine->isKeyboardShowing && !engine->cursors.empty() && engine->app->window != nullptr) {
+        size_t pos = engine->cursors.back().head;
+        int lineIdx = getLineIdx(engine, pos);
+
+        float scale = engine->currentFontSize / 48.0f;
+        float currentLineHeight = 60.0f * scale;
+
+        float caretY = engine->topMargin + lineIdx * currentLineHeight;
+        float displayY = caretY - engine->scrollY;
+
+        float winH = (float)ANativeWindow_getHeight(engine->app->window);
+        float visibleH = winH - engine->bottomInset;
+
+        bool isOutsideY = (displayY + currentLineHeight < engine->topMargin) || (displayY > visibleH);
+
+        if (isOutsideY) {
+            engine->isKeyboardShowing = false;
+            JNIEnv* env = nullptr;
+            engine->app->activity->vm->AttachCurrentThread(&env, nullptr);
+            jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
+            jmethodID hideImeMethod = env->GetMethodID(activityClass, "hideSoftwareKeyboard", "()V");
+            if (hideImeMethod) env->CallVoidMethod(engine->app->activity->clazz, hideImeMethod);
+            env->DeleteLocalRef(activityClass);
+            engine->app->activity->vm->DetachCurrentThread();
+        }
+    }
+}
+
 static int32_t handleInput(struct android_app* app, AInputEvent* event) {
     Engine* engine = (Engine*)app->userData;
 
@@ -1768,9 +1599,6 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
         int32_t action = AMotionEvent_getAction(event) & AMOTION_EVENT_ACTION_MASK;
         size_t pointerCount = AMotionEvent_getPointerCount(event);
 
-        // ==========================================================
-        // ★ 2本指でのピンチズーム処理
-        // ==========================================================
         if (pointerCount >= 2) {
             float x0 = AMotionEvent_getX(event, 0);
             float y0 = AMotionEvent_getY(event, 0);
@@ -1783,31 +1611,26 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             if (action == AMOTION_EVENT_ACTION_POINTER_DOWN) {
                 engine->isPinching = true;
                 engine->lastPinchDistance = distance;
-                engine->isDragging = false; // スクロールをキャンセル
+                engine->isDragging = false;
             } else if (action == AMOTION_EVENT_ACTION_MOVE && engine->isPinching) {
                 if (engine->lastPinchDistance > 0.0f) {
                     float ratio = distance / engine->lastPinchDistance;
-
-                    // 新しいフォントサイズを計算して制限
                     float newSize = engine->currentFontSize * ratio;
                     if (newSize < 16.0f) newSize = 16.0f;
                     if (newSize > 200.0f) newSize = 200.0f;
 
                     engine->currentFontSize = newSize;
-                    // 基本サイズ(48.0f)に対する倍率を各要素に反映
                     float scale = newSize / 48.0f;
                     engine->lineHeight = 60.0f * scale;
                     engine->charWidth = 24.0f * scale;
 
-                    // ★追加: ズームで文字幅が変わったのでガター幅も再計算する
                     updateGutterWidth(engine);
 
                     engine->lastPinchDistance = distance;
-                    ensureCaretVisible(engine); // ズーム後もカーソルを画面内に維持
+                    ensureCaretVisible(engine);
                 }
             } else if (action == AMOTION_EVENT_ACTION_POINTER_UP) {
                 engine->isPinching = false;
-                // 指が1本離れた時、残った指の座標をドラッグ開始点として再セットする（画面飛び防止）
                 int upIndex = (AMotionEvent_getAction(event) & AMOTION_EVENT_ACTION_POINTER_INDEX_MASK) >> AMOTION_EVENT_ACTION_POINTER_INDEX_SHIFT;
                 int remainIndex = (upIndex == 0) ? 1 : 0;
                 if (remainIndex < pointerCount) {
@@ -1818,7 +1641,6 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             return 1;
         }
 
-        // 誤爆防止：ピンチが終わった直後の1本指イベントはリセットのみ行う
         if (engine->isPinching) {
             if (action == AMOTION_EVENT_ACTION_UP) {
                 engine->isPinching = false;
@@ -1829,9 +1651,6 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             return 1;
         }
 
-        // ==========================================================
-        // 以降は既存の1本指（シングルタッチ）の処理
-        // ==========================================================
         float x = AMotionEvent_getX(event, 0);
         float y = AMotionEvent_getY(event, 0);
 
@@ -1845,7 +1664,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 engine->clickCount = 1;
             }
             engine->lastClickTime = now;
-            engine->lastClickX = x; // タップ開始の絶対座標を記録
+            engine->lastClickX = x;
             engine->lastClickY = y;
 
             engine->isDragging = false;
@@ -1871,12 +1690,11 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             }
             engine->lastMoveTime = now;
 
-            // スクロール開始判定（10pxの遊び）
             if (!engine->isDragging && (std::abs(x - engine->lastClickX) > 10.0f || std::abs(y - engine->lastClickY) > 10.0f)) {
                 engine->isDragging = true;
                 engine->lastTouchX = x;
                 engine->lastTouchY = y;
-                dx = 0.0f; // ★修正ポイント1: ここでゼロにしないとカクッと飛びます
+                dx = 0.0f;
                 dy = 0.0f;
             }
 
@@ -1892,9 +1710,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                     float winH = (float)ANativeWindow_getHeight(app->window);
                     float visibleH = winH - engine->bottomInset;
 
-                    float scale = engine->currentFontSize / 48.0f;
-                    float currentLineHeight = 60.0f * scale;
-                    float contentH = engine->lineStarts.size() * currentLineHeight + 100.0f + currentLineHeight;
+                    float contentH = engine->lineStarts.size() * engine->lineHeight + engine->topMargin + engine->lineHeight;
 
                     float maxScrollY = std::max(0.0f, contentH - visibleH);
                     float maxScrollX = std::max(0.0f, engine->maxLineWidth - winW + engine->charWidth * 2.0f);
@@ -1906,13 +1722,10 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 engine->lastTouchX = x;
                 engine->lastTouchY = y;
 
-                // ★修正ポイント2: ここで共通関数を1つだけ呼びます。
-                // （重複していた長い監視コードは削除しました）
                 checkKeyboardVisibility(engine);
             }
 
         } else if (action == AMOTION_EVENT_ACTION_UP) {
-            // 指を離した時、もしスクロール(ドラッグ)していなかったら「タップ」と判定してカーソルを移動する
             if (!engine->isDragging) {
                 engine->isKeyboardShowing = true;
 
@@ -1924,24 +1737,20 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 env->DeleteLocalRef(activityClass);
                 app->activity->vm->DetachCurrentThread();
 
-                // カーソル移動または単語選択
                 size_t targetPos = getDocPosFromPoint(engine, x, y);
                 if (engine->clickCount == 2) {
-                    selectWordAt(engine, targetPos); // ダブルタップなら単語選択
+                    selectWordAt(engine, targetPos);
                 } else {
-                    // シングルタップなら通常のカーソル移動
                     engine->cursors.clear();
                     engine->cursors.push_back({ targetPos, targetPos, getXFromPos(engine, targetPos) });
                 }
             } else {
-                // ドラッグしていた場合、指を離した瞬間の速度が速ければ慣性スクロール開始
                 float speed = std::sqrt(engine->velocityX * engine->velocityX + engine->velocityY * engine->velocityY);
-                if (speed > 0.5f) { // 0.5px/ms (秒速500px) 以上ならフリックとみなす
+                if (speed > 0.5f) {
                     engine->isFlinging = true;
                     engine->lastMoveTime = getCurrentTimeMs();
                 }
             }
-            // 状態をリセット
             engine->isDragging = false;
         }
         return 1;
@@ -1958,7 +1767,6 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
                 updateThemeColors(engine);
                 if (initVulkan(engine)) {
                     engine->isWindowReady = true;
-                    // --- テスト文字列を日本語に変更 ---
                     engine->pt.initEmpty();
                     engine->pt.insert(0, "😎薇にちは、miu Android！\r\n爆速UTF-8デコーダが稼働中です。");
                     engine->cursors.push_back({0, 0, 0.0f});
@@ -1979,7 +1787,6 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
 // ============================================================================
 // [5] エントリポイント
 // ============================================================================
-
 void android_main(struct android_app* app) {
     Engine engine = {};
     engine.app = app;
@@ -1988,9 +1795,9 @@ void android_main(struct android_app* app) {
     app->onInputEvent = handleInput;
     g_engine = &engine;
 
-    engine.pt.initEmpty(); // 空のドキュメントとして初期化
-    rebuildLineStarts(&engine); // 1行目(0文字目スタート)のデータを作成
-    engine.cursors.push_back({0, 0, 0.0f}); // カーソルを先頭に配置
+    engine.pt.initEmpty();
+    rebuildLineStarts(&engine);
+    engine.cursors.push_back({0, 0, 0.0f});
 
     while (true) {
         int events;
@@ -2004,36 +1811,29 @@ void android_main(struct android_app* app) {
         }
 
         if (engine.isWindowReady) {
-            // ★描画の直前に、安全に入力イベントを処理する
             if (engine.isFlinging) {
                 int64_t now = getCurrentTimeMs();
                 int64_t dt = now - engine.lastMoveTime;
                 if (dt > 0) {
-                    if (dt > 50) dt = 50; // フレーム落ち時の異常ワープを防止
+                    if (dt > 50) dt = 50;
 
-                    // 速度に合わせてスクロール移動
                     engine.scrollX -= engine.velocityX * dt;
                     engine.scrollY -= engine.velocityY * dt;
 
-                    // 摩擦による減衰 (1ミリ秒ごとに速度を0.992倍にする)
                     float friction = std::pow(0.992f, (float)dt);
                     engine.velocityX *= friction;
                     engine.velocityY *= friction;
 
-                    // 十分に速度が落ちたら完全に停止
                     if (std::abs(engine.velocityX) < 0.05f && std::abs(engine.velocityY) < 0.05f) {
                         engine.isFlinging = false;
                     }
 
-                    // 限界地点の壁判定（画面端を超えたらそこに合わせて速度も0にする）
                     if (engine.app->window != nullptr) {
                         float winW = (float)ANativeWindow_getWidth(engine.app->window);
                         float winH = (float)ANativeWindow_getHeight(engine.app->window);
                         float visibleH = winH - engine.bottomInset;
 
-                        float scale = engine.currentFontSize / 48.0f;
-                        float currentLineHeight = 60.0f * scale;
-                        float contentH = engine.lineStarts.size() * currentLineHeight + 100.0f + currentLineHeight;
+                        float contentH = engine.lineStarts.size() * engine.lineHeight + engine.topMargin + engine.lineHeight;
 
                         float maxScrollY = std::max(0.0f, contentH - visibleH);
                         float maxScrollX = std::max(0.0f, engine.maxLineWidth - winW + engine.charWidth * 2.0f);
@@ -2044,12 +1844,12 @@ void android_main(struct android_app* app) {
                         if (engine.scrollY < 0.0f) { engine.scrollY = 0.0f; engine.velocityY = 0.0f; }
                         else if (engine.scrollY > maxScrollY) { engine.scrollY = maxScrollY; engine.velocityY = 0.0f; }
 
-                        // 慣性中もキーボードをチェックして閉じる
                         checkKeyboardVisibility(&engine);
                     }
                     engine.lastMoveTime = now;
                 }
             }
+
             {
                 std::lock_guard<std::mutex> lock(g_imeMutex);
                 while (!g_imeQueue.empty()) {

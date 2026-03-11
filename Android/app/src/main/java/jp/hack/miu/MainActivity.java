@@ -2,16 +2,19 @@ package jp.hack.miu;
 
 import android.app.NativeActivity;
 import android.content.Context;
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowManager;
 import android.view.inputmethod.BaseInputConnection;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
-import android.view.WindowInsets;
 
 public class MainActivity extends NativeActivity {
 
@@ -22,8 +25,8 @@ public class MainActivity extends NativeActivity {
     public native void commitText(String text);
     public native void setComposingText(String text);
     public native void deleteSurroundingText();
-    // ★追加: キーボードの高さをC++に伝える関数
     public native void updateVisibleHeight(int bottomInset);
+    public native void updateTopMargin(int topMargin);
 
     private ImeBridgeView imeView;
 
@@ -31,31 +34,51 @@ public class MainActivity extends NativeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
+        // 画面をステータスバーの裏側まで広げる (Edge-to-Edge)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getWindow().setDecorFitsSystemWindows(false);
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            );
+        }
+
+        // ステータスバー（時計エリア）自体の背景を完全に透明にする
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+        getWindow().setStatusBarColor(Color.TRANSPARENT);
+
         imeView = new ImeBridgeView(this);
         FrameLayout.LayoutParams layoutParams = new FrameLayout.LayoutParams(1, 1);
         addContentView(imeView, layoutParams);
 
-        // ==========================================================
-        // ★追加: キーボード（IME）の高さ変更を検知してC++に伝える
-        // ==========================================================
-        imeView.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
+        FrameLayout rootView = (FrameLayout) getWindow().getDecorView().findViewById(android.R.id.content);
+
+        // キーボードとステータスバーの高さを検知してC++に伝える
+        rootView.setOnApplyWindowInsetsListener(new View.OnApplyWindowInsetsListener() {
             @Override
             public WindowInsets onApplyWindowInsets(View v, WindowInsets insets) {
                 int bottomInset = 0;
+                int topInset = 0;
+
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-                    // Android 11以降の新しいAPIでキーボードとナビゲーションバーの高さを取得
                     bottomInset = insets.getInsets(WindowInsets.Type.ime() | WindowInsets.Type.systemBars()).bottom;
+                    topInset = insets.getInsets(WindowInsets.Type.statusBars()).top;
                 } else {
-                    // 古いAndroid向けの取得方法
                     bottomInset = insets.getSystemWindowInsetBottom();
+                    topInset = insets.getSystemWindowInsetTop();
                 }
 
                 updateVisibleHeight(bottomInset);
+
+                // ステータスバーの高さ + 少しの遊び(20px) をC++へ伝える
+                // C++側(Vulkan)でこの値をもとにフェードアウト効果を描画します
+                updateTopMargin(topInset + 20);
 
                 return insets;
             }
         });
     }
+
     // C++側から画面がタッチされた時に呼ばれるメソッド
     public void showSoftwareKeyboard() {
         runOnUiThread(new Runnable() {
@@ -69,6 +92,7 @@ public class MainActivity extends NativeActivity {
             }
         });
     }
+
     public void hideSoftwareKeyboard() {
         runOnUiThread(new Runnable() {
             @Override
