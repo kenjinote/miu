@@ -474,6 +474,18 @@ std::deque<ImeEvent> g_imeQueue;
 
 Engine* g_engine = nullptr;
 
+void updateGutterWidth(Engine* engine) {
+    int totalLines = (int)engine->lineStarts.size();
+    if (totalLines == 0) totalLines = 1;
+    int digits = 1;
+    int tempLines = totalLines;
+    while (tempLines >= 10) {
+        tempLines /= 10;
+        digits++;
+    }
+    // Windows版と同様に、(桁数 * 文字幅) + 1文字分の余白 を設定
+    engine->gutterWidth = (float)(digits * engine->charWidth) + (engine->charWidth * 1.0f);
+}
 // ============================================================================
 // 3. Android用: テキストレイアウトとカーソル制御
 // ============================================================================
@@ -486,6 +498,8 @@ void rebuildLineStarts(Engine* engine) {
             engine->lineStarts.push_back(i + 1);
         }
     }
+    // ★追加: 行数が再構築されたらガター幅も更新する
+    updateGutterWidth(engine);
 }
 
 int getLineIdx(Engine* engine, size_t pos) {
@@ -1559,12 +1573,15 @@ void updateTextVertices(Engine* engine) {
             if (engine->atlas.glyphs.count(cp) == 0 && engine->ftFaceMain != nullptr) {
                 engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
             }
-            if (engine->atlas.glyphs.count(cp) > 0) numWidth += engine->atlas.glyphs[cp].advance * scale; // ★ scale を掛ける
+            if (engine->atlas.glyphs.count(cp) > 0) numWidth += engine->atlas.glyphs[cp].advance * scale;
             else numWidth += engine->charWidth;
         }
 
-        // ガターの右端から少し(10px)内側に配置
-        float numX = engine->gutterWidth - 10.0f - numWidth;
+        // =========================================================
+        // ★修正: ガターの右端からの余白を固定10pxから、半文字分(Windows版互換)に変更
+        // =========================================================
+        float rightMargin = engine->charWidth * 0.5f;
+        float numX = engine->gutterWidth - rightMargin - numWidth;
 
         // 行番号の頂点生成
         for(char c : lineNumStr) {
@@ -1781,6 +1798,9 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                     float scale = newSize / 48.0f;
                     engine->lineHeight = 60.0f * scale;
                     engine->charWidth = 24.0f * scale;
+
+                    // ★追加: ズームで文字幅が変わったのでガター幅も再計算する
+                    updateGutterWidth(engine);
 
                     engine->lastPinchDistance = distance;
                     ensureCaretVisible(engine); // ズーム後もカーソルを画面内に維持
