@@ -1,6 +1,7 @@
 #include <android_native_app_glue.h>
 #include <android/log.h>
 #include <android/configuration.h>
+#include <android/asset_manager.h>
 #include <jni.h>
 #include <vector>
 #include <string>
@@ -10,12 +11,21 @@
 #include <fstream>
 #include <chrono>
 #include <cmath>
+#include <mutex>
+#include <deque>
+#include <regex>
+
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include <hb.h>
+#include <hb-ft.h>
+
 #define VK_USE_PLATFORM_ANDROID_KHR
 #include <vulkan/vulkan.h>
+
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "miu", __VA_ARGS__))
 #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "miu", __VA_ARGS__))
+
 struct GlyphInfo {
     float u0, v0, u1, v1;
     float width, height;
@@ -23,16 +33,20 @@ struct GlyphInfo {
     float advance;
     bool isColor;
 };
+
+struct Engine;
+
 struct TextAtlas {
     int width = 2048;
     int height = 1024;
     std::vector<uint8_t> pixels;
-    std::unordered_map<uint32_t, GlyphInfo> glyphs;
+    std::unordered_map<uint64_t, GlyphInfo> glyphs; // キーを fontIndex + glyphIndex の合成値に変更
     int currentX = 0;
     int currentY = 0;
     int maxRowHeight = 0;
     bool isDirty = false;
     int dirtyMinX = 0, dirtyMinY = 0, dirtyMaxX = 0, dirtyMaxY = 0;
+
     void init() {
         pixels.resize(width * height * 4, 0);
         for (int y = 0; y < 2; ++y) {
@@ -45,133 +59,58 @@ struct TextAtlas {
         currentY = 0;
         maxRowHeight = 2;
     }
-    bool loadChar(FT_Face mainFace, FT_Face emojiFace, uint32_t charCode) {
-        if (glyphs.count(charCode) > 0) return true;
-        FT_Face targetFace = mainFace;
-        FT_UInt glyphIndex = FT_Get_Char_Index(mainFace, charCode);
-        if (glyphIndex == 0 && emojiFace != nullptr) {
-            FT_UInt emojiIndex = FT_Get_Char_Index(emojiFace, charCode);
-            if (emojiIndex != 0) {
-                targetFace = emojiFace;
-                glyphIndex = emojiIndex;
-            }
-        }
-        if (glyphIndex == 0 && charCode != 0) {
-            FT_Load_Glyph(mainFace, 0, FT_LOAD_RENDER | FT_LOAD_COLOR);
-            targetFace = mainFace;
-        } else {
-            if (FT_Load_Glyph(targetFace, glyphIndex, FT_LOAD_RENDER | FT_LOAD_COLOR) != 0) {
-                FT_Load_Glyph(mainFace, 0, FT_LOAD_RENDER | FT_LOAD_COLOR);
-                targetFace = mainFace;
-            }
-        }
-        FT_Bitmap* bmp = &targetFace->glyph->bitmap;
-        if (charCode != 0x20 && charCode != 0xA0 && (bmp->width == 0 || bmp->rows == 0) && targetFace->glyph->advance.x != 0 && charCode != 0 && glyphIndex != 0) {
-            LOGE("グリフ展開失敗: cp:%x", charCode);
-            if (FT_Load_Glyph(mainFace, 0, FT_LOAD_RENDER | FT_LOAD_COLOR) == 0) {
-                targetFace = mainFace;
-                bmp = &targetFace->glyph->bitmap;
-            } else {
-                return false;
-            }
-        }
-        bool isColorGlyph = (bmp->pixel_mode == FT_PIXEL_MODE_BGRA);
-        if (currentX + bmp->width + 1 >= width) {
-            currentX = 0; currentY += maxRowHeight + 1; maxRowHeight = 0;
-        }
-        if (currentY + bmp->rows + 1 >= height) { LOGE("アトラスオーバー"); return false; }
-        for (unsigned int row = 0; row < bmp->rows; ++row) {
-            for (unsigned int col = 0; col < bmp->width; ++col) {
-                size_t dstIdx = ((currentY + row) * width + (currentX + col)) * 4;
-                if (isColorGlyph) {
-                    uint8_t* bgr = &bmp->buffer[row * bmp->pitch + col * 4];
-                    pixels[dstIdx + 0] = bgr[2];
-                    pixels[dstIdx + 1] = bgr[1];
-                    pixels[dstIdx + 2] = bgr[0];
-                    pixels[dstIdx + 3] = bgr[3];
-                } else {
-                    uint8_t gray = bmp->buffer[row * bmp->pitch + col];
-                    pixels[dstIdx + 0] = gray; pixels[dstIdx + 1] = gray; pixels[dstIdx + 2] = gray; pixels[dstIdx + 3] = gray;
-                }
-            }
-        }
-        if (!isDirty) {
-            dirtyMinX = currentX; dirtyMaxX = currentX + bmp->width;
-            dirtyMinY = currentY; dirtyMaxY = currentY + bmp->rows;
-            isDirty = true;
-        } else {
-            if (currentX < dirtyMinX) dirtyMinX = currentX;
-            if (currentX + (int)bmp->width > dirtyMaxX) dirtyMaxX = currentX + (int)bmp->width;
-            if (currentY < dirtyMinY) dirtyMinY = currentY;
-            if (currentY + (int)bmp->rows > dirtyMaxY) dirtyMaxY = currentY + (int)bmp->rows;
-        }
-        float scale = 1.0f;
-        if (isColorGlyph && bmp->rows > 0) {
-            scale = 48.0f / (float)bmp->rows;
-        }
-        GlyphInfo info;
-        info.width = (float)bmp->width * scale;
-        info.height = (float)bmp->rows * scale;
-        info.bearingX = (float)targetFace->glyph->bitmap_left * scale;
-        info.bearingY = (float)targetFace->glyph->bitmap_top * scale;
-        info.advance = (float)(targetFace->glyph->advance.x >> 6) * scale;
-        info.u0 = (float)currentX / (float)width; info.v0 = (float)currentY / (float)height;
-        info.u1 = (float)(currentX + bmp->width) / (float)width; info.v1 = (float)(currentY + bmp->rows) / (float)height;
-        info.isColor = isColorGlyph;
-        glyphs[charCode] = info;
-        currentX += bmp->width + 1;
-        if (bmp->rows > maxRowHeight) maxRowHeight = bmp->rows;
-        return true;
-    }
+
+    bool loadGlyph(Engine* engine, int fontIndex, uint32_t glyphIndex);
 };
+
 uint32_t decodeUtf8(const char** ptr, const char* end) {
     if (*ptr >= end) return 0;
-    unsigned char c = **ptr;
-    (*ptr)++;
-    if (c < 0x80) return c;
-    if ((c & 0xE0) == 0xC0) {
-        if (*ptr >= end) return 0;
-        uint32_t cp = (c & 0x1F) << 6;
-        cp |= (**ptr & 0x3F);
-        (*ptr)++;
-        return cp;
-    }
-    if ((c & 0xF0) == 0xE0) {
-        if (*ptr + 1 >= end) { *ptr = end; return 0; }
-        uint32_t cp = (c & 0x0F) << 12;
-        cp |= (**ptr & 0x3F) << 6; (*ptr)++;
-        cp |= (**ptr & 0x3F);      (*ptr)++;
-        return cp;
-    }
-    if ((c & 0xF8) == 0xF0) {
-        if (*ptr + 2 >= end) { *ptr = end; return 0; }
-        uint32_t cp = (c & 0x07) << 18;
-        cp |= (**ptr & 0x3F) << 12; (*ptr)++;
-        cp |= (**ptr & 0x3F) << 6;  (*ptr)++;
-        cp |= (**ptr & 0x3F);       (*ptr)++;
-        return cp;
-    }
-    return '?';
-}
-std::vector<uint8_t> loadSystemFont() {
-    const char* paths[] = {
-            "/system/fonts/NotoSansCJK-Regular.ttc",
-            "/system/fonts/NotoSansJP-Regular.otf",
-            "/system/fonts/Roboto-Regular.ttf"
+
+    auto decodeSingle = [](const char** p, const char* e) -> uint32_t {
+        if (*p >= e) return 0;
+        unsigned char c = **p;
+        (*p)++;
+        if (c < 0x80) return c;
+        if ((c & 0xE0) == 0xC0) {
+            if (*p >= e) return 0;
+            uint32_t cp = (c & 0x1F) << 6;
+            cp |= (**p & 0x3F); (*p)++;
+            return cp;
+        }
+        if ((c & 0xF0) == 0xE0) {
+            if (*p + 1 >= e) { *p = e; return 0; }
+            uint32_t cp = (c & 0x0F) << 12;
+            cp |= (**p & 0x3F) << 6; (*p)++;
+            cp |= (**p & 0x3F);      (*p)++;
+            return cp;
+        }
+        if ((c & 0xF8) == 0xF0) {
+            if (*p + 2 >= e) { *p = e; return 0; }
+            uint32_t cp = (c & 0x07) << 18;
+            cp |= (**p & 0x3F) << 12; (*p)++;
+            cp |= (**p & 0x3F) << 6;  (*p)++;
+            cp |= (**p & 0x3F);       (*p)++;
+            return cp;
+        }
+        return '?';
     };
-    for (const char* path : paths) {
-        std::ifstream file(path, std::ios::binary | std::ios::ate);
-        if (file.is_open()) {
-            size_t size = file.tellg();
-            std::vector<uint8_t> buffer(size);
-            file.seekg(0, std::ios::beg);
-            file.read((char*)buffer.data(), size);
-            return buffer;
+
+    uint32_t cp = decodeSingle(ptr, end);
+
+    // MUTF-8サロゲートペア合成処理
+    if (cp >= 0xD800 && cp <= 0xDBFF) {
+        const char* nextPtr = *ptr;
+        uint32_t nextCp = decodeSingle(&nextPtr, end);
+        if (nextCp >= 0xDC00 && nextCp <= 0xDFFF) {
+            cp = 0x10000 + ((cp - 0xD800) << 10) + (nextCp - 0xDC00);
+            *ptr = nextPtr;
         }
     }
-    return {};
+    return cp;
 }
+
 struct Piece { bool isOriginal; size_t start; size_t len; };
+
 struct PieceTable {
     const char* origPtr = nullptr; size_t origSize = 0;
     std::string addBuf; std::vector<Piece> pieces;
@@ -233,39 +172,59 @@ struct PieceTable {
         return '\0';
     }
 };
+
 struct Cursor {
     size_t head; size_t anchor; float desiredX;
     size_t start() const { return std::min(head, anchor); }
     size_t end() const { return std::max(head, anchor); }
     bool hasSelection() const { return head != anchor; }
 };
+
 struct EditOp { enum Type { Insert, Erase } type; size_t pos; std::string text; };
 struct EditBatch { std::vector<EditOp> ops; std::vector<Cursor> beforeCursors; std::vector<Cursor> afterCursors; };
 struct UndoManager {
     std::vector<EditBatch> undoStack; std::vector<EditBatch> redoStack;
     void push(const EditBatch& batch) { undoStack.push_back(batch); redoStack.clear(); }
 };
+
 int64_t getCurrentTimeMs() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
 }
+
 bool isWordChar(char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
            (c >= '0' && c <= '9') || c == '_' ||
            (unsigned char)c >= 0x80;
 }
+
 struct Vertex {
     float pos[2];
     float uv[2];
     float isColor;
     float color[4];
 };
+
 struct PushConstants {
     float screenWidth;
     float screenHeight;
     float padding[2];
     float color[4];
 };
+
+struct ShapedGlyph {
+    int fontIndex;
+    uint32_t glyphIndex;
+    float xAdvance, yAdvance, xOffset, yOffset;
+    size_t cluster;
+    bool isIME;
+};
+
+struct LineCache {
+    std::vector<ShapedGlyph> glyphs;
+    bool isShaped = false;
+};
+
 struct Engine {
     struct android_app* app;
     bool isWindowReady = false;
@@ -314,6 +273,7 @@ struct Engine {
     float gutterTextColor[4] = {0.66f, 0.66f, 0.66f, 1.0f};
     float selColor[4] = {0.7f, 0.8f, 1.0f, 0.5f};
     float caretColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+
     VkInstance instance;
     VkSurfaceKHR surface;
     VkPhysicalDevice physicalDevice;
@@ -321,11 +281,15 @@ struct Engine {
     VkQueue graphicsQueue;
     uint32_t queueFamilyIndex;
     FT_Library ftLibrary;
-    FT_Face ftFaceMain;
-    FT_Face ftFaceEmoji = nullptr;
-    std::vector<uint8_t> fontDataMain;
-    std::vector<uint8_t> fontDataEmoji;
+
+    std::vector<std::vector<uint8_t>> fallbackFontData;
+    std::vector<FT_Face> fallbackFaces;
+    std::vector<hb_font_t*> fallbackHbFonts;
+    std::vector<float> fallbackFontScales;
+    std::vector<LineCache> lineCaches;
+
     TextAtlas atlas;
+
     VkSwapchainKHR swapchain;
     std::vector<VkImage> swapchainImages;
     std::vector<VkImageView> swapchainImageViews;
@@ -353,14 +317,103 @@ struct Engine {
     VkBuffer atlasStagingBuffer = VK_NULL_HANDLE;
     VkDeviceMemory atlasStagingMemory = VK_NULL_HANDLE;
 };
+
+// TextAtlasの実装
+bool TextAtlas::loadGlyph(Engine* engine, int fontIndex, uint32_t glyphIndex) {
+    uint64_t key = ((uint64_t)fontIndex << 32) | glyphIndex;
+    if (glyphs.count(key) > 0) return true;
+    if (fontIndex < 0 || fontIndex >= engine->fallbackFaces.size()) return false;
+
+    FT_Face targetFace = engine->fallbackFaces[fontIndex];
+    if (FT_Load_Glyph(targetFace, glyphIndex, FT_LOAD_RENDER | FT_LOAD_COLOR) != 0) {
+        return false;
+    }
+
+    FT_Bitmap* bmp = &targetFace->glyph->bitmap;
+
+    if (glyphIndex != 0 && (bmp->width == 0 || bmp->rows == 0) && targetFace->glyph->advance.x != 0) {
+        if (FT_Load_Glyph(engine->fallbackFaces[0], 0, FT_LOAD_RENDER | FT_LOAD_COLOR) == 0) {
+            targetFace = engine->fallbackFaces[0];
+            bmp = &targetFace->glyph->bitmap;
+        } else {
+            return false;
+        }
+    }
+
+    bool isColorGlyph = (bmp->pixel_mode == FT_PIXEL_MODE_BGRA);
+    if (currentX + bmp->width + 1 >= width) {
+        currentX = 0; currentY += maxRowHeight + 1; maxRowHeight = 0;
+    }
+    if (currentY + bmp->rows + 1 >= height) { LOGE("アトラスオーバー"); return false; }
+
+    for (unsigned int row = 0; row < bmp->rows; ++row) {
+        for (unsigned int col = 0; col < bmp->width; ++col) {
+            size_t dstIdx = ((currentY + row) * width + (currentX + col)) * 4;
+            if (isColorGlyph) {
+                uint8_t* bgr = &bmp->buffer[row * bmp->pitch + col * 4];
+                pixels[dstIdx + 0] = bgr[2];
+                pixels[dstIdx + 1] = bgr[1];
+                pixels[dstIdx + 2] = bgr[0];
+                pixels[dstIdx + 3] = bgr[3];
+            } else {
+                uint8_t gray = bmp->buffer[row * bmp->pitch + col];
+                pixels[dstIdx + 0] = gray; pixels[dstIdx + 1] = gray; pixels[dstIdx + 2] = gray; pixels[dstIdx + 3] = gray;
+            }
+        }
+    }
+
+    if (!isDirty) {
+        dirtyMinX = currentX; dirtyMaxX = currentX + bmp->width;
+        dirtyMinY = currentY; dirtyMaxY = currentY + bmp->rows;
+        isDirty = true;
+    } else {
+        if (currentX < dirtyMinX) dirtyMinX = currentX;
+        if (currentX + (int)bmp->width > dirtyMaxX) dirtyMaxX = currentX + (int)bmp->width;
+        if (currentY < dirtyMinY) dirtyMinY = currentY;
+        if (currentY + (int)bmp->rows > dirtyMaxY) dirtyMaxY = currentY + (int)bmp->rows;
+    }
+
+    float scale = 1.0f;
+    if (isColorGlyph && bmp->rows > 0) {
+        scale = 48.0f / (float)bmp->rows;
+    }
+
+    GlyphInfo info;
+    info.width = (float)bmp->width * scale;
+    info.height = (float)bmp->rows * scale;
+    info.bearingX = (float)targetFace->glyph->bitmap_left * scale;
+    info.bearingY = (float)targetFace->glyph->bitmap_top * scale;
+    info.advance = (float)(targetFace->glyph->advance.x >> 6) * scale;
+    info.u0 = (float)currentX / (float)width; info.v0 = (float)currentY / (float)height;
+    info.u1 = (float)(currentX + bmp->width) / (float)width; info.v1 = (float)(currentY + bmp->rows) / (float)height;
+    info.isColor = isColorGlyph;
+
+    glyphs[key] = info;
+    currentX += bmp->width + 1;
+    if (bmp->rows > maxRowHeight) maxRowHeight = bmp->rows;
+
+    return true;
+}
+int getFontIndexForChar(Engine* engine, uint32_t cp, int prevFontIndex) {
+    // ★追加: フォントが全くロードされていない場合は安全のために -1 を返すなど
+    if (engine->fallbackFaces.empty()) return -1;
+
+    if (cp == 0x200D || (cp >= 0xFE00 && cp <= 0xFE0F)) return prevFontIndex;
+
+    for (int i = 0; i < engine->fallbackFaces.size(); ++i) {
+        if (FT_Get_Char_Index(engine->fallbackFaces[i], cp) != 0) return i;
+    }
+    return 0; // 見つからなければ最初のフォント(Roboto等)を強制
+}
+void ensureLineShaped(Engine* engine, int lineIdx);
 void rebuildLineStarts(Engine* engine);
 void ensureCaretVisible(Engine* engine);
 float getXFromPos(Engine* engine, size_t pos);
+
 void updateDirtyFlag(Engine* engine) {
-    // Undoスタックの状態で変更があったかを判定する（簡易実装）
-    // 本格的にはUndoManagerにsavePoint等の概念を入れると完璧です
     engine->isDirty = !engine->undo.undoStack.empty();
 }
+
 void performNewDocument(Engine* engine) {
     if (!engine) return;
     engine->pt.initEmpty();
@@ -374,8 +427,9 @@ void performNewDocument(Engine* engine) {
     engine->hScrollPos = 0;
     engine->scrollX = 0.0f;
     engine->scrollY = 0.0f;
+    engine->lineCaches.clear();
 }
-#include <regex>
+
 std::string UnescapeString(const std::string& s) {
     std::string out; out.reserve(s.size());
     for (size_t i = 0; i < s.size(); ++i) {
@@ -384,6 +438,7 @@ std::string UnescapeString(const std::string& s) {
         } else out += s[i];
     } return out;
 }
+
 std::string preprocessRegexQuery(const std::string& query) {
     std::string processed; processed.reserve(query.size() * 4);
     for (size_t i = 0; i < query.size(); ++i) {
@@ -406,6 +461,7 @@ std::string preprocessRegexQuery(const std::string& query) {
     }
     return processed;
 }
+
 size_t findText(Engine* engine, size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
     size_t len = engine->pt.length();
@@ -434,7 +490,6 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
                     foundLen = m.length();
                 }
             } else {
-                // 後方検索は簡易的に全件取得して直前のものを返す
                 auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
                 auto words_end = std::sregex_iterator();
                 size_t bestPos = std::string::npos;
@@ -483,6 +538,7 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
     }
     return std::string::npos;
 }
+
 void findNextCommand(Engine* engine, bool forward) {
     if (engine->searchQuery.empty()) return;
     size_t currentCursorPos = forward ? (engine->cursors.empty() ? 0 : engine->cursors.back().end()) : (engine->cursors.empty() ? 0 : engine->cursors.back().start());
@@ -495,6 +551,7 @@ void findNextCommand(Engine* engine, bool forward) {
         ensureCaretVisible(engine);
     }
 }
+
 void replaceNextCommand(Engine* engine) {
     if (engine->cursors.empty() || engine->searchQuery.empty()) return;
     Cursor& c = engine->cursors.back();
@@ -503,7 +560,7 @@ void replaceNextCommand(Engine* engine) {
     size_t len = c.end() - c.start();
     size_t start = c.start();
     std::string selText = engine->pt.getRange(start, len);
-    std::string replacement = engine->replaceQuery; // Regexのキャプチャグループ置換は今回簡易化
+    std::string replacement = engine->replaceQuery;
 
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
@@ -523,6 +580,7 @@ void replaceNextCommand(Engine* engine) {
     ensureCaretVisible(engine);
     findNextCommand(engine, true);
 }
+
 void replaceAllCommand(Engine* engine) {
     if (engine->searchQuery.empty()) return;
     size_t currentPos = 0;
@@ -552,6 +610,7 @@ void replaceAllCommand(Engine* engine) {
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
 }
+
 bool openDocumentFromFile(Engine* engine, const std::string& path) {
     if (!engine) return false;
     std::ifstream file(path, std::ios::binary | std::ios::ate);
@@ -572,10 +631,12 @@ bool openDocumentFromFile(Engine* engine, const std::string& path) {
         engine->hScrollPos = 0;
         engine->scrollX = 0.0f;
         engine->scrollY = 0.0f;
+        engine->lineCaches.clear();
         return true;
     }
     return false;
 }
+
 void updateThemeColors(Engine* engine) {
     if (!engine->app || !engine->app->config) return;
     int32_t uiMode = AConfiguration_getUiModeNight(engine->app->config);
@@ -596,26 +657,45 @@ void updateThemeColors(Engine* engine) {
         engine->caretColor[0] = 0.0f; engine->caretColor[1] = 0.0f; engine->caretColor[2] = 0.0f; engine->caretColor[3] = 1.0f;
     }
 }
-#include <mutex>
-#include <deque>
+
 struct ImeEvent {
     enum Type { Commit, Composing, Delete } type;
     std::string text;
 };
+
 std::mutex g_imeMutex;
 std::deque<ImeEvent> g_imeQueue;
 Engine* g_engine = nullptr;
+
 void updateGutterWidth(Engine* engine) {
     int totalLines = (int)engine->lineStarts.size();
     if (totalLines == 0) totalLines = 1;
-    int digits = 1;
-    int tempLines = totalLines;
-    while (tempLines >= 10) {
-        tempLines /= 10;
-        digits++;
+    if (engine->fallbackFaces.empty()) {
+        engine->gutterWidth = 100.0f; // 適当なデフォルト値
+        return;
     }
-    engine->gutterWidth = (float)(digits * engine->charWidth) + (engine->charWidth * 1.0f);
+    std::string maxLineStr = std::to_string(totalLines);
+    float width = 0.0f;
+    float scale = engine->currentFontSize / 48.0f;
+
+    for (char c : maxLineStr) {
+        uint32_t cp = c;
+        int fontIdx = getFontIndexForChar(engine, cp, 0);
+        uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp);
+        uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
+
+        if (engine->atlas.glyphs.count(key) == 0 && !engine->fallbackFaces.empty()) {
+            engine->atlas.loadGlyph(engine, fontIdx, glyphIdx);
+        }
+        if (engine->atlas.glyphs.count(key) > 0) {
+            width += engine->atlas.glyphs[key].advance * scale;
+        } else {
+            width += engine->charWidth;
+        }
+    }
+    engine->gutterWidth = width + engine->charWidth * 1.0f;
 }
+
 void rebuildLineStarts(Engine* engine) {
     engine->lineStarts.clear();
     engine->lineStarts.push_back(0);
@@ -626,75 +706,161 @@ void rebuildLineStarts(Engine* engine) {
         }
     }
     updateGutterWidth(engine);
+    engine->lineCaches.clear();
+    engine->lineCaches.resize(engine->lineStarts.size());
 }
+
 int getLineIdx(Engine* engine, size_t pos) {
     if (engine->lineStarts.empty()) return 0;
     auto it = std::upper_bound(engine->lineStarts.begin(), engine->lineStarts.end(), pos);
     int idx = (int)std::distance(engine->lineStarts.begin(), it) - 1;
     return std::max(0, std::min(idx, (int)engine->lineStarts.size() - 1));
 }
+
+void ensureLineShaped(Engine* engine, int lineIdx) {
+    if (lineIdx < 0 || lineIdx >= engine->lineCaches.size()) return;
+    LineCache& cache = engine->lineCaches[lineIdx];
+    if (cache.isShaped) return;
+
+    cache.glyphs.clear();
+    cache.isShaped = true;
+
+    size_t start = engine->lineStarts[lineIdx];
+    size_t end = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
+
+    size_t textEnd = end;
+    if (textEnd > start && engine->pt.charAt(textEnd - 1) == '\n') textEnd--;
+    if (textEnd > start && engine->pt.charAt(textEnd - 1) == '\r') textEnd--;
+
+    std::string text = engine->pt.getRange(start, textEnd - start);
+
+    bool hasIME = !engine->imeComp.empty() && !engine->cursors.empty();
+    size_t imeInsertPos = 0;
+    if (hasIME) {
+        size_t mainCaret = engine->cursors.back().head;
+        if (mainCaret >= start && mainCaret <= textEnd) {
+            imeInsertPos = mainCaret - start;
+            text.insert(imeInsertPos, engine->imeComp);
+            cache.isShaped = false; // IME表示中の行は永続キャッシュしない
+        } else { hasIME = false; }
+    }
+
+    if (text.empty()) return;
+
+    struct Run { int fontIdx; size_t start; size_t end; };
+    std::vector<Run> runs;
+    const char* ptr = text.data();
+    const char* end_ptr = ptr + text.size();
+    int currentFont = -1;
+    size_t runStart = 0;
+
+    while (ptr < end_ptr) {
+        const char* prev = ptr;
+        uint32_t cp = decodeUtf8(&ptr, end_ptr);
+        int fIdx = getFontIndexForChar(engine, cp, currentFont == -1 ? 0 : currentFont);
+        if (fIdx != currentFont) {
+            if (currentFont != -1) runs.push_back({currentFont, runStart, (size_t)(prev - text.data())});
+            currentFont = fIdx; runStart = prev - text.data();
+        }
+    }
+    if (currentFont != -1) runs.push_back({currentFont, runStart, text.size()});
+
+    hb_buffer_t* hb_buf = hb_buffer_create();
+    for (const auto& run : runs) {
+        hb_buffer_clear_contents(hb_buf);
+        hb_buffer_add_utf8(hb_buf, text.data() + run.start, run.end - run.start, 0, run.end - run.start);
+        hb_buffer_set_direction(hb_buf, HB_DIRECTION_LTR);
+        hb_buffer_set_script(hb_buf, HB_SCRIPT_COMMON);
+        hb_buffer_guess_segment_properties(hb_buf);
+
+        hb_shape(engine->fallbackHbFonts[run.fontIdx], hb_buf, nullptr, 0);
+
+        unsigned int count;
+        hb_glyph_info_t* info = hb_buffer_get_glyph_infos(hb_buf, &count);
+        hb_glyph_position_t* pos = hb_buffer_get_glyph_positions(hb_buf, &count);
+
+        for (unsigned int i = 0; i < count; i++) {
+            ShapedGlyph sg;
+            sg.fontIndex = run.fontIdx;
+            sg.glyphIndex = info[i].codepoint;
+
+            // ★修正: フォント固有のスケールをかけて文字幅(Advance)を48pt基準に正規化する
+            float fontScale = engine->fallbackFontScales[run.fontIdx];
+            sg.xAdvance = (pos[i].x_advance / 64.0f) * fontScale;
+            sg.yAdvance = (pos[i].y_advance / 64.0f) * fontScale;
+            sg.xOffset  = (pos[i].x_offset / 64.0f) * fontScale;
+            sg.yOffset  = (pos[i].y_offset / 64.0f) * fontScale;
+            size_t rawCluster = run.start + info[i].cluster;
+            if (hasIME) {
+                if (rawCluster >= imeInsertPos && rawCluster < imeInsertPos + engine->imeComp.size()) {
+                    sg.isIME = true;
+                    sg.cluster = start + imeInsertPos;
+                } else if (rawCluster >= imeInsertPos + engine->imeComp.size()) {
+                    sg.isIME = false;
+                    sg.cluster = start + rawCluster - engine->imeComp.size();
+                } else {
+                    sg.isIME = false;
+                    sg.cluster = start + rawCluster;
+                }
+            } else {
+                sg.isIME = false;
+                sg.cluster = start + rawCluster;
+            }
+            cache.glyphs.push_back(sg);
+        }
+    }
+    hb_buffer_destroy(hb_buf);
+}
+
 float getXFromPos(Engine* engine, size_t pos) {
     int lineIdx = getLineIdx(engine, pos);
-    if (lineIdx < 0 || lineIdx >= engine->lineStarts.size()) return 0.0f;
-    size_t start = engine->lineStarts[lineIdx];
-    size_t len = pos - start;
-    if (len <= 0) return 0.0f;
-    std::string text = engine->pt.getRange(start, len);
-    const char* ptr = text.data();
-    const char* end = ptr + text.size();
-    float x = 0.0f;
+    if (lineIdx < 0 || lineIdx >= engine->lineStarts.size()) return engine->gutterWidth;
+
+    ensureLineShaped(engine, lineIdx);
+
+    float x = engine->gutterWidth;
     float scale = engine->currentFontSize / 48.0f;
-    while (ptr < end) {
-        uint32_t cp = decodeUtf8(&ptr, end);
-        if (cp == 0) break;
-        if (engine->atlas.glyphs.count(cp) == 0 && engine->ftFaceMain != nullptr) {
-            engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
-        }
-        if (engine->atlas.glyphs.count(cp) > 0) {
-            x += engine->atlas.glyphs[cp].advance * scale;
+    bool hasIME = !engine->imeComp.empty() && !engine->cursors.empty();
+    size_t mainCaret = engine->cursors.empty() ? 0 : engine->cursors.back().head;
+
+    for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
+        if (hasIME && pos == mainCaret) {
+            if (!sg.isIME && sg.cluster >= pos) break;
         } else {
-            x += engine->charWidth;
+            if (sg.cluster >= pos) break;
         }
+        x += sg.xAdvance * scale;
     }
     return x;
 }
+
 size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
     float virtualY = touchY + engine->scrollY - engine->topMargin;
     if (virtualY < 0.0f) virtualY = 0.0f;
     int lineIdx = (int)(virtualY / engine->lineHeight);
     if (lineIdx < 0) return 0;
     if (lineIdx >= engine->lineStarts.size()) return engine->pt.length();
+
     size_t start = engine->lineStarts[lineIdx];
+    ensureLineShaped(engine, lineIdx);
+
+    float currentX = engine->gutterWidth - engine->scrollX;
+    float scale = engine->currentFontSize / 48.0f;
+
+    for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
+        float advance = sg.xAdvance * scale;
+        if (touchX < currentX + (advance / 2.0f)) {
+            return sg.isIME ? engine->cursors.back().head : sg.cluster;
+        }
+        currentX += advance;
+    }
+
     size_t end = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
     if (end > start && engine->pt.charAt(end - 1) == '\n') end--;
     if (end > start && engine->pt.charAt(end - 1) == '\r') end--;
-    size_t len = end - start;
-    if (len == 0) return start;
-    std::string lineStr = engine->pt.getRange(start, len);
-    const char* ptr = lineStr.data();
-    const char* strEnd = ptr + lineStr.size();
-    float currentX = engine->gutterWidth - engine->scrollX;
-    size_t currentPos = start;
-    float scale = engine->currentFontSize / 48.0f;
-    while (ptr < strEnd) {
-        const char* prevPtr = ptr;
-        uint32_t cp = decodeUtf8(&ptr, strEnd);
-        if (cp == 0) break;
-        if (engine->atlas.glyphs.count(cp) == 0 && engine->ftFaceMain != nullptr) {
-            engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
-        }
-        float advance = engine->charWidth;
-        if (engine->atlas.glyphs.count(cp) > 0) {
-            advance = engine->atlas.glyphs[cp].advance * scale;
-        }
-        if (touchX < currentX + (advance / 2.0f)) {
-            break;
-        }
-        currentX += advance;
-        currentPos += (ptr - prevPtr);
-    }
-    return currentPos;
+    return end;
 }
+
 void selectWordAt(Engine* engine, size_t pos) {
     if (pos >= engine->pt.length()) {
         engine->cursors.clear();
@@ -724,6 +890,7 @@ void selectWordAt(Engine* engine, size_t pos) {
     engine->cursors.clear();
     engine->cursors.push_back({ end, start, getXFromPos(engine, end) });
 }
+
 void ensureCaretVisible(Engine* engine) {
     if (engine->cursors.empty()) return;
     size_t pos = engine->cursors.back().head;
@@ -751,6 +918,7 @@ void ensureCaretVisible(Engine* engine) {
     if (engine->scrollX < 0.0f) engine->scrollX = 0.0f;
     if (engine->scrollY < 0.0f) engine->scrollY = 0.0f;
 }
+
 void insertAtCursors(Engine* engine, const std::string& text) {
     if (engine->cursors.empty() || text.empty()) return;
     EditBatch batch;
@@ -774,6 +942,7 @@ void insertAtCursors(Engine* engine, const std::string& text) {
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
 }
+
 void backspaceAtCursors(Engine* engine) {
     if (engine->cursors.empty()) return;
     Cursor& c = engine->cursors.back();
@@ -791,6 +960,7 @@ void backspaceAtCursors(Engine* engine) {
     }
     ensureCaretVisible(engine);
 }
+
 extern "C" {
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_commitText(JNIEnv* env, jobject thiz, jstring text) {
     if (!g_engine) return;
@@ -899,6 +1069,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdReplaceAll(JNIEnv* env, 
     replaceAllCommand(g_engine);
 }
 }
+
 void cleanupVulkan(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE) return;
     if (engine->graphicsPipeline != VK_NULL_HANDLE) {
@@ -917,8 +1088,17 @@ void cleanupVulkan(Engine* engine) {
     if (engine->fontImageView != VK_NULL_HANDLE) vkDestroyImageView(engine->device, engine->fontImageView, nullptr);
     if (engine->fontImage != VK_NULL_HANDLE) vkDestroyImage(engine->device, engine->fontImage, nullptr);
     if (engine->fontImageMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->fontImageMemory, nullptr);
-    if (engine->ftFaceMain) { FT_Done_Face(engine->ftFaceMain); engine->ftFaceMain = nullptr; }
-    if (engine->ftFaceEmoji) { FT_Done_Face(engine->ftFaceEmoji); engine->ftFaceEmoji = nullptr; }
+
+    for (hb_font_t* hb_font : engine->fallbackHbFonts) {
+        if (hb_font) hb_font_destroy(hb_font);
+    }
+    engine->fallbackHbFonts.clear();
+    for (FT_Face face : engine->fallbackFaces) {
+        if (face) FT_Done_Face(face);
+    }
+    engine->fallbackFaces.clear();
+    engine->fallbackFontData.clear();
+
     if (engine->ftLibrary) { FT_Done_FreeType(engine->ftLibrary); engine->ftLibrary = nullptr; }
     if (engine->imageAvailableSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(engine->device, engine->imageAvailableSemaphore, nullptr);
     if (engine->renderFinishedSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(engine->device, engine->renderFinishedSemaphore, nullptr);
@@ -934,6 +1114,7 @@ void cleanupVulkan(Engine* engine) {
     if (engine->surface != VK_NULL_HANDLE) { vkDestroySurfaceKHR(engine->instance, engine->surface, nullptr); engine->surface = VK_NULL_HANDLE; }
     if (engine->instance != VK_NULL_HANDLE) { vkDestroyInstance(engine->instance, nullptr); engine->instance = VK_NULL_HANDLE; }
 }
+
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
@@ -942,6 +1123,7 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
     }
     return 0;
 }
+
 void createBuffer(Engine* engine, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
     VkBufferCreateInfo bufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     bufferInfo.size = size; bufferInfo.usage = usage; bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -954,6 +1136,7 @@ void createBuffer(Engine* engine, VkDeviceSize size, VkBufferUsageFlags usage, V
     vkAllocateMemory(engine->device, &allocInfo, nullptr, &bufferMemory);
     vkBindBufferMemory(engine->device, buffer, bufferMemory, 0);
 }
+
 VkCommandBuffer beginSingleTimeCommands(Engine* engine) {
     VkCommandBufferAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; allocInfo.commandPool = engine->commandPool; allocInfo.commandBufferCount = 1;
@@ -964,6 +1147,7 @@ VkCommandBuffer beginSingleTimeCommands(Engine* engine) {
     vkBeginCommandBuffer(commandBuffer, &beginInfo);
     return commandBuffer;
 }
+
 void endSingleTimeCommands(Engine* engine, VkCommandBuffer commandBuffer) {
     vkEndCommandBuffer(commandBuffer);
     VkSubmitInfo submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
@@ -972,6 +1156,7 @@ void endSingleTimeCommands(Engine* engine, VkCommandBuffer commandBuffer) {
     vkQueueWaitIdle(engine->graphicsQueue);
     vkFreeCommandBuffers(engine->device, engine->commandPool, 1, &commandBuffer);
 }
+
 void transitionImageLayout(Engine* engine, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands(engine);
     VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
@@ -994,6 +1179,7 @@ void transitionImageLayout(Engine* engine, VkImage image, VkImageLayout oldLayou
     vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
     endSingleTimeCommands(engine, commandBuffer);
 }
+
 void copyBufferToImage(Engine* engine, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands(engine);
     VkBufferImageCopy region = {};
@@ -1004,6 +1190,7 @@ void copyBufferToImage(Engine* engine, VkBuffer buffer, VkImage image, uint32_t 
     vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     endSingleTimeCommands(engine, commandBuffer);
 }
+
 bool createTextTexture(Engine* engine) {
     VkDeviceSize imageSize = (VkDeviceSize)engine->atlas.width * engine->atlas.height * 4;
     if (imageSize == 0 || engine->atlas.pixels.empty()) return false;
@@ -1049,7 +1236,6 @@ bool createTextTexture(Engine* engine) {
     return true;
 }
 
-// ★修正1: 物理ウィンドウの最新サイズを強制的に取得する
 bool createSwapchain(Engine* engine) {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(engine->physicalDevice, engine->surface, &capabilities);
@@ -1146,7 +1332,6 @@ bool createCommandBuffers(Engine* engine) {
     return vkAllocateCommandBuffers(engine->device, &allocInfo, engine->commandBuffers.data()) == VK_SUCCESS;
 }
 
-// ★修正2: RenderPass はフォーマットが変わらない限り破棄しない (パイプラインが壊れる原因になるため)
 void recreateSwapchain(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE || engine->app->window == nullptr) return;
     int width = ANativeWindow_getWidth(engine->app->window);
@@ -1220,7 +1405,6 @@ bool createPipelineLayout(Engine* engine) {
     return true;
 }
 
-#include <android/asset_manager.h>
 std::vector<uint32_t> loadShaderAsset(Engine* engine, const char* filename) {
     AAsset* asset = AAssetManager_open(engine->app->activity->assetManager, filename, AASSET_MODE_BUFFER);
     if (!asset) return {};
@@ -1336,25 +1520,65 @@ bool initVulkan(Engine* engine) {
     if (!createFramebuffers(engine)) return false;
     if (!createCommandBuffers(engine)) return false;
     if (!createSyncObjects(engine)) return false;
+
     VkDeviceSize bufferSize = sizeof(Vertex) * 60000;
     createBuffer(engine, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->vertexBuffer, engine->vertexBufferMemory);
     createBuffer(engine, engine->atlas.width * engine->atlas.height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->atlasStagingBuffer, engine->atlasStagingMemory);
+
     if (FT_Init_FreeType(&engine->ftLibrary)) return false;
     engine->atlas.init();
-    engine->fontDataMain = loadSystemFont();
-    if (!engine->fontDataMain.empty()) {
-        if (FT_New_Memory_Face(engine->ftLibrary, engine->fontDataMain.data(), engine->fontDataMain.size(), 0, &engine->ftFaceMain) == 0) {
-            FT_Set_Pixel_Sizes(engine->ftFaceMain, 0, 48);
+
+    const char* fontPaths[] = {
+            "/system/fonts/Roboto-Regular.ttf",
+            "/system/fonts/NotoSansCJK-Regular.ttc",
+            "/system/fonts/NotoSansJP-Regular.otf",
+            "/system/fonts/NotoSansSymbols-Regular-Subsetted.ttf",
+            "/system/fonts/NotoSansSymbols-Regular.ttf",
+            "/system/fonts/DroidSansFallback.ttf"
+    };
+
+    for (const char* path : fontPaths) {
+        std::ifstream file(path, std::ios::binary | std::ios::ate);
+        if (file.is_open()) {
+            size_t size = file.tellg();
+            std::vector<uint8_t> buffer(size);
+            file.seekg(0, std::ios::beg);
+            file.read((char*)buffer.data(), size);
+
+            engine->fallbackFontData.push_back(std::move(buffer));
+            FT_Face face;
+            if (FT_New_Memory_Face(engine->ftLibrary, engine->fallbackFontData.back().data(), size, 0, &face) == 0) {
+                FT_Set_Pixel_Sizes(face, 0, 48);
+                engine->fallbackFaces.push_back(face);
+                engine->fallbackHbFonts.push_back(hb_ft_font_create(face, nullptr));
+                engine->fallbackFontScales.push_back(1.0f);
+            } else {
+                engine->fallbackFontData.pop_back();
+            }
         }
     }
-    engine->fontDataEmoji = loadAsset(engine, "fonts/NotoColorEmoji.ttf");
-    if (!engine->fontDataEmoji.empty()) {
-        if (FT_New_Memory_Face(engine->ftLibrary, engine->fontDataEmoji.data(), engine->fontDataEmoji.size(), 0, &engine->ftFaceEmoji) == 0) {
-            if (FT_HAS_FIXED_SIZES(engine->ftFaceEmoji)) {
-                FT_Select_Size(engine->ftFaceEmoji, 0);
+    std::vector<uint8_t> emojiBuffer = loadAsset(engine, "fonts/NotoColorEmoji.ttf");
+    if (!emojiBuffer.empty()) {
+        engine->fallbackFontData.push_back(std::move(emojiBuffer));
+        FT_Face face = nullptr;
+        if (FT_New_Memory_Face(engine->ftLibrary, engine->fallbackFontData.back().data(), engine->fallbackFontData.back().size(), 0, &face) == 0) {
+            float emScale = 1.0f; // ★追加
+            if (FT_HAS_FIXED_SIZES(face)) {
+                FT_Select_Size(face, 0);
+                // ★追加: 絵文字の固定サイズ(例:109px)を48ptに縮小するスケールを計算
+                if (face->size->metrics.y_ppem > 0) {
+                    emScale = 48.0f / (float)face->size->metrics.y_ppem;
+                }
             } else {
-                FT_Set_Pixel_Sizes(engine->ftFaceEmoji, 0, 48);
+                FT_Set_Pixel_Sizes(face, 0, 48);
             }
+            engine->fallbackFaces.push_back(face);
+            if (face != nullptr) {
+                engine->fallbackHbFonts.push_back(hb_ft_font_create(face, nullptr));
+                engine->fallbackFontScales.push_back(emScale); // ★追加
+            }
+        } else {
+            engine->fallbackFontData.pop_back();
         }
     }
     if (!createTextTexture(engine)) return false;
@@ -1367,32 +1591,13 @@ bool initVulkan(Engine* engine) {
 void updateTextVertices(Engine* engine) {
     float scale = engine->currentFontSize / 48.0f;
     float baselineOffset = engine->lineHeight * 0.8f;
-    float x = engine->gutterWidth - engine->scrollX;
-    float y = engine->topMargin + baselineOffset - engine->scrollY;
     engine->maxLineWidth = engine->gutterWidth;
-    size_t len = engine->pt.length();
-    std::string text = engine->pt.getRange(0, len);
-    size_t mainCaretPos = engine->cursors.empty() ? 0 : engine->cursors.back().head;
-    bool hasIME = !engine->imeComp.empty();
-    if (hasIME) {
-        if (mainCaretPos <= text.size()) text.insert(mainCaretPos, engine->imeComp);
-        else text.append(engine->imeComp);
-    }
-    std::vector<size_t> visualCursors;
-    for (const auto& c : engine->cursors) {
-        size_t vPos = c.head;
-        if (hasIME && vPos >= mainCaretPos) {
-            vPos += engine->imeComp.size();
-        }
-        visualCursors.push_back(vPos);
-    }
-    const char* ptr = text.data();
-    const char* end = ptr + text.size();
-    size_t currentByteOffset = 0;
+
     std::vector<Vertex> bgVertices;
     std::vector<Vertex> lineVertices;
     std::vector<Vertex> charVertices;
     std::vector<Vertex> cursorVertices;
+
     float whiteU = 1.0f / engine->atlas.width;
     float whiteV = 1.0f / engine->atlas.height;
     auto addRect = [&](std::vector<Vertex>& verts, float rx, float ry, float rw, float rh, float r, float g, float b, float a) {
@@ -1403,8 +1608,10 @@ void updateTextVertices(Engine* engine) {
         verts.push_back({{rx,      ry + rh}, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
         verts.push_back({{rx + rw, ry + rh}, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
     };
+
     float textR = engine->textColor[0], textG = engine->textColor[1], textB = engine->textColor[2], textA = engine->textColor[3];
     float cursorWidth = std::max(2.0f, 4.0f * scale);
+
     std::vector<std::pair<size_t, size_t>> searchMatches;
     if (!engine->searchQuery.empty()) {
         size_t currentSearchPos = 0;
@@ -1417,145 +1624,124 @@ void updateTextVertices(Engine* engine) {
             currentSearchPos = found + matchLen;
         }
     }
-    while (ptr < end) {
-        for (size_t vPos : visualCursors) {
-            if (currentByteOffset == vPos) {
-                float curY = y - engine->lineHeight * 0.8f;
-                addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight,
-                        engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
-            }
-        }
-        const char* prevPtr = ptr;
-        uint32_t cp = 0;
-        bool isNewlineChar = false;
-        if (*ptr == '\n' || *ptr == '\r') {
-            isNewlineChar = true;
-            if (*ptr == '\n') {
-                cp = 0x2193;
-                ptr++;
-            } else if (*ptr == '\r') {
-                if (ptr + 1 < end && *(ptr + 1) == '\n') {
-                    cp = 0x21B5;
-                    ptr += 2;
-                } else {
-                    cp = 0x2190;
-                    ptr++;
-                }
-            }
-        } else {
-            cp = decodeUtf8(&ptr, end);
-        }
-        if (cp == 0) break;
-        size_t charBytes = ptr - prevPtr;
-        if (engine->atlas.glyphs.count(cp) == 0 && engine->ftFaceMain != nullptr) {
-            engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
-        }
-        if (engine->atlas.glyphs.count(cp) == 0) {
-            currentByteOffset += charBytes;
-            if (isNewlineChar) {
-                x = engine->gutterWidth - engine->scrollX;
-                y += engine->lineHeight;
-            }
-            continue;
-        }
-        GlyphInfo& info = engine->atlas.glyphs[cp];
-        float advanceForHighlight = isNewlineChar ? (engine->charWidth * scale) : (info.advance * scale);
-        bool isSearchResult = false;
-        for (const auto& match : searchMatches) {
-            if (currentByteOffset >= match.first && currentByteOffset < match.second) {
-                isSearchResult = true;
-                break;
-            }
-        }
-        bool isComposingChar = (hasIME && currentByteOffset >= mainCaretPos && currentByteOffset < mainCaretPos + engine->imeComp.size());
-        bool isSelected = false;
-        if (!engine->cursors.empty() && engine->cursors.back().hasSelection()) {
-            size_t selStart = engine->cursors.back().start();
-            size_t selEnd = engine->cursors.back().end();
-            if (currentByteOffset >= selStart && currentByteOffset < selEnd) {
-                isSelected = true;
-            }
-        }
 
-        if (isComposingChar) {
-            float bgY = y - engine->lineHeight * 0.8f;
-            addRect(bgVertices, x, bgY, advanceForHighlight, engine->lineHeight, 0.2f, 0.6f, 1.0f, 0.3f);
-            float lineY = y + engine->lineHeight * 0.1f;
-            addRect(lineVertices, x, lineY, advanceForHighlight, 2.0f, textR, textG, textB, 1.0f);
-        }
-        else if (isSelected) {
-            float bgY = y - engine->lineHeight * 0.8f;
-            addRect(bgVertices, x, bgY, advanceForHighlight, engine->lineHeight,
-                    engine->selColor[0], engine->selColor[1], engine->selColor[2], engine->selColor[3]);
-        }
-        else if (isSearchResult) {
-            // 検索ハイライト（黄色半透明）
-            float bgY = y - engine->lineHeight * 0.8f;
-            addRect(bgVertices, x, bgY, advanceForHighlight, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
-        }
-        float isColorFlag = info.isColor ? 1.0f : 0.0f;
-        float charColorR = textR, charColorG = textG, charColorB = textB, charColorA = textA;
-        if (isNewlineChar) {
-            charColorR = 0.50f; charColorG = 0.50f; charColorB = 0.50f; charColorA = 0.40f;
-        }
-        float xpos = x + info.bearingX * scale;
-        float ypos = y - info.bearingY * scale;
-        float w = info.width * scale;
-        float h = info.height * scale;
-        charVertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, isColorFlag, {charColorR, charColorG, charColorB, charColorA}});
-        charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {charColorR, charColorG, charColorB, charColorA}});
-        charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {charColorR, charColorG, charColorB, charColorA}});
-        charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {charColorR, charColorG, charColorB, charColorA}});
-        charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {charColorR, charColorG, charColorB, charColorA}});
-        charVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag, {charColorR, charColorG, charColorB, charColorA}});
-        if (isNewlineChar) {
-            x = engine->gutterWidth - engine->scrollX;
-            y += engine->lineHeight;
-        } else {
-            x += info.advance * scale;
-        }
-        currentByteOffset += charBytes;
-        float absoluteX = x + engine->scrollX;
-        if (absoluteX > engine->maxLineWidth) {
-            engine->maxLineWidth = absoluteX;
-        }
-    }
-    for (size_t vPos : visualCursors) {
-        if (currentByteOffset == vPos) {
-            float curY = y - engine->lineHeight * 0.8f;
-            addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight,
-                    engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
-        }
-    }
-    std::vector<Vertex> gutterBgVertices;
-    std::vector<Vertex> gutterTextVertices;
     float winH = 5000.0f;
     if (engine->app->window != nullptr) {
         winH = (float)ANativeWindow_getHeight(engine->app->window);
     }
+
+    for (int lineIdx = 0; lineIdx < engine->lineStarts.size(); ++lineIdx) {
+        float lineY = engine->topMargin + baselineOffset - engine->scrollY + lineIdx * engine->lineHeight;
+        if (lineY < -engine->lineHeight || lineY > winH + engine->lineHeight) continue;
+
+        ensureLineShaped(engine, lineIdx);
+
+        float x = engine->gutterWidth - engine->scrollX;
+        size_t lineStart = engine->lineStarts[lineIdx];
+
+        for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
+            uint64_t key = ((uint64_t)sg.fontIndex << 32) | sg.glyphIndex;
+            if (engine->atlas.glyphs.count(key) == 0) {
+                engine->atlas.loadGlyph(engine, sg.fontIndex, sg.glyphIndex);
+            }
+
+            bool isSelected = false;
+            if (!engine->cursors.empty() && engine->cursors.back().hasSelection()) {
+                size_t selStart = engine->cursors.back().start();
+                size_t selEnd = engine->cursors.back().end();
+                if (sg.cluster >= selStart && sg.cluster < selEnd) isSelected = true;
+            }
+
+            bool isSearchResult = false;
+            for (const auto& match : searchMatches) {
+                if (sg.cluster >= match.first && sg.cluster < match.second) {
+                    isSearchResult = true; break;
+                }
+            }
+
+            if (sg.isIME) {
+                float bgY = lineY - engine->lineHeight * 0.8f;
+                addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, 0.2f, 0.6f, 1.0f, 0.3f);
+                float underY = lineY + engine->lineHeight * 0.1f;
+                addRect(lineVertices, x, underY, sg.xAdvance * scale, 2.0f, textR, textG, textB, 1.0f);
+            } else if (isSelected) {
+                float bgY = lineY - engine->lineHeight * 0.8f;
+                addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, engine->selColor[0], engine->selColor[1], engine->selColor[2], engine->selColor[3]);
+            } else if (isSearchResult) {
+                float bgY = lineY - engine->lineHeight * 0.8f;
+                addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
+            }
+
+            if (engine->atlas.glyphs.count(key) > 0) {
+                GlyphInfo& info = engine->atlas.glyphs[key];
+                float isColorFlag = info.isColor ? 1.0f : 0.0f;
+                float xpos = x + sg.xOffset * scale + info.bearingX * scale;
+                float ypos = lineY - sg.yOffset * scale - info.bearingY * scale;
+                float w = info.width * scale;
+                float h = info.height * scale;
+
+                charVertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, isColorFlag, {textR, textG, textB, textA}});
+                charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {textR, textG, textB, textA}});
+                charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {textR, textG, textB, textA}});
+                charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {textR, textG, textB, textA}});
+                charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {textR, textG, textB, textA}});
+                charVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag, {textR, textG, textB, textA}});
+            }
+
+            x += sg.xAdvance * scale;
+            float absoluteX = x + engine->scrollX;
+            if (absoluteX > engine->maxLineWidth) engine->maxLineWidth = absoluteX;
+        }
+
+        for (const auto& c : engine->cursors) {
+            size_t vPos = c.head;
+            if (vPos >= lineStart && (lineIdx + 1 >= engine->lineStarts.size() || vPos < engine->lineStarts[lineIdx + 1])) {
+                float cx = getXFromPos(engine, vPos);
+                float curY = lineY - engine->lineHeight * 0.8f;
+                addRect(cursorVertices, cx - engine->scrollX, curY, cursorWidth, engine->lineHeight,
+                        engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
+            }
+        }
+    }
+
+    std::vector<Vertex> gutterBgVertices;
+    std::vector<Vertex> gutterTextVertices;
     addRect(gutterBgVertices, 0.0f, 0.0f, engine->gutterWidth, winH,
             engine->gutterBgColor[0], engine->gutterBgColor[1], engine->gutterBgColor[2], engine->gutterBgColor[3]);
+
     float gutterTextR = engine->gutterTextColor[0], gutterTextG = engine->gutterTextColor[1], gutterTextB = engine->gutterTextColor[2];
     for (int i = 0; i < engine->lineStarts.size(); ++i) {
         float lineTop = engine->topMargin - engine->scrollY + i * engine->lineHeight;
         if (lineTop + engine->lineHeight < 0.0f || lineTop > winH) continue;
+
         std::string lineNumStr = std::to_string(i + 1);
-        float numWidth = 0;
+        float numWidth = 0.0f;
         for(char c : lineNumStr) {
             uint32_t cp = c;
-            if (engine->atlas.glyphs.count(cp) == 0 && engine->ftFaceMain != nullptr) {
-                engine->atlas.loadChar(engine->ftFaceMain, engine->ftFaceEmoji, cp);
+            int fontIdx = getFontIndexForChar(engine, cp, 0);
+            uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp);
+            uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
+
+            if (engine->atlas.glyphs.count(key) == 0 && !engine->fallbackFaces.empty()) {
+                engine->atlas.loadGlyph(engine, fontIdx, glyphIdx);
             }
-            if (engine->atlas.glyphs.count(cp) > 0) numWidth += engine->atlas.glyphs[cp].advance * scale;
+            if (engine->atlas.glyphs.count(key) > 0) numWidth += engine->atlas.glyphs[key].advance * scale;
             else numWidth += engine->charWidth;
         }
+
         float rightMargin = engine->charWidth * 0.5f;
         float numX = engine->gutterWidth - rightMargin - numWidth;
+        if (numX < rightMargin * 0.5f) numX = rightMargin * 0.5f;
+
         float lineY = lineTop + baselineOffset;
         for(char c : lineNumStr) {
             uint32_t cp = c;
-            if (engine->atlas.glyphs.count(cp) > 0) {
-                GlyphInfo& info = engine->atlas.glyphs[cp];
+            int fontIdx = getFontIndexForChar(engine, cp, 0);
+            uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp);
+            uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
+
+            if (engine->atlas.glyphs.count(key) > 0) {
+                GlyphInfo& info = engine->atlas.glyphs[key];
                 float xpos = numX + info.bearingX * scale;
                 float ypos = lineY - info.bearingY * scale;
                 float w = info.width * scale;
@@ -1572,6 +1758,7 @@ void updateTextVertices(Engine* engine) {
             }
         }
     }
+
     std::vector<Vertex> vertices;
     vertices.insert(vertices.end(), bgVertices.begin(), bgVertices.end());
     vertices.insert(vertices.end(), lineVertices.begin(), lineVertices.end());
@@ -1579,11 +1766,13 @@ void updateTextVertices(Engine* engine) {
     vertices.insert(vertices.end(), cursorVertices.begin(), cursorVertices.end());
     vertices.insert(vertices.end(), gutterBgVertices.begin(), gutterBgVertices.end());
     vertices.insert(vertices.end(), gutterTextVertices.begin(), gutterTextVertices.end());
+
     float topH = engine->topMargin;
     float bgR = engine->bgColor[0], bgG = engine->bgColor[1], bgB = engine->bgColor[2];
     float winWidth = 5000.0f;
     float fadeHeight = topH * 0.8f;
     float solidHeight = topH - fadeHeight;
+
     if (solidHeight > 0.0f) {
         vertices.push_back({{0.0f,     0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
         vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
@@ -1600,8 +1789,10 @@ void updateTextVertices(Engine* engine) {
         vertices.push_back({{0.0f,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
         vertices.push_back({{winWidth, topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
     }
+
     engine->vertexCount = static_cast<uint32_t>(vertices.size());
     if (engine->vertexCount == 0) return;
+
     void* data;
     vkMapMemory(engine->device, engine->vertexBufferMemory, 0, sizeof(Vertex) * engine->vertexCount, 0, &data);
     memcpy(data, vertices.data(), sizeof(Vertex) * engine->vertexCount);
@@ -1613,17 +1804,16 @@ void renderFrame(Engine* engine) {
     vkWaitForFences(engine->device, 1, &engine->inFlightFence, VK_TRUE, UINT64_MAX);
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(engine->device, engine->swapchain, UINT64_MAX, engine->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        recreateSwapchain(engine);
-        return;
-    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-        return;
-    }
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) { recreateSwapchain(engine); return; }
+    else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) { return; }
+
     vkResetFences(engine->device, 1, &engine->inFlightFence);
     vkResetCommandBuffer(engine->commandBuffers[imageIndex], 0);
     VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(engine->commandBuffers[imageIndex], &beginInfo);
+
     updateTextVertices(engine);
+
     if (engine->atlas.isDirty) {
         uint32_t dx = engine->atlas.dirtyMinX;
         uint32_t dy = engine->atlas.dirtyMinY;
@@ -1631,13 +1821,15 @@ void renderFrame(Engine* engine) {
         uint32_t dh = engine->atlas.dirtyMaxY - engine->atlas.dirtyMinY;
         if (dw > 0 && dh > 0) {
             void* mapData = nullptr;
-            if (vkMapMemory(engine->device, engine->atlasStagingMemory, 0, dw * dh * 4, 0, &mapData) == VK_SUCCESS) {
+            if (vkMapMemory(engine->device, engine->atlasStagingMemory, 0, engine->atlas.width * dh * 4, 0, &mapData) == VK_SUCCESS) {
                 uint8_t* dst = (uint8_t*)mapData;
                 const uint8_t* src = engine->atlas.pixels.data();
                 for (uint32_t row = 0; row < dh; ++row) {
-                    memcpy(dst + (row * dw) * 4, src + ((dy + row) * engine->atlas.width + dx) * 4, dw * 4);
+                    memcpy(dst + (row * engine->atlas.width) * 4,
+                           src + ((dy + row) * engine->atlas.width + dx) * 4, dw * 4);
                 }
                 vkUnmapMemory(engine->device, engine->atlasStagingMemory);
+
                 VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
                 barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -1647,11 +1839,13 @@ void renderFrame(Engine* engine) {
                 barrier.subresourceRange.levelCount = 1; barrier.subresourceRange.layerCount = 1;
                 barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT; barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
                 vkCmdPipelineBarrier(engine->commandBuffers[imageIndex], VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+
                 VkBufferImageCopy region = {};
-                region.bufferOffset = 0; region.bufferRowLength = dw; region.bufferImageHeight = dh;
+                region.bufferOffset = 0; region.bufferRowLength = engine->atlas.width; region.bufferImageHeight = dh;
                 region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT; region.imageSubresource.layerCount = 1;
                 region.imageOffset = {(int32_t)dx, (int32_t)dy, 0}; region.imageExtent = {dw, dh, 1};
                 vkCmdCopyBufferToImage(engine->commandBuffers[imageIndex], engine->atlasStagingBuffer, engine->fontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+
                 barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
                 barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                 barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -1660,48 +1854,49 @@ void renderFrame(Engine* engine) {
         }
         engine->atlas.isDirty = false;
     }
+
     VkRenderPassBeginInfo rpBegin = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rpBegin.renderPass = engine->renderPass;
     rpBegin.framebuffer = engine->framebuffers[imageIndex];
     rpBegin.renderArea.extent = engine->swapchainExtent;
     VkClearValue clearColor = {{{engine->bgColor[0], engine->bgColor[1], engine->bgColor[2], engine->bgColor[3]}}};
-    rpBegin.clearValueCount = 1;
-    rpBegin.pClearValues = &clearColor;
+    rpBegin.clearValueCount = 1; rpBegin.pClearValues = &clearColor;
+
     vkCmdBeginRenderPass(engine->commandBuffers[imageIndex], &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->graphicsPipeline);
+
     VkViewport viewport = {};
     viewport.width = (float)engine->swapchainExtent.width; viewport.height = (float)engine->swapchainExtent.height; viewport.maxDepth = 1.0f;
     vkCmdSetViewport(engine->commandBuffers[imageIndex], 0, 1, &viewport);
     VkRect2D scissor = {}; scissor.extent = engine->swapchainExtent;
     vkCmdSetScissor(engine->commandBuffers[imageIndex], 0, 1, &scissor);
+
     if (engine->vertexCount > 0) {
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(engine->commandBuffers[imageIndex], 0, 1, &engine->vertexBuffer, offsets);
         vkCmdBindDescriptorSets(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->pipelineLayout, 0, 1, &engine->descriptorSet, 0, nullptr);
         PushConstants pc;
         pc.screenWidth = (float)engine->swapchainExtent.width; pc.screenHeight = (float)engine->swapchainExtent.height;
-        pc.color[0] = engine->textColor[0];
-        pc.color[1] = engine->textColor[1];
-        pc.color[2] = engine->textColor[2];
-        pc.color[3] = engine->textColor[3];
+        pc.color[0] = engine->textColor[0]; pc.color[1] = engine->textColor[1]; pc.color[2] = engine->textColor[2]; pc.color[3] = engine->textColor[3];
         vkCmdPushConstants(engine->commandBuffers[imageIndex], engine->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pc);
         vkCmdDraw(engine->commandBuffers[imageIndex], engine->vertexCount, 1, 0, 0);
     }
+
     vkCmdEndRenderPass(engine->commandBuffers[imageIndex]);
     vkEndCommandBuffer(engine->commandBuffers[imageIndex]);
+
     VkSubmitInfo submit = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
     VkSemaphore waitSem[] = {engine->imageAvailableSemaphore}; VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submit.waitSemaphoreCount = 1; submit.pWaitSemaphores = waitSem; submit.pWaitDstStageMask = waitStages;
     submit.commandBufferCount = 1; submit.pCommandBuffers = &engine->commandBuffers[imageIndex];
     VkSemaphore sigSem[] = {engine->renderFinishedSemaphore}; submit.signalSemaphoreCount = 1; submit.pSignalSemaphores = sigSem;
+
     vkQueueSubmit(engine->graphicsQueue, 1, &submit, engine->inFlightFence);
     VkPresentInfoKHR present = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     present.waitSemaphoreCount = 1; present.pWaitSemaphores = sigSem; present.swapchainCount = 1; present.pSwapchains = &engine->swapchain; present.pImageIndices = &imageIndex;
     VkResult presentResult = vkQueuePresentKHR(engine->graphicsQueue, &present);
-    // ★修正3: VK_SUBOPTIMAL_KHRを無視する
-    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
-        recreateSwapchain(engine);
-    }
+
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) { recreateSwapchain(engine); }
 }
 
 void checkKeyboardVisibility(Engine* engine) {
@@ -1734,17 +1929,12 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
         int32_t action = AMotionEvent_getAction(event) & AMOTION_EVENT_ACTION_MASK;
         size_t pointerCount = AMotionEvent_getPointerCount(event);
         if (pointerCount >= 2) {
-            float x0 = AMotionEvent_getX(event, 0);
-            float y0 = AMotionEvent_getY(event, 0);
-            float x1 = AMotionEvent_getX(event, 1);
-            float y1 = AMotionEvent_getY(event, 1);
-            float dx = x1 - x0;
-            float dy = y1 - y0;
+            float x0 = AMotionEvent_getX(event, 0); float y0 = AMotionEvent_getY(event, 0);
+            float x1 = AMotionEvent_getX(event, 1); float y1 = AMotionEvent_getY(event, 1);
+            float dx = x1 - x0; float dy = y1 - y0;
             float distance = std::sqrt(dx * dx + dy * dy);
             if (action == AMOTION_EVENT_ACTION_POINTER_DOWN) {
-                engine->isPinching = true;
-                engine->lastPinchDistance = distance;
-                engine->isDragging = false;
+                engine->isPinching = true; engine->lastPinchDistance = distance; engine->isDragging = false;
             } else if (action == AMOTION_EVENT_ACTION_MOVE && engine->isPinching) {
                 if (engine->lastPinchDistance > 0.0f) {
                     float ratio = distance / engine->lastPinchDistance;
@@ -1771,62 +1961,39 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             return 1;
         }
         if (engine->isPinching) {
-            if (action == AMOTION_EVENT_ACTION_UP) {
-                engine->isPinching = false;
-                engine->isDragging = false;
-            }
-            engine->lastTouchX = AMotionEvent_getX(event, 0);
-            engine->lastTouchY = AMotionEvent_getY(event, 0);
+            if (action == AMOTION_EVENT_ACTION_UP) { engine->isPinching = false; engine->isDragging = false; }
+            engine->lastTouchX = AMotionEvent_getX(event, 0); engine->lastTouchY = AMotionEvent_getY(event, 0);
             return 1;
         }
         float x = AMotionEvent_getX(event, 0);
         float y = AMotionEvent_getY(event, 0);
         if (action == AMOTION_EVENT_ACTION_DOWN) {
             int64_t now = getCurrentTimeMs();
-            if (now - engine->lastClickTime < 400 &&
-                std::abs(x - engine->lastClickX) < 30.0f &&
-                std::abs(y - engine->lastClickY) < 30.0f) {
+            if (now - engine->lastClickTime < 400 && std::abs(x - engine->lastClickX) < 30.0f && std::abs(y - engine->lastClickY) < 30.0f) {
                 engine->clickCount++;
-            } else {
-                engine->clickCount = 1;
-            }
-            engine->lastClickTime = now;
-            engine->lastClickX = x;
-            engine->lastClickY = y;
-            engine->isDragging = false;
-            engine->lastTouchX = x;
-            engine->lastTouchY = y;
-            engine->isFlinging = false;
-            engine->velocityX = 0.0f;
-            engine->velocityY = 0.0f;
-            engine->lastMoveTime = now;
+            } else { engine->clickCount = 1; }
+            engine->lastClickTime = now; engine->lastClickX = x; engine->lastClickY = y;
+            engine->isDragging = false; engine->lastTouchX = x; engine->lastTouchY = y;
+            engine->isFlinging = false; engine->velocityX = 0.0f; engine->velocityY = 0.0f; engine->lastMoveTime = now;
         } else if (action == AMOTION_EVENT_ACTION_MOVE) {
             int64_t now = getCurrentTimeMs();
-            float dx = x - engine->lastTouchX;
-            float dy = y - engine->lastTouchY;
+            float dx = x - engine->lastTouchX; float dy = y - engine->lastTouchY;
             int64_t dt = now - engine->lastMoveTime;
             if (dt > 0) {
-                float instVelX = dx / (float)dt;
-                float instVelY = dy / (float)dt;
+                float instVelX = dx / (float)dt; float instVelY = dy / (float)dt;
                 engine->velocityX = engine->velocityX * 0.4f + instVelX * 0.6f;
                 engine->velocityY = engine->velocityY * 0.4f + instVelY * 0.6f;
             }
             engine->lastMoveTime = now;
             if (!engine->isDragging && (std::abs(x - engine->lastClickX) > 10.0f || std::abs(y - engine->lastClickY) > 10.0f)) {
-                engine->isDragging = true;
-                engine->lastTouchX = x;
-                engine->lastTouchY = y;
-                dx = 0.0f;
-                dy = 0.0f;
+                engine->isDragging = true; engine->lastTouchX = x; engine->lastTouchY = y; dx = 0.0f; dy = 0.0f;
             }
             if (engine->isDragging) {
-                engine->scrollX -= dx;
-                engine->scrollY -= dy;
+                engine->scrollX -= dx; engine->scrollY -= dy;
                 if (engine->scrollX < 0.0f) engine->scrollX = 0.0f;
                 if (engine->scrollY < 0.0f) engine->scrollY = 0.0f;
                 if (app->window != nullptr) {
-                    float winW = (float)ANativeWindow_getWidth(app->window);
-                    float winH = (float)ANativeWindow_getHeight(app->window);
+                    float winW = (float)ANativeWindow_getWidth(app->window); float winH = (float)ANativeWindow_getHeight(app->window);
                     float visibleH = winH - engine->bottomInset;
                     float contentH = engine->lineStarts.size() * engine->lineHeight + engine->topMargin + engine->lineHeight;
                     float maxScrollY = std::max(0.0f, contentH - visibleH);
@@ -1834,8 +2001,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                     if (engine->scrollY > maxScrollY) engine->scrollY = maxScrollY;
                     if (engine->scrollX > maxScrollX) engine->scrollX = maxScrollX;
                 }
-                engine->lastTouchX = x;
-                engine->lastTouchY = y;
+                engine->lastTouchX = x; engine->lastTouchY = y;
                 checkKeyboardVisibility(engine);
             }
         } else if (action == AMOTION_EVENT_ACTION_UP) {
@@ -1848,6 +2014,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 if (showImeMethod) env->CallVoidMethod(app->activity->clazz, showImeMethod);
                 env->DeleteLocalRef(activityClass);
                 app->activity->vm->DetachCurrentThread();
+
                 size_t targetPos = getDocPosFromPoint(engine, x, y);
                 if (engine->clickCount == 2) {
                     selectWordAt(engine, targetPos);
@@ -1857,10 +2024,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 }
             } else {
                 float speed = std::sqrt(engine->velocityX * engine->velocityX + engine->velocityY * engine->velocityY);
-                if (speed > 0.5f) {
-                    engine->isFlinging = true;
-                    engine->lastMoveTime = getCurrentTimeMs();
-                }
+                if (speed > 0.5f) { engine->isFlinging = true; engine->lastMoveTime = getCurrentTimeMs(); }
             }
             engine->isDragging = false;
         }
@@ -1868,6 +2032,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
     }
     return 0;
 }
+
 static void onAppCmd(struct android_app* app, int32_t cmd) {
     Engine* engine = (Engine*)app->userData;
     switch (cmd) {
@@ -1875,22 +2040,16 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
             if (app->window != nullptr) {
                 LOGI("ウィンドウ生成。Vulkan初期化開始。");
                 updateThemeColors(engine);
-                if (initVulkan(engine)) {
-                    engine->isWindowReady = true;
-                }
+                if (initVulkan(engine)) { engine->isWindowReady = true; }
             }
             break;
         case APP_CMD_CONFIG_CHANGED:
             updateThemeColors(engine);
-            if (engine->isWindowReady) {
-                recreateSwapchain(engine);
-            }
+            if (engine->isWindowReady) { recreateSwapchain(engine); }
             break;
         case APP_CMD_WINDOW_RESIZED:
         case APP_CMD_WINDOW_REDRAW_NEEDED:
-            if (engine->isWindowReady) {
-                recreateSwapchain(engine);
-            }
+            if (engine->isWindowReady) { recreateSwapchain(engine); }
             break;
         case APP_CMD_TERM_WINDOW:
             LOGI("ウィンドウ破棄。");
@@ -1899,6 +2058,7 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
             break;
     }
 }
+
 void android_main(struct android_app* app) {
     Engine engine = {};
     engine.app = app;
@@ -1925,14 +2085,10 @@ void android_main(struct android_app* app) {
                 int64_t dt = now - engine.lastMoveTime;
                 if (dt > 0) {
                     if (dt > 50) dt = 50;
-                    engine.scrollX -= engine.velocityX * dt;
-                    engine.scrollY -= engine.velocityY * dt;
+                    engine.scrollX -= engine.velocityX * dt; engine.scrollY -= engine.velocityY * dt;
                     float friction = std::pow(0.992f, (float)dt);
-                    engine.velocityX *= friction;
-                    engine.velocityY *= friction;
-                    if (std::abs(engine.velocityX) < 0.05f && std::abs(engine.velocityY) < 0.05f) {
-                        engine.isFlinging = false;
-                    }
+                    engine.velocityX *= friction; engine.velocityY *= friction;
+                    if (std::abs(engine.velocityX) < 0.05f && std::abs(engine.velocityY) < 0.05f) { engine.isFlinging = false; }
                     if (engine.app->window != nullptr) {
                         float winW = (float)ANativeWindow_getWidth(engine.app->window);
                         float winH = (float)ANativeWindow_getHeight(engine.app->window);
@@ -1959,6 +2115,13 @@ void android_main(struct android_app* app) {
                         insertAtCursors(&engine, ev.text);
                     } else if (ev.type == ImeEvent::Composing) {
                         engine.imeComp = ev.text;
+                        // ★追加: 変換中文字が変わったら、現在行のキャッシュを無効化して再描画を促す
+                        if (!engine.cursors.empty()) {
+                            int lineIdx = getLineIdx(&engine, engine.cursors.back().head);
+                            if (lineIdx >= 0 && lineIdx < engine.lineCaches.size()) {
+                                engine.lineCaches[lineIdx].isShaped = false;
+                            }
+                        }
                     } else if (ev.type == ImeEvent::Delete) {
                         backspaceAtCursors(&engine);
                     }
