@@ -9,6 +9,7 @@
 #include <unordered_map>
 #include <fstream>
 #include <chrono>
+#include <cmath>
 
 // --- FreeType のインクルード ---
 #include <ft2build.h>
@@ -366,6 +367,11 @@ struct Engine {
     float lastPinchDistance = 0.0f;
     bool isKeyboardShowing = false;
 
+    bool isFlinging = false;   // 慣性スクロール中かどうか
+    float velocityX = 0.0f;    // X方向の速度 (px / ミリ秒)
+    float velocityY = 0.0f;    // Y方向の速度 (px / ミリ秒)
+    int64_t lastMoveTime = 0;  // 最後にタッチ移動した時刻
+
     bool isDarkMode = false;
     float bgColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
     float textColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
@@ -487,6 +493,35 @@ int getLineIdx(Engine* engine, size_t pos) {
     auto it = std::upper_bound(engine->lineStarts.begin(), engine->lineStarts.end(), pos);
     int idx = (int)std::distance(engine->lineStarts.begin(), it) - 1;
     return std::max(0, std::min(idx, (int)engine->lineStarts.size() - 1));
+}
+
+void checkKeyboardVisibility(Engine* engine) {
+    if (engine->isKeyboardShowing && !engine->cursors.empty() && engine->app->window != nullptr) {
+        size_t pos = engine->cursors.back().head;
+        int lineIdx = getLineIdx(engine, pos);
+
+        float scale = engine->currentFontSize / 48.0f;
+        float currentLineHeight = 60.0f * scale;
+
+        float caretY = 100.0f + lineIdx * currentLineHeight;
+        float displayY = caretY - engine->scrollY;
+
+        float winH = (float)ANativeWindow_getHeight(engine->app->window);
+        float visibleH = winH - engine->bottomInset;
+
+        bool isOutsideY = (displayY + currentLineHeight < 100.0f) || (displayY > visibleH);
+
+        if (isOutsideY) {
+            engine->isKeyboardShowing = false;
+            JNIEnv* env = nullptr;
+            engine->app->activity->vm->AttachCurrentThread(&env, nullptr);
+            jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
+            jmethodID hideImeMethod = env->GetMethodID(activityClass, "hideSoftwareKeyboard", "()V");
+            if (hideImeMethod) env->CallVoidMethod(engine->app->activity->clazz, hideImeMethod);
+            env->DeleteLocalRef(activityClass);
+            engine->app->activity->vm->DetachCurrentThread();
+        }
+    }
 }
 
 // ★ DirectWrite の layout->HitTestTextPosition の代わり
@@ -1717,7 +1752,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
         size_t pointerCount = AMotionEvent_getPointerCount(event);
 
         // ==========================================================
-        // ★追加: 2本指でのピンチズーム処理
+        // ★ 2本指でのピンチズーム処理
         // ==========================================================
         if (pointerCount >= 2) {
             float x0 = AMotionEvent_getX(event, 0);
@@ -1792,21 +1827,36 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             engine->lastClickTime = now;
             engine->lastClickX = x; // タップ開始の絶対座標を記録
             engine->lastClickY = y;
-            engine->isDragging = false;
 
+            engine->isDragging = false;
             engine->lastTouchX = x;
             engine->lastTouchY = y;
 
+            engine->isFlinging = false;
+            engine->velocityX = 0.0f;
+            engine->velocityY = 0.0f;
+            engine->lastMoveTime = now;
 
         } else if (action == AMOTION_EVENT_ACTION_MOVE) {
+            int64_t now = getCurrentTimeMs();
             float dx = x - engine->lastTouchX;
             float dy = y - engine->lastTouchY;
 
+            int64_t dt = now - engine->lastMoveTime;
+            if (dt > 0) {
+                float instVelX = dx / (float)dt;
+                float instVelY = dy / (float)dt;
+                engine->velocityX = engine->velocityX * 0.4f + instVelX * 0.6f;
+                engine->velocityY = engine->velocityY * 0.4f + instVelY * 0.6f;
+            }
+            engine->lastMoveTime = now;
+
+            // スクロール開始判定（10pxの遊び）
             if (!engine->isDragging && (std::abs(x - engine->lastClickX) > 10.0f || std::abs(y - engine->lastClickY) > 10.0f)) {
                 engine->isDragging = true;
                 engine->lastTouchX = x;
                 engine->lastTouchY = y;
-                dx = 0.0f;
+                dx = 0.0f; // ★修正ポイント1: ここでゼロにしないとカクッと飛びます
                 dy = 0.0f;
             }
 
@@ -1814,7 +1864,6 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 engine->scrollX -= dx;
                 engine->scrollY -= dy;
 
-                // --- (スクロール制限の処理はそのまま) ---
                 if (engine->scrollX < 0.0f) engine->scrollX = 0.0f;
                 if (engine->scrollY < 0.0f) engine->scrollY = 0.0f;
 
@@ -1822,9 +1871,14 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                     float winW = (float)ANativeWindow_getWidth(app->window);
                     float winH = (float)ANativeWindow_getHeight(app->window);
                     float visibleH = winH - engine->bottomInset;
-                    float contentH = engine->lineStarts.size() * engine->lineHeight + 100.0f + engine->lineHeight;
+
+                    float scale = engine->currentFontSize / 48.0f;
+                    float currentLineHeight = 60.0f * scale;
+                    float contentH = engine->lineStarts.size() * currentLineHeight + 100.0f + currentLineHeight;
+
                     float maxScrollY = std::max(0.0f, contentH - visibleH);
                     float maxScrollX = std::max(0.0f, engine->maxLineWidth - winW + engine->charWidth * 2.0f);
+
                     if (engine->scrollY > maxScrollY) engine->scrollY = maxScrollY;
                     if (engine->scrollX > maxScrollX) engine->scrollX = maxScrollX;
                 }
@@ -1832,41 +1886,11 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 engine->lastTouchX = x;
                 engine->lastTouchY = y;
 
-                // ==========================================================
-                // ★追加: スクロール中にカーソルが画面外に出たらキーボードを閉じる
-                // ==========================================================
-                if (engine->isKeyboardShowing && !engine->cursors.empty() && app->window != nullptr) {
-                    size_t pos = engine->cursors.back().head;
-                    int lineIdx = getLineIdx(engine, pos);
-
-                    // ズームスケールを考慮した行の高さを取得
-                    float scale = engine->currentFontSize / 48.0f;
-                    float currentLineHeight = 60.0f * scale;
-
-                    // 画面上でのカーソルのY表示位置
-                    float caretY = 100.0f + lineIdx * currentLineHeight;
-                    float displayY = caretY - engine->scrollY;
-
-                    float winH = (float)ANativeWindow_getHeight(app->window);
-                    float visibleH = winH - engine->bottomInset;
-
-                    // 縦方向で完全に画面外（上端または下端）に出たか判定
-                    bool isOutsideY = (displayY + currentLineHeight < 100.0f) || (displayY > visibleH);
-
-                    if (isOutsideY) {
-                        engine->isKeyboardShowing = false; // 重複呼び出し防止
-
-                        // JNI経由でキーボードを隠すメソッドを呼び出す
-                        JNIEnv* env = nullptr;
-                        app->activity->vm->AttachCurrentThread(&env, nullptr);
-                        jclass activityClass = env->GetObjectClass(app->activity->clazz);
-                        jmethodID hideImeMethod = env->GetMethodID(activityClass, "hideSoftwareKeyboard", "()V");
-                        if (hideImeMethod) env->CallVoidMethod(app->activity->clazz, hideImeMethod);
-                        env->DeleteLocalRef(activityClass);
-                        app->activity->vm->DetachCurrentThread();
-                    }
-                }
+                // ★修正ポイント2: ここで共通関数を1つだけ呼びます。
+                // （重複していた長い監視コードは削除しました）
+                checkKeyboardVisibility(engine);
             }
+
         } else if (action == AMOTION_EVENT_ACTION_UP) {
             // 指を離した時、もしスクロール(ドラッグ)していなかったら「タップ」と判定してカーソルを移動する
             if (!engine->isDragging) {
@@ -1888,6 +1912,13 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                     // シングルタップなら通常のカーソル移動
                     engine->cursors.clear();
                     engine->cursors.push_back({ targetPos, targetPos, getXFromPos(engine, targetPos) });
+                }
+            } else {
+                // ドラッグしていた場合、指を離した瞬間の速度が速ければ慣性スクロール開始
+                float speed = std::sqrt(engine->velocityX * engine->velocityX + engine->velocityY * engine->velocityY);
+                if (speed > 0.5f) { // 0.5px/ms (秒速500px) 以上ならフリックとみなす
+                    engine->isFlinging = true;
+                    engine->lastMoveTime = getCurrentTimeMs();
                 }
             }
             // 状態をリセット
@@ -1954,6 +1985,51 @@ void android_main(struct android_app* app) {
 
         if (engine.isWindowReady) {
             // ★描画の直前に、安全に入力イベントを処理する
+            if (engine.isFlinging) {
+                int64_t now = getCurrentTimeMs();
+                int64_t dt = now - engine.lastMoveTime;
+                if (dt > 0) {
+                    if (dt > 50) dt = 50; // フレーム落ち時の異常ワープを防止
+
+                    // 速度に合わせてスクロール移動
+                    engine.scrollX -= engine.velocityX * dt;
+                    engine.scrollY -= engine.velocityY * dt;
+
+                    // 摩擦による減衰 (1ミリ秒ごとに速度を0.992倍にする)
+                    float friction = std::pow(0.992f, (float)dt);
+                    engine.velocityX *= friction;
+                    engine.velocityY *= friction;
+
+                    // 十分に速度が落ちたら完全に停止
+                    if (std::abs(engine.velocityX) < 0.05f && std::abs(engine.velocityY) < 0.05f) {
+                        engine.isFlinging = false;
+                    }
+
+                    // 限界地点の壁判定（画面端を超えたらそこに合わせて速度も0にする）
+                    if (engine.app->window != nullptr) {
+                        float winW = (float)ANativeWindow_getWidth(engine.app->window);
+                        float winH = (float)ANativeWindow_getHeight(engine.app->window);
+                        float visibleH = winH - engine.bottomInset;
+
+                        float scale = engine.currentFontSize / 48.0f;
+                        float currentLineHeight = 60.0f * scale;
+                        float contentH = engine.lineStarts.size() * currentLineHeight + 100.0f + currentLineHeight;
+
+                        float maxScrollY = std::max(0.0f, contentH - visibleH);
+                        float maxScrollX = std::max(0.0f, engine.maxLineWidth - winW + engine.charWidth * 2.0f);
+
+                        if (engine.scrollX < 0.0f) { engine.scrollX = 0.0f; engine.velocityX = 0.0f; }
+                        else if (engine.scrollX > maxScrollX) { engine.scrollX = maxScrollX; engine.velocityX = 0.0f; }
+
+                        if (engine.scrollY < 0.0f) { engine.scrollY = 0.0f; engine.velocityY = 0.0f; }
+                        else if (engine.scrollY > maxScrollY) { engine.scrollY = maxScrollY; engine.velocityY = 0.0f; }
+
+                        // 慣性中もキーボードをチェックして閉じる
+                        checkKeyboardVisibility(&engine);
+                    }
+                    engine.lastMoveTime = now;
+                }
+            }
             {
                 std::lock_guard<std::mutex> lock(g_imeMutex);
                 while (!g_imeQueue.empty()) {
