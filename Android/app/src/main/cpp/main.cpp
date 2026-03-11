@@ -1,6 +1,7 @@
 #include <android_native_app_glue.h>
 #include <android/log.h>
-#include <jni.h> // ★JNI連携用
+#include <android/configuration.h>
+#include <jni.h>
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -361,6 +362,14 @@ struct Engine {
 
     float currentFontSize = 48.0f; // 21.0f から 48.0f へ
 
+    bool isDarkMode = false;
+    float bgColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float textColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+    float gutterBgColor[4] = {1.0f, 1.0f, 1.0f, 1.0f};
+    float gutterTextColor[4] = {0.66f, 0.66f, 0.66f, 1.0f};
+    float selColor[4] = {0.7f, 0.8f, 1.0f, 0.5f};
+    float caretColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
+
     // --- Vulkan オブジェクト ---
     VkInstance instance;
     VkSurfaceKHR surface;
@@ -413,6 +422,31 @@ struct Engine {
     VkDeviceMemory atlasStagingMemory = VK_NULL_HANDLE;
 };
 
+void updateThemeColors(Engine* engine) {
+    if (!engine->app || !engine->app->config) return;
+
+    // システムのナイトモード（ダークテーマ）設定を取得
+    int32_t uiMode = AConfiguration_getUiModeNight(engine->app->config);
+    engine->isDarkMode = (uiMode == ACONFIGURATION_UI_MODE_NIGHT_YES);
+
+    if (engine->isDarkMode) {
+        // ダークモードの色味 (Windows版準拠)
+        engine->bgColor[0] = 0.0f; engine->bgColor[1] = 0.0f; engine->bgColor[2] = 0.0f; engine->bgColor[3] = 1.0f;
+        engine->textColor[0] = 1.0f; engine->textColor[1] = 1.0f; engine->textColor[2] = 1.0f; engine->textColor[3] = 1.0f;
+        engine->gutterBgColor[0] = 0.0f; engine->gutterBgColor[1] = 0.0f; engine->gutterBgColor[2] = 0.0f; engine->gutterBgColor[3] = 1.0f;
+        engine->gutterTextColor[0] = 0.33f; engine->gutterTextColor[1] = 0.33f; engine->gutterTextColor[2] = 0.33f; engine->gutterTextColor[3] = 1.0f;
+        engine->selColor[0] = 0.0f; engine->selColor[1] = 0.47f; engine->selColor[2] = 0.84f; engine->selColor[3] = 0.5f; // アクセントカラー
+        engine->caretColor[0] = 1.0f; engine->caretColor[1] = 1.0f; engine->caretColor[2] = 1.0f; engine->caretColor[3] = 1.0f;
+    } else {
+        // ライトモードの色味 (Windows版準拠)
+        engine->bgColor[0] = 1.0f; engine->bgColor[1] = 1.0f; engine->bgColor[2] = 1.0f; engine->bgColor[3] = 1.0f;
+        engine->textColor[0] = 0.0f; engine->textColor[1] = 0.0f; engine->textColor[2] = 0.0f; engine->textColor[3] = 1.0f;
+        engine->gutterBgColor[0] = 1.0f; engine->gutterBgColor[1] = 1.0f; engine->gutterBgColor[2] = 1.0f; engine->gutterBgColor[3] = 1.0f;
+        engine->gutterTextColor[0] = 0.66f; engine->gutterTextColor[1] = 0.66f; engine->gutterTextColor[2] = 0.66f; engine->gutterTextColor[3] = 1.0f;
+        engine->selColor[0] = 0.7f; engine->selColor[1] = 0.8f; engine->selColor[2] = 1.0f; engine->selColor[3] = 0.5f; // アクセントカラー
+        engine->caretColor[0] = 0.0f; engine->caretColor[1] = 0.0f; engine->caretColor[2] = 0.0f; engine->caretColor[3] = 1.0f;
+    }
+}
 
 #include <mutex>
 #include <deque>
@@ -1331,7 +1365,7 @@ void updateTextVertices(Engine* engine) {
         verts.push_back({{rx + rw, ry + rh}, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
     };
 
-    float textR = 1.0f, textG = 1.0f, textB = 1.0f, textA = 1.0f;
+    float textR = engine->textColor[0], textG = engine->textColor[1], textB = engine->textColor[2], textA = engine->textColor[3];
     float cursorWidth = 5.0f;
 
     while (ptr < end) {
@@ -1341,8 +1375,9 @@ void updateTextVertices(Engine* engine) {
         for (size_t vPos : visualCursors) {
             if (currentByteOffset == vPos) {
                 float curY = y - engine->lineHeight * 0.8f;
-                // 幅2.0f、高さlineHeightの白い矩形を追加
-                addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight, textR, textG, textB, 1.0f);
+                // ★カーソルの色を反映
+                addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight,
+                        engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
             }
         }
 
@@ -1399,10 +1434,11 @@ void updateTextVertices(Engine* engine) {
             float lineY = y + engine->lineHeight * 0.1f;
             addRect(lineVertices, x, lineY, advance, 2.0f, textR, textG, textB, 1.0f);
         }
-
         else if (isSelected) {
             float bgY = y - engine->lineHeight * 0.8f;
-            addRect(bgVertices, x, bgY, advance, engine->lineHeight, 0.2f, 0.4f, 1.0f, 0.5f); // 薄い青色
+            // ★選択範囲の色を反映
+            addRect(bgVertices, x, bgY, advance, engine->lineHeight,
+                    engine->selColor[0], engine->selColor[1], engine->selColor[2], engine->selColor[3]);
         }
 
         float isColorFlag = info.isColor ? 1.0f : 0.0f;
@@ -1435,18 +1471,24 @@ void updateTextVertices(Engine* engine) {
     for (size_t vPos : visualCursors) {
         if (currentByteOffset == vPos) {
             float curY = y - engine->lineHeight * 0.8f;
-            addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight, textR, textG, textB, 1.0f);
+            // ★カーソルの色を反映
+            addRect(cursorVertices, x, curY, cursorWidth, engine->lineHeight,
+                    engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
         }
     }
     std::vector<Vertex> gutterBgVertices;
     std::vector<Vertex> gutterTextVertices;
-    float winH = 5000.0f; // 十分な高さを確保
+    float winH = 5000.0f;
     if (engine->app->window != nullptr) {
         winH = (float)ANativeWindow_getHeight(engine->app->window);
     }
-    // ① ガターの背景を描画（少し暗いグレーに。横スクロール時も左端に固定）
-    addRect(gutterBgVertices, 0.0f, 0.0f, engine->gutterWidth, winH, 0.15f, 0.15f, 0.15f, 1.0f);
-    float gutterTextR = 0.6f, gutterTextG = 0.6f, gutterTextB = 0.6f;
+
+    // ★ガター（行番号領域）の背景色を反映
+    addRect(gutterBgVertices, 0.0f, 0.0f, engine->gutterWidth, winH,
+            engine->gutterBgColor[0], engine->gutterBgColor[1], engine->gutterBgColor[2], engine->gutterBgColor[3]);
+
+    // ★行番号のテキスト色を反映
+    float gutterTextR = engine->gutterTextColor[0], gutterTextG = engine->gutterTextColor[1], gutterTextB = engine->gutterTextColor[2];
     // ② 各行の行番号テキストを描画
     for (int i = 0; i < engine->lineStarts.size(); ++i) {
         // スクロールを反映した行のY座標
@@ -1590,7 +1632,8 @@ void renderFrame(Engine* engine) {
     rpBegin.renderPass = engine->renderPass;
     rpBegin.framebuffer = engine->framebuffers[imageIndex];
     rpBegin.renderArea.extent = engine->swapchainExtent;
-    VkClearValue clearColor = {{{0.1f, 0.1f, 0.1f, 1.0f}}};
+
+    VkClearValue clearColor = {{{engine->bgColor[0], engine->bgColor[1], engine->bgColor[2], engine->bgColor[3]}}};
     rpBegin.clearValueCount = 1;
     rpBegin.pClearValues = &clearColor;
 
@@ -1612,12 +1655,18 @@ void renderFrame(Engine* engine) {
 
         PushConstants pc;
         pc.screenWidth = (float)engine->swapchainExtent.width; pc.screenHeight = (float)engine->swapchainExtent.height;
-        pc.color[0] = 1.0f; pc.color[1] = 1.0f; pc.color[2] = 1.0f; pc.color[3] = 1.0f;
+
+        // ★必要に応じてPushConstantsのカラーもテーマに合わせる（シェーダー側で文字色に乗算している場合）
+        pc.color[0] = engine->textColor[0];
+        pc.color[1] = engine->textColor[1];
+        pc.color[2] = engine->textColor[2];
+        pc.color[3] = engine->textColor[3];
+
         vkCmdPushConstants(engine->commandBuffers[imageIndex], engine->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pc);
 
         vkCmdDraw(engine->commandBuffers[imageIndex], engine->vertexCount, 1, 0, 0);
     }
-
+    
     vkCmdEndRenderPass(engine->commandBuffers[imageIndex]);
     vkEndCommandBuffer(engine->commandBuffers[imageIndex]);
 
@@ -1735,6 +1784,7 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
         case APP_CMD_INIT_WINDOW:
             if (app->window != nullptr) {
                 LOGI("ウィンドウ生成。Vulkan初期化開始。");
+                updateThemeColors(engine);
                 if (initVulkan(engine)) {
                     engine->isWindowReady = true;
                     // --- テスト文字列を日本語に変更 ---
@@ -1743,6 +1793,9 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
                     engine->cursors.push_back({0, 0, 0.0f});
                 }
             }
+            break;
+        case APP_CMD_CONFIG_CHANGED:
+            updateThemeColors(engine);
             break;
         case APP_CMD_TERM_WINDOW:
             LOGI("ウィンドウ破棄。");
