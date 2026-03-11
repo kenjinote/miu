@@ -274,6 +274,14 @@ struct Engine {
     std::vector<Cursor> cursors;
     std::vector<size_t> lineStarts;
     std::string imeComp;
+    std::string currentFilePath;
+    bool isDirty = false;
+    std::string searchQuery;
+    std::string replaceQuery;
+    bool searchMatchCase = false;
+    bool searchWholeWord = false;
+    bool searchRegex = false;
+    bool isReplaceMode = false;
     float scrollX = 0.0f;
     float scrollY = 0.0f;
     float maxLineWidth = 0.0f;
@@ -345,6 +353,229 @@ struct Engine {
     VkBuffer atlasStagingBuffer = VK_NULL_HANDLE;
     VkDeviceMemory atlasStagingMemory = VK_NULL_HANDLE;
 };
+void rebuildLineStarts(Engine* engine);
+void ensureCaretVisible(Engine* engine);
+float getXFromPos(Engine* engine, size_t pos);
+void updateDirtyFlag(Engine* engine) {
+    // Undoスタックの状態で変更があったかを判定する（簡易実装）
+    // 本格的にはUndoManagerにsavePoint等の概念を入れると完璧です
+    engine->isDirty = !engine->undo.undoStack.empty();
+}
+void performNewDocument(Engine* engine) {
+    if (!engine) return;
+    engine->pt.initEmpty();
+    engine->currentFilePath.clear();
+    engine->undo.undoStack.clear();
+    engine->undo.redoStack.clear();
+    engine->isDirty = false;
+    engine->cursors.clear();
+    engine->cursors.push_back({0, 0, 0.0f});
+    engine->vScrollPos = 0;
+    engine->hScrollPos = 0;
+    engine->scrollX = 0.0f;
+    engine->scrollY = 0.0f;
+}
+#include <regex>
+std::string UnescapeString(const std::string& s) {
+    std::string out; out.reserve(s.size());
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '\\' && i + 1 < s.size()) {
+            switch (s[i + 1]) { case 'n': out += '\n'; break; case 'r': out += '\r'; break; case 't': out += '\t'; break; case '\\': out += '\\'; break; default: out += s[i]; out += s[i + 1]; break; } i++;
+        } else out += s[i];
+    } return out;
+}
+std::string preprocessRegexQuery(const std::string& query) {
+    std::string processed; processed.reserve(query.size() * 4);
+    for (size_t i = 0; i < query.size(); ++i) {
+        char c = query[i];
+        if (c == '\\' && i + 1 < query.size()) {
+            char next = query[i + 1];
+            if (next == 'n') {
+                bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
+                if (!isPrecededByCR) { processed += "(?:\\r\\n|[\\r\\n])"; i++; continue; }
+            }
+            processed += c; processed += next; i++; continue;
+        } else if (c == '^') {
+            bool inClass = (i > 0 && query[i - 1] == '[');
+            if (!inClass) { processed += "((?:^|(?:\\r\\n|\\r(?!\\n)|[\\n])))"; continue; }
+        } else if (c == '$') {
+            bool inClass = (i > 0 && query[i - 1] == '[');
+            if (!inClass) { processed += "(?=(?:\\r\\n|[\\r\\n]|$))"; continue; }
+        }
+        processed += c;
+    }
+    return processed;
+}
+size_t findText(Engine* engine, size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
+    if (query.empty()) return std::string::npos;
+    size_t len = engine->pt.length();
+    std::string actualQuery = query;
+    if (isRegex) actualQuery = preprocessRegexQuery(query);
+
+    if (isRegex) {
+        std::string fullText = engine->pt.getRange(0, len);
+        try {
+            std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+            if (!matchCase) flags |= std::regex_constants::icase;
+            std::regex re(actualQuery, flags);
+            std::smatch m;
+            size_t foundPos = std::string::npos;
+            size_t foundLen = 0;
+
+            if (forward) {
+                if (startPos > fullText.size()) startPos = 0;
+                size_t searchStartIdx = startPos;
+                std::string::const_iterator searchStartIter = fullText.begin() + searchStartIdx;
+                if (std::regex_search(searchStartIter, fullText.cend(), m, re)) {
+                    foundPos = searchStartIdx + m.position();
+                    foundLen = m.length();
+                } else if (startPos > 0 && std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) {
+                    foundPos = m.position();
+                    foundLen = m.length();
+                }
+            } else {
+                // 後方検索は簡易的に全件取得して直前のものを返す
+                auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
+                auto words_end = std::sregex_iterator();
+                size_t bestPos = std::string::npos;
+                size_t bestLen = 0;
+                size_t limit = (startPos == 0) ? len : startPos;
+                for (auto i = words_begin; i != words_end; ++i) {
+                    if ((size_t)i->position() < limit) {
+                        bestPos = i->position();
+                        bestLen = i->length();
+                    }
+                }
+                foundPos = bestPos;
+                foundLen = bestLen;
+            }
+            if (foundPos != std::string::npos) {
+                if (outLen) *outLen = foundLen;
+                return foundPos;
+            }
+        } catch (...) { return std::string::npos; }
+        return std::string::npos;
+    }
+
+    size_t qLen = query.length();
+    if (outLen) *outLen = qLen;
+    auto toLower = [](char c) { return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c; };
+    size_t cur = startPos;
+    if (forward) { if (cur >= len) cur = 0; } else { if (cur == 0) cur = len; else cur--; }
+    size_t count = 0;
+
+    while (count < len) {
+        bool match = true;
+        for (size_t i = 0; i < qLen; ++i) {
+            size_t p = cur + i;
+            if (p >= len) { match = false; break; }
+            char c1 = engine->pt.charAt(p); char c2 = query[i];
+            if (!matchCase) { c1 = toLower(c1); c2 = toLower(c2); }
+            if (c1 != c2) { match = false; break; }
+        }
+        if (match && wholeWord) {
+            if (cur > 0 && isWordChar(engine->pt.charAt(cur - 1))) match = false;
+            if (match && (cur + qLen < len) && isWordChar(engine->pt.charAt(cur + qLen))) match = false;
+        }
+        if (match) return cur;
+        if (forward) { cur++; if (cur >= len) cur = 0; } else { if (cur == 0) cur = len - 1; else cur--; }
+        count++;
+    }
+    return std::string::npos;
+}
+void findNextCommand(Engine* engine, bool forward) {
+    if (engine->searchQuery.empty()) return;
+    size_t currentCursorPos = forward ? (engine->cursors.empty() ? 0 : engine->cursors.back().end()) : (engine->cursors.empty() ? 0 : engine->cursors.back().start());
+    size_t matchLen = 0;
+    size_t pos = findText(engine, currentCursorPos, engine->searchQuery, forward, engine->searchMatchCase, engine->searchWholeWord, engine->searchRegex, &matchLen);
+
+    if (pos != std::string::npos) {
+        engine->cursors.clear();
+        engine->cursors.push_back({ pos + matchLen, pos, getXFromPos(engine, pos + matchLen) });
+        ensureCaretVisible(engine);
+    }
+}
+void replaceNextCommand(Engine* engine) {
+    if (engine->cursors.empty() || engine->searchQuery.empty()) return;
+    Cursor& c = engine->cursors.back();
+    if (!c.hasSelection()) { findNextCommand(engine, true); return; }
+
+    size_t len = c.end() - c.start();
+    size_t start = c.start();
+    std::string selText = engine->pt.getRange(start, len);
+    std::string replacement = engine->replaceQuery; // Regexのキャプチャグループ置換は今回簡易化
+
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+    engine->pt.erase(start, len);
+    batch.ops.push_back({ EditOp::Erase, start, selText });
+    engine->pt.insert(start, replacement);
+    batch.ops.push_back({ EditOp::Insert, start, replacement });
+
+    engine->cursors.clear();
+    size_t newEnd = start + replacement.size();
+    engine->cursors.push_back({ newEnd, start, getXFromPos(engine, newEnd) });
+    batch.afterCursors = engine->cursors;
+    engine->undo.push(batch);
+    engine->isDirty = true;
+
+    rebuildLineStarts(engine);
+    ensureCaretVisible(engine);
+    findNextCommand(engine, true);
+}
+void replaceAllCommand(Engine* engine) {
+    if (engine->searchQuery.empty()) return;
+    size_t currentPos = 0;
+    std::vector<std::pair<size_t, size_t>> matches;
+    while (true) {
+        size_t matchLen = 0;
+        size_t pos = findText(engine, currentPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, engine->searchRegex, &matchLen);
+        if (pos == std::string::npos || pos < currentPos) break;
+        matches.push_back({ pos, matchLen });
+        currentPos = pos + matchLen;
+    }
+    if (matches.empty()) return;
+
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+    for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
+        size_t start = it->first;
+        size_t len = it->second;
+        std::string deleted = engine->pt.getRange(start, len);
+        engine->pt.erase(start, len);
+        batch.ops.push_back({ EditOp::Erase, start, deleted });
+        engine->pt.insert(start, engine->replaceQuery);
+        batch.ops.push_back({ EditOp::Insert, start, engine->replaceQuery });
+    }
+    engine->isDirty = true;
+    engine->undo.push(batch);
+    rebuildLineStarts(engine);
+    ensureCaretVisible(engine);
+}
+bool openDocumentFromFile(Engine* engine, const std::string& path) {
+    if (!engine) return false;
+    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    if (!file.is_open()) return false;
+    size_t size = file.tellg();
+    file.seekg(0, std::ios::beg);
+    std::vector<char> buffer(size);
+    if (file.read(buffer.data(), size)) {
+        engine->pt.initEmpty();
+        engine->pt.insert(0, std::string(buffer.data(), size));
+        engine->currentFilePath = path;
+        engine->undo.undoStack.clear();
+        engine->undo.redoStack.clear();
+        engine->isDirty = false;
+        engine->cursors.clear();
+        engine->cursors.push_back({0, 0, 0.0f});
+        engine->vScrollPos = 0;
+        engine->hScrollPos = 0;
+        engine->scrollX = 0.0f;
+        engine->scrollY = 0.0f;
+        return true;
+    }
+    return false;
+}
 void updateThemeColors(Engine* engine) {
     if (!engine->app || !engine->app->config) return;
     int32_t uiMode = AConfiguration_getUiModeNight(engine->app->config);
@@ -539,6 +770,7 @@ void insertAtCursors(Engine* engine, const std::string& text) {
     c.desiredX = getXFromPos(engine, c.head);
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    engine->isDirty = true;
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
 }
@@ -554,6 +786,7 @@ void backspaceAtCursors(Engine* engine) {
         engine->pt.erase(c.head - eraseLen, eraseLen);
         c.head -= eraseLen;
         c.anchor = c.head;
+        engine->isDirty = true;
         rebuildLineStarts(engine);
     }
     ensureCaretVisible(engine);
@@ -595,6 +828,75 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateTopMargin(JNIEnv* env
     if (!g_engine) return;
     g_engine->topMargin = (float)topMargin;
     ensureCaretVisible(g_engine);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdNewDocument(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    performNewDocument(g_engine);
+    rebuildLineStarts(g_engine);
+    ensureCaretVisible(g_engine);
+}
+JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdOpenDocument(JNIEnv* env, jobject thiz, jstring path) {
+    if (!g_engine) return JNI_FALSE;
+    const char* strPath = env->GetStringUTFChars(path, nullptr);
+    bool success = false;
+    if (strPath) {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        success = openDocumentFromFile(g_engine, strPath);
+        env->ReleaseStringUTFChars(path, strPath);
+        if (success) {
+            rebuildLineStarts(g_engine);
+            ensureCaretVisible(g_engine);
+        }
+    }
+    return success ? JNI_TRUE : JNI_FALSE;
+}
+JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdIsDirty(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return JNI_FALSE;
+    return g_engine->isDirty ? JNI_TRUE : JNI_FALSE;
+}
+JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextContent(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return env->NewStringUTF("");
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    std::string text = g_engine->pt.getRange(0, g_engine->pt.length());
+    return env->NewStringUTF(text.c_str());
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMarkSaved(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->isDirty = false;
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetSearchOptions(JNIEnv* env, jobject thiz, jstring query, jstring replace, jboolean matchCase, jboolean wholeWord, jboolean regex) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (query) {
+        const char* q = env->GetStringUTFChars(query, nullptr);
+        g_engine->searchQuery = q ? q : "";
+        env->ReleaseStringUTFChars(query, q);
+    } else g_engine->searchQuery = "";
+    if (replace) {
+        const char* r = env->GetStringUTFChars(replace, nullptr);
+        g_engine->replaceQuery = r ? r : "";
+        env->ReleaseStringUTFChars(replace, r);
+    } else g_engine->replaceQuery = "";
+    g_engine->searchMatchCase = matchCase;
+    g_engine->searchWholeWord = wholeWord;
+    g_engine->searchRegex = regex;
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdFindNext(JNIEnv* env, jobject thiz, jboolean forward) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    findNextCommand(g_engine, forward);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdReplaceNext(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    replaceNextCommand(g_engine);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdReplaceAll(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    replaceAllCommand(g_engine);
 }
 }
 void cleanupVulkan(Engine* engine) {
@@ -746,24 +1048,29 @@ bool createTextTexture(Engine* engine) {
     if (vkCreateSampler(engine->device, &samplerInfo, nullptr, &engine->fontSampler) != VK_SUCCESS) return false;
     return true;
 }
+
+// ★修正1: 物理ウィンドウの最新サイズを強制的に取得する
 bool createSwapchain(Engine* engine) {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(engine->physicalDevice, engine->surface, &capabilities);
-    if (capabilities.currentExtent.width != 0xFFFFFFFF) { engine->swapchainExtent = capabilities.currentExtent; }
-    else {
-        int32_t w = ANativeWindow_getWidth(engine->app->window);
-        int32_t h = ANativeWindow_getHeight(engine->app->window);
-        engine->swapchainExtent.width = std::clamp((uint32_t)w, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-        engine->swapchainExtent.height = std::clamp((uint32_t)h, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-    }
+
+    int32_t w = ANativeWindow_getWidth(engine->app->window);
+    int32_t h = ANativeWindow_getHeight(engine->app->window);
+
+    engine->swapchainExtent.width = std::clamp((uint32_t)w, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+    engine->swapchainExtent.height = std::clamp((uint32_t)h, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
     if (engine->swapchainExtent.width == 0 || engine->swapchainExtent.height == 0) return false;
+
     uint32_t formatCount; vkGetPhysicalDeviceSurfaceFormatsKHR(engine->physicalDevice, engine->surface, &formatCount, nullptr);
     std::vector<VkSurfaceFormatKHR> formats(formatCount); vkGetPhysicalDeviceSurfaceFormatsKHR(engine->physicalDevice, engine->surface, &formatCount, formats.data());
     VkSurfaceFormatKHR selectedFormat = formats[0];
     for (const auto& f : formats) if (f.format == VK_FORMAT_B8G8R8A8_UNORM || f.format == VK_FORMAT_R8G8B8A8_UNORM) { selectedFormat = f; break; }
     engine->swapchainFormat = selectedFormat.format;
+
     uint32_t imageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount) imageCount = capabilities.maxImageCount;
+
     VkSwapchainKHR oldSwapchain = engine->swapchain;
     VkSwapchainCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
     createInfo.surface = engine->surface;
@@ -783,12 +1090,14 @@ bool createSwapchain(Engine* engine) {
     createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     createInfo.clipped = VK_TRUE;
     createInfo.oldSwapchain = oldSwapchain;
+
     VkSwapchainKHR newSwapchain;
     if (vkCreateSwapchainKHR(engine->device, &createInfo, nullptr, &newSwapchain) != VK_SUCCESS) return false;
     if (oldSwapchain != VK_NULL_HANDLE) {
         vkDestroySwapchainKHR(engine->device, oldSwapchain, nullptr);
     }
     engine->swapchain = newSwapchain;
+
     vkGetSwapchainImagesKHR(engine->device, engine->swapchain, &imageCount, nullptr);
     engine->swapchainImages.resize(imageCount); vkGetSwapchainImagesKHR(engine->device, engine->swapchain, &imageCount, engine->swapchainImages.data());
     engine->swapchainImageViews.resize(imageCount);
@@ -800,6 +1109,7 @@ bool createSwapchain(Engine* engine) {
     }
     return true;
 }
+
 bool createRenderPass(Engine* engine) {
     VkAttachmentDescription colorAttachment = {};
     colorAttachment.format = engine->swapchainFormat; colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -813,6 +1123,7 @@ bool createRenderPass(Engine* engine) {
     renderPassInfo.subpassCount = 1; renderPassInfo.pSubpasses = &subpass;
     return vkCreateRenderPass(engine->device, &renderPassInfo, nullptr, &engine->renderPass) == VK_SUCCESS;
 }
+
 bool createFramebuffers(Engine* engine) {
     engine->framebuffers.resize(engine->swapchainImageViews.size());
     for (size_t i = 0; i < engine->swapchainImageViews.size(); i++) {
@@ -824,6 +1135,7 @@ bool createFramebuffers(Engine* engine) {
     }
     return true;
 }
+
 bool createCommandBuffers(Engine* engine) {
     VkCommandPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
     poolInfo.queueFamilyIndex = engine->queueFamilyIndex; poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -833,33 +1145,35 @@ bool createCommandBuffers(Engine* engine) {
     allocInfo.commandPool = engine->commandPool; allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; allocInfo.commandBufferCount = (uint32_t)engine->commandBuffers.size();
     return vkAllocateCommandBuffers(engine->device, &allocInfo, engine->commandBuffers.data()) == VK_SUCCESS;
 }
+
+// ★修正2: RenderPass はフォーマットが変わらない限り破棄しない (パイプラインが壊れる原因になるため)
 void recreateSwapchain(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE || engine->app->window == nullptr) return;
     int width = ANativeWindow_getWidth(engine->app->window);
     int height = ANativeWindow_getHeight(engine->app->window);
     if (width == 0 || height == 0) return;
     vkDeviceWaitIdle(engine->device);
+
     for (auto fb : engine->framebuffers) {
         if (fb != VK_NULL_HANDLE) vkDestroyFramebuffer(engine->device, fb, nullptr);
     }
     engine->framebuffers.clear();
+
     if (!engine->commandBuffers.empty()) {
         vkFreeCommandBuffers(engine->device, engine->commandPool, static_cast<uint32_t>(engine->commandBuffers.size()), engine->commandBuffers.data());
         engine->commandBuffers.clear();
     }
-    if (engine->renderPass != VK_NULL_HANDLE) {
-        vkDestroyRenderPass(engine->device, engine->renderPass, nullptr);
-        engine->renderPass = VK_NULL_HANDLE;
-    }
+
     for (auto iv : engine->swapchainImageViews) {
         if (iv != VK_NULL_HANDLE) vkDestroyImageView(engine->device, iv, nullptr);
     }
     engine->swapchainImageViews.clear();
+
     createSwapchain(engine);
-    createRenderPass(engine);
     createFramebuffers(engine);
     createCommandBuffers(engine);
 }
+
 bool createSyncObjects(Engine* engine) {
     VkSemaphoreCreateInfo semInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     VkFenceCreateInfo fenceInfo = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO}; fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -867,6 +1181,7 @@ bool createSyncObjects(Engine* engine) {
            vkCreateSemaphore(engine->device, &semInfo, nullptr, &engine->renderFinishedSemaphore) == VK_SUCCESS &&
            vkCreateFence(engine->device, &fenceInfo, nullptr, &engine->inFlightFence) == VK_SUCCESS;
 }
+
 bool createDescriptors(Engine* engine) {
     VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
     samplerLayoutBinding.binding = 0; samplerLayoutBinding.descriptorCount = 1;
@@ -893,6 +1208,7 @@ bool createDescriptors(Engine* engine) {
     vkUpdateDescriptorSets(engine->device, 1, &descriptorWrite, 0, nullptr);
     return true;
 }
+
 bool createPipelineLayout(Engine* engine) {
     VkPushConstantRange pushConstantRange = {};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -903,6 +1219,7 @@ bool createPipelineLayout(Engine* engine) {
     if (vkCreatePipelineLayout(engine->device, &pipelineLayoutInfo, nullptr, &engine->pipelineLayout) != VK_SUCCESS) return false;
     return true;
 }
+
 #include <android/asset_manager.h>
 std::vector<uint32_t> loadShaderAsset(Engine* engine, const char* filename) {
     AAsset* asset = AAssetManager_open(engine->app->activity->assetManager, filename, AASSET_MODE_BUFFER);
@@ -913,6 +1230,7 @@ std::vector<uint32_t> loadShaderAsset(Engine* engine, const char* filename) {
     AAsset_close(asset);
     return buffer;
 }
+
 VkShaderModule createShaderModule(Engine* engine, const std::vector<uint32_t>& code) {
     VkShaderModuleCreateInfo createInfo = {VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
     createInfo.codeSize = code.size() * sizeof(uint32_t); createInfo.pCode = code.data();
@@ -920,6 +1238,7 @@ VkShaderModule createShaderModule(Engine* engine, const std::vector<uint32_t>& c
     vkCreateShaderModule(engine->device, &createInfo, nullptr, &shaderModule);
     return shaderModule;
 }
+
 std::vector<uint8_t> loadAsset(Engine* engine, const char* filename) {
     AAsset* asset = AAssetManager_open(engine->app->activity->assetManager, filename, AASSET_MODE_BUFFER);
     if (!asset) return {};
@@ -929,6 +1248,7 @@ std::vector<uint8_t> loadAsset(Engine* engine, const char* filename) {
     AAsset_close(asset);
     return buffer;
 }
+
 bool createGraphicsPipeline(Engine* engine) {
     auto vertCode = loadShaderAsset(engine, "shaders/text.vert.spv");
     auto fragCode = loadShaderAsset(engine, "shaders/text.frag.spv");
@@ -984,6 +1304,7 @@ bool createGraphicsPipeline(Engine* engine) {
     vkDestroyShaderModule(engine->device, vertModule, nullptr);
     return true;
 }
+
 bool initVulkan(Engine* engine) {
     VkApplicationInfo appInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO}; appInfo.apiVersion = VK_API_VERSION_1_0;
     std::vector<const char*> instExt = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_ANDROID_SURFACE_EXTENSION_NAME};
@@ -1042,6 +1363,7 @@ bool initVulkan(Engine* engine) {
     if (!createGraphicsPipeline(engine)) return false;
     return true;
 }
+
 void updateTextVertices(Engine* engine) {
     float scale = engine->currentFontSize / 48.0f;
     float baselineOffset = engine->lineHeight * 0.8f;
@@ -1082,7 +1404,19 @@ void updateTextVertices(Engine* engine) {
         verts.push_back({{rx + rw, ry + rh}, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
     };
     float textR = engine->textColor[0], textG = engine->textColor[1], textB = engine->textColor[2], textA = engine->textColor[3];
-    float cursorWidth = std::max(2.0f, 5.0f * scale);
+    float cursorWidth = std::max(2.0f, 4.0f * scale);
+    std::vector<std::pair<size_t, size_t>> searchMatches;
+    if (!engine->searchQuery.empty()) {
+        size_t currentSearchPos = 0;
+        size_t docLen = engine->pt.length();
+        while (currentSearchPos < docLen) {
+            size_t matchLen = 0;
+            size_t found = findText(engine, currentSearchPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, engine->searchRegex, &matchLen);
+            if (found == std::string::npos || matchLen == 0 || found < currentSearchPos) break;
+            searchMatches.push_back({found, found + matchLen});
+            currentSearchPos = found + matchLen;
+        }
+    }
     while (ptr < end) {
         for (size_t vPos : visualCursors) {
             if (currentByteOffset == vPos) {
@@ -1126,6 +1460,13 @@ void updateTextVertices(Engine* engine) {
         }
         GlyphInfo& info = engine->atlas.glyphs[cp];
         float advanceForHighlight = isNewlineChar ? (engine->charWidth * scale) : (info.advance * scale);
+        bool isSearchResult = false;
+        for (const auto& match : searchMatches) {
+            if (currentByteOffset >= match.first && currentByteOffset < match.second) {
+                isSearchResult = true;
+                break;
+            }
+        }
         bool isComposingChar = (hasIME && currentByteOffset >= mainCaretPos && currentByteOffset < mainCaretPos + engine->imeComp.size());
         bool isSelected = false;
         if (!engine->cursors.empty() && engine->cursors.back().hasSelection()) {
@@ -1135,6 +1476,7 @@ void updateTextVertices(Engine* engine) {
                 isSelected = true;
             }
         }
+
         if (isComposingChar) {
             float bgY = y - engine->lineHeight * 0.8f;
             addRect(bgVertices, x, bgY, advanceForHighlight, engine->lineHeight, 0.2f, 0.6f, 1.0f, 0.3f);
@@ -1145,6 +1487,11 @@ void updateTextVertices(Engine* engine) {
             float bgY = y - engine->lineHeight * 0.8f;
             addRect(bgVertices, x, bgY, advanceForHighlight, engine->lineHeight,
                     engine->selColor[0], engine->selColor[1], engine->selColor[2], engine->selColor[3]);
+        }
+        else if (isSearchResult) {
+            // 検索ハイライト（黄色半透明）
+            float bgY = y - engine->lineHeight * 0.8f;
+            addRect(bgVertices, x, bgY, advanceForHighlight, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
         }
         float isColorFlag = info.isColor ? 1.0f : 0.0f;
         float charColorR = textR, charColorG = textG, charColorB = textB, charColorA = textA;
@@ -1235,7 +1582,7 @@ void updateTextVertices(Engine* engine) {
     float topH = engine->topMargin;
     float bgR = engine->bgColor[0], bgG = engine->bgColor[1], bgB = engine->bgColor[2];
     float winWidth = 5000.0f;
-    float fadeHeight = topH * 0.9f;
+    float fadeHeight = topH * 0.8f;
     float solidHeight = topH - fadeHeight;
     if (solidHeight > 0.0f) {
         vertices.push_back({{0.0f,     0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
@@ -1260,6 +1607,7 @@ void updateTextVertices(Engine* engine) {
     memcpy(data, vertices.data(), sizeof(Vertex) * engine->vertexCount);
     vkUnmapMemory(engine->device, engine->vertexBufferMemory);
 }
+
 void renderFrame(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE || !engine->isWindowReady) return;
     vkWaitForFences(engine->device, 1, &engine->inFlightFence, VK_TRUE, UINT64_MAX);
@@ -1350,10 +1698,12 @@ void renderFrame(Engine* engine) {
     VkPresentInfoKHR present = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     present.waitSemaphoreCount = 1; present.pWaitSemaphores = sigSem; present.swapchainCount = 1; present.pSwapchains = &engine->swapchain; present.pImageIndices = &imageIndex;
     VkResult presentResult = vkQueuePresentKHR(engine->graphicsQueue, &present);
-    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR || presentResult == VK_SUBOPTIMAL_KHR) {
+    // ★修正3: VK_SUBOPTIMAL_KHRを無視する
+    if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) {
         recreateSwapchain(engine);
     }
 }
+
 void checkKeyboardVisibility(Engine* engine) {
     if (engine->isKeyboardShowing && !engine->cursors.empty() && engine->app->window != nullptr) {
         size_t pos = engine->cursors.back().head;
@@ -1377,6 +1727,7 @@ void checkKeyboardVisibility(Engine* engine) {
         }
     }
 }
+
 static int32_t handleInput(struct android_app* app, AInputEvent* event) {
     Engine* engine = (Engine*)app->userData;
     if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION) {
@@ -1526,9 +1877,6 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
                 updateThemeColors(engine);
                 if (initVulkan(engine)) {
                     engine->isWindowReady = true;
-                    engine->pt.initEmpty();
-                    engine->pt.insert(0, "😎薇にちは、miu Android！\r\n爆速UTF-8デコーダが稼働中です。");
-                    engine->cursors.push_back({0, 0, 0.0f});
                 }
             }
             break;
@@ -1539,6 +1887,7 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
             }
             break;
         case APP_CMD_WINDOW_RESIZED:
+        case APP_CMD_WINDOW_REDRAW_NEEDED:
             if (engine->isWindowReady) {
                 recreateSwapchain(engine);
             }
@@ -1560,6 +1909,7 @@ void android_main(struct android_app* app) {
     engine.pt.initEmpty();
     rebuildLineStarts(&engine);
     engine.cursors.push_back({0, 0, 0.0f});
+
     while (true) {
         int events;
         struct android_poll_source* source;
