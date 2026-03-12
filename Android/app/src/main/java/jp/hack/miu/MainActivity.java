@@ -103,36 +103,47 @@ public class MainActivity extends NativeActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
+        int uiMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
+        boolean isDark = (uiMode == Configuration.UI_MODE_NIGHT_YES);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             getWindow().setDecorFitsSystemWindows(false);
+            android.view.WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                if (!isDark) {
+                    controller.setSystemBarsAppearance(
+                            android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS,
+                            android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                    );
+                } else {
+                    controller.setSystemBarsAppearance(
+                            0,
+                            android.view.WindowInsetsController.APPEARANCE_LIGHT_STATUS_BARS
+                    );
+                }
+            }
         } else {
-            getWindow().getDecorView().setSystemUiVisibility(
-                    View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-            );
+            int flags = View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+            if (!isDark && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            }
+            getWindow().getDecorView().setSystemUiVisibility(flags);
         }
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
         getWindow().setStatusBarColor(Color.TRANSPARENT);
-
         imeView = new ImeBridgeView(this);
         addContentView(imeView, new FrameLayout.LayoutParams(1, 1));
-
         blurOverlay = new View(this);
         blurOverlay.setClickable(false);
         blurOverlay.setFocusable(false);
         blurOverlay.setImportantForAccessibility(View.IMPORTANT_FOR_ACCESSIBILITY_NO);
         addContentView(blurOverlay, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0));
-
         rootView = getWindow().getDecorView().findViewById(android.R.id.content);
         setupToolbarPopup();
-
         rootView.setOnApplyWindowInsetsListener((v, insets) -> {
             if (blurOverlay != null) blurOverlay.bringToFront();
-
             int bottomInset = 0;
             int topInset = 0;
             int imeHeight = 0;
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 imeHeight = insets.getInsets(WindowInsets.Type.ime()).bottom;
                 int systemBars = insets.getInsets(WindowInsets.Type.systemBars()).bottom;
@@ -143,29 +154,23 @@ public class MainActivity extends NativeActivity {
                 topInset = insets.getSystemWindowInsetTop();
                 imeHeight = bottomInset > (rootView.getHeight() * 0.15) ? bottomInset : 0;
             }
-
             boolean currentlyOpen = imeHeight > 0;
-
             if (toolbarPopup != null && toolbarPopup.isFocusable() && toolbarPopup.isShowing()) {
                 currentlyOpen = true;
                 bottomInset = lastKeyboardHeight;
             }
-
             if (currentlyOpen) {
                 lastKeyboardHeight = bottomInset;
                 mainHandler.removeCallbacks(hideToolbarRunnable);
-
                 if (!isKeyboardOpen) {
                     showToolbarPopup(bottomInset);
                     isKeyboardOpen = true;
                 } else {
                     updateToolbarPopupPosition(bottomInset);
                 }
-
                 int toolbarHeight = toolbarPopup != null && toolbarPopup.getContentView() != null ?
                         toolbarPopup.getContentView().getHeight() : (int) (48 * getResources().getDisplayMetrics().density);
                 updateVisibleHeight(bottomInset + toolbarHeight);
-
             } else {
                 if (isKeyboardOpen) {
                     mainHandler.removeCallbacks(hideToolbarRunnable);
@@ -173,43 +178,35 @@ public class MainActivity extends NativeActivity {
                 }
                 updateVisibleHeight(bottomInset);
             }
-
             int topMargin = topInset + 20;
             updateTopMargin(topMargin);
             buildProgressiveFade(topInset, topMargin);
-
             return insets;
         });
     }
-
     private void setupToolbarPopup() {
         LinearLayout rootContainer = new LinearLayout(this);
         rootContainer.setOrientation(LinearLayout.VERTICAL);
         int uiMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         boolean isDark = (uiMode == Configuration.UI_MODE_NIGHT_YES);
         rootContainer.setBackgroundColor(isDark ? Color.parseColor("#E62D2D2D") : Color.parseColor("#E6F2F2F7"));
-
         mainToolbar = new LinearLayout(this);
         HorizontalScrollView scrollView = new HorizontalScrollView(this);
         scrollView.setHorizontalScrollBarEnabled(false);
         LinearLayout buttonStack = new LinearLayout(this);
         buttonStack.setOrientation(LinearLayout.HORIZONTAL);
-
         buttonStack.addView(createToolbarButton("New", v -> actionNewDocument()));
         buttonStack.addView(createToolbarButton("Open", v -> actionOpenDocument()));
         buttonStack.addView(createToolbarButton("Save", v -> actionSaveDocument(null)));
         buttonStack.addView(createToolbarButton("Find", v -> openSearchUI(false)));
         buttonStack.addView(createToolbarButton("Replace", v -> openSearchUI(true)));
         buttonStack.addView(createToolbarButton("Done", v -> hideSoftwareKeyboard()));
-
         scrollView.addView(buttonStack);
         mainToolbar.addView(scrollView);
-
         searchToolbar = new LinearLayout(this);
         searchToolbar.setOrientation(LinearLayout.HORIZONTAL);
         searchToolbar.setGravity(Gravity.CENTER_VERTICAL);
         searchToolbar.setVisibility(View.GONE);
-
         searchField = new SearchEditText(this);
         searchField.setHint("Search...");
         searchField.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f));
@@ -227,26 +224,21 @@ public class MainActivity extends NativeActivity {
             }
             return false;
         });
-
         searchToolbar.addView(searchField);
         searchToolbar.addView(createToolbarButton("<", v -> actionFind(false)));
         searchToolbar.addView(createToolbarButton(">", v -> actionFind(true)));
         searchToolbar.addView(createToolbarButton("Cancel", v -> resetToolbarToMain()));
-
         replaceToolbar = new LinearLayout(this);
         replaceToolbar.setOrientation(LinearLayout.HORIZONTAL);
         replaceToolbar.setGravity(Gravity.CENTER_VERTICAL);
         replaceToolbar.setVisibility(View.GONE);
-
         replaceField = new SearchEditText(this);
         replaceField.setHint("Replace with...");
         replaceField.setLayoutParams(new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f));
         replaceField.setSingleLine(true);
-
         replaceToolbar.addView(replaceField);
         replaceToolbar.addView(createToolbarButton("Rep", v -> actionReplaceNext()));
         replaceToolbar.addView(createToolbarButton("All", v -> actionReplaceAll()));
-
         LinearLayout optionsToolbar = new LinearLayout(this);
         optionsToolbar.setOrientation(LinearLayout.HORIZONTAL);
         TextView matchCaseBtn = createToolbarButton("Aa", v -> {
@@ -264,37 +256,36 @@ public class MainActivity extends NativeActivity {
         optionsToolbar.addView(matchCaseBtn);
         optionsToolbar.addView(regexBtn);
         searchToolbar.addView(optionsToolbar);
-
         int pad = (int) (8 * getResources().getDisplayMetrics().density);
         searchToolbar.setPadding(pad, pad, pad, pad);
         replaceToolbar.setPadding(pad, 0, pad, pad);
-
         rootContainer.addView(mainToolbar);
         rootContainer.addView(searchToolbar);
         rootContainer.addView(replaceToolbar);
-
         toolbarPopup = new PopupWindow(rootContainer, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         toolbarPopup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-
-        // ★最強のちらつき防止策: OSによる自動Dismissを完全に無効化
         toolbarPopup.setOutsideTouchable(false);
         toolbarPopup.setFocusable(false);
         toolbarPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            // ★検索枠にフォーカスがあっても、裏側のエディタ(C++)へのタップを貫通させる
             toolbarPopup.setTouchModal(false);
             toolbarPopup.setIsClippedToScreen(true);
         }
-
-        // 検索枠からフォーカスが外れた場合はメインツールバーに静かに戻す
         View.OnFocusChangeListener focusListener = (v, hasFocus) -> {
-            if (!hasFocus) resetToolbarToMain();
+            if (!hasFocus) {
+                mainHandler.postDelayed(() -> {
+                    // 検索枠にも置換枠にもフォーカスが無い場合のみ、エディタに戻ったと判断してツールバーを閉じる
+                    if (searchField != null && replaceField != null) {
+                        if (!searchField.hasFocus() && !replaceField.hasFocus()) {
+                            resetToolbarToMain();
+                        }
+                    }
+                }, 50);
+            }
         };
         searchField.setOnFocusChangeListener(focusListener);
         replaceField.setOnFocusChangeListener(focusListener);
     }
-
     private TextView createToolbarButton(String title, View.OnClickListener listener) {
         TextView btn = new TextView(this);
         btn.setText(title);
@@ -303,7 +294,6 @@ public class MainActivity extends NativeActivity {
         btn.setTextSize(16.0f);
         btn.setFocusable(false);
         btn.setFocusableInTouchMode(false);
-
         int uiMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         btn.setTextColor((uiMode == Configuration.UI_MODE_NIGHT_YES) ? Color.parseColor("#4DA8DA") : Color.parseColor("#007AFF"));
         int padH = (int) (16 * getResources().getDisplayMetrics().density);
@@ -311,78 +301,63 @@ public class MainActivity extends NativeActivity {
         btn.setPadding(padH, padV, padH, padV);
         return btn;
     }
-
     private void showToolbarPopup(int keyboardHeight) {
         if (toolbarPopup != null && rootView != null && rootView.getWindowToken() != null) {
             toolbarPopup.showAtLocation(rootView, Gravity.BOTTOM | Gravity.LEFT, 0, keyboardHeight);
         }
     }
-
     private void updateToolbarPopupPosition(int keyboardHeight) {
         if (toolbarPopup != null && toolbarPopup.isShowing()) {
             toolbarPopup.update(0, keyboardHeight, -1, -1);
         }
     }
-
     private void openSearchUI(boolean withReplace) {
         mainToolbar.setVisibility(View.GONE);
         searchToolbar.setVisibility(View.VISIBLE);
         replaceToolbar.setVisibility(withReplace ? View.VISIBLE : View.GONE);
-
         toolbarPopup.setFocusable(true);
         toolbarPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NEEDED);
         toolbarPopup.update();
-
         searchField.requestFocus();
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) imm.showSoftInput(searchField, InputMethodManager.SHOW_IMPLICIT);
     }
-
     public void resetToolbarToMain() {
         resetToolbarToMainInternal();
-
         if (toolbarPopup != null) {
             toolbarPopup.setFocusable(false);
             toolbarPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
             toolbarPopup.update(); // 閉じることなくモードだけ変更
         }
-
         imeView.requestFocus();
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) imm.showSoftInput(imeView, InputMethodManager.SHOW_IMPLICIT);
-
         commitText("");
     }
-
     private void resetToolbarToMainInternal() {
         mainToolbar.setVisibility(View.VISIBLE);
         searchToolbar.setVisibility(View.GONE);
         replaceToolbar.setVisibility(View.GONE);
         cmdSetSearchOptions("", "", false, false, false);
     }
-
     private void updateSearchOptionsToCpp() {
         String q = searchField.getText().toString();
         String r = replaceField.getText().toString();
         cmdSetSearchOptions(q, r, searchMatchCase, searchWholeWord, searchRegex);
         commitText("");
     }
-
     private void actionFind(boolean forward) {
         updateSearchOptionsToCpp();
         cmdFindNext(forward);
     }
-
     private void actionReplaceNext() {
         updateSearchOptionsToCpp();
         cmdReplaceNext();
     }
-
     private void actionReplaceAll() {
         updateSearchOptionsToCpp();
         cmdReplaceAll();
     }
-
     class SearchEditText extends AppCompatEditText {
         public SearchEditText(Context context) { super(context); }
         @Override
@@ -394,7 +369,6 @@ public class MainActivity extends NativeActivity {
             return super.onKeyPreIme(keyCode, event);
         }
     }
-
     private void confirmSaveIfNeeded(Runnable nextAction) {
         if (!cmdIsDirty()) {
             nextAction.run();

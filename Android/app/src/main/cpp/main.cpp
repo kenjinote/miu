@@ -1732,7 +1732,7 @@ bool initVulkan(Engine* engine) {
     if (!createCommandBuffers(engine)) return false;
     if (!createSyncObjects(engine)) return false;
 
-    VkDeviceSize bufferSize = sizeof(Vertex) * 60000;
+    VkDeviceSize bufferSize = sizeof(Vertex) * 1000000;
     createBuffer(engine, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->vertexBuffer, engine->vertexBufferMemory);
     createBuffer(engine, engine->atlas.width * engine->atlas.height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->atlasStagingBuffer, engine->atlasStagingMemory);
 
@@ -1798,7 +1798,6 @@ bool initVulkan(Engine* engine) {
     if (!createGraphicsPipeline(engine)) return false;
     return true;
 }
-
 void updateTextVertices(Engine* engine) {
     float scale = engine->currentFontSize / 48.0f;
     float baselineOffset = engine->lineHeight * 0.8f;
@@ -1819,7 +1818,6 @@ void updateTextVertices(Engine* engine) {
         verts.push_back({{rx,      ry + rh}, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
         verts.push_back({{rx + rw, ry + rh}, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
     };
-
     float textR = engine->textColor[0], textG = engine->textColor[1], textB = engine->textColor[2], textA = engine->textColor[3];
     float cursorWidth = std::max(2.0f, 4.0f * scale);
 
@@ -1830,26 +1828,75 @@ void updateTextVertices(Engine* engine) {
         while (currentSearchPos < docLen) {
             size_t matchLen = 0;
             size_t found = findText(engine, currentSearchPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, engine->searchRegex, &matchLen);
-            if (found == std::string::npos || matchLen == 0 || found < currentSearchPos) break;
+
+            // ★修正: 見つからなかった場合、または過去に戻ってしまった場合は終了
+            if (found == std::string::npos || found < currentSearchPos) break;
+
             searchMatches.push_back({found, found + matchLen});
-            currentSearchPos = found + matchLen;
+
+            // ★修正: マッチ長が0の場合は無限ループを防ぐため1文字進める
+            if (matchLen == 0) {
+                currentSearchPos = found + 1;
+            } else {
+                currentSearchPos = found + matchLen;
+            }
         }
     }
 
     float winH = 5000.0f;
+    float winW = 1080.0f; // ★追加
     if (engine->app->window != nullptr) {
         winH = (float)ANativeWindow_getHeight(engine->app->window);
+        winW = (float)ANativeWindow_getWidth(engine->app->window); // ★追加
     }
 
     for (int lineIdx = 0; lineIdx < engine->lineStarts.size(); ++lineIdx) {
         float lineY = engine->topMargin + baselineOffset - engine->scrollY + lineIdx * engine->lineHeight;
         if (lineY < -engine->lineHeight || lineY > winH + engine->lineHeight) continue;
 
-        ensureLineShaped(engine, lineIdx);
+        if (lineIdx >= engine->lineCaches.size()) {
+            break; // キャッシュ配列を超えたら描画ループを安全に抜ける
+        }
 
+        ensureLineShaped(engine, lineIdx);
         float x = engine->gutterWidth - engine->scrollX;
         size_t lineStart = engine->lineStarts[lineIdx];
+        bool hasZeroLengthMatchAtLineStart = false;
+        float lineStartX = x;
+        for (const auto& match : searchMatches) {
+            if (match.first == match.second && match.first == lineStart) {
+                hasZeroLengthMatchAtLineStart = true;
+                break;
+            }
+        }
+        if (hasZeroLengthMatchAtLineStart) {
+            float bgY = lineY - engine->lineHeight * 0.8f;
+            addRect(bgVertices, lineStartX, bgY, cursorWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.8f);
+        }
+        size_t lineEndForSearch = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
+        if (lineEndForSearch > lineStart) {
+            char lastChar = engine->pt.charAt(lineEndForSearch - 1);
+            if (lastChar == '\n' || lastChar == '\r') {
+                size_t newlinePos = lineEndForSearch - 1;
+                if (lastChar == '\n' && newlinePos > lineStart && engine->pt.charAt(newlinePos - 1) == '\r') {
+                    newlinePos--; // CRLFの場合は \r の位置を起点とする
+                }
 
+                bool isNewlineMatched = false;
+                for (const auto& match : searchMatches) {
+                    if (match.first <= newlinePos && match.second > newlinePos) {
+                        isNewlineMatched = true;
+                        break;
+                    }
+                }
+                if (isNewlineMatched) {
+                    // 改行文字のハイライトとして、行の最後に charWidth 分の黄色い矩形を描画
+                    float eolX = getXFromPos(engine, newlinePos) - engine->scrollX;
+                    float bgY = lineY - engine->lineHeight * 0.8f;
+                    addRect(bgVertices, eolX, bgY, engine->charWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
+                }
+            }
+        }
         for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
             uint64_t key = ((uint64_t)sg.fontIndex << 32) | sg.glyphIndex;
             if (engine->atlas.glyphs.count(key) == 0) {
@@ -1864,9 +1911,17 @@ void updateTextVertices(Engine* engine) {
             }
 
             bool isSearchResult = false;
+            bool isZeroLengthMatchAfter = false; // ★追加: 文字の後ろに付く長さ0マッチ用
+
             for (const auto& match : searchMatches) {
-                if (sg.cluster >= match.first && sg.cluster < match.second) {
-                    isSearchResult = true; break;
+                // 通常の文字をまたぐハイライト
+                if (match.first < match.second && sg.cluster >= match.first && sg.cluster < match.second) {
+                    isSearchResult = true;
+                    break;
+                }
+                // ★追加: 文字の直後（次のクラスター位置）が長さ0マッチの場合
+                if (match.first == match.second && match.first == (sg.cluster + 1)) {
+                    isZeroLengthMatchAfter = true;
                 }
             }
 
@@ -1900,11 +1955,16 @@ void updateTextVertices(Engine* engine) {
             }
 
             x += sg.xAdvance * scale;
+
+            // ★追加: 文字の直後にある長さ0マッチのハイライトを描画（行末の $ など）
+            if (isZeroLengthMatchAfter) {
+                float bgY = lineY - engine->lineHeight * 0.8f;
+                addRect(bgVertices, x, bgY, cursorWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.8f);
+            }
+
             float absoluteX = x + engine->scrollX;
             if (absoluteX > engine->maxLineWidth) engine->maxLineWidth = absoluteX;
         }
-
-        // ★追加: 行の終端が改行文字であれば、角丸の矢印アイコンを描画する
         size_t lineEnd = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
         if (lineEnd > lineStart) {
             char lastChar = engine->pt.charAt(lineEnd - 1);
@@ -1912,23 +1972,18 @@ void updateTextVertices(Engine* engine) {
                 uint64_t NEWLINE_KEY = 0xFFFFFFFFFFFFFFFF;
                 if (engine->atlas.glyphs.count(NEWLINE_KEY) > 0) {
                     GlyphInfo& info = engine->atlas.glyphs[NEWLINE_KEY];
-
+                    // ★ここが常に textColor ベースになっていればOK
                     float nlR = engine->textColor[0];
                     float nlG = engine->textColor[1];
                     float nlB = engine->textColor[2];
                     float nlA = engine->textColor[3] * 0.3f;
-
-                    // ★修正: 描画サイズを charWidth の 1.4倍 に設定して大きく見せる
                     float targetSize = engine->charWidth * 1.4f;
                     float iconScale = targetSize / info.width;
                     float w = info.width * iconScale;
                     float h = info.height * iconScale;
-
-                    // ★修正: 前の文字に近すぎないように、少し右(charWidthの30%ぶん)に余白を取る
                     float xpos = x + engine->charWidth * 0.3f;
                     float rowCenterY = engine->topMargin - engine->scrollY + lineIdx * engine->lineHeight + engine->lineHeight * 0.5f;
                     float ypos = rowCenterY - h * 0.5f;
-
                     charVertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
                     charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
                     charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
@@ -1938,7 +1993,6 @@ void updateTextVertices(Engine* engine) {
                 }
             }
         }
-
         for (const auto& c : engine->cursors) {
             size_t vPos = c.head;
             if (vPos >= lineStart && (lineIdx + 1 >= engine->lineStarts.size() || vPos < engine->lineStarts[lineIdx + 1])) {
@@ -1954,12 +2008,10 @@ void updateTextVertices(Engine* engine) {
     std::vector<Vertex> gutterTextVertices;
     addRect(gutterBgVertices, 0.0f, 0.0f, engine->gutterWidth, winH,
             engine->gutterBgColor[0], engine->gutterBgColor[1], engine->gutterBgColor[2], engine->gutterBgColor[3]);
-
     float gutterTextR = engine->gutterTextColor[0], gutterTextG = engine->gutterTextColor[1], gutterTextB = engine->gutterTextColor[2];
     for (int i = 0; i < engine->lineStarts.size(); ++i) {
         float lineTop = engine->topMargin - engine->scrollY + i * engine->lineHeight;
         if (lineTop + engine->lineHeight < 0.0f || lineTop > winH) continue;
-
         std::string lineNumStr = std::to_string(i + 1);
         float numWidth = 0.0f;
         for(char c : lineNumStr) {
@@ -1967,25 +2019,21 @@ void updateTextVertices(Engine* engine) {
             int fontIdx = getFontIndexForChar(engine, cp, 0);
             uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp);
             uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
-
             if (engine->atlas.glyphs.count(key) == 0 && !engine->fallbackFaces.empty()) {
                 engine->atlas.loadGlyph(engine, fontIdx, glyphIdx);
             }
             if (engine->atlas.glyphs.count(key) > 0) numWidth += engine->atlas.glyphs[key].advance * scale;
             else numWidth += engine->charWidth;
         }
-
         float rightMargin = engine->charWidth * 0.5f;
         float numX = engine->gutterWidth - rightMargin - numWidth;
         if (numX < rightMargin * 0.5f) numX = rightMargin * 0.5f;
-
         float lineY = lineTop + baselineOffset;
         for(char c : lineNumStr) {
             uint32_t cp = c;
             int fontIdx = getFontIndexForChar(engine, cp, 0);
             uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp);
             uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
-
             if (engine->atlas.glyphs.count(key) > 0) {
                 GlyphInfo& info = engine->atlas.glyphs[key];
                 float xpos = numX + info.bearingX * scale;
@@ -2012,13 +2060,11 @@ void updateTextVertices(Engine* engine) {
     vertices.insert(vertices.end(), cursorVertices.begin(), cursorVertices.end());
     vertices.insert(vertices.end(), gutterBgVertices.begin(), gutterBgVertices.end());
     vertices.insert(vertices.end(), gutterTextVertices.begin(), gutterTextVertices.end());
-
     float topH = engine->topMargin;
     float bgR = engine->bgColor[0], bgG = engine->bgColor[1], bgB = engine->bgColor[2];
     float winWidth = 5000.0f;
     float fadeHeight = topH * 0.8f;
     float solidHeight = topH - fadeHeight;
-
     if (solidHeight > 0.0f) {
         vertices.push_back({{0.0f,     0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
         vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
@@ -2036,45 +2082,124 @@ void updateTextVertices(Engine* engine) {
         vertices.push_back({{winWidth, topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
     }
 
+    // ---------- ★ここから追加: タイトル(ファイル名)の描画 ----------
+    std::string titleStr;
+    if (engine->currentFilePath.empty()) {
+        titleStr = "無題";
+    } else {
+        size_t slashPos = engine->currentFilePath.find_last_of("/\\");
+        if (slashPos != std::string::npos) {
+            titleStr = engine->currentFilePath.substr(slashPos + 1);
+        } else {
+            titleStr = engine->currentFilePath;
+        }
+    }
+    // 編集状態(Dirty)なら先頭にアスタリスクを付ける
+    if (engine->isDirty) {
+        titleStr = "*" + titleStr;
+    }
+
+    float titleFontSize = 40.0f; // 本文より少し小さめ
+    float titleScale = titleFontSize / 48.0f;
+    float titleWidth = 0.0f;
+
+    // UTF-8からコードポイントを抽出
+    std::vector<uint32_t> titleCodepoints;
+    const char* tptr = titleStr.data();
+    const char* tend = tptr + titleStr.size();
+    while (tptr < tend) {
+        uint32_t cp = decodeUtf8(&tptr, tend);
+        if (cp > 0) titleCodepoints.push_back(cp);
+    }
+
+    // まず全体の文字列幅を計算して中央揃えの基準位置を割り出す
+    for (uint32_t cp : titleCodepoints) {
+        int fontIdx = getFontIndexForChar(engine, cp, 0);
+        if (fontIdx >= 0) {
+            uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp);
+            uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
+            if (engine->atlas.glyphs.count(key) == 0 && !engine->fallbackFaces.empty()) {
+                engine->atlas.loadGlyph(engine, fontIdx, glyphIdx);
+            }
+            if (engine->atlas.glyphs.count(key) > 0) {
+                titleWidth += engine->atlas.glyphs[key].advance * titleScale;
+            } else {
+                titleWidth += 24.0f * titleScale; // 未知の文字のフォールバック幅
+            }
+        }
+    }
+
+    // 画面中央＆ステータスバーと被らない絶妙な高さに配置
+    float titleX = (winW - titleWidth) * 0.5f;
+    float titleBaselineY = engine->topMargin - 20.0f;
+
+    // 実際に文字を描画（頂点を追加）
+    for (uint32_t cp : titleCodepoints) {
+        int fontIdx = getFontIndexForChar(engine, cp, 0);
+        if (fontIdx >= 0) {
+            uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp);
+            uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
+            if (engine->atlas.glyphs.count(key) > 0) {
+                GlyphInfo& info = engine->atlas.glyphs[key];
+                float isColorFlag = info.isColor ? 1.0f : 0.0f;
+                float xpos = titleX + info.bearingX * titleScale;
+                float ypos = titleBaselineY - info.bearingY * titleScale;
+                float w = info.width * titleScale;
+                float h = info.height * titleScale;
+
+                // 本文より少しだけ透明度を下げて(0.8)控えめに表示
+                float tr = engine->textColor[0], tg = engine->textColor[1], tb = engine->textColor[2];
+                float ta = engine->textColor[3] * 0.8f;
+
+                vertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, isColorFlag, {tr, tg, tb, ta}});
+                vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {tr, tg, tb, ta}});
+                vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {tr, tg, tb, ta}});
+                vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {tr, tg, tb, ta}});
+                vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {tr, tg, tb, ta}});
+                vertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag, {tr, tg, tb, ta}});
+
+                titleX += info.advance * titleScale;
+            } else {
+                titleX += 24.0f * titleScale;
+            }
+        }
+    }
+    // ---------- ★追加ここまで ----------
+
     engine->vertexCount = static_cast<uint32_t>(vertices.size());
     if (engine->vertexCount == 0) return;
-
+    if (engine->vertexCount > 1000000) {
+        engine->vertexCount = 1000000;
+    }
     void* data;
     vkMapMemory(engine->device, engine->vertexBufferMemory, 0, sizeof(Vertex) * engine->vertexCount, 0, &data);
     memcpy(data, vertices.data(), sizeof(Vertex) * engine->vertexCount);
     vkUnmapMemory(engine->device, engine->vertexBufferMemory);
 }
-
 void renderFrame(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE || !engine->isWindowReady) return;
-
     // GPUの完了待機 (★ロックなしで実行するため、キーボード入力の邪魔をしない)
     vkWaitForFences(engine->device, 1, &engine->inFlightFence, VK_TRUE, UINT64_MAX);
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(engine->device, engine->swapchain, UINT64_MAX, engine->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) { recreateSwapchain(engine); return; }
     else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) { return; }
-
     vkResetFences(engine->device, 1, &engine->inFlightFence);
     vkResetCommandBuffer(engine->commandBuffers[imageIndex], 0);
     VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(engine->commandBuffers[imageIndex], &beginInfo);
-
     // ==========================================================
     // ★追加: メモリにアクセスするCPU処理の区間だけをロックする
     {
         std::lock_guard<std::mutex> lock(g_imeMutex);
-
         // テキストデータの読み取りと頂点バッファの構築
         updateTextVertices(engine);
-
         // アトラス（フォント画像）の更新
         if (engine->atlas.isDirty) {
             vkDeviceWaitIdle(engine->device);
             uint32_t dy = engine->atlas.dirtyMinY;
             uint32_t dh = engine->atlas.dirtyMaxY - engine->atlas.dirtyMinY;
             uint32_t dw = engine->atlas.width;
-
             if (dh > 0) {
                 void* mapData = nullptr;
                 if (vkMapMemory(engine->device, engine->atlasStagingMemory, 0, engine->atlas.width * engine->atlas.height * 4, 0, &mapData) == VK_SUCCESS) {
@@ -2086,7 +2211,6 @@ void renderFrame(Engine* engine) {
                                dw * 4);
                     }
                     vkUnmapMemory(engine->device, engine->atlasStagingMemory);
-
                     VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
                     barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -2096,7 +2220,6 @@ void renderFrame(Engine* engine) {
                     barrier.subresourceRange.levelCount = 1; barrier.subresourceRange.layerCount = 1;
                     barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT; barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
                     vkCmdPipelineBarrier(engine->commandBuffers[imageIndex], VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
                     VkBufferImageCopy region = {};
                     region.bufferOffset = dy * dw * 4;
                     region.bufferRowLength = 0;
@@ -2106,7 +2229,6 @@ void renderFrame(Engine* engine) {
                     region.imageOffset = {0, (int32_t)dy, 0};
                     region.imageExtent = {dw, dh, 1};
                     vkCmdCopyBufferToImage(engine->commandBuffers[imageIndex], engine->atlasStagingBuffer, engine->fontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
-
                     barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
                     barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
                     barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT; barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
@@ -2118,7 +2240,6 @@ void renderFrame(Engine* engine) {
     }
     // ★追加: ここでロック解除！
     // ==========================================================
-
     // レンダリングパスの開始 (★ロックなしでGPUコマンドを積む)
     VkRenderPassBeginInfo rpBegin = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rpBegin.renderPass = engine->renderPass;
@@ -2126,16 +2247,13 @@ void renderFrame(Engine* engine) {
     rpBegin.renderArea.extent = engine->swapchainExtent;
     VkClearValue clearColor = {{{engine->bgColor[0], engine->bgColor[1], engine->bgColor[2], engine->bgColor[3]}}};
     rpBegin.clearValueCount = 1; rpBegin.pClearValues = &clearColor;
-
     vkCmdBeginRenderPass(engine->commandBuffers[imageIndex], &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->graphicsPipeline);
-
     VkViewport viewport = {};
     viewport.width = (float)engine->swapchainExtent.width; viewport.height = (float)engine->swapchainExtent.height; viewport.maxDepth = 1.0f;
     vkCmdSetViewport(engine->commandBuffers[imageIndex], 0, 1, &viewport);
     VkRect2D scissor = {}; scissor.extent = engine->swapchainExtent;
     vkCmdSetScissor(engine->commandBuffers[imageIndex], 0, 1, &scissor);
-
     if (engine->vertexCount > 0) {
         VkDeviceSize offsets[] = {0};
         vkCmdBindVertexBuffers(engine->commandBuffers[imageIndex], 0, 1, &engine->vertexBuffer, offsets);
@@ -2146,24 +2264,19 @@ void renderFrame(Engine* engine) {
         vkCmdPushConstants(engine->commandBuffers[imageIndex], engine->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pc);
         vkCmdDraw(engine->commandBuffers[imageIndex], engine->vertexCount, 1, 0, 0);
     }
-
     vkCmdEndRenderPass(engine->commandBuffers[imageIndex]);
     vkEndCommandBuffer(engine->commandBuffers[imageIndex]);
-
     VkSubmitInfo submit = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
     VkSemaphore waitSem[] = {engine->imageAvailableSemaphore}; VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
     submit.waitSemaphoreCount = 1; submit.pWaitSemaphores = waitSem; submit.pWaitDstStageMask = waitStages;
     submit.commandBufferCount = 1; submit.pCommandBuffers = &engine->commandBuffers[imageIndex];
     VkSemaphore sigSem[] = {engine->renderFinishedSemaphore}; submit.signalSemaphoreCount = 1; submit.pSignalSemaphores = sigSem;
-
     vkQueueSubmit(engine->graphicsQueue, 1, &submit, engine->inFlightFence);
     VkPresentInfoKHR present = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     present.waitSemaphoreCount = 1; present.pWaitSemaphores = sigSem; present.swapchainCount = 1; present.pSwapchains = &engine->swapchain; present.pImageIndices = &imageIndex;
     VkResult presentResult = vkQueuePresentKHR(engine->graphicsQueue, &present);
-
     if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) { recreateSwapchain(engine); }
 }
-
 void checkKeyboardVisibility(Engine* engine) {
     if (engine->isKeyboardShowing && !engine->cursors.empty() && engine->app->window != nullptr) {
         size_t pos = engine->cursors.back().head;
@@ -2187,7 +2300,6 @@ void checkKeyboardVisibility(Engine* engine) {
         }
     }
 }
-
 static int32_t handleInput(struct android_app* app, AInputEvent* event) {
     Engine* engine = (Engine*)app->userData;
     std::lock_guard<std::mutex> lock(g_imeMutex);
@@ -2280,7 +2392,6 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 if (showImeMethod) env->CallVoidMethod(app->activity->clazz, showImeMethod);
                 env->DeleteLocalRef(activityClass);
                 app->activity->vm->DetachCurrentThread();
-
                 size_t targetPos = getDocPosFromPoint(engine, x, y);
                 if (engine->clickCount == 2) {
                     selectWordAt(engine, targetPos);
@@ -2298,13 +2409,9 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
     }
     return 0;
 }
-
 static void onAppCmd(struct android_app* app, int32_t cmd) {
     Engine* engine = (Engine*)app->userData;
-
-    // ★追加: ウィンドウの生成や破棄の最中に、別スレッドからファイルが開かれるのをブロックする
     std::lock_guard<std::mutex> lock(g_imeMutex);
-
     switch (cmd) {
         case APP_CMD_INIT_WINDOW:
             if (app->window != nullptr) {
@@ -2312,8 +2419,7 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
                 updateThemeColors(engine);
                 if (initVulkan(engine)) {
                     engine->isWindowReady = true;
-                    // ★追加: フォントがすべて出揃ったので、画面内の行のキャッシュを破棄し、
-                    // 次のフレームで完璧な状態で再計算(シェーピング)させる
+                    updateGutterWidth(engine);
                     for (auto& cache : engine->lineCaches) {
                         cache.isShaped = false;
                     }
@@ -2339,7 +2445,6 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
             break;
     }
 }
-
 void android_main(struct android_app* app) {
     Engine engine = {};
     engine.app = app;
@@ -2350,7 +2455,6 @@ void android_main(struct android_app* app) {
     engine.pt.initEmpty();
     rebuildLineStarts(&engine);
     engine.cursors.push_back({0, 0, 0.0f});
-
     while (true) {
         int events;
         struct android_poll_source* source;
@@ -2407,7 +2511,6 @@ void android_main(struct android_app* app) {
                     }
                 }
             } // ← ここでロックが解除され、UIスレッドが即座に解放される！
-
             // ★修正: 描画関数はロックの外で呼び出す
             renderFrame(&engine);
         }
