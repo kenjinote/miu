@@ -17,7 +17,6 @@ import android.os.ParcelFileDescriptor;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
@@ -35,7 +34,6 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 
-// ★追加: AppCompatEditText のインポート
 import androidx.appcompat.widget.AppCompatEditText;
 
 import java.io.File;
@@ -61,7 +59,6 @@ public class MainActivity extends NativeActivity {
     public native String cmdGetTextContent();
     public native void cmdMarkSaved();
 
-    // 検索・置換用JNI
     public native void cmdSetSearchOptions(String query, String replace, boolean matchCase, boolean wholeWord, boolean regex);
     public native void cmdFindNext(boolean forward);
     public native void cmdReplaceNext();
@@ -70,12 +67,12 @@ public class MainActivity extends NativeActivity {
     private ImeBridgeView imeView;
     private View blurOverlay;
 
+    // ★PopupWindow方式に完全統合（Vulkanの裏に隠れるバグを回避）
     private PopupWindow toolbarPopup;
     private View rootView;
     private boolean isKeyboardOpen = false;
     private int lastKeyboardHeight = 0;
 
-    // ツールバーのビュー管理
     private LinearLayout mainToolbar;
     private LinearLayout searchToolbar;
     private LinearLayout replaceToolbar;
@@ -149,7 +146,7 @@ public class MainActivity extends NativeActivity {
 
             boolean currentlyOpen = imeHeight > 0;
 
-            if (toolbarPopup != null && toolbarPopup.isFocusable()) {
+            if (toolbarPopup != null && toolbarPopup.isFocusable() && toolbarPopup.isShowing()) {
                 currentlyOpen = true;
                 bottomInset = lastKeyboardHeight;
             }
@@ -172,7 +169,7 @@ public class MainActivity extends NativeActivity {
             } else {
                 if (isKeyboardOpen) {
                     mainHandler.removeCallbacks(hideToolbarRunnable);
-                    mainHandler.postDelayed(hideToolbarRunnable, 200);
+                    mainHandler.postDelayed(hideToolbarRunnable, 100);
                 }
                 updateVisibleHeight(bottomInset);
             }
@@ -185,9 +182,6 @@ public class MainActivity extends NativeActivity {
         });
     }
 
-    // =========================================================
-    // ★ 検索・置換UIを統合したツールバーの構築
-    // =========================================================
     private void setupToolbarPopup() {
         LinearLayout rootContainer = new LinearLayout(this);
         rootContainer.setOrientation(LinearLayout.VERTICAL);
@@ -195,7 +189,6 @@ public class MainActivity extends NativeActivity {
         boolean isDark = (uiMode == Configuration.UI_MODE_NIGHT_YES);
         rootContainer.setBackgroundColor(isDark ? Color.parseColor("#E62D2D2D") : Color.parseColor("#E6F2F2F7"));
 
-        // 1. メインツールバー
         mainToolbar = new LinearLayout(this);
         HorizontalScrollView scrollView = new HorizontalScrollView(this);
         scrollView.setHorizontalScrollBarEnabled(false);
@@ -212,7 +205,6 @@ public class MainActivity extends NativeActivity {
         scrollView.addView(buttonStack);
         mainToolbar.addView(scrollView);
 
-        // 2. 検索ツールバー
         searchToolbar = new LinearLayout(this);
         searchToolbar.setOrientation(LinearLayout.HORIZONTAL);
         searchToolbar.setGravity(Gravity.CENTER_VERTICAL);
@@ -241,7 +233,6 @@ public class MainActivity extends NativeActivity {
         searchToolbar.addView(createToolbarButton(">", v -> actionFind(true)));
         searchToolbar.addView(createToolbarButton("Cancel", v -> resetToolbarToMain()));
 
-        // 3. 置換ツールバー
         replaceToolbar = new LinearLayout(this);
         replaceToolbar.setOrientation(LinearLayout.HORIZONTAL);
         replaceToolbar.setGravity(Gravity.CENTER_VERTICAL);
@@ -284,13 +275,24 @@ public class MainActivity extends NativeActivity {
 
         toolbarPopup = new PopupWindow(rootContainer, ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         toolbarPopup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+
+        // ★最強のちらつき防止策: OSによる自動Dismissを完全に無効化
         toolbarPopup.setOutsideTouchable(false);
         toolbarPopup.setFocusable(false);
         toolbarPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            // ★検索枠にフォーカスがあっても、裏側のエディタ(C++)へのタップを貫通させる
+            toolbarPopup.setTouchModal(false);
             toolbarPopup.setIsClippedToScreen(true);
         }
+
+        // 検索枠からフォーカスが外れた場合はメインツールバーに静かに戻す
+        View.OnFocusChangeListener focusListener = (v, hasFocus) -> {
+            if (!hasFocus) resetToolbarToMain();
+        };
+        searchField.setOnFocusChangeListener(focusListener);
+        replaceField.setOnFocusChangeListener(focusListener);
     }
 
     private TextView createToolbarButton(String title, View.OnClickListener listener) {
@@ -299,7 +301,6 @@ public class MainActivity extends NativeActivity {
         btn.setOnClickListener(listener);
         btn.setGravity(Gravity.CENTER);
         btn.setTextSize(16.0f);
-
         btn.setFocusable(false);
         btn.setFocusableInTouchMode(false);
 
@@ -323,10 +324,6 @@ public class MainActivity extends NativeActivity {
         }
     }
 
-    // =========================================================
-    // ★ 検索UIの制御
-    // =========================================================
-
     private void openSearchUI(boolean withReplace) {
         mainToolbar.setVisibility(View.GONE);
         searchToolbar.setVisibility(View.VISIBLE);
@@ -338,19 +335,22 @@ public class MainActivity extends NativeActivity {
 
         searchField.requestFocus();
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) {
-            imm.showSoftInput(searchField, InputMethodManager.SHOW_IMPLICIT);
-        }
+        if (imm != null) imm.showSoftInput(searchField, InputMethodManager.SHOW_IMPLICIT);
     }
 
     public void resetToolbarToMain() {
         resetToolbarToMainInternal();
 
+        if (toolbarPopup != null) {
+            toolbarPopup.setFocusable(false);
+            toolbarPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
+            toolbarPopup.update(); // 閉じることなくモードだけ変更
+        }
+
         imeView.requestFocus();
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) {
-            imm.showSoftInput(imeView, InputMethodManager.SHOW_IMPLICIT);
-        }
+        if (imm != null) imm.showSoftInput(imeView, InputMethodManager.SHOW_IMPLICIT);
+
         commitText("");
     }
 
@@ -358,11 +358,6 @@ public class MainActivity extends NativeActivity {
         mainToolbar.setVisibility(View.VISIBLE);
         searchToolbar.setVisibility(View.GONE);
         replaceToolbar.setVisibility(View.GONE);
-
-        toolbarPopup.setFocusable(false);
-        toolbarPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
-        toolbarPopup.update();
-
         cmdSetSearchOptions("", "", false, false, false);
     }
 
@@ -388,21 +383,17 @@ public class MainActivity extends NativeActivity {
         cmdReplaceAll();
     }
 
-    // ★修正: AppCompatEditText を継承するように変更
     class SearchEditText extends AppCompatEditText {
         public SearchEditText(Context context) { super(context); }
         @Override
         public boolean onKeyPreIme(int keyCode, KeyEvent event) {
             if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
                 resetToolbarToMain();
+                return true;
             }
             return super.onKeyPreIme(keyCode, event);
         }
     }
-
-    // =========================================================
-    // ★ ファイル管理アクション
-    // =========================================================
 
     private void confirmSaveIfNeeded(Runnable nextAction) {
         if (!cmdIsDirty()) {
@@ -518,10 +509,6 @@ public class MainActivity extends NativeActivity {
         }
     }
 
-    // =========================================================
-    // 以降は既存のコード
-    // =========================================================
-
     private void buildProgressiveFade(int topInset, int topMargin) {
         if (blurOverlay == null || topInset <= 0) return;
         int fadeHeight = topMargin + 80;
@@ -547,6 +534,16 @@ public class MainActivity extends NativeActivity {
 
     public void showSoftwareKeyboard() {
         runOnUiThread(() -> {
+            // ★C++(エディタ本文)からタップ要求が来た際、消去(dismiss)せず静かに中身だけ入れ替える
+            if (searchToolbar != null && searchToolbar.getVisibility() == View.VISIBLE) {
+                resetToolbarToMainInternal();
+                if (toolbarPopup != null) {
+                    toolbarPopup.setFocusable(false);
+                    toolbarPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
+                    toolbarPopup.update(); // 画面にチラつきを出さずに状態だけ更新！
+                }
+            }
+
             imeView.requestFocus();
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) imm.showSoftInput(imeView, InputMethodManager.SHOW_IMPLICIT);
