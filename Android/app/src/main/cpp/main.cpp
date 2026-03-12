@@ -57,10 +57,9 @@ struct TextAtlas {
             }
         }
 
-        // ★修正: キャンバスサイズを大きく（高解像度に）して、線をしっかり太くする
         int nlX = 3; int nlY = 0;
-        int nlW = 48; int nlH = 48; // 32 -> 48 に拡大
-        float thickness = 4.5f;     // 2.0 -> 4.5 に太くする
+        int nlW = 48; int nlH = 48;
+        float thickness = 4.5f;
 
         auto distToSeg = [](float px, float py, float ax, float ay, float bx, float by) {
             float l2 = (bx - ax)*(bx - ax) + (by - ay)*(by - ay);
@@ -71,53 +70,86 @@ struct TextAtlas {
             return std::sqrt((px - projx)*(px - projx) + (py - projy)*(py - projy));
         };
 
+        // 3種類のアイコンのアトラス上のX座標
+        int crlfX = nlX;             int crlfY = nlY;
+        int crX   = crlfX + nlW + 1; int crY   = nlY;
+        int lfX   = crX + nlW + 1;   int lfY   = nlY;
+
         float cy = nlH * 0.5f;
         float cx = nlW * 0.5f;
         float halfSz = nlH * 0.4f;
         float arrowSize = halfSz * 0.35f;
+
+        // 線の基準座標
         float hLineRight = cx + halfSz * 0.6f;
         float hLineLeft = cx - halfSz * 0.6f;
         float vLineTop = cy - halfSz;
         float vLineBottom = cy + halfSz * 0.3f;
+        float stemTop = cy - halfSz * 0.8f;
+        float stemBottom = cy + halfSz * 0.8f;
 
         for (int y = 0; y < nlH; ++y) {
             for (int x = 0; x < nlW; ++x) {
                 float px = (float)x; float py = (float)y;
 
-                float d1 = distToSeg(px, py, hLineRight, vLineTop, hLineRight, vLineBottom);
-                float d2 = distToSeg(px, py, hLineRight, vLineBottom, hLineLeft, vLineBottom);
-                float d3 = distToSeg(px, py, hLineLeft, vLineBottom, hLineLeft + arrowSize, vLineBottom - arrowSize);
-                float d4 = distToSeg(px, py, hLineLeft, vLineBottom, hLineLeft + arrowSize, vLineBottom + arrowSize);
+                // CRLF (折れ矢印)
+                float d1_crlf = distToSeg(px, py, hLineRight, vLineTop, hLineRight, vLineBottom);
+                float d2_crlf = distToSeg(px, py, hLineRight, vLineBottom, hLineLeft, vLineBottom);
+                float d3_crlf = distToSeg(px, py, hLineLeft, vLineBottom, hLineLeft + arrowSize, vLineBottom - arrowSize);
+                float d4_crlf = distToSeg(px, py, hLineLeft, vLineBottom, hLineLeft + arrowSize, vLineBottom + arrowSize);
+                float d_crlf = std::min({d1_crlf, d2_crlf, d3_crlf, d4_crlf});
+                float alpha_crlf = std::max(0.0f, std::min(1.0f, (thickness / 2.0f) - d_crlf + 0.5f));
+                uint8_t val_crlf = (uint8_t)(alpha_crlf * 255.0f);
+                int idx_crlf = ((crlfY + y) * width + (crlfX + x)) * 4;
+                pixels[idx_crlf + 0] = val_crlf; pixels[idx_crlf + 1] = val_crlf; pixels[idx_crlf + 2] = val_crlf; pixels[idx_crlf + 3] = val_crlf;
 
-                float d = std::min({d1, d2, d3, d4});
-                float alpha = std::max(0.0f, std::min(1.0f, (thickness / 2.0f) - d + 0.5f));
-                uint8_t val = (uint8_t)(alpha * 255.0f);
+                // CR (左向き矢印)
+                float d1_cr = distToSeg(px, py, hLineRight, cy, hLineLeft, cy);
+                float d2_cr = distToSeg(px, py, hLineLeft, cy, hLineLeft + arrowSize, cy - arrowSize);
+                float d3_cr = distToSeg(px, py, hLineLeft, cy, hLineLeft + arrowSize, cy + arrowSize);
+                float d_cr = std::min({d1_cr, d2_cr, d3_cr});
+                float alpha_cr = std::max(0.0f, std::min(1.0f, (thickness / 2.0f) - d_cr + 0.5f));
+                uint8_t val_cr = (uint8_t)(alpha_cr * 255.0f);
+                int idx_cr = ((crY + y) * width + (crX + x)) * 4;
+                pixels[idx_cr + 0] = val_cr; pixels[idx_cr + 1] = val_cr; pixels[idx_cr + 2] = val_cr; pixels[idx_cr + 3] = val_cr;
 
-                int idx = ((nlY + y) * width + (nlX + x)) * 4;
-                pixels[idx + 0] = val; pixels[idx + 1] = val; pixels[idx + 2] = val; pixels[idx + 3] = val;
+                // LF (下向き矢印)
+                float d1_lf = distToSeg(px, py, cx, stemTop, cx, stemBottom);
+                float d2_lf = distToSeg(px, py, cx, stemBottom, cx - arrowSize, stemBottom - arrowSize);
+                float d3_lf = distToSeg(px, py, cx, stemBottom, cx + arrowSize, stemBottom - arrowSize);
+                float d_lf = std::min({d1_lf, d2_lf, d3_lf});
+                float alpha_lf = std::max(0.0f, std::min(1.0f, (thickness / 2.0f) - d_lf + 0.5f));
+                uint8_t val_lf = (uint8_t)(alpha_lf * 255.0f);
+                int idx_lf = ((lfY + y) * width + (lfX + x)) * 4;
+                pixels[idx_lf + 0] = val_lf; pixels[idx_lf + 1] = val_lf; pixels[idx_lf + 2] = val_lf; pixels[idx_lf + 3] = val_lf;
             }
         }
 
-        GlyphInfo nlInfo;
-        nlInfo.width = (float)nlW;
-        nlInfo.height = (float)nlH;
-        nlInfo.bearingX = 0.0f;
-        nlInfo.bearingY = 24.0f;
-        nlInfo.advance = 32.0f;
-        nlInfo.u0 = (float)nlX / width; nlInfo.v0 = (float)nlY / height;
-        nlInfo.u1 = (float)(nlX + nlW) / width; nlInfo.v1 = (float)(nlY + nlH) / height;
-        nlInfo.isColor = false;
+        auto createGlyphInfo = [&](int gx, int gy) {
+            GlyphInfo info;
+            info.width = (float)nlW;
+            info.height = (float)nlH;
+            info.bearingX = 0.0f;
+            info.bearingY = 24.0f;
+            info.advance = 32.0f;
+            info.u0 = (float)gx / width; info.v0 = (float)gy / height;
+            info.u1 = (float)(gx + nlW) / width; info.v1 = (float)(gy + nlH) / height;
+            info.isColor = false;
+            return info;
+        };
 
-        uint64_t NEWLINE_KEY = 0xFFFFFFFFFFFFFFFF;
-        glyphs[NEWLINE_KEY] = nlInfo;
+        // 3種類のキーを登録
+        glyphs[0xFFFFFFFFFFFFFFFF] = createGlyphInfo(crlfX, crlfY); // CRLF
+        glyphs[0xFFFFFFFFFFFFFFFE] = createGlyphInfo(crX, crY);     // CR
+        glyphs[0xFFFFFFFFFFFFFFFD] = createGlyphInfo(lfX, lfY);     // LF
 
-        currentX = nlX + nlW + 1;
+        currentX = lfX + nlW + 1;
         currentY = 0;
-        maxRowHeight = nlH; // 修正
+        maxRowHeight = nlH;
 
         isDirty = true;
         dirtyMinX = 0; dirtyMinY = 0;
-        dirtyMaxX = width; dirtyMaxY = maxRowHeight;
+        dirtyMaxX = currentX; dirtyMaxY = maxRowHeight;
     }
     bool loadGlyph(Engine* engine, int fontIndex, uint32_t glyphIndex);
 };
@@ -315,6 +347,7 @@ struct Engine {
     bool searchWholeWord = false;
     bool searchRegex = false;
     bool isReplaceMode = false;
+    std::string newlineStr = "\n";
     float scrollX = 0.0f;
     float scrollY = 0.0f;
     float maxLineWidth = 0.0f;
@@ -675,7 +708,6 @@ void replaceAllCommand(Engine* engine) {
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
 }
-
 bool openDocumentFromFile(Engine* engine, const std::string& path) {
     if (!engine) return false;
     std::ifstream file(path, std::ios::binary | std::ios::ate);
@@ -687,7 +719,6 @@ bool openDocumentFromFile(Engine* engine, const std::string& path) {
     if (file.read(buffer.data(), size)) {
         engine->pt.initEmpty();
 
-        // ★修正: UTF-8 BOM (EF BB BF) が先頭にあれば除去する
         size_t startOffset = 0;
         if (size >= 3 &&
             (unsigned char)buffer[0] == 0xEF &&
@@ -696,8 +727,24 @@ bool openDocumentFromFile(Engine* engine, const std::string& path) {
             startOffset = 3;
         }
 
-        // BOMを除去した純粋なテキストを挿入
         engine->pt.insert(0, std::string(buffer.data() + startOffset, size - startOffset));
+
+        // ★追加: ファイルから改行コードを検知して記憶する
+        engine->newlineStr = "\n"; // デフォルト
+        size_t checkLen = std::min(size, (size_t)4096); // 先頭4KBだけチェックすれば十分
+        for (size_t i = startOffset; i < checkLen; ++i) {
+            if (buffer[i] == '\r') {
+                if (i + 1 < size && buffer[i + 1] == '\n') {
+                    engine->newlineStr = "\r\n"; // CRLF
+                } else {
+                    engine->newlineStr = "\r";   // CR
+                }
+                break;
+            } else if (buffer[i] == '\n') {
+                engine->newlineStr = "\n";       // LF
+                break;
+            }
+        }
 
         engine->currentFilePath = path;
         engine->undo.undoStack.clear();
@@ -1834,12 +1881,10 @@ void updateTextVertices(Engine* engine) {
             size_t matchLen = 0;
             size_t found = findText(engine, currentSearchPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, engine->searchRegex, &matchLen);
 
-            // ★修正: 見つからなかった場合、または過去に戻ってしまった場合は終了
             if (found == std::string::npos || found < currentSearchPos) break;
 
             searchMatches.push_back({found, found + matchLen});
 
-            // ★修正: マッチ長が0の場合は無限ループを防ぐため1文字進める
             if (matchLen == 0) {
                 currentSearchPos = found + 1;
             } else {
@@ -1849,10 +1894,10 @@ void updateTextVertices(Engine* engine) {
     }
 
     float winH = 5000.0f;
-    float winW = 1080.0f; // ★追加
+    float winW = 1080.0f;
     if (engine->app->window != nullptr) {
         winH = (float)ANativeWindow_getHeight(engine->app->window);
-        winW = (float)ANativeWindow_getWidth(engine->app->window); // ★追加
+        winW = (float)ANativeWindow_getWidth(engine->app->window);
     }
 
     for (int lineIdx = 0; lineIdx < engine->lineStarts.size(); ++lineIdx) {
@@ -1866,42 +1911,22 @@ void updateTextVertices(Engine* engine) {
         ensureLineShaped(engine, lineIdx);
         float x = engine->gutterWidth - engine->scrollX;
         size_t lineStart = engine->lineStarts[lineIdx];
+
         bool hasZeroLengthMatchAtLineStart = false;
-        float lineStartX = x;
         for (const auto& match : searchMatches) {
             if (match.first == match.second && match.first == lineStart) {
                 hasZeroLengthMatchAtLineStart = true;
                 break;
             }
         }
+
+        // 1. 行頭の長さ0マッチ（^ など）のハイライトを描画
         if (hasZeroLengthMatchAtLineStart) {
             float bgY = lineY - engine->lineHeight * 0.8f;
-            addRect(bgVertices, lineStartX, bgY, cursorWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.8f);
+            addRect(bgVertices, x, bgY, cursorWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.8f);
         }
-        size_t lineEndForSearch = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
-        if (lineEndForSearch > lineStart) {
-            char lastChar = engine->pt.charAt(lineEndForSearch - 1);
-            if (lastChar == '\n' || lastChar == '\r') {
-                size_t newlinePos = lineEndForSearch - 1;
-                if (lastChar == '\n' && newlinePos > lineStart && engine->pt.charAt(newlinePos - 1) == '\r') {
-                    newlinePos--; // CRLFの場合は \r の位置を起点とする
-                }
 
-                bool isNewlineMatched = false;
-                for (const auto& match : searchMatches) {
-                    if (match.first <= newlinePos && match.second > newlinePos) {
-                        isNewlineMatched = true;
-                        break;
-                    }
-                }
-                if (isNewlineMatched) {
-                    // 改行文字のハイライトとして、行の最後に charWidth 分の黄色い矩形を描画
-                    float eolX = getXFromPos(engine, newlinePos) - engine->scrollX;
-                    float bgY = lineY - engine->lineHeight * 0.8f;
-                    addRect(bgVertices, eolX, bgY, engine->charWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
-                }
-            }
-        }
+        // 2. 文字の描画
         for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
             uint64_t key = ((uint64_t)sg.fontIndex << 32) | sg.glyphIndex;
             if (engine->atlas.glyphs.count(key) == 0) {
@@ -1916,15 +1941,13 @@ void updateTextVertices(Engine* engine) {
             }
 
             bool isSearchResult = false;
-            bool isZeroLengthMatchAfter = false; // ★追加: 文字の後ろに付く長さ0マッチ用
+            bool isZeroLengthMatchAfter = false;
 
             for (const auto& match : searchMatches) {
-                // 通常の文字をまたぐハイライト
                 if (match.first < match.second && sg.cluster >= match.first && sg.cluster < match.second) {
                     isSearchResult = true;
                     break;
                 }
-                // ★追加: 文字の直後（次のクラスター位置）が長さ0マッチの場合
                 if (match.first == match.second && match.first == (sg.cluster + 1)) {
                     isZeroLengthMatchAfter = true;
                 }
@@ -1961,7 +1984,6 @@ void updateTextVertices(Engine* engine) {
 
             x += sg.xAdvance * scale;
 
-            // ★追加: 文字の直後にある長さ0マッチのハイライトを描画（行末の $ など）
             if (isZeroLengthMatchAfter) {
                 float bgY = lineY - engine->lineHeight * 0.8f;
                 addRect(bgVertices, x, bgY, cursorWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.8f);
@@ -1970,34 +1992,73 @@ void updateTextVertices(Engine* engine) {
             float absoluteX = x + engine->scrollX;
             if (absoluteX > engine->maxLineWidth) engine->maxLineWidth = absoluteX;
         }
+
+        // 3. ★修正: 古いコードを削除し、文字ループの【後】に改行アイコンを1回だけ描画する
         size_t lineEnd = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
         if (lineEnd > lineStart) {
             char lastChar = engine->pt.charAt(lineEnd - 1);
             if (lastChar == '\n' || lastChar == '\r') {
-                uint64_t NEWLINE_KEY = 0xFFFFFFFFFFFFFFFF;
-                if (engine->atlas.glyphs.count(NEWLINE_KEY) > 0) {
-                    GlyphInfo& info = engine->atlas.glyphs[NEWLINE_KEY];
-                    // ★ここが常に textColor ベースになっていればOK
-                    float nlR = engine->textColor[0];
-                    float nlG = engine->textColor[1];
-                    float nlB = engine->textColor[2];
-                    float nlA = engine->textColor[3] * 0.3f;
-                    float targetSize = engine->charWidth * 1.4f;
-                    float iconScale = targetSize / info.width;
-                    float w = info.width * iconScale;
-                    float h = info.height * iconScale;
-                    float xpos = x + engine->charWidth * 0.3f;
-                    float rowCenterY = engine->topMargin - engine->scrollY + lineIdx * engine->lineHeight + engine->lineHeight * 0.5f;
-                    float ypos = rowCenterY - h * 0.5f;
-                    charVertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
-                    charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
-                    charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
-                    charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
-                    charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
-                    charVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
+
+                size_t newlinePos = lineEnd - 1;
+                uint64_t nlKey = 0xFFFFFFFFFFFFFFFD; // 初期値(LF)
+                bool skipDraw = false;
+
+                if (lastChar == '\n') {
+                    if (newlinePos > lineStart && engine->pt.charAt(newlinePos - 1) == '\r') {
+                        newlinePos--; // CRLFの場合は \r の位置を起点とする
+                        nlKey = 0xFFFFFFFFFFFFFFFF; // CRLF (折れ矢印)
+                    } else {
+                        nlKey = 0xFFFFFFFFFFFFFFFD; // LF (下向き矢印)
+                    }
+                } else if (lastChar == '\r') {
+                    // 次の行頭が \n ならスキップ
+                    if (lineEnd < engine->pt.length() && engine->pt.charAt(lineEnd) == '\n') {
+                        skipDraw = true;
+                    } else {
+                        nlKey = 0xFFFFFFFFFFFFFFFE; // 独立した CR (左向き矢印)
+                    }
+                }
+
+                if (!skipDraw) {
+                    bool isNewlineMatched = false;
+                    for (const auto& match : searchMatches) {
+                        if (match.first <= newlinePos && match.second > newlinePos) {
+                            isNewlineMatched = true;
+                            break;
+                        }
+                    }
+
+                    if (isNewlineMatched) {
+                        float bgY = lineY - engine->lineHeight * 0.8f;
+                        addRect(bgVertices, x, bgY, engine->charWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
+                    }
+
+                    if (engine->atlas.glyphs.count(nlKey) > 0) {
+                        GlyphInfo& info = engine->atlas.glyphs[nlKey];
+                        float nlR = engine->textColor[0];
+                        float nlG = engine->textColor[1];
+                        float nlB = engine->textColor[2];
+                        float nlA = engine->textColor[3] * 0.3f;
+                        float targetSize = engine->charWidth * 1.4f;
+                        float iconScale = targetSize / info.width;
+                        float w = info.width * iconScale;
+                        float h = info.height * iconScale;
+                        float xpos = x + engine->charWidth * 0.3f;
+                        float rowCenterY = engine->topMargin - engine->scrollY + lineIdx * engine->lineHeight + engine->lineHeight * 0.5f;
+                        float ypos = rowCenterY - h * 0.5f;
+
+                        charVertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
+                        charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
+                        charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
+                        charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
+                        charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
+                        charVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
+                    }
                 }
             }
         }
+
+        // 4. カーソルの描画
         for (const auto& c : engine->cursors) {
             size_t vPos = c.head;
             if (vPos >= lineStart && (lineIdx + 1 >= engine->lineStarts.size() || vPos < engine->lineStarts[lineIdx + 1])) {
@@ -2067,27 +2128,28 @@ void updateTextVertices(Engine* engine) {
     vertices.insert(vertices.end(), gutterTextVertices.begin(), gutterTextVertices.end());
     float topH = engine->topMargin;
     float bgR = engine->bgColor[0], bgG = engine->bgColor[1], bgB = engine->bgColor[2];
-    float winWidth = 5000.0f;
-    float fadeHeight = topH * 0.8f;
-    float solidHeight = topH - fadeHeight;
-    if (solidHeight > 0.0f) {
-        vertices.push_back({{0.0f,     0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
-        vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
-        vertices.push_back({{winWidth, 0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
-        vertices.push_back({{winWidth, 0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
-        vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
-        vertices.push_back({{winWidth, solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
-    }
-    if (fadeHeight > 0.0f) {
-        vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
-        vertices.push_back({{0.0f,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
-        vertices.push_back({{winWidth, solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
-        vertices.push_back({{winWidth, solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
-        vertices.push_back({{0.0f,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
-        vertices.push_back({{winWidth, topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
+
+    if (topH > 0.0f) {
+        float fadeHeight = topH * 0.8f;
+        float solidHeight = topH - fadeHeight;
+        if (solidHeight > 0.0f) {
+            vertices.push_back({{0.0f,     0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+            vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+            vertices.push_back({{winW,     0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+            vertices.push_back({{winW,     0.0f},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+            vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+            vertices.push_back({{winW,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+        }
+        if (fadeHeight > 0.0f) {
+            vertices.push_back({{0.0f,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+            vertices.push_back({{0.0f,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
+            vertices.push_back({{winW,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+            vertices.push_back({{winW,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
+            vertices.push_back({{0.0f,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
+            vertices.push_back({{winW,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
+        }
     }
 
-    // ---------- ★ここから追加: タイトル(ファイル名)の描画 ----------
     std::string titleStr;
     if (engine->currentFilePath.empty()) {
         titleStr = "無題";
@@ -2099,16 +2161,14 @@ void updateTextVertices(Engine* engine) {
             titleStr = engine->currentFilePath;
         }
     }
-    // 編集状態(Dirty)なら先頭にアスタリスクを付ける
     if (engine->isDirty) {
         titleStr = "*" + titleStr;
     }
 
-    float titleFontSize = 40.0f; // 本文より少し小さめ
+    float titleFontSize = 40.0f;
     float titleScale = titleFontSize / 48.0f;
     float titleWidth = 0.0f;
 
-    // UTF-8からコードポイントを抽出
     std::vector<uint32_t> titleCodepoints;
     const char* tptr = titleStr.data();
     const char* tend = tptr + titleStr.size();
@@ -2117,7 +2177,6 @@ void updateTextVertices(Engine* engine) {
         if (cp > 0) titleCodepoints.push_back(cp);
     }
 
-    // まず全体の文字列幅を計算して中央揃えの基準位置を割り出す
     for (uint32_t cp : titleCodepoints) {
         int fontIdx = getFontIndexForChar(engine, cp, 0);
         if (fontIdx >= 0) {
@@ -2129,16 +2188,14 @@ void updateTextVertices(Engine* engine) {
             if (engine->atlas.glyphs.count(key) > 0) {
                 titleWidth += engine->atlas.glyphs[key].advance * titleScale;
             } else {
-                titleWidth += 24.0f * titleScale; // 未知の文字のフォールバック幅
+                titleWidth += 24.0f * titleScale;
             }
         }
     }
 
-    // 画面中央＆ステータスバーと被らない絶妙な高さに配置
     float titleX = (winW - titleWidth) * 0.5f;
     float titleBaselineY = engine->topMargin - 20.0f;
 
-    // 実際に文字を描画（頂点を追加）
     for (uint32_t cp : titleCodepoints) {
         int fontIdx = getFontIndexForChar(engine, cp, 0);
         if (fontIdx >= 0) {
@@ -2152,7 +2209,6 @@ void updateTextVertices(Engine* engine) {
                 float w = info.width * titleScale;
                 float h = info.height * titleScale;
 
-                // 本文より少しだけ透明度を下げて(0.8)控えめに表示
                 float tr = engine->textColor[0], tg = engine->textColor[1], tb = engine->textColor[2];
                 float ta = engine->textColor[3] * 0.8f;
 
@@ -2169,7 +2225,6 @@ void updateTextVertices(Engine* engine) {
             }
         }
     }
-    // ---------- ★追加ここまで ----------
 
     engine->vertexCount = static_cast<uint32_t>(vertices.size());
     if (engine->vertexCount == 0) return;
@@ -2501,9 +2556,17 @@ void android_main(struct android_app* app) {
                 while (!g_imeQueue.empty()) {
                     ImeEvent ev = g_imeQueue.front();
                     g_imeQueue.pop_front();
+
                     if (ev.type == ImeEvent::Commit) {
                         engine.imeComp.clear();
-                        insertAtCursors(&engine, ev.text);
+
+                        // ★修正: Enterキー("\n")が送られてきた場合、ファイル固有の改行コードに変換する
+                        if (ev.text == "\n") {
+                            insertAtCursors(&engine, engine.newlineStr);
+                        } else {
+                            insertAtCursors(&engine, ev.text);
+                        }
+
                     } else if (ev.type == ImeEvent::Composing) {
                         engine.imeComp = ev.text;
                         if (!engine.cursors.empty()) {
