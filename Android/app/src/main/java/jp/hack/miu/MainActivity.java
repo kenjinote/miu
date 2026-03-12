@@ -63,6 +63,7 @@ public class MainActivity extends NativeActivity {
     public native void cmdFindNext(boolean forward);
     public native void cmdReplaceNext();
     public native void cmdReplaceAll();
+    public native void finishComposingTextNative();
 
     private ImeBridgeView imeView;
     private View blurOverlay;
@@ -548,6 +549,10 @@ public class MainActivity extends NativeActivity {
         }
         @Override public boolean setComposingText(CharSequence text, int newCursorPosition) {
             if (text != null) MainActivity.this.setComposingText(text.toString()); return true;
+        }
+        @Override public boolean finishComposingText() {
+            MainActivity.this.finishComposingTextNative();
+            return super.finishComposingText();
         }
         @Override public boolean deleteSurroundingText(int beforeLength, int afterLength) {
             MainActivity.this.deleteSurroundingText(); return true;

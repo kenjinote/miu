@@ -738,7 +738,7 @@ void updateThemeColors(Engine* engine) {
 }
 
 struct ImeEvent {
-    enum Type { Commit, Composing, Delete } type;
+    enum Type { Commit, Composing, Delete, FinishComposing } type;
     std::string text;
 };
 
@@ -1277,6 +1277,11 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdReplaceAll(JNIEnv* env, 
     if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
     replaceAllCommand(g_engine);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_finishComposingTextNative(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_imeQueue.push_back({ ImeEvent::FinishComposing, "" });
 }
 }
 
@@ -2419,10 +2424,11 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
                 updateThemeColors(engine);
                 if (initVulkan(engine)) {
                     engine->isWindowReady = true;
+
+                    // ★修正: ロック解除等での復帰時、空になったキャッシュを再構築して画面に文字を復活させる
+                    rebuildLineStarts(engine);
                     updateGutterWidth(engine);
-                    for (auto& cache : engine->lineCaches) {
-                        cache.isShaped = false;
-                    }
+
                 }
             }
             break;
@@ -2505,6 +2511,12 @@ void android_main(struct android_app* app) {
                             if (lineIdx >= 0 && lineIdx < engine.lineCaches.size()) {
                                 engine.lineCaches[lineIdx].isShaped = false;
                             }
+                        }
+                    } else if (ev.type == ImeEvent::FinishComposing) {
+                        if (!engine.imeComp.empty()) {
+                            std::string textToCommit = engine.imeComp;
+                            engine.imeComp.clear();
+                            insertAtCursors(&engine, textToCommit);
                         }
                     } else if (ev.type == ImeEvent::Delete) {
                         backspaceAtCursors(&engine);
