@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"> <uses-feature android:name="android.hardware.vulkan.version" android:required="true" android:version="0x400000" />
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <uses-feature android:name="android.hardware.vulkan.version" android:required="true" android:version="0x400000" />
 
     <application
         android:allowBackup="true"
@@ -9,18 +11,30 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Miu"
-        android:hasCode="true"> <activity
-        android:name="jp.hack.miu.MainActivity"
-        android:exported="true"
-        android:configChanges="orientation|keyboardHidden|screenSize">
+        android:hasCode="true">
 
-        <meta-data android:name="android.app.lib_name" android:value="miu" />
+        <activity
+            android:name="jp.hack.miu.MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|keyboardHidden|screenSize"
+            android:windowSoftInputMode="adjustResize"> <meta-data android:name="android.app.lib_name" android:value="miu" />
 
-        <intent-filter>
-            <action android:name="android.intent.action.MAIN" />
-            <category android:name="android.intent.category.LAUNCHER" />
-        </intent-filter>
-    </activity>
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <action android:name="android.intent.action.EDIT" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:mimeType="*/*" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

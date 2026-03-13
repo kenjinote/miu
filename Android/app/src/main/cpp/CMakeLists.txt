@@ -42,7 +42,7 @@ FetchContent_MakeAvailable(freetype)
 # --------------------------------------------------------------------
 
 
-# --- 3. HarfBuzzの自動ダウンロードと組み込み (追加) ---
+# --- 3. HarfBuzzの自動ダウンロードと組み込み ---
 FetchContent_Declare(
         harfbuzz
         GIT_REPOSITORY https://github.com/harfbuzz/harfbuzz.git
@@ -67,28 +67,49 @@ FetchContent_MakeAvailable(harfbuzz)
 # --------------------------------------------------------------------
 
 
+# --- 4. CED (compact_enc_det) の組み込み ---
+set(CED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/compact_enc_det)
+
+# CEDライブラリのビルド
+add_library(ced STATIC
+        ${CED_DIR}/compact_enc_det/compact_enc_det.cc
+        ${CED_DIR}/compact_enc_det/compact_enc_det_hint_code.cc
+        ${CED_DIR}/util/encodings/encodings.cc
+        ${CED_DIR}/util/languages/languages.cc
+)
+# --------------------------------------------------------------------
+
+target_include_directories(ced PUBLIC ${CED_DIR})
+
+# --- システムライブラリの検索 ---
 find_library(log-lib log)
 find_library(android-lib android)
 find_library(vulkan-lib vulkan)
 # NDK標準の zlib を探しておく
 find_library(z-lib z)
+# --------------------------------------------------------------------
 
+
+# --- メインターゲット (miu) の設定 ---
 add_library(miu SHARED
         main.cpp
         ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c
 )
 
+# インクルードディレクトリを一つにまとめる
 target_include_directories(miu PRIVATE
         ${ANDROID_NDK}/sources/android/native_app_glue
         ${freetype_SOURCE_DIR}/include
-        ${harfbuzz_SOURCE_DIR}/src  # ★ 追加: HarfBuzzの hb.h などがあるディレクトリ
+        ${harfbuzz_SOURCE_DIR}/src
+        ${CED_DIR}
 )
 
 target_link_options(miu PRIVATE "-Wl,-z,max-page-size=16384")
 
-# miu に harfbuzz, freetype, png, zlib をリンクさせる
+# リンクするライブラリを一つにまとめる
 target_link_libraries(miu
-        harfbuzz    # ★ 追加: 順番としてFreeTypeより前に書くか隣に書く
+        ced
+        harfbuzz
         freetype
         png_static
         ${z-lib}

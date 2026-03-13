@@ -1,0 +1,41 @@
+<resources>
+    <string name="app_name">miu</string>
+    <string name="untitled">Senza nome</string>
+    <string name="error_title">Errore</string>
+    <string name="open_fail">Impossibile aprire il documento.</string>
+    <string name="toolbar_new">Nuovo</string>
+    <string name="toolbar_open">Apri</string>
+    <string name="toolbar_save">Salva</string>
+    <string name="toolbar_save_as">Salva con nome</string>
+    <string name="toolbar_find">Trova</string>
+    <string name="toolbar_replace">Sostituisci</string>
+    <string name="toolbar_top">Inizio</string>
+    <string name="toolbar_bottom">Fine</string>
+    <string name="toolbar_goto">Vai a</string>
+    <string name="toolbar_undo">Annulla</string>
+    <string name="toolbar_redo">Ripeti</string>
+    <string name="toolbar_select_all">Seleziona tutto</string>
+    <string name="toolbar_cut">Taglia</string>
+    <string name="toolbar_copy">Copia</string>
+    <string name="toolbar_paste">Incolla</string>
+    <string name="toolbar_done">Fatto</string>
+    <string name="toolbar_cancel">Annulla</string>
+    <string name="search_hint">Cerca...</string>
+    <string name="replace_hint">Sostituisci con...</string>
+    <string name="replace_btn">Sost</string> <string name="replace_all_btn">Tutti</string>
+    <string name="msg_copied">Copiato negli appunti</string>
+    <string name="msg_new_doc">Nuovo documento creato</string>
+    <string name="msg_doc_opened">Documento aperto</string>
+    <string name="msg_doc_saved">Documento salvato</string>
+    <string name="msg_save_fail">Salvataggio non riuscito</string>
+    <string name="msg_encode_fail">Impossibile codificare il documento</string>
+    <string name="msg_open_fail">Impossibile leggere il documento</string>
+    <string name="msg_read_error">Errore di lettura del file</string>
+    <string name="dialog_goto_title">Vai alla riga</string>
+    <string name="dialog_goto_btn">Vai</string>
+    <string name="dialog_unsaved_title">Modifiche non salvate</string>
+    <string name="dialog_unsaved_msg">Vuoi salvare le modifiche prima di chiudere?</string>
+    <string name="dialog_btn_save">Salva</string>
+    <string name="dialog_btn_dont_save">Non salvare</string>
+    <string name="dialog_btn_done">Fatto</string>
+</resources>

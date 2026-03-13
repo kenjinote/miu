@@ -23,6 +23,9 @@
 #define VK_USE_PLATFORM_ANDROID_KHR
 #include <vulkan/vulkan.h>
 
+#include "compact_enc_det/compact_enc_det.h"
+#include "util/encodings/encodings.h" // ← Encoding 型の定義が含まれるファイル
+
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "miu", __VA_ARGS__))
 #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "miu", __VA_ARGS__))
 
@@ -49,18 +52,15 @@ struct TextAtlas {
     void init() {
         glyphs.clear();
         pixels.assign(width * height * 4, 0);
-
         for (int y = 0; y < 2; ++y) {
             for (int x = 0; x < 2; ++x) {
                 int idx = (y * width + x) * 4;
                 pixels[idx + 0] = 255; pixels[idx + 1] = 255; pixels[idx + 2] = 255; pixels[idx + 3] = 255;
             }
         }
-
         int nlX = 3; int nlY = 0;
         int nlW = 48; int nlH = 48;
         float thickness = 4.5f;
-
         auto distToSeg = [](float px, float py, float ax, float ay, float bx, float by) {
             float l2 = (bx - ax)*(bx - ax) + (by - ay)*(by - ay);
             if (l2 == 0.0f) return std::sqrt((px - ax)*(px - ax) + (py - ay)*(py - ay));
@@ -69,30 +69,22 @@ struct TextAtlas {
             float projy = ay + t * (by - ay);
             return std::sqrt((px - projx)*(px - projx) + (py - projy)*(py - projy));
         };
-
-        // 3種類のアイコンのアトラス上のX座標
         int crlfX = nlX;             int crlfY = nlY;
         int crX   = crlfX + nlW + 1; int crY   = nlY;
         int lfX   = crX + nlW + 1;   int lfY   = nlY;
-
         float cy = nlH * 0.5f;
         float cx = nlW * 0.5f;
         float halfSz = nlH * 0.4f;
         float arrowSize = halfSz * 0.35f;
-
-        // 線の基準座標
         float hLineRight = cx + halfSz * 0.6f;
         float hLineLeft = cx - halfSz * 0.6f;
         float vLineTop = cy - halfSz;
         float vLineBottom = cy + halfSz * 0.3f;
         float stemTop = cy - halfSz * 0.8f;
         float stemBottom = cy + halfSz * 0.8f;
-
         for (int y = 0; y < nlH; ++y) {
             for (int x = 0; x < nlW; ++x) {
                 float px = (float)x; float py = (float)y;
-
-                // CRLF (折れ矢印)
                 float d1_crlf = distToSeg(px, py, hLineRight, vLineTop, hLineRight, vLineBottom);
                 float d2_crlf = distToSeg(px, py, hLineRight, vLineBottom, hLineLeft, vLineBottom);
                 float d3_crlf = distToSeg(px, py, hLineLeft, vLineBottom, hLineLeft + arrowSize, vLineBottom - arrowSize);
@@ -102,8 +94,6 @@ struct TextAtlas {
                 uint8_t val_crlf = (uint8_t)(alpha_crlf * 255.0f);
                 int idx_crlf = ((crlfY + y) * width + (crlfX + x)) * 4;
                 pixels[idx_crlf + 0] = val_crlf; pixels[idx_crlf + 1] = val_crlf; pixels[idx_crlf + 2] = val_crlf; pixels[idx_crlf + 3] = val_crlf;
-
-                // CR (左向き矢印)
                 float d1_cr = distToSeg(px, py, hLineRight, cy, hLineLeft, cy);
                 float d2_cr = distToSeg(px, py, hLineLeft, cy, hLineLeft + arrowSize, cy - arrowSize);
                 float d3_cr = distToSeg(px, py, hLineLeft, cy, hLineLeft + arrowSize, cy + arrowSize);
@@ -112,8 +102,6 @@ struct TextAtlas {
                 uint8_t val_cr = (uint8_t)(alpha_cr * 255.0f);
                 int idx_cr = ((crY + y) * width + (crX + x)) * 4;
                 pixels[idx_cr + 0] = val_cr; pixels[idx_cr + 1] = val_cr; pixels[idx_cr + 2] = val_cr; pixels[idx_cr + 3] = val_cr;
-
-                // LF (下向き矢印)
                 float d1_lf = distToSeg(px, py, cx, stemTop, cx, stemBottom);
                 float d2_lf = distToSeg(px, py, cx, stemBottom, cx - arrowSize, stemBottom - arrowSize);
                 float d3_lf = distToSeg(px, py, cx, stemBottom, cx + arrowSize, stemBottom - arrowSize);
@@ -124,7 +112,6 @@ struct TextAtlas {
                 pixels[idx_lf + 0] = val_lf; pixels[idx_lf + 1] = val_lf; pixels[idx_lf + 2] = val_lf; pixels[idx_lf + 3] = val_lf;
             }
         }
-
         auto createGlyphInfo = [&](int gx, int gy) {
             GlyphInfo info;
             info.width = (float)nlW;
@@ -137,26 +124,21 @@ struct TextAtlas {
             info.isColor = false;
             return info;
         };
-
         // 3種類のキーを登録
         glyphs[0xFFFFFFFFFFFFFFFF] = createGlyphInfo(crlfX, crlfY); // CRLF
         glyphs[0xFFFFFFFFFFFFFFFE] = createGlyphInfo(crX, crY);     // CR
         glyphs[0xFFFFFFFFFFFFFFFD] = createGlyphInfo(lfX, lfY);     // LF
-
         currentX = lfX + nlW + 1;
         currentY = 0;
         maxRowHeight = nlH;
-
         isDirty = true;
         dirtyMinX = 0; dirtyMinY = 0;
         dirtyMaxX = currentX; dirtyMaxY = maxRowHeight;
     }
     bool loadGlyph(Engine* engine, int fontIndex, uint32_t glyphIndex);
 };
-
 uint32_t decodeUtf8(const char** ptr, const char* end) {
     if (*ptr >= end) return 0;
-
     auto decodeSingle = [](const char** p, const char* e) -> uint32_t {
         if (*p >= e) return 0;
         unsigned char c = **p;
@@ -185,9 +167,7 @@ uint32_t decodeUtf8(const char** ptr, const char* end) {
         }
         return '?';
     };
-
     uint32_t cp = decodeSingle(ptr, end);
-
     // MUTF-8サロゲートペア合成処理
     if (cp >= 0xD800 && cp <= 0xDBFF) {
         const char* nextPtr = *ptr;
@@ -199,9 +179,7 @@ uint32_t decodeUtf8(const char** ptr, const char* end) {
     }
     return cp;
 }
-
 struct Piece { bool isOriginal; size_t start; size_t len; };
-
 struct PieceTable {
     const char* origPtr = nullptr; size_t origSize = 0;
     std::string addBuf; std::vector<Piece> pieces;
@@ -225,11 +203,7 @@ struct PieceTable {
     void insert(size_t pos, const std::string& s) {
         if (s.empty()) return;
         size_t cur = 0; size_t idx = 0;
-
-        // 挿入位置の特定
         while (idx < pieces.size() && cur + pieces[idx].len < pos) { cur += pieces[idx].len; ++idx; }
-
-        // ピースの分割（途中に挿入された場合）
         if (idx < pieces.size()) {
             Piece p = pieces[idx]; size_t offsetInPiece = pos - cur;
             if (offsetInPiece > 0 && offsetInPiece < p.len) {
@@ -238,13 +212,8 @@ struct PieceTable {
                 idx++;
             } else if (offsetInPiece == p.len) idx++;
         } else idx = pieces.size();
-
         size_t addStart = addBuf.size();
         addBuf.append(s);
-
-        // ★大最適化: 「断片化の防止（ピースの結合）」
-        // もし直前のピースが「追加バッファ」であり、かつ今回の追加文字と連続しているなら、
-        // 新しいピースを作らずに、直前のピースの長さを伸ばすだけで済ませる！
         if (idx > 0 && !pieces[idx - 1].isOriginal && pieces[idx - 1].start + pieces[idx - 1].len == addStart) {
             pieces[idx - 1].len += s.size();
         } else {
@@ -278,46 +247,39 @@ struct PieceTable {
         return '\0';
     }
 };
-
 struct Cursor {
     size_t head; size_t anchor; float desiredX;
     size_t start() const { return std::min(head, anchor); }
     size_t end() const { return std::max(head, anchor); }
     bool hasSelection() const { return head != anchor; }
 };
-
 struct EditOp { enum Type { Insert, Erase } type; size_t pos; std::string text; };
 struct EditBatch { std::vector<EditOp> ops; std::vector<Cursor> beforeCursors; std::vector<Cursor> afterCursors; };
 struct UndoManager {
     std::vector<EditBatch> undoStack; std::vector<EditBatch> redoStack;
     void push(const EditBatch& batch) { undoStack.push_back(batch); redoStack.clear(); }
 };
-
 int64_t getCurrentTimeMs() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
 }
-
 bool isWordChar(char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
            (c >= '0' && c <= '9') || c == '_' ||
            (unsigned char)c >= 0x80;
 }
-
 struct Vertex {
     float pos[2];
     float uv[2];
     float isColor;
     float color[4];
 };
-
 struct PushConstants {
     float screenWidth;
     float screenHeight;
     float padding[2];
     float color[4];
 };
-
 struct ShapedGlyph {
     int fontIndex;
     uint32_t glyphIndex;
@@ -325,12 +287,21 @@ struct ShapedGlyph {
     size_t cluster;
     bool isIME;
 };
-
 struct LineCache {
     std::vector<ShapedGlyph> glyphs;
     bool isShaped = false;
 };
-
+enum MiuEncoding {
+    ENC_UTF8_NOBOM = 0,
+    ENC_UTF8_BOM,
+    ENC_UTF16LE,
+    ENC_UTF16BE,
+    ENC_LOCAL
+};
+struct DetectResult {
+    MiuEncoding type;
+    std::string charsetName; // Android(Java)に渡すためのCharset名
+};
 struct Engine {
     struct android_app* app;
     bool isWindowReady = false;
@@ -340,6 +311,7 @@ struct Engine {
     std::vector<size_t> lineStarts;
     std::string imeComp;
     std::string currentFilePath;
+    std::string displayFileName;
     bool isDirty = false;
     std::string searchQuery;
     std::string replaceQuery;
@@ -380,7 +352,7 @@ struct Engine {
     float gutterTextColor[4] = {0.66f, 0.66f, 0.66f, 1.0f};
     float selColor[4] = {0.7f, 0.8f, 1.0f, 0.5f};
     float caretColor[4] = {0.0f, 0.0f, 0.0f, 1.0f};
-
+    float autoHlColor[4] = {0.85f, 0.85f, 0.85f, 0.5f};
     VkInstance instance;
     VkSurfaceKHR surface;
     VkPhysicalDevice physicalDevice;
@@ -388,15 +360,12 @@ struct Engine {
     VkQueue graphicsQueue;
     uint32_t queueFamilyIndex;
     FT_Library ftLibrary;
-
     std::vector<std::vector<uint8_t>> fallbackFontData;
     std::vector<FT_Face> fallbackFaces;
     std::vector<hb_font_t*> fallbackHbFonts;
     std::vector<float> fallbackFontScales;
     std::vector<LineCache> lineCaches;
-
     TextAtlas atlas;
-
     VkSwapchainKHR swapchain;
     std::vector<VkImage> swapchainImages;
     std::vector<VkImageView> swapchainImageViews;
@@ -423,27 +392,23 @@ struct Engine {
     uint32_t vertexCount = 0;
     VkBuffer atlasStagingBuffer = VK_NULL_HANDLE;
     VkDeviceMemory atlasStagingMemory = VK_NULL_HANDLE;
+    MiuEncoding currentEncoding = ENC_UTF8_NOBOM;
+    std::string currentCharset = "UTF-8";
 };
-
-// TextAtlasの実装
 bool TextAtlas::loadGlyph(Engine* engine, int fontIndex, uint32_t glyphIndex) {
     uint64_t key = ((uint64_t)fontIndex << 32) | glyphIndex;
     if (glyphs.count(key) > 0) return true;
     if (fontIndex < 0 || fontIndex >= engine->fallbackFaces.size()) return false;
-
     FT_Face targetFace = engine->fallbackFaces[fontIndex];
     if (FT_Load_Glyph(targetFace, glyphIndex, FT_LOAD_RENDER | FT_LOAD_COLOR) != 0) {
         return false;
     }
-
     FT_Bitmap* bmp = &targetFace->glyph->bitmap;
-
     bool isColorGlyph = (bmp->pixel_mode == FT_PIXEL_MODE_BGRA);
     if (currentX + bmp->width + 1 >= width) {
         currentX = 0; currentY += maxRowHeight + 1; maxRowHeight = 0;
     }
     if (currentY + bmp->rows + 1 >= height) { LOGE("アトラスオーバー"); return false; }
-
     for (unsigned int row = 0; row < bmp->rows; ++row) {
         for (unsigned int col = 0; col < bmp->width; ++col) {
             size_t dstIdx = ((currentY + row) * width + (currentX + col)) * 4;
@@ -459,7 +424,6 @@ bool TextAtlas::loadGlyph(Engine* engine, int fontIndex, uint32_t glyphIndex) {
             }
         }
     }
-
     if (!isDirty) {
         dirtyMinX = currentX; dirtyMaxX = currentX + bmp->width;
         dirtyMinY = currentY; dirtyMaxY = currentY + bmp->rows;
@@ -470,12 +434,10 @@ bool TextAtlas::loadGlyph(Engine* engine, int fontIndex, uint32_t glyphIndex) {
         if (currentY < dirtyMinY) dirtyMinY = currentY;
         if (currentY + (int)bmp->rows > dirtyMaxY) dirtyMaxY = currentY + (int)bmp->rows;
     }
-
     float scale = 1.0f;
     if (isColorGlyph && bmp->rows > 0) {
         scale = 48.0f / (float)bmp->rows;
     }
-
     GlyphInfo info;
     info.width = (float)bmp->width * scale;
     info.height = (float)bmp->rows * scale;
@@ -485,37 +447,31 @@ bool TextAtlas::loadGlyph(Engine* engine, int fontIndex, uint32_t glyphIndex) {
     info.u0 = (float)currentX / (float)width; info.v0 = (float)currentY / (float)height;
     info.u1 = (float)(currentX + bmp->width) / (float)width; info.v1 = (float)(currentY + bmp->rows) / (float)height;
     info.isColor = isColorGlyph;
-
     glyphs[key] = info;
     currentX += bmp->width + 1;
     if (bmp->rows > maxRowHeight) maxRowHeight = bmp->rows;
-
     return true;
 }
 int getFontIndexForChar(Engine* engine, uint32_t cp, int prevFontIndex) {
-    // ★追加: フォントが全くロードされていない場合は安全のために -1 を返すなど
     if (engine->fallbackFaces.empty()) return -1;
-
     if (cp == 0x200D || (cp >= 0xFE00 && cp <= 0xFE0F)) return prevFontIndex;
-
     for (int i = 0; i < engine->fallbackFaces.size(); ++i) {
         if (FT_Get_Char_Index(engine->fallbackFaces[i], cp) != 0) return i;
     }
-    return 0; // 見つからなければ最初のフォント(Roboto等)を強制
+    return 0;
 }
 void ensureLineShaped(Engine* engine, int lineIdx);
 void rebuildLineStarts(Engine* engine);
 void ensureCaretVisible(Engine* engine);
 float getXFromPos(Engine* engine, size_t pos);
-
 void updateDirtyFlag(Engine* engine) {
     engine->isDirty = !engine->undo.undoStack.empty();
 }
-
 void performNewDocument(Engine* engine) {
     if (!engine) return;
     engine->pt.initEmpty();
     engine->currentFilePath.clear();
+    engine->displayFileName.clear();
     engine->undo.undoStack.clear();
     engine->undo.redoStack.clear();
     engine->isDirty = false;
@@ -527,16 +483,20 @@ void performNewDocument(Engine* engine) {
     engine->scrollY = 0.0f;
     engine->lineCaches.clear();
 }
-
-std::string UnescapeString(const std::string& s) {
+std::string UnescapeString(const std::string& s, const std::string& newline) {
     std::string out; out.reserve(s.size());
     for (size_t i = 0; i < s.size(); ++i) {
         if (s[i] == '\\' && i + 1 < s.size()) {
-            switch (s[i + 1]) { case 'n': out += '\n'; break; case 'r': out += '\r'; break; case 't': out += '\t'; break; case '\\': out += '\\'; break; default: out += s[i]; out += s[i + 1]; break; } i++;
+            switch (s[i + 1]) {
+                case 'n': out += newline; break;
+                case 'r': out += '\r'; break;
+                case 't': out += '\t'; break;
+                case '\\': out += '\\'; break;
+                default: out += s[i]; out += s[i + 1]; break;
+            } i++;
         } else out += s[i];
     } return out;
 }
-
 std::string preprocessRegexQuery(const std::string& query) {
     std::string processed; processed.reserve(query.size() * 4);
     for (size_t i = 0; i < query.size(); ++i) {
@@ -559,13 +519,11 @@ std::string preprocessRegexQuery(const std::string& query) {
     }
     return processed;
 }
-
 size_t findText(Engine* engine, size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
     size_t len = engine->pt.length();
     std::string actualQuery = query;
     if (isRegex) actualQuery = preprocessRegexQuery(query);
-
     if (isRegex) {
         std::string fullText = engine->pt.getRange(0, len);
         try {
@@ -575,28 +533,170 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
             std::smatch m;
             size_t foundPos = std::string::npos;
             size_t foundLen = 0;
-
+            bool startsWithCaret = (!query.empty() && query[0] == '^');
+            bool endsWithDollar = (!query.empty() && query.back() == '$');
             if (forward) {
                 if (startPos > fullText.size()) startPos = 0;
                 size_t searchStartIdx = startPos;
+                std::regex_constants::match_flag_type searchFlags = std::regex_constants::match_default;
+                // 行頭（改行の直後）を正しくマッチさせるため、検索開始位置を直前の改行まで巻き戻す
+                if (searchStartIdx > 0) {
+                    searchFlags |= std::regex_constants::match_not_bol;
+                    char prevChar = fullText[searchStartIdx - 1];
+                    if (prevChar == '\n') {
+                        searchStartIdx--;
+                        if (searchStartIdx > 0 && fullText[searchStartIdx - 1] == '\r') {
+                            searchStartIdx--;
+                        }
+                    } else if (prevChar == '\r') {
+                        searchStartIdx--;
+                    }
+                }
                 std::string::const_iterator searchStartIter = fullText.begin() + searchStartIdx;
-                if (std::regex_search(searchStartIter, fullText.cend(), m, re)) {
-                    foundPos = searchStartIdx + m.position();
-                    foundLen = m.length();
-                } else if (startPos > 0 && std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) {
-                    foundPos = m.position();
-                    foundLen = m.length();
+                while (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) {
+                    size_t currentMatchPos = searchStartIdx + m.position();
+                    size_t currentMatchLen = m.length();
+                    size_t anchorLen = 0;
+                    // ★修正の要：行頭マッチ用の改行文字（グループ1）の長さを計算する
+                    if (startsWithCaret && m.size() > 1 && m[1].matched) {
+                        anchorLen = m.length(1);
+                    }
+                    // 改行文字の長さを差し引いた、真のコンテンツ位置と長さを算出
+                    size_t contentPos = currentMatchPos + anchorLen;
+                    size_t contentLen = currentMatchLen - anchorLen;
+                    bool isValid = false;
+                    if (contentPos >= startPos) isValid = true;
+                    if (isValid && endsWithDollar) {
+                        bool isAtLineEnd = false;
+                        size_t checkPos = contentPos + contentLen;
+                        if (checkPos >= fullText.size()) {
+                            isAtLineEnd = true;
+                        } else {
+                            char c = fullText[checkPos];
+                            if (c == '\r' || c == '\n') {
+                                isAtLineEnd = true;
+                                if (contentLen == 0 && c == '\n' && checkPos > 0 && fullText[checkPos - 1] == '\r') {
+                                    isAtLineEnd = false;
+                                }
+                            }
+                        }
+                        if (!isAtLineEnd) isValid = false;
+                    }
+                    if (isValid) {
+                        foundPos = contentPos;
+                        foundLen = contentLen;
+                        if (startsWithCaret && endsWithDollar && foundLen == 0 && foundPos == fullText.size() && !fullText.empty()) {
+                            bool isAfterNewline = false;
+                            if (foundPos > 0) {
+                                char c = fullText[foundPos - 1];
+                                if (c == '\r' || c == '\n') isAfterNewline = true;
+                            }
+                            if (!isAfterNewline) isValid = false;
+                        }
+                        if (isValid) break;
+                    }
+                    size_t step = currentMatchLen;
+                    if (step == 0) {
+                        bool isBolCaret = (startsWithCaret && !(searchFlags & std::regex_constants::match_not_bol));
+                        if (isBolCaret) step = 0;
+                        else step = 1;
+                    }
+                    if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = 1;
+                    size_t dist = std::distance(searchStartIter, fullText.cend());
+                    if ((size_t)m.position() + step > dist) break;
+                    size_t advance = m.position() + step;
+                    std::advance(searchStartIter, advance);
+                    searchStartIdx += advance;
+                    searchFlags |= std::regex_constants::match_not_bol;
+                }
+                // 画面下部まで到達し、先頭から折り返し検索する場合
+                if (foundPos == std::string::npos && startPos > 0) {
+                    if (std::regex_search(fullText.cbegin(), fullText.cend(), m, re)) {
+                        size_t mPos = m.position();
+                        size_t mLen = m.length();
+                        size_t aLen = 0;
+                        if (startsWithCaret && m.size() > 1 && m[1].matched) {
+                            aLen = m.length(1);
+                        }
+                        bool split = false;
+                        if (startsWithCaret && aLen == 1 && mPos < fullText.size() && fullText[mPos] == '\r') {
+                            if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') split = true;
+                        }
+                        if (!split) {
+                            size_t cPos = mPos + aLen;
+                            size_t cLen = mLen - aLen;
+                            bool valid = true;
+                            if (endsWithDollar) {
+                                size_t check = cPos + cLen;
+                                if (check < fullText.size()) {
+                                    char c = fullText[check];
+                                    if (c == '\r' || c == '\n') {
+                                        if (cLen == 0 && c == '\n' && check > 0 && fullText[check - 1] == '\r') {
+                                            valid = false;
+                                        }
+                                    } else {
+                                        valid = false;
+                                    }
+                                }
+                            }
+                            if (startsWithCaret && endsWithDollar && cLen == 0 && cPos == fullText.size() && !fullText.empty()) {
+                                bool isAfterNL = false;
+                                if (cPos > 0) {
+                                    char c = fullText[cPos - 1];
+                                    if (c == '\r' || c == '\n') isAfterNL = true;
+                                }
+                                if (!isAfterNL) valid = false;
+                            }
+                            if (valid) {
+                                foundPos = cPos;
+                                foundLen = cLen;
+                            }
+                        }
+                    }
                 }
             } else {
+                // 後方検索 (Shift + F3時など)
                 auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
                 auto words_end = std::sregex_iterator();
                 size_t bestPos = std::string::npos;
                 size_t bestLen = 0;
                 size_t limit = (startPos == 0) ? len : startPos;
                 for (auto i = words_begin; i != words_end; ++i) {
-                    if ((size_t)i->position() < limit) {
-                        bestPos = i->position();
-                        bestLen = i->length();
+                    size_t mPos = i->position();
+                    size_t mLen = i->length();
+                    size_t aLen = 0;
+                    if (startsWithCaret && i->size() > 1 && (*i)[1].matched) {
+                        aLen = i->length(1);
+                    }
+                    if (startsWithCaret && aLen == 1 && mPos < fullText.size() && fullText[mPos] == '\r') {
+                        if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') continue;
+                    }
+                    size_t contentStart = mPos + aLen;
+                    size_t contentLen = mLen - aLen;
+                    if (endsWithDollar) {
+                        bool isAtEnd = (contentStart + contentLen >= fullText.size());
+                        if (!isAtEnd) {
+                            char c = fullText[contentStart + contentLen];
+                            if (c == '\r' || c == '\n') {
+                                if (contentLen == 0 && c == '\n' && contentStart + contentLen > 0 && fullText[contentStart + contentLen - 1] == '\r') {
+                                    continue;
+                                }
+                            } else {
+                                continue;
+                            }
+                        }
+                    }
+                    if (startsWithCaret && endsWithDollar && contentLen == 0 && contentStart == fullText.size() && !fullText.empty()) {
+                        bool isAfterNL = false;
+                        if (contentStart > 0) {
+                            char c = fullText[contentStart - 1];
+                            if (c == '\r' || c == '\n') isAfterNL = true;
+                        }
+                        if (!isAfterNL) continue;
+                    }
+                    if (contentStart < limit) {
+                        bestPos = contentStart;
+                        bestLen = contentLen;
                     }
                 }
                 foundPos = bestPos;
@@ -609,14 +709,12 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
         } catch (...) { return std::string::npos; }
         return std::string::npos;
     }
-
     size_t qLen = query.length();
     if (outLen) *outLen = qLen;
     auto toLower = [](char c) { return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c; };
     size_t cur = startPos;
     if (forward) { if (cur >= len) cur = 0; } else { if (cur == 0) cur = len; else cur--; }
     size_t count = 0;
-
     while (count < len) {
         bool match = true;
         for (size_t i = 0; i < qLen; ++i) {
@@ -636,116 +734,325 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
     }
     return std::string::npos;
 }
-
 void findNextCommand(Engine* engine, bool forward) {
     if (engine->searchQuery.empty()) return;
     size_t currentCursorPos = forward ? (engine->cursors.empty() ? 0 : engine->cursors.back().end()) : (engine->cursors.empty() ? 0 : engine->cursors.back().start());
     size_t matchLen = 0;
     size_t pos = findText(engine, currentCursorPos, engine->searchQuery, forward, engine->searchMatchCase, engine->searchWholeWord, engine->searchRegex, &matchLen);
-
     if (pos != std::string::npos) {
         engine->cursors.clear();
         engine->cursors.push_back({ pos + matchLen, pos, getXFromPos(engine, pos + matchLen) });
         ensureCaretVisible(engine);
     }
 }
-
 void replaceNextCommand(Engine* engine) {
     if (engine->cursors.empty() || engine->searchQuery.empty()) return;
     Cursor& c = engine->cursors.back();
     if (!c.hasSelection()) { findNextCommand(engine, true); return; }
-
     size_t len = c.end() - c.start();
     size_t start = c.start();
     std::string selText = engine->pt.getRange(start, len);
-    std::string replacement = engine->replaceQuery;
-
+    std::string replacement = UnescapeString(engine->replaceQuery, engine->newlineStr);
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
     engine->pt.erase(start, len);
     batch.ops.push_back({ EditOp::Erase, start, selText });
     engine->pt.insert(start, replacement);
     batch.ops.push_back({ EditOp::Insert, start, replacement });
-
     engine->cursors.clear();
     size_t newEnd = start + replacement.size();
     engine->cursors.push_back({ newEnd, start, getXFromPos(engine, newEnd) });
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
     engine->isDirty = true;
-
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
     findNextCommand(engine, true);
 }
-
 void replaceAllCommand(Engine* engine) {
     if (engine->searchQuery.empty()) return;
-    size_t currentPos = 0;
-    std::vector<std::pair<size_t, size_t>> matches;
-    while (true) {
-        size_t matchLen = 0;
-        size_t pos = findText(engine, currentPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, engine->searchRegex, &matchLen);
-        if (pos == std::string::npos || pos < currentPos) break;
-        matches.push_back({ pos, matchLen });
-        currentPos = pos + matchLen;
+    struct Match { size_t start; size_t len; std::string replacementText; };
+    std::vector<Match> matches;
+    size_t docLen = engine->pt.length();
+    if (engine->searchRegex) {
+        std::string actualQuery = preprocessRegexQuery(engine->searchQuery);
+        try {
+            std::regex_constants::syntax_option_type rxFlags = std::regex_constants::ECMAScript;
+            if (!engine->searchMatchCase) rxFlags |= std::regex_constants::icase;
+            std::regex re(actualQuery, rxFlags);
+            std::string fullText = engine->pt.getRange(0, docLen);
+            std::string rawFmt = UnescapeString(engine->replaceQuery, engine->newlineStr);
+            std::string fmt;
+            for (size_t i = 0; i < rawFmt.size(); ++i) {
+                if (rawFmt[i] == '$') {
+                    fmt += '$';
+                    if (i + 1 < rawFmt.size()) {
+                        if (isdigit((unsigned char)rawFmt[i + 1])) {
+                            i++;
+                            std::string numStr;
+                            while (i < rawFmt.size() && isdigit((unsigned char)rawFmt[i])) {
+                                numStr += rawFmt[i];
+                                i++;
+                            }
+                            i--;
+                            int grp = std::stoi(numStr);
+                            if (grp > 0) grp++;
+                            fmt += std::to_string(grp);
+                        } else {
+                            fmt += rawFmt[i + 1];
+                            i++;
+                        }
+                    }
+                } else {
+                    fmt += rawFmt[i];
+                }
+            }
+            bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^');
+            bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
+            auto searchStart = fullText.cbegin();
+            std::smatch m;
+            size_t currentOffset = 0;
+            std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
+            while (std::regex_search(searchStart, fullText.cend(), m, re, flags)) {
+                size_t matchPos = currentOffset + m.position();
+                size_t matchLen = m.length();
+                size_t anchorLen = 0;
+                if (startsWithCaret && m.size() > 1 && m[1].matched) {
+                    anchorLen = m.length(1);
+                }
+                size_t contentPos = matchPos + anchorLen;
+                size_t contentLen = matchLen - anchorLen;
+                bool shouldHighlight = true;
+                if (endsWithDollar) {
+                    bool isAtLineEnd = false;
+                    if (contentPos + contentLen >= fullText.size()) {
+                        isAtLineEnd = true;
+                    } else {
+                        char c = fullText[contentPos + contentLen];
+                        if (c == '\r' || c == '\n') {
+                            isAtLineEnd = true;
+                            if (contentLen == 0 && c == '\n' && contentPos + contentLen > 0 && fullText[contentPos + contentLen - 1] == '\r') {
+                                isAtLineEnd = false;
+                            }
+                        }
+                    }
+                    if (!isAtLineEnd) shouldHighlight = false;
+                    if (shouldHighlight && contentPos > 0 && contentPos < fullText.size()) {
+                        if (fullText[contentPos] == '\n' && fullText[contentPos - 1] == '\r') {
+                            shouldHighlight = false;
+                        }
+                    }
+                }
+                if (shouldHighlight && startsWithCaret && endsWithDollar && contentLen == 0) {
+                    size_t globalPos = contentPos;
+                    if (globalPos == fullText.size() && !fullText.empty()) {
+                        bool isAfterNewline = false;
+                        if (globalPos > 0) {
+                            char c = fullText[globalPos - 1];
+                            if (c == '\r' || c == '\n') isAfterNewline = true;
+                        }
+                        if (!isAfterNewline) shouldHighlight = false;
+                    }
+                }
+                if (shouldHighlight && !matches.empty()) {
+                    const auto& last = matches.back();
+                    if (last.start == contentPos && last.len == 0 && contentLen == 0) {
+                        shouldHighlight = false;
+                    }
+                }
+                if (shouldHighlight) {
+                    std::string rText = m.format(fmt);
+                    matches.push_back({ contentPos, contentLen, rText });
+                }
+                size_t step = matchLen;
+                if (step == 0) {
+                    if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                    else step = 1;
+                }
+                if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
+                size_t relativeAdvance = m.position() + step;
+                size_t remaining = std::distance(searchStart, fullText.cend());
+                if (relativeAdvance > remaining) break;
+                std::advance(searchStart, relativeAdvance);
+                currentOffset += relativeAdvance;
+                flags |= std::regex_constants::match_not_bol;
+            }
+            if (startsWithCaret && fullText.empty()) {
+                if (matches.empty()) {
+                    matches.push_back({ 0, 0, fmt });
+                }
+            }
+            if (endsWithDollar) {
+                if (matches.empty() || matches.back().start != fullText.size()) {
+                    matches.push_back({ fullText.size(), 0, fmt });
+                }
+            }
+        } catch (...) { return; }
+    } else {
+        size_t currentPos = 0;
+        while (true) {
+            size_t matchLen = 0;
+            size_t pos = findText(engine, currentPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, false, &matchLen);
+            if (pos == std::string::npos || pos < currentPos) break;
+            std::string rText = UnescapeString(engine->replaceQuery, engine->newlineStr);
+            matches.push_back({ pos, matchLen, rText });
+            currentPos = pos + matchLen;
+            if (currentPos > docLen) break;
+        }
     }
     if (matches.empty()) return;
-
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
     for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
-        size_t start = it->first;
-        size_t len = it->second;
+        size_t start = it->start;
+        size_t len = it->len;
+        if (start + len > engine->pt.length()) continue;
         std::string deleted = engine->pt.getRange(start, len);
         engine->pt.erase(start, len);
         batch.ops.push_back({ EditOp::Erase, start, deleted });
-        engine->pt.insert(start, engine->replaceQuery);
-        batch.ops.push_back({ EditOp::Insert, start, engine->replaceQuery });
+        engine->pt.insert(start, it->replacementText);
+        batch.ops.push_back({ EditOp::Insert, start, it->replacementText });
     }
-    engine->isDirty = true;
+    size_t finalMatchIdx = matches.size() - 1;
+    long long offsetBeforeFinal = 0;
+    for (size_t i = 0; i < finalMatchIdx; ++i) {
+        offsetBeforeFinal += (long long)matches[i].replacementText.size() - (long long)matches[i].len;
+    }
+    size_t lastReplaceStart = (size_t)((long long)matches.back().start + offsetBeforeFinal);
+    size_t lastReplaceEnd = lastReplaceStart + matches.back().replacementText.size();
+    engine->cursors.clear();
+    engine->cursors.push_back({ lastReplaceEnd, lastReplaceStart, getXFromPos(engine, lastReplaceEnd) });
+    batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    engine->isDirty = true;
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
 }
-bool openDocumentFromFile(Engine* engine, const std::string& path) {
+static std::string MapCedEncodingToCharset(Encoding enc) {
+    switch (enc) {
+        case JAPANESE_SHIFT_JIS: return "Shift_JIS";
+        case JAPANESE_EUC_JP:    return "EUC-JP";
+        case CHINESE_GB:         return "GBK";
+        case CHINESE_BIG5:       return "Big5";
+        case KOREAN_EUC_KR:      return "EUC-KR";
+        case RUSSIAN_CP1251:     return "windows-1251";
+        case LATIN1:             return "ISO-8859-1";
+        case ASCII_7BIT:         return "UTF-8"; // ASCIIはUTF-8として処理
+        default:                 return "UTF-8"; // Fallback
+    }
+}
+static bool IsValidUtf8(const char* buf, size_t len) {
+    if (len == 0) return true;
+    size_t check_len = (len > 4096) ? 4096 : len;
+    size_t i = 0;
+    while (i < check_len) {
+        unsigned char c = buf[i];
+        if (c <= 0x7F) i++;
+        else if (c >= 0xC2 && c <= 0xDF) {
+            if (i + 1 >= check_len) break;
+            if ((buf[i + 1] & 0xC0) != 0x80) return false;
+            i += 2;
+        }
+        else if (c >= 0xE0 && c <= 0xEF) {
+            if (i + 2 >= check_len) break;
+            if ((buf[i + 1] & 0xC0) != 0x80 || (buf[i + 2] & 0xC0) != 0x80) return false;
+            i += 3;
+        }
+        else if (c >= 0xF0 && c <= 0xF4) {
+            if (i + 3 >= check_len) break;
+            if ((buf[i + 1] & 0xC0) != 0x80 || (buf[i + 2] & 0xC0) != 0x80 || (buf[i + 3] & 0xC0) != 0x80) return false;
+            i += 4;
+        }
+        else return false;
+    }
+    return true;
+}
+static DetectResult DetectEncodingEx(const char* buf, size_t len) {
+    DetectResult res = { ENC_UTF8_NOBOM, "UTF-8" };
+    if (len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) {
+        res.type = ENC_UTF8_BOM; return res;
+    }
+    if (len >= 2) {
+        if ((unsigned char)buf[0] == 0xFF && (unsigned char)buf[1] == 0xFE) { res.type = ENC_UTF16LE; res.charsetName = "UTF-16LE"; return res; }
+        if ((unsigned char)buf[0] == 0xFE && (unsigned char)buf[1] == 0xFF) { res.type = ENC_UTF16BE; res.charsetName = "UTF-16BE"; return res; }
+    }
+    if (IsValidUtf8(buf, len)) {
+        res.type = ENC_UTF8_NOBOM; return res;
+    }
+    int bytes_consumed = 0;
+    bool is_reliable = false;
+    size_t ced_len = (len > 65536) ? 65536 : len;
+    Encoding ced_enc = CompactEncDet::DetectEncoding(
+            buf, static_cast<int>(ced_len),
+            nullptr, nullptr, nullptr,
+            UNKNOWN_ENCODING,
+            UNKNOWN_LANGUAGE,
+            CompactEncDet::WEB_CORPUS,
+            false,
+            &bytes_consumed,
+            &is_reliable
+    );
+    res.type = ENC_LOCAL;
+    res.charsetName = MapCedEncodingToCharset(ced_enc);
+    return res;
+}
+static std::string ConvertToUtf8(JNIEnv* env, const char* data, size_t len, const std::string& charsetName) {
+    if (len == 0) return "";
+    jbyteArray bytes = env->NewByteArray(len);
+    env->SetByteArrayRegion(bytes, 0, len, (const jbyte*)data);
+    jstring charset = env->NewStringUTF(charsetName.c_str());
+    jclass stringClass = env->FindClass("java/lang/String");
+    jmethodID ctor = env->GetMethodID(stringClass, "<init>", "([BLjava/lang/String;)V");
+    jstring jstr = (jstring)env->NewObject(stringClass, ctor, bytes, charset);
+    const char* utf8Str = env->GetStringUTFChars(jstr, nullptr);
+    std::string result(utf8Str);
+    env->ReleaseStringUTFChars(jstr, utf8Str);
+    env->DeleteLocalRef(bytes);
+    env->DeleteLocalRef(charset);
+    env->DeleteLocalRef(jstr);
+    env->DeleteLocalRef(stringClass);
+    return result;
+}
+bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) {
     if (!engine) return false;
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file.is_open()) return false;
     size_t size = file.tellg();
     file.seekg(0, std::ios::beg);
     std::vector<char> buffer(size);
-
     if (file.read(buffer.data(), size)) {
         engine->pt.initEmpty();
-
-        size_t startOffset = 0;
-        if (size >= 3 &&
-            (unsigned char)buffer[0] == 0xEF &&
-            (unsigned char)buffer[1] == 0xBB &&
-            (unsigned char)buffer[2] == 0xBF) {
-            startOffset = 3;
-        }
-
-        engine->pt.insert(0, std::string(buffer.data() + startOffset, size - startOffset));
-
-        // ★追加: ファイルから改行コードを検知して記憶する
-        engine->newlineStr = "\n"; // デフォルト
-        size_t checkLen = std::min(size, (size_t)4096); // 先頭4KBだけチェックすれば十分
-        for (size_t i = startOffset; i < checkLen; ++i) {
-            if (buffer[i] == '\r') {
-                if (i + 1 < size && buffer[i + 1] == '\n') {
-                    engine->newlineStr = "\r\n"; // CRLF
-                } else {
-                    engine->newlineStr = "\r";   // CR
-                }
+        DetectResult encRes = DetectEncodingEx(buffer.data(), size);
+        engine->currentEncoding = encRes.type;
+        engine->currentCharset = encRes.charsetName;
+        std::string contentUtf8;
+        switch (engine->currentEncoding) {
+            case ENC_UTF8_BOM:
+                contentUtf8 = std::string(buffer.data() + 3, size - 3);
                 break;
-            } else if (buffer[i] == '\n') {
-                engine->newlineStr = "\n";       // LF
+            case ENC_UTF16LE:
+            case ENC_UTF16BE:
+            case ENC_LOCAL:
+                contentUtf8 = ConvertToUtf8(env, buffer.data(), size, engine->currentCharset);
+                break;
+            case ENC_UTF8_NOBOM:
+            default:
+                contentUtf8 = std::string(buffer.data(), size);
+                break;
+        }
+        engine->pt.insert(0, contentUtf8);
+        engine->newlineStr = "\n";
+        size_t checkLen = std::min(contentUtf8.size(), (size_t)4096);
+        for (size_t i = 0; i < checkLen; ++i) {
+            if (contentUtf8[i] == '\r') {
+                if (i + 1 < contentUtf8.size() && contentUtf8[i + 1] == '\n') engine->newlineStr = "\r\n";
+                else engine->newlineStr = "\r";
+                break;
+            } else if (contentUtf8[i] == '\n') {
+                engine->newlineStr = "\n";
                 break;
             }
         }
-
         engine->currentFilePath = path;
         engine->undo.undoStack.clear();
         engine->undo.redoStack.clear();
@@ -757,12 +1064,11 @@ bool openDocumentFromFile(Engine* engine, const std::string& path) {
         engine->scrollX = 0.0f;
         engine->scrollY = 0.0f;
         engine->lineCaches.clear();
-        engine->imeComp.clear(); // ★修正: 前のファイルの入力途中状態(IMEゴミ)をクリア
+        engine->imeComp.clear();
         return true;
     }
     return false;
 }
-
 void updateThemeColors(Engine* engine) {
     if (!engine->app || !engine->app->config) return;
     int32_t uiMode = AConfiguration_getUiModeNight(engine->app->config);
@@ -774,6 +1080,7 @@ void updateThemeColors(Engine* engine) {
         engine->gutterTextColor[0] = 0.33f; engine->gutterTextColor[1] = 0.33f; engine->gutterTextColor[2] = 0.33f; engine->gutterTextColor[3] = 1.0f;
         engine->selColor[0] = 0.0f; engine->selColor[1] = 0.47f; engine->selColor[2] = 0.84f; engine->selColor[3] = 0.5f;
         engine->caretColor[0] = 1.0f; engine->caretColor[1] = 1.0f; engine->caretColor[2] = 1.0f; engine->caretColor[3] = 1.0f;
+        engine->autoHlColor[0] = 0.35f; engine->autoHlColor[1] = 0.35f; engine->autoHlColor[2] = 0.35f; engine->autoHlColor[3] = 0.5f;
     } else {
         engine->bgColor[0] = 1.0f; engine->bgColor[1] = 1.0f; engine->bgColor[2] = 1.0f; engine->bgColor[3] = 1.0f;
         engine->textColor[0] = 0.0f; engine->textColor[1] = 0.0f; engine->textColor[2] = 0.0f; engine->textColor[3] = 1.0f;
@@ -781,18 +1088,16 @@ void updateThemeColors(Engine* engine) {
         engine->gutterTextColor[0] = 0.66f; engine->gutterTextColor[1] = 0.66f; engine->gutterTextColor[2] = 0.66f; engine->gutterTextColor[3] = 1.0f;
         engine->selColor[0] = 0.7f; engine->selColor[1] = 0.8f; engine->selColor[2] = 1.0f; engine->selColor[3] = 0.5f;
         engine->caretColor[0] = 0.0f; engine->caretColor[1] = 0.0f; engine->caretColor[2] = 0.0f; engine->caretColor[3] = 1.0f;
+        engine->autoHlColor[0] = 0.85f; engine->autoHlColor[1] = 0.85f; engine->autoHlColor[2] = 0.85f; engine->autoHlColor[3] = 0.5f;
     }
 }
-
 struct ImeEvent {
     enum Type { Commit, Composing, Delete, FinishComposing } type;
     std::string text;
 };
-
 std::mutex g_imeMutex;
 std::deque<ImeEvent> g_imeQueue;
 Engine* g_engine = nullptr;
-
 void updateGutterWidth(Engine* engine) {
     int totalLines = (int)engine->lineStarts.size();
     if (totalLines == 0) totalLines = 1;
@@ -803,13 +1108,11 @@ void updateGutterWidth(Engine* engine) {
     std::string maxLineStr = std::to_string(totalLines);
     float width = 0.0f;
     float scale = engine->currentFontSize / 48.0f;
-
     for (char c : maxLineStr) {
         uint32_t cp = c;
         int fontIdx = getFontIndexForChar(engine, cp, 0);
         uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp);
         uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
-
         if (engine->atlas.glyphs.count(key) == 0 && !engine->fallbackFaces.empty()) {
             engine->atlas.loadGlyph(engine, fontIdx, glyphIdx);
         }
@@ -821,64 +1124,65 @@ void updateGutterWidth(Engine* engine) {
     }
     engine->gutterWidth = width + engine->charWidth * 1.0f;
 }
-
 void rebuildLineStarts(Engine* engine) {
     engine->lineStarts.clear();
     engine->lineStarts.push_back(0);
-
     size_t currentPos = 0;
-
-    // ★大最適化: テキスト全体のコピー(getRange)をやめ、
-    // PieceTableのメモリ断片を直接覗き込んで改行を高速スキャンする
     for (const auto& p : engine->pt.pieces) {
-        // 現在のピースが元のファイルか、追加バッファかを判定
         const char* buf = p.isOriginal ? engine->pt.origPtr : engine->pt.addBuf.data();
         size_t startIdx = p.start;
         size_t len = p.len;
-
-        for (size_t i = 0; i < len; ++i) {
-            if (buf[startIdx + i] == '\n') {
-                engine->lineStarts.push_back(currentPos + i + 1);
+        const char* ptr = buf + startIdx;
+        const char* end = ptr + len;
+        while (ptr < end) {
+            char c = *ptr;
+            if (c == '\n') {
+                size_t offsetInPiece = ptr - (buf + startIdx);
+                engine->lineStarts.push_back(currentPos + offsetInPiece + 1);
+                ptr++;
+            } else if (c == '\r') {
+                size_t offsetInPiece = ptr - (buf + startIdx);
+                size_t globalPos = currentPos + offsetInPiece;
+                size_t totalLen = engine->pt.length();
+                size_t step = 1;
+                if (ptr + 1 < end) {
+                    if (*(ptr + 1) == '\n') step = 2;
+                } else if (globalPos + 1 < totalLen) {
+                    if (engine->pt.charAt(globalPos + 1) == '\n') step = 2;
+                }
+                engine->lineStarts.push_back(globalPos + step);
+                ptr += step;
+            } else {
+                ptr++;
             }
         }
         currentPos += len;
     }
-
     updateGutterWidth(engine);
     engine->lineCaches.clear();
     engine->lineCaches.resize(engine->lineStarts.size());
 }
-
 int getLineIdx(Engine* engine, size_t pos) {
     if (engine->lineStarts.empty()) return 0;
     auto it = std::upper_bound(engine->lineStarts.begin(), engine->lineStarts.end(), pos);
     int idx = (int)std::distance(engine->lineStarts.begin(), it) - 1;
     return std::max(0, std::min(idx, (int)engine->lineStarts.size() - 1));
 }
-
 void ensureLineShaped(Engine* engine, int lineIdx) {
     if (lineIdx < 0 || lineIdx >= engine->lineCaches.size()) return;
-
-    // ★修正: ウィンドウの準備(全フォントの読み込み)が終わっていない間は、
-    // 中途半端なフォントで「豆腐」がキャッシュされるのを防ぐため、計算をスキップする
     if (!engine->isWindowReady || engine->fallbackHbFonts.empty() || engine->fallbackFaces.empty()) {
         return;
     }
     LineCache& cache = engine->lineCaches[lineIdx];
     if (cache.isShaped) return;
-
     cache.glyphs.clear();
     cache.isShaped = true;
-
     size_t start = engine->lineStarts[lineIdx];
     size_t end = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
-
     size_t textEnd = end;
     if (textEnd > start && engine->pt.charAt(textEnd - 1) == '\n') textEnd--;
     if (textEnd > start && engine->pt.charAt(textEnd - 1) == '\r') textEnd--;
-
     std::string text = engine->pt.getRange(start, textEnd - start);
-
     bool hasIME = !engine->imeComp.empty() && !engine->cursors.empty();
     size_t imeInsertPos = 0;
     if (hasIME) {
@@ -888,10 +1192,7 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
             text.insert(imeInsertPos, engine->imeComp);
         } else { hasIME = false; }
     }
-
     if (text.empty()) return;
-
-    // ★修正: UTF-8文字列を直接渡すのをやめ、コードポイント(UTF-32)とバイト位置の対応表を作る
     struct Run {
         int fontIdx;
         std::vector<uint32_t> codepoints;
@@ -901,12 +1202,10 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
     const char* ptr = text.data();
     const char* end_ptr = ptr + text.size();
     int currentFont = -1;
-
     while (ptr < end_ptr) {
         size_t prevOffset = ptr - text.data();
         uint32_t cp = decodeUtf8(&ptr, end_ptr); // MUTF-8を正しくデコード
         int fIdx = getFontIndexForChar(engine, cp, currentFont == -1 ? 0 : currentFont);
-
         if (fIdx != currentFont) {
             runs.push_back({fIdx, {}, {}});
             currentFont = fIdx;
@@ -914,24 +1213,18 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
         runs.back().codepoints.push_back(cp);
         runs.back().byteOffsets.push_back(prevOffset);
     }
-
     hb_buffer_t* hb_buf = hb_buffer_create();
     for (const auto& run : runs) {
         hb_buffer_clear_contents(hb_buf);
-
-        // ★修正: デコード済みの配列をHarfBuzzに渡す（結合絵文字が完璧に認識される）
         hb_buffer_add_codepoints(hb_buf, run.codepoints.data(), run.codepoints.size(), 0, run.codepoints.size());
         hb_buffer_set_direction(hb_buf, HB_DIRECTION_LTR);
         hb_buffer_set_script(hb_buf, HB_SCRIPT_COMMON);
         hb_buffer_guess_segment_properties(hb_buf);
-
         hb_shape(engine->fallbackHbFonts[run.fontIdx], hb_buf, nullptr, 0);
-
         unsigned int count;
         hb_glyph_info_t* info = hb_buffer_get_glyph_infos(hb_buf, &count);
         hb_glyph_position_t* pos = hb_buffer_get_glyph_positions(hb_buf, &count);
         float fontScale = engine->fallbackFontScales[run.fontIdx];
-
         for (unsigned int i = 0; i < count; i++) {
             ShapedGlyph sg;
             sg.fontIndex = run.fontIdx;
@@ -940,11 +1233,8 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
             sg.yAdvance = (pos[i].y_advance / 64.0f) * fontScale;
             sg.xOffset  = (pos[i].x_offset / 64.0f) * fontScale;
             sg.yOffset  = (pos[i].y_offset / 64.0f) * fontScale;
-
-            // ★修正: 対応表から元のバイト位置（クラスター）を復元
             size_t charIdx = info[i].cluster;
             size_t rawCluster = run.byteOffsets[charIdx];
-
             if (hasIME) {
                 if (rawCluster >= imeInsertPos && rawCluster < imeInsertPos + engine->imeComp.size()) {
                     sg.isIME = true;
@@ -965,18 +1255,14 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
     }
     hb_buffer_destroy(hb_buf);
 }
-
 float getXFromPos(Engine* engine, size_t pos) {
     int lineIdx = getLineIdx(engine, pos);
     if (lineIdx < 0 || lineIdx >= engine->lineStarts.size()) return engine->gutterWidth;
-
     ensureLineShaped(engine, lineIdx);
-
     float x = engine->gutterWidth;
     float scale = engine->currentFontSize / 48.0f;
     bool hasIME = !engine->imeComp.empty() && !engine->cursors.empty();
     size_t mainCaret = engine->cursors.empty() ? 0 : engine->cursors.back().head;
-
     for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
         if (hasIME && pos == mainCaret) {
             if (!sg.isIME && sg.cluster >= pos) break;
@@ -987,61 +1273,42 @@ float getXFromPos(Engine* engine, size_t pos) {
     }
     return x;
 }
-
 size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
     float virtualY = touchY + engine->scrollY - engine->topMargin;
     if (virtualY < 0.0f) virtualY = 0.0f;
     int lineIdx = (int)(virtualY / engine->lineHeight);
     if (lineIdx < 0) return 0;
     if (lineIdx >= engine->lineStarts.size()) return engine->pt.length();
-
     size_t start = engine->lineStarts[lineIdx];
     ensureLineShaped(engine, lineIdx);
-
     float currentX = engine->gutterWidth - engine->scrollX;
     float scale = engine->currentFontSize / 48.0f;
-
     const auto& glyphs = engine->lineCaches[lineIdx].glyphs;
     size_t i = 0;
-
-    // ★修正: 1つの視覚的な文字（クラスター）単位で幅を計算し、タップ判定を行う
     while (i < glyphs.size()) {
         size_t cluster = glyphs[i].cluster;
         bool isIME = glyphs[i].isIME;
         float clusterAdvance = 0.0f;
-
-        // 同じクラスターに属する全グリフ（結合絵文字や合字）の幅をすべて合計する
         size_t next_i = i;
         while (next_i < glyphs.size() && glyphs[next_i].cluster == cluster && glyphs[next_i].isIME == isIME) {
             clusterAdvance += glyphs[next_i].xAdvance * scale;
             next_i++;
         }
-
-        // タップしたX座標が、このクラスターの「左半分」なら、クラスターの先頭位置にカーソルを置く
         if (touchX < currentX + (clusterAdvance / 2.0f)) {
             return isIME ? engine->cursors.back().head : cluster;
         }
-
-        // 「右半分」をタップしていた場合は、X座標をクラスターの幅だけ進め、次のクラスターの判定へ移る
-        // （もしこのクラスターが最後だった場合、ループを抜けて自動的に行末尾にカーソルが置かれます）
         currentX += clusterAdvance;
         i = next_i;
     }
-
-    // 行の最後までタップ判定が引っかからなかった場合は、行の末尾を返す
     size_t end = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
-
-    // 改行文字（\r や \n）の右側（次の行の先頭）に行かないよう、改行文字の直前にカーソルを補正する
     if (end > start && engine->pt.charAt(end - 1) == '\n') {
         end--;
         if (end > start && engine->pt.charAt(end - 1) == '\r') end--;
     } else if (end > start && engine->pt.charAt(end - 1) == '\r') {
         end--;
     }
-
     return end;
 }
-
 void selectWordAt(Engine* engine, size_t pos) {
     if (pos >= engine->pt.length()) {
         engine->cursors.clear();
@@ -1071,7 +1338,19 @@ void selectWordAt(Engine* engine, size_t pos) {
     engine->cursors.clear();
     engine->cursors.push_back({ end, start, getXFromPos(engine, end) });
 }
-
+void selectLineAt(Engine* engine, size_t pos) {
+    int lineIdx = getLineIdx(engine, pos);
+    size_t start = engine->lineStarts[lineIdx];
+    size_t end = (lineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
+    if (end > start && engine->pt.charAt(end - 1) == '\n') {
+        end--;
+        if (end > start && engine->pt.charAt(end - 1) == '\r') {
+            end--;
+        }
+    }
+    engine->cursors.clear();
+    engine->cursors.push_back({ end, start, getXFromPos(engine, end) });
+}
 void ensureCaretVisible(Engine* engine) {
     if (engine->cursors.empty()) return;
     size_t pos = engine->cursors.back().head;
@@ -1099,9 +1378,13 @@ void ensureCaretVisible(Engine* engine) {
     if (engine->scrollX < 0.0f) engine->scrollX = 0.0f;
     if (engine->scrollY < 0.0f) engine->scrollY = 0.0f;
 }
-
 void insertAtCursors(Engine* engine, const std::string& text) {
-    if (engine->cursors.empty() || text.empty()) return;
+    if (engine->cursors.empty()) return;
+    bool hasSelection = false;
+    for (const auto& c : engine->cursors) {
+        if (c.hasSelection()) { hasSelection = true; break; }
+    }
+    if (!hasSelection && text.empty()) return;
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
     Cursor& c = engine->cursors.back();
@@ -1112,23 +1395,51 @@ void insertAtCursors(Engine* engine, const std::string& text) {
         batch.ops.push_back({ EditOp::Erase, s, d });
         c.head = s; c.anchor = s;
     }
-    engine->pt.insert(c.head, text);
-    batch.ops.push_back({ EditOp::Insert, c.head, text });
-    c.head += text.size();
-    c.anchor = c.head;
-    c.desiredX = getXFromPos(engine, c.head);
+    if (!text.empty()) {
+        engine->pt.insert(c.head, text);
+        batch.ops.push_back({ EditOp::Insert, c.head, text });
+        c.head += text.size();
+        c.anchor = c.head;
+        c.desiredX = getXFromPos(engine, c.head);
+    }
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
     engine->isDirty = true;
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
 }
-
+void performUndo(Engine* engine) {
+    if (engine->undo.undoStack.empty()) return;
+    EditBatch b = engine->undo.undoStack.back();
+    engine->undo.undoStack.pop_back();
+    engine->undo.redoStack.push_back(b);
+    for (int i = (int)b.ops.size() - 1; i >= 0; --i) {
+        const auto& o = b.ops[i];
+        if (o.type == EditOp::Insert) engine->pt.erase(o.pos, o.text.size());
+        else engine->pt.insert(o.pos, o.text);
+    }
+    engine->cursors = b.beforeCursors;
+    rebuildLineStarts(engine);
+    ensureCaretVisible(engine);
+    updateDirtyFlag(engine);
+}
+void performRedo(Engine* engine) {
+    if (engine->undo.redoStack.empty()) return;
+    EditBatch b = engine->undo.redoStack.back();
+    engine->undo.redoStack.pop_back();
+    engine->undo.undoStack.push_back(b);
+    for (const auto& o : b.ops) {
+        if (o.type == EditOp::Insert) engine->pt.insert(o.pos, o.text);
+        else engine->pt.erase(o.pos, o.text.size());
+    }
+    engine->cursors = b.afterCursors;
+    rebuildLineStarts(engine);
+    ensureCaretVisible(engine);
+    updateDirtyFlag(engine);
+}
 void backspaceAtCursors(Engine* engine) {
     if (engine->cursors.empty()) return;
     Cursor& c = engine->cursors.back();
-
-    // 選択範囲がある場合はそれを削除して終了
     if (c.hasSelection()) {
         size_t s = c.start(); size_t l = c.end() - s;
         std::string d = engine->pt.getRange(s, l);
@@ -1144,18 +1455,13 @@ void backspaceAtCursors(Engine* engine) {
         ensureCaretVisible(engine);
         return;
     }
-
     if (c.head == 0) return;
-
     size_t eraseStart = c.head - 1;
     bool foundBoundary = false;
-
-    // ★修正: HarfBuzzのクラスター情報を利用して、結合絵文字などの「正しい切れ目」を特定する
     int lineIdx = getLineIdx(engine, c.head);
     if (lineIdx >= 0 && lineIdx < engine->lineStarts.size()) {
         ensureLineShaped(engine, lineIdx);
         const auto& cache = engine->lineCaches[lineIdx];
-
         size_t bestStart = 0;
         for (const auto& sg : cache.glyphs) {
             if (!sg.isIME && sg.cluster < c.head) {
@@ -1169,8 +1475,6 @@ void backspaceAtCursors(Engine* engine) {
             eraseStart = bestStart;
         }
     }
-
-    // キャッシュが見つからない場合（改行の削除など）のフォールバック
     if (!foundBoundary) {
         char ch = engine->pt.charAt(c.head - 1);
         if (ch == '\n' || ch == '\r') {
@@ -1183,7 +1487,6 @@ void backspaceAtCursors(Engine* engine) {
             while (eraseStart > 0 && (engine->pt.charAt(eraseStart) & 0xC0) == 0x80) {
                 eraseStart--;
             }
-            // MUTF-8サロゲートペア対応
             if (c.head - eraseStart == 3 && eraseStart >= 3) {
                 std::string bytes = engine->pt.getRange(eraseStart, 3);
                 if ((unsigned char)bytes[0] == 0xED && (unsigned char)bytes[1] >= 0xB0 && (unsigned char)bytes[1] <= 0xBF) {
@@ -1199,25 +1502,82 @@ void backspaceAtCursors(Engine* engine) {
             }
         }
     }
-
-    // 特定した切れ目からカーソル位置までを一気に削除
     size_t eraseLen = c.head - eraseStart;
     std::string d = engine->pt.getRange(eraseStart, eraseLen);
-
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
     engine->pt.erase(eraseStart, eraseLen);
     batch.ops.push_back({ EditOp::Erase, eraseStart, d });
-
     c.head = eraseStart; c.anchor = c.head;
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
-
     engine->isDirty = true;
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
 }
-
+std::string internalCopy(Engine* engine) {
+    bool hasSelection = false;
+    for (const auto& c : engine->cursors) { if (c.hasSelection()) { hasSelection = true; break; } }
+    std::string t;
+    if (hasSelection) {
+        std::vector<Cursor> s = engine->cursors;
+        std::sort(s.begin(), s.end(), [](const Cursor& a, const Cursor& b) { return a.start() < b.start(); });
+        for (size_t i = 0; i < s.size(); ++i) {
+            if (s[i].hasSelection()) {
+                std::string part = engine->pt.getRange(s[i].start(), s[i].end() - s[i].start());
+                t += part;
+                if (i < s.size() - 1 && !part.empty() && part.back() != '\n' && part.back() != '\r') {
+                    t += engine->newlineStr;
+                }
+            }
+        }
+    } else {
+        std::vector<int> processedLines;
+        std::vector<Cursor> s = engine->cursors;
+        std::sort(s.begin(), s.end(), [](const Cursor& a, const Cursor& b) { return a.head < b.head; });
+        for (const auto& c : s) {
+            int lineIdx = getLineIdx(engine, c.head);
+            bool dup = false;
+            for (int p : processedLines) if (p == lineIdx) dup = true;
+            if (dup) continue;
+            processedLines.push_back(lineIdx);
+            size_t start = engine->lineStarts[lineIdx];
+            size_t end = (lineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
+            std::string lineText = engine->pt.getRange(start, end - start);
+            t += lineText;
+            if (lineIdx == (int)engine->lineStarts.size() - 1) {
+                if (lineText.empty() || lineText.back() != '\n') t += engine->newlineStr;
+            }
+        }
+    }
+    return t;
+}
+#include <utility>
+std::pair<std::string, bool> getHighlightTarget(Engine* engine) {
+    if (engine->cursors.size() > 1) return { "", false };
+    if (engine->cursors.empty()) return { "", false };
+    const Cursor& c = engine->cursors.back();
+    if (c.hasSelection()) {
+        size_t len = c.end() - c.start();
+        if (len == 0 || len > 200) return { "", false };
+        std::string s = engine->pt.getRange(c.start(), len);
+        if (s.empty() || s.find('\n') != std::string::npos || s.find('\r') != std::string::npos) return { "", false };
+        return { s, false };
+    }
+    size_t pos = c.head;
+    size_t len = engine->pt.length();
+    if (pos > len) pos = len;
+    bool charRight = (pos < len && isWordChar(engine->pt.charAt(pos)));
+    bool charLeft = (pos > 0 && isWordChar(engine->pt.charAt(pos - 1)));
+    if (!charRight && !charLeft) return { "", true };
+    size_t start = pos;
+    size_t end = pos;
+    if (!charRight && charLeft) start--;
+    while (start > 0 && isWordChar(engine->pt.charAt(start - 1))) start--;
+    while (end < len && isWordChar(engine->pt.charAt(end))) end++;
+    if (end > start) return { engine->pt.getRange(start, end - start), true };
+    return { "", true };
+}
 extern "C" {
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_commitText(JNIEnv* env, jobject thiz, jstring text) {
     if (!g_engine) return;
@@ -1269,7 +1629,7 @@ JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdOpenDocument(JNIEnv*
     bool success = false;
     if (strPath) {
         std::lock_guard<std::mutex> lock(g_imeMutex);
-        success = openDocumentFromFile(g_engine, strPath);
+        success = openDocumentFromFile(g_engine, strPath, env);
         env->ReleaseStringUTFChars(path, strPath);
         if (success) {
             rebuildLineStarts(g_engine);
@@ -1277,6 +1637,11 @@ JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdOpenDocument(JNIEnv*
         }
     }
     return success ? JNI_TRUE : JNI_FALSE;
+}
+JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetCharset(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return env->NewStringUTF("UTF-8");
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    return env->NewStringUTF(g_engine->currentCharset.c_str());
 }
 JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdIsDirty(JNIEnv* env, jobject thiz) {
     if (!g_engine) return JNI_FALSE;
@@ -1330,8 +1695,188 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_finishComposingTextNative(J
     std::lock_guard<std::mutex> lock(g_imeMutex);
     g_imeQueue.push_back({ ImeEvent::FinishComposing, "" });
 }
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetDisplayFileName(JNIEnv* env, jobject thiz, jstring name) {
+    if (!g_engine) return;
+    const char* strName = env->GetStringUTFChars(name, nullptr);
+    if (strName) {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        g_engine->displayFileName = strName;
+        env->ReleaseStringUTFChars(name, strName);
+    }
 }
-
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdTop(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->scrollY = 0.0f;
+    g_engine->isFlinging = false;
+    g_engine->velocityY = 0.0f;
+    g_engine->cursors.clear();
+    g_engine->cursors.push_back({0, 0, getXFromPos(g_engine, 0)});
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdBottom(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    size_t len = g_engine->pt.length();
+    g_engine->cursors.clear();
+    g_engine->cursors.push_back({len, len, getXFromPos(g_engine, len)});
+    ensureCaretVisible(g_engine);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdGoToLine(JNIEnv* env, jobject thiz, jint line) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    int totalLines = (int)g_engine->lineStarts.size();
+    if (totalLines == 0) return;
+    int target = line;
+    if (target < 1) target = 1;
+    if (target > totalLines) target = totalLines;
+    int lineIdx = target - 1;
+    size_t newPos = g_engine->lineStarts[lineIdx];
+    g_engine->cursors.clear();
+    g_engine->cursors.push_back({newPos, newPos, getXFromPos(g_engine, newPos)});
+    ensureCaretVisible(g_engine);
+}
+JNIEXPORT jint JNICALL Java_jp_hack_miu_MainActivity_cmdGetCurrentLine(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return 1;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    size_t pos = g_engine->cursors.empty() ? 0 : g_engine->cursors.back().head;
+    return getLineIdx(g_engine, pos) + 1; // getLineIdxは0始まりなので+1する
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdUndo(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    performUndo(g_engine);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdRedo(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    performRedo(g_engine);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSelectAll(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->cursors.clear();
+    g_engine->cursors.push_back({g_engine->pt.length(), 0, 0.0f});
+    ensureCaretVisible(g_engine);
+}
+JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdCopy(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return env->NewStringUTF("");
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    std::string t = internalCopy(g_engine);
+    return env->NewStringUTF(t.c_str());
+}
+JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdCut(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return env->NewStringUTF("");
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    std::string t = internalCopy(g_engine);
+    bool hasSelection = false;
+    for (const auto& c : g_engine->cursors) { if (c.hasSelection()) { hasSelection = true; break; } }
+    if (hasSelection) {
+        insertAtCursors(g_engine, ""); // 選択範囲を空文字で上書き（削除）
+    } else {
+        std::vector<Cursor> delRanges;
+        for (const auto& c : g_engine->cursors) {
+            int lineIdx = getLineIdx(g_engine, c.head);
+            size_t start = g_engine->lineStarts[lineIdx];
+            size_t end = (lineIdx + 1 < (int)g_engine->lineStarts.size()) ? g_engine->lineStarts[lineIdx + 1] : g_engine->pt.length();
+            if (end == g_engine->pt.length() && start > 0) {
+                char prev = g_engine->pt.charAt(start - 1);
+                if (prev == '\n') {
+                    start--;
+                    if (start > 0 && g_engine->pt.charAt(start - 1) == '\r') start--;
+                } else if (prev == '\r') start--;
+            }
+            delRanges.push_back({ end, start, 0.0f });
+        }
+        g_engine->cursors = delRanges;
+        insertAtCursors(g_engine, ""); // 削除
+    }
+    return env->NewStringUTF(t.c_str());
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdPaste(JNIEnv* env, jobject thiz, jstring text) {
+    if (!g_engine) return;
+    const char* str = env->GetStringUTFChars(text, nullptr);
+    if (str) {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        std::string rawStr(str);
+        std::string normalizedStr;
+        normalizedStr.reserve(rawStr.size());
+        for (size_t i = 0; i < rawStr.size(); ++i) {
+            if (rawStr[i] == '\r') {
+                normalizedStr += g_engine->newlineStr;
+                if (i + 1 < rawStr.size() && rawStr[i + 1] == '\n') {
+                    i++;
+                }
+            } else if (rawStr[i] == '\n') {
+                normalizedStr += g_engine->newlineStr;
+            } else {
+                normalizedStr += rawStr[i];
+            }
+        }
+        insertAtCursors(g_engine, normalizedStr);
+        env->ReleaseStringUTFChars(text, str);
+    }
+}
+JNIEXPORT jbyteArray JNICALL Java_jp_hack_miu_MainActivity_cmdGetSaveData(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return nullptr;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    std::string utf8Text = g_engine->pt.getRange(0, g_engine->pt.length());
+    jbyteArray utf8Array = env->NewByteArray(utf8Text.size());
+    env->SetByteArrayRegion(utf8Array, 0, utf8Text.size(), (const jbyte*)utf8Text.data());
+    jstring utf8CharsetStr = env->NewStringUTF("UTF-8");
+    jclass stringClass = env->FindClass("java/lang/String");
+    jmethodID strCtor = env->GetMethodID(stringClass, "<init>", "([BLjava/lang/String;)V");
+    jstring javaStr = (jstring)env->NewObject(stringClass, strCtor, utf8Array, utf8CharsetStr);
+    jmethodID getBytesMid = env->GetMethodID(stringClass, "getBytes", "(Ljava/lang/String;)[B");
+    jstring targetCharsetStr = env->NewStringUTF(g_engine->currentCharset.c_str());
+    jbyteArray targetBytes = (jbyteArray)env->CallObjectMethod(javaStr, getBytesMid, targetCharsetStr);
+    jsize targetLen = env->GetArrayLength(targetBytes);
+    jbyte* targetElements = env->GetByteArrayElements(targetBytes, nullptr);
+    std::vector<uint8_t> bom;
+    if (g_engine->currentEncoding == ENC_UTF8_BOM) {
+        bom = { 0xEF, 0xBB, 0xBF };
+    } else if (g_engine->currentEncoding == ENC_UTF16LE) {
+        bom = { 0xFF, 0xFE }; // Javaの"UTF-16LE"はBOMを含まないため手動付与
+    } else if (g_engine->currentEncoding == ENC_UTF16BE) {
+        bom = { 0xFE, 0xFF }; // Javaの"UTF-16BE"はBOMを含まないため手動付与
+    }
+    jbyteArray finalArray = env->NewByteArray(bom.size() + targetLen);
+    if (!bom.empty()) {
+        env->SetByteArrayRegion(finalArray, 0, bom.size(), (const jbyte*)bom.data());
+    }
+    if (targetLen > 0) {
+        env->SetByteArrayRegion(finalArray, bom.size(), targetLen, targetElements);
+    }
+    env->ReleaseByteArrayElements(targetBytes, targetElements, JNI_ABORT);
+    env->DeleteLocalRef(utf8Array);
+    env->DeleteLocalRef(utf8CharsetStr);
+    env->DeleteLocalRef(stringClass);
+    env->DeleteLocalRef(javaStr);
+    env->DeleteLocalRef(targetCharsetStr);
+    env->DeleteLocalRef(targetBytes);
+    return finalArray;
+}
+JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetAutoSearchText(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return env->NewStringUTF("");
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    std::pair<std::string, bool> target = getHighlightTarget(g_engine);
+    std::string candidate = target.first;
+    bool isWord = target.second;
+    bool hasSelection = !g_engine->cursors.empty() && g_engine->cursors.back().hasSelection();
+    std::string result = g_engine->searchQuery;
+    if (hasSelection) {
+        if (!candidate.empty()) {
+            result = candidate;
+        }
+    }
+    else {
+        if (g_engine->searchQuery.empty() && !candidate.empty() && isWord) {
+            result = candidate;
+        }
+    }
+    g_engine->searchQuery = result; // C++側のキャッシュも合わせて更新しておく
+    return env->NewStringUTF(result.c_str());
+}
+}
 void cleanupVulkan(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE) return;
     if (engine->graphicsPipeline != VK_NULL_HANDLE) {
@@ -1350,7 +1895,6 @@ void cleanupVulkan(Engine* engine) {
     if (engine->fontImageView != VK_NULL_HANDLE) vkDestroyImageView(engine->device, engine->fontImageView, nullptr);
     if (engine->fontImage != VK_NULL_HANDLE) vkDestroyImage(engine->device, engine->fontImage, nullptr);
     if (engine->fontImageMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->fontImageMemory, nullptr);
-
     for (hb_font_t* hb_font : engine->fallbackHbFonts) {
         if (hb_font) hb_font_destroy(hb_font);
     }
@@ -1361,7 +1905,6 @@ void cleanupVulkan(Engine* engine) {
     }
     engine->fallbackFaces.clear();
     engine->fallbackFontData.clear();
-
     if (engine->ftLibrary) { FT_Done_FreeType(engine->ftLibrary); engine->ftLibrary = nullptr; }
     if (engine->imageAvailableSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(engine->device, engine->imageAvailableSemaphore, nullptr);
     if (engine->renderFinishedSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(engine->device, engine->renderFinishedSemaphore, nullptr);
@@ -1377,7 +1920,6 @@ void cleanupVulkan(Engine* engine) {
     if (engine->surface != VK_NULL_HANDLE) { vkDestroySurfaceKHR(engine->instance, engine->surface, nullptr); engine->surface = VK_NULL_HANDLE; }
     if (engine->instance != VK_NULL_HANDLE) { vkDestroyInstance(engine->instance, nullptr); engine->instance = VK_NULL_HANDLE; }
 }
-
 uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, VkMemoryPropertyFlags properties) {
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
@@ -1386,7 +1928,6 @@ uint32_t findMemoryType(VkPhysicalDevice physicalDevice, uint32_t typeFilter, Vk
     }
     return 0;
 }
-
 void createBuffer(Engine* engine, VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory) {
     VkBufferCreateInfo bufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     bufferInfo.size = size; bufferInfo.usage = usage; bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -1399,7 +1940,6 @@ void createBuffer(Engine* engine, VkDeviceSize size, VkBufferUsageFlags usage, V
     vkAllocateMemory(engine->device, &allocInfo, nullptr, &bufferMemory);
     vkBindBufferMemory(engine->device, buffer, bufferMemory, 0);
 }
-
 VkCommandBuffer beginSingleTimeCommands(Engine* engine) {
     VkCommandBufferAllocateInfo allocInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; allocInfo.commandPool = engine->commandPool; allocInfo.commandBufferCount = 1;
@@ -1410,7 +1950,6 @@ VkCommandBuffer beginSingleTimeCommands(Engine* engine) {
     vkBeginCommandBuffer(commandBuffer, &beginInfo);
     return commandBuffer;
 }
-
 void endSingleTimeCommands(Engine* engine, VkCommandBuffer commandBuffer) {
     vkEndCommandBuffer(commandBuffer);
     VkSubmitInfo submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
@@ -1419,7 +1958,6 @@ void endSingleTimeCommands(Engine* engine, VkCommandBuffer commandBuffer) {
     vkQueueWaitIdle(engine->graphicsQueue);
     vkFreeCommandBuffers(engine->device, engine->commandPool, 1, &commandBuffer);
 }
-
 void transitionImageLayout(Engine* engine, VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout) {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands(engine);
     VkImageMemoryBarrier barrier = {VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER};
@@ -1442,7 +1980,6 @@ void transitionImageLayout(Engine* engine, VkImage image, VkImageLayout oldLayou
     vkCmdPipelineBarrier(commandBuffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
     endSingleTimeCommands(engine, commandBuffer);
 }
-
 void copyBufferToImage(Engine* engine, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
     VkCommandBuffer commandBuffer = beginSingleTimeCommands(engine);
     VkBufferImageCopy region = {};
@@ -1453,7 +1990,6 @@ void copyBufferToImage(Engine* engine, VkBuffer buffer, VkImage image, uint32_t 
     vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
     endSingleTimeCommands(engine, commandBuffer);
 }
-
 bool createTextTexture(Engine* engine) {
     VkDeviceSize imageSize = (VkDeviceSize)engine->atlas.width * engine->atlas.height * 4;
     if (imageSize == 0 || engine->atlas.pixels.empty()) return false;
@@ -1498,28 +2034,21 @@ bool createTextTexture(Engine* engine) {
     if (vkCreateSampler(engine->device, &samplerInfo, nullptr, &engine->fontSampler) != VK_SUCCESS) return false;
     return true;
 }
-
 bool createSwapchain(Engine* engine) {
     VkSurfaceCapabilitiesKHR capabilities;
     vkGetPhysicalDeviceSurfaceCapabilitiesKHR(engine->physicalDevice, engine->surface, &capabilities);
-
     int32_t w = ANativeWindow_getWidth(engine->app->window);
     int32_t h = ANativeWindow_getHeight(engine->app->window);
-
     engine->swapchainExtent.width = std::clamp((uint32_t)w, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
     engine->swapchainExtent.height = std::clamp((uint32_t)h, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
-
     if (engine->swapchainExtent.width == 0 || engine->swapchainExtent.height == 0) return false;
-
     uint32_t formatCount; vkGetPhysicalDeviceSurfaceFormatsKHR(engine->physicalDevice, engine->surface, &formatCount, nullptr);
     std::vector<VkSurfaceFormatKHR> formats(formatCount); vkGetPhysicalDeviceSurfaceFormatsKHR(engine->physicalDevice, engine->surface, &formatCount, formats.data());
     VkSurfaceFormatKHR selectedFormat = formats[0];
     for (const auto& f : formats) if (f.format == VK_FORMAT_B8G8R8A8_UNORM || f.format == VK_FORMAT_R8G8B8A8_UNORM) { selectedFormat = f; break; }
     engine->swapchainFormat = selectedFormat.format;
-
     uint32_t imageCount = capabilities.minImageCount + 1;
     if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount) imageCount = capabilities.maxImageCount;
-
     VkSwapchainKHR oldSwapchain = engine->swapchain;
     VkSwapchainCreateInfoKHR createInfo = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
     createInfo.surface = engine->surface;
@@ -1539,14 +2068,12 @@ bool createSwapchain(Engine* engine) {
     createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
     createInfo.clipped = VK_TRUE;
     createInfo.oldSwapchain = oldSwapchain;
-
     VkSwapchainKHR newSwapchain;
     if (vkCreateSwapchainKHR(engine->device, &createInfo, nullptr, &newSwapchain) != VK_SUCCESS) return false;
     if (oldSwapchain != VK_NULL_HANDLE) {
         vkDestroySwapchainKHR(engine->device, oldSwapchain, nullptr);
     }
     engine->swapchain = newSwapchain;
-
     vkGetSwapchainImagesKHR(engine->device, engine->swapchain, &imageCount, nullptr);
     engine->swapchainImages.resize(imageCount); vkGetSwapchainImagesKHR(engine->device, engine->swapchain, &imageCount, engine->swapchainImages.data());
     engine->swapchainImageViews.resize(imageCount);
@@ -1558,7 +2085,6 @@ bool createSwapchain(Engine* engine) {
     }
     return true;
 }
-
 bool createRenderPass(Engine* engine) {
     VkAttachmentDescription colorAttachment = {};
     colorAttachment.format = engine->swapchainFormat; colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -1572,7 +2098,6 @@ bool createRenderPass(Engine* engine) {
     renderPassInfo.subpassCount = 1; renderPassInfo.pSubpasses = &subpass;
     return vkCreateRenderPass(engine->device, &renderPassInfo, nullptr, &engine->renderPass) == VK_SUCCESS;
 }
-
 bool createFramebuffers(Engine* engine) {
     engine->framebuffers.resize(engine->swapchainImageViews.size());
     for (size_t i = 0; i < engine->swapchainImageViews.size(); i++) {
@@ -1584,7 +2109,6 @@ bool createFramebuffers(Engine* engine) {
     }
     return true;
 }
-
 bool createCommandBuffers(Engine* engine) {
     VkCommandPoolCreateInfo poolInfo = {VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
     poolInfo.queueFamilyIndex = engine->queueFamilyIndex; poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
@@ -1594,34 +2118,28 @@ bool createCommandBuffers(Engine* engine) {
     allocInfo.commandPool = engine->commandPool; allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; allocInfo.commandBufferCount = (uint32_t)engine->commandBuffers.size();
     return vkAllocateCommandBuffers(engine->device, &allocInfo, engine->commandBuffers.data()) == VK_SUCCESS;
 }
-
 void recreateSwapchain(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE || engine->app->window == nullptr) return;
     int width = ANativeWindow_getWidth(engine->app->window);
     int height = ANativeWindow_getHeight(engine->app->window);
     if (width == 0 || height == 0) return;
     vkDeviceWaitIdle(engine->device);
-
     for (auto fb : engine->framebuffers) {
         if (fb != VK_NULL_HANDLE) vkDestroyFramebuffer(engine->device, fb, nullptr);
     }
     engine->framebuffers.clear();
-
     if (!engine->commandBuffers.empty()) {
         vkFreeCommandBuffers(engine->device, engine->commandPool, static_cast<uint32_t>(engine->commandBuffers.size()), engine->commandBuffers.data());
         engine->commandBuffers.clear();
     }
-
     for (auto iv : engine->swapchainImageViews) {
         if (iv != VK_NULL_HANDLE) vkDestroyImageView(engine->device, iv, nullptr);
     }
     engine->swapchainImageViews.clear();
-
     createSwapchain(engine);
     createFramebuffers(engine);
     createCommandBuffers(engine);
 }
-
 bool createSyncObjects(Engine* engine) {
     VkSemaphoreCreateInfo semInfo = {VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     VkFenceCreateInfo fenceInfo = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO}; fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
@@ -1629,7 +2147,6 @@ bool createSyncObjects(Engine* engine) {
            vkCreateSemaphore(engine->device, &semInfo, nullptr, &engine->renderFinishedSemaphore) == VK_SUCCESS &&
            vkCreateFence(engine->device, &fenceInfo, nullptr, &engine->inFlightFence) == VK_SUCCESS;
 }
-
 bool createDescriptors(Engine* engine) {
     VkDescriptorSetLayoutBinding samplerLayoutBinding = {};
     samplerLayoutBinding.binding = 0; samplerLayoutBinding.descriptorCount = 1;
@@ -1656,7 +2173,6 @@ bool createDescriptors(Engine* engine) {
     vkUpdateDescriptorSets(engine->device, 1, &descriptorWrite, 0, nullptr);
     return true;
 }
-
 bool createPipelineLayout(Engine* engine) {
     VkPushConstantRange pushConstantRange = {};
     pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -1667,7 +2183,6 @@ bool createPipelineLayout(Engine* engine) {
     if (vkCreatePipelineLayout(engine->device, &pipelineLayoutInfo, nullptr, &engine->pipelineLayout) != VK_SUCCESS) return false;
     return true;
 }
-
 std::vector<uint32_t> loadShaderAsset(Engine* engine, const char* filename) {
     AAsset* asset = AAssetManager_open(engine->app->activity->assetManager, filename, AASSET_MODE_BUFFER);
     if (!asset) return {};
@@ -1677,7 +2192,6 @@ std::vector<uint32_t> loadShaderAsset(Engine* engine, const char* filename) {
     AAsset_close(asset);
     return buffer;
 }
-
 VkShaderModule createShaderModule(Engine* engine, const std::vector<uint32_t>& code) {
     VkShaderModuleCreateInfo createInfo = {VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
     createInfo.codeSize = code.size() * sizeof(uint32_t); createInfo.pCode = code.data();
@@ -1685,7 +2199,6 @@ VkShaderModule createShaderModule(Engine* engine, const std::vector<uint32_t>& c
     vkCreateShaderModule(engine->device, &createInfo, nullptr, &shaderModule);
     return shaderModule;
 }
-
 std::vector<uint8_t> loadAsset(Engine* engine, const char* filename) {
     AAsset* asset = AAssetManager_open(engine->app->activity->assetManager, filename, AASSET_MODE_BUFFER);
     if (!asset) return {};
@@ -1695,7 +2208,6 @@ std::vector<uint8_t> loadAsset(Engine* engine, const char* filename) {
     AAsset_close(asset);
     return buffer;
 }
-
 bool createGraphicsPipeline(Engine* engine) {
     auto vertCode = loadShaderAsset(engine, "shaders/text.vert.spv");
     auto fragCode = loadShaderAsset(engine, "shaders/text.frag.spv");
@@ -1751,7 +2263,6 @@ bool createGraphicsPipeline(Engine* engine) {
     vkDestroyShaderModule(engine->device, vertModule, nullptr);
     return true;
 }
-
 bool initVulkan(Engine* engine) {
     VkApplicationInfo appInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO}; appInfo.apiVersion = VK_API_VERSION_1_0;
     std::vector<const char*> instExt = {VK_KHR_SURFACE_EXTENSION_NAME, VK_KHR_ANDROID_SURFACE_EXTENSION_NAME};
@@ -1783,14 +2294,11 @@ bool initVulkan(Engine* engine) {
     if (!createFramebuffers(engine)) return false;
     if (!createCommandBuffers(engine)) return false;
     if (!createSyncObjects(engine)) return false;
-
     VkDeviceSize bufferSize = sizeof(Vertex) * 1000000;
     createBuffer(engine, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->vertexBuffer, engine->vertexBufferMemory);
     createBuffer(engine, engine->atlas.width * engine->atlas.height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->atlasStagingBuffer, engine->atlasStagingMemory);
-
     if (FT_Init_FreeType(&engine->ftLibrary)) return false;
     engine->atlas.init();
-
     const char* fontPaths[] = {
             "/system/fonts/Roboto-Regular.ttf",
             "/system/fonts/NotoSansCJK-Regular.ttc",
@@ -1799,7 +2307,6 @@ bool initVulkan(Engine* engine) {
             "/system/fonts/NotoSansSymbols-Regular.ttf",
             "/system/fonts/DroidSansFallback.ttf"
     };
-
     for (const char* path : fontPaths) {
         std::ifstream file(path, std::ios::binary | std::ios::ate);
         if (file.is_open()) {
@@ -1807,7 +2314,6 @@ bool initVulkan(Engine* engine) {
             std::vector<uint8_t> buffer(size);
             file.seekg(0, std::ios::beg);
             file.read((char*)buffer.data(), size);
-
             engine->fallbackFontData.push_back(std::move(buffer));
             FT_Face face;
             if (FT_New_Memory_Face(engine->ftLibrary, engine->fallbackFontData.back().data(), size, 0, &face) == 0) {
@@ -1850,16 +2356,41 @@ bool initVulkan(Engine* engine) {
     if (!createGraphicsPipeline(engine)) return false;
     return true;
 }
+std::string GetResString(Engine* engine, const char* resName) {
+    if (!engine || !engine->app || !engine->app->activity || !engine->app->activity->vm) {
+        return resName;
+    }
+    JNIEnv* env = nullptr;
+    engine->app->activity->vm->AttachCurrentThread(&env, nullptr);
+    if (!env) return resName;
+    jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
+    jmethodID getStrMethod = env->GetMethodID(activityClass, "getStringResourceByName", "(Ljava/lang/String;)Ljava/lang/String;");
+    std::string result = resName; // 失敗時のデフォルト
+    if (getStrMethod) {
+        jstring jResName = env->NewStringUTF(resName);
+        jstring jResult = (jstring)env->CallObjectMethod(engine->app->activity->clazz, getStrMethod, jResName);
+        if (jResult) {
+            const char* utf8Str = env->GetStringUTFChars(jResult, nullptr);
+            if (utf8Str) {
+                result = utf8Str;
+                env->ReleaseStringUTFChars(jResult, utf8Str);
+            }
+            env->DeleteLocalRef(jResult);
+        }
+        env->DeleteLocalRef(jResName);
+    }
+    env->DeleteLocalRef(activityClass);
+    engine->app->activity->vm->DetachCurrentThread();
+    return result;
+}
 void updateTextVertices(Engine* engine) {
     float scale = engine->currentFontSize / 48.0f;
     float baselineOffset = engine->lineHeight * 0.8f;
     engine->maxLineWidth = engine->gutterWidth;
-
     std::vector<Vertex> bgVertices;
     std::vector<Vertex> lineVertices;
     std::vector<Vertex> charVertices;
     std::vector<Vertex> cursorVertices;
-
     float whiteU = 1.0f / engine->atlas.width;
     float whiteV = 1.0f / engine->atlas.height;
     auto addRect = [&](std::vector<Vertex>& verts, float rx, float ry, float rw, float rh, float r, float g, float b, float a) {
@@ -1872,19 +2403,123 @@ void updateTextVertices(Engine* engine) {
     };
     float textR = engine->textColor[0], textG = engine->textColor[1], textB = engine->textColor[2], textA = engine->textColor[3];
     float cursorWidth = std::max(2.0f, 4.0f * scale);
-
     std::vector<std::pair<size_t, size_t>> searchMatches;
     if (!engine->searchQuery.empty()) {
+        size_t docLen = engine->pt.length();
+        if (engine->searchRegex) {
+            std::string fullText = engine->pt.getRange(0, docLen);
+            std::string actualQuery = preprocessRegexQuery(engine->searchQuery);
+            try {
+                std::regex_constants::syntax_option_type rxFlags = std::regex_constants::ECMAScript;
+                if (!engine->searchMatchCase) rxFlags |= std::regex_constants::icase;
+                std::regex re(actualQuery, rxFlags);
+                bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^');
+                bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
+                auto searchStart = fullText.cbegin();
+                std::smatch m;
+                size_t currentOffset = 0;
+                std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
+                while (std::regex_search(searchStart, fullText.cend(), m, re, flags)) {
+                    size_t matchPos = currentOffset + m.position();
+                    size_t matchLen = m.length();
+                    size_t anchorLen = 0;
+                    if (startsWithCaret && m.size() > 1 && m[1].matched) {
+                        anchorLen = m.length(1);
+                    }
+                    size_t contentPos = matchPos + anchorLen;
+                    size_t contentLen = matchLen - anchorLen;
+                    bool shouldHighlight = true;
+                    if (endsWithDollar) {
+                        bool isAtLineEnd = false;
+                        if (contentPos + contentLen >= fullText.size()) {
+                            isAtLineEnd = true;
+                        } else {
+                            char c = fullText[contentPos + contentLen];
+                            if (c == '\r' || c == '\n') {
+                                isAtLineEnd = true;
+                                if (contentLen == 0 && c == '\n' && contentPos + contentLen > 0 && fullText[contentPos + contentLen - 1] == '\r') {
+                                    isAtLineEnd = false;
+                                }
+                            }
+                        }
+                        if (!isAtLineEnd) shouldHighlight = false;
+                        if (shouldHighlight && contentPos > 0 && contentPos < fullText.size()) {
+                            if (fullText[contentPos] == '\n' && fullText[contentPos - 1] == '\r') {
+                                shouldHighlight = false;
+                            }
+                        }
+                    }
+                    if (shouldHighlight && startsWithCaret && endsWithDollar && contentLen == 0) {
+                        size_t globalPos = contentPos;
+                        if (globalPos == fullText.size() && !fullText.empty()) {
+                            bool isAfterNewline = false;
+                            if (globalPos > 0) {
+                                char c = fullText[globalPos - 1];
+                                if (c == '\r' || c == '\n') isAfterNewline = true;
+                            }
+                            if (!isAfterNewline) shouldHighlight = false;
+                        }
+                    }
+                    if (shouldHighlight && !searchMatches.empty()) {
+                        const auto& last = searchMatches.back();
+                        if (last.first == contentPos && (last.second - last.first) == 0 && contentLen == 0) {
+                            shouldHighlight = false;
+                        }
+                    }
+                    if (shouldHighlight) {
+                        searchMatches.push_back({ contentPos, contentPos + contentLen });
+                    }
+                    size_t step = matchLen;
+                    if (step == 0) {
+                        if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                        else step = 1;
+                    }
+                    if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
+                    size_t relativeAdvance = m.position() + step;
+                    size_t remaining = std::distance(searchStart, fullText.cend());
+                    if (relativeAdvance > remaining) break;
+
+                    std::advance(searchStart, relativeAdvance);
+                    currentOffset += relativeAdvance;
+                    flags |= std::regex_constants::match_not_bol;
+                }
+                if (startsWithCaret && fullText.empty()) {
+                    if (searchMatches.empty()) {
+                        searchMatches.push_back({ 0, 0 });
+                    }
+                }
+                if (endsWithDollar) {
+                    if (searchMatches.empty() || searchMatches.back().first != fullText.size()) {
+                        searchMatches.push_back({ fullText.size(), fullText.size() });
+                    }
+                }
+
+            } catch (...) {}
+        } else {
+            size_t currentSearchPos = 0;
+            while (currentSearchPos <= docLen) {
+                size_t matchLen = 0;
+                size_t found = findText(engine, currentSearchPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, false, &matchLen);
+                if (found == std::string::npos || found < currentSearchPos) break;
+                searchMatches.push_back({found, found + matchLen});
+                if (matchLen == 0) {
+                    currentSearchPos = found + 1;
+                } else {
+                    currentSearchPos = found + matchLen;
+                }
+            }
+        }
+    }
+    std::vector<std::pair<size_t, size_t>> autoMatches;
+    auto [autoStr, isWholeWord] = getHighlightTarget(engine);
+    if (!autoStr.empty() && autoStr != engine->searchQuery) {
         size_t currentSearchPos = 0;
         size_t docLen = engine->pt.length();
-        while (currentSearchPos < docLen) {
+        while (currentSearchPos <= docLen) {
             size_t matchLen = 0;
-            size_t found = findText(engine, currentSearchPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, engine->searchRegex, &matchLen);
-
+            size_t found = findText(engine, currentSearchPos, autoStr, true, true, isWholeWord, false, &matchLen);
             if (found == std::string::npos || found < currentSearchPos) break;
-
-            searchMatches.push_back({found, found + matchLen});
-
+            autoMatches.push_back({found, found + matchLen});
             if (matchLen == 0) {
                 currentSearchPos = found + 1;
             } else {
@@ -1892,67 +2527,60 @@ void updateTextVertices(Engine* engine) {
             }
         }
     }
-
     float winH = 5000.0f;
     float winW = 1080.0f;
     if (engine->app->window != nullptr) {
         winH = (float)ANativeWindow_getHeight(engine->app->window);
         winW = (float)ANativeWindow_getWidth(engine->app->window);
     }
-
     for (int lineIdx = 0; lineIdx < engine->lineStarts.size(); ++lineIdx) {
         float lineY = engine->topMargin + baselineOffset - engine->scrollY + lineIdx * engine->lineHeight;
         if (lineY < -engine->lineHeight || lineY > winH + engine->lineHeight) continue;
-
-        if (lineIdx >= engine->lineCaches.size()) {
-            break; // キャッシュ配列を超えたら描画ループを安全に抜ける
-        }
-
+        if (lineIdx >= engine->lineCaches.size()) break;
         ensureLineShaped(engine, lineIdx);
         float x = engine->gutterWidth - engine->scrollX;
         size_t lineStart = engine->lineStarts[lineIdx];
-
-        bool hasZeroLengthMatchAtLineStart = false;
+        size_t lineEnd = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
         for (const auto& match : searchMatches) {
-            if (match.first == match.second && match.first == lineStart) {
-                hasZeroLengthMatchAtLineStart = true;
-                break;
+            if (match.first == match.second && match.first >= lineStart && match.first <= lineEnd) {
+                float drawX = engine->gutterWidth;
+                if (match.first > lineStart) {
+                    float s = engine->currentFontSize / 48.0f;
+                    for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
+                        if (sg.cluster >= match.first) break;
+                        drawX += sg.xAdvance * s;
+                    }
+                }
+                drawX -= engine->scrollX;
+                float bgY = lineY - engine->lineHeight * 0.8f;
+                addRect(bgVertices, drawX, bgY, engine->charWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
             }
         }
-
-        // 1. 行頭の長さ0マッチ（^ など）のハイライトを描画
-        if (hasZeroLengthMatchAtLineStart) {
-            float bgY = lineY - engine->lineHeight * 0.8f;
-            addRect(bgVertices, x, bgY, cursorWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.8f);
-        }
-
-        // 2. 文字の描画
         for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
             uint64_t key = ((uint64_t)sg.fontIndex << 32) | sg.glyphIndex;
             if (engine->atlas.glyphs.count(key) == 0) {
                 engine->atlas.loadGlyph(engine, sg.fontIndex, sg.glyphIndex);
             }
-
             bool isSelected = false;
             if (!engine->cursors.empty() && engine->cursors.back().hasSelection()) {
                 size_t selStart = engine->cursors.back().start();
                 size_t selEnd = engine->cursors.back().end();
                 if (sg.cluster >= selStart && sg.cluster < selEnd) isSelected = true;
             }
-
             bool isSearchResult = false;
-            bool isZeroLengthMatchAfter = false;
-
             for (const auto& match : searchMatches) {
                 if (match.first < match.second && sg.cluster >= match.first && sg.cluster < match.second) {
                     isSearchResult = true;
                     break;
                 }
-                if (match.first == match.second && match.first == (sg.cluster + 1)) {
-                    isZeroLengthMatchAfter = true;
+            }
+            bool isAutoHlResult = false;
+            for (const auto& match : autoMatches) {
+                if (match.first < match.second && sg.cluster >= match.first && sg.cluster < match.second) {
+                    isAutoHlResult = true;
+                    break;
                 }
             }
-
             if (sg.isIME) {
                 float bgY = lineY - engine->lineHeight * 0.8f;
                 addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, 0.2f, 0.6f, 1.0f, 0.3f);
@@ -1964,8 +2592,10 @@ void updateTextVertices(Engine* engine) {
             } else if (isSearchResult) {
                 float bgY = lineY - engine->lineHeight * 0.8f;
                 addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
+            } else if (isAutoHlResult) { // ★追加: グレーの背景を描画
+                float bgY = lineY - engine->lineHeight * 0.8f;
+                addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, engine->autoHlColor[0], engine->autoHlColor[1], engine->autoHlColor[2], engine->autoHlColor[3]);
             }
-
             if (engine->atlas.glyphs.count(key) > 0) {
                 GlyphInfo& info = engine->atlas.glyphs[key];
                 float isColorFlag = info.isColor ? 1.0f : 0.0f;
@@ -1973,7 +2603,6 @@ void updateTextVertices(Engine* engine) {
                 float ypos = lineY - sg.yOffset * scale - info.bearingY * scale;
                 float w = info.width * scale;
                 float h = info.height * scale;
-
                 charVertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, isColorFlag, {textR, textG, textB, textA}});
                 charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {textR, textG, textB, textA}});
                 charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {textR, textG, textB, textA}});
@@ -1981,72 +2610,62 @@ void updateTextVertices(Engine* engine) {
                 charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {textR, textG, textB, textA}});
                 charVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag, {textR, textG, textB, textA}});
             }
-
             x += sg.xAdvance * scale;
-
-            if (isZeroLengthMatchAfter) {
-                float bgY = lineY - engine->lineHeight * 0.8f;
-                addRect(bgVertices, x, bgY, cursorWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.8f);
-            }
-
             float absoluteX = x + engine->scrollX;
             if (absoluteX > engine->maxLineWidth) engine->maxLineWidth = absoluteX;
         }
-
-        // 3. ★修正: 古いコードを削除し、文字ループの【後】に改行アイコンを1回だけ描画する
-        size_t lineEnd = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
         if (lineEnd > lineStart) {
             char lastChar = engine->pt.charAt(lineEnd - 1);
             if (lastChar == '\n' || lastChar == '\r') {
-
                 size_t newlinePos = lineEnd - 1;
-                uint64_t nlKey = 0xFFFFFFFFFFFFFFFD; // 初期値(LF)
+                uint64_t nlKey = 0xFFFFFFFFFFFFFFFD;
                 bool skipDraw = false;
-
                 if (lastChar == '\n') {
                     if (newlinePos > lineStart && engine->pt.charAt(newlinePos - 1) == '\r') {
-                        newlinePos--; // CRLFの場合は \r の位置を起点とする
-                        nlKey = 0xFFFFFFFFFFFFFFFF; // CRLF (折れ矢印)
+                        newlinePos--;
+                        nlKey = 0xFFFFFFFFFFFFFFFF;
                     } else {
-                        nlKey = 0xFFFFFFFFFFFFFFFD; // LF (下向き矢印)
+                        nlKey = 0xFFFFFFFFFFFFFFFD;
                     }
                 } else if (lastChar == '\r') {
-                    // 次の行頭が \n ならスキップ
                     if (lineEnd < engine->pt.length() && engine->pt.charAt(lineEnd) == '\n') {
                         skipDraw = true;
                     } else {
-                        nlKey = 0xFFFFFFFFFFFFFFFE; // 独立した CR (左向き矢印)
+                        nlKey = 0xFFFFFFFFFFFFFFFE;
                     }
                 }
-
                 if (!skipDraw) {
                     bool isNewlineMatched = false;
                     for (const auto& match : searchMatches) {
-                        if (match.first <= newlinePos && match.second > newlinePos) {
+                        if (match.first < match.second && match.first <= newlinePos && match.second > newlinePos) {
                             isNewlineMatched = true;
                             break;
                         }
                     }
-
+                    bool isNewlineAutoMatched = false;
+                    for (const auto& match : autoMatches) {
+                        if (match.first < match.second && match.first <= newlinePos && match.second > newlinePos) {
+                            isNewlineAutoMatched = true;
+                            break;
+                        }
+                    }
                     if (isNewlineMatched) {
                         float bgY = lineY - engine->lineHeight * 0.8f;
                         addRect(bgVertices, x, bgY, engine->charWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
+                    } else if (isNewlineAutoMatched) {
+                        float bgY = lineY - engine->lineHeight * 0.8f;
+                        addRect(bgVertices, x, bgY, engine->charWidth, engine->lineHeight, engine->autoHlColor[0], engine->autoHlColor[1], engine->autoHlColor[2], engine->autoHlColor[3]);
                     }
-
                     if (engine->atlas.glyphs.count(nlKey) > 0) {
                         GlyphInfo& info = engine->atlas.glyphs[nlKey];
-                        float nlR = engine->textColor[0];
-                        float nlG = engine->textColor[1];
-                        float nlB = engine->textColor[2];
+                        float nlR = engine->textColor[0], nlG = engine->textColor[1], nlB = engine->textColor[2];
                         float nlA = engine->textColor[3] * 0.3f;
-                        float targetSize = engine->charWidth * 1.4f;
+                        float targetSize = engine->charWidth * 1.0f;
                         float iconScale = targetSize / info.width;
-                        float w = info.width * iconScale;
-                        float h = info.height * iconScale;
-                        float xpos = x + engine->charWidth * 0.3f;
+                        float w = info.width * iconScale, h = info.height * iconScale;
+                        float xpos = x + (engine->charWidth - w) * 0.5f;
                         float rowCenterY = engine->topMargin - engine->scrollY + lineIdx * engine->lineHeight + engine->lineHeight * 0.5f;
                         float ypos = rowCenterY - h * 0.5f;
-
                         charVertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
                         charVertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
                         charVertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
@@ -2057,8 +2676,6 @@ void updateTextVertices(Engine* engine) {
                 }
             }
         }
-
-        // 4. カーソルの描画
         for (const auto& c : engine->cursors) {
             size_t vPos = c.head;
             if (vPos >= lineStart && (lineIdx + 1 >= engine->lineStarts.size() || vPos < engine->lineStarts[lineIdx + 1])) {
@@ -2069,7 +2686,6 @@ void updateTextVertices(Engine* engine) {
             }
         }
     }
-
     std::vector<Vertex> gutterBgVertices;
     std::vector<Vertex> gutterTextVertices;
     addRect(gutterBgVertices, 0.0f, 0.0f, engine->gutterWidth, winH,
@@ -2118,7 +2734,6 @@ void updateTextVertices(Engine* engine) {
             }
         }
     }
-
     std::vector<Vertex> vertices;
     vertices.insert(vertices.end(), bgVertices.begin(), bgVertices.end());
     vertices.insert(vertices.end(), lineVertices.begin(), lineVertices.end());
@@ -2128,7 +2743,6 @@ void updateTextVertices(Engine* engine) {
     vertices.insert(vertices.end(), gutterTextVertices.begin(), gutterTextVertices.end());
     float topH = engine->topMargin;
     float bgR = engine->bgColor[0], bgG = engine->bgColor[1], bgB = engine->bgColor[2];
-
     if (topH > 0.0f) {
         float fadeHeight = topH * 0.8f;
         float solidHeight = topH - fadeHeight;
@@ -2149,26 +2763,25 @@ void updateTextVertices(Engine* engine) {
             vertices.push_back({{winW,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
         }
     }
-
     std::string titleStr;
-    if (engine->currentFilePath.empty()) {
-        titleStr = "無題";
-    } else {
+    if (!engine->displayFileName.empty()) {
+        titleStr = engine->displayFileName;
+    } else if (!engine->currentFilePath.empty()) {
         size_t slashPos = engine->currentFilePath.find_last_of("/\\");
         if (slashPos != std::string::npos) {
             titleStr = engine->currentFilePath.substr(slashPos + 1);
         } else {
             titleStr = engine->currentFilePath;
         }
+    } else {
+        titleStr = GetResString(engine, "untitled");
     }
     if (engine->isDirty) {
         titleStr = "*" + titleStr;
     }
-
     float titleFontSize = 40.0f;
     float titleScale = titleFontSize / 48.0f;
     float titleWidth = 0.0f;
-
     std::vector<uint32_t> titleCodepoints;
     const char* tptr = titleStr.data();
     const char* tend = tptr + titleStr.size();
@@ -2176,7 +2789,6 @@ void updateTextVertices(Engine* engine) {
         uint32_t cp = decodeUtf8(&tptr, tend);
         if (cp > 0) titleCodepoints.push_back(cp);
     }
-
     for (uint32_t cp : titleCodepoints) {
         int fontIdx = getFontIndexForChar(engine, cp, 0);
         if (fontIdx >= 0) {
@@ -2192,10 +2804,8 @@ void updateTextVertices(Engine* engine) {
             }
         }
     }
-
     float titleX = (winW - titleWidth) * 0.5f;
     float titleBaselineY = engine->topMargin - 20.0f;
-
     for (uint32_t cp : titleCodepoints) {
         int fontIdx = getFontIndexForChar(engine, cp, 0);
         if (fontIdx >= 0) {
@@ -2208,24 +2818,47 @@ void updateTextVertices(Engine* engine) {
                 float ypos = titleBaselineY - info.bearingY * titleScale;
                 float w = info.width * titleScale;
                 float h = info.height * titleScale;
-
                 float tr = engine->textColor[0], tg = engine->textColor[1], tb = engine->textColor[2];
                 float ta = engine->textColor[3] * 0.8f;
-
                 vertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, isColorFlag, {tr, tg, tb, ta}});
                 vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {tr, tg, tb, ta}});
                 vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {tr, tg, tb, ta}});
                 vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {tr, tg, tb, ta}});
                 vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {tr, tg, tb, ta}});
                 vertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag, {tr, tg, tb, ta}});
-
                 titleX += info.advance * titleScale;
             } else {
                 titleX += 24.0f * titleScale;
             }
         }
     }
-
+    float visibleH = winH - engine->bottomInset;
+    float contentH = engine->lineStarts.size() * engine->lineHeight + engine->topMargin + engine->lineHeight;
+    float maxScrollY = std::max(0.0f, contentH - visibleH);
+    float maxScrollX = std::max(0.0f, engine->maxLineWidth - winW + engine->charWidth * 2.0f);
+    float sbThickness = 12.0f;
+    float minBarLen = 40.0f;
+    float sbR = engine->isDarkMode ? 1.0f : 0.0f;
+    float sbG = engine->isDarkMode ? 1.0f : 0.0f;
+    float sbB = engine->isDarkMode ? 1.0f : 0.0f;
+    float sbA = 0.25f;
+    if (maxScrollY > 0.0f) {
+        float displayAreaH = visibleH - engine->topMargin;
+        float viewportRatio = std::min(1.0f, displayAreaH / (contentH - engine->topMargin));
+        float barHeight = std::max(minBarLen, displayAreaH * viewportRatio);
+        float scrollRatio = engine->scrollY / maxScrollY;
+        float barY = engine->topMargin + scrollRatio * (displayAreaH - barHeight);
+        addRect(vertices, winW - sbThickness - 4.0f, barY, sbThickness, barHeight, sbR, sbG, sbB, sbA);
+    }
+    if (maxScrollX > 0.0f) {
+        float displayAreaW = winW - engine->gutterWidth;
+        float contentW = displayAreaW + maxScrollX;
+        float viewportRatio = std::min(1.0f, displayAreaW / contentW);
+        float barWidth = std::max(minBarLen, displayAreaW * viewportRatio);
+        float scrollRatio = engine->scrollX / maxScrollX;
+        float barX = engine->gutterWidth + scrollRatio * (displayAreaW - barWidth);
+        addRect(vertices, barX, visibleH - sbThickness - 4.0f, barWidth, sbThickness, sbR, sbG, sbB, sbA);
+    }
     engine->vertexCount = static_cast<uint32_t>(vertices.size());
     if (engine->vertexCount == 0) return;
     if (engine->vertexCount > 1000000) {
@@ -2248,13 +2881,9 @@ void renderFrame(Engine* engine) {
     vkResetCommandBuffer(engine->commandBuffers[imageIndex], 0);
     VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(engine->commandBuffers[imageIndex], &beginInfo);
-    // ==========================================================
-    // ★追加: メモリにアクセスするCPU処理の区間だけをロックする
     {
         std::lock_guard<std::mutex> lock(g_imeMutex);
-        // テキストデータの読み取りと頂点バッファの構築
         updateTextVertices(engine);
-        // アトラス（フォント画像）の更新
         if (engine->atlas.isDirty) {
             vkDeviceWaitIdle(engine->device);
             uint32_t dy = engine->atlas.dirtyMinY;
@@ -2298,9 +2927,6 @@ void renderFrame(Engine* engine) {
             engine->atlas.isDirty = false;
         }
     }
-    // ★追加: ここでロック解除！
-    // ==========================================================
-    // レンダリングパスの開始 (★ロックなしでGPUコマンドを積む)
     VkRenderPassBeginInfo rpBegin = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     rpBegin.renderPass = engine->renderPass;
     rpBegin.framebuffer = engine->framebuffers[imageIndex];
@@ -2453,7 +3079,10 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 env->DeleteLocalRef(activityClass);
                 app->activity->vm->DetachCurrentThread();
                 size_t targetPos = getDocPosFromPoint(engine, x, y);
-                if (engine->clickCount == 2) {
+                // ★修正: タップ回数に応じて呼び出す関数を分岐
+                if (engine->clickCount >= 3) {
+                    selectLineAt(engine, targetPos);
+                } else if (engine->clickCount == 2) {
                     selectWordAt(engine, targetPos);
                 } else {
                     engine->cursors.clear();
@@ -2479,11 +3108,8 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
                 updateThemeColors(engine);
                 if (initVulkan(engine)) {
                     engine->isWindowReady = true;
-
-                    // ★修正: ロック解除等での復帰時、空になったキャッシュを再構築して画面に文字を復活させる
                     rebuildLineStarts(engine);
                     updateGutterWidth(engine);
-
                 }
             }
             break;
@@ -2556,17 +3182,14 @@ void android_main(struct android_app* app) {
                 while (!g_imeQueue.empty()) {
                     ImeEvent ev = g_imeQueue.front();
                     g_imeQueue.pop_front();
-
                     if (ev.type == ImeEvent::Commit) {
                         engine.imeComp.clear();
-
                         // ★修正: Enterキー("\n")が送られてきた場合、ファイル固有の改行コードに変換する
                         if (ev.text == "\n") {
                             insertAtCursors(&engine, engine.newlineStr);
                         } else {
                             insertAtCursors(&engine, ev.text);
                         }
-
                     } else if (ev.type == ImeEvent::Composing) {
                         engine.imeComp = ev.text;
                         if (!engine.cursors.empty()) {
@@ -2585,8 +3208,7 @@ void android_main(struct android_app* app) {
                         backspaceAtCursors(&engine);
                     }
                 }
-            } // ← ここでロックが解除され、UIスレッドが即座に解放される！
-            // ★修正: 描画関数はロックの外で呼び出す
+            }
             renderFrame(&engine);
         }
     }
