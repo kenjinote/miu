@@ -14,21 +14,22 @@
 #include <mutex>
 #include <deque>
 #include <regex>
-
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <hb.h>
 #include <hb-ft.h>
-
 #define VK_USE_PLATFORM_ANDROID_KHR
 #include <vulkan/vulkan.h>
-
 #include "compact_enc_det/compact_enc_det.h"
 #include "util/encodings/encodings.h" // ← Encoding 型の定義が含まれるファイル
-
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "miu", __VA_ARGS__))
 #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "miu", __VA_ARGS__))
-
+void setEngineColorFromInt(float* target, int argb) {
+    target[3] = ((argb >> 24) & 0xFF) / 255.0f; // Alpha
+    target[0] = ((argb >> 16) & 0xFF) / 255.0f; // Red
+    target[1] = ((argb >> 8) & 0xFF) / 255.0f;  // Green
+    target[2] = (argb & 0xFF) / 255.0f;         // Blue
+}
 struct GlyphInfo {
     float u0, v0, u1, v1;
     float width, height;
@@ -394,6 +395,7 @@ struct Engine {
     VkDeviceMemory atlasStagingMemory = VK_NULL_HANDLE;
     MiuEncoding currentEncoding = ENC_UTF8_NOBOM;
     std::string currentCharset = "UTF-8";
+    std::string lastTitleStr = "<UNINITIALIZED>";
 };
 bool TextAtlas::loadGlyph(Engine* engine, int fontIndex, uint32_t glyphIndex) {
     uint64_t key = ((uint64_t)fontIndex << 32) | glyphIndex;
@@ -464,8 +466,13 @@ void ensureLineShaped(Engine* engine, int lineIdx);
 void rebuildLineStarts(Engine* engine);
 void ensureCaretVisible(Engine* engine);
 float getXFromPos(Engine* engine, size_t pos);
+void updateTitleBarIfNeeded(Engine* engine);
 void updateDirtyFlag(Engine* engine) {
+    bool wasDirty = engine->isDirty;
     engine->isDirty = !engine->undo.undoStack.empty();
+    if (wasDirty != engine->isDirty) {
+        updateTitleBarIfNeeded(engine);
+    }
 }
 void performNewDocument(Engine* engine) {
     if (!engine) return;
@@ -482,6 +489,7 @@ void performNewDocument(Engine* engine) {
     engine->scrollX = 0.0f;
     engine->scrollY = 0.0f;
     engine->lineCaches.clear();
+    updateTitleBarIfNeeded(engine);
 }
 std::string UnescapeString(const std::string& s, const std::string& newline) {
     std::string out; out.reserve(s.size());
@@ -764,9 +772,11 @@ void replaceNextCommand(Engine* engine) {
     engine->cursors.push_back({ newEnd, start, getXFromPos(engine, newEnd) });
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    bool wasDirty = engine->isDirty;
     engine->isDirty = true;
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
+    if (!wasDirty) updateTitleBarIfNeeded(engine);
     findNextCommand(engine, true);
 }
 void replaceAllCommand(Engine* engine) {
@@ -866,7 +876,8 @@ void replaceAllCommand(Engine* engine) {
                 }
                 size_t step = matchLen;
                 if (step == 0) {
-                    if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                    bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
+                    if (isBolCaret) step = 0;
                     else step = 1;
                 }
                 if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
@@ -924,9 +935,11 @@ void replaceAllCommand(Engine* engine) {
     engine->cursors.push_back({ lastReplaceEnd, lastReplaceStart, getXFromPos(engine, lastReplaceEnd) });
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    bool wasDirty = engine->isDirty;
     engine->isDirty = true;
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
+    if (!wasDirty) updateTitleBarIfNeeded(engine); // 追加
 }
 static std::string MapCedEncodingToCharset(Encoding enc) {
     switch (enc) {
@@ -999,12 +1012,27 @@ static DetectResult DetectEncodingEx(const char* buf, size_t len) {
 static std::string ConvertToUtf8(JNIEnv* env, const char* data, size_t len, const std::string& charsetName) {
     if (len == 0) return "";
     jbyteArray bytes = env->NewByteArray(len);
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return "Error: File is too large to open (Memory Allocation Failed).";
+    }
     env->SetByteArrayRegion(bytes, 0, len, (const jbyte*)data);
     jstring charset = env->NewStringUTF(charsetName.c_str());
     jclass stringClass = env->FindClass("java/lang/String");
     jmethodID ctor = env->GetMethodID(stringClass, "<init>", "([BLjava/lang/String;)V");
     jstring jstr = (jstring)env->NewObject(stringClass, ctor, bytes, charset);
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        env->DeleteLocalRef(bytes);
+        env->DeleteLocalRef(charset);
+        env->DeleteLocalRef(stringClass);
+        return "Error: File is too large to open (String Conversion Failed).";
+    }
     const char* utf8Str = env->GetStringUTFChars(jstr, nullptr);
+    if (!utf8Str) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        return "Error: Failed to read file content.";
+    }
     std::string result(utf8Str);
     env->ReleaseStringUTFChars(jstr, utf8Str);
     env->DeleteLocalRef(bytes);
@@ -1065,30 +1093,73 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
         engine->scrollY = 0.0f;
         engine->lineCaches.clear();
         engine->imeComp.clear();
+        updateTitleBarIfNeeded(engine);
         return true;
     }
     return false;
 }
 void updateThemeColors(Engine* engine) {
-    if (!engine->app || !engine->app->config) return;
+    if (!engine->app || !engine->app->activity || !engine->app->activity->vm) return;
+    JNIEnv* env = nullptr;
+    JavaVM* vm = engine->app->activity->vm;
+    bool needDetach = false;
+    if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+        if (vm->AttachCurrentThread(&env, nullptr) != 0) return;
+        needDetach = true;
+    }
     int32_t uiMode = AConfiguration_getUiModeNight(engine->app->config);
     engine->isDarkMode = (uiMode == ACONFIGURATION_UI_MODE_NIGHT_YES);
-    if (engine->isDarkMode) {
-        engine->bgColor[0] = 0.0f; engine->bgColor[1] = 0.0f; engine->bgColor[2] = 0.0f; engine->bgColor[3] = 1.0f;
-        engine->textColor[0] = 1.0f; engine->textColor[1] = 1.0f; engine->textColor[2] = 1.0f; engine->textColor[3] = 1.0f;
-        engine->gutterBgColor[0] = 0.0f; engine->gutterBgColor[1] = 0.0f; engine->gutterBgColor[2] = 0.0f; engine->gutterBgColor[3] = 1.0f;
-        engine->gutterTextColor[0] = 0.33f; engine->gutterTextColor[1] = 0.33f; engine->gutterTextColor[2] = 0.33f; engine->gutterTextColor[3] = 1.0f;
-        engine->selColor[0] = 0.0f; engine->selColor[1] = 0.47f; engine->selColor[2] = 0.84f; engine->selColor[3] = 0.5f;
-        engine->caretColor[0] = 1.0f; engine->caretColor[1] = 1.0f; engine->caretColor[2] = 1.0f; engine->caretColor[3] = 1.0f;
-        engine->autoHlColor[0] = 0.35f; engine->autoHlColor[1] = 0.35f; engine->autoHlColor[2] = 0.35f; engine->autoHlColor[3] = 0.5f;
+    int isDarkInt = engine->isDarkMode ? 1 : 0;
+    jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
+    // 【変更】第1引数に色タイプ(0~4)、第2引数にダークモードフラグを渡す (II)I メソッドに変更
+    jmethodID getThemeColorMid = env->GetMethodID(activityClass, "getThemeColor", "(II)I");
+    // 色変換用ヘルパーラムダ
+    auto setEngineColor = [](float* target, int argb, float alphaOverride = -1.0f) {
+        target[0] = ((argb >> 16) & 0xFF) / 255.0f; // Red
+        target[1] = ((argb >> 8) & 0xFF) / 255.0f;  // Green
+        target[2] = (argb & 0xFF) / 255.0f;         // Blue
+        target[3] = (alphaOverride >= 0.0f) ? alphaOverride : (((argb >> 24) & 0xFF) / 255.0f); // Alpha
+    };
+    if (getThemeColorMid) {
+        // Java側から各種システムカラーを取得
+        // 0: 背景, 1: 文字, 2: ガター背景, 3: ガター文字, 4: アクセント
+        int bgArgb         = env->CallIntMethod(engine->app->activity->clazz, getThemeColorMid, 0, isDarkInt);
+        int textArgb       = env->CallIntMethod(engine->app->activity->clazz, getThemeColorMid, 1, isDarkInt);
+        int gutterBgArgb   = env->CallIntMethod(engine->app->activity->clazz, getThemeColorMid, 2, isDarkInt);
+        int gutterTextArgb = env->CallIntMethod(engine->app->activity->clazz, getThemeColorMid, 3, isDarkInt);
+        int accentArgb     = env->CallIntMethod(engine->app->activity->clazz, getThemeColorMid, 4, isDarkInt);
+        // 基本色の適用
+        setEngineColor(engine->bgColor, bgArgb);
+        setEngineColor(engine->textColor, textArgb);
+        setEngineColor(engine->gutterBgColor, gutterBgArgb);
+        setEngineColor(engine->gutterTextColor, gutterTextArgb);
+        // アクセントカラー派生色の適用
+        setEngineColor(engine->selColor, accentArgb, 0.45f);
+        setEngineColor(engine->caretColor, accentArgb, 1.0f);
+        setEngineColor(engine->autoHlColor, accentArgb, 0.20f);
     } else {
-        engine->bgColor[0] = 1.0f; engine->bgColor[1] = 1.0f; engine->bgColor[2] = 1.0f; engine->bgColor[3] = 1.0f;
-        engine->textColor[0] = 0.0f; engine->textColor[1] = 0.0f; engine->textColor[2] = 0.0f; engine->textColor[3] = 1.0f;
-        engine->gutterBgColor[0] = 1.0f; engine->gutterBgColor[1] = 1.0f; engine->gutterBgColor[2] = 1.0f; engine->gutterBgColor[3] = 1.0f;
-        engine->gutterTextColor[0] = 0.66f; engine->gutterTextColor[1] = 0.66f; engine->gutterTextColor[2] = 0.66f; engine->gutterTextColor[3] = 1.0f;
-        engine->selColor[0] = 0.7f; engine->selColor[1] = 0.8f; engine->selColor[2] = 1.0f; engine->selColor[3] = 0.5f;
-        engine->caretColor[0] = 0.0f; engine->caretColor[1] = 0.0f; engine->caretColor[2] = 0.0f; engine->caretColor[3] = 1.0f;
-        engine->autoHlColor[0] = 0.85f; engine->autoHlColor[1] = 0.85f; engine->autoHlColor[2] = 0.85f; engine->autoHlColor[3] = 0.5f;
+        // フォールバック (JNIメソッドが見つからなかった場合の安全策)
+        if (engine->isDarkMode) {
+            engine->bgColor[0] = 0.11f; engine->bgColor[1] = 0.11f; engine->bgColor[2] = 0.11f; engine->bgColor[3] = 1.0f;
+            engine->textColor[0] = 0.95f; engine->textColor[1] = 0.95f; engine->textColor[2] = 0.95f; engine->textColor[3] = 1.0f;
+            engine->gutterBgColor[0] = 0.11f; engine->gutterBgColor[1] = 0.11f; engine->gutterBgColor[2] = 0.11f; engine->gutterBgColor[3] = 1.0f;
+            engine->gutterTextColor[0] = 0.45f; engine->gutterTextColor[1] = 0.45f; engine->gutterTextColor[2] = 0.45f; engine->gutterTextColor[3] = 1.0f;
+            engine->selColor[0] = 0.15f; engine->selColor[1] = 0.35f; engine->selColor[2] = 0.60f; engine->selColor[3] = 0.6f;
+            engine->caretColor[0] = 1.0f; engine->caretColor[1] = 1.0f; engine->caretColor[2] = 1.0f; engine->caretColor[3] = 1.0f;
+            engine->autoHlColor[0] = 0.35f; engine->autoHlColor[1] = 0.35f; engine->autoHlColor[2] = 0.35f; engine->autoHlColor[3] = 0.5f;
+        } else {
+            engine->bgColor[0] = 1.0f; engine->bgColor[1] = 1.0f; engine->bgColor[2] = 1.0f; engine->bgColor[3] = 1.0f;
+            engine->textColor[0] = 0.12f; engine->textColor[1] = 0.12f; engine->textColor[2] = 0.12f; engine->textColor[3] = 1.0f;
+            engine->gutterBgColor[0] = 0.97f; engine->gutterBgColor[1] = 0.97f; engine->gutterBgColor[2] = 0.97f; engine->gutterBgColor[3] = 1.0f;
+            engine->gutterTextColor[0] = 0.60f; engine->gutterTextColor[1] = 0.60f; engine->gutterTextColor[2] = 0.60f; engine->gutterTextColor[3] = 1.0f;
+            engine->selColor[0] = 0.73f; engine->selColor[1] = 0.82f; engine->selColor[2] = 0.94f; engine->selColor[3] = 0.7f;
+            engine->caretColor[0] = 0.0f; engine->caretColor[1] = 0.0f; engine->caretColor[2] = 0.0f; engine->caretColor[3] = 1.0f;
+            engine->autoHlColor[0] = 0.85f; engine->autoHlColor[1] = 0.85f; engine->autoHlColor[2] = 0.85f; engine->autoHlColor[3] = 0.5f;
+        }
+    }
+    env->DeleteLocalRef(activityClass);
+    if (needDetach) {
+        vm->DetachCurrentThread();
     }
 }
 struct ImeEvent {
@@ -1404,9 +1475,11 @@ void insertAtCursors(Engine* engine, const std::string& text) {
     }
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    bool wasDirty = engine->isDirty;
     engine->isDirty = true;
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
+    if (!wasDirty) updateTitleBarIfNeeded(engine);
 }
 void performUndo(Engine* engine) {
     if (engine->undo.undoStack.empty()) return;
@@ -1450,9 +1523,11 @@ void backspaceAtCursors(Engine* engine) {
         c.head = s; c.anchor = s;
         batch.afterCursors = engine->cursors;
         engine->undo.push(batch);
+        bool wasDirty = engine->isDirty;
         engine->isDirty = true;
         rebuildLineStarts(engine);
         ensureCaretVisible(engine);
+        if (!wasDirty) updateTitleBarIfNeeded(engine);
         return;
     }
     if (c.head == 0) return;
@@ -1511,9 +1586,11 @@ void backspaceAtCursors(Engine* engine) {
     c.head = eraseStart; c.anchor = c.head;
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    bool wasDirty = engine->isDirty;
     engine->isDirty = true;
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
+    if (!wasDirty) updateTitleBarIfNeeded(engine);
 }
 std::string internalCopy(Engine* engine) {
     bool hasSelection = false;
@@ -1656,7 +1733,10 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextContent(JNIEnv
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMarkSaved(JNIEnv* env, jobject thiz) {
     if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
-    g_engine->isDirty = false;
+    if (g_engine->isDirty) {
+        g_engine->isDirty = false;
+        updateTitleBarIfNeeded(g_engine); // ★追加
+    }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetSearchOptions(JNIEnv* env, jobject thiz, jstring query, jstring replace, jboolean matchCase, jboolean wholeWord, jboolean regex) {
     if (!g_engine) return;
@@ -1702,6 +1782,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetDisplayFileName(JNIEn
         std::lock_guard<std::mutex> lock(g_imeMutex);
         g_engine->displayFileName = strName;
         env->ReleaseStringUTFChars(name, strName);
+        updateTitleBarIfNeeded(g_engine);
     }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdTop(JNIEnv* env, jobject thiz) {
@@ -2411,11 +2492,21 @@ std::string GetResString(Engine* engine, const char* resName) {
         return resName;
     }
     JNIEnv* env = nullptr;
-    engine->app->activity->vm->AttachCurrentThread(&env, nullptr);
+    JavaVM* vm = engine->app->activity->vm;
+    bool needDetach = false;
+
+    // すでにアタッチされているか確認
+    if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+        if (vm->AttachCurrentThread(&env, nullptr) != 0) return resName;
+        needDetach = true;
+    }
+
     if (!env) return resName;
+
     jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
     jmethodID getStrMethod = env->GetMethodID(activityClass, "getStringResourceByName", "(Ljava/lang/String;)Ljava/lang/String;");
     std::string result = resName; // 失敗時のデフォルト
+
     if (getStrMethod) {
         jstring jResName = env->NewStringUTF(resName);
         jstring jResult = (jstring)env->CallObjectMethod(engine->app->activity->clazz, getStrMethod, jResName);
@@ -2429,8 +2520,14 @@ std::string GetResString(Engine* engine, const char* resName) {
         }
         env->DeleteLocalRef(jResName);
     }
+
     env->DeleteLocalRef(activityClass);
-    engine->app->activity->vm->DetachCurrentThread();
+
+    // 自分がアタッチした場合のみデタッチする
+    if (needDetach) {
+        vm->DetachCurrentThread();
+    }
+
     return result;
 }
 void updateTextVertices(Engine* engine) {
@@ -2521,7 +2618,8 @@ void updateTextVertices(Engine* engine) {
                     }
                     size_t step = matchLen;
                     if (step == 0) {
-                        if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                        bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
+                        if (isBolCaret) step = 0;
                         else step = 1;
                     }
                     if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
@@ -2592,18 +2690,21 @@ void updateTextVertices(Engine* engine) {
         size_t lineStart = engine->lineStarts[lineIdx];
         size_t lineEnd = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
         for (const auto& match : searchMatches) {
-            if (match.first == match.second && match.first >= lineStart && match.first <= lineEnd) {
-                float drawX = engine->gutterWidth;
-                if (match.first > lineStart) {
-                    float s = engine->currentFontSize / 48.0f;
-                    for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
-                        if (sg.cluster >= match.first) break;
-                        drawX += sg.xAdvance * s;
+            if (match.first == match.second) {
+                if (match.first >= lineStart && (lineIdx + 1 >= engine->lineStarts.size() || match.first < engine->lineStarts[lineIdx + 1])) {
+                    float drawX = engine->gutterWidth;
+                    if (match.first > lineStart) {
+                        float s = engine->currentFontSize / 48.0f;
+                        for (const auto &sg: engine->lineCaches[lineIdx].glyphs) {
+                            if (sg.cluster >= match.first) break;
+                            drawX += sg.xAdvance * s;
+                        }
                     }
+                    drawX -= engine->scrollX;
+                    float bgY = lineY - engine->lineHeight * 0.8f;
+                    addRect(bgVertices, drawX, bgY, engine->charWidth, engine->lineHeight, 1.0f,
+                            1.0f, 0.0f, 0.4f);
                 }
-                drawX -= engine->scrollX;
-                float bgY = lineY - engine->lineHeight * 0.8f;
-                addRect(bgVertices, drawX, bgY, engine->charWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
             }
         }
         for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
@@ -2792,7 +2893,7 @@ void updateTextVertices(Engine* engine) {
     vertices.insert(vertices.end(), gutterBgVertices.begin(), gutterBgVertices.end());
     vertices.insert(vertices.end(), gutterTextVertices.begin(), gutterTextVertices.end());
     float topH = engine->topMargin;
-    float bgR = engine->bgColor[0], bgG = engine->bgColor[1], bgB = engine->bgColor[2];
+    float bgR = engine->gutterBgColor[0], bgG = engine->gutterBgColor[1], bgB = engine->gutterBgColor[2];
     if (topH > 0.0f) {
         float fadeHeight = topH * 0.8f;
         float solidHeight = topH - fadeHeight;
@@ -2811,75 +2912,6 @@ void updateTextVertices(Engine* engine) {
             vertices.push_back({{winW,     solidHeight}, {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 1.0f}});
             vertices.push_back({{0.0f,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
             vertices.push_back({{winW,     topH},        {whiteU, whiteV}, 0.0f, {bgR, bgG, bgB, 0.0f}});
-        }
-    }
-    std::string titleStr;
-    if (!engine->displayFileName.empty()) {
-        titleStr = engine->displayFileName;
-    } else if (!engine->currentFilePath.empty()) {
-        size_t slashPos = engine->currentFilePath.find_last_of("/\\");
-        if (slashPos != std::string::npos) {
-            titleStr = engine->currentFilePath.substr(slashPos + 1);
-        } else {
-            titleStr = engine->currentFilePath;
-        }
-    } else {
-        titleStr = GetResString(engine, "untitled");
-    }
-    if (engine->isDirty) {
-        titleStr = "*" + titleStr;
-    }
-    float titleFontSize = 40.0f;
-    float titleScale = titleFontSize / 48.0f;
-    float titleWidth = 0.0f;
-    std::vector<uint32_t> titleCodepoints;
-    const char* tptr = titleStr.data();
-    const char* tend = tptr + titleStr.size();
-    while (tptr < tend) {
-        uint32_t cp = decodeUtf8(&tptr, tend);
-        if (cp > 0) titleCodepoints.push_back(cp);
-    }
-    for (uint32_t cp : titleCodepoints) {
-        int fontIdx = getFontIndexForChar(engine, cp, 0);
-        if (fontIdx >= 0) {
-            uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp);
-            uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
-            if (engine->atlas.glyphs.count(key) == 0 && !engine->fallbackFaces.empty()) {
-                engine->atlas.loadGlyph(engine, fontIdx, glyphIdx);
-            }
-            if (engine->atlas.glyphs.count(key) > 0) {
-                titleWidth += engine->atlas.glyphs[key].advance * titleScale;
-            } else {
-                titleWidth += 24.0f * titleScale;
-            }
-        }
-    }
-    float titleX = (winW - titleWidth) * 0.5f;
-    float titleBaselineY = engine->topMargin - 20.0f;
-    for (uint32_t cp : titleCodepoints) {
-        int fontIdx = getFontIndexForChar(engine, cp, 0);
-        if (fontIdx >= 0) {
-            uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp);
-            uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
-            if (engine->atlas.glyphs.count(key) > 0) {
-                GlyphInfo& info = engine->atlas.glyphs[key];
-                float isColorFlag = info.isColor ? 1.0f : 0.0f;
-                float xpos = titleX + info.bearingX * titleScale;
-                float ypos = titleBaselineY - info.bearingY * titleScale;
-                float w = info.width * titleScale;
-                float h = info.height * titleScale;
-                float tr = engine->textColor[0], tg = engine->textColor[1], tb = engine->textColor[2];
-                float ta = engine->textColor[3] * 0.8f;
-                vertices.push_back({{xpos,     ypos    }, {info.u0, info.v0}, isColorFlag, {tr, tg, tb, ta}});
-                vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {tr, tg, tb, ta}});
-                vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {tr, tg, tb, ta}});
-                vertices.push_back({{xpos + w, ypos    }, {info.u1, info.v0}, isColorFlag, {tr, tg, tb, ta}});
-                vertices.push_back({{xpos,     ypos + h}, {info.u0, info.v1}, isColorFlag, {tr, tg, tb, ta}});
-                vertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag, {tr, tg, tb, ta}});
-                titleX += info.advance * titleScale;
-            } else {
-                titleX += 24.0f * titleScale;
-            }
         }
     }
     float visibleH = winH - engine->bottomInset;
@@ -3128,7 +3160,6 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 env->DeleteLocalRef(activityClass);
                 app->activity->vm->DetachCurrentThread();
                 size_t targetPos = getDocPosFromPoint(engine, x, y);
-                // ★修正: タップ回数に応じて呼び出す関数を分岐
                 if (engine->clickCount >= 3) {
                     selectLineAt(engine, targetPos);
                 } else if (engine->clickCount == 2) {
@@ -3159,6 +3190,7 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
                     engine->isWindowReady = true;
                     rebuildLineStarts(engine);
                     updateGutterWidth(engine);
+                    updateTitleBarIfNeeded(engine);
                 }
             }
             break;
@@ -3179,6 +3211,61 @@ static void onAppCmd(struct android_app* app, int32_t cmd) {
             engine->isWindowReady = false;
             cleanupVulkan(engine);
             break;
+    }
+}
+void updateTitleBarIfNeeded(Engine* engine) {
+    // ★修正: 毎フレームのJNI通信を防ぐため、"untitled" 文字列をキャッシュする
+    static std::string cachedUntitled = "";
+    if (cachedUntitled.empty()) {
+        cachedUntitled = GetResString(engine, "untitled");
+        if (cachedUntitled.empty()) cachedUntitled = "untitled"; // 取得失敗時のフェイルセーフ
+    }
+
+    std::string titleStr;
+    if (!engine->displayFileName.empty()) {
+        titleStr = engine->displayFileName;
+    } else if (!engine->currentFilePath.empty()) {
+        size_t slashPos = engine->currentFilePath.find_last_of("/\\");
+        if (slashPos != std::string::npos) {
+            titleStr = engine->currentFilePath.substr(slashPos + 1);
+        } else {
+            titleStr = cachedUntitled;
+        }
+    } else {
+        titleStr = cachedUntitled;
+    }
+
+    // 未保存の変更がある場合は先頭にアスタリスクを付ける
+    if (engine->isDirty) {
+        titleStr = "*" + titleStr;
+    }
+
+    // タイトルに変更があった時だけ Java 側に反映する
+    if (engine->lastTitleStr != titleStr) {
+        engine->lastTitleStr = titleStr;
+        LOGI("Title changed to: %s", titleStr.c_str());
+
+        JNIEnv* env = nullptr;
+        JavaVM* vm = engine->app->activity->vm;
+        bool needDetach = false;
+
+        if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+            if (vm->AttachCurrentThread(&env, nullptr) != 0) return;
+            needDetach = true;
+        }
+
+        jclass clazz = env->GetObjectClass(engine->app->activity->clazz);
+        jmethodID mid = env->GetMethodID(clazz, "setOverlayTitle", "(Ljava/lang/String;)V");
+        if (mid) {
+            jstring jTitle = env->NewStringUTF(titleStr.c_str());
+            env->CallVoidMethod(engine->app->activity->clazz, mid, jTitle);
+            env->DeleteLocalRef(jTitle);
+        }
+        env->DeleteLocalRef(clazz);
+
+        if (needDetach) {
+            vm->DetachCurrentThread();
+        }
     }
 }
 void android_main(struct android_app* app) {
@@ -3207,9 +3294,9 @@ void android_main(struct android_app* app) {
                 if (dt > 0) {
                     if (dt > 50) dt = 50;
                     engine.scrollX -= engine.velocityX * dt; engine.scrollY -= engine.velocityY * dt;
-                    float friction = std::pow(0.992f, (float)dt);
+                    float friction = std::pow(0.998f, (float)dt);
                     engine.velocityX *= friction; engine.velocityY *= friction;
-                    if (std::abs(engine.velocityX) < 0.05f && std::abs(engine.velocityY) < 0.05f) { engine.isFlinging = false; }
+                    if (std::abs(engine.velocityX) < 0.02f && std::abs(engine.velocityY) < 0.02f) { engine.isFlinging = false; }
                     if (engine.app->window != nullptr) {
                         float winW = (float)ANativeWindow_getWidth(engine.app->window);
                         float winH = (float)ANativeWindow_getHeight(engine.app->window);
@@ -3233,7 +3320,6 @@ void android_main(struct android_app* app) {
                     g_imeQueue.pop_front();
                     if (ev.type == ImeEvent::Commit) {
                         engine.imeComp.clear();
-                        // ★修正: Enterキー("\n")が送られてきた場合、ファイル固有の改行コードに変換する
                         if (ev.text == "\n") {
                             insertAtCursors(&engine, engine.newlineStr);
                         } else {
