@@ -2294,6 +2294,56 @@ bool initVulkan(Engine* engine) {
     if (!createFramebuffers(engine)) return false;
     if (!createCommandBuffers(engine)) return false;
     if (!createSyncObjects(engine)) return false;
+
+
+    {
+        uint32_t imageIndex;
+        vkAcquireNextImageKHR(engine->device, engine->swapchain, UINT64_MAX, engine->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+        VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+        vkBeginCommandBuffer(engine->commandBuffers[imageIndex], &beginInfo);
+
+        VkRenderPassBeginInfo rpBegin = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+        rpBegin.renderPass = engine->renderPass;
+        rpBegin.framebuffer = engine->framebuffers[imageIndex];
+        rpBegin.renderArea.extent = engine->swapchainExtent;
+
+        // テーマに合わせた背景色でクリア
+        VkClearValue clearColor = {{{engine->bgColor[0], engine->bgColor[1], engine->bgColor[2], engine->bgColor[3]}}};
+        rpBegin.clearValueCount = 1;
+        rpBegin.pClearValues = &clearColor;
+
+        vkCmdBeginRenderPass(engine->commandBuffers[imageIndex], &rpBegin, VK_SUBPASS_CONTENTS_INLINE);
+        vkCmdEndRenderPass(engine->commandBuffers[imageIndex]); // 何も描画せずにすぐ終わる
+        vkEndCommandBuffer(engine->commandBuffers[imageIndex]);
+
+        VkSubmitInfo submit = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+        VkSemaphore waitSem[] = {engine->imageAvailableSemaphore};
+        VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        submit.waitSemaphoreCount = 1;
+        submit.pWaitSemaphores = waitSem;
+        submit.pWaitDstStageMask = waitStages;
+        submit.commandBufferCount = 1;
+        submit.pCommandBuffers = &engine->commandBuffers[imageIndex];
+
+        VkSemaphore sigSem[] = {engine->renderFinishedSemaphore};
+        submit.signalSemaphoreCount = 1;
+        submit.pSignalSemaphores = sigSem;
+        vkQueueSubmit(engine->graphicsQueue, 1, &submit, engine->inFlightFence);
+
+        VkPresentInfoKHR present = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
+        present.waitSemaphoreCount = 1;
+        present.pWaitSemaphores = sigSem;
+        present.swapchainCount = 1;
+        present.pSwapchains = &engine->swapchain;
+        present.pImageIndices = &imageIndex;
+        vkQueuePresentKHR(engine->graphicsQueue, &present);
+
+        // この最初のフレーム描画が確実に終わるまでGPUを待機
+        vkQueueWaitIdle(engine->graphicsQueue);
+    }
+
+
     VkDeviceSize bufferSize = sizeof(Vertex) * 1000000;
     createBuffer(engine, bufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->vertexBuffer, engine->vertexBufferMemory);
     createBuffer(engine, engine->atlas.width * engine->atlas.height * 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, engine->atlasStagingBuffer, engine->atlasStagingMemory);
@@ -2871,7 +2921,6 @@ void updateTextVertices(Engine* engine) {
 }
 void renderFrame(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE || !engine->isWindowReady) return;
-    // GPUの完了待機 (★ロックなしで実行するため、キーボード入力の邪魔をしない)
     vkWaitForFences(engine->device, 1, &engine->inFlightFence, VK_TRUE, UINT64_MAX);
     uint32_t imageIndex;
     VkResult result = vkAcquireNextImageKHR(engine->device, engine->swapchain, UINT64_MAX, engine->imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);

@@ -112,7 +112,6 @@ public class MainActivity extends NativeActivity {
         super.onCreate(savedInstanceState);
         int uiMode = getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK;
         boolean isDark = (uiMode == Configuration.UI_MODE_NIGHT_YES);
-        getWindow().setBackgroundDrawable(new ColorDrawable(isDark ? Color.BLACK : Color.WHITE));
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             getWindow().setDecorFitsSystemWindows(false);
             android.view.WindowInsetsController controller = getWindow().getInsetsController();
