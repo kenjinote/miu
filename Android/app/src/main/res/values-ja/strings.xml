@@ -11,7 +11,7 @@
     <string name="toolbar_replace">置換</string>
     <string name="toolbar_top">先頭</string>
     <string name="toolbar_bottom">末尾</string>
-    <string name="toolbar_goto">行へ移動</string>
+    <string name="toolbar_goto">指定行</string>
     <string name="toolbar_undo">元に戻す</string>
     <string name="toolbar_redo">やり直す</string>
     <string name="toolbar_select_all">全選択</string>
