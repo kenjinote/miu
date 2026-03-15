@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">Speichern</string>
     <string name="dialog_btn_dont_save">Nicht speichern</string>
     <string name="dialog_btn_done">Fertig</string>
+    <string name="help_text">miu v%1$s\n\n[Tastenkombinationen]\nStrg+N : Neue Datei\nStrg+O : Öffnen\nStrg+S : Speichern\nStrg+Umschalt+S : Speichern unter\nStrg+F : Suchen\nStrg+H / R : Ersetzen\nStrg+G : Gehe zu Zeile\nStrg+Z : Rückgängig\nStrg+Umschalt+Z : Wiederholen\nStrg+A : Alles auswählen\nStrg+X / C / V : Ausschneiden / Kopieren / Einfügen\nStrg+D : Nächstes Vorkommen auswählen (Multi-Cursor)\nStrg++ / - / 0 : Zoom (Vergrößern / Verkleinern / Zurücksetzen)\nF3 / Umschalt+F3 : Nächstes / Vorheriges suchen\nTab / Umschalt+Tab : Einrücken / Ausrücken\nUmschalt+Einfg : Einfügen\nESC : Auswahl/Suche/Hilfe abbrechen\nF1 : Hilfe anzeigen</string>
 </resources>

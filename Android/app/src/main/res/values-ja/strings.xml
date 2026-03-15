@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">保存する</string>
     <string name="dialog_btn_dont_save">保存しない</string>
     <string name="dialog_btn_done">完了</string>
+    <string name="help_text">miu v%1$s\n\n[ショートカットキー]\nCtrl+N : 新規作成\nCtrl+O : 開く\nCtrl+S : 保存\nCtrl+Shift+S : 名前を付けて保存\nCtrl+F : 検索\nCtrl+H / R : 置換\nCtrl+G : 指定行へ移動\nCtrl+Z : 元に戻す\nCtrl+Shift+Z : やり直し\nCtrl+A : すべて選択\nCtrl+X / C / V : カット / コピー / ペースト\nCtrl+D : 次の出現箇所を選択 (マルチカーソル)\nCtrl++ / - / 0 : ズーム (拡大/縮小/リセット)\nF3 / Shift+F3 : 次を検索 / 前を検索\nTab / Shift+Tab : インデント / インデント解除\nShift+Insert : ペースト\nESC : 選択・検索・ヘルプ解除\nF1 : ヘルプ表示</string>
 </resources>

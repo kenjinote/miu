@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">Enregistrer</string>
     <string name="dialog_btn_dont_save">Ne pas enregistrer</string>
     <string name="dialog_btn_done">Terminé</string>
+    <string name="help_text">miu v%1$s\n\n[Raccourcis clavier]\nCtrl+N : Nouveau fichier\nCtrl+O : Ouvrir\nCtrl+S : Enregistrer\nCtrl+Shift+S : Enregistrer sous\nCtrl+F : Rechercher\nCtrl+H / R : Remplacer\nCtrl+G : Aller à la ligne\nCtrl+Z : Annuler\nCtrl+Shift+Z : Rétablir\nCtrl+A : Tout sélectionner\nCtrl+X / C / V : Couper / Copier / Coller\nCtrl+D : Sélectionner l\'occurrence suivante (Multi-curseur)\nCtrl++ / - / 0 : Zoom (Avant / Arrière / Réinitialiser)\nF3 / Shift+F3 : Suivant / Précédent\nTab / Shift+Tab : Indenter / Désindenter\nShift+Insert : Coller\nESC : Annuler Sélection/Recherche/Aide\nF1 : Afficher l\'aide</string>
 </resources>

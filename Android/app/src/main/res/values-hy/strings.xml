@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">Պահպանել</string>
     <string name="dialog_btn_dont_save">Չպահպանել</string>
     <string name="dialog_btn_done">Կատարված է</string>
+    <string name="help_text">miu v%1$s\n\n[Ստեղնաշարի դյուրանցումներ]\nCtrl+N : Նոր ֆայլ\nCtrl+O : Բացել\nCtrl+S : Պահպանել\nCtrl+Shift+S : Պահպանել որպես\nCtrl+F : Գտնել\nCtrl+H / R : Փոխարինել\nCtrl+G : Անցնել տողին\nCtrl+Z : Հետարկել\nCtrl+Shift+Z : Կրկնել\nCtrl+A : Նշել բոլորը\nCtrl+X / C / V : Կտրել / Պատճենել / Տեղադրել\nCtrl+D : Նշել հաջորդ համընկնումը (Բազմակի կուրսոր)\nCtrl++ / - / 0 : Մասշտաբ (Խոշորացնել / Փոքրացնել / Վերականգնել)\nF3 / Shift+F3 : Գտնել հաջորդը / Նախորդը\nTab / Shift+Tab : Նահանջ / Հանել նահանջը\nShift+Insert : Տեղադրել\nESC : Չեղարկել նշումը/որոնումը/օգնությունը\nF1 : Ցուցադրել օգնությունը</string>
 </resources>

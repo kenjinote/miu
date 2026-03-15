@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">Save</string>
     <string name="dialog_btn_dont_save">Don\'t Save</string>
     <string name="dialog_btn_done">Done</string>
+    <string name="help_text">miu v%1$s\n\n[Keyboard Shortcuts]\nCtrl+N : New File\nCtrl+O : Open\nCtrl+S : Save\nCtrl+Shift+S : Save As\nCtrl+F : Find\nCtrl+H / R : Replace\nCtrl+G : Go to Line\nCtrl+Z : Undo\nCtrl+Shift+Z : Redo\nCtrl+A : Select All\nCtrl+X / C / V : Cut / Copy / Paste\nCtrl+D : Select Next Occurrence (Multi-cursor)\nCtrl++ / - / 0 : Zoom (In / Out / Reset)\nF3 / Shift+F3 : Find Next / Previous\nTab / Shift+Tab : Indent / Unindent\nShift+Insert : Paste\nESC : Cancel Selection/Search/Help\nF1 : Show Help</string>
 </resources>

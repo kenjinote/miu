@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">Simpan</string>
     <string name="dialog_btn_dont_save">Jangan Simpan</string>
     <string name="dialog_btn_done">Selesai</string>
+    <string name="help_text">miu v%1$s\n\n[Pintasan Keyboard]\nCtrl+N : File Baru\nCtrl+O : Buka\nCtrl+S : Simpan\nCtrl+Shift+S : Simpan Sebagai\nCtrl+F : Cari\nCtrl+H / R : Ganti\nCtrl+G : Pergi ke Baris\nCtrl+Z : Urungkan\nCtrl+Shift+Z : Ulangi\nCtrl+A : Pilih Semua\nCtrl+X / C / V : Potong / Salin / Tempel\nCtrl+D : Pilih Kemunculan Berikutnya (Multi-kursor)\nCtrl++ / - / 0 : Zoom (Perbesar / Perkecil / Atur Ulang)\nF3 / Shift+F3 : Cari Berikutnya / Sebelumnya\nTab / Shift+Tab : Indentasi / Kurangi Indentasi\nShift+Insert : Tempel\nESC : Batalkan Pilihan/Pencarian/Bantuan\nF1 : Tampilkan Bantuan</string>
 </resources>

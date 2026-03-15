@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">儲存</string>
     <string name="dialog_btn_dont_save">不儲存</string>
     <string name="dialog_btn_done">完成</string>
+    <string name="help_text">miu v%1$s\n\n[鍵盤快捷鍵]\nCtrl+N : 新增檔案\nCtrl+O : 開啟\nCtrl+S : 儲存\nCtrl+Shift+S : 另存新檔\nCtrl+F : 尋找\nCtrl+H / R : 取代\nCtrl+G : 跳至行號\nCtrl+Z : 復原\nCtrl+Shift+Z : 重做\nCtrl+A : 全選\nCtrl+X / C / V : 剪下 / 複製 / 貼上\nCtrl+D : 選取下一個符合項目 (多重游標)\nCtrl++ / - / 0 : 縮放 (放大 / 縮小 / 重設)\nF3 / Shift+F3 : 尋找下一個 / 上一個\nTab / Shift+Tab : 增加縮排 / 減少縮排\nShift+Insert : 貼上\nESC : 取消選取 / 搜尋 / 說明\nF1 : 顯示說明</string>
 </resources>

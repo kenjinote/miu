@@ -37,7 +37,6 @@ import androidx.appcompat.widget.AppCompatEditText;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
-
 public class MainActivity extends NativeActivity {
     static { System.loadLibrary("miu"); }
     private int sysBgColor, sysTextColor, sysGutterBgColor, sysGutterTextColor, sysAccentColor;
@@ -70,9 +69,20 @@ public class MainActivity extends NativeActivity {
     public native int cmdGetCurrentLine();
     public native byte[] cmdGetSaveData();
     public native String cmdGetAutoSearchText();
+    public native void cmdMoveCursor(int direction, boolean isCtrl, boolean keepAnchor);
+    public native void deleteForwardText();
+    public native void cmdMoveHomeEnd(boolean isHome, boolean isCtrl, boolean keepAnchor);
+    public native void cmdSelectNextOccurrence();
+    public native void cmdClearSelectionAndMultiCursor();
+    public native void cmdPageMove(boolean isUp, boolean keepAnchor);
+    public native void cmdIndentLines(boolean isUnindent);
+    public native void cmdZoom(int mode);
+    public native String cmdGetTextBeforeCursor(int length);
+    public native String cmdGetTextAfterCursor(int length);
     private ImeBridgeView imeView;
     private PopupWindow toolbarPopup;
     private PopupWindow titleOverlayPopup;
+    private PopupWindow helpPopup;
     private View rootView;
     private boolean isKeyboardOpen = false;
     private int lastKeyboardHeight = 0;
@@ -159,7 +169,6 @@ public class MainActivity extends NativeActivity {
         titleOverlayPopup = new PopupWindow(uiOverlayContainer,
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-
         titleOverlayPopup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         titleOverlayPopup.setTouchable(false);
         titleOverlayPopup.setFocusable(false);
@@ -168,7 +177,21 @@ public class MainActivity extends NativeActivity {
         rootView = getWindow().getDecorView().findViewById(android.R.id.content);
         rootView.post(() -> {
             if (!isFinishing() && !isDestroyed()) {
-                titleOverlayPopup.showAtLocation(rootView, Gravity.TOP | Gravity.LEFT, 0, 0);
+                Configuration config = getResources().getConfiguration();
+                boolean isDeskMode = (config.uiMode & Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_DESK;
+                boolean isMultiWindow = false;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    isMultiWindow = isInMultiWindowMode();
+                }
+
+                // ★修正: スマホの時だけ初期表示を行う
+                if (!isDeskMode && !isMultiWindow) {
+                    titleOverlayPopup.showAtLocation(rootView, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0);
+                }
+
+                if (isHardwareKeyboardConnected()) {
+                    showHelpUI();
+                }
             }
         });
         setupToolbarPopup();
@@ -176,22 +199,44 @@ public class MainActivity extends NativeActivity {
             int bottomInset = 0;
             int topInset = 0;
             int imeHeight = 0;
+            int captionBarHeight = 0;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 imeHeight = insets.getInsets(WindowInsets.Type.ime()).bottom;
                 int systemBars = insets.getInsets(WindowInsets.Type.systemBars()).bottom;
                 bottomInset = Math.max(imeHeight, systemBars);
                 topInset = insets.getInsets(WindowInsets.Type.statusBars()).top;
+                captionBarHeight = insets.getInsets(WindowInsets.Type.captionBar()).top;
             } else {
                 bottomInset = insets.getSystemWindowInsetBottom();
                 topInset = insets.getSystemWindowInsetTop();
                 imeHeight = bottomInset > (rootView.getHeight() * 0.15) ? bottomInset : 0;
             }
+            Configuration config = getResources().getConfiguration();
+            boolean isDeskMode = (config.uiMode & Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_DESK;
+            boolean isMultiWindow = false;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                isMultiWindow = isInMultiWindowMode();
+            }
+            boolean isDesktopOrWindowed = isDeskMode || isMultiWindow || captionBarHeight > 0;
+            int cppTopMargin = topInset;
+            if (isDesktopOrWindowed) {
+                cppTopMargin = captionBarHeight > 0 ? captionBarHeight : (int)(48 * getResources().getDisplayMetrics().density);
+            }
             if (overlayTitleView != null) {
-                FrameLayout.LayoutParams tp = (FrameLayout.LayoutParams) overlayTitleView.getLayoutParams();
-                tp.topMargin = Math.max(10, topInset + (int)(4 * getResources().getDisplayMetrics().density) - 64);
-                overlayTitleView.setLayoutParams(tp);
-                if (titleOverlayPopup != null && titleOverlayPopup.isShowing()) {
-                    titleOverlayPopup.update(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                if (isDesktopOrWindowed) {
+                    if (titleOverlayPopup != null && titleOverlayPopup.isShowing()) {
+                        titleOverlayPopup.dismiss();
+                    }
+                } else {
+                    FrameLayout.LayoutParams tp = (FrameLayout.LayoutParams) overlayTitleView.getLayoutParams();
+                    tp.topMargin = Math.max(10, topInset + (int)(4 * getResources().getDisplayMetrics().density) - 64);
+                    overlayTitleView.setLayoutParams(tp);
+                    if (titleOverlayPopup != null) {
+                        if (!titleOverlayPopup.isShowing() && !isFinishing() && !isDestroyed()) {
+                            titleOverlayPopup.showAtLocation(rootView, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0);
+                        }
+                        titleOverlayPopup.update(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    }
                 }
             }
             boolean currentlyOpen = imeHeight > 0;
@@ -218,7 +263,7 @@ public class MainActivity extends NativeActivity {
                 }
                 updateVisibleHeight(bottomInset);
             }
-            updateTopMargin(topInset);
+            updateTopMargin(cppTopMargin);
             return insets;
         });
         Intent intent = getIntent();
@@ -261,6 +306,35 @@ public class MainActivity extends NativeActivity {
             }
         }
         return super.onKeyShortcut(keyCode, event);
+    }
+    @Override
+    public boolean dispatchGenericMotionEvent(android.view.MotionEvent event) {
+        if (event.getAction() == android.view.MotionEvent.ACTION_SCROLL) {
+            int metaState = event.getMetaState();
+            boolean isCtrlPressed = (metaState & KeyEvent.META_CTRL_ON) != 0;
+            boolean isMetaPressed = (metaState & KeyEvent.META_META_ON) != 0;
+            if (isCtrlPressed || isMetaPressed) {
+                float vScroll = event.getAxisValue(android.view.MotionEvent.AXIS_VSCROLL);
+                if (vScroll > 0) {
+                    cmdZoom(1);
+                } else if (vScroll < 0) {
+                    cmdZoom(-1);
+                }
+                return true;
+            }
+        }
+        return super.dispatchGenericMotionEvent(event);
+    }
+    private void applyFocusListenerToAll(View view, View.OnFocusChangeListener listener) {
+        if (view.isFocusable()) {
+            view.setOnFocusChangeListener(listener);
+        }
+        if (view instanceof ViewGroup) {
+            ViewGroup vg = (ViewGroup) view;
+            for (int i = 0; i < vg.getChildCount(); i++) {
+                applyFocusListenerToAll(vg.getChildAt(i), listener);
+            }
+        }
     }
     private void setupToolbarPopup() {
         LinearLayout rootContainer = new LinearLayout(this);
@@ -369,16 +443,38 @@ public class MainActivity extends NativeActivity {
             toolbarPopup.setIsClippedToScreen(true);
         }
         View.OnFocusChangeListener focusListener = (v, hasFocus) -> {
+            if (v instanceof AppCompatEditText) {
+                GradientDrawable bg = (GradientDrawable) v.getBackground();
+                if (hasFocus) {
+                    bg.setStroke((int)(2 * getResources().getDisplayMetrics().density), sysAccentColor);
+                } else {
+                    bg.setStroke(0, Color.TRANSPARENT);
+                }
+            } else if (v instanceof TextView) { // ボタンのフォーカスハイライト
+                if (hasFocus) {
+                    GradientDrawable focusBg = new GradientDrawable();
+                    focusBg.setColor((sysTextColor & 0x00FFFFFF) | 0x20000000); // 半透明のハイライト
+                    focusBg.setCornerRadius(8 * getResources().getDisplayMetrics().density);
+                    v.setBackground(focusBg);
+                } else {
+                    android.util.TypedValue outValue = new android.util.TypedValue();
+                    getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true);
+                    v.setBackgroundResource(outValue.resourceId);
+                }
+            }
             if (!hasFocus) {
                 mainHandler.postDelayed(() -> {
-                    if (searchField != null && replaceField != null) {
-                        if (!searchField.hasFocus() && !replaceField.hasFocus()) resetToolbarToMain();
+                    // ダイアログ内のどの要素にもフォーカスがない場合のみ閉じる判定
+                    if (toolbarPopup != null && toolbarPopup.getContentView() != null) {
+                        View focusedView = toolbarPopup.getContentView().findFocus();
+                        if (focusedView == null && searchToolbar.getVisibility() == View.VISIBLE) {
+                            resetToolbarToMain();
+                        }
                     }
-                }, 50);
+                }, 100);
             }
         };
-        searchField.setOnFocusChangeListener(focusListener);
-        replaceField.setOnFocusChangeListener(focusListener);
+        applyFocusListenerToAll(rootContainer, focusListener);
     }
     private void setEditTextStyle(AppCompatEditText editText) {
         GradientDrawable bg = new GradientDrawable();
@@ -410,6 +506,20 @@ public class MainActivity extends NativeActivity {
         int padH = (int) (16 * getResources().getDisplayMetrics().density);
         int padV = (int) (14 * getResources().getDisplayMetrics().density);
         btn.setPadding(padH, padV, padH, padV);
+        btn.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                boolean isCtrl = event.isCtrlPressed() || event.isMetaPressed();
+                if (isCtrl) {
+                    if (keyCode == KeyEvent.KEYCODE_F) { openSearchUI(false); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_H || keyCode == KeyEvent.KEYCODE_R) { openSearchUI(true); return true; }
+                }
+                if (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_SPACE || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                    v.performClick();
+                    return true;
+                }
+            }
+            return false;
+        });
         return btn;
     }
     private void showToolbarPopup(int keyboardHeight) {
@@ -419,26 +529,34 @@ public class MainActivity extends NativeActivity {
         if (toolbarPopup != null && toolbarPopup.isShowing()) toolbarPopup.update(0, keyboardHeight, -1, -1);
     }
     private void openSearchUI(boolean withReplace) {
+        boolean wasAlreadyOpen = searchToolbar != null && searchToolbar.getVisibility() == View.VISIBLE;
         isSwitchingUI = true;
         mainToolbar.setVisibility(View.GONE);
         searchToolbar.setVisibility(View.VISIBLE);
         replaceToolbar.setVisibility(withReplace ? View.VISIBLE : View.GONE);
-        String autoText = cmdGetAutoSearchText();
-        if (autoText != null) searchField.setText(autoText);
-        searchField.selectAll();
+        if (!wasAlreadyOpen) {
+            String autoText = cmdGetAutoSearchText();
+            if (autoText != null) searchField.setText(autoText);
+            searchField.selectAll();
+        }
+        if (toolbarPopup != null && !toolbarPopup.isShowing()) {
+            showToolbarPopup(lastKeyboardHeight);
+            isKeyboardOpen = true;
+        }
         toolbarPopup.setFocusable(true);
         toolbarPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NEEDED);
         toolbarPopup.update();
         Runnable requestFocusTask = new Runnable() {
             int retry = 5;
             @Override public void run() {
-                searchField.requestFocus();
+                AppCompatEditText targetField = (wasAlreadyOpen && withReplace) ? replaceField : searchField;
+                targetField.requestFocus();
                 InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
                 boolean success = false;
-                if (imm != null) success = imm.showSoftInput(searchField, 0);
+                if (imm != null) success = imm.showSoftInput(targetField, 0);
                 if (!success && retry > 0) {
                     retry--;
-                    searchField.postDelayed(this, 20);
+                    targetField.postDelayed(this, 20);
                 } else mainHandler.postDelayed(() -> isSwitchingUI = false, 300);
             }
         };
@@ -447,25 +565,39 @@ public class MainActivity extends NativeActivity {
     public void resetToolbarToMain() {
         isSwitchingUI = true;
         resetToolbarToMainInternal();
-        if (toolbarPopup != null) {
-            toolbarPopup.setFocusable(false);
-            toolbarPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
-            toolbarPopup.update();
+        if (isHardwareKeyboardConnected()) {
+            if (toolbarPopup != null && toolbarPopup.isShowing()) {
+                toolbarPopup.dismiss();
+            }
+            isKeyboardOpen = false;
+        } else {
+            if (toolbarPopup != null) {
+                toolbarPopup.setFocusable(false);
+                toolbarPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
+                toolbarPopup.update();
+            }
         }
         Runnable requestFocusTask = new Runnable() {
             int retry = 5;
             @Override public void run() {
                 imeView.requestFocus();
-                InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                boolean success = false;
-                if (imm != null) success = imm.showSoftInput(imeView, 0);
-                if (!success && retry > 0) {
-                    retry--;
-                    imeView.postDelayed(this, 20);
-                } else mainHandler.postDelayed(() -> isSwitchingUI = false, 300);
+                if (!isHardwareKeyboardConnected()) {
+                    InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    boolean success = false;
+                    if (imm != null) success = imm.showSoftInput(imeView, 0);
+                    if (!success && retry > 0) {
+                        retry--;
+                        imeView.postDelayed(this, 20);
+                        return;
+                    }
+                }
+                mainHandler.postDelayed(() -> isSwitchingUI = false, 300);
             }
         };
         imeView.post(requestFocusTask);
+        if (rootView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            rootView.requestApplyInsets();
+        }
     }
     private void resetToolbarToMainInternal() {
         mainToolbar.setVisibility(View.VISIBLE);
@@ -565,27 +697,6 @@ public class MainActivity extends NativeActivity {
             }, 100);
         });
         dialog.show();
-    }
-    class SearchEditText extends AppCompatEditText {
-        public SearchEditText(Context context) { super(context); }
-        @Override public boolean onKeyPreIme(int keyCode, KeyEvent event) {
-            if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
-                resetToolbarToMain();
-                return true;
-            }
-            if (keyCode == KeyEvent.KEYCODE_ESCAPE && event.getAction() == KeyEvent.ACTION_UP) {
-                resetToolbarToMain();
-                return true;
-            }
-            return super.onKeyPreIme(keyCode, event);
-        }
-        @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
-            if (keyCode == KeyEvent.KEYCODE_ENTER) {
-                if (this == searchField) { actionFind(true); return true; }
-                else if (this == replaceField) { actionReplaceNext(); return true; }
-            }
-            return super.onKeyDown(keyCode, event);
-        }
     }
     private void confirmSaveIfNeeded(Runnable nextAction) {
         if (!cmdIsDirty()) {
@@ -742,36 +853,204 @@ public class MainActivity extends NativeActivity {
         public ImeBridgeView(Context context) { super(context); setFocusable(true); setFocusableInTouchMode(true); }
         @Override public boolean onCheckIsTextEditor() { return true; }
         @Override public InputConnection onCreateInputConnection(EditorInfo outAttrs) {
-            outAttrs.inputType = InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE;
-            outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_NONE;
-            return new MiuInputConnection(this, true);
+            outAttrs.inputType = InputType.TYPE_CLASS_TEXT |
+                    InputType.TYPE_TEXT_FLAG_MULTI_LINE |
+                    InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS |
+                    InputType.TYPE_TEXT_VARIATION_FILTER;
+            outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_NONE | 0x1000000 | 0x80000000;
+            outAttrs.privateImeOptions = "disableSticker=true;disableGifKeyboard=true;disableAutoCorrect=true;disablePredictiveText=true;";
+            outAttrs.initialCapsMode = 0; // 先頭の大文字化を拒否
+            return new MiuInputConnection(this, false);
+        }
+        @Override
+        public boolean onKeyDown(int keyCode, KeyEvent event) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (MainActivity.this.helpPopup != null && MainActivity.this.helpPopup.isShowing()) {
+                    MainActivity.this.closeHelpUI();
+                    if (keyCode == KeyEvent.KEYCODE_F1 || keyCode == KeyEvent.KEYCODE_ESCAPE) return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_F1) { MainActivity.this.showHelpUI(); return true; }
+                boolean isShift = event.isShiftPressed();
+                boolean isCtrl = event.isCtrlPressed() || event.isMetaPressed();
+                if (keyCode == KeyEvent.KEYCODE_ESCAPE) {
+                    if (searchToolbar != null && searchToolbar.getVisibility() == View.VISIBLE) resetToolbarToMain();
+                    else cmdClearSelectionAndMultiCursor();
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) { cmdMoveCursor(0, isCtrl, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) { cmdMoveCursor(1, isCtrl, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) { cmdMoveCursor(2, isCtrl, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) { cmdMoveCursor(3, isCtrl, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_PAGE_UP) { cmdPageMove(true, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_PAGE_DOWN) { cmdPageMove(false, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_TAB) { cmdIndentLines(isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_FORWARD_DEL) { deleteForwardText(); return true; }
+                if (keyCode == KeyEvent.KEYCODE_DEL) { deleteSurroundingText(); return true; }
+                if (keyCode == KeyEvent.KEYCODE_MOVE_HOME) { cmdMoveHomeEnd(true, isCtrl, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_MOVE_END) { cmdMoveHomeEnd(false, isCtrl, isShift); return true; }
+                if (isShift && keyCode == KeyEvent.KEYCODE_INSERT) { actionPaste(); return true; }
+                if (isCtrl) {
+                    if (keyCode == KeyEvent.KEYCODE_D) { cmdSelectNextOccurrence(); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_F) { openSearchUI(false); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_H || keyCode == KeyEvent.KEYCODE_R) { openSearchUI(true); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_G) { actionGoTo(); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_PLUS || keyCode == KeyEvent.KEYCODE_EQUALS || keyCode == KeyEvent.KEYCODE_NUMPAD_ADD) { cmdZoom(1); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_MINUS || keyCode == KeyEvent.KEYCODE_NUMPAD_SUBTRACT) { cmdZoom(-1); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_0 || keyCode == KeyEvent.KEYCODE_NUMPAD_0) { cmdZoom(0); return true; }
+                }
+                if (keyCode == KeyEvent.KEYCODE_F3) {
+                    if (searchField == null || searchField.getText().toString().isEmpty()) openSearchUI(false);
+                    else actionFind(!isShift);
+                    return true;
+                }
+                if (!isCtrl && (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+                    commitText("\n"); return true;
+                }
+            }
+            return super.onKeyDown(keyCode, event);
         }
     }
     class MiuInputConnection extends BaseInputConnection {
         public MiuInputConnection(View targetView, boolean fullEditor) { super(targetView, fullEditor); }
+        @Override
+        public int getCursorCapsMode(int reqModes) {
+            return 0;
+        }
+        @Override
+        public CharSequence getTextBeforeCursor(int n, int flags) {
+            String text = MainActivity.this.cmdGetTextBeforeCursor(n);
+            return text != null ? text : "";
+        }
+        @Override
+        public CharSequence getTextAfterCursor(int n, int flags) {
+            String text = MainActivity.this.cmdGetTextAfterCursor(n);
+            return text != null ? text : "";
+        }
+        @Override
+        public android.view.inputmethod.ExtractedText getExtractedText(android.view.inputmethod.ExtractedTextRequest request, int flags) {
+            android.view.inputmethod.ExtractedText et = new android.view.inputmethod.ExtractedText();
+            String before = MainActivity.this.cmdGetTextBeforeCursor(100);
+            String after = MainActivity.this.cmdGetTextAfterCursor(100);
+            if (before == null) before = "";
+            if (after == null) after = "";
+            et.text = before + after;
+            et.partialStartOffset = -1;
+            et.partialEndOffset = -1;
+            et.selectionStart = before.length();
+            et.selectionEnd = before.length();
+            return et;
+        }
         @Override public boolean commitText(CharSequence text, int newCursorPosition) {
-            if (text != null) MainActivity.this.commitText(text.toString()); return true;
+            if (text != null && text.length() > 0) {
+                MainActivity.this.closeHelpUI();
+            }
+            if (text != null) MainActivity.this.commitText(text.toString());
+            return true;
         }
         @Override public boolean setComposingText(CharSequence text, int newCursorPosition) {
-            if (text != null) MainActivity.this.setComposingText(text.toString()); return true;
+            if (text != null && text.length() > 0) {
+                MainActivity.this.closeHelpUI();
+            }
+            if (text != null) MainActivity.this.setComposingText(text.toString());
+            return true;
         }
         @Override public boolean finishComposingText() {
             MainActivity.this.finishComposingTextNative();
             return super.finishComposingText();
         }
         @Override public boolean deleteSurroundingText(int beforeLength, int afterLength) {
-            MainActivity.this.deleteSurroundingText(); return true;
+            if (beforeLength > 0 || afterLength > 0) {
+                MainActivity.this.closeHelpUI();
+            }
+            for (int i = 0; i < beforeLength; i++) {
+                MainActivity.this.deleteSurroundingText();
+            }
+            return true;
         }
         @Override public boolean sendKeyEvent(KeyEvent event) {
             if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                boolean isCtrl = event.isCtrlPressed() || event.isMetaPressed();
                 int keyCode = event.getKeyCode();
-                if (isCtrl && keyCode == KeyEvent.KEYCODE_MOVE_HOME) { cmdTop(); return true; }
-                if (isCtrl && keyCode == KeyEvent.KEYCODE_MOVE_END) { cmdBottom(); return true; }
-                if (keyCode == KeyEvent.KEYCODE_DEL) MainActivity.this.deleteSurroundingText();
-                else if (keyCode == KeyEvent.KEYCODE_ENTER) MainActivity.this.commitText("\n");
+                if (MainActivity.this.helpPopup != null && MainActivity.this.helpPopup.isShowing()) {
+                    MainActivity.this.closeHelpUI();
+                    if (keyCode == KeyEvent.KEYCODE_F1 || keyCode == KeyEvent.KEYCODE_ESCAPE) return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_F1) { MainActivity.this.showHelpUI(); return true; }
+                boolean isCtrl = event.isCtrlPressed() || event.isMetaPressed();
+                boolean isShift = event.isShiftPressed();
+                if (keyCode == KeyEvent.KEYCODE_MOVE_HOME) { MainActivity.this.cmdMoveHomeEnd(true, isCtrl, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_MOVE_END) { MainActivity.this.cmdMoveHomeEnd(false, isCtrl, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_PAGE_UP) { MainActivity.this.cmdPageMove(true, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_PAGE_DOWN) { MainActivity.this.cmdPageMove(false, isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_TAB) { MainActivity.this.cmdIndentLines(isShift); return true; }
+                if (keyCode == KeyEvent.KEYCODE_DEL) {
+                    MainActivity.this.deleteSurroundingText();
+                    return true;
+                }
+                if (isShift && keyCode == KeyEvent.KEYCODE_INSERT) { MainActivity.this.actionPaste(); return true; }
+                if (isCtrl) {
+                    if (keyCode == KeyEvent.KEYCODE_D) { MainActivity.this.cmdSelectNextOccurrence(); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_F) { MainActivity.this.openSearchUI(false); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_H || keyCode == KeyEvent.KEYCODE_R) { MainActivity.this.openSearchUI(true); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_G) { MainActivity.this.actionGoTo(); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_PLUS || keyCode == KeyEvent.KEYCODE_EQUALS || keyCode == KeyEvent.KEYCODE_NUMPAD_ADD) { MainActivity.this.cmdZoom(1); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_MINUS || keyCode == KeyEvent.KEYCODE_NUMPAD_SUBTRACT) { MainActivity.this.cmdZoom(-1); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_0 || keyCode == KeyEvent.KEYCODE_NUMPAD_0) { MainActivity.this.cmdZoom(0); return true; }
+                }
+                if (keyCode == KeyEvent.KEYCODE_F3) {
+                    if (MainActivity.this.searchField == null || MainActivity.this.searchField.getText().toString().isEmpty()) MainActivity.this.openSearchUI(false);
+                    else MainActivity.this.actionFind(!isShift);
+                    return true;
+                }
+                if (!isCtrl && (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER)) {
+                    MainActivity.this.commitText("\n"); return true;
+                }
             }
             return super.sendKeyEvent(event);
+        }
+    }
+    class SearchEditText extends AppCompatEditText {
+        public SearchEditText(Context context) { super(context); }
+        @Override public boolean onKeyPreIme(int keyCode, KeyEvent event) {
+            if (keyCode == KeyEvent.KEYCODE_BACK && event.getAction() == KeyEvent.ACTION_UP) {
+                resetToolbarToMain();
+                return true;
+            }
+            if (keyCode == KeyEvent.KEYCODE_ESCAPE && event.getAction() == KeyEvent.ACTION_UP) {
+                resetToolbarToMain();
+                return true;
+            }
+            return super.onKeyPreIme(keyCode, event);
+        }
+        @Override public boolean onKeyDown(int keyCode, KeyEvent event) {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (MainActivity.this.helpPopup != null && MainActivity.this.helpPopup.isShowing()) {
+                    MainActivity.this.closeHelpUI();
+                    if (keyCode == KeyEvent.KEYCODE_F1 || keyCode == KeyEvent.KEYCODE_ESCAPE) {
+                        return true;
+                    }
+                }
+                if (keyCode == KeyEvent.KEYCODE_F1) {
+                    MainActivity.this.showHelpUI();
+                    return true;
+                }
+                boolean isCtrl = event.isCtrlPressed() || event.isMetaPressed();
+                if (isCtrl) {
+                    if (keyCode == KeyEvent.KEYCODE_F) { MainActivity.this.openSearchUI(false); return true; }
+                    if (keyCode == KeyEvent.KEYCODE_H || keyCode == KeyEvent.KEYCODE_R) { MainActivity.this.openSearchUI(true); return true; }
+                }
+                if (keyCode == KeyEvent.KEYCODE_ENTER || keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+                    if (this == searchField) { actionFind(true); return true; }
+                    else if (this == replaceField) { actionReplaceNext(); return true; }
+                }
+                if (keyCode == KeyEvent.KEYCODE_TAB) {
+                    View next = focusSearch(event.isShiftPressed() ? View.FOCUS_BACKWARD : View.FOCUS_FORWARD);
+                    if (next != null) {
+                        next.requestFocus();
+                        return true;
+                    }
+                }
+            }
+            return super.onKeyDown(keyCode, event);
         }
     }
     private void updateSystemColors() {
@@ -824,6 +1103,9 @@ public class MainActivity extends NativeActivity {
         }
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null && imeView != null) imm.restartInput(imeView);
+        if (rootView != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            rootView.requestApplyInsets();
+        }
     }
     private void updateViewColors(View view) {
         if ("borderLine".equals(view.getTag())) {
@@ -846,6 +1128,13 @@ public class MainActivity extends NativeActivity {
     }
     public void setOverlayTitle(String title) {
         runOnUiThread(() -> {
+            setTitle(title);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                try {
+                    setTaskDescription(new android.app.ActivityManager.TaskDescription(title));
+                } catch (Exception e) {
+                }
+            }
             if (overlayTitleView != null) overlayTitleView.setText(title);
         });
     }
@@ -855,5 +1144,40 @@ public class MainActivity extends NativeActivity {
             titleOverlayPopup.dismiss();
         }
         super.onDestroy();
+    }
+    private void showHelpUI() {
+        if (helpPopup != null && helpPopup.isShowing()) return;
+        TextView helpText = new TextView(this);
+        String versionName = "0.0.0";
+        try {
+            versionName = getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (android.content.pm.PackageManager.NameNotFoundException e) {
+        }
+        String helpStr = getString(R.string.help_text, versionName);
+        helpText.setText(helpStr);
+        helpText.setTextColor(sysTextColor);
+        helpText.setTextSize(14.0f);
+        int pad = (int) (24 * getResources().getDisplayMetrics().density);
+        helpText.setPadding(pad, pad, pad, pad);
+        helpText.setLineSpacing(0, 1.3f);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor((sysBgColor & 0x00FFFFFF) | 0xF0000000);
+        bg.setCornerRadius(16 * getResources().getDisplayMetrics().density);
+        bg.setStroke((int) (1 * getResources().getDisplayMetrics().density), (sysGutterTextColor & 0x00FFFFFF) | 0x80000000);
+        helpText.setBackground(bg);
+        helpPopup = new PopupWindow(helpText, ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        helpPopup.setFocusable(false);
+        helpPopup.setTouchable(false);
+        helpPopup.setOutsideTouchable(false);
+        helpPopup.setAnimationStyle(android.R.style.Animation_Dialog);
+        if (rootView != null) {
+            helpPopup.showAtLocation(rootView, Gravity.CENTER, 0, 0);
+        }
+    }
+    public void closeHelpUI() {
+        if (helpPopup != null && helpPopup.isShowing()) {
+            helpPopup.dismiss();
+            helpPopup = null;
+        }
     }
 }

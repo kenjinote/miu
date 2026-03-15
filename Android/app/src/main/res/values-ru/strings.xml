@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">Сохранить</string>
     <string name="dialog_btn_dont_save">Не сохранять</string>
     <string name="dialog_btn_done">Готово</string>
+    <string name="help_text">miu v%1$s\n\n[Горячие клавиши]\nCtrl+N : Новый файл\nCtrl+O : Открыть\nCtrl+S : Сохранить\nCtrl+Shift+S : Сохранить как\nCtrl+F : Найти\nCtrl+H / R : Заменить\nCtrl+G : Перейти к строке\nCtrl+Z : Отменить\nCtrl+Shift+Z : Вернуть\nCtrl+A : Выделить всё\nCtrl+X / C / V : Вырезать / Копировать / Вставить\nCtrl+D : Выбрать следующее совпадение (Мультикурсор)\nCtrl++ / - / 0 : Масштаб (Увеличить / Уменьшить / Сбросить)\nF3 / Shift+F3 : Найти следующее / предыдущее\nTab / Shift+Tab : Увеличить / Уменьшить отступ\nShift+Insert : Вставить\nESC : Отменить выделение/поиск/справку\nF1 : Показать справку</string>
 </resources>

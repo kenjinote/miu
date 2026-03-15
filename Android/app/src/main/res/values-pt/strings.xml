@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">Salvar</string>
     <string name="dialog_btn_dont_save">Não salvar</string>
     <string name="dialog_btn_done">Concluir</string>
+    <string name="help_text">miu v%1$s\n\n[Atalhos de Teclado]\nCtrl+N : Novo Arquivo\nCtrl+O : Abrir\nCtrl+S : Salvar\nCtrl+Shift+S : Salvar Como\nCtrl+F : Localizar\nCtrl+H / R : Substituir\nCtrl+G : Ir para a Linha\nCtrl+Z : Desfazer\nCtrl+Shift+Z : Refazer\nCtrl+A : Selecionar Tudo\nCtrl+X / C / V : Recortar / Copiar / Colar\nCtrl+D : Selecionar Próxima Ocorrência (Multicursor)\nCtrl++ / - / 0 : Zoom (Ampliar / Reduzir / Redefinir)\nF3 / Shift+F3 : Localizar Próximo / Anterior\nTab / Shift+Tab : Indentar / Desindentar\nShift+Insert : Colar\nESC : Cancelar Seleção/Busca/Ajuda\nF1 : Mostrar Ajuda</string>
 </resources>

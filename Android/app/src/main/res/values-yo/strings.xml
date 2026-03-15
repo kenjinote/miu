@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">Fipamọ́</string>
     <string name="dialog_btn_dont_save">Má fipamọ́</string>
     <string name="dialog_btn_done">Parí</string>
+    <string name="help_text">miu v%1$s\n\n[Àwọn Ọ̀nà Àbùjá Kííbọ́ọ̀dù]\nCtrl+N : Fáìlì Tuntun\nCtrl+O : Ṣíi\nCtrl+S : Fi pamọ́\nCtrl+Shift+S : Fi pamọ́ gẹ́gẹ́ bí\nCtrl+F : Wá\nCtrl+H / R : Rọ́pò\nCtrl+G : Lọ sí Ìlà\nCtrl+Z : Dá padà\nCtrl+Shift+Z : Tún ṣe\nCtrl+A : Yan Gbogbo rẹ̀\nCtrl+X / C / V : Ge / Ṣe ẹ̀dà / Lẹ̀ ẹ́\nCtrl+D : Yan Ìṣẹ̀lẹ̀ Tí Ó Kàn (Kọ́sọ̀ púpọ̀)\nCtrl++ / - / 0 : Súùn (Sínú / Síta / Tún to)\nF3 / Shift+F3 : Wá Èyí Tó Kàn / Ti Tẹ́lẹ̀\nTab / Shift+Tab : Sún sínú / Sún sẹ́yìn\nShift+Insert : Lẹ̀ ẹ́\nESC : Fagilé Ìyàn/Ìwádìí/Ìrànlọ́wọ́\nF1 : Ṣe àfihàn Ìrànlọ́wọ́</string>
 </resources>

@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">保存</string>
     <string name="dialog_btn_dont_save">不保存</string>
     <string name="dialog_btn_done">完成</string>
+    <string name="help_text">miu v%1$s\n\n[快捷键]\nCtrl+N : 新建文件\nCtrl+O : 打开\nCtrl+S : 保存\nCtrl+Shift+S : 另存为\nCtrl+F : 查找\nCtrl+H / R : 替换\nCtrl+G : 跳转到行\nCtrl+Z : 撤销\nCtrl+Shift+Z : 重做\nCtrl+A : 全选\nCtrl+X / C / V : 剪切 / 复制 / 粘贴\nCtrl+D : 选择下一个匹配项 (多光标)\nCtrl++ / - / 0 : 缩放 (放大 / 缩小 / 重置)\nF3 / Shift+F3 : 查找下一个 / 上一个\nTab / Shift+Tab : 增加缩进 / 减少缩进\nShift+Insert : 粘贴\nESC : 取消选择/搜索/帮助\nF1 : 显示帮助</string>
 </resources>

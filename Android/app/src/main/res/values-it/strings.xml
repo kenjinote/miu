@@ -38,4 +38,5 @@
     <string name="dialog_btn_save">Salva</string>
     <string name="dialog_btn_dont_save">Non salvare</string>
     <string name="dialog_btn_done">Fatto</string>
+    <string name="help_text">miu v%1$s\n\n[Scorciatoie da tastiera]\nCtrl+N : Nuovo file\nCtrl+O : Apri\nCtrl+S : Salva\nCtrl+Shift+S : Salva con nome\nCtrl+F : Trova\nCtrl+H / R : Sostituisci\nCtrl+G : Vai alla riga\nCtrl+Z : Annulla\nCtrl+Shift+Z : Ripeti\nCtrl+A : Seleziona tutto\nCtrl+X / C / V : Taglia / Copia / Incolla\nCtrl+D : Seleziona occorrenza successiva (Cursore multiplo)\nCtrl++ / - / 0 : Zoom (Ingrandisci / Riduci / Ripristina)\nF3 / Shift+F3 : Trova successivo / precedente\nTab / Shift+Tab : Aumenta rientro / Riduci rientro\nShift+Insert : Incolla\nESC : Annulla selezione/ricerca/guida\nF1 : Mostra guida</string>
 </resources>

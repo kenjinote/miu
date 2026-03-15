@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">सहेजें</string>
     <string name="dialog_btn_dont_save">न सहेजें</string>
     <string name="dialog_btn_done">पूर्ण</string>
+    <string name="help_text">miu v%1$s\n\n[कीबोर्ड शॉर्टकट]\nCtrl+N : नई फ़ाइल\nCtrl+O : खोलें\nCtrl+S : सहेजें\nCtrl+Shift+S : इस रूप में सहेजें\nCtrl+F : खोजें\nCtrl+H / R : बदलें\nCtrl+G : लाइन पर जाएं\nCtrl+Z : पूर्ववत करें\nCtrl+Shift+Z : फिर से करें\nCtrl+A : सभी का चयन करें\nCtrl+X / C / V : कट / कॉपी / पेस्ट\nCtrl+D : अगली उपस्थिति का चयन करें (मल्टी-कर्सर)\nCtrl++ / - / 0 : ज़ूम (इन / आउट / रीसेट)\nF3 / Shift+F3 : अगला / पिछला खोजें\nTab / Shift+Tab : इंडेंट / अन-इंडेंट\nShift+Insert : पेस्ट\nESC : चयन/खोज/सहायता रद्द करें\nF1 : सहायता दिखाएं</string>
 </resources>

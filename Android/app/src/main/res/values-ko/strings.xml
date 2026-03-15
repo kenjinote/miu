@@ -39,4 +39,5 @@
     <string name="dialog_btn_save">저장</string>
     <string name="dialog_btn_dont_save">저장 안 함</string>
     <string name="dialog_btn_done">완료</string>
+    <string name="help_text">miu v%1$s\n\n[단축키]\nCtrl+N : 새 파일\nCtrl+O : 열기\nCtrl+S : 저장\nCtrl+Shift+S : 다른 이름으로 저장\nCtrl+F : 찾기\nCtrl+H / R : 바꾸기\nCtrl+G : 지정 줄로 이동\nCtrl+Z : 실행 취소\nCtrl+Shift+Z : 다시 실행\nCtrl+A : 모두 선택\nCtrl+X / C / V : 잘라내기 / 복사 / 붙여넣기\nCtrl+D : 다음 일치 항목 선택 (다중 커서)\nCtrl++ / - / 0 : 확대/축소 (확대 / 축소 / 원래대로)\nF3 / Shift+F3 : 다음 찾기 / 이전 찾기\nTab / Shift+Tab : 들여쓰기 / 내어쓰기\nShift+Insert : 붙여넣기\nESC : 선택/검색/도움말 취소\nF1 : 도움말 표시</string>
 </resources>
