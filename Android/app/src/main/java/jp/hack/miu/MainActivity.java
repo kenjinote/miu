@@ -857,7 +857,7 @@ public class MainActivity extends NativeActivity {
                     InputType.TYPE_TEXT_FLAG_MULTI_LINE |
                     InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS |
                     InputType.TYPE_TEXT_VARIATION_FILTER;
-            outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_NONE | 0x1000000 | 0x80000000;
+            outAttrs.imeOptions = EditorInfo.IME_FLAG_NO_FULLSCREEN | EditorInfo.IME_ACTION_NONE | 0x1000000;
             outAttrs.privateImeOptions = "disableSticker=true;disableGifKeyboard=true;disableAutoCorrect=true;disablePredictiveText=true;";
             outAttrs.initialCapsMode = 0; // 先頭の大文字化を拒否
             return new MiuInputConnection(this, false);
