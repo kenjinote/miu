@@ -1,4 +1,4 @@
-﻿#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
+#pragma comment(linker,"\"/manifestdependency:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #define NOMINMAX
 #include <windows.h>
 #include <shellapi.h>
@@ -8,6 +8,8 @@
 #include <d2d1.h>
 #include <dwrite.h>
 #include <dcomp.h>
+#include <initguid.h>
+#include <d2d1effects.h>
 #include <imm.h>
 #include <commdlg.h>
 #include <commctrl.h>
@@ -31,13 +33,14 @@
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "dcomp.lib")
 #pragma comment(lib, "dwrite.lib")
+#pragma comment(lib, "dxguid.lib")
 #pragma comment(lib, "imm32.lib")
 #pragma comment(lib, "comdlg32.lib")
 #pragma comment(lib, "comctl32.lib")
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "uxtheme.lib")
 #pragma comment(lib, "ced.lib")
-const std::wstring APP_VERSION = L"miu v1.0.18";
+const std::wstring APP_VERSION = L"miu v1.0.19 (Ripple Edition)";
 enum MiuEncoding {
     ENC_UTF8_NOBOM = 0,
     ENC_UTF8_BOM,
@@ -392,6 +395,19 @@ struct Editor {
     bool isVScrollHover = false;
     bool isHScrollHover = false;
     bool isTrackingMouse = false;
+    struct Ripple { float x, y; DWORD64 startTime; };
+    std::vector<Ripple> ripples;
+    bool spawnRipple = false;
+    ID2D1Bitmap1* intermediateBitmap = nullptr;
+    ID2D1Bitmap* displacementMapBitmap = nullptr;
+    ID2D1Effect* displacementEffect = nullptr;
+    struct JellyState {
+        float x = 0.0f, y = 0.0f;
+        float vx = 0.0f, vy = 0.0f;
+        int lastWinX = 0, lastWinY = 0;
+        bool initialized = false;
+        DWORD64 lastTime = 0;
+    } jelly;
     MiuEncoding currentEncoding = ENC_UTF8_NOBOM;
     UINT currentCodePage = CP_UTF8;
     std::string convertedBuffer;
@@ -621,6 +637,9 @@ struct Editor {
         ID2D1Device* d2dDevice = nullptr;
         d2dFactory->CreateDevice(dxgiDevice, &d2dDevice);
         d2dDevice->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, &rend);
+        if (rend) {
+            rend->CreateEffect(CLSID_D2D1DisplacementMap, &displacementEffect);
+        }
         IDXGIFactory2* dxgiFactory = nullptr;
         CreateDXGIFactory2(0, __uuidof(IDXGIFactory2), (void**)&dxgiFactory);
         DXGI_SWAP_CHAIN_DESC1 description = {};
@@ -714,6 +733,9 @@ struct Editor {
         if (helpTextFormat) helpTextFormat->Release();
         if (dotStyle) dotStyle->Release();
         if (roundJoinStyle) roundJoinStyle->Release();
+        if (displacementEffect) { displacementEffect->Release(); displacementEffect = nullptr; }
+        if (displacementMapBitmap) { displacementMapBitmap->Release(); displacementMapBitmap = nullptr; }
+        if (intermediateBitmap) { intermediateBitmap->Release(); intermediateBitmap = nullptr; }
         if (textFormat) textFormat->Release();
         if (dwFactory) dwFactory->Release();
         if (d2dFactory) d2dFactory->Release();
@@ -1522,6 +1544,7 @@ struct Editor {
             rebuildLineStarts();
             ensureCaretVisible();
             updateDirtyFlag();
+            spawnRipple = true;
             findNext(true);
         }
         else {
@@ -1695,6 +1718,7 @@ struct Editor {
         rebuildLineStarts();
         ensureCaretVisible();
         updateDirtyFlag();
+        spawnRipple = true;
         InvalidateRect(hwnd, NULL, FALSE);
         ShowTaskDialog(
             GetResString(IDS_REPLACE_DONE).c_str(),
@@ -2002,7 +2026,48 @@ struct Editor {
                 dxgiBackBuffer->Release();
             }
         }
-        rend->SetTarget(targetBitmap);
+
+        DWORD64 now = GetTickCount64();
+        if (jelly.lastTime == 0) jelly.lastTime = now;
+        float dt = (now - jelly.lastTime) / 1000.0f;
+        jelly.lastTime = now;
+        if (dt > 0.05f) dt = 0.05f;
+
+        float stiffness = 600.0f;
+        float damping = 15.0f;
+        float ax = -stiffness * jelly.x - damping * jelly.vx;
+        float ay = -stiffness * jelly.y - damping * jelly.vy;
+        
+        jelly.vx += ax * dt;
+        jelly.vy += ay * dt;
+        jelly.x += jelly.vx * dt;
+        jelly.y += jelly.vy * dt;
+
+        if (std::abs(jelly.x) < 0.1f && std::abs(jelly.vx) < 1.0f) { jelly.x = 0; jelly.vx = 0; }
+        if (std::abs(jelly.y) < 0.1f && std::abs(jelly.vy) < 1.0f) { jelly.y = 0; jelly.vy = 0; }
+
+        bool isJellyActive = (std::abs(jelly.x) > 0.1f || std::abs(jelly.y) > 0.1f || std::abs(jelly.vx) > 0.1f || std::abs(jelly.vy) > 0.1f);
+        bool useRipple = !ripples.empty() || spawnRipple || isJellyActive;
+        if (useRipple && targetBitmap) {
+            D2D1_SIZE_U pixelSize = targetBitmap->GetPixelSize();
+            if (!intermediateBitmap || intermediateBitmap->GetPixelSize().width != pixelSize.width || intermediateBitmap->GetPixelSize().height != pixelSize.height) {
+                if (intermediateBitmap) intermediateBitmap->Release();
+                D2D1_BITMAP_PROPERTIES1 props = D2D1::BitmapProperties1(
+                    D2D1_BITMAP_OPTIONS_TARGET,
+                    D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
+                    96.0f * dpiScaleX, 96.0f * dpiScaleY);
+                rend->CreateBitmap(pixelSize, nullptr, 0, &props, &intermediateBitmap);
+            }
+            if (!displacementMapBitmap || displacementMapBitmap->GetPixelSize().width != pixelSize.width || displacementMapBitmap->GetPixelSize().height != pixelSize.height) {
+                if (displacementMapBitmap) displacementMapBitmap->Release();
+                D2D1_BITMAP_PROPERTIES propsMap = D2D1::BitmapProperties(
+                    D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED),
+                    96.0f * dpiScaleX, 96.0f * dpiScaleY);
+                rend->CreateBitmap(pixelSize, nullptr, 0, &propsMap, &displacementMapBitmap);
+            }
+        }
+
+        rend->SetTarget((useRipple && intermediateBitmap) ? intermediateBitmap : targetBitmap);
         rend->BeginDraw();
         rend->Clear(background);
         RECT rc; GetClientRect(hwnd, &rc); D2D1_SIZE_F size = rend->GetSize();
@@ -2144,11 +2209,11 @@ struct Editor {
                                 }
                                 size_t step = matchLen;
                                 if (step == 0) {
-                                    if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                                    bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
+                                    if (isBolCaret) step = 0;
                                     else step = 1;
                                 }
                                 if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
-
                                 size_t advance = m.position() + step;
                                 if (std::distance(searchStart, text.cend()) < (ptrdiff_t)advance) break;
                                 std::advance(searchStart, advance);
@@ -2354,9 +2419,13 @@ struct Editor {
                     else {
                         rend->FillRectangle(D2D1::RectF(px, py, px + 2.0f, py + lineHeight), caretBrush);
                     }
+                    if (spawnRipple) {
+                        ripples.push_back({ px + gutterWidth - (float)hScrollPos, py + lineHeight / 2.0f, now });
+                    }
                     if (&cursor == &cursors.back()) { imeCx = px; imeCy = py; }
                 }
             }
+            if (spawnRipple) spawnRipple = false;
             rend->SetTransform(D2D1::Matrix3x2F::Identity());
             rend->SetAntialiasMode(oldMode);
             rend->PopAxisAlignedClip();
@@ -2467,6 +2536,113 @@ struct Editor {
             if (sbBrushActive) sbBrushActive->Release();
         }
         rend->EndDraw();
+
+        if (useRipple && displacementEffect && displacementMapBitmap && intermediateBitmap && targetBitmap) {
+            D2D1_SIZE_U pixelSize = targetBitmap->GetPixelSize();
+            UINT32 mapW = pixelSize.width;
+            UINT32 mapH = pixelSize.height;
+            
+            float DURATION = 2.5f;
+            for (auto it = ripples.begin(); it != ripples.end();) {
+                float elapsed = (float)(long long)(now - it->startTime) / 1000.0f;
+                if (elapsed > DURATION) it = ripples.erase(it);
+                else ++it;
+            }
+
+            std::vector<uint32_t> mapData;
+            if (isJellyActive) {
+                mapData.resize(mapW * mapH);
+                float maxDisplacement = 80.0f;
+                float jX = std::clamp(jelly.x, -maxDisplacement, maxDisplacement) * dpiScaleX;
+                float jY = std::clamp(jelly.y, -maxDisplacement, maxDisplacement) * dpiScaleY;
+                for (int y = 0; y < (int)mapH; ++y) {
+                    float jellyFactor = (float)y / (float)mapH;
+                    float jdX = jX * jellyFactor;
+                    float jdY = jY * jellyFactor;
+                    int jCr = std::clamp(128 + (int)(jdX * 2.56f), 0, 255);
+                    int jCg = std::clamp(128 + (int)(jdY * 2.56f), 0, 255);
+                    uint32_t basePixel = 0xFF000000 | (jCr << 16) | (jCg << 8);
+                    for (int x = 0; x < (int)mapW; ++x) {
+                        mapData[y * mapW + x] = basePixel;
+                    }
+                }
+            } else {
+                mapData.assign(mapW * mapH, 0xFF808000);
+            }
+            
+            if (!ripples.empty()) {
+                for (const auto& r : ripples) {
+                    float timeSec = (float)(long long)(now - r.startTime) / 1000.0f;
+                    if (timeSec < 0.0f) timeSec = 0.0f;
+                    float waveRadius = timeSec * 800.0f * dpiScaleX;
+                    float thickness = 200.0f * dpiScaleX;
+                    
+                    float scX = r.x * dpiScaleX; 
+                    float scY = r.y * dpiScaleY;
+                    
+                    int minX = std::max(0, (int)(scX - waveRadius - thickness));
+                    int maxX = std::min((int)mapW - 1, (int)(scX + waveRadius + thickness));
+                    int minY = std::max(0, (int)(scY - waveRadius - thickness));
+                    int maxY = std::min((int)mapH - 1, (int)(scY + waveRadius + thickness));
+                    
+                    float decay = std::max(0.0f, 1.0f - (timeSec / DURATION));
+                    if (decay <= 0.0f) continue;
+
+                    for (int y = minY; y <= maxY; ++y) {
+                        float dy = y - scY;
+                        for (int x = minX; x <= maxX; ++x) {
+                            float dx = x - scX;
+                            float dist = std::hypot(dx, dy);
+                            float diff = dist - waveRadius;
+                            if (std::abs(diff) > thickness) continue;
+                            
+                            float pulse = std::exp(-(diff * diff) / (thickness * thickness * 0.1f)); 
+                            float wave = -std::sin(diff * (0.05f / dpiScaleX)) * pulse * decay;
+                            
+                            if (dist > 0.1f) {
+                                float dX = (dx / dist) * wave * 15.0f * dpiScaleX;
+                                float dY = (dy / dist) * wave * 15.0f * dpiScaleY;
+                                
+                                uint32_t& pixel = mapData[y * mapW + x];
+                                int cG = (pixel >> 8) & 0xFF;
+                                int cR = (pixel >> 16) & 0xFF;
+                                
+                                cG = std::clamp(cG + (int)(dY * 2.56f), 0, 255);
+                                cR = std::clamp(cR + (int)(dX * 2.56f), 0, 255);
+                                
+                                pixel = 0xFF000000 | (cR << 16) | (cG << 8); 
+                            }
+                        }
+                    }
+                }
+            }
+
+            displacementMapBitmap->CopyFromMemory(nullptr, mapData.data(), mapW * 4);
+            displacementEffect->SetInput(0, intermediateBitmap);
+            displacementEffect->SetInput(1, displacementMapBitmap);
+            displacementEffect->SetValue(D2D1_DISPLACEMENTMAP_PROP_SCALE, 100.0f);
+            displacementEffect->SetValue(D2D1_DISPLACEMENTMAP_PROP_X_CHANNEL_SELECT, D2D1_CHANNEL_SELECTOR_R);
+            displacementEffect->SetValue(D2D1_DISPLACEMENTMAP_PROP_Y_CHANNEL_SELECT, D2D1_CHANNEL_SELECTOR_G);
+
+            rend->SetTarget(targetBitmap);
+            rend->BeginDraw();
+            rend->Clear(background);
+            rend->DrawImage(displacementEffect);
+            rend->EndDraw();
+            
+            if (!ripples.empty() || isJellyActive) {
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+        } else if (useRipple && intermediateBitmap && targetBitmap) {
+            rend->SetTarget(targetBitmap);
+            rend->BeginDraw();
+            rend->DrawBitmap(intermediateBitmap);
+            rend->EndDraw();
+            if (!ripples.empty() || isJellyActive) {
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+        }
+
         swapChain->Present(1, 0);
     }
     void resizeSwapChain(int w, int h) {
@@ -2529,6 +2705,7 @@ struct Editor {
         rebuildLineStarts();
         ensureCaretVisible();
         updateDirtyFlag();
+        spawnRipple = true;
     }
     void deleteForwardAtCursors() {
         commitPadding();
@@ -3552,6 +3729,29 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         g_editor.handleDpiChange(newDpiX, newDpiY);
         return 0;
     }
+    case WM_WINDOWPOSCHANGED: {
+        WINDOWPOS* wp = (WINDOWPOS*)lParam;
+        if (!(wp->flags & SWP_NOMOVE)) {
+            if (!g_editor.jelly.initialized) {
+                g_editor.jelly.lastWinX = wp->x;
+                g_editor.jelly.lastWinY = wp->y;
+                g_editor.jelly.initialized = true;
+            } else {
+                int dx = wp->x - g_editor.jelly.lastWinX;
+                int dy = wp->y - g_editor.jelly.lastWinY;
+                g_editor.jelly.lastWinX = wp->x;
+                g_editor.jelly.lastWinY = wp->y;
+                
+                g_editor.jelly.vx -= dx * 20.0f;
+                g_editor.jelly.vy -= dy * 20.0f;
+                
+                if (!g_editor.isDragging && !g_editor.isTrackingMouse) {
+                    InvalidateRect(hwnd, NULL, FALSE);
+                }
+            }
+        }
+        return DefWindowProc(hwnd, msg, wParam, lParam);
+    }
     case WM_SIZE:
         {
             RECT rc; GetClientRect(hwnd, &rc);
@@ -3806,6 +4006,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         } break;
     case WM_TIMER: if (wParam == 1) { KillTimer(hwnd, 1); InvalidateRect(hwnd, NULL, FALSE); } break;
     case WM_CHAR: {
+        g_editor.spawnRipple = true;
         if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
         wchar_t c = (wchar_t)wParam;
         if (c < 32 && c != 8 && c != 13) break;
@@ -3838,8 +4039,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     case WM_IME_STARTCOMPOSITION: return 0;
     case WM_IME_COMPOSITION: {
         HIMC h = ImmGetContext(hwnd); if (h) {
-            if (lParam & GCS_RESULTSTR) { DWORD s = ImmGetCompositionStringW(h, GCS_RESULTSTR, NULL, 0); if (s) { std::vector<wchar_t> b(s / 2); ImmGetCompositionStringW(h, GCS_RESULTSTR, b.data(), s); g_editor.insertAtCursors(WToUTF8(std::wstring(b.begin(), b.end()))); g_editor.imeComp.clear(); } }
-            if (lParam & GCS_COMPSTR) { DWORD s = ImmGetCompositionStringW(h, GCS_COMPSTR, NULL, 0); if (s) { std::vector<wchar_t> b(s / 2); ImmGetCompositionStringW(h, GCS_COMPSTR, b.data(), s); g_editor.imeComp = WToUTF8(std::wstring(b.begin(), b.end())); } else g_editor.imeComp.clear(); }
+            if (lParam & GCS_RESULTSTR) { DWORD s = ImmGetCompositionStringW(h, GCS_RESULTSTR, NULL, 0); if (s) { std::vector<wchar_t> b(s / 2); ImmGetCompositionStringW(h, GCS_RESULTSTR, b.data(), s); g_editor.insertAtCursors(WToUTF8(std::wstring(b.begin(), b.end()))); g_editor.imeComp.clear(); g_editor.spawnRipple = true; } }
+            if (lParam & GCS_COMPSTR) { DWORD s = ImmGetCompositionStringW(h, GCS_COMPSTR, NULL, 0); if (s) { std::vector<wchar_t> b(s / 2); ImmGetCompositionStringW(h, GCS_COMPSTR, b.data(), s); g_editor.imeComp = WToUTF8(std::wstring(b.begin(), b.end())); g_editor.spawnRipple = true; } else { g_editor.imeComp.clear(); g_editor.spawnRipple = true; } }
             ImmReleaseContext(hwnd, h); InvalidateRect(hwnd, NULL, FALSE);
         } return 0;
     } break;
@@ -3967,8 +4168,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         }
         if ((GetKeyState(VK_SHIFT) & 0x8000) && wParam == VK_INSERT) { g_editor.pasteFromClipboard(); return 0; }
         if (wParam == VK_ESCAPE) { g_editor.rollbackPadding(); if (!g_editor.cursors.empty()) { Cursor c = g_editor.cursors.back(); c.anchor = c.head; g_editor.cursors.clear(); g_editor.cursors.push_back(c); g_editor.isRectSelecting = false; InvalidateRect(hwnd, NULL, FALSE); } return 0; }
-        if (wParam == VK_DELETE) { g_editor.rollbackPadding(); g_editor.isRectSelecting = false; g_editor.deleteForwardAtCursors(); return 0; }
-        if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; InvalidateRect(hwnd, NULL, FALSE); }
+        if (wParam == VK_DELETE) { g_editor.rollbackPadding(); g_editor.isRectSelecting = false; g_editor.deleteForwardAtCursors(); g_editor.spawnRipple = true; InvalidateRect(hwnd, NULL, FALSE); return 0; }
+        if (g_editor.showHelpPopup) { g_editor.showHelpPopup = false; g_editor.spawnRipple = true; InvalidateRect(hwnd, NULL, FALSE); }
         if (wParam == VK_LEFT || wParam == VK_RIGHT || wParam == VK_UP || wParam == VK_DOWN ||
             wParam == VK_HOME || wParam == VK_END || wParam == VK_PRIOR || wParam == VK_NEXT) {
             bool shift = (GetKeyState(VK_SHIFT) & 0x8000);
@@ -4089,6 +4290,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
         if (msg.message == WM_KEYDOWN) {
             if (msg.wParam == VK_F1) {
                 g_editor.showHelpPopup = !g_editor.showHelpPopup;
+                g_editor.spawnRipple = true;
                 InvalidateRect(hwnd, NULL, FALSE);
                 continue;
             }
@@ -4116,6 +4318,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, 
             if (msg.message == WM_KEYDOWN && msg.wParam == VK_F1) {}
             else {
                 g_editor.showHelpPopup = false;
+                g_editor.spawnRipple = true;
                 InvalidateRect(hwnd, NULL, FALSE);
             }
         }
