@@ -2144,7 +2144,8 @@ struct Editor {
                                 }
                                 size_t step = matchLen;
                                 if (step == 0) {
-                                    if (anchorLen > 0 && !(flags & std::regex_constants::match_not_bol)) step = 0;
+                                    bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
+                                    if (isBolCaret) step = 0;
                                     else step = 1;
                                 }
                                 if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
