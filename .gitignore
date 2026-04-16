@@ -369,3 +369,5 @@ FodyWeavers.xsd
 *.lib
 libced.a
 libced_iOS.a
+/Source_utf8.cpp
+/update_syntax.py
