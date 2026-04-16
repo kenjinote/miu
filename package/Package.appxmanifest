@@ -11,7 +11,7 @@
   <Identity
     Name="18872KENJI.8904025CBD33"
     Publisher="CN=035A9AAC-915B-4CE1-AE39-1A101BED42F5"
-    Version="1.0.20.0" />
+    Version="1.0.21.0" />
 
   <Properties>
     <DisplayName>miu</DisplayName>
