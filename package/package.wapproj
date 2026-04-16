@@ -100,6 +100,7 @@
     </AppxManifest>
   </ItemGroup>
   <ItemGroup>
+    <PRIResource Include="en-US\Resources.resw" />
     <Content Include="Images\LargeTile.scale-100.png" />
     <Content Include="Images\LargeTile.scale-125.png" />
     <Content Include="Images\LargeTile.scale-150.png" />
@@ -151,6 +152,9 @@
     <Content Include="Images\Wide310x150Logo.scale-150.png" />
     <Content Include="Images\Wide310x150Logo.scale-200.png" />
     <Content Include="Images\Wide310x150Logo.scale-400.png" />
+    <PRIResource Include="ja-JP\Resources.resw" />
+    <PRIResource Include="ko\Resources.resw" />
+    <PRIResource Include="zh-Hans\Resources.resw" />
   </ItemGroup>
   <Import Project="$(WapProjPath)\Microsoft.DesktopBridge.targets" />
   <ItemGroup>
