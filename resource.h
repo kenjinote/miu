@@ -25,6 +25,7 @@
 #define IDS_FILE_CHANGED_EXT            121
 #define IDS_FILE_CHANGED_WARN           122
 #define IDS_FILE_CHANGED_TITLE          123
+#define IDS_RECENT_FILES                124
 #define IDC_FIND_EDIT                   1001
 #define IDC_FIND_NEXT                   1002
 #define IDC_FIND_CANCEL                 1003
@@ -42,7 +43,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        121
+#define _APS_NEXT_RESOURCE_VALUE        125
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1013
 #define _APS_NEXT_SYMED_VALUE           101
