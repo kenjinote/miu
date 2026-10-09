@@ -183,11 +183,19 @@ def upload_release_asset(token, release_id, file_path):
         print(f"Uploaded {file_name} -> {asset_info.get('browser_download_url')}")
         return asset_info
 
+try:
+    from .store_publisher import release_to_store
+except ImportError:
+    from store_publisher import release_to_store
+
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Automated GitHub Release script for miu")
+    parser = argparse.ArgumentParser(description="Automated GitHub and Microsoft Store Release script for miu")
     parser.add_argument("--skip-build", action="store_true", help="Skip compiling and use existing binaries")
     parser.add_argument("--notes", type=str, help="Release notes markdown string or file path")
+    parser.add_argument("--skip-store", action="store_true", help="Skip publishing to Microsoft Store")
+    parser.add_argument("--store-only", action="store_true", help="Only publish to Microsoft Store (skip GitHub release)")
+    parser.add_argument("--no-store-commit", action="store_true", help="Prepare Microsoft Store draft submission but do not commit")
     args = parser.parse_args()
 
     root_dir = get_repo_root()
@@ -196,19 +204,22 @@ def main():
     release_name = f"v{version}"
     print(f"=== Miu Automated Release: {release_name} ===")
 
-    if not args.skip_build:
-        miu_exe = build_app(root_dir)
-        setup_exe = build_installer(root_dir)
-    else:
-        miu_exe = os.path.join(root_dir, "x64", "Release", "miu.exe")
-        setup_exe = os.path.join(root_dir, "installer", "miu", "Media", "SINGLE_EXE_IMAGE", "Package", "Setup.exe")
-        if not os.path.exists(miu_exe) or not os.path.exists(setup_exe):
-            raise FileNotFoundError("Binaries not found. Please run without --skip-build.")
+    msbuild = find_msbuild()
 
-    notes = args.notes
-    if not notes:
-        # Default release notes template
-        notes = f"""# miu {release_name} リリースノート
+    if not args.store_only:
+        if not args.skip_build:
+            miu_exe = build_app(root_dir)
+            setup_exe = build_installer(root_dir)
+        else:
+            miu_exe = os.path.join(root_dir, "x64", "Release", "miu.exe")
+            setup_exe = os.path.join(root_dir, "installer", "miu", "Media", "SINGLE_EXE_IMAGE", "Package", "Setup.exe")
+            if not os.path.exists(miu_exe) or not os.path.exists(setup_exe):
+                raise FileNotFoundError("Binaries not found. Please run without --skip-build.")
+
+        notes = args.notes
+        if not notes:
+            # Default release notes template
+            notes = f"""# miu {release_name} リリースノート
 
 ### ✨ 新機能・改善点
 
@@ -222,22 +233,38 @@ def main():
 3. **F1 ヘルプ画面のライトモード表示を改善**
    - ライトモード時、白背景のエディタ上でも見やすい淡いグレー背景と枠線を備えた半透明スタイルに変更し、黒テキストの高い可読性とモダンな外観を両立させました。
 """
-    elif os.path.exists(notes):
-        with open(notes, "r", encoding="utf-8") as f:
-            notes = f.read()
+        elif os.path.exists(notes):
+            with open(notes, "r", encoding="utf-8") as f:
+                notes = f.read()
 
-    token = get_github_token()
-    create_and_push_tag(tag_name, root_dir)
-    release = create_github_release(token, tag_name, release_name, notes)
-    release_id = release["id"]
+        token = get_github_token()
+        create_and_push_tag(tag_name, root_dir)
+        release = create_github_release(token, tag_name, release_name, notes)
+        release_id = release["id"]
 
-    upload_release_asset(token, release_id, miu_exe)
-    upload_release_asset(token, release_id, setup_exe)
+        upload_release_asset(token, release_id, miu_exe)
+        upload_release_asset(token, release_id, setup_exe)
 
-    print("\n" + "="*50)
-    print(f"Successfully published release {release_name}!")
-    print(f"HTML URL: {release.get('html_url')}")
-    print("="*50)
+        print("\n" + "="*50)
+        print(f"Successfully published GitHub release {release_name}!")
+        print(f"HTML URL: {release.get('html_url')}")
+        print("="*50)
+
+    if not args.skip_store:
+        try:
+            store_success = release_to_store(
+                root_dir=root_dir,
+                version=version,
+                msbuild_path=msbuild,
+                skip_build=args.skip_build,
+                do_commit=not args.no_store_commit
+            )
+            if store_success:
+                print(f"\nSuccessfully processed Microsoft Store release for {release_name}!")
+        except Exception as e:
+            print(f"[Error] Failed to publish to Microsoft Store: {e}")
+            if args.store_only:
+                raise
 
 if __name__ == "__main__":
     main()

@@ -371,3 +371,9 @@ libced.a
 libced_iOS.a
 /Source_utf8.cpp
 /update_syntax.py
+
+# Microsoft Store API credentials
+scripts/store_credentials.json
+scripts/draft_submission.json
+scripts/test_upload.py
+
