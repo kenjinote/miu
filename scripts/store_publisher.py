@@ -7,6 +7,79 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.28": {
+        "ja-jp": """miu v1.0.28 リリースノート
+✨ 新機能・改善点
+
+テキスト折り返しモード時のカーソル移動を大幅に改善
+
+・右矢印（→）キーの挙動改善:
+  折り返し行の行末へ進めた際、表示上の行末にカーソルが確実に表示され、続けて押下した際は次行の2文字目先頭へ直観的に移動するようになりました。
+・HOME / END キーのスマートジャンプ:
+  1回目のキー押下で表示行の行頭・行末へジャンプし、すでに表示行頭・行末にある状態での再押下で論理行頭・行末へジャンプする2段階移動に対応しました。
+・上下（↑ / ↓）キー移動の正確化:
+  表示行末にカーソルがある状態からの上下移動時、文字位置がズレることなく自然に直上・直下の行へ移動するよう調整しました。
+・スクロール追従の強化:
+  長大な折り返し行で Ctrl+END 等により行末へジャンプした際も、カーソルが可視領域に確実に収まるよう自動スクロールを強化しました。
+
+F1 ヘルプ画面のダークモード表示を最適化
+
+・ダークモード時の背景色をより目に優しい暗色半透明スタイルに調整し、テキストの視認性を向上させました。""",
+
+        "en-us": """miu v1.0.28 Release Notes
+✨ What's New & Improvements
+
+Refined Cursor Navigation in Word Wrap Mode
+
+- Enhanced Right Arrow (->) Navigation:
+  When advancing across wrapped lines, the cursor is now clearly displayed at the visual line end before stepping forward to the next line.
+- Smart Home / End Key Jumps:
+  Pressing Home/End now first jumps to the visual line start/end. Pressing it again jumps to the logical line beginning/end.
+- Accurate Up / Down Arrow Navigation:
+  Moving up or down from visual line ends now transitions accurately to the corresponding position on adjacent visual lines.
+- Improved Caret Scroll Tracking:
+  Jumping to the line end (e.g. via Ctrl+End) on long wrapped lines reliably scrolls the caret into view.
+
+F1 Help Overlay Dark Mode Polish
+
+- Restored and optimized the elegant dark semi-transparent styling for the F1 help overlay in dark mode, ensuring superior readability.""",
+
+        "zh-hans": """miu v1.0.28 更新日志
+✨ 新功能与改进
+
+自动换行模式下的光标导航体验全面优化
+
+- 优化右方向键（->）光标移动：
+  在换行边界处，光标现在会清晰显示在当前视觉行末，再次右移即可平滑过渡至下一行。
+- 智能 Home / End 跳转：
+  首次按下 Home/End 键跳转至当前屏幕视觉行的行首/行末，再次按下跳转至逻辑行的首尾。
+- 修复上下方向键（↑ / ↓）移动：
+  从视觉行末向上或向下移动时，光标能精准定位至相邻视觉行。
+- 增强光标可视滚动追踪：
+  在超长换行文本中按 Ctrl+End 跳转至行尾时，视图会自动准确滚动并保持光标可见。
+
+F1 帮助界面深色模式显示优化
+
+- 优化了深色模式下的半透明暗色背景与边框效果，文字对比度更高、阅读体验更舒适。""",
+
+        "ko": """miu v1.0.28 릴리스 노트
+✨ 새로운 기능 및 개선 사항
+
+자동 줄 바꿈 모드의 커서 이동 대폭 개선
+
+- 오른쪽 화살표(->) 이동 개선:
+  줄 바꿈 경계에서 시각적 행 끝에 커서가 정확히 표시된 후 다음 줄로 자연스럽게 이동합니다.
+- 스마트 Home / End 키 이동:
+  첫 번째 누름 시 화면 표시 행의 시작/끝으로 이동하고, 다시 누르면 논리적 줄의 시작/끝으로 이동하는 2단계 이동을 지원합니다.
+- 위/아래 화살표(↑ / ↓) 이동 정밀화:
+  시각적 행 끝에서 위/아래 키를 누를 때 인접 행으로 자연스럽고 정확하게 이동하도록 개선했습니다.
+- 스크롤 추적 강화:
+  긴 줄 바꿈 텍스트에서 Ctrl+End 등으로 줄 끝으로 이동할 때 커서가 항상 화면에 보이도록 자동 스크롤을 개선했습니다.
+
+F1 도움말 다크 모드 표시 개선
+
+- 다크 모드에서 배경을 은은한 어두운 반투명 스타일로 최적화하여 가독性を 높였습니다."""
+    },
     "1.0.27": {
         "ja-jp": """miu v1.0.27 リリースノート
 ✨ 新機能・改善点
