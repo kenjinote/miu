@@ -28,6 +28,10 @@ LANG_CONFIGS = [
     ("pl-pl", "sample_pl.md", "pl"),
     ("nl-nl", "sample_nl.md", "nl"),
     ("tr-tr", "sample_tr.md", "tr"),
+    # Tier 3
+    ("vi-vn", "sample_vi.md", "vi"),
+    ("uk-ua", "sample_uk.md", "uk"),
+    ("id-id", "sample_id.md", "id"),
 ]
 
 def capture_window_to_file(hwnd, out_path, width=1280, height=720):

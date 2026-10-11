@@ -7,6 +7,55 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.30": {
+        "ja-jp": """miu v1.0.30 リリースノート
+✨ 新機能・改善点
+
+ベトナム語・ウクライナ語・インドネシア語の完全対応
+
+・多言語対応の拡大:
+  急速に成長するIT開発者大国・新興市場であるベトナム語（vi-vn）、ウクライナ語（uk-ua）、インドネシア語（id-id）のUI翻訳（メニュー・F1ヘルプ・ダイアログ等）をアプリ本体およびストアに完全追加しました。
+・美しいDirect2D描画:
+  声調記号付きラテン文字（ベトナム語）やキリル文字（ウクライナ語）もDirect2D/DirectWriteにより美しく鮮明に描画されます。
+・管理者権限が必要なファイルの保存（UAC昇格保存）:
+  Cドライブ直下やシステム保護領域、読み取り専用ファイルの編集・上書き保存に対応。""",
+
+        "en-us": """miu v1.0.30 Release Notes
+✨ What's New & Improvements
+
+Full Support for Vietnamese, Ukrainian & Indonesian
+
+- Expanded Multilingual Support:
+  Added complete native UI localization (menus, F1 help, shortcuts, dialogs) and Store listings for Vietnamese (vi-vn), Ukrainian (uk-ua), and Indonesian (id-id).
+- Crisp Direct2D Typography:
+  Tone-marked diacriticals (Vietnamese) and Cyrillic glyphs (Ukrainian) render with pristine clarity via Direct2D/DirectWrite hardware acceleration.
+- Save Protected Files (UAC Elevation):
+  Save files in protected folders (such as C:\\ root) or read-only files safely with administrator privileges.""",
+
+        "zh-hans": """miu v1.0.30 更新日志
+✨ 新功能与改进
+
+全面支持越南语、乌克兰语与印度尼西亚语
+
+- 多语言支持拓展：
+  新增对越南语（vi-vn）、乌克兰语（uk-ua）与印度尼西亚语（id-id）的完整本地化支持（涵盖菜单、F1 帮助指南、对话框与商店页面）。
+- 高清 Direct2D 文字渲染：
+  通过 Direct2D/DirectWrite 硬件加速，清晰锐利地呈现越南语声调符号与乌克兰语西里尔字母。
+- 管理员权限保存（UAC 提权保存）：
+  支持以管理员权限保存位于 C 盘根目录、系统保护目录或具有只读属性的文件。""",
+
+        "ko": """miu v1.0.30 릴리스 노트
+✨ 새로운 기능 및 개선 사항
+
+베트남어, 우크라이나어, 인도네시아어 완전 지원
+
+- 다국어 지원 대폭 확대:
+  베트남어(vi-vn), 우크라이나어(uk-ua), 인도네시아어(id-id)에 대한 앱 UI(메뉴, F1 도움말, 대화상자) 및 스토어 완벽 지원이 추가되었습니다.
+- 선명한 Direct2D 텍스트 렌더링:
+  베트남어 성조 기호 및 우크라이나어 키릴 문자가 Direct2D/DirectWrite 가속을 통해 선명하고 부드럽게 렌더링됩니다.
+- 관리자 권한 파일 저장(UAC 승격):
+  C 드라이브 루트, 시스템 보호 폴더 및 읽기 전용 속성의 파일 덮어쓰기 저장을 지원합니다."""
+    },
     "1.0.29": {
         "ja-jp": """miu v1.0.29 リリースノート
 ✨ 新機能・改善点

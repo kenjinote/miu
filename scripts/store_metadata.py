@@ -532,5 +532,160 @@ Korumalı dosyaları yönetici izniyle kaydetme (UAC yükseltme)
             "F1 Yardım ekranı ve kısayol tuşları listesi"
         ],
         "prefix": "tr"
+    },
+    "vi-vn": {
+        "title": "miu",
+        "description": """miu là trình soạn thảo văn bản siêu nhanh, nhẹ và hiện đại được thiết kế riêng cho Windows.
+Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng lồ cho đến viết mã nguồn hàng ngày, miu mang lại hiệu suất tối đa cùng tốc độ mở tệp trong chớp mắt.
+
+【Tính năng nổi bật】
+• Hiệu suất vượt trội: Dựa trên kiến trúc Piece Table hiện đại và kỹ thuật ánh xạ bộ nhớ, mở và chỉnh sửa mượt mà các tệp văn bản lớn hàng gigabyte mà không bị giật lag.
+• Lưu với quyền quản trị viên (UAC): Chỉnh sửa và lưu an toàn các tệp nằm trong thư mục gốc C:\\ hoặc thư mục hệ thống mà không sợ mất nội dung khi hủy.
+• Giao diện Windows 11 hiện đại: Hỗ trợ hoàn hảo chế độ Sáng (Light) và Tối (Dark), tăng tốc phần cứng Direct2D/DirectWrite cho chữ hiển thị sắc nét.
+• Công cụ chỉnh sửa mạnh mẽ: Hỗ trợ nhiều con trỏ (multi-cursor), chọn khối chữ nhật (Alt+kéo), tìm kiếm và thay thế bằng biểu thức chính quy (Regex).
+• Tô màu cú pháp thông minh: Tích hợp sẵn quy tắc tô màu cho C/C++, Python, Web (HTML, CSS, JS), Markdown và nhiều ngôn ngữ khác.
+• Nhận diện bảng mã tự động: Tự động phát hiện chính xác UTF-8, ANSI và các bảng mã ký tự quốc tế, ngăn chặn hoàn toàn lỗi vỡ phông chữ.
+• Bảo mật và riêng tư tuyệt đối: Hoạt động hoàn toàn ngoại tuyến (offline), không thu thập dữ liệu hay chạy tiến trình ngầm.""",
+        "features": [
+            "Đa con trỏ và chọn khối chữ nhật để chỉnh sửa đồng thời nhiều dòng.",
+            "Kiến trúc Piece Table mượt mà khi xử lý tệp văn bản lớn nhiều gigabyte.",
+            "Lưu với quyền quản trị UAC an toàn cho các tệp hệ thống được bảo vệ.",
+            "Chế độ Sáng và Tối hiển thị sắc nét nhờ tăng tốc Direct2D.",
+            "Tự động nhận diện chính xác các bảng mã ký tự UTF-8 và ANSI.",
+            "Tìm kiếm và thay thế mạnh mẽ với hỗ trợ đầy đủ biểu thức chính quy (Regex)."
+        ],
+        "keywords": [
+            "trình soạn thảo văn bản",
+            "notepad",
+            "sổ tay",
+            "soạn thảo mã",
+            "nhẹ",
+            "nhanh",
+            "văn bản"
+        ],
+        "releaseNotes": """Ghi chú phát hành miu v1.0.30
+✨ Tính năng mới & Cải tiến
+
+Hỗ trợ ngôn ngữ Tiếng Việt (Vietnamese) & Lưu với quyền quản trị (UAC)
+
+• Bản địa hóa Tiếng Việt đầy đủ:
+  Giao diện, menu, hộp thoại phím tắt F1 và các thông báo đã được dịch hoàn chỉnh sang Tiếng Việt.
+• Lưu tệp được bảo vệ bằng quyền quản trị:
+  Cho phép lưu đè lên các tệp trong thư mục gốc C:\\ hoặc tệp chỉ đọc thông qua xác thực UAC an toàn.
+• Bảo toàn 100% nội dung chỉnh sửa:
+  Nếu hủy xác thực quyền quản trị, nội dung văn bản và lịch sử Undo trong bộ nhớ vẫn được bảo toàn nguyên vẹn.
+• Cải thiện đường dẫn 'Lưu dưới dạng':
+  Tối ưu hóa việc chọn thư mục ban đầu khi lưu vào thư mục gốc C:\\.""",
+        "image_captions": [
+            "Chế độ Sáng với định dạng và căn lề sắc nét",
+            "Chế độ Tối với tô màu cú pháp mã nguồn",
+            "Màn hình trợ giúp F1 và danh sách phím tắt"
+        ],
+        "prefix": "vi"
+    },
+
+    "uk-ua": {
+        "title": "miu",
+        "description": """miu — це надзвичайно швидкий, компактний і сучасний текстовий редактор для Windows.
+Він запускається миттєво й ідеально підходить як для швидких нотаток, так і для аналізу гігабайтних лог-файлів або комфортного написання коду.
+
+【Головні переваги】
+• Неперевершена швидкодія: Завдяки архітектурі Piece Table та відображенню файлів у пам'ять, miu легко відкриває та редагує файли розміром у кілька гігабайтів без підвисань.
+• Збереження з правами адміністратора (UAC): Надійне збереження захищених файлів (наприклад, у корені диска C:\\) через підвищення привілеїв без втрати введеного тексту при скасуванні.
+• Сучасний дизайн Windows 11: Повна підтримка світлої та темної тем, апаратне прискорення Direct2D/DirectWrite для кришталево чіткого відображення шрифтів.
+• Розширене редагування: Мультикурсор, прямокутне блокове виділення (Alt+перетягування), пошук і заміна з підтримкою регулярних виразів (Regex).
+• Підсвічування синтаксису: Вбудоване підсвічування для C/C++, Python, Web (HTML, CSS, JS), Markdown та інших форматів.
+• Автоматичне визначення кодувань: Безпомилкове розпізнавання UTF-8, ANSI, CP1251 та регіональних кодувань.
+• Повна конфіденційність: Жодної телеметрії чи збору даних — редактор працює на 100% локально.""",
+        "features": [
+            "Мультикурсор та прямокутне виділення для одночасного редагування.",
+            "Архітектура Piece Table для миттєвої роботи з гігабайтними файлами.",
+            "Підвищення привілеїв UAC для збереження захищених системних файлів.",
+            "Світла та темна теми з чітким рендерингом тексту через Direct2D.",
+            "Надійне автоматичне розпізнавання кодувань UTF-8, CP1251, ANSI.",
+            "Потужний пошук та заміна з підтримкою регулярних виразів (Regex)."
+        ],
+        "keywords": [
+            "текстовий редактор",
+            "блокнот",
+            "notepad",
+            "швидкий редактор",
+            "легкий редактор",
+            "код",
+            "текст"
+        ],
+        "releaseNotes": """Примітки до випуску miu v1.0.30
+✨ Нові функції та покращення
+
+Повна підтримка української мови та збереження з правами адміністратора (UAC)
+
+• Повна українська локалізація:
+  Інтерфейс, меню, довідка F1 та діалогові вікна повністю перекладені українською мовою.
+• Збереження захищених і системних файлів:
+  Файли в корені диска C:\\, захищених папках або файли зі статусом «лише для читання» тепер можна зберігати через UAC.
+• Безпечний діалог підтвердження:
+  При відмові в доступі з'являється вікно зі щитом безпеки для надання прав адміністратора.
+• Захист незбережених даних:
+  При скасуванні вікна UAC весь набраний текст у пам'яті та історія Undo зберігаються на 100 %.
+• Коректна обробка шляху в «Зберегти як»:
+  Виправлено вибір початкової папки при збереженні в кореневих каталогах C:\\.""",
+        "image_captions": [
+            "Світла тема з чистим відображенням тексту",
+            "Темна тема з підсвічуванням синтаксису коду",
+            "Вікно довідки F1 зі списком гарячих клавіш"
+        ],
+        "prefix": "uk"
+    },
+
+    "id-id": {
+        "title": "miu",
+        "description": """miu adalah editor teks ultra-cepat, ringan, dan modern yang dirancang khusus untuk Windows.
+Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hingga menulis kode sehari-hari, miu menawarkan kinerja maksimal dengan waktu pembukaan sekejap mata.
+
+【Keunggulan Utama】
+• Performa Luar Biasa: Berkat arsitektur Piece Table yang canggih, buka dan edit berkas teks berukuran beberapa gigabita tanpa jeda atau hambatan.
+• Simpan dengan Hak Administrator (UAC): Edit dan simpan berkas sistem yang dilindungi (seperti di root C:\\) dengan aman melalui elevasi hak akses tanpa risiko kehilangan data jika dibatalkan.
+• Tampilan Modern Windows 11: Dukungan penuh untuk Mode Terang dan Gelap dengan akselerasi perangkat keras Direct2D/DirectWrite untuk teks yang sangat tajam dan jernih.
+• Fitur Pengeditan Canggih: Multi-kursor, seleksi blok kolom (Alt+tarik), pencarian dan penggantian dengan ekspresi reguler (Regex).
+• Pewarnaan Sintaksis: Pewarnaan kode bawaan untuk C/C++, Python, Web (HTML, CSS, JS), Markdown, dan format lainnya.
+• Deteksi Enkod Cerdas: Mengenali secara otomatis dan akurat pengkodean UTF-8, ANSI, dan halaman kode karakter regional.
+• Privasi Mutlak: 100% offline, tanpa telemetri, dan tanpa proses latar belakang yang tidak perlu.""",
+        "features": [
+            "Multi-kursor dan seleksi blok kolom untuk pengeditan multi-baris sekaligus.",
+            "Arsitektur Piece Table yang sangat lancar untuk berkas raksasa berukuran gigabita.",
+            "Elevasi hak akses UAC yang aman untuk menyimpan berkas sistem yang dilindungi.",
+            "Mode Terang dan Gelap yang tersinkronisasi rapi dengan tema Windows 11.",
+            "Deteksi otomatis akurat untuk enkod berkas UTF-8 dan ANSI.",
+            "Fitur cari dan ganti yang andal dengan dukungan penuh ekspresi reguler (Regex)."
+        ],
+        "keywords": [
+            "editor teks",
+            "catatan",
+            "notepad",
+            "editor cepat",
+            "editor ringan",
+            "kode",
+            "teks"
+        ],
+        "releaseNotes": """Catatan Rilis miu v1.0.30
+✨ Fitur Baru & Peningkatan
+
+Dukungan Bahasa Indonesia & Penyimpanan Berkas Terlindungi (Elevasi UAC)
+
+• Lokalisasi Penuh Bahasa Indonesia:
+  Antarmuka, menu, panduan pintasan F1, dan kotak dialog kini tersedia lengkap dalam Bahasa Indonesia.
+• Simpan Berkas Terlindungi & Sistem:
+  Berkas di direktori root C:\\, folder terlindungi, atau berkas hanya-baca kini dapat disimpan dengan hak administrator.
+• Jaminan Perlindungan Konten Edit:
+  Jika kotak konfirmasi atau jendela UAC dibatalkan, semua teks dalam memori dan riwayat Undo tetap aman 100%.
+• Peningkatan Jalur 'Simpan Sebagai':
+  Peningkatan penanganan folder awal saat menyimpan ke direktori root seperti C:\\.""",
+        "image_captions": [
+            "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
+            "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
+            "Layar Bantuan F1 dengan daftar pintasan keyboard lengkap"
+        ],
+        "prefix": "id"
     }
 }
+METADATA_LANGS = METADATA_10_LANGS
