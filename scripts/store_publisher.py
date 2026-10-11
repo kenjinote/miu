@@ -7,6 +7,71 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.29": {
+        "ja-jp": """miu v1.0.29 リリースノート
+✨ 新機能・改善点
+
+管理者権限が必要なファイルの保存に対応（UAC昇格保存）
+
+・保護されたファイルの上書き保存に対応:
+  Cドライブ直下やシステム保護領域、アクセス権が制限されたファイル、読み取り専用ファイルを編集した際、管理者権限での上書き保存が可能になりました。
+・安全な確認ダイアログとUAC連携:
+  アクセス拒否を検知するとセキュリティシールド付きの確認ダイアログを表示し、ユーザーの許可を経てバックグラウンドで安全にファイルを更新します。
+・編集中の内容を保護する安全設計:
+  保存確認ダイアログで「いいえ」を選んだ場合やWindowsのUAC画面をキャンセルした場合でも、入力・編集中のテキストやUndo履歴は一切失われず、そのまま編集を継続できます。
+・「名前を付けて保存」のパス処理改善:
+  Cドライブ直下（C:\\）などのルートディレクトリを対象とした際の初期フォルダ指定を適正化しました。
+・多言語対応:
+  新ダイアログを日本語を含む全14言語に完全ローカライズしました。""",
+
+        "en-us": """miu v1.0.29 Release Notes
+✨ What's New & Improvements
+
+Save Protected Files with Administrator Privileges (UAC Elevation)
+
+- Save Protected & System Files:
+  Files located in protected locations (such as C:\\ drive root, system folders, or read-only files) can now be saved safely via administrator elevation.
+- Seamless UAC Confirmation:
+  When access denial is detected, a security shield dialog prompts for confirmation, launching an elevated helper to update the file upon user approval.
+- Edit Preservation Guarantee:
+  If the elevation dialog is declined or the UAC prompt is cancelled, in-memory buffer edits, piece table state, and undo history are 100% preserved without any data loss.
+- Improved 'Save As' Path Handling:
+  Fixed initial directory handling when saving into root drive paths like C:\\.
+- Full Multilingual Support:
+  Localized prompt messages across all 14 supported languages.""",
+
+        "zh-hans": """miu v1.0.29 更新日志
+✨ 新功能与改进
+
+支持以管理员权限保存受保护文件（UAC 提权保存）
+
+- 保存受保护与系统文件：
+  现在支持以管理员权限保存位于 C 盘根目录、系统保护目录或具有只读属性的文件。
+- 无缝 UAC 提权确认：
+  检测到访问被拒绝时，将弹出带有安全盾牌图标的提示对话框，在用户许可后通过后台提权助手安全完成文件保存。
+- 绝不丢失编辑内容的保护机制：
+  如果在提示框中选择“否”或取消了 Windows UAC 提权弹窗，内存中的文本编辑内容与撤销历史将被 100% 完整保留，绝不丢失任何修改。
+- 优化“另存为”根目录路径：
+  修复了在 C:\\ 等根目录下另存为时初始文件夹路径的设置问题。
+- 多语言全面支持：
+  新增提示已完整本地化支持包括中文在内的全部 14 种语言。""",
+
+        "ko": """miu v1.0.29 릴리스 노트
+✨ 새로운 기능 및 개선 사항
+
+관리자 권한이 필요한 파일 저장 지원 (UAC 승격 저장)
+
+- 보호된 파일 및 시스템 파일 저장 지원:
+  C 드라이브 루트, 시스템 보호 폴더 및 읽기 전용 속성의 파일을 편집한 경우 관리자 권한으로 안전하게 덮어쓸 수 있습니다.
+- 원활한 UAC 확인 대화상자:
+  액세스 거부 감지 시 보안 쉴드 아이콘이 포함된 확인 창이 표시되며, 사용자 동의 시 백그라운드 관리자 프로세스를 통해 파일을 업데이트합니다.
+- 편집 내용 보호 설계:
+  저장 확인 창에서 '아니요'를 선택하거나 UAC 승격을 취소하더라도 메모리 상의 편집 내용과 실행 취소(Undo) 기록이 완벽하게 보존됩니다.
+- '다른 이름으로 저장' 경로 처리 개선:
+  C:\\ 등 루트 디렉터리에 저장할 때 초기 폴더 경로가 올바르게 지정되도록 수정했습니다.
+- 다국어 지원:
+  새로운 확인 메시지를 한국어를 포함한 14개 언어로 완전 현지화했습니다."""
+    },
     "1.0.28": {
         "ja-jp": """miu v1.0.28 リリースノート
 ✨ 新機能・改善点

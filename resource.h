@@ -30,6 +30,7 @@
 #define IDS_BTN_YES                     126
 #define IDS_BTN_NO                      127
 #define IDS_BTN_CANCEL                  128
+#define IDS_ELEVATED_SAVE_PROMPT        129
 #define IDC_FIND_EDIT                   1001
 #define IDC_FIND_NEXT                   1002
 #define IDC_FIND_CANCEL                 1003
@@ -47,7 +48,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        129
+#define _APS_NEXT_RESOURCE_VALUE        130
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1013
 #define _APS_NEXT_SYMED_VALUE           101
