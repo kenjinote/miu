@@ -302,12 +302,20 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
     sub_id = submission_data["id"]
     file_upload_url = submission_data["fileUploadUrl"]
     bundle_filename = os.path.basename(bundle_path)
+    root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    # 1. Create zip package
+    # 1. Create zip package with bundle and all 30 screenshots
     zip_path = os.path.splitext(bundle_path)[0] + ".zip"
-    print(f"Packaging bundle into zip: {zip_path}...")
+    print(f"Packaging bundle and screenshots into zip: {zip_path}...")
+    screenshots_dir = os.path.join(root_dir, "package", "screenshots")
+
     with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zf:
         zf.write(bundle_path, arcname=bundle_filename)
+        if os.path.exists(screenshots_dir):
+            for img_file in sorted(os.listdir(screenshots_dir)):
+                if img_file.endswith(".png"):
+                    full_p = os.path.join(screenshots_dir, img_file)
+                    zf.write(full_p, arcname=img_file)
 
     # 2. Upload zip to SAS URL
     print(f"Uploading zip ({os.path.getsize(zip_path)} bytes) to Store Blob Storage...")
@@ -340,12 +348,51 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
         })
         submission_data["applicationPackages"] = new_packages
 
-    # 4. Multi-language release notes
+    # 4. Multi-language listings and screenshots
+    listings = submission_data.setdefault("listings", {})
+
+    try:
+        from .store_metadata import METADATA_10_LANGS
+    except ImportError:
+        from store_metadata import METADATA_10_LANGS
+
+    for lang, meta in METADATA_10_LANGS.items():
+        lang_entry = listings.setdefault(lang, {})
+        base = lang_entry.setdefault("baseListing", {})
+        base["title"] = meta["title"]
+        base["description"] = meta["description"]
+        base["features"] = meta["features"]
+        base["keywords"] = meta["keywords"]
+        base["releaseNotes"] = meta["releaseNotes"]
+        base["copyrightAndTrademarkInfo"] = "Copyright (C) 2026 kenjinote"
+        base["supportContact"] = "https://github.com/kenjinote/miu"
+        base["websiteUrl"] = "https://github.com/kenjinote/miu"
+        base["privacyPolicy"] = "https://github.com/kenjinote/miu"
+        base["licenseTerms"] = ""
+
+        prefix = meta["prefix"]
+        captions = meta.get("image_captions", ["", "", ""])
+        img_list = []
+        for i in (1, 2, 3):
+            fname = f"{prefix}_{i}.png"
+            img_list.append({
+                "fileName": fname,
+                "fileStatus": "PendingUpload",
+                "imageType": "Screenshot",
+                "description": captions[i-1]
+            })
+        base["images"] = img_list
+        print(f"Configured listing and screenshots for [{lang}]")
+
+    if "ko" in listings and "baseListing" in listings["ko"]:
+        if not listings["ko"]["baseListing"].get("title"):
+            listings["ko"]["baseListing"]["title"] = "miu"
+
+    # Multi-language release notes for existing default languages
     notes_dict = release_notes
     if not notes_dict:
         notes_dict = DEFAULT_RELEASE_NOTES.get(version)
     if notes_dict:
-        listings = submission_data.get("listings", {})
         for lang, notes in notes_dict.items():
             if lang in listings and "baseListing" in listings[lang]:
                 listings[lang]["baseListing"]["releaseNotes"] = notes
