@@ -7,6 +7,55 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.31": {
+        "ja-jp": """miu v1.0.31 リリースノート
+✨ 新機能・改善点
+
+新たに11言語を追加し、世界28言語に完全対応
+
+・世界28言語への対応拡大:
+  チェコ語、スウェーデン語、タイ語、ヒンディー語、ルーマニア語、ハンガリー語、ギリシャ語、デンマーク語、フィンランド語、ノルウェー語、マレー語の計11言語をアプリ本体（メニュー・F1ヘルプ・ダイアログ）およびストアに完全追加しました。
+・美しいDirect2D多言語レンダリング:
+  タイ文字、デーヴァナーガリー文字（ヒンディー語）、ギリシャ文字、北欧・中東欧のダイアクリティカルマークもDirect2D/DirectWriteにより鮮明に描画されます。
+・管理者権限が必要なファイルの保存（UAC昇格保存）:
+  Cドライブ直下やシステム保護領域、読み取り専用ファイルの上書き保存に対応。""",
+
+        "en-us": """miu v1.0.31 Release Notes
+✨ What's New & Improvements
+
+Expanded Global Support to 28 Languages (11 New Languages Added)
+
+- 11 New Languages Added:
+  Added full native UI localization (menus, F1 help, shortcuts, dialogs) and Store listings for Czech, Swedish, Thai, Hindi, Romanian, Hungarian, Greek, Danish, Finnish, Norwegian, and Malay.
+- Crisp Direct2D Multilingual Typography:
+  Thai script, Devanagari (Hindi), Greek, and Nordic/Central European diacriticals render with pristine clarity via Direct2D/DirectWrite hardware acceleration.
+- Save Protected Files (UAC Elevation):
+  Save files in protected folders (such as C:\\ root) or read-only files safely with administrator privileges.""",
+
+        "zh-hans": """miu v1.0.31 更新日志
+✨ 新功能与改进
+
+新增 11 种语言支持，全面覆盖全球 28 种语言
+
+- 多语言支持扩展至 28 种语言：
+  新增对捷克语、瑞典语、泰语、印地语、罗马尼亚语、匈牙利语、希腊语、丹麦语、芬兰语、挪威语和马来语的完整应用内（菜单、F1 帮助、对话框）及商店页面本地化支持。
+- 高清 Direct2D 多语言文字渲染：
+  通过 Direct2D/DirectWrite 硬件加速，清晰锐利地呈现泰文、天城文（印地语）、希腊文及欧洲特殊字符。
+- 管理员权限保存（UAC 提权保存）：
+  支持以管理员权限安全保存位于 C 盘根目录或系统保护目录中的文件。""",
+
+        "ko": """miu v1.0.31 릴리스 노트
+✨ 새로운 기능 및 개선 사항
+
+11개 신규 언어 추가 — 전 세계 28개 언어 완벽 지원
+
+- 28개 언어로 다국어 지원 확대:
+  체코어, 스웨덴어, 태국어, 힌디어, 루마니아어, 헝가리어, 그리스어, 덴마크어, 핀란드어, 노르웨이어, 말레이어 등 11개 언어의 앱 UI(메뉴, F1 도움말, 대화상자) 및 스토어 지원이 추가되었습니다.
+- 선명한 Direct2D 다국어 렌더링:
+  태국 문자, 데바나가리 문자(힌디어), 그리스 문자 및 유럽 악센트 기호가 Direct2D/DirectWrite 가속을 통해 선명하게 표시됩니다.
+- 관리자 권한 파일 저장(UAC 승격):
+  C 드라이브 루트 및 시스템 보호 폴더의 파일 덮어쓰기 저장을 안전하게 지원합니다."""
+    },
     "1.0.30": {
         "ja-jp": """miu v1.0.30 リリースノート
 ✨ 新機能・改善点

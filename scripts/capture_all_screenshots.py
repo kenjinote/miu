@@ -32,6 +32,18 @@ LANG_CONFIGS = [
     ("vi-vn", "sample_vi.md", "vi"),
     ("uk-ua", "sample_uk.md", "uk"),
     ("id-id", "sample_id.md", "id"),
+    # Tier 4 & 5 (11 new languages)
+    ("cs-cz", "sample_cs.md", "cs"),
+    ("sv-se", "sample_sv.md", "sv"),
+    ("th-th", "sample_th.md", "th"),
+    ("hi-in", "sample_hi.md", "hi"),
+    ("ro-ro", "sample_ro.md", "ro"),
+    ("hu-hu", "sample_hu.md", "hu"),
+    ("el-gr", "sample_el.md", "el"),
+    ("da-dk", "sample_da.md", "da"),
+    ("fi-fi", "sample_fi.md", "fi"),
+    ("nb-no", "sample_nb.md", "nb"),
+    ("ms-my", "sample_ms.md", "ms"),
 ]
 
 def capture_window_to_file(hwnd, out_path, width=1280, height=720):
@@ -107,11 +119,14 @@ def main():
     if not os.path.exists(EXE_PATH):
         raise FileNotFoundError(f"Binary not found: {EXE_PATH}")
 
-    total = len(LANG_CONFIGS) * 3
-    count = 0
-    print(f"=== Starting screenshot capture for {len(LANG_CONFIGS)} languages (Total: {total} images) ===")
+    filter_prefixes = set(sys.argv[1:]) if len(sys.argv) > 1 else None
+    configs = [c for c in LANG_CONFIGS if not filter_prefixes or c[2] in filter_prefixes or c[0] in filter_prefixes]
 
-    for lang_code, sample_file, prefix in LANG_CONFIGS:
+    total = len(configs) * 3
+    count = 0
+    print(f"=== Starting screenshot capture for {len(configs)} languages (Total: {total} images) ===")
+
+    for lang_code, sample_file, prefix in configs:
         sample_path = os.path.join(SAMPLES_DIR, sample_file)
         if not os.path.exists(sample_path):
             raise FileNotFoundError(f"Sample not found: {sample_path}")
