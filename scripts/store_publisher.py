@@ -7,6 +7,63 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.32": {
+        "ja-jp": """miu v1.0.32 リリースノート
+✨ 新機能・改善点
+
+右クリック・コンテキストメニューの追加（ライト／ダークモード・全28言語対応）
+
+・右クリックメニューに対応:
+  エディタ画面上の右クリック（および Shift+F10 / Apps キー）で「元に戻す / やり直し / 切り取り / コピー / 貼り付け / すべて選択」のポップアップメニューを表示できるようになりました。
+・ライトモード・ダークモード配色連動:
+  現在のテーマに合わせてメニューの背景色・文字色・ハイライト・グレーアウト表示が美しく切り替わります。
+・スマートなカーソル移動と選択維持:
+  未選択状態で右クリックした際はその位置にカーソルが移動し、選択範囲がある場合は選択を維持したままコピーや切り取りが可能です。
+・世界28言語に完全対応:
+  すべてのメニュー項目とショートカット表記を全28言語にローカライズしました。""",
+
+        "en-us": """miu v1.0.32 Release Notes
+✨ What's New & Improvements
+
+Right-Click Context Menu Added (Light/Dark Mode & 28 Languages)
+
+- Right-Click Context Menu:
+  Right-clicking in the editor (or pressing Shift+F10 / Menu key) now opens a clean popup menu with Undo, Redo, Cut, Copy, Paste, and Select All.
+- Seamless Light & Dark Mode Styling:
+  Menu colors, hover highlights, separators, and disabled states automatically adapt to the active Light or Dark theme.
+- Smart Cursor Positioning:
+  Right-clicking without an active selection moves the caret to the clicked position for effortless pasting, while preserving existing selections for Cut/Copy.
+- Localized in All 28 Languages:
+  Full native translations and keyboard shortcut hints across all 28 supported languages.""",
+
+        "zh-hans": """miu v1.0.32 更新日志
+✨ 新功能与改进
+
+新增右键上下文菜单（支持浅色/深色模式与全部 28 种语言）
+
+- 新增右键快捷菜单：
+  在编辑区点击鼠标右键（或按 Shift+F10 / 菜单键），即可弹出包含“撤销 / 重做 / 剪切 / 复制 / 粘贴 / 全选”的快捷菜单。
+- 浅色与深色模式色彩联动：
+  菜单背景、文字、悬停高亮及禁用状态均与当前浅色或深色主题完美匹配。
+- 智能光标定位：
+  未选中文本时右键点击会自动将光标移动至点击处以便直接粘贴；已选中文本时则保留选区以便剪切或复制。
+- 全面支持 28 种语言：
+  所有菜单项与快捷键提示均已针对全球 28 种语言完成本地化。""",
+
+        "ko": """miu v1.0.32 릴리스 노트
+✨ 새로운 기능 및 개선 사항
+
+마우스 우클릭 컨텍스트 메뉴 추가 (라이트/다크 모드 및 28개 언어 완벽 지원)
+
+- 우클릭 팝업 메뉴 지원:
+  편집 화면에서 마우스 오른쪽 버튼을 클릭(또는 Shift+F10 / 메뉴 키)하면 '실행 취소 / 다시 실행 / 잘라내기 / 복사 / 붙여넣기 / 모두 선택' 메뉴가 표시됩니다.
+- 라이트 및 다크 모드 배색 연동:
+  현재 테마에 맞춰 메뉴 배경, 텍스트, 강조 표시 및 비활성 항목 색상이 자연스럽게 전환됩니다.
+- 스마트 커서 이동 및 선택 유지:
+  선택 영역이 없을 때 우클릭하면 해당 위치로 커서가 이동하여 바로 붙여넣기가 가능하며, 선택 영역이 있을 때는 선택을 유지합니다.
+- 전 세계 28개 언어 현지화:
+  모든 메뉴 항목과 단축키 안내가 28개 언어로 완벽히 번역되었습니다."""
+    },
     "1.0.31": {
         "ja-jp": """miu v1.0.31 リリースノート
 ✨ 新機能・改善点
