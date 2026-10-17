@@ -34,7 +34,7 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.32 更新日誌
+        "releaseNotes": """miu v1.0.33 更新日誌
 ✨ 新功能與改進
 
 支援以管理員權限儲存受保護檔案（UAC 提權保存）
@@ -87,7 +87,7 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.32 Versionshinweise
+        "releaseNotes": """miu v1.0.33 Versionshinweise
 ✨ Neue Funktionen und Verbesserungen
 
 Speichern geschützter Dateien mit Administratorrechten (UAC-Erhöhung)
@@ -140,7 +140,7 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.32
+        "releaseNotes": """Notes de version miu v1.0.33
 ✨ Nouvelles fonctionnalités et améliorations
 
 Sauvegarde de fichiers protégés avec droits administrateur (élévation UAC)
@@ -193,7 +193,7 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.32
+        "releaseNotes": """Notas de la versión miu v1.0.33
 ✨ Nuevas funciones y mejoras
 
 Guardar archivos protegidos con privilegios de administrador (UAC)
@@ -246,7 +246,7 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de versão miu v1.0.32
+        "releaseNotes": """Notas de versão miu v1.0.33
 ✨ Novos recursos e melhorias
 
 Salvar arquivos protegidos com direitos de administrador (elevação UAC)
@@ -299,7 +299,7 @@ Salvar arquivos protegidos com direitos de administrador (elevação UAC)
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.32
+        "releaseNotes": """Примечания к выпуску miu v1.0.33
 ✨ Новые функции и улучшения
 
 Сохранение защищенных файлов с правами администратора (UAC)
@@ -352,7 +352,7 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio miu v1.0.32
+        "releaseNotes": """Note di rilascio miu v1.0.33
 ✨ Nuove funzionalità e miglioramenti
 
 Salvataggio file protetti con privilegi di amministratore (elevazione UAC)
@@ -405,7 +405,7 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wydaniu miu v1.0.32
+        "releaseNotes": """Informacje o wydaniu miu v1.0.33
 ✨ Nowe funkcje i ulepszenia
 
 Zapisywanie plików chronionych z uprawnieniami administratora (UAC)
@@ -458,7 +458,7 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Versienotities miu v1.0.32
+        "releaseNotes": """Versienotities miu v1.0.33
 ✨ Nieuwe functies en verbeteringen
 
 Beveiligde bestanden opslaan met beheerdersrechten (UAC-verhoging)
@@ -511,7 +511,7 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.32 Sürüm Notları
+        "releaseNotes": """miu v1.0.33 Sürüm Notları
 ✨ Yeni Özellikler ve İyileştirmeler
 
 Korumalı dosyaları yönetici izniyle kaydetme (UAC yükseltme)
@@ -563,7 +563,7 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.32
+        "releaseNotes": """Ghi chú phát hành miu v1.0.33
 ✨ Tính năng mới & Cải tiến
 
 Hỗ trợ ngôn ngữ Tiếng Việt (Vietnamese) & Lưu với quyền quản trị (UAC)
@@ -614,7 +614,7 @@ Hỗ trợ ngôn ngữ Tiếng Việt (Vietnamese) & Lưu với quyền quản t
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.32
+        "releaseNotes": """Примітки до випуску miu v1.0.33
 ✨ Нові функції та покращення
 
 Повна підтримка української мови та збереження з правами адміністратора (UAC)
@@ -667,7 +667,7 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.32
+        "releaseNotes": """Catatan Rilis miu v1.0.33
 ✨ Fitur Baru & Peningkatan
 
 Dukungan 28 Bahasa Global & Penyimpanan Berkas Terlindungi (Elevasi UAC)
@@ -716,7 +716,7 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k vydání miu v1.0.32
+        "releaseNotes": """Poznámky k vydání miu v1.0.33
 ✨ Nové funkce a vylepšení
 
 Plná podpora češtiny a ukládání s oprávněním správce (UAC)
@@ -765,7 +765,7 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.32
+        "releaseNotes": """Versionsinformation för miu v1.0.33
 ✨ Nya funktioner och förbättringar
 
 Fullt stöd för svenska och sparning med administratörsbehörighet (UAC)
@@ -814,7 +814,7 @@ Fullt stöd för svenska och sparning med administratörsbehörighet (UAC)
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.32
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.33
 ✨ คุณสมบัติใหม่และการปรับปรุง
 
 รองรับภาษาไทยอย่างสมบูรณ์ และบันทึกไฟล์ด้วยสิทธิ์ผู้ดูแลระบบ (UAC)
@@ -863,7 +863,7 @@ Fullt stöd för svenska och sparning med administratörsbehörighet (UAC)
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.32 रिलीज़ नोट्स
+        "releaseNotes": """miu v1.0.33 रिलीज़ नोट्स
 ✨ नई सुविधाएँ और सुधार
 
 हिंदी भाषा का पूर्ण समर्थन और व्यवस्थापक अधिकारों (UAC) के साथ फ़ाइल सहेजना
@@ -912,7 +912,7 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.32
+        "releaseNotes": """Note de lansare miu v1.0.33
 ✨ Funcții noi și îmbunătățiri
 
 Suport complet pentru limba română și salvare cu drepturi de administrator (UAC)
@@ -961,7 +961,7 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.32 kiadási megjegyzések
+        "releaseNotes": """miu v1.0.33 kiadási megjegyzések
 ✨ Újdonságok és fejlesztések
 
 Teljes magyar nyelvi támogatás és mentés rendszergazdai jogosultsággal (UAC)
@@ -1010,7 +1010,7 @@ Teljes magyar nyelvi támogatás és mentés rendszergazdai jogosultsággal (UAC
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.32
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.33
 ✨ Νέες δυνατότητες και βελτιώσεις
 
 Πλήρης υποστήριξη ελληνικής γλώσσας & αποθήκευση με δικαιώματα διαχειριστή (UAC)
@@ -1059,7 +1059,7 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.32
+        "releaseNotes": """Udgivelsesnoter for miu v1.0.33
 ✨ Nye funktioner og forbedringer
 
 Fuld dansk sprogunderstøttelse og gemning med administratorrettigheder (UAC)
@@ -1108,7 +1108,7 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.32 -julkaisutiedot
+        "releaseNotes": """miu v1.0.33 -julkaisutiedot
 ✨ Uudet ominaisuudet ja parannukset
 
 Täysi suomen kielen tuki ja tallennus järjestelmänvalvojan oikeuksilla (UAC)
@@ -1157,7 +1157,7 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.32
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.33
 ✨ Nye funksjoner og forbedringer
 
 Full støtte for norsk (bokmål) og lagring med administratorrettigheter (UAC)
@@ -1206,7 +1206,7 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.32
+        "releaseNotes": """Nota Keluaran miu v1.0.33
 ✨ Ciri Baharu & Penambahbaikan
 
 Sokongan Penuh Bahasa Melayu & Simpanan Fail Terlindung (UAC)

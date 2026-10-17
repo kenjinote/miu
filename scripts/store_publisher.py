@@ -7,6 +7,63 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.33": {
+        "ja-jp": """miu v1.0.33 リリースノート
+✨ 新機能・改善点
+
+常に最前面に表示 (Alt+T)・コメント切替 (Ctrl+/)・カーソル位置と選択状態の自動復元＆読み込み高速化
+
+・常に最前面に表示 (Alt+T):
+  Alt+T でウィンドウの最前面固定を切り替えられるようになりました。固定中はタイトルバーに 📌 が表示されます。
+・コメントアウト切替 (Ctrl+/):
+  言語に応じた行コメント・ブロックコメントを最小インデント揃えで一括切り替えできるようになりました。
+・カーソル位置・選択範囲・スクロール位置の自動記憶＆復元:
+  最近開いたファイルの編集位置と選択状態を記憶し、次回開いた際に自動復元します（外部編集時の安全フォールバック対応）。
+・ファイル読み込みの高速化＆ダークモード改行表示の改善:
+  SSE2 SIMD スキャンと非同期処理により読み込みを高速化し、ダークモード時の改行記号の視認性を改善しました。""",
+
+        "en-us": """miu v1.0.33 Release Notes
+✨ What's New & Improvements
+
+Always on Top (Alt+T), Toggle Comment (Ctrl+/), Cursor/Selection State Restoration & Faster File Loading
+
+- Always on Top (Alt+T):
+  Toggle pinning the editor window on top of all other windows with Alt+T, complete with a 📌 indicator in the title bar.
+- Toggle Comment (Ctrl+/):
+  Comment or uncomment lines and selections with minimum-indent alignment across supported languages using Ctrl+/.
+- Automatic Cursor, Selection & Scroll Restoration:
+  Automatically remembers and restores your caret position, selections (including multi-cursor), and scroll offset when reopening recent files, with safe fallback if edited externally.
+- Faster File Loading & Dark Mode Newline Visibility:
+  Accelerated file loading via SSE2 SIMD line scanning and background shell updates, plus subtly visible newline marks in Dark Mode.""",
+
+        "zh-hans": """miu v1.0.33 更新日志
+✨ 新功能与改进
+
+新增窗口置顶 (Alt+T)、注释切换 (Ctrl+/)、光标与选区位置自动恢复及加载提速
+
+- 窗口置顶快捷键 (Alt+T)：
+  按 Alt+T 即可将编辑器窗口固定在最前端，置顶时标题栏会显示 📌 标记。
+- 切换注释快捷键 (Ctrl+/)：
+  支持根据文件语言按最小缩进对齐批量添加或取消行注释与块注释。
+- 自动记忆并恢复光标位置、选区与滚动位置：
+  重新打开最近文件时自动恢复上次的光标、选区及滚动位置（即使被外部程序修改也能安全回退）。
+- 文件加载提速与深色模式换行符显示优化：
+  通过 SSE2 SIMD 扫描与后台异步更新大幅提升文件打开速度，并优化了深色模式下换行符的柔和可视效果。""",
+
+        "ko": """miu v1.0.33 릴리스 노트
+✨ 새로운 기능 및 개선 사항
+
+항상 위에 표시 (Alt+T), 주석 전환 (Ctrl+/), 커서·선택 영역 자동 복원 및 파일 로딩 속도 향상
+
+- 항상 위에 표시 단축키 (Alt+T):
+  Alt+T를 눌러 창을 항상 맨 위에 고정할 수 있으며, 활성화 시 제목 표시줄에 📌 아이콘이 표시됩니다.
+- 주석 전환 단축키 (Ctrl+/):
+  언어별 행 주석 및 블록 주석을 최소 들여쓰기 위치에 맞춰 일괄 전환할 수 있습니다.
+- 커서 위치·선택 영역·스크롤 위치 자동 기억 및 복원:
+  최근에 연 파일의 편집 위치와 선택 상태를 기억하여 다시 열 때 자동으로 복원합니다(외부 편집 시 안전 폴백 지원).
+- 파일 읽기 고속화 및 다크 모드 줄바꿈 기호 가시성 개선:
+  SSE2 SIMD 스캔 및 비동기 처리로 로딩 속도를 높이고 다크 모드에서 줄바꿈 표시가 은은하게 보이도록 개선했습니다."""
+    },
     "1.0.32": {
         "ja-jp": """miu v1.0.32 リリースノート
 ✨ 新機能・改善点
