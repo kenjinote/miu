@@ -7,6 +7,63 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.34": {
+        "ja-jp": """miu v1.0.34 リリースノート
+✨ 新機能・改善点
+
+タスクバーのジャンプリスト（最近開いたファイル履歴）連携の強化・常時最前面表示 (Alt+T)・コメント切替 (Ctrl+/)
+
+・タスクバーのファイル履歴（ジャンプリスト）表示の改善:
+  ストア版アプリにおいて、タスクバーアイコン右クリック時に最近開いたファイルの履歴（ジャンプリスト）が確実に表示・起動されるよう改善しました。また、主要なテキスト・コード拡張子のファイル関連付けを追加しました。
+・常に最前面に表示 (Alt+T):
+  Alt+T でウィンドウの最前面固定を切り替えられるようになりました（タイトルバー 📌 表示付き）。
+・コメントアウト切替 (Ctrl+/):
+  言語に応じた行コメント・ブロックコメントを最小インデント揃えで一括切り替えできるようになりました。
+・カーソル位置・選択範囲・スクロール位置の自動記憶＆復元と読み込み高速化:
+  最近開いたファイルの編集位置と選択状態を記憶・自動復元し、ファイル読み込みをさらに高速化しました。""",
+
+        "en-us": """miu v1.0.34 Release Notes
+✨ What's New & Improvements
+
+Improved Taskbar Jump List (Recent Files), Always on Top (Alt+T) & Toggle Comment (Ctrl+/)
+
+- Improved Taskbar Jump List & File Associations:
+  Fixed and enhanced Taskbar right-click Jump List integration in the Microsoft Store edition so recently opened files reliably appear and launch across app updates, and registered common text/code file type associations.
+- Always on Top (Alt+T):
+  Toggle pinning the editor window on top of all other windows with Alt+T, complete with a 📌 indicator in the title bar.
+- Toggle Comment (Ctrl+/):
+  Comment or uncomment lines and selections with minimum-indent alignment across supported languages using Ctrl+/.
+- Automatic Cursor, Selection & Scroll Restoration:
+  Automatically remembers and restores your caret position, selections, and scroll offset when reopening recent files, alongside faster file loading.""",
+
+        "zh-hans": """miu v1.0.34 更新日志
+✨ 新功能与改进
+
+任务栏跳转列表（最近打开的文件历史）优化、窗口置顶 (Alt+T) 与注释切换 (Ctrl+/)
+
+- 任务栏跳转列表与文件关联优化：
+  修复并增强了商店版应用在任务栏图标右键菜单中显示“最近打开的文件”历史记录的功能，并新增常见文本与代码文件扩展名关联。
+- 窗口置顶快捷键 (Alt+T)：
+  按 Alt+T 即可将编辑器窗口固定在最前端，置顶时标题栏会显示 📌 标记。
+- 切换注释快捷键 (Ctrl+/)：
+  支持根据文件语言按最小缩进对齐批量添加或取消行注释与块注释。
+- 自动恢复光标位置、选区与滚动位置：
+  重新打开最近文件时自动恢复上次的编辑位置与选区，并进一步提升了文件加载速度。""",
+
+        "ko": """miu v1.0.34 릴리스 노트
+✨ 새로운 기능 및 개선 사항
+
+작업 표시줄 점프 목록(최근 파일 기록) 개선, 항상 위에 표시 (Alt+T) 및 주석 전환 (Ctrl+/)
+
+- 작업 표시줄 점프 목록 및 파일 연결 개선:
+  스토어 버전에서 작업 표시줄 아이콘 우클릭 시 최근에 연 파일 기록(점프 목록)이 정확히 표시되고 실행되도록 개선하였으며, 주요 텍스트 및 코드 확장자 연결을 추가했습니다.
+- 항상 위에 표시 단축키 (Alt+T):
+  Alt+T를 눌러 창을 항상 맨 위에 고정할 수 있으며, 활성화 시 제목 표시줄에 📌 아이콘이 표시됩니다.
+- 주석 전환 단축키 (Ctrl+/):
+  언어별 행 주석 및 블록 주석을 최소 들여쓰기 위치에 맞춰 일괄 전환할 수 있습니다.
+- 커서 위치·선택 영역·스크롤 위치 자동 복원 및 로딩 고속화:
+  최근 파일의 편집 위치와 선택 상태를 자동으로 복원하고 파일 로딩 속도를 높였습니다."""
+    },
     "1.0.33": {
         "ja-jp": """miu v1.0.33 リリースノート
 ✨ 新機能・改善点

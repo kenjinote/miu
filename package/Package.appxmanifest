@@ -11,7 +11,7 @@
   <Identity
     Name="18872KENJI.8904025CBD33"
     Publisher="CN=035A9AAC-915B-4CE1-AE39-1A101BED42F5"
-    Version="1.0.33.0" />
+    Version="1.0.34.0" />
 
   <Properties>
     <DisplayName>miu</DisplayName>
@@ -48,6 +48,49 @@
 					<desktop:ExecutionAlias Alias="miu.exe" />
 				</uap3:AppExecutionAlias>
 			</uap3:Extension>
+			<uap:Extension Category="windows.fileTypeAssociation">
+				<uap:FileTypeAssociation Name="textfiles">
+					<uap:SupportedFileTypes>
+						<uap:FileType>.txt</uap:FileType>
+						<uap:FileType>.log</uap:FileType>
+						<uap:FileType>.md</uap:FileType>
+						<uap:FileType>.markdown</uap:FileType>
+						<uap:FileType>.ini</uap:FileType>
+						<uap:FileType>.inf</uap:FileType>
+						<uap:FileType>.cfg</uap:FileType>
+						<uap:FileType>.conf</uap:FileType>
+						<uap:FileType>.toml</uap:FileType>
+						<uap:FileType>.yaml</uap:FileType>
+						<uap:FileType>.yml</uap:FileType>
+						<uap:FileType>.json</uap:FileType>
+						<uap:FileType>.jsonc</uap:FileType>
+						<uap:FileType>.xml</uap:FileType>
+						<uap:FileType>.csv</uap:FileType>
+						<uap:FileType>.tsv</uap:FileType>
+						<uap:FileType>.c</uap:FileType>
+						<uap:FileType>.cpp</uap:FileType>
+						<uap:FileType>.h</uap:FileType>
+						<uap:FileType>.hpp</uap:FileType>
+						<uap:FileType>.cs</uap:FileType>
+						<uap:FileType>.java</uap:FileType>
+						<uap:FileType>.js</uap:FileType>
+						<uap:FileType>.ts</uap:FileType>
+						<uap:FileType>.py</uap:FileType>
+						<uap:FileType>.rb</uap:FileType>
+						<uap:FileType>.go</uap:FileType>
+						<uap:FileType>.rs</uap:FileType>
+						<uap:FileType>.php</uap:FileType>
+						<uap:FileType>.html</uap:FileType>
+						<uap:FileType>.htm</uap:FileType>
+						<uap:FileType>.css</uap:FileType>
+						<uap:FileType>.sql</uap:FileType>
+						<uap:FileType>.sh</uap:FileType>
+						<uap:FileType>.ps1</uap:FileType>
+						<uap:FileType>.lua</uap:FileType>
+						<uap:FileType>.tex</uap:FileType>
+					</uap:SupportedFileTypes>
+				</uap:FileTypeAssociation>
+			</uap:Extension>
 		</Extensions>
 
 	</Application>	  
