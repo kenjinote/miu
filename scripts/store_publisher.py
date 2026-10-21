@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.36": {
+        "ja-jp": """miu v1.0.36 リリースノート
+🚀 バイナリサイズの大幅削減（-19.9%）＆ 実行速度のさらなる高速化（+15.6%）
+
+・実行ファイルサイズを約 20% 削減（1,053.5 KB → 844.0 KB / -209.5 KB）:
+  単一EXEのポータビリティと安全性を100%維持したまま、不要なC++標準ストリームの排除、全15言語の構文ハイライト定義テーブルのコンパイル時定数化（constexpr静的配置・起動時ヒープ確保ゼロ化）、リソース統合により、バイナリサイズを 214,528 bytes（-19.9%）削減しました。
+・文字コード自動判定を約 15.6% 高速化 ＆ 25種以上のエンコーディング対応強化:
+  文字コード判定エンジン（CED）の定数畳み込み最適化により、判定精度を一切犠牲にすることなく連続判定速度を約 15.6% 高速化（50,000回判定: 158.28 ms → 133.52 ms / 1ファイル約 2.67 μs）。さらに EUC-JP、ISO-2022-JP、BOMなしUTF-16、GB18030、KOI8-R など25種類以上の文字コード自動変換を強化しました。
+・全28言語 × 高DPI（100%〜250%）動的オートレイアウト対応:
+  検索・置換（Ctrl+F / Ctrl+H）および行移動（Ctrl+G）ダイアログで、翻訳文字列の実測幅とモニターDPIに応じてボタンやウィンドウ幅を自動調整し、文字見切れを完全に防止しました。""",
+
+        "en-us": """miu v1.0.36 Release Notes
+🚀 19.9% Smaller Binary Size & 15.6% Faster Encoding Detection
+
+- 19.9% Binary Size Reduction (1,053.5 KB -> 844.0 KB / -209.5 KB):
+  Reduced the standalone executable size by 214,528 bytes (-19.9%) while keeping 100% native single-EXE portability—achieved by eliminating C++ iostream/locale overhead, moving all 15 syntax highlighting tables to compile-time constexpr storage (zero startup heap allocations), lossless icon optimization, and unifying 28-language dialog resources.
+- 15.6% Faster Character Encoding Auto-Detection & Expanded Codepage Support:
+  Accelerated the Compact Encoding Detection (CED) engine by 15.6% (158.28 ms -> 133.52 ms across 50,000 detections; ~2.67 µs/file) via compile-time constant folding with zero loss in accuracy. Enhanced decoding support across 25+ encodings including EUC-JP, ISO-2022-JP, BOM-less UTF-16LE/BE, GB18030, KOI8-R, and European/Middle Eastern codepages.
+- Dynamic High-DPI Auto-Layout Across All 28 Languages:
+  Find/Replace (Ctrl+F / Ctrl+H) and Go to Line (Ctrl+G) dialogs now dynamically measure localized text and scale controls across 100%-250% DPI with zero text clipping.""",
+
+        "zh-hans": """miu v1.0.36 更新日志
+🚀 执行文件体积大幅缩减 19.9% & 编码自动识别提速 15.6%
+
+- 程序体积缩减约 20%（1,053.5 KB → 844.0 KB / 减少 209.5 KB）：
+  在 100% 保持原生单文件便携性与安全性的前提下，通过移除冗余 C++ iostream/locale 库开销、将 15 种语言的语法高亮表转为编译期 constexpr 静态常量（启动时零堆内存分配）、无损压缩图标及整合 28 国语言对话框模板，成功缩减 214,528 字节（-19.9%）。
+- 字符编码自动识别提速 15.6% 并强化 25+ 种编码支持：
+  通过编译期常量折叠优化 CED 编码识别引擎，在不降低任何识别精度的前提下将连续识别速度提升 15.6%（50,000 次识别由 158.28 ms 降至 133.52 ms，单文件仅需约 2.67 微秒），并全面强化 GB18030、Big5、EUC-JP、ISO-2022-JP、无 BOM UTF-16 及多国代码页映射。
+- 全 28 种语言 × 高 DPI（100%~250%）动态自适应布局：
+  查找/替换（Ctrl+F / Ctrl+H）与跳转到行（Ctrl+G）对话框现可根据当前语言文本宽度与显示器 DPI 动态调整按钮与窗口尺寸，彻底消除文字截断。""",
+
+        "ko": """miu v1.0.36 릴리스 노트
+🚀 실행 파일 크기 19.9% 대폭 축소 및 문자 인코딩 자동 감지 15.6% 고속화
+
+- 실행 파일 크기 약 20% 축소 (1,053.5 KB → 844.0 KB / -209.5 KB):
+  단일 EXE의 휴대성과 안전성을 100% 유지하면서 불필요한 C++ iostream/locale 오버헤드 제거, 15개 언어 구문 강조 테이블의 컴파일 타임 constexpr 상수화(시작 시 힙 할당 제로화), 리소스 통합을 통해 바이너리 크기를 214,528 바이트(-19.9%) 줄였습니다.
+- 문자 인코딩 자동 감지 속도 15.6% 향상 및 25종 이상의 인코딩 지원 강화:
+  인코딩 감지 엔진(CED)의 컴파일 타임 상수 최적화로 정확도 손실 없이 감지 속도를 약 15.6% 향상(50,000회 감지: 158.28 ms → 133.52 ms / 파일당 약 2.67 μs)시켰으며, EUC-KR, EUC-JP, ISO-2022-JP, BOM 없는 UTF-16, GB18030 등 25종 이상의 인코딩 변환을 강화했습니다.
+- 28개 전 언어 × 고해상도 DPI(100%~250%) 동적 자동 레이아웃:
+  찾기/바꾸기(Ctrl+F / Ctrl+H) 및 줄 이동(Ctrl+G) 대화 상자에서 번역 텍스트 길이와 모니터 DPI에 맞춰 버튼 및 창 크기를 자동으로 조절하여 글자 잘림을 완벽히 방지했습니다."""
+    },
     "1.0.35": {
         "ja-jp": """miu v1.0.35 リリースノート
 ✨ 新機能・改善点

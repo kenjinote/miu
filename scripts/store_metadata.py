@@ -34,21 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.35 更新日誌
-✨ 新功能與改進
+        "releaseNotes": """miu v1.0.36 更新日誌
+🚀 執行檔體積大幅縮減 19.9% & 編碼自動偵測提速 15.6%
 
-支援以管理員權限儲存受保護檔案（UAC 提權保存）
-
-・儲存受保護與系統檔案：
-  現在支援以管理員權限儲存位於 C 槽根目錄、系統保護目錄或具備唯讀屬性的檔案。
-・無縫 UAC 提權確認：
-  偵測到存取被拒時，將跳出帶有安全性盾牌圖示的提示對話框，經使用者同意後於背景安全完成檔案更新。
-・絕不遺失編輯內容的安全保護機制：
-  若在提示框中選擇「否」或取消了 Windows UAC 提權彈窗，記憶體中的文字編輯內容與撤銷（Undo）歷史將 100% 完整保留，絕不遺失任何修改。
-・優化「另存新檔」根目錄路徑處理：
-  修復在 C:\\ 等根目錄下另存新檔時初始資料夾路徑的指定問題。
-・多語言全面支援：
-  新增對話框已完整本地化支援包括繁體中文在內的 14 種語言。""",
+・執行檔體積縮減約 20%（1,053.5 KB → 844.0 KB / 減少 209.5 KB）：
+  在 100% 保持原生單一執行檔（EXE）便攜性與安全性的前提下，透過移除冗餘 C++ iostream/locale 庫開銷、將 15 種語言的語法高亮表轉為編譯期 constexpr 靜態常數（啟動時零堆積記憶體配置）及整合 28 國語言對話框模板，成功縮減 214,528 位元組（-19.9%）。
+・字元編碼自動偵測提速 15.6% 並強化 25+ 種編碼支援：
+  最佳化 CED 編碼識別引擎，在不犧牲任何識別精度的前提下將連續識別速度提升 15.6%（50,000 次識別由 158.28 ms 降至 133.52 ms，單檔僅需約 2.67 微秒），並全面強化 Big5、GB18030、EUC-JP、ISO-2022-JP、無 BOM UTF-16 及多國字集映射。
+・全 28 種語言 × 高 DPI（100%~250%）動態自適應排版：
+  尋找/取代（Ctrl+F / Ctrl+H）與跳至行（Ctrl+G）對話框現可根據當前語言文字寬度與螢幕 DPI 動態調整按鈕與視窗尺寸，徹底消除文字截斷。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -87,21 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.35 Versionshinweise
-✨ Neue Funktionen und Verbesserungen
+        "releaseNotes": """miu v1.0.36 Versionshinweise
+🚀 19,9 % kleinere Programmdatei & 15,6 % schnellere Zeichencodierungserkennung
 
-Speichern geschützter Dateien mit Administratorrechten (UAC-Erhöhung)
-
-• Speichern geschützter Systemdateien:
-  Dateien im Stammverzeichnis von Laufwerk C:\\, geschützten Verzeichnissen oder schreibgeschützte Dateien können jetzt mit Administratorrechten gespeichert werden.
-• UAC-Sicherheitsdialog:
-  Wird ein Zugriffsfehler erkannt, fragt ein Dialog mit Sicherheitsschild nach Erhöhung der Berechtigungen.
-• Schutz vor Datenverlust:
-  Wird der Dialog abgelehnt oder die UAC-Abfrage abgebrochen, bleiben alle Eingaben und der Rückgängig-Verlauf (Undo) vollständig im Speicher erhalten.
-• Verbesserter Pfad bei 'Speichern unter':
-  Korrektur der Standardordnerbehandlung beim Speichern im Stammverzeichnis wie C:\\.
-• Mehrsprachige Lokalisierung:
-  Neue Dialoge wurden vollständig in 14 Sprachen lokalisiert.""",
+• 19,9 % geringere Dateigröße (1.053,5 KB → 844,0 KB / -209,5 KB):
+  Die Größe der eigenständigen EXE-Datei wurde um 214.528 Bytes (-19,9 %) reduziert – durch Entfernung von C++-iostream/locale-Overhead, Umstellung aller 15 Syntaxhervorhebungstabellen auf kompilierzeitkonstantes constexpr (null Heap-Allokationen beim Start) und Zusammenführung der 28 Sprachvorlagen.
+• 15,6 % schnellere automatische Codierungserkennung & über 25 Zeichensätze:
+  Beschleunigung der Compact Encoding Detection (CED) um 15,6 % (158,28 ms → 133,52 ms bei 50.000 Prüfungen; ~2,67 µs/Datei) ohne Genauigkeitsverlust sowie erweiterte Unterstützung für EUC-JP, ISO-2022-JP, UTF-16 ohne BOM, GB18030, KOI8-R und europäische Codepages.
+• Dynamisches High-DPI-Layout für alle 28 Sprachen (100 %–250 % DPI):
+  Dialoge für Suchen/Ersetzen (Strg+F / Strg+H) und Gehe zu Zeile (Strg+G) passen Schaltflächen- und Fensterbreiten automatisch an Textlänge und Monitor-DPI an.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -140,21 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.35
-✨ Nouvelles fonctionnalités et améliorations
+        "releaseNotes": """Notes de version miu v1.0.36
+🚀 Taille de l'exécutable réduite de 19,9 % & détection d'encodage 15,6 % plus rapide
 
-Sauvegarde de fichiers protégés avec droits administrateur (élévation UAC)
-
-• Enregistrement de fichiers protégés et système :
-  Les fichiers situés à la racine de C:\\, dans des dossiers protégés ou en lecture seule peuvent désormais être enregistrés via élévation administrateur.
-• Dialogue de confirmation UAC sécurisé :
-  En cas de refus d'accès, un dialogue arborant l'icône de bouclier de sécurité propose l'élévation des privilèges.
-• Préservation intégrale des modifications :
-  Si l'élévation est refusée ou annulée, l'intégralité du texte en mémoire et l'historique d'annulation (Undo) sont préservés à 100 %.
-• Correction du chemin 'Enregistrer sous' :
-  Amélioration de la gestion du répertoire initial lors de l'enregistrement à la racine comme C:\\.
-• Prise en charge multilingue complète :
-  Messages et dialogues entièrement localisés dans 14 langues.""",
+• Réduction de 19,9 % de la taille du binaire (1 053,5 Ko → 844,0 Ko / -209,5 Ko) :
+  Allègement de l'exécutable autonome de 214 528 octets (-19,9 %) grâce à la suppression des flux C++ iostream/locale, au passage des 15 tables de coloration syntaxique en constantes constexpr (zéro allocation dynamique au démarrage) et à l'unification des ressources pour 28 langues.
+• Détection automatique d'encodage 15,6 % plus rapide & 25+ encodages pris en charge :
+  Accélération du moteur CED de 15,6 % (158,28 ms → 133,52 ms sur 50 000 analyses ; ~2,67 µs/fichier) sans perte de précision, avec prise en charge étendue de EUC-JP, ISO-2022-JP, UTF-16 sans BOM, GB18030, KOI8-R et des pages de codes européennes.
+• Mise en page dynamique Haute-DPI (100 % à 250 %) pour les 28 langues :
+  Les boîtes de dialogue Rechercher/Remplacer (Ctrl+F / Ctrl+H) et Atteindre la ligne (Ctrl+G) ajustent automatiquement leurs dimensions selon la langue et le DPI.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -193,21 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.35
-✨ Nuevas funciones y mejoras
+        "releaseNotes": """Notas de la versión miu v1.0.36
+🚀 Tamaño del ejecutable reducido un 19,9 % y detección de codificación un 15,6 % más rápida
 
-Guardar archivos protegidos con privilegios de administrador (UAC)
-
-• Guardar archivos protegidos y del sistema:
-  Ahora es posible guardar con permisos de administrador archivos ubicados en la raíz C:\\, carpetas protegidas o con atributo de solo lectura.
-• Confirmación UAC fluida y segura:
-  Al detectar acceso denegado, se muestra un diálogo con el escudo de seguridad solicitando autorización para guardar.
-• Protección total de cambios:
-  Si se cancela el diálogo o el aviso de UAC, todo el texto editado en memoria y el historial de deshacer (Undo) se conservan intactos al 100 %.
-• Mejora en la ruta de 'Guardar como':
-  Corrección del manejo del directorio inicial al guardar en rutas raíz como C:\\.
-• Soporte multilingüe completo:
-  Mensajes y diálogos completamente traducidos a 14 idiomas.""",
+• Reducción del 19,9 % en el tamaño del archivo (1.053,5 KB → 844,0 KB / -209,5 KB):
+  Se redujo el ejecutable autónomo en 214.528 bytes (-19,9 %) eliminando la sobrecarga de C++ iostream/locale, convirtiendo las 15 tablas de sintaxis en constantes constexpr en tiempo de compilación (cero asignaciones dinámicas al iniciar) y unificando plantillas de 28 idiomas.
+• Detección automática de codificación un 15,6 % más rápida y más de 25 codificaciones:
+  Optimización del motor CED con una mejora del 15,6 % en velocidad (158,28 ms → 133,52 ms en 50.000 detecciones; ~2,67 µs/archivo) sin pérdida de precisión, ampliando el soporte para EUC-JP, ISO-2022-JP, UTF-16 sin BOM, GB18030, KOI8-R y páginas de códigos europeas.
+• Diseño automático dinámico en Alta-DPI (100 %–250 %) para los 28 idiomas:
+  Los diálogos Buscar/Reemplazar (Ctrl+F / Ctrl+H) e Ir a la línea (Ctrl+G) ajustan dinámicamente el ancho de botones y ventanas evitando cualquier recorte de texto.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -246,21 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de versão miu v1.0.35
-✨ Novos recursos e melhorias
+        "releaseNotes": """Notas de versão miu v1.0.36
+🚀 Executável 19,9% menor e detecção automática de codificação 15,6% mais rápida
 
-Salvar arquivos protegidos com direitos de administrador (elevação UAC)
-
-• Salvamento de arquivos protegidos e de sistema:
-  Arquivos localizados na raiz C:\\, em diretórios protegidos ou com atributo somente leitura agora podem ser salvos com privilégios de administrador.
-• Confirmação segura de UAC:
-  Ao detectar negação de acesso, uma caixa de diálogo com ícone de escudo solicita autorização para elevar os privilégios.
-• Garantia contra perda de dados:
-  Caso a confirmação seja recusada ou o aviso do UAC seja cancelado, todo o texto editado na memória e o histórico de desfazer (Undo) são mantidos 100 % intactos.
-• Correção de caminho no 'Salvar como':
-  Ajuste no tratamento do diretório inicial ao salvar em caminhos raiz como C:\\.
-• Suporte multilíngue completo:
-  Mensagens e diálogos totalmente localizados em 14 idiomas.""",
+• Redução de 19,9% no tamanho do binário (1.053,5 KB → 844,0 KB / -209,5 KB):
+  Redução de 214.528 bytes (-19,9%) no executável portátil eliminando sobrecargas de C++ iostream/locale, convertendo todas as 15 tabelas de sintaxe em constantes constexpr (zero alocações de heap na inicialização) e unificando recursos de 28 idiomas.
+• Detecção de codificação 15,6% mais rápida e suporte a mais de 25 codificações:
+  Aceleração do motor CED em 15,6% (158,28 ms → 133,52 ms em 50.000 detecções; ~2,67 µs/arquivo) com precisão 100% preservada, além de suporte aprimorado para EUC-JP, ISO-2022-JP, UTF-16 sem BOM, GB18030, KOI8-R e páginas de código europeias.
+• Layout automático dinâmico em Alto-DPI (100%–250%) para todos os 28 idiomas:
+  As janelas Localizar/Substituir (Ctrl+F / Ctrl+H) e Ir para a linha (Ctrl+G) dimensionam botões e rótulos dinamicamente sem cortes de texto.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -299,21 +269,15 @@ Salvar arquivos protegidos com direitos de administrador (elevação UAC)
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.35
-✨ Новые функции и улучшения
+        "releaseNotes": """Примечания к выпуску miu v1.0.36
+🚀 Уменьшение размера EXE на 19,9 % и ускорение автоопределения кодировки на 15,6 %
 
-Сохранение защищенных файлов с правами администратора (UAC)
-
-• Сохранение защищенных и системных файлов:
-  Файлы в корне диска C:\\, системных папках или файлы со статусом «только для чтения» теперь можно сохранить через UAC.
-• Безопасный диалог подтверждения:
-  При отказе в доступе отображается диалог со значком щита безопасности с запросом на повышение привилегий.
-• Защита несохраненных данных:
-  При отказе или отмене окна UAC весь набранный текст в памяти и история отмены (Undo) сохраняются на 100 %.
-• Корректная обработка пути в «Сохранить как»:
-  Исправлено указание начальной папки при сохранении в корневых каталогах (C:\\).
-• Полная многоязычная поддержка:
-  Все новые диалоговые окна полностью локализованы на 14 языков.""",
+• Размер исполняемого файла уменьшен на 19,9 % (1 053,5 КБ → 844,0 КБ / -209,5 КБ):
+  Размер автономного файла miu.exe сокращен на 214 528 байт (-19,9 %) за счет удаления накладных расходов C++ iostream/locale, перевода таблиц подсветки синтаксиса 15 языков в константы времени компиляции constexpr (ноль аллокаций кучи при запуске) и объединения шаблонов диалогов 28 языков.
+• Ускорение автоопределения кодировки на 15,6 % и поддержка 25+ кодировок:
+  Движок Compact Encoding Detection (CED) ускорен на 15,6 % (158,28 мс → 133,52 мс на 50 000 проверок; ~2,67 мкс/файл) без потери точности. Расширена поддержка KOI8-R, KOI8-U, CP1251, IBM866, ISO-8859-5, EUC-JP, ISO-2022-JP, UTF-16 без BOM и GB18030.
+• Динамическая авторазметка диалогов для 28 языков и высокого DPI (100 %–250 %):
+  Окна поиска/замены (Ctrl+F / Ctrl+H) и перехода к строке (Ctrl+G) автоматически подстраивают размеры кнопок и полей под длину перевода и масштаб экрана.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -352,21 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio miu v1.0.35
-✨ Nuove funzionalità e miglioramenti
+        "releaseNotes": """Note di rilascio miu v1.0.36
+🚀 Dimensioni dell'eseguibile ridotte del 19,9% e rilevamento codifica più veloce del 15,6%
 
-Salvataggio file protetti con privilegi di amministratore (elevazione UAC)
-
-• Salvataggio file di sistema e protetti:
-  I file situati nella radice di C:\\, in cartelle protette o contrassegnati come sola lettura possono ora essere salvati con diritti di amministratore.
-• Finestra di conferma UAC sicura:
-  Al rilevamento di un accesso negato, una finestra con icona a scudo di sicurezza richiede l'autorizzazione all'elevazione.
-• Tutela assoluta del testo digitato:
-  Se l'elevazione viene rifiutata o annullata nella schermata UAC, tutto il testo in memoria e la cronologia Undo restano intatti al 100 %.
-• Gestione ottimizzata del percorso 'Salva con nome':
-  Corretto il percorso della cartella iniziale per directory radice come C:\\.
-• Completo supporto multilingue:
-  Messaggi e finestre di dialogo interamente localizzati in 14 lingue.""",
+• Riduzione del 19,9% delle dimensioni del file (1.053,5 KB → 844,0 KB / -209,5 KB):
+  L'eseguibile autonomo è stato ridotto di 214.528 byte (-19,9%) eliminando l'overhead C++ iostream/locale, spostando tutte le 15 tabelle di sintassi in costanti constexpr (zero allocazioni heap all'avvio) e unificando le risorse per 28 lingue.
+• Rilevamento automatico codifica più rapido del 15,6% e supporto per oltre 25 codifiche:
+  Accelerato il motore CED del 15,6% (158,28 ms → 133,52 ms su 50.000 rilevamenti; ~2,67 µs/file) senza alcuna perdita di precisione, con supporto esteso per EUC-JP, ISO-2022-JP, UTF-16 senza BOM, GB18030, KOI8-R e codepage europee.
+• Layout automatico dinamico ad alto DPI (100%–250%) per tutte le 28 lingue:
+  Le finestre Trova/Sostituisci (Ctrl+F / Ctrl+H) e Vai alla riga (Ctrl+G) adattano dinamicamente pulsanti e dimensioni in base alla lingua e al DPI.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -405,21 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wydaniu miu v1.0.35
-✨ Nowe funkcje i ulepszenia
+        "releaseNotes": """Informacje o wydaniu miu v1.0.36
+🚀 Rozmiar pliku EXE mniejszy o 19,9% oraz o 15,6% szybsze wykrywanie kodowania
 
-Zapisywanie plików chronionych z uprawnieniami administratora (UAC)
-
-• Zapis plików systemowych i chronionych:
-  Pliki w katalogu głównym C:\\, folderach chronionych lub pliki tylko do odczytu można teraz bezpiecznie nadpisywać jako administrator.
-• Bezpieczny dialog potwierdzenia UAC:
-  W przypadku odmowy dostępu pojawia się okno z tarczą bezpieczeństwa pytające o podniesienie uprawnień.
-• Gwarancja ochrony danych w edytorze:
-  Odrzucenie monitu lub anulowanie okna UAC nie powoduje utraty wpisanego tekstu ani historii cofania (Undo).
-• Poprawka ścieżki w 'Zapisz jako':
-  Prawidłowe ustawianie folderu początkowego przy zapisie w katalogach głównych, takich jak C:\\.
-• Pełne wsparcie wielojęzyczne:
-  Wszystkie nowe komunikaty i okna dialogowe w pełni przetłumaczone na 14 języków.""",
+• Zmniejszenie rozmiaru pliku wykonywalnego o 19,9% (1 053,5 KB → 844,0 KB / -209,5 KB):
+  Rozmiar samodzielnego pliku miu.exe zmniejszono o 214 528 bajtów (-19,9%) dzięki usunięciu narzutu C++ iostream/locale, przeniesieniu wszystkich 15 tablic kolorowania składni do stałych constexpr (zero alokacji sterty przy starcie) oraz ujednoliceniu zasobów dla 28 języków.
+• O 15,6% szybsze automatyczne wykrywanie kodowania i obsługa ponad 25 stron kodowych:
+  Przyspieszono silnik CED o 15,6% (158,28 ms → 133,52 ms przy 50 000 testów; ~2,67 µs/plik) przy zachowaniu 100% dokładności oraz rozszerzono obsługę stron kodowych Europy Środkowo-Wschodniej (CP1250, ISO-8859-2), UTF-16 bez BOM, EUC-JP, ISO-2022-JP, GB18030 i KOI8-R.
+• Dynamiczny układ okien dialogowych High-DPI (100%–250%) dla 28 języków:
+  Okna Znajdź/Zamień (Ctrl+F / Ctrl+H) oraz Przejdź do linii (Ctrl+G) automatycznie dopasowują szerokość przycisków i okien do długości tekstu i skali DPI.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -458,21 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Versienotities miu v1.0.35
-✨ Nieuwe functies en verbeteringen
+        "releaseNotes": """Versienotities miu v1.0.36
+🚀 19,9% kleiner uitvoerbaar bestand & 15,6% snellere coderingsdetectie
 
-Beveiligde bestanden opslaan met beheerdersrechten (UAC-verhoging)
-
-• Beveiligde en systeembestanden opslaan:
-  Bestanden in de hoofdmap van C:\\, beveiligde mappen of alleen-lezen bestanden kunnen nu veilig worden opgeslagen via beheerdersrechten.
-• Veilige UAC-bevestiging:
-  Bij toegangsweigering verschijnt een dialoogvenster met een beveiligingsschild om toestemming te vragen.
-• Geen verlies van bewerkingen:
-  Als het dialoogvenster wordt geweigerd of UAC wordt geannuleerd, blijven alle tekst en de Undo-geschiedenis 100 % behouden.
-• Verbeterd pad bij 'Opslaan als':
-  Verbeterde verwerking van de beginmap bij opslaan in hoofdmappen zoals C:\\.
-• Volledige meertalige ondersteuning:
-  Nieuwe dialoogvensters volledig gelokaliseerd in 14 talen.""",
+• 19,9% kleinere bestandsgrootte (1.053,5 KB → 844,0 KB / -209,5 KB):
+  Het zelfstandige uitvoerbare bestand is met 214.528 bytes (-19,9%) verkleind door C++ iostream/locale-overhead te verwijderen, alle 15 syntaxisaccentueringstabellen om te zetten naar compile-time constexpr (nul heap-allocaties bij het opstarten) en dialoogbronnen voor 28 talen te verenigen.
+• 15,6% snellere automatische coderingsdetectie & ondersteuning voor 25+ coderingen:
+  De CED-coderingsengine is 15,6% versneld (158,28 ms → 133,52 ms over 50.000 controles; ~2,67 µs/bestand) zonder verlies van nauwkeurigheid, met uitgebreide ondersteuning voor EUC-JP, ISO-2022-JP, UTF-16 zonder BOM, GB18030, KOI8-R en Europese tekensets.
+• Dynamische High-DPI auto-layout (100%–250%) voor alle 28 talen:
+  De vensters Zoeken/Vervangen (Ctrl+F / Ctrl+H) en Ga naar regel (Ctrl+G) passen knop- en vensterbreedtes dynamisch aan op basis van tekstlengte en DPI.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -511,21 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.35 Sürüm Notları
-✨ Yeni Özellikler ve İyileştirmeler
+        "releaseNotes": """miu v1.0.36 Sürüm Notları
+🚀 %19,9 Daha Küçük EXE Boyutu ve %15,6 Daha Hızlı Karakter Kodlama Tespiti
 
-Korumalı dosyaları yönetici izniyle kaydetme (UAC yükseltme)
-
-• Korumalı ve sistem dosyalarını kaydetme:
-  C:\\ kök dizini, korumalı klasörler veya salt okunur özniteliğe sahip dosyalar artık yönetici izniyle kaydedilebilir.
-• Güvenli UAC onay penceresi:
-  Erişim engeli algılandığında güvenlik kalkanı simgeli bir onay penceresi açılarak izin istenir.
-• Düzenleme içeriğini koruma garantisi:
-  Onay penceresinde 'Hayır' seçilirse veya UAC penceresi iptal edilirse, bellekteki metin ve Geri Al (Undo) geçmişi %100 korunur.
-• 'Farklı Kaydet' yol iyileştirmesi:
-  C:\\ gibi kök dizinlere kaydederken başlangıç klasörü tespiti düzeltildi.
-• Tam çoklu dil desteği:
-  Yeni pencereler Türkçe dahil 14 dilde tamamen yerelleştirildi.""",
+• %19,9 Dosya Boyutu Azaltımı (1.053,5 KB → 844,0 KB / -209,5 KB):
+  C++ iostream/locale yükünün kaldırılması, 15 sözdizimi vurgulama tablosunun derleme zamanı constexpr sabitlerine dönüştürülmesi (başlangıçta sıfır bellek ayırma) ve 28 dil iletişim kutusu şablonunun birleştirilmesiyle tekil EXE boyutu 214.528 bayt (-%19,9) küçültüldü.
+• %15,6 Daha Hızlı Otomatik Kodlama Tespiti ve 25+ Kodlama Desteği:
+  CED kodlama tespit motoru doğruluk kaybı olmadan %15,6 hızlandırıldı (50.000 tespitte 158,28 ms → 133,52 ms; dosya başına ~2,67 µs) ve Türkçe (CP1254 / ISO-8859-9), UTF-16 (BOM'suz), EUC-JP, ISO-2022-JP, GB18030, KOI8-R desteği güçlendirildi.
+• 28 Dil × Yüksek DPI (%100–%250) Dinamik Otomatik Yerleşim:
+  Bul/Değiştir (Ctrl+F / Ctrl+H) ve Satıra Git (Ctrl+G) pencereleri, metin genişliğine ve monitör DPI değerine göre düğme ve pencere boyutlarını otomatik ayarlar.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -563,19 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.35
-✨ Tính năng mới & Cải tiến
+        "releaseNotes": """Ghi chú phát hành miu v1.0.36
+🚀 Giảm 19,9% dung lượng tệp EXE & Tăng 15,6% tốc độ nhận diện bảng mã
 
-Hỗ trợ ngôn ngữ Tiếng Việt (Vietnamese) & Lưu với quyền quản trị (UAC)
-
-• Bản địa hóa Tiếng Việt đầy đủ:
-  Giao diện, menu, hộp thoại phím tắt F1 và các thông báo đã được dịch hoàn chỉnh sang Tiếng Việt.
-• Lưu tệp được bảo vệ bằng quyền quản trị:
-  Cho phép lưu đè lên các tệp trong thư mục gốc C:\\ hoặc tệp chỉ đọc thông qua xác thực UAC an toàn.
-• Bảo toàn 100% nội dung chỉnh sửa:
-  Nếu hủy xác thực quyền quản trị, nội dung văn bản và lịch sử Undo trong bộ nhớ vẫn được bảo toàn nguyên vẹn.
-• Cải thiện đường dẫn 'Lưu dưới dạng':
-  Tối ưu hóa việc chọn thư mục ban đầu khi lưu vào thư mục gốc C:\\.""",
+• Giảm gần 20% dung lượng tệp thực thi (1.053,5 KB → 844,0 KB / -209,5 KB):
+  Giảm 214.528 byte (-19,9%) dung lượng tệp miu.exe độc lập bằng cách loại bỏ thư viện C++ iostream/locale dư thừa, chuyển toàn bộ 15 bảng tô màu cú pháp sang hằng số constexpr lúc biên dịch (0 cấp phát bộ nhớ heap khi khởi động) và hợp nhất tài nguyên 28 ngôn ngữ.
+• Tăng 15,6% tốc độ tự động nhận diện bảng mã & Hỗ trợ hơn 25 bảng mã:
+  Tối ưu hóa bộ máy CED giúp tăng tốc độ nhận diện thêm 15,6% (158,28 ms → 133,52 ms cho 50.000 lần kiểm tra; ~2,67 µs/tệp) mà không giảm độ chính xác, đồng thời mở rộng hỗ trợ CP1258 (Tiếng Việt), UTF-16 không BOM, EUC-JP, ISO-2022-JP, GB18030, KOI8-R.
+• Bố cục tự động co giãn theo DPI cao (100%–250%) cho cả 28 ngôn ngữ:
+  Hộp thoại Tìm/Thay thế (Ctrl+F / Ctrl+H) và Đi tới dòng (Ctrl+G) tự động tính toán kích thước nút và cửa sổ theo độ dài văn bản dịch và DPI màn hình.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -614,21 +550,15 @@ Hỗ trợ ngôn ngữ Tiếng Việt (Vietnamese) & Lưu với quyền quản t
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.35
-✨ Нові функції та покращення
+        "releaseNotes": """Примітки до випуску miu v1.0.36
+🚀 Зменшення розміру EXE на 19,9 % та прискорення автовизначення кодування на 15,6 %
 
-Повна підтримка української мови та збереження з правами адміністратора (UAC)
-
-• Повна українська локалізація:
-  Інтерфейс, меню, довідка F1 та діалогові вікна повністю перекладені українською мовою.
-• Збереження захищених і системних файлів:
-  Файли в корені диска C:\\, захищених папках або файли зі статусом «лише для читання» тепер можна зберігати через UAC.
-• Безпечний діалог підтвердження:
-  При відмові в доступі з'являється вікно зі щитом безпеки для надання прав адміністратора.
-• Захист незбережених даних:
-  При скасуванні вікна UAC весь набраний текст у пам'яті та історія Undo зберігаються на 100 %.
-• Коректна обробка шляху в «Зберегти як»:
-  Виправлено вибір початкової папки при збереженні в кореневих каталогах C:\\.""",
+• Розмір виконуваного файлу зменшено на 19,9 % (1 053,5 КБ → 844,0 КБ / -209,5 КБ):
+  Розмір автономного файлу miu.exe скорочено на 214 528 байтів (-19,9 %) завдяки усуненню накладних витрат C++ iostream/locale, переведенню всіх 15 таблиць підсвічування синтаксису в константи часу компіляції constexpr (нуль алокацій купи під час запуску) та об'єднанню шаблонів для 28 мов.
+• Прискорення автовизначення кодування на 15,6 % та підтримка 25+ кодувань:
+  Рушій CED прискорено на 15,6 % (158,28 мс → 133,52 мс на 50 000 перевірок; ~2,67 мкс/файл) без втрати точності, а також розширено підтримку KOI8-U, KOI8-R, CP1251, IBM866, UTF-16 без BOM, EUC-JP, ISO-2022-JP і GB18030.
+• Динамічна авторозмітка діалогів для 28 мов і високого DPI (100 %–250 %):
+  Вікна пошуку/заміни (Ctrl+F / Ctrl+H) і переходу до рядка (Ctrl+G) автоматично підлаштовують розміри кнопок і вікон під довжину тексту та масштаб екрана.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -667,17 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.35
-✨ Fitur Baru & Peningkatan
+        "releaseNotes": """Catatan Rilis miu v1.0.36
+🚀 Ukuran EXE 19,9% Lebih Kecil & Deteksi Enkod Otomatis 15,6% Lebih Cepat
 
-Dukungan 28 Bahasa Global & Penyimpanan Berkas Terlindungi (Elevasi UAC)
-
-• Ekspansi Dukungan 28 Bahasa:
-  Antarmuka, menu, panduan pintasan F1, dan kotak dialog kini tersedia dalam 28 bahasa di seluruh dunia.
-• Simpan Berkas Terlindungi & Sistem:
-  Berkas di direktori root C:\\, folder terlindungi, atau berkas hanya-baca kini dapat disimpan dengan hak administrator.
-• Jaminan Perlindungan Konten Edit:
-  Jika kotak konfirmasi atau jendela UAC dibatalkan, semua teks dalam memori dan riwayat Undo tetap aman 100%.""",
+• Pengurangan Ukuran Berkas 19,9% (1.053,5 KB → 844,0 KB / -209,5 KB):
+  Ukuran berkas miu.exe mandiri diperkecil sebesar 214.528 byte (-19,9%) dengan menghapus overhead C++ iostream/locale, memindahkan 15 tabel pewarnaan sintaksis ke konstanta constexpr waktu kompilasi (nol alokasi heap saat mulai), dan menyatukan templat dialog 28 bahasa.
+• Deteksi Enkod Otomatis 15,6% Lebih Cepat & Dukungan 25+ Enkod:
+  Mempercepat mesin CED sebesar 15,6% (158,28 mdtk → 133,52 mdtk pada 50.000 deteksi; ~2,67 µs/berkas) tanpa mengurangi akurasi, serta memperluas dukungan UTF-16 tanpa BOM, EUC-JP, ISO-2022-JP, GB18030, KOI8-R, dan halaman kode internasional.
+• Tata Letak Otomatis DPI Tinggi (100%–250%) di Semua 28 Bahasa:
+  Dialog Cari/Ganti (Ctrl+F / Ctrl+H) dan Ke Baris (Ctrl+G) secara dinamis menyesuaikan ukuran tombol dan jendela agar teks tidak terpotong.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -716,17 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k vydání miu v1.0.35
-✨ Nové funkce a vylepšení
+        "releaseNotes": """Poznámky k vydání miu v1.0.36
+🚀 O 19,9 % menší spustitelný soubor a o 15,6 % rychlejší detekce kódování
 
-Plná podpora češtiny a ukládání s oprávněním správce (UAC)
-
-• Kompletní česká lokalizace:
-  Rozhraní, nabídky, nápověda klávesových zkratek F1 a dialogová okna jsou nyní plně přeloženy do češtiny.
-• Ukládání chráněných a systémových souborů:
-  Soubory v kořenovém adresáři C:\\, chráněných složkách nebo soubory jen pro čtení lze nyní bezpečně ukládat s právy správce.
-• Ochrana neuložených úprav:
-  Při zrušení dialogu UAC zůstane veškerý rozepsaný text i historie kroků Zpět (Undo) 100% zachována.""",
+• Zmenšení velikosti binárního souboru o 19,9 % (1 053,5 KB → 844,0 KB / -209,5 KB):
+  Samostatný soubor miu.exe byl zmenšen o 214 528 bajtů (-19,9 %) odstraněním režie C++ iostream/locale, převedením všech 15 tabulek zvýrazňování syntaxe na konstanty constexpr v době kompilace (nulové alokace haldy při startu) a sjednocením šablon pro 28 jazyků.
+• O 15,6 % rychlejší automatická detekce kódování a podpora 25+ znakových sad:
+  Engine CED byl zrychlen o 15,6 % (158,28 ms → 133,52 ms při 50 000 detekcích; ~2,67 µs/soubor) při zachování 100% přesnosti a rozšířena podpora středoevropských sad (CP1250, ISO-8859-2), UTF-16 bez BOM, EUC-JP, ISO-2022-JP, GB18030 a KOI8-R.
+• Dynamické rozvržení dialogů pro vysoké DPI (100 %–250 %) ve 28 jazycích:
+  Dialogy Najít/Nahradit (Ctrl+F / Ctrl+H) a Přejít na řádek (Ctrl+G) automaticky přizpůsobují šířku tlačítek a oken délce překladu a DPI monitoru.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -765,17 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.35
-✨ Nya funktioner och förbättringar
+        "releaseNotes": """Versionsinformation för miu v1.0.36
+🚀 19,9 % mindre EXE-fil & 15,6 % snabbare automatisk kodningsdetektering
 
-Fullt stöd för svenska och sparning med administratörsbehörighet (UAC)
-
-• Komplett svensk lokalisering:
-  Gränssnitt, menyer, F1-kortkommandon och dialogrutor är nu helt översatta till svenska.
-• Spara skyddade filer och systemfiler:
-  Filer i rotkatalogen C:\\, skyddade mappar eller skrivskyddade filer kan nu sparas säkert med administratörsbehörighet.
-• Skydd för osparade ändringar:
-  Om UAC-dialogrutan avbryts bevaras all text i minnet och Ångra-historiken till 100 %.""",
+• 19,9 % mindre filstorlek (1 053,5 KB → 844,0 KB / -209,5 KB):
+  Den fristående EXE-filen har minskats med 214 528 byte (-19,9 %) genom att eliminera C++ iostream/locale-overhead, flytta alla 15 syntaxmarkeringstabeller till kompileringstida constexpr-konstanter (noll heap-allokeringar vid start) och förena dialogresurser för 28 språk.
+• 15,6 % snabbare kodningsdetektering & stöd för över 25 teckenkodningar:
+  CED-motorn har accelererats med 15,6 % (158,28 ms → 133,52 ms över 50 000 kontroller; ~2,67 µs/fil) utan förlust av precision, med utökat stöd för UTF-16 utan BOM, EUC-JP, ISO-2022-JP, GB18030, KOI8-R och europeiska teckentabeller.
+• Dynamisk High-DPI-layout (100 %–250 %) för alla 28 språk:
+  Dialogrutorna Sök/Ersätt (Ctrl+F / Ctrl+H) och Gå till rad (Ctrl+G) anpassar automatiskt knapp- och fönsterbredd efter textlängd och skärmens DPI.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -814,17 +738,15 @@ Fullt stöd för svenska och sparning med administratörsbehörighet (UAC)
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.35
-✨ คุณสมบัติใหม่และการปรับปรุง
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.36
+🚀 ลดขนาดไฟล์ EXE ลง 19.9% และตรวจจับรหัสอักขระเร็วขึ้น 15.6%
 
-รองรับภาษาไทยอย่างสมบูรณ์ และบันทึกไฟล์ด้วยสิทธิ์ผู้ดูแลระบบ (UAC)
-
-• รองรับภาษาไทยเต็มรูปแบบ:
-  แปลส่วนติดต่อผู้ใช้ เมนู หน้าจอช่วยเหลือ F1 และกล่องโต้ตอบทั้งหมดเป็นภาษาไทยเรียบร้อยแล้ว
-• บันทึกไฟล์ระบบและไฟล์ที่ได้รับการป้องกัน:
-  สามารถบันทึกไฟล์ในไดรฟ์ C:\\ โฟลเดอร์ที่ได้รับการป้องกัน หรือไฟล์แบบอ่านอย่างเดียวด้วยสิทธิ์ผู้ดูแลระบบ
-• ปกป้องข้อมูลที่กำลังแก้ไข 100%:
-  หากยกเลิกหน้าต่าง UAC ข้อความที่กำลังแก้ไขและประวัติการเลิกทำ (Undo) ทั้งหมดจะยังคงอยู่ครบถ้วน""",
+• ลดขนาดไฟล์โปรแกรมลงเกือบ 20% (1,053.5 KB → 844.0 KB / -209.5 KB):
+  ลดขนาดไฟล์ miu.exe ลง 214,528 ไบต์ (-19.9%) โดยคงความสามารถในการพกพาแบบไฟล์เดียว 100% ด้วยการตัดส่วนเกินของ C++ iostream/locale เปลี่ยนตารางไฮไลต์ไวยากรณ์ทั้ง 15 ภาษาเป็นค่าคงที่ constexpr ตอนคอมไพล์ (ไม่เสียเวลาจองหน่วยความจำ Heap ตอนเปิดโปรแกรม) และรวมเทมเพลต 28 ภาษา
+• ตรวจจับรหัสอักขระอัตโนมัติเร็วขึ้น 15.6% และรองรับกว่า 25 รหัสภาษา:
+  ปรับปรุงเอนจิน CED ให้ทำงานเร็วขึ้น 15.6% (158.28 ms → 133.52 ms จากการทดสอบ 50,000 ครั้ง; ~2.67 µs/ไฟล์) โดยความแม่นยำครบถ้วน 100% พร้อมเสริมการรองรับภาษาไทย (CP874 / TIS-620), UTF-16 แบบไม่มี BOM, EUC-JP, ISO-2022-JP และ GB18030
+• ปรับขนาดหน้าต่างอัตโนมัติตาม DPI สูง (100%–250%) สำหรับทั้ง 28 ภาษา:
+  หน้าต่างค้นหา/แทนที่ (Ctrl+F / Ctrl+H) และไปที่บรรทัด (Ctrl+G) คำนวณขนาดปุ่มและหน้าต่างตามความยาวข้อความแปลและ DPI หน้าจอโดยอัตโนมัติ""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -863,17 +785,15 @@ Fullt stöd för svenska och sparning med administratörsbehörighet (UAC)
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.35 रिलीज़ नोट्स
-✨ नई सुविधाएँ और सुधार
+        "releaseNotes": """miu v1.0.36 रिलीज़ नोट्स
+🚀 EXE फ़ाइल का आकार 19.9% कम और एन्कोडिंग पहचान की गति में 15.6% सुधार
 
-हिंदी भाषा का पूर्ण समर्थन और व्यवस्थापक अधिकारों (UAC) के साथ फ़ाइल सहेजना
-
-• संपूर्ण हिंदी स्थानीयकरण:
-  मेनू, F1 सहायता शॉर्टकट स्क्रीन और सभी संवाद बॉक्स अब पूरी तरह से हिंदी में उपलब्ध हैं।
-• सुरक्षित और सिस्टम फ़ाइलें सहेजें:
-  C:\\ रूट निर्देशिका, सुरक्षित फ़ोल्डरों या केवल-पढ़ने के लिए (Read-only) फ़ाइलों को अब व्यवस्थापक अधिकारों के साथ सहेजा जा सकता है।
-• संपादित सामग्री की 100% सुरक्षा:
-  यदि UAC संवाद रद्द भी कर दिया जाता है, तो भी मेमोरी में मौजूद टेक्स्ट और Undo इतिहास पूरी तरह सुरक्षित रहता है।""",
+• निष्पादन योग्य फ़ाइल (EXE) के आकार में 19.9% की कमी (1,053.5 KB → 844.0 KB / -209.5 KB):
+  अनावश्यक C++ iostream/locale ओवरहेड को हटाकर, सभी 15 सिंटैक्स हाइलाइटिंग तालिकाओं को कंपाइल-टाइम constexpr स्थिरांक में बदलकर (स्टार्टअप पर शून्य हीप आवंटन) और 28 भाषाओं के संवाद संसाधनों को एकीकृत करके miu.exe का आकार 214,528 बाइट्स (-19.9%) कम किया गया है।
+• 15.6% तेज़ स्वचालित एन्कोडिंग पहचान और 25+ एन्कोडिंग का विस्तारित समर्थन:
+  सटीकता से समझौता किए बिना CED एन्कोडिंग इंजन की गति को 15.6% (50,000 परीक्षणों में 158.28 ms → 133.52 ms; ~2.67 µs/फ़ाइल) बढ़ाया गया है तथा बिना BOM के UTF-16, EUC-JP, ISO-2022-JP, GB18030 और KOI8-R समर्थन को मजबूत किया गया है।
+• सभी 28 भाषाओं और उच्च DPI (100%–250%) के लिए डायनामिक ऑटो-लेआउट:
+  खोजें/बदलें (Ctrl+F / Ctrl+H) और पंक्ति पर जाएँ (Ctrl+G) संवाद बॉक्स अब अनुवादित टेक्स्ट की लंबाई और मॉनिटर DPI के अनुसार बटन और विंडो का आकार स्वचालित रूप से समायोजित करते हैं।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -912,17 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.35
-✨ Funcții noi și îmbunătățiri
+        "releaseNotes": """Note de lansare miu v1.0.36
+🚀 Dimensiune EXE redusă cu 19,9% și detectare a codificării cu 15,6% mai rapidă
 
-Suport complet pentru limba română și salvare cu drepturi de administrator (UAC)
-
-• Localizare completă în limba română:
-  Interfața, meniurile, ecranul de ajutor F1 și ferestrele de dialog sunt acum complet traduse în limba română.
-• Salvarea fișierelor protejate și de sistem:
-  Fișierele din directorul rădăcină C:\\, din dosarele protejate sau cele doar în citire pot fi acum salvate cu drepturi de administrator.
-• Protecție garantată a conținutului:
-  În cazul anulării ferestrei UAC, tot textul editat în memorie și istoricul Anulare (Undo) sunt păstrate 100%.""",
+• Reducerea cu 19,9% a dimensiunii fișierului executabil (1.053,5 KB → 844,0 KB / -209,5 KB):
+  Fișierul portabil miu.exe a fost redus cu 214.528 octeți (-19,9%) prin eliminarea overhead-ului C++ iostream/locale, mutarea tuturor celor 15 tabele de sintaxă în constante constexpr la compilare (zero alocări heap la pornire) și unificarea șabloanelor pentru 28 de limbi.
+• Detectare automată a codificării cu 15,6% mai rapidă și suport pentru 25+ codificări:
+  Motorul CED a fost accelerat cu 15,6% (158,28 ms → 133,52 ms la 50.000 de verificări; ~2,67 µs/fișier) fără pierderi de precizie, cu suport extins pentru UTF-16 fără BOM, CP1250/ISO-8859-2, EUC-JP, ISO-2022-JP, GB18030 și KOI8-R.
+• Aspect dinamic automat pentru DPI ridicat (100%–250%) în toate cele 28 de limbi:
+  Ferestrele Căutare/Înlocuire (Ctrl+F / Ctrl+H) și Salt la linie (Ctrl+G) își ajustează automat lățimea butoanelor și a ferestrei în funcție de text și DPI.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -961,17 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.35 kiadási megjegyzések
-✨ Újdonságok és fejlesztések
+        "releaseNotes": """miu v1.0.36 kiadási megjegyzések
+🚀 19,9%-kal kisebb EXE fájlméret és 15,6%-kal gyorsabb karakterkódolás-felismerés
 
-Teljes magyar nyelvi támogatás és mentés rendszergazdai jogosultsággal (UAC)
-
-• Teljes magyar honosítás:
-  A kezelőfelület, a menük, az F1 gyorsbillentyű-súgó és a párbeszédpanelek mostantól teljes egészében magyar nyelvűek.
-• Védett és rendszerfájlok mentése:
-  A C:\\ gyökérkönyvtárban, védett mappákban lévő vagy írásvédett fájlok mostantól rendszergazdai engedéllyel menthetők.
-• Szerkesztett tartalom 100%-os védelme:
-  Az UAC jóváhagyás megszakítása esetén is maradéktalanul megmarad a memóriában lévő szöveg és a Visszavonás (Undo) előzmény.""",
+• 19,9%-os fájlméret-csökkentés (1 053,5 KB → 844,0 KB / -209,5 KB):
+  Az önálló miu.exe mérete 214 528 bájttal (-19,9%) csökkent a felesleges C++ iostream/locale többletterhelés eltávolításával, mind a 15 szintaxiskiemelő tábla fordítási idejű constexpr konstansokká alakításával (nulla heap-allokáció indításkor), valamint a 28 nyelvi sablon egyesítésével.
+• 15,6%-kal gyorsabb automatikus kódolásfelismerés és 25+ karakterkódolás támogatása:
+  A CED motor sebessége 15,6%-kal nőtt (158,28 ms → 133,52 ms 50 000 vizsgálatnál; ~2,67 µs/fájl) pontosságvesztés nélkül, kibővített közép-európai (CP1250 / ISO-8859-2), BOM nélküli UTF-16, EUC-JP, ISO-2022-JP, GB18030 és KOI8-R támogatással.
+• Dinamikus magas DPI-s (100%–250%) automatikus elrendezés mind a 28 nyelven:
+  A Keresés/Csere (Ctrl+F / Ctrl+H) és az Ugrás sorra (Ctrl+G) ablakok automatikusan a szöveg hosszához és a DPI-hez igazítják a gombok és az ablak méretét.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -1010,17 +926,15 @@ Teljes magyar nyelvi támogatás és mentés rendszergazdai jogosultsággal (UAC
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.35
-✨ Νέες δυνατότητες και βελτιώσεις
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.36
+🚀 19,9% μικρότερο μέγεθος EXE & 15,6% ταχύτερη ανίχνευση κωδικοποίησης
 
-Πλήρης υποστήριξη ελληνικής γλώσσας & αποθήκευση με δικαιώματα διαχειριστή (UAC)
-
-• Πλήρης ελληνική μετάφραση:
-  Το περιβάλλον χρήσης, τα μενού, η οθόνη βοήθειας F1 και τα παράθυρα διαλόγου είναι πλέον πλήρως μεταφρασμένα στα Ελληνικά.
-• Αποθήκευση προστατευμένων αρχείων:
-  Τα αρχεία στον ριζικό φάκελο C:\\, σε προστατευμένους φακέλους ή τα αρχεία μόνο για ανάγνωση μπορούν πλέον να αποθηκευτούν με δικαιώματα διαχειριστή.
-• 100% προστασία περιεχομένου:
-  Σε περίπτωση ακύρωσης του παραθύρου UAC, όλο το κείμενο στη μνήμη και το ιστορικό Αναίρεσης (Undo) διατηρούνται στο ακέραιο.""",
+• Μείωση μεγέθους εκτελέσιμου αρχείου κατά 19,9% (1.053,5 KB → 844,0 KB / -209,5 KB):
+  Το μέγεθος του αυτόνομου miu.exe μειώθηκε κατά 214.528 byte (-19,9%) αφαιρώντας την επιβάρυνση C++ iostream/locale, μετατρέποντας τους 15 πίνακες επισήμανσης σύνταξης σε σταθερές constexpr χρόνου μεταγλώττισης (μηδενικές δεσμεύσεις σωρού κατά την εκκίνηση) και ενοποιώντας τους πόρους 28 γλωσσών.
+• 15,6% ταχύτερη αυτόματη ανίχνευση κωδικοποίησης & υποστήριξη 25+ κωδικοποιήσεων:
+  Η μηχανή CED επιταχύνθηκε κατά 15,6% (158,28 ms → 133,52 ms σε 50.000 ελέγχους· ~2,67 µs/αρχείο) χωρίς απώλεια ακρίβειας, με ενισχυμένη υποστήριξη για Ελληνικά (CP1253 / ISO-8859-7), UTF-16 χωρίς BOM, EUC-JP, ISO-2022-JP, GB18030 και KOI8-R.
+• Δυναμική αυτόματη διάταξη υψηλού DPI (100%–250%) και στις 28 γλώσσες:
+  Τα παράθυρα Εύρεση/Αντικατάσταση (Ctrl+F / Ctrl+H) και Μετάβαση σε γραμμή (Ctrl+G) προσαρμόζουν αυτόματα το πλάτος κουμπιών και παραθύρων.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -1059,17 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.35
-✨ Nye funktioner og forbedringer
+        "releaseNotes": """Udgivelsesnoter for miu v1.0.36
+🚀 19,9 % mindre EXE-fil & 15,6 % hurtigere automatisk tegnsætregistrering
 
-Fuld dansk sprogunderstøttelse og gemning med administratorrettigheder (UAC)
-
-• Komplet dansk lokalisering:
-  Brugerflade, menuer, F1-genvejsoversigt og dialogbokse er nu fuldt oversat til dansk.
-• Gem beskyttede filer og systemfiler:
-  Filer i roden af C:\\, beskyttede mapper eller skrivebeskyttede filer kan nu gemmes sikkert med administratorrettigheder.
-• 100 % beskyttelse af redigeringer:
-  Hvis UAC-vinduet annulleres, bevares al tekst i hukommelsen samt Fortryd-historikken fuldstændigt.""",
+• 19,9 % reduktion af filstørrelsen (1.053,5 KB → 844,0 KB / -209,5 KB):
+  Den selvstændige miu.exe er reduceret med 214.528 byte (-19,9 %) ved at fjerne C++ iostream/locale-overhead, flytte alle 15 syntaksfremhævningstabeller til kompileringstids-constexpr (nul heap-allokeringer ved opstart) og samle dialogressourcer for 28 sprog.
+• 15,6 % hurtigere tegnsætregistrering & understøttelse af 25+ tegnsæt:
+  CED-motoren er accelereret med 15,6 % (158,28 ms → 133,52 ms over 50.000 kontroller; ~2,67 µs/fil) uden tab af præcision, med udvidet understøttelse af UTF-16 uden BOM, EUC-JP, ISO-2022-JP, GB18030, KOI8-R og europæiske tegnsæt.
+• Dynamisk High-DPI-layout (100 %–250 %) på alle 28 sprog:
+  Dialogboksene Søg/Erstat (Ctrl+F / Ctrl+H) og Gå til linje (Ctrl+G) tilpasser automatisk knap- og vinduesbredde efter tekstlængde og skærm-DPI.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1108,17 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.35 -julkaisutiedot
-✨ Uudet ominaisuudet ja parannukset
+        "releaseNotes": """miu v1.0.36 -julkaisutiedot
+🚀 19,9 % pienempi EXE-tiedosto ja 15,6 % nopeampi merkistöntunnistus
 
-Täysi suomen kielen tuki ja tallennus järjestelmänvalvojan oikeuksilla (UAC)
-
-• Kattava suomenkielinen lokalisointi:
-  Käyttöliittymä, valikot, F1-pikanäppäinohje ja valintaikkunat ovat nyt kokonaan suomeksi.
-• Suojattujen ja järjestelmätiedostojen tallennus:
-  C:\\-juurikansiossa, suojatuissa kansioissa tai vain luku -tilassa olevat tiedostot voidaan nyt tallentaa järjestelmänvalvojan oikeuksilla.
-• Muokkausten 100 % säilyminen:
-  Jos UAC-vahvistus peruutetaan, muistissa oleva teksti ja Kumoa-historia säilyvät täysin ennallaan.""",
+• 19,9 % pienempi suoritettava tiedosto (1 053,5 KB → 844,0 KB / -209,5 KB):
+  Itsenäisen miu.exe-tiedoston kokoa pienennettiin 214 528 tavulla (-19,9 %) poistamalla C++ iostream/locale -kuorma, muuntamalla kaikki 15 syntaksinkorostustaulukkoa käännösaikaisiksi constexpr-vakioiksi (nolla kekovarausta käynnistyksessä) ja yhdistämällä 28 kielen valintaikkunapohjat.
+• 15,6 % nopeampi automaattinen merkistöntunnistus ja yli 25 merkistön tuki:
+  CED-tunnistusmoottoria nopeutettiin 15,6 % (158,28 ms → 133,52 ms 50 000 tarkistuksessa; ~2,67 µs/tiedosto) tarkkuudesta tinkimättä sekä laajennettiin BOM-merkittömän UTF-16:n, EUC-JP:n, ISO-2022-JP:n, GB18030:n, KOI8-R:n ja eurooppalaisten koodisivujen tukea.
+• Dynaaminen korkean DPI:n (100 %–250 %) automaattiasettelu kaikilla 28 kielellä:
+  Etsi/Korvaa (Ctrl+F / Ctrl+H)- ja Siirry riville (Ctrl+G) -ikkunat mitoittavat painikkeet ja ikkunan leveyden automaattisesti käännöksen ja DPI:n mukaan.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1157,17 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.35
-✨ Nye funksjoner og forbedringer
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.36
+🚀 19,9 % mindre EXE-fil og 15,6 % raskere automatisk tegnsettgjenkjenning
 
-Full støtte for norsk (bokmål) og lagring med administratorrettigheter (UAC)
-
-• Komplett norsk lokalisering:
-  Brukergrensesnitt, menyer, F1-hurtigtastoversikt og dialogbokser er nå fullstendig oversatt til norsk.
-• Lagre beskyttede filer og systemfiler:
-  Filer i rotkatalogen C:\\, beskyttede mapper eller skrivebeskyttede filer kan nå lagres trygt med administratorrettigheter.
-• 100 % beskyttelse av ulagret innhold:
-  Hvis UAC-dialogen avbrytes, bevares all tekst i minnet og Angre-historikken fullstendig.""",
+• 19,9 % reduksjon i filstørrelse (1 053,5 KB → 844,0 KB / -209,5 KB):
+  Den frittstående miu.exe-filen er redusert med 214 528 byte (-19,9 %) ved å fjerne C++ iostream/locale-overhead, gjøre alle 15 syntaksuthevingstabeller til kompileringstids constexpr-konstanter (null heap-allokeringer ved oppstart) og samle dialogressurser for 28 språk.
+• 15,6 % raskere tegnsettgjenkjenning og støtte for over 25 tegnsett:
+  CED-motoren er akselerert med 15,6 % (158,28 ms → 133,52 ms over 50 000 kontroller; ~2,67 µs/fil) uten tap av presisjon, med utvidet støtte for UTF-16 uten BOM, EUC-JP, ISO-2022-JP, GB18030, KOI8-R og europeiske tegnsett.
+• Dynamisk High-DPI-oppsett (100 %–250 %) for alle 28 språk:
+  Dialogboksene Søk/Erstatt (Ctrl+F / Ctrl+H) og Gå til linje (Ctrl+G) tilpasser automatisk knapp- og vindusbredde etter tekstlengde og skjerm-DPI.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1206,17 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.35
-✨ Ciri Baharu & Penambahbaikan
+        "releaseNotes": """Nota Keluaran miu v1.0.36
+🚀 Saiz Fail EXE 19.9% Lebih Kecil & Pengesanan Pengekodan 15.6% Lebih Pantas
 
-Sokongan Penuh Bahasa Melayu & Simpanan Fail Terlindung (UAC)
-
-• Penyetempatan Bahasa Melayu Lengkap:
-  Antara muka, menu, skrin bantuan pintasan F1 dan kotak dialog kini diterjemahkan sepenuhnya ke dalam Bahasa Melayu.
-• Simpan Fail Sistem & Terlindung:
-  Fail dalam direktori akar C:\\, folder terlindung atau fail baca sahaja kini boleh disimpan dengan hak pentadbir.
-• Jaminan Perlindungan Kandungan 100%:
-  Jika tetingkap pengesahan UAC dibatalkan, semua teks dalam ingatan dan sejarah Buat Asal (Undo) kekal selamat sepenuhnya.""",
+• Pengurangan Saiz Binari 19.9% (1,053.5 KB → 844.0 KB / -209.5 KB):
+  Saiz fail boleh laku miu.exe dikurangkan sebanyak 214,528 bait (-19.9%) dengan menghapuskan beban C++ iostream/locale, menukar kesemua 15 jadual penyerlahan sintaks kepada pemalar constexpr masa kompilasi (sifar peruntukan timbunan semasa permulaan) dan menyatukan templat dialog 28 bahasa.
+• Pengesanan Pengekodan Automatik 15.6% Lebih Pantas & Sokongan 25+ Pengekodan:
+  Enjin CED dipercepatkan sebanyak 15.6% (158.28 ms → 133.52 ms dalam 50,000 ujian; ~2.67 µs/fail) tanpa kehilangan ketepatan, serta memperkukuh sokongan UTF-16 tanpa BOM, EUC-JP, ISO-2022-JP, GB18030 dan KOI8-R.
+• Susun Atur Automatik DPI Tinggi (100%–250%) Merentasi 28 Bahasa:
+  Kotak dialog Cari/Ganti (Ctrl+F / Ctrl+H) dan Pergi ke Baris (Ctrl+G) melaraskan lebar butang dan tetingkap secara dinamik mengikut panjang teks dan DPI.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

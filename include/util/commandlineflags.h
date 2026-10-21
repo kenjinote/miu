@@ -20,10 +20,10 @@
 
 #undef DEFINE_bool
 #define DEFINE_bool(name, default_value, comment) \
-    bool FLAGS_##name = default_value
+    static constexpr bool FLAGS_##name = default_value
 #undef DEFINE_int32
 #define DEFINE_int32(name, default_value, comment) \
-    int32 FLAGS_##name = default_value
+    static constexpr int32 FLAGS_##name = default_value
 #undef DEFINE_string
 #define DEFINE_string(name, default_value, comment) \
     string FLAGS_##name = default_value
