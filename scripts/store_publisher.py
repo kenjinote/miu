@@ -7,6 +7,55 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.35": {
+        "ja-jp": """miu v1.0.35 リリースノート
+✨ 新機能・改善点
+
+Ctrl + ダブルクリックによる追加選択（マルチ選択）に対応
+
+・Ctrl + ダブルクリックでの単語追加選択:
+  Ctrl キーを押しながらテキストをダブルクリック（またはトリプルクリック）した際、既存の選択範囲を残したまま新しい単語・行を追加選択できるようになりました。
+・一括コピー＆同時入力編集:
+  追加選択した複数の単語をそのまま一括コピー（Ctrl+C）したり、同時入力で一括書き換えしたりできます。
+・単語末尾のダブルクリック判定改善:
+  単語の最後の文字の右半分をダブルクリックした際にも、直後の空白ではなくその単語が確実に選択されるよう改善しました。""",
+
+        "en-us": """miu v1.0.35 Release Notes
+✨ What's New & Improvements
+
+Additive Word Selection via Ctrl + Double-Click
+
+- Ctrl + Double-Click Additive Selection:
+  Holding Ctrl while double-clicking a word (or triple-clicking a line) now adds the newly selected word or line to your existing selections instead of replacing them.
+- Multi-Selection Copy & Simultaneous Editing:
+  Easily copy all selected words at once (Ctrl+C) or type to replace all selected words simultaneously.
+- Refined Word Boundary Hit-Testing:
+  Double-clicking the trailing half of a word's last character now reliably selects the word itself rather than the following space.""",
+
+        "zh-hans": """miu v1.0.35 更新日志
+✨ 新功能与改进
+
+支持按住 Ctrl 双击进行追加选择（多选）
+
+- Ctrl + 双击追加选择单词：
+  按住 Ctrl 键双击单词（或三击整行）时，现在会保留已有选区并将新选中的单词或行追加到多选列表中。
+- 批量复制与同步编辑：
+  可直接对追加选中的多个单词进行批量复制（Ctrl+C）或同时输入替换。
+- 优化单词末尾双击判定：
+  双击单词最后一个字符的右半部分时，现在能精准选中该单词本身而非其后的空格。""",
+
+        "ko": """miu v1.0.35 릴리스 노트
+✨ 새로운 기능 및 개선 사항
+
+Ctrl + 더블 클릭을 통한 단어 추가 선택(다중 선택) 지원
+
+- Ctrl + 더블 클릭 추가 선택:
+  Ctrl 키를 누른 상태에서 단어를 더블 클릭(또는 줄을 트리플 클릭)하면 기존 선택 영역을 유지한 채 새로운 단어·줄을 추가로 선택할 수 있습니다.
+- 일괄 복사 및 동시 편집:
+  추가 선택한 여러 단어를 한 번에 복사(Ctrl+C)하거나 동시에 입력하여 일괄 수정할 수 있습니다.
+- 단어 끝부분 더블 클릭 판정 개선:
+  단어의 마지막 글자 오른쪽 절반을 더블 클릭할 때도 뒤따르는 공백이 아닌 해당 단어가 정확히 선택되도록 개선했습니다."""
+    },
     "1.0.34": {
         "ja-jp": """miu v1.0.34 リリースノート
 ✨ 新機能・改善点
