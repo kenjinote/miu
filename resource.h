@@ -5,6 +5,8 @@
 #define IDI_ICON1                       101
 #define IDD_FIND_DIALOG                 102
 #define IDD_GOTO_DIALOG                 103
+#define IDS_GOTO_TITLE                  98
+#define IDS_GOTO_LABEL                  99
 #define IDS_APP_TITLE                   104
 #define IDS_UNTITLED                    105
 #define IDS_HELP_TEXT                   106
@@ -37,6 +39,14 @@
 #define IDS_CTX_COPY                    133
 #define IDS_CTX_PASTE                   134
 #define IDS_CTX_SELECT_ALL              135
+#define IDS_FIND_LABEL                  136
+#define IDS_REPLACE_LABEL               137
+#define IDS_FIND_CASE                   138
+#define IDS_FIND_WORD                   139
+#define IDS_FIND_REGEX                  140
+#define IDS_FIND_NEXT                   141
+#define IDS_REPLACE_BTN                 142
+#define IDS_REPLACE_ALL_BTN             143
 #define IDC_FIND_EDIT                   1001
 #define IDC_FIND_NEXT                   1002
 #define IDC_FIND_CANCEL                 1003
@@ -49,14 +59,15 @@
 #define IDC_REPLACE_LABEL               1010
 #define IDC_GOTO_LABEL                  1011
 #define IDC_GOTO_EDIT                   1012
+#define IDC_FIND_LABEL                  1013
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        136
+#define _APS_NEXT_RESOURCE_VALUE        144
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1013
+#define _APS_NEXT_CONTROL_VALUE         1014
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
