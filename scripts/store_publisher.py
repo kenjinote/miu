@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.37": {
+        "ja-jp": """miu v1.0.37 リリースノート
+⚡ ネイティブ Emmet 完全対応（超高速展開・フィルター構文・全角対応・スマート改行）
+
+・超高速ネイティブ Emmet エンジン搭載（Tab キーで即時展開）:
+  HTML / JSX / XML / CSS の Emmet 略記展開に完全対応しました（1回あたり約 29.7 μs の超高速動作）。親子・兄弟・グループ・連番（$）・属性・テキスト（{...}）・暗黙タグ補完・BEM/コメント/エスケープフィルター（|bem, |c, |e）・CSS 数値/カラー/ベンダープレフィックス（-）展開に対応し、展開後は Tab / Shift+Tab で入力箇所を順番にジャンプできます。
+・空タグ <div>|</div> 内のスマート Enter 自動インデント改行:
+  開始タグと終了タグの間で Enter を押すと、自動的にインデント付きの3行ブロックへ展開します。
+・全角文字（日本語・全角スペース・全角英数記号）＆ 未保存タブ対応:
+  日本語テキストや全角スペースインデント、IME ON のまま入力された全角英数記号（ｄｉｖ＞ｐ＊２ 等）の自動正規化に対応し、保存前の新規タブや <style> / style="" 内でも自動で HTML/CSS を切り替えて動作します。""",
+
+        "en-us": """miu v1.0.37 Release Notes
+⚡ Full Native Emmet Support (Ultra-Fast Expansion, Filters, Smart Enter & Full-Width Support)
+
+- Ultra-Fast Native C++ Emmet Engine (Expand with Tab):
+  Full support for HTML, JSX, XML, and CSS Emmet abbreviations (~29.7 µs per expansion). Supports child/sibling/climb-up/grouping/multiplication operators, numbering ($), attributes, text nodes ({...}), implicit tags, BEM/comment/escape filters (|bem, |c, |e), CSS unitless/color/vendor-prefix (-) expansions, multi-cursor expansion, and Tab / Shift+Tab tabstop navigation.
+- Smart Enter Auto-Indent Inside Empty Tags (<div>|</div>):
+  Pressing Enter between matching opening and closing tags automatically splits and indents them into a 3-line block while preserving the file's newline format (CRLF/LF).
+- Context-Aware Mode Switching & Full-Width Character Support:
+  Works immediately in unsaved tabs and 45+ file types, automatically switches between HTML and CSS inside <style> blocks and style="" attributes, and supports CJK text and full-width alphanumeric normalization.""",
+
+        "zh-hans": """miu v1.0.37 更新日志
+⚡ 全面支持原生 Emmet（超高速展开、过滤器语法、全角兼容与智能回车缩进）
+
+- 搭载超高速 C++ 原生 Emmet 引擎（按 Tab 键即时展开）：
+  全面支持 HTML / JSX / XML / CSS 的 Emmet 缩写展开（单次展开仅需约 29.7 微秒）。支持层级/兄弟/分组/乘法运算、自动编号（$）、属性、文本节点（{...}）、隐式标签推导、过滤器（|bem、|c、|e）、CSS 数值/颜色/浏览器前缀（-）展开及多光标同步展开，展开后可按 Tab / Shift+Tab 在输入点间快速跳转。
+- 空标签 <div>|</div> 内按 Enter 智能换行缩进：
+  在成对起止标签之间按 Enter 键时，将自动拆分为带缩进的三行结构并保持文件原有换行符格式。
+- 智能上下文切换与全角字符支持：
+  支持未保存的新建标签页及 45+ 种文件扩展名，在 <style> 与 style="" 内自动切换 CSS 模式，并支持中文文本及全角字母符号（如 ｄｉｖ＞ｐ＊２）的自动归一化展开。""",
+
+        "ko": """miu v1.0.37 릴리스 노트
+⚡ 네이티브 Emmet 완벽 지원 (초고속 전개, 필터 구문, 전각 문자 호환 및 스마트 Enter 줄바꿈)
+
+- 초고속 C++ 네이티브 Emmet 엔진 탑재 (Tab 키로 즉시 전개):
+  HTML / JSX / XML / CSS Emmet 약어 전개를 완벽 지원합니다(1회당 약 29.7 μs 초고속 동작). 계층·형제·그룹·반복 연산자, 자동 번호 매기기($), 속성, 텍스트({…}), 암시적 태그 추론, 필터(|bem, |c, |e), CSS 수치·색상·벤더 프리픽스(-) 전개 및 다중 커서 전개를 지원하며, 전개 후 Tab / Shift+Tab으로 입력 위치를 순서대로 이동할 수 있습니다.
+- 빈 태그 <div>|</div> 내 스마트 Enter 자동 들여쓰기:
+  시작 태그와 종료 태그 사이에서 Enter를 누르면 파일의 줄바꿈 형식(CRLF/LF)을 유지하며 자동으로 3줄 들여쓰기 블록으로 분할됩니다.
+- 자동 문맥 전환 및 전각 문자 지원:
+  저장 전인 새 탭과 45종 이상의 확장자에서 즉시 작동하며, <style> 및 style="" 내부에서 자동으로 CSS 모드로 전환되고 전각 영숫자·기호 자동 정규화를 지원합니다."""
+    },
     "1.0.36": {
         "ja-jp": """miu v1.0.36 リリースノート
 🚀 バイナリサイズの大幅削減（-19.9%）＆ 実行速度のさらなる高速化（+15.6%）

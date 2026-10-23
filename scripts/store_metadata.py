@@ -34,15 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.36 更新日誌
-🚀 執行檔體積大幅縮減 19.9% & 編碼自動偵測提速 15.6%
+        "releaseNotes": """miu v1.0.37 更新日誌
+⚡ 全面支援原生 Emmet（超高速展開、過濾器語法、全形相容與智慧 Enter 縮排）
 
-・執行檔體積縮減約 20%（1,053.5 KB → 844.0 KB / 減少 209.5 KB）：
-  在 100% 保持原生單一執行檔（EXE）便攜性與安全性的前提下，透過移除冗餘 C++ iostream/locale 庫開銷、將 15 種語言的語法高亮表轉為編譯期 constexpr 靜態常數（啟動時零堆積記憶體配置）及整合 28 國語言對話框模板，成功縮減 214,528 位元組（-19.9%）。
-・字元編碼自動偵測提速 15.6% 並強化 25+ 種編碼支援：
-  最佳化 CED 編碼識別引擎，在不犧牲任何識別精度的前提下將連續識別速度提升 15.6%（50,000 次識別由 158.28 ms 降至 133.52 ms，單檔僅需約 2.67 微秒），並全面強化 Big5、GB18030、EUC-JP、ISO-2022-JP、無 BOM UTF-16 及多國字集映射。
-・全 28 種語言 × 高 DPI（100%~250%）動態自適應排版：
-  尋找/取代（Ctrl+F / Ctrl+H）與跳至行（Ctrl+G）對話框現可根據當前語言文字寬度與螢幕 DPI 動態調整按鈕與視窗尺寸，徹底消除文字截斷。""",
+・搭載超高速 C++ 原生 Emmet 引擎（按 Tab 鍵即時展開）：
+  全面支援 HTML / JSX / XML / CSS 的 Emmet 縮寫展開（單次展開僅需約 29.7 微秒）。支援層級/兄弟/分組/重複運算、自動編號（$）、屬性、文字節點（{...}）、隱式標籤推導、過濾器（|bem、|c、|e）、CSS 數值/顏色/瀏覽器前綴（-）展開及多游標同步展開，展開後可按 Tab / Shift+Tab 在輸入點間快速跳轉。
+・空標籤 <div>|</div> 內按 Enter 智慧換行縮排：
+  在成對起止標籤之間按 Enter 鍵時，將自動拆分為帶縮排的三行結構並保持檔案原有換行格式。
+・智慧上下文切換與全形字元支援：
+  支援未儲存的新建分頁及 45+ 種副檔名，在 <style> 與 style="" 內自動切換 CSS 模式，並支援繁體中文文字及全形英數符號（如 ｄｉｖ＞ｐ＊２）的自動正規化展開。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.36 Versionshinweise
-🚀 19,9 % kleinere Programmdatei & 15,6 % schnellere Zeichencodierungserkennung
+        "releaseNotes": """miu v1.0.37 Versionshinweise
+⚡ Vollständige native Emmet-Unterstützung (Ultraschnelle Erweiterung, Filter & Smart-Enter)
 
-• 19,9 % geringere Dateigröße (1.053,5 KB → 844,0 KB / -209,5 KB):
-  Die Größe der eigenständigen EXE-Datei wurde um 214.528 Bytes (-19,9 %) reduziert – durch Entfernung von C++-iostream/locale-Overhead, Umstellung aller 15 Syntaxhervorhebungstabellen auf kompilierzeitkonstantes constexpr (null Heap-Allokationen beim Start) und Zusammenführung der 28 Sprachvorlagen.
-• 15,6 % schnellere automatische Codierungserkennung & über 25 Zeichensätze:
-  Beschleunigung der Compact Encoding Detection (CED) um 15,6 % (158,28 ms → 133,52 ms bei 50.000 Prüfungen; ~2,67 µs/Datei) ohne Genauigkeitsverlust sowie erweiterte Unterstützung für EUC-JP, ISO-2022-JP, UTF-16 ohne BOM, GB18030, KOI8-R und europäische Codepages.
-• Dynamisches High-DPI-Layout für alle 28 Sprachen (100 %–250 % DPI):
-  Dialoge für Suchen/Ersetzen (Strg+F / Strg+H) und Gehe zu Zeile (Strg+G) passen Schaltflächen- und Fensterbreiten automatisch an Textlänge und Monitor-DPI an.""",
+• Ultraschnelle native C++-Emmet-Engine (Erweitern mit Tab):
+  Vollständige Unterstützung für HTML-, JSX-, XML- und CSS-Emmet-Abkürzungen (~29,7 µs pro Erweiterung). Unterstützt Verschachtelungs-, Geschwister-, Gruppierungs- und Multiplikationsoperatoren, Nummerierung ($), Attribute, Textknoten ({...}), implizite Tags, Filter (|bem, |c, |e), CSS-Werte/Farben/Vendor-Präfixe (-), Multi-Cursor sowie Tab / Umschalt+Tab zum Springen zwischen Eingabefeldern.
+• Intelligenter Zeilenumbruch (Enter) in leeren Tags (<div>|</div>):
+  Das Drücken der Eingabetaste zwischen öffnenden und schließenden Tags teilt diese automatisch in einen eingerückten 3-Zeilen-Block auf.
+• Kontextabhängiger Moduswechsel & sofortige Nutzung in ungespeicherten Tabs:
+  Funktioniert sofort in neuen Tabs sowie über 45 Dateitypen und wechselt innerhalb von <style>-Blöcken und style=""-Attributen automatisch in den CSS-Modus.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.36
-🚀 Taille de l'exécutable réduite de 19,9 % & détection d'encodage 15,6 % plus rapide
+        "releaseNotes": """Notes de version miu v1.0.37
+⚡ Prise en charge native complète d'Emmet (Expansion ultra-rapide, filtres et Entrée intelligente)
 
-• Réduction de 19,9 % de la taille du binaire (1 053,5 Ko → 844,0 Ko / -209,5 Ko) :
-  Allègement de l'exécutable autonome de 214 528 octets (-19,9 %) grâce à la suppression des flux C++ iostream/locale, au passage des 15 tables de coloration syntaxique en constantes constexpr (zéro allocation dynamique au démarrage) et à l'unification des ressources pour 28 langues.
-• Détection automatique d'encodage 15,6 % plus rapide & 25+ encodages pris en charge :
-  Accélération du moteur CED de 15,6 % (158,28 ms → 133,52 ms sur 50 000 analyses ; ~2,67 µs/fichier) sans perte de précision, avec prise en charge étendue de EUC-JP, ISO-2022-JP, UTF-16 sans BOM, GB18030, KOI8-R et des pages de codes européennes.
-• Mise en page dynamique Haute-DPI (100 % à 250 %) pour les 28 langues :
-  Les boîtes de dialogue Rechercher/Remplacer (Ctrl+F / Ctrl+H) et Atteindre la ligne (Ctrl+G) ajustent automatiquement leurs dimensions selon la langue et le DPI.""",
+• Moteur Emmet C++ natif ultra-rapide (expansion via Tab) :
+  Prise en charge complète des abréviations Emmet pour HTML, JSX, XML et CSS (~29,7 µs par expansion). Supporte les opérateurs d'imbrication, de multiplication, la numérotation ($), les attributs, les nœuds texte ({...}), les balises implicites, les filtres (|bem, |c, |e), les préfixes vendeurs CSS (-), le multi-curseur et la navigation par Tab / Maj+Tab.
+• Auto-indentation intelligente par Entrée dans les balises vides (<div>|</div>) :
+  Appuyer sur Entrée entre une balise ouvrante et fermante divise et indente automatiquement le bloc sur 3 lignes.
+• Changement de contexte automatique & onglets non enregistrés :
+  Fonctionne immédiatement dans les nouveaux onglets et plus de 45 extensions, avec basculement CSS automatique dans <style> et style="".""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.36
-🚀 Tamaño del ejecutable reducido un 19,9 % y detección de codificación un 15,6 % más rápida
+        "releaseNotes": """Notas de la versión miu v1.0.37
+⚡ Soporte completo de Emmet nativo (Expansión ultrarrápida, filtros y Enter inteligente)
 
-• Reducción del 19,9 % en el tamaño del archivo (1.053,5 KB → 844,0 KB / -209,5 KB):
-  Se redujo el ejecutable autónomo en 214.528 bytes (-19,9 %) eliminando la sobrecarga de C++ iostream/locale, convirtiendo las 15 tablas de sintaxis en constantes constexpr en tiempo de compilación (cero asignaciones dinámicas al iniciar) y unificando plantillas de 28 idiomas.
-• Detección automática de codificación un 15,6 % más rápida y más de 25 codificaciones:
-  Optimización del motor CED con una mejora del 15,6 % en velocidad (158,28 ms → 133,52 ms en 50.000 detecciones; ~2,67 µs/archivo) sin pérdida de precisión, ampliando el soporte para EUC-JP, ISO-2022-JP, UTF-16 sin BOM, GB18030, KOI8-R y páginas de códigos europeas.
-• Diseño automático dinámico en Alta-DPI (100 %–250 %) para los 28 idiomas:
-  Los diálogos Buscar/Reemplazar (Ctrl+F / Ctrl+H) e Ir a la línea (Ctrl+G) ajustan dinámicamente el ancho de botones y ventanas evitando cualquier recorte de texto.""",
+• Motor Emmet C++ nativo ultrarrápido (expansión con Tab):
+  Soporte completo para abreviaturas Emmet en HTML, JSX, XML y CSS (~29,7 µs por expansión). Incluye operadores de jerarquía, multiplicación, numeración ($), atributos, texto ({...}), etiquetas implícitas, filtros (|bem, |c, |e), valores/colores/prefijos CSS (-), multicursor y navegación entre campos con Tab / Shift+Tab.
+• Sangría automática inteligente con Enter en etiquetas vacías (<div>|</div>):
+  Al pulsar Enter entre etiquetas de apertura y cierre coincidentes, se divide y sangra automáticamente en un bloque de 3 líneas.
+• Cambio automático de contexto y soporte en pestañas sin guardar:
+  Funciona al instante en pestañas nuevas y más de 45 tipos de archivo, cambiando automáticamente a modo CSS dentro de <style> y style="".""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de versão miu v1.0.36
-🚀 Executável 19,9% menor e detecção automática de codificação 15,6% mais rápida
+        "releaseNotes": """Notas de versão miu v1.0.37
+⚡ Suporte nativo completo ao Emmet (Expansão ultrarrápida, filtros e Enter inteligente)
 
-• Redução de 19,9% no tamanho do binário (1.053,5 KB → 844,0 KB / -209,5 KB):
-  Redução de 214.528 bytes (-19,9%) no executável portátil eliminando sobrecargas de C++ iostream/locale, convertendo todas as 15 tabelas de sintaxe em constantes constexpr (zero alocações de heap na inicialização) e unificando recursos de 28 idiomas.
-• Detecção de codificação 15,6% mais rápida e suporte a mais de 25 codificações:
-  Aceleração do motor CED em 15,6% (158,28 ms → 133,52 ms em 50.000 detecções; ~2,67 µs/arquivo) com precisão 100% preservada, além de suporte aprimorado para EUC-JP, ISO-2022-JP, UTF-16 sem BOM, GB18030, KOI8-R e páginas de código europeias.
-• Layout automático dinâmico em Alto-DPI (100%–250%) para todos os 28 idiomas:
-  As janelas Localizar/Substituir (Ctrl+F / Ctrl+H) e Ir para a linha (Ctrl+G) dimensionam botões e rótulos dinamicamente sem cortes de texto.""",
+• Motor Emmet C++ nativo ultrarrápido (expansão com Tab):
+  Suporte completo para abreviações Emmet em HTML, JSX, XML e CSS (~29,7 µs por expansão). Suporta operadores de hierarquia, multiplicação, numeração ($), atributos, texto ({...}), tags implícitas, filtros (|bem, |c, |e), valores/cores/prefixos CSS (-), multicursor e navegação por Tab / Shift+Tab.
+• Recuo automático inteligente com Enter em tags vazias (<div>|</div>):
+  Pressionar Enter entre tags de abertura e fechamento divide e indenta automaticamente em um bloco de 3 linhas.
+• Alternância automática de contexto e abas não salvas:
+  Funciona imediatamente em novas abas e mais de 45 extensões de arquivo, alternando automaticamente para CSS dentro de <style> e style="".""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.36
-🚀 Уменьшение размера EXE на 19,9 % и ускорение автоопределения кодировки на 15,6 %
+        "releaseNotes": """Примечания к выпуску miu v1.0.37
+⚡ Полная нативная поддержка Emmet (Мгновенное разворачивание, фильтры и умный Enter)
 
-• Размер исполняемого файла уменьшен на 19,9 % (1 053,5 КБ → 844,0 КБ / -209,5 КБ):
-  Размер автономного файла miu.exe сокращен на 214 528 байт (-19,9 %) за счет удаления накладных расходов C++ iostream/locale, перевода таблиц подсветки синтаксиса 15 языков в константы времени компиляции constexpr (ноль аллокаций кучи при запуске) и объединения шаблонов диалогов 28 языков.
-• Ускорение автоопределения кодировки на 15,6 % и поддержка 25+ кодировок:
-  Движок Compact Encoding Detection (CED) ускорен на 15,6 % (158,28 мс → 133,52 мс на 50 000 проверок; ~2,67 мкс/файл) без потери точности. Расширена поддержка KOI8-R, KOI8-U, CP1251, IBM866, ISO-8859-5, EUC-JP, ISO-2022-JP, UTF-16 без BOM и GB18030.
-• Динамическая авторазметка диалогов для 28 языков и высокого DPI (100 %–250 %):
-  Окна поиска/замены (Ctrl+F / Ctrl+H) и перехода к строке (Ctrl+G) автоматически подстраивают размеры кнопок и полей под длину перевода и масштаб экрана.""",
+• Сверхбыстрый нативный движок Emmet на C++ (разворачивание по Tab):
+  Полная поддержка аббревиатур Emmet для HTML, JSX, XML и CSS (~29,7 мкс на операцию). Поддерживаются вложенность, умножение, нумерация ($), атрибуты, текст ({...}), неявные теги, фильтры (|bem, |c, |e), значения/цвета/вендорные префиксы CSS (-), мультикурсор и переход по полям через Tab / Shift+Tab.
+• Умный перенос строки (Enter) внутри пустых тегов (<div>|</div>):
+  Нажатие Enter между открывающим и закрывающим тегами автоматически разбивает их на блок из 3 строк с правильным отступом.
+• Автопереключение контекста и работа в несохраненных вкладках:
+  Работает сразу в новых вкладках и 45+ типах файлов, автоматически переключаясь в режим CSS внутри <style> и атрибутов style="".""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio miu v1.0.36
-🚀 Dimensioni dell'eseguibile ridotte del 19,9% e rilevamento codifica più veloce del 15,6%
+        "releaseNotes": """Note di rilascio miu v1.0.37
+⚡ Supporto nativo completo per Emmet (Espansione ultraveloce, filtri e Invio intelligente)
 
-• Riduzione del 19,9% delle dimensioni del file (1.053,5 KB → 844,0 KB / -209,5 KB):
-  L'eseguibile autonomo è stato ridotto di 214.528 byte (-19,9%) eliminando l'overhead C++ iostream/locale, spostando tutte le 15 tabelle di sintassi in costanti constexpr (zero allocazioni heap all'avvio) e unificando le risorse per 28 lingue.
-• Rilevamento automatico codifica più rapido del 15,6% e supporto per oltre 25 codifiche:
-  Accelerato il motore CED del 15,6% (158,28 ms → 133,52 ms su 50.000 rilevamenti; ~2,67 µs/file) senza alcuna perdita di precisione, con supporto esteso per EUC-JP, ISO-2022-JP, UTF-16 senza BOM, GB18030, KOI8-R e codepage europee.
-• Layout automatico dinamico ad alto DPI (100%–250%) per tutte le 28 lingue:
-  Le finestre Trova/Sostituisci (Ctrl+F / Ctrl+H) e Vai alla riga (Ctrl+G) adattano dinamicamente pulsanti e dimensioni in base alla lingua e al DPI.""",
+• Motore Emmet C++ nativo ultraveloce (espansione con Tab):
+  Supporto completo per le abbreviazioni Emmet in HTML, JSX, XML e CSS (~29,7 µs per espansione). Supporta operatori gerarchici, moltiplicazione, numerazione ($), attributi, nodi di testo ({...}), tag impliciti, filtri (|bem, |c, |e), valori/colori/prefissi CSS (-), multi-cursore e navigazione con Tab / Maiusc+Tab.
+• Indentazione automatica intelligente con Invio nei tag vuoti (<div>|</div>):
+  Premendo Invio tra un tag di apertura e uno di chiusura, il blocco viene automaticamente diviso e indentato su 3 righe.
+• Cambio automatico di contesto e schede non salvate:
+  Funziona subito nelle nuove schede e in oltre 45 tipi di file, passando automaticamente alla modalità CSS dentro <style> e style="".""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wydaniu miu v1.0.36
-🚀 Rozmiar pliku EXE mniejszy o 19,9% oraz o 15,6% szybsze wykrywanie kodowania
+        "releaseNotes": """Informacje o wydaniu miu v1.0.37
+⚡ Pełna natywna obsługa Emmet (Ultraszybkie rozwijanie, filtry i inteligentny Enter)
 
-• Zmniejszenie rozmiaru pliku wykonywalnego o 19,9% (1 053,5 KB → 844,0 KB / -209,5 KB):
-  Rozmiar samodzielnego pliku miu.exe zmniejszono o 214 528 bajtów (-19,9%) dzięki usunięciu narzutu C++ iostream/locale, przeniesieniu wszystkich 15 tablic kolorowania składni do stałych constexpr (zero alokacji sterty przy starcie) oraz ujednoliceniu zasobów dla 28 języków.
-• O 15,6% szybsze automatyczne wykrywanie kodowania i obsługa ponad 25 stron kodowych:
-  Przyspieszono silnik CED o 15,6% (158,28 ms → 133,52 ms przy 50 000 testów; ~2,67 µs/plik) przy zachowaniu 100% dokładności oraz rozszerzono obsługę stron kodowych Europy Środkowo-Wschodniej (CP1250, ISO-8859-2), UTF-16 bez BOM, EUC-JP, ISO-2022-JP, GB18030 i KOI8-R.
-• Dynamiczny układ okien dialogowych High-DPI (100%–250%) dla 28 języków:
-  Okna Znajdź/Zamień (Ctrl+F / Ctrl+H) oraz Przejdź do linii (Ctrl+G) automatycznie dopasowują szerokość przycisków i okien do długości tekstu i skali DPI.""",
+• Ultraszybki natywny silnik Emmet w C++ (rozwijanie klawiszem Tab):
+  Pełna obsługa skrótów Emmet dla HTML, JSX, XML i CSS (~29,7 µs na rozwinięcie). Obsługuje operatory zagnieżdżania, mnożenia, numerację ($), atrybuty, tekst ({...}), domyślne znaczniki, filtry (|bem, |c, |e), wartości/kolory/prefiksy CSS (-), wielokursor oraz nawigację przez Tab / Shift+Tab.
+• Inteligentne wcięcie po naciśnięciu Enter wewnątrz pustych znaczników (<div>|</div>):
+  Naciśnięcie Enter między znacznikiem otwierającym a zamykającym automatycznie dzieli je na 3-wierszowy blok z wcięciem.
+• Automatyczne wykrywanie kontekstu i działanie w niezapisanych kartach:
+  Działa od razu w nowych kartach oraz ponad 45 typach plików, automatycznie przełączając się w tryb CSS wewnątrz <style> i style="".""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Versienotities miu v1.0.36
-🚀 19,9% kleiner uitvoerbaar bestand & 15,6% snellere coderingsdetectie
+        "releaseNotes": """Versienotities miu v1.0.37
+⚡ Volledige native Emmet-ondersteuning (Ultrasnelle uitvouwing, filters & slimme Enter)
 
-• 19,9% kleinere bestandsgrootte (1.053,5 KB → 844,0 KB / -209,5 KB):
-  Het zelfstandige uitvoerbare bestand is met 214.528 bytes (-19,9%) verkleind door C++ iostream/locale-overhead te verwijderen, alle 15 syntaxisaccentueringstabellen om te zetten naar compile-time constexpr (nul heap-allocaties bij het opstarten) en dialoogbronnen voor 28 talen te verenigen.
-• 15,6% snellere automatische coderingsdetectie & ondersteuning voor 25+ coderingen:
-  De CED-coderingsengine is 15,6% versneld (158,28 ms → 133,52 ms over 50.000 controles; ~2,67 µs/bestand) zonder verlies van nauwkeurigheid, met uitgebreide ondersteuning voor EUC-JP, ISO-2022-JP, UTF-16 zonder BOM, GB18030, KOI8-R en Europese tekensets.
-• Dynamische High-DPI auto-layout (100%–250%) voor alle 28 talen:
-  De vensters Zoeken/Vervangen (Ctrl+F / Ctrl+H) en Ga naar regel (Ctrl+G) passen knop- en vensterbreedtes dynamisch aan op basis van tekstlengte en DPI.""",
+• Ultrasnelle native C++ Emmet-engine (uitvouwen met Tab):
+  Volledige ondersteuning voor HTML-, JSX-, XML- en CSS-Emmet-afkortingen (~29,7 µs per uitvouwing). Ondersteunt hiërarchie-, groeperings- en vermenigvuldigingsoperatoren, nummering ($), attributen, tekst ({...}), impliciete tags, filters (|bem, |c, |e), CSS-waarden/kleuren/vendor-prefixen (-), multi-cursor en Tab / Shift+Tab-navigatie.
+• Slimme automatische inspringing met Enter in lege tags (<div>|</div>):
+  Als u tussen een openende en sluitende tag op Enter drukt, wordt deze automatisch opgesplitst in een ingesprongen blok van 3 regels.
+• Contextbewuste moduswisseling & onopgeslagen tabbladen:
+  Werkt direct in nieuwe tabbladen en 45+ bestandstypen en schakelt automatisch over naar CSS binnen <style> en style="".""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.36 Sürüm Notları
-🚀 %19,9 Daha Küçük EXE Boyutu ve %15,6 Daha Hızlı Karakter Kodlama Tespiti
+        "releaseNotes": """miu v1.0.37 Sürüm Notları
+⚡ Tam Yerel Emmet Desteği (Ultra Hızlı Genişletme, Filtreler ve Akıllı Enter)
 
-• %19,9 Dosya Boyutu Azaltımı (1.053,5 KB → 844,0 KB / -209,5 KB):
-  C++ iostream/locale yükünün kaldırılması, 15 sözdizimi vurgulama tablosunun derleme zamanı constexpr sabitlerine dönüştürülmesi (başlangıçta sıfır bellek ayırma) ve 28 dil iletişim kutusu şablonunun birleştirilmesiyle tekil EXE boyutu 214.528 bayt (-%19,9) küçültüldü.
-• %15,6 Daha Hızlı Otomatik Kodlama Tespiti ve 25+ Kodlama Desteği:
-  CED kodlama tespit motoru doğruluk kaybı olmadan %15,6 hızlandırıldı (50.000 tespitte 158,28 ms → 133,52 ms; dosya başına ~2,67 µs) ve Türkçe (CP1254 / ISO-8859-9), UTF-16 (BOM'suz), EUC-JP, ISO-2022-JP, GB18030, KOI8-R desteği güçlendirildi.
-• 28 Dil × Yüksek DPI (%100–%250) Dinamik Otomatik Yerleşim:
-  Bul/Değiştir (Ctrl+F / Ctrl+H) ve Satıra Git (Ctrl+G) pencereleri, metin genişliğine ve monitör DPI değerine göre düğme ve pencere boyutlarını otomatik ayarlar.""",
+• Ultra Hızlı Yerel C++ Emmet Motoru (Tab ile Genişletme):
+  HTML, JSX, XML ve CSS Emmet kısaltmaları için tam destek (genişletme başına ~29,7 µs). Hiyerarşi, çoğaltma, numaralandırma ($), öznitelikler, metin ({...}), örtük etiketler, filtreler (|bem, |c, |e), CSS değer/renk/önek (-) genişletmeleri, çoklu imleç ve Tab / Shift+Tab ile alanlar arası geçişi destekler.
+• Boş Etiketler (<div>|</div>) İçinde Akıllı Enter Otomatik Girintileme:
+  Açılış ve kapanış etiketleri arasında Enter tuşuna basıldığında otomatik olarak 3 satırlık girintili блоğa bölünür.
+• Bağlama Duyarlı Mod Geçişi ve Kaydedilmemiş Sekme Desteği:
+  Yeni sekmelerde ve 45'ten fazla dosya türünde anında çalışır; <style> ve style="" içinde otomatik olarak CSS moduna geçer.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.36
-🚀 Giảm 19,9% dung lượng tệp EXE & Tăng 15,6% tốc độ nhận diện bảng mã
+        "releaseNotes": """Ghi chú phát hành miu v1.0.37
+⚡ Hỗ trợ Emmet gốc toàn diện (Mở rộng siêu tốc, bộ lọc & Enter tự động thụt lề)
 
-• Giảm gần 20% dung lượng tệp thực thi (1.053,5 KB → 844,0 KB / -209,5 KB):
-  Giảm 214.528 byte (-19,9%) dung lượng tệp miu.exe độc lập bằng cách loại bỏ thư viện C++ iostream/locale dư thừa, chuyển toàn bộ 15 bảng tô màu cú pháp sang hằng số constexpr lúc biên dịch (0 cấp phát bộ nhớ heap khi khởi động) và hợp nhất tài nguyên 28 ngôn ngữ.
-• Tăng 15,6% tốc độ tự động nhận diện bảng mã & Hỗ trợ hơn 25 bảng mã:
-  Tối ưu hóa bộ máy CED giúp tăng tốc độ nhận diện thêm 15,6% (158,28 ms → 133,52 ms cho 50.000 lần kiểm tra; ~2,67 µs/tệp) mà không giảm độ chính xác, đồng thời mở rộng hỗ trợ CP1258 (Tiếng Việt), UTF-16 không BOM, EUC-JP, ISO-2022-JP, GB18030, KOI8-R.
-• Bố cục tự động co giãn theo DPI cao (100%–250%) cho cả 28 ngôn ngữ:
-  Hộp thoại Tìm/Thay thế (Ctrl+F / Ctrl+H) và Đi tới dòng (Ctrl+G) tự động tính toán kích thước nút và cửa sổ theo độ dài văn bản dịch và DPI màn hình.""",
+• Bộ máy Emmet C++ gốc siêu tốc (mở rộng bằng phím Tab):
+  Hỗ trợ đầy đủ viết tắt Emmet cho HTML, JSX, XML và CSS (~29,7 µs mỗi lần mở rộng). Hỗ trợ toán tử phân cấp, nhân bản, đánh số ($), thuộc tính, văn bản ({...}), thẻ ngầm định, bộ lọc (|bem, |c, |e), giá trị/màu sắc/tiền tố CSS (-), đa con trỏ và nhảy qua các vị trí nhập bằng Tab / Shift+Tab.
+• Tự động xuống dòng & thụt lề thông minh khi nhấn Enter trong thẻ trống (<div>|</div>):
+  Nhấn Enter giữa thẻ mở và thẻ đóng sẽ tự động tách thành khối 3 dòng có thụt lề chuẩn xác.
+• Tự động nhận diện ngữ cảnh & hoạt động ngay trên tab chưa lưu:
+  Hoạt động tức thì trên tab mới và hơn 45 định dạng tệp, tự động chuyển sang chế độ CSS bên trong <style> và style="".""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.36
-🚀 Зменшення розміру EXE на 19,9 % та прискорення автовизначення кодування на 15,6 %
+        "releaseNotes": """Примітки до випуску miu v1.0.37
+⚡ Повна нативна підтримка Emmet (Миттєве розгортання, фільтри та розумний Enter)
 
-• Розмір виконуваного файлу зменшено на 19,9 % (1 053,5 КБ → 844,0 КБ / -209,5 КБ):
-  Розмір автономного файлу miu.exe скорочено на 214 528 байтів (-19,9 %) завдяки усуненню накладних витрат C++ iostream/locale, переведенню всіх 15 таблиць підсвічування синтаксису в константи часу компіляції constexpr (нуль алокацій купи під час запуску) та об'єднанню шаблонів для 28 мов.
-• Прискорення автовизначення кодування на 15,6 % та підтримка 25+ кодувань:
-  Рушій CED прискорено на 15,6 % (158,28 мс → 133,52 мс на 50 000 перевірок; ~2,67 мкс/файл) без втрати точності, а також розширено підтримку KOI8-U, KOI8-R, CP1251, IBM866, UTF-16 без BOM, EUC-JP, ISO-2022-JP і GB18030.
-• Динамічна авторозмітка діалогів для 28 мов і високого DPI (100 %–250 %):
-  Вікна пошуку/заміни (Ctrl+F / Ctrl+H) і переходу до рядка (Ctrl+G) автоматично підлаштовують розміри кнопок і вікон під довжину тексту та масштаб екрана.""",
+• Надшвидкий нативний рушій Emmet на C++ (розгортання клавішею Tab):
+  Повна підтримка абревіатур Emmet для HTML, JSX, XML та CSS (~29,7 мкс на операцію). Підтримуються вкладеність, множення, нумерація ($), атрибути, текст ({...}), неявні теги, фільтри (|bem, |c, |e), значення/кольори/префікси CSS (-), мультикурсор і навігація полями через Tab / Shift+Tab.
+• Розумний перенос рядка (Enter) всередині порожніх тегів (<div>|</div>):
+  Натискання Enter між відкриваючим і закриваючим тегами автоматично розбиває їх на блок із 3 рядків із відступом.
+• Автоперемикання контексту та робота в незбережених вкладках:
+  Працює одразу в нових вкладках і понад 45 типах файлів, автоматично перемикаючись у режим CSS всередині <style> та style="".""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.36
-🚀 Ukuran EXE 19,9% Lebih Kecil & Deteksi Enkod Otomatis 15,6% Lebih Cepat
+        "releaseNotes": """Catatan Rilis miu v1.0.37
+⚡ Dukungan Penuh Emmet Native (Ekspansi Super Cepat, Filter & Smart Enter)
 
-• Pengurangan Ukuran Berkas 19,9% (1.053,5 KB → 844,0 KB / -209,5 KB):
-  Ukuran berkas miu.exe mandiri diperkecil sebesar 214.528 byte (-19,9%) dengan menghapus overhead C++ iostream/locale, memindahkan 15 tabel pewarnaan sintaksis ke konstanta constexpr waktu kompilasi (nol alokasi heap saat mulai), dan menyatukan templat dialog 28 bahasa.
-• Deteksi Enkod Otomatis 15,6% Lebih Cepat & Dukungan 25+ Enkod:
-  Mempercepat mesin CED sebesar 15,6% (158,28 mdtk → 133,52 mdtk pada 50.000 deteksi; ~2,67 µs/berkas) tanpa mengurangi akurasi, serta memperluas dukungan UTF-16 tanpa BOM, EUC-JP, ISO-2022-JP, GB18030, KOI8-R, dan halaman kode internasional.
-• Tata Letak Otomatis DPI Tinggi (100%–250%) di Semua 28 Bahasa:
-  Dialog Cari/Ganti (Ctrl+F / Ctrl+H) dan Ke Baris (Ctrl+G) secara dinamis menyesuaikan ukuran tombol dan jendela agar teks tidak terpotong.""",
+• Mesin Emmet C++ Native Super Cepat (Ekspansi dengan Tab):
+  Dukungan penuh singkatan Emmet untuk HTML, JSX, XML, dan CSS (~29,7 µs per ekspansi). Mendukung operator hierarki, perkalian, penomoran ($), atribut, teks ({...}), tag implisit, filter (|bem, |c, |e), nilai/warna/prefiks vendor CSS (-), multi-kursor, serta navigasi Tab / Shift+Tab.
+• Indentasi Otomatis Enter Cerdas di Dalam Tag Kosong (<div>|</div>):
+  Menekan Enter di antara tag pembuka dan penutup secara otomatis membaginya menjadi blok 3 baris berindentasi.
+• Peralihan Mode Kontekstual & Dukungan Tab Belum Disimpan:
+  Langsung berfungsi di tab baru dan 45+ jenis berkas, serta otomatis beralih ke mode CSS di dalam <style> dan style="".""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k vydání miu v1.0.36
-🚀 O 19,9 % menší spustitelný soubor a o 15,6 % rychlejší detekce kódování
+        "releaseNotes": """Poznámky k vydání miu v1.0.37
+⚡ Plná nativní podpora Emmet (Ultrarychlé rozbalování, filtry a chytrý Enter)
 
-• Zmenšení velikosti binárního souboru o 19,9 % (1 053,5 KB → 844,0 KB / -209,5 KB):
-  Samostatný soubor miu.exe byl zmenšen o 214 528 bajtů (-19,9 %) odstraněním režie C++ iostream/locale, převedením všech 15 tabulek zvýrazňování syntaxe na konstanty constexpr v době kompilace (nulové alokace haldy při startu) a sjednocením šablon pro 28 jazyků.
-• O 15,6 % rychlejší automatická detekce kódování a podpora 25+ znakových sad:
-  Engine CED byl zrychlen o 15,6 % (158,28 ms → 133,52 ms při 50 000 detekcích; ~2,67 µs/soubor) při zachování 100% přesnosti a rozšířena podpora středoevropských sad (CP1250, ISO-8859-2), UTF-16 bez BOM, EUC-JP, ISO-2022-JP, GB18030 a KOI8-R.
-• Dynamické rozvržení dialogů pro vysoké DPI (100 %–250 %) ve 28 jazycích:
-  Dialogy Najít/Nahradit (Ctrl+F / Ctrl+H) a Přejít na řádek (Ctrl+G) automaticky přizpůsobují šířku tlačítek a oken délce překladu a DPI monitoru.""",
+• Ultrarychlý nativní C++ engine Emmet (rozbalení klávesou Tab):
+  Plná podpora zkratek Emmet pro HTML, JSX, XML a CSS (~29,7 µs na rozbalení). Podporuje operátory zanoření, násobení, číslování ($), atributy, text ({...}), implicitní značky, filtry (|bem, |c, |e), hodnoty/barvy/prefixy CSS (-), multikurzor a přecházení mezi poli pomocí Tab / Shift+Tab.
+• Chytré automatické odsazení klávesou Enter v prázdných značkách (<div>|</div>):
+  Stisknutí klávesy Enter mezi otevírací a uzavírací značkou je automaticky rozdělí do odsazeného 3řádkového bloku.
+• Automatické přepínání kontextu a podpora neuložených karet:
+  Funguje okamžitě v nových kartách a více než 45 typech souborů a uvnitř <style> a style="" se automaticky přepne do režimu CSS.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.36
-🚀 19,9 % mindre EXE-fil & 15,6 % snabbare automatisk kodningsdetektering
+        "releaseNotes": """Versionsinformation för miu v1.0.37
+⚡ Fullt inbyggt Emmet-stöd (Ultrasnabb展開, filter & smart Enter-indrag)
 
-• 19,9 % mindre filstorlek (1 053,5 KB → 844,0 KB / -209,5 KB):
-  Den fristående EXE-filen har minskats med 214 528 byte (-19,9 %) genom att eliminera C++ iostream/locale-overhead, flytta alla 15 syntaxmarkeringstabeller till kompileringstida constexpr-konstanter (noll heap-allokeringar vid start) och förena dialogresurser för 28 språk.
-• 15,6 % snabbare kodningsdetektering & stöd för över 25 teckenkodningar:
-  CED-motorn har accelererats med 15,6 % (158,28 ms → 133,52 ms över 50 000 kontroller; ~2,67 µs/fil) utan förlust av precision, med utökat stöd för UTF-16 utan BOM, EUC-JP, ISO-2022-JP, GB18030, KOI8-R och europeiska teckentabeller.
-• Dynamisk High-DPI-layout (100 %–250 %) för alla 28 språk:
-  Dialogrutorna Sök/Ersätt (Ctrl+F / Ctrl+H) och Gå till rad (Ctrl+G) anpassar automatiskt knapp- och fönsterbredd efter textlängd och skärmens DPI.""",
+• Ultrasnabb inbyggd C++ Emmet-motor (expandera med Tab):
+  Fullt stöd för HTML-, JSX-, XML- och CSS-Emmet-förkortningar (~29,7 µs per expansion). Stöder hierarki-, grupperings- och multiplikationsoperatorer, numrering ($), attribut, text ({...}), implicita taggar, filter (|bem, |c, |e), CSS-värden/färger/vendor-prefix (-), multipekare och Tab / Shift+Tab-navigering.
+• Smart automatisk indragning med Enter i tomma taggar (<div>|</div>):
+  När du trycker på Enter mellan öppnande och stängande taggar delas de automatiskt upp i ett indraget 3-radersblock.
+• Kontextmedveten lägesväxling & osparade flikar:
+  Fungerar direkt i nya flikar och 45+ filtyper, med automatisk växling till CSS inuti <style> och style="".""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.36
-🚀 ลดขนาดไฟล์ EXE ลง 19.9% และตรวจจับรหัสอักขระเร็วขึ้น 15.6%
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.37
+⚡ รองรับ Emmet แบบเนทีฟเต็มรูปแบบ (ขยายโค้ดความเร็วสูง ฟิลเตอร์ และจัดย่อหน้าอัตโนมัติด้วย Enter)
 
-• ลดขนาดไฟล์โปรแกรมลงเกือบ 20% (1,053.5 KB → 844.0 KB / -209.5 KB):
-  ลดขนาดไฟล์ miu.exe ลง 214,528 ไบต์ (-19.9%) โดยคงความสามารถในการพกพาแบบไฟล์เดียว 100% ด้วยการตัดส่วนเกินของ C++ iostream/locale เปลี่ยนตารางไฮไลต์ไวยากรณ์ทั้ง 15 ภาษาเป็นค่าคงที่ constexpr ตอนคอมไพล์ (ไม่เสียเวลาจองหน่วยความจำ Heap ตอนเปิดโปรแกรม) และรวมเทมเพลต 28 ภาษา
-• ตรวจจับรหัสอักขระอัตโนมัติเร็วขึ้น 15.6% และรองรับกว่า 25 รหัสภาษา:
-  ปรับปรุงเอนจิน CED ให้ทำงานเร็วขึ้น 15.6% (158.28 ms → 133.52 ms จากการทดสอบ 50,000 ครั้ง; ~2.67 µs/ไฟล์) โดยความแม่นยำครบถ้วน 100% พร้อมเสริมการรองรับภาษาไทย (CP874 / TIS-620), UTF-16 แบบไม่มี BOM, EUC-JP, ISO-2022-JP และ GB18030
-• ปรับขนาดหน้าต่างอัตโนมัติตาม DPI สูง (100%–250%) สำหรับทั้ง 28 ภาษา:
-  หน้าต่างค้นหา/แทนที่ (Ctrl+F / Ctrl+H) และไปที่บรรทัด (Ctrl+G) คำนวณขนาดปุ่มและหน้าต่างตามความยาวข้อความแปลและ DPI หน้าจอโดยอัตโนมัติ""",
+• เอนจิน Emmet C++ เนทีฟความเร็วสูง (กด Tab เพื่อขยายทันที):
+  รองรับตัวย่อ Emmet สำหรับ HTML, JSX, XML และ CSS อย่างสมบูรณ์ (~29.7 µs ต่อการขยาย 1 ครั้ง) รองรับตัวดำเนินการลำดับชั้น การทำซ้ำ การรันตัวเลข ($) แอตทริบิวต์ ข้อความ ({...}) แท็กอัตโนมัติ ฟิลเตอร์ (|bem, |c, |e) ค่าสีและเวนเดอร์พรีฟิกซ์ CSS (-) มัลติเคอร์เซอร์ และการกระโดดไปยังจุดกรอกถัดไปด้วย Tab / Shift+Tab
+• กด Enter จัดย่อหน้าอัตโนมัติภายในแท็กว่าง (<div>|</div>):
+  เมื่อกด Enter ระหว่างแท็กเปิดและแท็กปิด จะแยกบรรทัดและจัดย่อหน้าเป็นบล็อก 3 บรรทัดโดยอัตโนมัติ
+• สลับโหมดตามบริบทอัตโนมัติและใช้งานได้ทันทีในแท็บใหม่ที่ยังไม่บันทึก:
+  ทำงานได้ทันทีในแท็บใหม่และไฟล์กว่า 45 นามสกุล พร้อมสลับเป็นโหมด CSS อัตโนมัติภายใน <style> และ style="" """,
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.36 रिलीज़ नोट्स
-🚀 EXE फ़ाइल का आकार 19.9% कम और एन्कोडिंग पहचान की गति में 15.6% सुधार
+        "releaseNotes": """miu v1.0.37 रिलीज़ नोट्स
+⚡ पूर्ण नेटिव Emmet समर्थन (अल्ट्रा-फ़ास्ट विस्तार, फ़िल्टर और स्मार्ट Enter इंडेंटेशन)
 
-• निष्पादन योग्य फ़ाइल (EXE) के आकार में 19.9% की कमी (1,053.5 KB → 844.0 KB / -209.5 KB):
-  अनावश्यक C++ iostream/locale ओवरहेड को हटाकर, सभी 15 सिंटैक्स हाइलाइटिंग तालिकाओं को कंपाइल-टाइम constexpr स्थिरांक में बदलकर (स्टार्टअप पर शून्य हीप आवंटन) और 28 भाषाओं के संवाद संसाधनों को एकीकृत करके miu.exe का आकार 214,528 बाइट्स (-19.9%) कम किया गया है।
-• 15.6% तेज़ स्वचालित एन्कोडिंग पहचान और 25+ एन्कोडिंग का विस्तारित समर्थन:
-  सटीकता से समझौता किए बिना CED एन्कोडिंग इंजन की गति को 15.6% (50,000 परीक्षणों में 158.28 ms → 133.52 ms; ~2.67 µs/फ़ाइल) बढ़ाया गया है तथा बिना BOM के UTF-16, EUC-JP, ISO-2022-JP, GB18030 और KOI8-R समर्थन को मजबूत किया गया है।
-• सभी 28 भाषाओं और उच्च DPI (100%–250%) के लिए डायनामिक ऑटो-लेआउट:
-  खोजें/बदलें (Ctrl+F / Ctrl+H) और पंक्ति पर जाएँ (Ctrl+G) संवाद बॉक्स अब अनुवादित टेक्स्ट की लंबाई और मॉनिटर DPI के अनुसार बटन और विंडो का आकार स्वचालित रूप से समायोजित करते हैं।""",
+• अल्ट्रा-फ़ास्ट नेटिव C++ Emmet इंजन (Tab से तुरंत विस्तार):
+  HTML, JSX, XML और CSS Emmet संक्षिप्ताक्षरों के लिए पूर्ण समर्थन (~29.7 µs प्रति विस्तार)। पदानुक्रम, गुणन, क्रमांकन ($), एट्रिब्यूट, टेक्स्ट ({...}), अंतर्निहित टैग, फ़िल्टर (|bem, |c, |e), CSS मान/रंग/वेंडर प्रीफ़िक्स (-), मल्टी-कर्सर और Tab / Shift+Tab नेविगेशन का समर्थन करता है।
+• खाली टैग (<div>|</div>) के भीतर स्मार्ट Enter ऑटो-इंडेंट:
+  शुरुआती और समापन टैग के बीच Enter दबाने पर यह स्वचालित रूप से इंडेंट किए गए 3-पंक्ति ब्लॉक में विभाजित हो जाता है।
+• संदर्भ-जागरूक मोड स्विचिंग और बिना सहेजे गए टैब में तत्काल कार्य:
+  नए टैब और 45+ फ़ाइल प्रकारों में तुरंत काम करता है, तथा <style> और style="" के भीतर स्वतः CSS मोड में बदल जाता है।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.36
-🚀 Dimensiune EXE redusă cu 19,9% și detectare a codificării cu 15,6% mai rapidă
+        "releaseNotes": """Note de lansare miu v1.0.37
+⚡ Suport Emmet nativ complet (Expandare ultra-rapidă, filtre și Enter inteligent)
 
-• Reducerea cu 19,9% a dimensiunii fișierului executabil (1.053,5 KB → 844,0 KB / -209,5 KB):
-  Fișierul portabil miu.exe a fost redus cu 214.528 octeți (-19,9%) prin eliminarea overhead-ului C++ iostream/locale, mutarea tuturor celor 15 tabele de sintaxă în constante constexpr la compilare (zero alocări heap la pornire) și unificarea șabloanelor pentru 28 de limbi.
-• Detectare automată a codificării cu 15,6% mai rapidă și suport pentru 25+ codificări:
-  Motorul CED a fost accelerat cu 15,6% (158,28 ms → 133,52 ms la 50.000 de verificări; ~2,67 µs/fișier) fără pierderi de precizie, cu suport extins pentru UTF-16 fără BOM, CP1250/ISO-8859-2, EUC-JP, ISO-2022-JP, GB18030 și KOI8-R.
-• Aspect dinamic automat pentru DPI ridicat (100%–250%) în toate cele 28 de limbi:
-  Ferestrele Căutare/Înlocuire (Ctrl+F / Ctrl+H) și Salt la linie (Ctrl+G) își ajustează automat lățimea butoanelor și a ferestrei în funcție de text și DPI.""",
+• Motor Emmet C++ nativ ultra-rapid (expandare cu Tab):
+  Suport complet pentru abrevierile Emmet în HTML, JSX, XML și CSS (~29,7 µs per expandare). Include operatori ierarhici, multiplicare, numerotare ($), atribute, text ({...}), etichete implicite, filtre (|bem, |c, |e), valori/culori/prefixe CSS (-), multi-cursor și navigare cu Tab / Shift+Tab.
+• Indentare automată inteligentă cu Enter în etichetele goale (<div>|</div>):
+  Apăsarea tastei Enter între etichetele de deschidere și închidere împarte și indentează automat blocul pe 3 rânduri.
+• Comutare automată a contextului și suport în filele nesalvate:
+  Funcționează imediat în filele noi și în peste 45 de tipuri de fișiere, trecând automat la modul CSS în interiorul <style> și style="".""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.36 kiadási megjegyzések
-🚀 19,9%-kal kisebb EXE fájlméret és 15,6%-kal gyorsabb karakterkódolás-felismerés
+        "releaseNotes": """miu v1.0.37 kiadási megjegyzések
+⚡ Teljes natív Emmet támogatás (Villámgyors kibontás, szűrők és intelligens Enter)
 
-• 19,9%-os fájlméret-csökkentés (1 053,5 KB → 844,0 KB / -209,5 KB):
-  Az önálló miu.exe mérete 214 528 bájttal (-19,9%) csökkent a felesleges C++ iostream/locale többletterhelés eltávolításával, mind a 15 szintaxiskiemelő tábla fordítási idejű constexpr konstansokká alakításával (nulla heap-allokáció indításkor), valamint a 28 nyelvi sablon egyesítésével.
-• 15,6%-kal gyorsabb automatikus kódolásfelismerés és 25+ karakterkódolás támogatása:
-  A CED motor sebessége 15,6%-kal nőtt (158,28 ms → 133,52 ms 50 000 vizsgálatnál; ~2,67 µs/fájl) pontosságvesztés nélkül, kibővített közép-európai (CP1250 / ISO-8859-2), BOM nélküli UTF-16, EUC-JP, ISO-2022-JP, GB18030 és KOI8-R támogatással.
-• Dinamikus magas DPI-s (100%–250%) automatikus elrendezés mind a 28 nyelven:
-  A Keresés/Csere (Ctrl+F / Ctrl+H) és az Ugrás sorra (Ctrl+G) ablakok automatikusan a szöveg hosszához és a DPI-hez igazítják a gombok és az ablak méretét.""",
+• Ultragyors natív C++ Emmet motor (kibontás a Tab billentyűvel):
+  Teljes HTML, JSX, XML és CSS Emmet rövidítéstámogatás (~29,7 µs kibontásonként). Támogatja a hierarchia-, csoportosítási és szorzási operátorokat, a számozást ($), attribútumokat, szöveget ({...}), implicit címkéket, szűrőket (|bem, |c, |e), CSS értékeket/színeket/prefixeket (-), a többkurzoros szerkesztést és a Tab / Shift+Tab navigációt.
+• Intelligens Enter behúzás üres címkékben (<div>|</div>):
+  A nyitó és záró címke között lenyomott Enter automatikusan 3 soros, behúzott blokkra bontja azokat.
+• Környezetfüggő módváltás és azonnali működés mentetlen lapokon:
+  Azonnal működik új lapokon és több mint 45 fájltípusban, a <style> és style="" részeken belül pedig automatikusan CSS módra vált.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.36
-🚀 19,9% μικρότερο μέγεθος EXE & 15,6% ταχύτερη ανίχνευση κωδικοποίησης
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.37
+⚡ Πλήρης εγγενής υποστήριξη Emmet (Υπερταχεία ανάπτυξη, φίλτρα & έξυπνο Enter)
 
-• Μείωση μεγέθους εκτελέσιμου αρχείου κατά 19,9% (1.053,5 KB → 844,0 KB / -209,5 KB):
-  Το μέγεθος του αυτόνομου miu.exe μειώθηκε κατά 214.528 byte (-19,9%) αφαιρώντας την επιβάρυνση C++ iostream/locale, μετατρέποντας τους 15 πίνακες επισήμανσης σύνταξης σε σταθερές constexpr χρόνου μεταγλώττισης (μηδενικές δεσμεύσεις σωρού κατά την εκκίνηση) και ενοποιώντας τους πόρους 28 γλωσσών.
-• 15,6% ταχύτερη αυτόματη ανίχνευση κωδικοποίησης & υποστήριξη 25+ κωδικοποιήσεων:
-  Η μηχανή CED επιταχύνθηκε κατά 15,6% (158,28 ms → 133,52 ms σε 50.000 ελέγχους· ~2,67 µs/αρχείο) χωρίς απώλεια ακρίβειας, με ενισχυμένη υποστήριξη για Ελληνικά (CP1253 / ISO-8859-7), UTF-16 χωρίς BOM, EUC-JP, ISO-2022-JP, GB18030 και KOI8-R.
-• Δυναμική αυτόματη διάταξη υψηλού DPI (100%–250%) και στις 28 γλώσσες:
-  Τα παράθυρα Εύρεση/Αντικατάσταση (Ctrl+F / Ctrl+H) και Μετάβαση σε γραμμή (Ctrl+G) προσαρμόζουν αυτόματα το πλάτος κουμπιών και παραθύρων.""",
+• Υπερταχεία εγγενής μηχανή Emmet σε C++ (ανάπτυξη με Tab):
+  Πλήρης υποστήριξη συντομογραφιών Emmet για HTML, JSX, XML και CSS (~29,7 µs ανά ανάπτυξη). Υποστηρίζει τελεστές ιεραρχίας, πολλαπλασιασμό, αρίθμηση ($), ιδιότητες, κείμενο ({...}), έμμεσες ετικέτες, φίλτρα (|bem, |c, |e), τιμές/χρώματα/προθέματα CSS (-), πολλαπλούς δρομείς και πλοήγηση με Tab / Shift+Tab.
+• Έξυπνη αυτόματη εσοχή με Enter μέσα σε κενές ετικέτες (<div>|</div>):
+  Το πάτημα του Enter ανάμεσα σε ετικέτες ανοίγματος και κλεισίματος τις χωρίζει αυτόματα σε μπλοκ 3 γραμμών με εσοχή.
+• Αυτόματη εναλλαγή περιβάλλοντος & άμεση λειτουργία σε μη αποθηκευμένες καρτέλες:
+  Λειτουργεί αμέσως σε νέες καρτέλες και σε 45+ τύπους αρχείων, μεταβαίνοντας αυτόματα σε λειτουργία CSS εντός <style> και style="".""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.36
-🚀 19,9 % mindre EXE-fil & 15,6 % hurtigere automatisk tegnsætregistrering
+        "releaseNotes": """Udgivelsesnoter for miu v1.0.37
+⚡ Fuld indbygget Emmet-understøttelse (Lynhurtig udvidelse, filtre & smart Enter)
 
-• 19,9 % reduktion af filstørrelsen (1.053,5 KB → 844,0 KB / -209,5 KB):
-  Den selvstændige miu.exe er reduceret med 214.528 byte (-19,9 %) ved at fjerne C++ iostream/locale-overhead, flytte alle 15 syntaksfremhævningstabeller til kompileringstids-constexpr (nul heap-allokeringer ved opstart) og samle dialogressourcer for 28 sprog.
-• 15,6 % hurtigere tegnsætregistrering & understøttelse af 25+ tegnsæt:
-  CED-motoren er accelereret med 15,6 % (158,28 ms → 133,52 ms over 50.000 kontroller; ~2,67 µs/fil) uden tab af præcision, med udvidet understøttelse af UTF-16 uden BOM, EUC-JP, ISO-2022-JP, GB18030, KOI8-R og europæiske tegnsæt.
-• Dynamisk High-DPI-layout (100 %–250 %) på alle 28 sprog:
-  Dialogboksene Søg/Erstat (Ctrl+F / Ctrl+H) og Gå til linje (Ctrl+G) tilpasser automatisk knap- og vinduesbredde efter tekstlængde og skærm-DPI.""",
+• Lynhurtig indbygget C++ Emmet-motor (udvid med Tab):
+  Fuld understøttelse af HTML-, JSX-, XML- og CSS-Emmet-forkortelser (~29,7 µs pr. udvidelse). Understøtter hierarki-, grupperings- og multiplikationsoperatorer, nummerering ($), attributter, tekst ({...}), implicitte tags, filtre (|bem, |c, |e), CSS-værdier/farver/vendor-præfikser (-), multikursor samt Tab / Skift+Tab-navigation.
+• Smart automatisk indrykning med Enter i tomme tags (<div>|</div>):
+  Tryk på Enter mellem åbnings- og lukketags opdeler og indrykker dem automatisk i en blok på 3 linjer.
+• Kontekstafhængigt tilstandsskift & ikke-gemte faner:
+  Virker med det samme i nye faner og over 45 filtyper og skifter automatisk til CSS-tilstand i <style> og style="".""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.36 -julkaisutiedot
-🚀 19,9 % pienempi EXE-tiedosto ja 15,6 % nopeampi merkistöntunnistus
+        "releaseNotes": """miu v1.0.37 -julkaisutiedot
+⚡ Täysi natiivi Emmet-tuki (Huippunopea laajennus, suodattimet ja älykäs Enter)
 
-• 19,9 % pienempi suoritettava tiedosto (1 053,5 KB → 844,0 KB / -209,5 KB):
-  Itsenäisen miu.exe-tiedoston kokoa pienennettiin 214 528 tavulla (-19,9 %) poistamalla C++ iostream/locale -kuorma, muuntamalla kaikki 15 syntaksinkorostustaulukkoa käännösaikaisiksi constexpr-vakioiksi (nolla kekovarausta käynnistyksessä) ja yhdistämällä 28 kielen valintaikkunapohjat.
-• 15,6 % nopeampi automaattinen merkistöntunnistus ja yli 25 merkistön tuki:
-  CED-tunnistusmoottoria nopeutettiin 15,6 % (158,28 ms → 133,52 ms 50 000 tarkistuksessa; ~2,67 µs/tiedosto) tarkkuudesta tinkimättä sekä laajennettiin BOM-merkittömän UTF-16:n, EUC-JP:n, ISO-2022-JP:n, GB18030:n, KOI8-R:n ja eurooppalaisten koodisivujen tukea.
-• Dynaaminen korkean DPI:n (100 %–250 %) automaattiasettelu kaikilla 28 kielellä:
-  Etsi/Korvaa (Ctrl+F / Ctrl+H)- ja Siirry riville (Ctrl+G) -ikkunat mitoittavat painikkeet ja ikkunan leveyden automaattisesti käännöksen ja DPI:n mukaan.""",
+• Huippunopea natiivi C++ Emmet -moottori (laajennus Tab-näppäimellä):
+  Täysi tuki HTML-, JSX-, XML- ja CSS-Emmet-lyhenteille (~29,7 µs / laajennus). Tukee rakenne-, ryhmittely- ja kerto-operaattoreita, numerointia ($), attribuutteja, tekstiä ({...}), oletustunnisteita, suodattimia (|bem, |c, |e), CSS-arvoja/värejä/etuliitteitä (-), monikohdistinta sekä Tab / Shift+Tab -siirtymistä.
+• Älykäs automaattinen Enter-sisennys tyhjien tunnisteiden sisällä (<div>|</div>):
+  Enterin painaminen aloitus- ja lopetustunnisteen välissä jakaa ne automaattisesti sisennetyksi 3 rivin lohkoksi.
+• Kontekstitietoinen tilanvaihto ja tallentamattomat välilehdet:
+  Toimii heti uusissa välilehdissä ja yli 45 tiedostotyypissä, ja vaihtaa automaattisesti CSS-tilaan <style>- ja style=""-osioissa.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.36
-🚀 19,9 % mindre EXE-fil og 15,6 % raskere automatisk tegnsettgjenkjenning
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.37
+⚡ Full innebygd Emmet-støtte (Lynrask utvidelse, filtre og smart Enter-innrykk)
 
-• 19,9 % reduksjon i filstørrelse (1 053,5 KB → 844,0 KB / -209,5 KB):
-  Den frittstående miu.exe-filen er redusert med 214 528 byte (-19,9 %) ved å fjerne C++ iostream/locale-overhead, gjøre alle 15 syntaksuthevingstabeller til kompileringstids constexpr-konstanter (null heap-allokeringer ved oppstart) og samle dialogressurser for 28 språk.
-• 15,6 % raskere tegnsettgjenkjenning og støtte for over 25 tegnsett:
-  CED-motoren er akselerert med 15,6 % (158,28 ms → 133,52 ms over 50 000 kontroller; ~2,67 µs/fil) uten tap av presisjon, med utvidet støtte for UTF-16 uten BOM, EUC-JP, ISO-2022-JP, GB18030, KOI8-R og europeiske tegnsett.
-• Dynamisk High-DPI-oppsett (100 %–250 %) for alle 28 språk:
-  Dialogboksene Søk/Erstatt (Ctrl+F / Ctrl+H) og Gå til linje (Ctrl+G) tilpasser automatisk knapp- og vindusbredde etter tekstlengde og skjerm-DPI.""",
+• Lynrask innebygd C++ Emmet-motor (utvid med Tab):
+  Full støtte for HTML-, JSX-, XML- og CSS-Emmet-forkortelser (~29,7 µs per utvidelse). Støtter hierarki-, grupperings- og multiplikasjonsoperatorer, nummerering ($), attributter, tekst ({...}), implisitte tagger, filtre (|bem, |c, |e), CSS-verdier/farger/vendor-prefikser (-), multikursor og Tab / Shift+Tab-navigering.
+• Smart automatisk innrykk med Enter i tomme tagger (<div>|</div>):
+  Trykk på Enter mellom åpnings- og lukketagger deler dem automatisk opp i en innrykket blokk på 3 linjer.
+• Kontekstbasert modusbytte og ulagrede faner:
+  Fungerer umiddelbart i nye faner og 45+ filtyper, med automatisk bytte til CSS-modus i <style> og style="".""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.36
-🚀 Saiz Fail EXE 19.9% Lebih Kecil & Pengesanan Pengekodan 15.6% Lebih Pantas
+        "releaseNotes": """Nota Keluaran miu v1.0.37
+⚡ Sokongan Emmet Asli Sepenuhnya (Pengembangan Sangat Pantas, Penapis & Enter Pintar)
 
-• Pengurangan Saiz Binari 19.9% (1,053.5 KB → 844.0 KB / -209.5 KB):
-  Saiz fail boleh laku miu.exe dikurangkan sebanyak 214,528 bait (-19.9%) dengan menghapuskan beban C++ iostream/locale, menukar kesemua 15 jadual penyerlahan sintaks kepada pemalar constexpr masa kompilasi (sifar peruntukan timbunan semasa permulaan) dan menyatukan templat dialog 28 bahasa.
-• Pengesanan Pengekodan Automatik 15.6% Lebih Pantas & Sokongan 25+ Pengekodan:
-  Enjin CED dipercepatkan sebanyak 15.6% (158.28 ms → 133.52 ms dalam 50,000 ujian; ~2.67 µs/fail) tanpa kehilangan ketepatan, serta memperkukuh sokongan UTF-16 tanpa BOM, EUC-JP, ISO-2022-JP, GB18030 dan KOI8-R.
-• Susun Atur Automatik DPI Tinggi (100%–250%) Merentasi 28 Bahasa:
-  Kotak dialog Cari/Ganti (Ctrl+F / Ctrl+H) dan Pergi ke Baris (Ctrl+G) melaraskan lebar butang dan tetingkap secara dinamik mengikut panjang teks dan DPI.""",
+• Enjin Emmet C++ Asli Sangat Pantas (Kembangkan dengan Tab):
+  Sokongan penuh singkatan Emmet untuk HTML, JSX, XML dan CSS (~29.7 µs setiap pengembangan). Menyokong pengendali hierarki, pendaraban, penomboran ($), atribut, teks ({...}), tag tersirat, penapis (|bem, |c, |e), nilai/warna/awalan vendor CSS (-), berbilang kursor dan navigasi Tab / Shift+Tab.
+• Lekukan Automatik Enter Pintar di Dalam Tag Kosong (<div>|</div>):
+  Menekan Enter di antara tag pembuka dan penutup secara automatik membahagikannya kepada blok 3 baris berlekuk.
+• Pertukaran Mod Mengikut Konteks & Tab Belum Disimpan:
+  Berfungsi serta-merta dalam tab baharu dan 45+ jenis fail, serta bertukar secara automatik kepada mod CSS di dalam <style> dan style="".""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",
