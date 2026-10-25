@@ -34,15 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.37 更新日誌
-⚡ 全面支援原生 Emmet（超高速展開、過濾器語法、全形相容與智慧 Enter 縮排）
+        "releaseNotes": """miu v1.0.38 更新日誌
+🌐 新增 WebView2 即時預覽（Alt+P）與 CommonMark / GFM Markdown 精準渲染
 
-・搭載超高速 C++ 原生 Emmet 引擎（按 Tab 鍵即時展開）：
-  全面支援 HTML / JSX / XML / CSS 的 Emmet 縮寫展開（單次展開僅需約 29.7 微秒）。支援層級/兄弟/分組/重複運算、自動編號（$）、屬性、文字節點（{...}）、隱式標籤推導、過濾器（|bem、|c、|e）、CSS 數值/顏色/瀏覽器前綴（-）展開及多游標同步展開，展開後可按 Tab / Shift+Tab 在輸入點間快速跳轉。
-・空標籤 <div>|</div> 內按 Enter 智慧換行縮排：
-  在成對起止標籤之間按 Enter 鍵時，將自動拆分為帶縮排的三行結構並保持檔案原有換行格式。
-・智慧上下文切換與全形字元支援：
-  支援未儲存的新建分頁及 45+ 種副檔名，在 <style> 與 style="" 內自動切換 CSS 模式，並支援繁體中文文字及全形英數符號（如 ｄｉｖ＞ｐ＊２）的自動正規化展開。""",
+・內建 WebView2 分割畫面即時預覽（按 Alt+P 開啟）：
+  支援 HTML、SVG 與 Markdown 的分割即時預覽，具備自動防抖重新整理、F5 手動重整、可拖曳極簡分隔線、自適應淺色/深色主題、疊加式捲軸以及本機圖片/CSS/JS 資源映射。
+・忠實還原 CommonMark 與 GitHub 風格 Markdown (GFM)：
+  全面支援表格（對齊與跳脫直線）、工作清單（- [ ] / - [x]）、多層巢狀清單、多行與巢狀引用、GFM 提示框（[!NOTE]、[!TIP]、[!WARNING] 等）、多重反引號程式碼、snake_case 底線保護、自動連結及 <kbd> 等行內 HTML 標籤。
+・超大檔案極速安全預覽與 F3 循環尋找修復：
+  無需任何磁碟複製即可按 UTF-8 與行邊界極速預覽前 512 KB 內容（附全 28 種語言截斷提示），並修復了大檔案末尾按 F3 折返尋找時的停頓問題。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.37 Versionshinweise
-⚡ Vollständige native Emmet-Unterstützung (Ultraschnelle Erweiterung, Filter & Smart-Enter)
+        "releaseNotes": """miu v1.0.38 Versionshinweise
+🌐 WebView2-Live-Vorschau (Alt+P) & originalgetreues CommonMark / GFM Markdown-Rendering
 
-• Ultraschnelle native C++-Emmet-Engine (Erweitern mit Tab):
-  Vollständige Unterstützung für HTML-, JSX-, XML- und CSS-Emmet-Abkürzungen (~29,7 µs pro Erweiterung). Unterstützt Verschachtelungs-, Geschwister-, Gruppierungs- und Multiplikationsoperatoren, Nummerierung ($), Attribute, Textknoten ({...}), implizite Tags, Filter (|bem, |c, |e), CSS-Werte/Farben/Vendor-Präfixe (-), Multi-Cursor sowie Tab / Umschalt+Tab zum Springen zwischen Eingabefeldern.
-• Intelligenter Zeilenumbruch (Enter) in leeren Tags (<div>|</div>):
-  Das Drücken der Eingabetaste zwischen öffnenden und schließenden Tags teilt diese automatisch in einen eingerückten 3-Zeilen-Block auf.
-• Kontextabhängiger Moduswechsel & sofortige Nutzung in ungespeicherten Tabs:
-  Funktioniert sofort in neuen Tabs sowie über 45 Dateitypen und wechselt innerhalb von <style>-Blöcken und style=""-Attributen automatisch in den CSS-Modus.""",
+• Integrierte WebView2-Live-Vorschau für HTML, SVG & Markdown (Alt+P):
+  Öffnen Sie mit Alt+P eine geteilte Live-Vorschau mit automatischer Aktualisierung, F5-Neuladen, verschiebbarem Splitter, Overlay-Bildlaufleisten, Dark-/Light-Mode-Anpassung und lokaler Ressourcen-Zuordnung (Bilder, CSS, JS).
+• Originalgetreues CommonMark & GitHub Flavored Markdown (GFM):
+  Volle Unterstützung für GFM-Tabellen (Ausrichtung & maskierte Pipes), Aufgabenlisten (- [ ] / - [x]), verschachtelte Listen, mehrzeilige & verschachtelte Zitate, GFM-Hinweise ([!NOTE], [!TIP], [!WARNING] usw.), Mehrfach-Backticks, snake_case-Schutz, Autolinks und Inline-HTML (<kbd>, <br>).
+• Schnelle Vorschau für riesige Dateien & verzögerungsfreie F3-Suche:
+  Zeigt bei großen Dateien sofort die ersten 512 KB ohne Dateikopien an (lokalisiert in 28 Sprachen) und behebt ein Einfrieren beim Weitersuchen (F3) am Dateiende.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.37
-⚡ Prise en charge native complète d'Emmet (Expansion ultra-rapide, filtres et Entrée intelligente)
+        "releaseNotes": """Notes de version miu v1.0.38
+🌐 Aperçu en direct WebView2 (Alt+P) et rendu Markdown CommonMark / GFM fidèle
 
-• Moteur Emmet C++ natif ultra-rapide (expansion via Tab) :
-  Prise en charge complète des abréviations Emmet pour HTML, JSX, XML et CSS (~29,7 µs par expansion). Supporte les opérateurs d'imbrication, de multiplication, la numérotation ($), les attributs, les nœuds texte ({...}), les balises implicites, les filtres (|bem, |c, |e), les préfixes vendeurs CSS (-), le multi-curseur et la navigation par Tab / Maj+Tab.
-• Auto-indentation intelligente par Entrée dans les balises vides (<div>|</div>) :
-  Appuyer sur Entrée entre une balise ouvrante et fermante divise et indente automatiquement le bloc sur 3 lignes.
-• Changement de contexte automatique & onglets non enregistrés :
-  Fonctionne immédiatement dans les nouveaux onglets et plus de 45 extensions, avec basculement CSS automatique dans <style> et style="".""",
+• Aperçu fractionné en direct WebView2 pour HTML, SVG et Markdown (Alt+P) :
+  Appuyez sur Alt+P pour afficher un volet d’aperçu en temps réel avec mise à jour automatique, rechargement F5, séparateur redimensionnable, barres de défilement superposées, adaptation au thème clair/sombre et chargement des ressources locales (images, CSS, JS).
+• Rendu fidèle CommonMark et GitHub Flavored Markdown (GFM) :
+  Prise en charge complète des tableaux GFM, listes de tâches (- [ ] / - [x]), listes imbriquées, citations multilignes et alertes GFM ([!NOTE], [!TIP], [!WARNING], etc.), blocs de code, protection snake_case, liens automatiques et balises HTML en ligne (<kbd>).
+• Optimisation pour fichiers géants et recherche circulaire (F3) instantanée :
+  Prévisualise instantanément les premiers 512 Ko sans copie disque (traduit en 28 langues) et corrige le blocage lors du retour au début du fichier avec F3.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.37
-⚡ Soporte completo de Emmet nativo (Expansión ultrarrápida, filtros y Enter inteligente)
+        "releaseNotes": """Notas de la versión miu v1.0.38
+🌐 Vista previa en vivo con WebView2 (Alt+P) y renderizado fiel de Markdown (CommonMark / GFM)
 
-• Motor Emmet C++ nativo ultrarrápido (expansión con Tab):
-  Soporte completo para abreviaturas Emmet en HTML, JSX, XML y CSS (~29,7 µs por expansión). Incluye operadores de jerarquía, multiplicación, numeración ($), atributos, texto ({...}), etiquetas implícitas, filtros (|bem, |c, |e), valores/colores/prefijos CSS (-), multicursor y navegación entre campos con Tab / Shift+Tab.
-• Sangría automática inteligente con Enter en etiquetas vacías (<div>|</div>):
-  Al pulsar Enter entre etiquetas de apertura y cierre coincidentes, se divide y sangra automáticamente en un bloque de 3 líneas.
-• Cambio automático de contexto y soporte en pestañas sin guardar:
-  Funciona al instante en pestañas nuevas y más de 45 tipos de archivo, cambiando automáticamente a modo CSS dentro de <style> y style="".""",
+• Vista previa dividida en tiempo real para HTML, SVG y Markdown (Alt+P):
+  Pulsa Alt+P para abrir un panel de vista previa con actualización automática, recarga con F5, divisor redimensionable, barras de desplazamiento superpuestas, modo claro/oscuro y carga de recursos locales (imágenes, CSS, JS).
+• Renderizado fiel de CommonMark y GitHub Flavored Markdown (GFM):
+  Soporte completo para tablas GFM, listas de tareas (- [ ] / - [x]), listas anidadas, citas multinivel, alertas GFM ([!NOTE], [!TIP], [!WARNING], etc.), protección snake_case, enlaces automáticos y etiquetas HTML en línea (<kbd>).
+• Vista previa ultrarrápida en archivos gigantes y búsqueda F3 optimizada:
+  Previsualiza al instante los primeros 512 KB sin copias en disco (en 28 idiomas) y corrige el bloqueo al reiniciar la búsqueda con F3 al final del archivo.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de versão miu v1.0.37
-⚡ Suporte nativo completo ao Emmet (Expansão ultrarrápida, filtros e Enter inteligente)
+        "releaseNotes": """Notas de lançamento do miu v1.0.38
+🌐 Pré-visualização ao vivo WebView2 (Alt+P) e renderização fiel de Markdown (CommonMark / GFM)
 
-• Motor Emmet C++ nativo ultrarrápido (expansão com Tab):
-  Suporte completo para abreviações Emmet em HTML, JSX, XML e CSS (~29,7 µs por expansão). Suporta operadores de hierarquia, multiplicação, numeração ($), atributos, texto ({...}), tags implícitas, filtros (|bem, |c, |e), valores/cores/prefixos CSS (-), multicursor e navegação por Tab / Shift+Tab.
-• Recuo automático inteligente com Enter em tags vazias (<div>|</div>):
-  Pressionar Enter entre tags de abertura e fechamento divide e indenta automaticamente em um bloco de 3 linhas.
-• Alternância automática de contexto e abas não salvas:
-  Funciona imediatamente em novas abas e mais de 45 extensões de arquivo, alternando automaticamente para CSS dentro de <style> e style="".""",
+• Pré-visualização dividida em tempo real para HTML, SVG e Markdown (Alt+P):
+  Pressione Alt+P para abrir o painel de pré-visualização com atualização automática, recarregamento F5, divisor ajustável, barras de rolagem sobrepostas, tema claro/escuro e mapeamento de arquivos locais (imagens, CSS, JS).
+• Renderização fiel de CommonMark e GitHub Flavored Markdown (GFM):
+  Suporte completo para tabelas GFM, listas de tarefas (- [ ] / - [x]), listas aninhadas, citações em vários níveis, alertas GFM ([!NOTE], [!TIP], [!WARNING], etc.), proteção snake_case, links automáticos e HTML inline (<kbd>).
+• Prévia rápida para arquivos gigantes e busca F3 instantânea:
+  Exibe instantaneamente os primeiros 512 KB sem cópias em disco (em 28 idiomas) e corrige o travamento ao reiniciar a busca com F3 no final de arquivos grandes.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.37
-⚡ Полная нативная поддержка Emmet (Мгновенное разворачивание, фильтры и умный Enter)
+        "releaseNotes": """Примечания к выпуску miu v1.0.38
+🌐 Живой предпросмотр WebView2 (Alt+P) и точный рендеринг Markdown (CommonMark / GFM)
 
-• Сверхбыстрый нативный движок Emmet на C++ (разворачивание по Tab):
-  Полная поддержка аббревиатур Emmet для HTML, JSX, XML и CSS (~29,7 мкс на операцию). Поддерживаются вложенность, умножение, нумерация ($), атрибуты, текст ({...}), неявные теги, фильтры (|bem, |c, |e), значения/цвета/вендорные префиксы CSS (-), мультикурсор и переход по полям через Tab / Shift+Tab.
-• Умный перенос строки (Enter) внутри пустых тегов (<div>|</div>):
-  Нажатие Enter между открывающим и закрывающим тегами автоматически разбивает их на блок из 3 строк с правильным отступом.
-• Автопереключение контекста и работа в несохраненных вкладках:
-  Работает сразу в новых вкладках и 45+ типах файлов, автоматически переключаясь в режим CSS внутри <style> и атрибутов style="".""",
+• Встроенный предпросмотр HTML, SVG и Markdown в реальном времени (Alt+P):
+  Нажмите Alt+P для открытия панели предпросмотра с автообновлением, перезагрузкой по F5, перетаскиваемым разделителем, оверлейными полосами прокрутки, поддержкой тёмной/светлой темы и локальных ресурсов (изображений, CSS, JS).
+• Точная поддержка CommonMark и GitHub Flavored Markdown (GFM):
+  Таблицы GFM (выравнивание и экранирование `|`), списки задач (- [ ] / - [x]), вложенные списки, многострочные цитаты, блоки оповещений GFM ([!NOTE], [!TIP], [!WARNING] и др.), защита snake_case, автоссылки и теги `<kbd>`.
+• Быстрый предпросмотр гигантских файлов и мгновенный поиск (F3):
+  Мгновенный предпросмотр первых 512 КБ без копирования на диск (на 28 языках) и исправление зависания при переходе поиска F3 с конца файла в начало.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio miu v1.0.37
-⚡ Supporto nativo completo per Emmet (Espansione ultraveloce, filtri e Invio intelligente)
+        "releaseNotes": """Note di rilascio di miu v1.0.38
+🌐 Anteprima dal vivo WebView2 (Alt+P) e rendering fedele Markdown (CommonMark / GFM)
 
-• Motore Emmet C++ nativo ultraveloce (espansione con Tab):
-  Supporto completo per le abbreviazioni Emmet in HTML, JSX, XML e CSS (~29,7 µs per espansione). Supporta operatori gerarchici, moltiplicazione, numerazione ($), attributi, nodi di testo ({...}), tag impliciti, filtri (|bem, |c, |e), valori/colori/prefissi CSS (-), multi-cursore e navigazione con Tab / Maiusc+Tab.
-• Indentazione automatica intelligente con Invio nei tag vuoti (<div>|</div>):
-  Premendo Invio tra un tag di apertura e uno di chiusura, il blocco viene automaticamente diviso e indentato su 3 righe.
-• Cambio automatico di contesto e schede non salvate:
-  Funziona subito nelle nuove schede e in oltre 45 tipi di file, passando automaticamente alla modalità CSS dentro <style> e style="".""",
+• Anteprima divisa in tempo reale per HTML, SVG e Markdown (Alt+P):
+  Premi Alt+P per aprire il pannello di anteprima con aggiornamento automatico, ricarica F5, divisore ridimensionabile, barre di scorrimento sovrapposte, tema chiaro/scuro e caricamento di risorse locali (immagini, CSS, JS).
+• Rendering fedele CommonMark e GitHub Flavored Markdown (GFM):
+  Supporto completo per tabelle GFM, elenchi di attività (- [ ] / - [x]), elenchi nidificati, citazioni multilinea, avvisi GFM ([!NOTE], [!TIP], [!WARNING], ecc.), protezione snake_case, link automatici e tag HTML inline (<kbd>).
+• Anteprima rapida per file enormi e ricerca F3 istantanea:
+  Mostra istantaneamente i primi 512 KB senza copie su disco (in 28 lingue) e risolve il blocco durante la ricerca circolare con F3 a fine file.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wydaniu miu v1.0.37
-⚡ Pełna natywna obsługa Emmet (Ultraszybkie rozwijanie, filtry i inteligentny Enter)
+        "releaseNotes": """Informacje o wersji miu v1.0.38
+🌐 Podgląd na żywo WebView2 (Alt+P) oraz wierne renderowanie Markdown (CommonMark / GFM)
 
-• Ultraszybki natywny silnik Emmet w C++ (rozwijanie klawiszem Tab):
-  Pełna obsługa skrótów Emmet dla HTML, JSX, XML i CSS (~29,7 µs na rozwinięcie). Obsługuje operatory zagnieżdżania, mnożenia, numerację ($), atrybuty, tekst ({...}), domyślne znaczniki, filtry (|bem, |c, |e), wartości/kolory/prefiksy CSS (-), wielokursor oraz nawigację przez Tab / Shift+Tab.
-• Inteligentne wcięcie po naciśnięciu Enter wewnątrz pustych znaczników (<div>|</div>):
-  Naciśnięcie Enter między znacznikiem otwierającym a zamykającym automatycznie dzieli je na 3-wierszowy blok z wcięciem.
-• Automatyczne wykrywanie kontekstu i działanie w niezapisanych kartach:
-  Działa od razu w nowych kartach oraz ponad 45 typach plików, automatycznie przełączając się w tryb CSS wewnątrz <style> i style="".""",
+• Wbudowany podgląd na żywo dla HTML, SVG i Markdown (Alt+P):
+  Naciśnij Alt+P, aby otworzyć panel podglądu z automatycznym odświeżaniem, przeładowaniem F5, przesuwanym separatorem, paskami przewijania, trybem ciemnym/jasnym i obsługą lokalnych zasobów (obrazy, CSS, JS).
+• Wierne renderowanie CommonMark i GitHub Flavored Markdown (GFM):
+  Pełna obsługa tabel GFM, list zadań (- [ ] / - [x]), list zagnieżdżonych, cytatów wielowierszowych, alertów GFM ([!NOTE], [!TIP], [!WARNING] itp.), ochrona snake_case, autolinki oraz znaczniki HTML (<kbd>).
+• Szybki podgląd ogromnych plików i płynne wyszukiwanie (F3):
+  Błyskawiczny podgląd pierwszych 512 KB bez kopiowania na dysk (w 28 językach) oraz poprawka zawieszania się przy zawijaniu wyszukiwania F3 na końcu pliku.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Versienotities miu v1.0.37
-⚡ Volledige native Emmet-ondersteuning (Ultrasnelle uitvouwing, filters & slimme Enter)
+        "releaseNotes": """Releaseopmerkingen miu v1.0.38
+🌐 WebView2 live-voorbeeld (Alt+P) & getrouwe CommonMark / GFM Markdown-weergave
 
-• Ultrasnelle native C++ Emmet-engine (uitvouwen met Tab):
-  Volledige ondersteuning voor HTML-, JSX-, XML- en CSS-Emmet-afkortingen (~29,7 µs per uitvouwing). Ondersteunt hiërarchie-, groeperings- en vermenigvuldigingsoperatoren, nummering ($), attributen, tekst ({...}), impliciete tags, filters (|bem, |c, |e), CSS-waarden/kleuren/vendor-prefixen (-), multi-cursor en Tab / Shift+Tab-navigatie.
-• Slimme automatische inspringing met Enter in lege tags (<div>|</div>):
-  Als u tussen een openende en sluitende tag op Enter drukt, wordt deze automatisch opgesplitst in een ingesprongen blok van 3 regels.
-• Contextbewuste moduswisseling & onopgeslagen tabbladen:
-  Werkt direct in nieuwe tabbladen en 45+ bestandstypen en schakelt automatisch over naar CSS binnen <style> en style="".""",
+• Ingebouwd gesplitst live-voorbeeld voor HTML, SVG & Markdown (Alt+P):
+  Druk op Alt+P voor een live-voorbeeldvenster met automatische updates, F5-herladen, versleepbare splitslijn, overlay-schuifbalken, donker/licht-thema en lokale bestanden (afbeeldingen, CSS, JS).
+• Getrouwe CommonMark & GitHub Flavored Markdown (GFM) weergave:
+  Volledige ondersteuning voor GFM-tabellen, takenlijsten (- [ ] / - [x]), geneste lijsten, citaten, GFM-meldingen ([!NOTE], [!TIP], [!WARNING], enz.), snake_case-bescherming, autolinks en inline HTML (<kbd>).
+• Snelle weergave van enorme bestanden & directe F3-zoekopdracht:
+  Toont direct de eerste 512 KB zonder schijfkopieën (in 28 talen) en verhelpt het vastlopen bij het rondzoeken met F3 aan het einde van grote bestanden.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.37 Sürüm Notları
-⚡ Tam Yerel Emmet Desteği (Ultra Hızlı Genişletme, Filtreler ve Akıllı Enter)
+        "releaseNotes": """miu v1.0.38 Sürüm Notları
+🌐 WebView2 Canlı Önizleme (Alt+P) ve Tam Uyumlu CommonMark / GFM Markdown Görünümü
 
-• Ultra Hızlı Yerel C++ Emmet Motoru (Tab ile Genişletme):
-  HTML, JSX, XML ve CSS Emmet kısaltmaları için tam destek (genişletme başına ~29,7 µs). Hiyerarşi, çoğaltma, numaralandırma ($), öznitelikler, metin ({...}), örtük etiketler, filtreler (|bem, |c, |e), CSS değer/renk/önek (-) genişletmeleri, çoklu imleç ve Tab / Shift+Tab ile alanlar arası geçişi destekler.
-• Boş Etiketler (<div>|</div>) İçinde Akıllı Enter Otomatik Girintileme:
-  Açılış ve kapanış etiketleri arasında Enter tuşuna basıldığında otomatik olarak 3 satırlık girintili блоğa bölünür.
-• Bağlama Duyarlı Mod Geçişi ve Kaydedilmemiş Sekme Desteği:
-  Yeni sekmelerde ve 45'ten fazla dosya türünde anında çalışır; <style> ve style="" içinde otomatik olarak CSS moduna geçer.""",
+• HTML, SVG ve Markdown için Bölünmüş Canlı Önizleme (Alt+P):
+  Otomatik yenileme, F5 ile yeniden yükleme, sürüklenebilir ayırıcı, kaplama kaydırma çubukları, Koyu/Açık tema uyumu ve yerel dosya (resim, CSS, JS) desteğiyle canlı önizleme panelini açmak için Alt+P'ye basın.
+• Tam Uyumlu CommonMark ve GitHub Flavored Markdown (GFM):
+  GFM tabloları, görev listeleri (- [ ] / - [x]), iç içe listeler, çok satırlı alıntılar, GFM uyarı kutuları ([!NOTE], [!TIP], [!WARNING] vb.), snake_case koruması, otomatik bağlantılar ve satır içi HTML (<kbd>) desteği.
+• Dev Dosyalarda Hızlı Önizleme ve Anında F3 Arama Döngüsü:
+  Disk kopyası olmadan ilk 512 KB'ı anında önizler (28 dilde bildirim ile) ve büyük dosyaların sonunda F3 ile başa dönerken oluşan donmayı giderir.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.37
-⚡ Hỗ trợ Emmet gốc toàn diện (Mở rộng siêu tốc, bộ lọc & Enter tự động thụt lề)
+        "releaseNotes": """Ghi chú phát hành miu v1.0.38
+🌐 Xem trước trực tiếp WebView2 (Alt+P) & Hiển thị chuẩn CommonMark / GFM Markdown
 
-• Bộ máy Emmet C++ gốc siêu tốc (mở rộng bằng phím Tab):
-  Hỗ trợ đầy đủ viết tắt Emmet cho HTML, JSX, XML và CSS (~29,7 µs mỗi lần mở rộng). Hỗ trợ toán tử phân cấp, nhân bản, đánh số ($), thuộc tính, văn bản ({...}), thẻ ngầm định, bộ lọc (|bem, |c, |e), giá trị/màu sắc/tiền tố CSS (-), đa con trỏ và nhảy qua các vị trí nhập bằng Tab / Shift+Tab.
-• Tự động xuống dòng & thụt lề thông minh khi nhấn Enter trong thẻ trống (<div>|</div>):
-  Nhấn Enter giữa thẻ mở và thẻ đóng sẽ tự động tách thành khối 3 dòng có thụt lề chuẩn xác.
-• Tự động nhận diện ngữ cảnh & hoạt động ngay trên tab chưa lưu:
-  Hoạt động tức thì trên tab mới và hơn 45 định dạng tệp, tự động chuyển sang chế độ CSS bên trong <style> và style="".""",
+• Xem trước trực tiếp chia đôi màn hình cho HTML, SVG & Markdown (Alt+P):
+  Nhấn Alt+P để mở khung xem trước trực tiếp với tự động cập nhật, tải lại bằng F5, thanh chia kéo thả tinh tế, thanh cuộn nổi, đồng bộ giao diện Sáng/Tối và ánh xạ tài nguyên cục bộ (ảnh, CSS, JS).
+• Hiển thị chuẩn CommonMark & GitHub Flavored Markdown (GFM):
+  Hỗ trợ đầy đủ bảng GFM, danh sách công việc (- [ ] / - [x]), danh sách lồng nhau, trích dẫn nhiều dòng, hộp cảnh báo GFM ([!NOTE], [!TIP], [!WARNING], v.v.), bảo vệ snake_case, liên kết tự động và thẻ HTML nội tuyến (<kbd>).
+• Tối ưu xem trước tệp khổng lồ & Sửa lỗi tìm kiếm vòng lặp F3:
+  Xem trước tức thì 512 KB đầu tiên không cần sao chép đĩa (hỗ trợ 28 ngôn ngữ) và khắc phục triệt để lỗi treo khi nhấn F3 quay lại đầu tệp lớn.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.37
-⚡ Повна нативна підтримка Emmet (Миттєве розгортання, фільтри та розумний Enter)
+        "releaseNotes": """Примітки до випуску miu v1.0.38
+🌐 Живий попередній перегляд WebView2 (Alt+P) та точний рендеринг Markdown (CommonMark / GFM)
 
-• Надшвидкий нативний рушій Emmet на C++ (розгортання клавішею Tab):
-  Повна підтримка абревіатур Emmet для HTML, JSX, XML та CSS (~29,7 мкс на операцію). Підтримуються вкладеність, множення, нумерація ($), атрибути, текст ({...}), неявні теги, фільтри (|bem, |c, |e), значення/кольори/префікси CSS (-), мультикурсор і навігація полями через Tab / Shift+Tab.
-• Розумний перенос рядка (Enter) всередині порожніх тегів (<div>|</div>):
-  Натискання Enter між відкриваючим і закриваючим тегами автоматично розбиває їх на блок із 3 рядків із відступом.
-• Автоперемикання контексту та робота в незбережених вкладках:
-  Працює одразу в нових вкладках і понад 45 типах файлів, автоматично перемикаючись у режим CSS всередині <style> та style="".""",
+• Вбудований попередній перегляд HTML, SVG і Markdown у реальному часі (Alt+P):
+  Натисніть Alt+P для відкриття панелі перегляду з автооновленням, перезавантаженням F5, розділювачем, оверлейними смугами прокручування, темною/світлою темою та підтримкою локальних ресурсів (зображень, CSS, JS).
+• Точна підтримка CommonMark і GitHub Flavored Markdown (GFM):
+  Таблиці GFM, списки завдань (- [ ] / - [x]), вкладені списки, багаторядкові цитати, блоки сповіщень GFM ([!NOTE], [!TIP], [!WARNING] тощо), захист snake_case, автопосилання та теги `<kbd>`.
+• Швидкий перегляд гігантських файлів і миттєвий пошук (F3):
+  Миттєвий перегляд перших 512 КБ без копіювання на диск (28 мовами) та виправлення зависання під час циклічного пошуку F3 наприкінці файлу.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.37
-⚡ Dukungan Penuh Emmet Native (Ekspansi Super Cepat, Filter & Smart Enter)
+        "releaseNotes": """Catatan Rilis miu v1.0.38
+🌐 Pratinjau Langsung WebView2 (Alt+P) & Rendering Markdown CommonMark / GFM Akurat
 
-• Mesin Emmet C++ Native Super Cepat (Ekspansi dengan Tab):
-  Dukungan penuh singkatan Emmet untuk HTML, JSX, XML, dan CSS (~29,7 µs per ekspansi). Mendukung operator hierarki, perkalian, penomoran ($), atribut, teks ({...}), tag implisit, filter (|bem, |c, |e), nilai/warna/prefiks vendor CSS (-), multi-kursor, serta navigasi Tab / Shift+Tab.
-• Indentasi Otomatis Enter Cerdas di Dalam Tag Kosong (<div>|</div>):
-  Menekan Enter di antara tag pembuka dan penutup secara otomatis membaginya menjadi blok 3 baris berindentasi.
-• Peralihan Mode Kontekstual & Dukungan Tab Belum Disimpan:
-  Langsung berfungsi di tab baru dan 45+ jenis berkas, serta otomatis beralih ke mode CSS di dalam <style> dan style="".""",
+• Pratinjau Langsung Layar Terpisah untuk HTML, SVG & Markdown (Alt+P):
+  Tekan Alt+P untuk membuka panel pratinjau langsung dengan pembaruan otomatis, muat ulang F5, pembagi yang dapat digeser, bilah gulir overlay, tema Gelap/Terang, dan pemetaan aset lokal (gambar, CSS, JS).
+• Rendering CommonMark & GitHub Flavored Markdown (GFM) yang Akurat:
+  Dukungan penuh untuk tabel GFM, daftar tugas (- [ ] / - [x]), daftar bersarang, kutipan multi-baris, kotak peringatan GFM ([!NOTE], [!TIP], [!WARNING], dll.), perlindungan snake_case, tautan otomatis, dan tag HTML sebaris (<kbd>).
+• Optimasi Pratinjau File Raksasa & Pencarian F3 Instan:
+  Menampilkan pratinjau 512 KB pertama secara instan tanpa salinan disk (dalam 28 bahasa) dan memperbaiki masalah macet saat menekan F3 di akhir file besar.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k vydání miu v1.0.37
-⚡ Plná nativní podpora Emmet (Ultrarychlé rozbalování, filtry a chytrý Enter)
+        "releaseNotes": """Poznámky k verzi miu v1.0.38
+🌐 Živý náhled WebView2 (Alt+P) a věrné vykreslování Markdownu (CommonMark / GFM)
 
-• Ultrarychlý nativní C++ engine Emmet (rozbalení klávesou Tab):
-  Plná podpora zkratek Emmet pro HTML, JSX, XML a CSS (~29,7 µs na rozbalení). Podporuje operátory zanoření, násobení, číslování ($), atributy, text ({...}), implicitní značky, filtry (|bem, |c, |e), hodnoty/barvy/prefixy CSS (-), multikurzor a přecházení mezi poli pomocí Tab / Shift+Tab.
-• Chytré automatické odsazení klávesou Enter v prázdných značkách (<div>|</div>):
-  Stisknutí klávesy Enter mezi otevírací a uzavírací značkou je automaticky rozdělí do odsazeného 3řádkového bloku.
-• Automatické přepínání kontextu a podpora neuložených karet:
-  Funguje okamžitě v nových kartách a více než 45 typech souborů a uvnitř <style> a style="" se automaticky přepne do režimu CSS.""",
+• Vestavěný živý náhled pro HTML, SVG a Markdown (Alt+P):
+  Stisknutím Alt+P otevřete panel živého náhledu s automatickou aktualizací, obnovením klávesou F5, posuvným oddělovačem, překryvnými posuvníky, tmavým/světlým motivem a podporou lokálních souborů (obrázky, CSS, JS).
+• Věrné vykreslování CommonMark a GitHub Flavored Markdown (GFM):
+  Plná podpora tabulek GFM, seznamů úkolů (- [ ] / - [x]), vnořených seznamů, víceřádkových citací, upozornění GFM ([!NOTE], [!TIP], [!WARNING] atd.), ochrany snake_case, automatických odkazů a inline HTML (<kbd>).
+• Rychlý náhled obřích souborů a okamžité hledání (F3):
+  Okamžitý náhled prvních 512 KB bez kopírování na disk (ve 28 jazycích) a oprava zamrzání při přechodu hledání F3 z konce souboru na začátek.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.37
-⚡ Fullt inbyggt Emmet-stöd (Ultrasnabb展開, filter & smart Enter-indrag)
+        "releaseNotes": """Versionsinformation för miu v1.0.38
+🌐 WebView2 direktförhandsgranskning (Alt+P) & exakt CommonMark / GFM Markdown-rendering
 
-• Ultrasnabb inbyggd C++ Emmet-motor (expandera med Tab):
-  Fullt stöd för HTML-, JSX-, XML- och CSS-Emmet-förkortningar (~29,7 µs per expansion). Stöder hierarki-, grupperings- och multiplikationsoperatorer, numrering ($), attribut, text ({...}), implicita taggar, filter (|bem, |c, |e), CSS-värden/färger/vendor-prefix (-), multipekare och Tab / Shift+Tab-navigering.
-• Smart automatisk indragning med Enter i tomma taggar (<div>|</div>):
-  När du trycker på Enter mellan öppnande och stängande taggar delas de automatiskt upp i ett indraget 3-radersblock.
-• Kontextmedveten lägesväxling & osparade flikar:
-  Fungerar direkt i nya flikar och 45+ filtyper, med automatisk växling till CSS inuti <style> och style="".""",
+• Inbyggd delad förhandsgranskning för HTML, SVG & Markdown (Alt+P):
+  Tryck på Alt+P för att öppna en panel med automatisk uppdatering, F5-omladdning, justerbar delningslinje, överliggande rullningslister, mörkt/ljust tema och lokala resurser (bilder, CSS, JS).
+• Exakt CommonMark & GitHub Flavored Markdown (GFM):
+  Fullt stöd för GFM-tabeller, uppgiftslistor (- [ ] / - [x]), kapslade listor, flerradiga citat, GFM-notiser ([!NOTE], [!TIP], [!WARNING] m.fl.), snake_case-skydd, autolänkar och inline-HTML (<kbd>).
+• Snabb förhandsgranskning av jättefiler & omedelbar F3-sökning:
+  Förhandsgranskar de första 512 KB direkt utan diskkopior (på 28 språk) och åtgärdar frysning vid F3-sökning i slutet av stora filer.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.37
-⚡ รองรับ Emmet แบบเนทีฟเต็มรูปแบบ (ขยายโค้ดความเร็วสูง ฟิลเตอร์ และจัดย่อหน้าอัตโนมัติด้วย Enter)
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.38
+🌐 ดูตัวอย่างแบบสดด้วย WebView2 (Alt+P) และการแสดงผล Markdown (CommonMark / GFM) อย่างสมบูรณ์
 
-• เอนจิน Emmet C++ เนทีฟความเร็วสูง (กด Tab เพื่อขยายทันที):
-  รองรับตัวย่อ Emmet สำหรับ HTML, JSX, XML และ CSS อย่างสมบูรณ์ (~29.7 µs ต่อการขยาย 1 ครั้ง) รองรับตัวดำเนินการลำดับชั้น การทำซ้ำ การรันตัวเลข ($) แอตทริบิวต์ ข้อความ ({...}) แท็กอัตโนมัติ ฟิลเตอร์ (|bem, |c, |e) ค่าสีและเวนเดอร์พรีฟิกซ์ CSS (-) มัลติเคอร์เซอร์ และการกระโดดไปยังจุดกรอกถัดไปด้วย Tab / Shift+Tab
-• กด Enter จัดย่อหน้าอัตโนมัติภายในแท็กว่าง (<div>|</div>):
-  เมื่อกด Enter ระหว่างแท็กเปิดและแท็กปิด จะแยกบรรทัดและจัดย่อหน้าเป็นบล็อก 3 บรรทัดโดยอัตโนมัติ
-• สลับโหมดตามบริบทอัตโนมัติและใช้งานได้ทันทีในแท็บใหม่ที่ยังไม่บันทึก:
-  ทำงานได้ทันทีในแท็บใหม่และไฟล์กว่า 45 นามสกุล พร้อมสลับเป็นโหมด CSS อัตโนมัติภายใน <style> และ style="" """,
+• ดูตัวอย่างแบบแบ่งหน้าจอเรียลไทม์สำหรับ HTML, SVG และ Markdown (Alt+P):
+  กด Alt+P เพื่อเปิดหน้าต่างดูตัวอย่างพร้อมอัปเดตอัตโนมัติ รีโหลดด้วย F5 เส้นแบ่งปรับขนาดได้ แถบเลื่อนแบบโอเวอร์เลย์ รองรับโหมดมืด/สว่าง และการโหลดไฟล์ในเครื่อง (รูปภาพ, CSS, JS)
+• รองรับ CommonMark และ GitHub Flavored Markdown (GFM) อย่างครบถ้วน:
+  รองรับตาราง GFM รายการงาน (- [ ] / - [x]) รายการซ้อนหลายระดับ การอ้างอิงหลายบรรทัด กล่องแจ้งเตือน GFM ([!NOTE], [!TIP], [!WARNING] ฯลฯ) การป้องกัน snake_case ลิงก์อัตโนมัติ และแท็ก HTML (<kbd>)
+• ดูตัวอย่างไฟล์ขนาดใหญ่พิเศษอย่างรวดเร็วและแก้ไขการค้นหา F3:
+  แสดงตัวอย่าง 512 KB แรกทันทีโดยไม่คัดลอกไฟล์ลงดิสก์ (รองรับ 28 ภาษา) และแก้ไขอาการค้างเมื่อกด F3 ค้นหาวนกลับจากท้ายไฟล์""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.37 रिलीज़ नोट्स
-⚡ पूर्ण नेटिव Emmet समर्थन (अल्ट्रा-फ़ास्ट विस्तार, फ़िल्टर और स्मार्ट Enter इंडेंटेशन)
+        "releaseNotes": """miu v1.0.38 रिलीज़ नोट्स
+🌐 WebView2 लाइव पूर्वावलोकन (Alt+P) और सटीक CommonMark / GFM Markdown रेंडरिंग
 
-• अल्ट्रा-फ़ास्ट नेटिव C++ Emmet इंजन (Tab से तुरंत विस्तार):
-  HTML, JSX, XML और CSS Emmet संक्षिप्ताक्षरों के लिए पूर्ण समर्थन (~29.7 µs प्रति विस्तार)। पदानुक्रम, गुणन, क्रमांकन ($), एट्रिब्यूट, टेक्स्ट ({...}), अंतर्निहित टैग, फ़िल्टर (|bem, |c, |e), CSS मान/रंग/वेंडर प्रीफ़िक्स (-), मल्टी-कर्सर और Tab / Shift+Tab नेविगेशन का समर्थन करता है।
-• खाली टैग (<div>|</div>) के भीतर स्मार्ट Enter ऑटो-इंडेंट:
-  शुरुआती और समापन टैग के बीच Enter दबाने पर यह स्वचालित रूप से इंडेंट किए गए 3-पंक्ति ब्लॉक में विभाजित हो जाता है।
-• संदर्भ-जागरूक मोड स्विचिंग और बिना सहेजे गए टैब में तत्काल कार्य:
-  नए टैब और 45+ फ़ाइल प्रकारों में तुरंत काम करता है, तथा <style> और style="" के भीतर स्वतः CSS मोड में बदल जाता है।""",
+• HTML, SVG और Markdown के लिए इन-बिल्ट स्प्लिट लाइव पूर्वावलोकन (Alt+P):
+  ऑटो-अपडेट, F5 रीलोड, ड्रैग करने योग्य स्प्लिटर, ओवरले स्क्रॉलबार, डार्क/लाइट थीम और लोकल फ़ाइल सपोर्ट (इमेज, CSS, JS) के साथ लाइव प्रीव्यू पैनल खोलने के लिए Alt+P दबाएँ।
+• सटीक CommonMark और GitHub Flavored Markdown (GFM) रेंडरिंग:
+  GFM टेबल, टास्क लिस्ट (- [ ] / - [x]), नेस्टेड लिस्ट, बहु-पंक्ति उद्धरण, GFM अलर्ट ([!NOTE], [!TIP], [!WARNING] आदि), snake_case सुरक्षा, ऑटोलिंक और इनलाइन HTML (<kbd>) का पूर्ण समर्थन।
+• विशाल फ़ाइलों का तेज़ पूर्वावलोकन और त्वरित F3 खोज सुधार:
+  बिना डिस्क कॉपी के पहले 512 KB का तुरंत पूर्वावलोकन दिखाता है (28 भाषाओं में सूचना सहित) और बड़ी फ़ाइलों के अंत में F3 दबाने पर होने वाली फ़्रीज़ समस्या को ठीक करता है।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.37
-⚡ Suport Emmet nativ complet (Expandare ultra-rapidă, filtre și Enter inteligent)
+        "releaseNotes": """Note de lansare miu v1.0.38
+🌐 Previzualizare live WebView2 (Alt+P) și redare fidelă Markdown (CommonMark / GFM)
 
-• Motor Emmet C++ nativ ultra-rapid (expandare cu Tab):
-  Suport complet pentru abrevierile Emmet în HTML, JSX, XML și CSS (~29,7 µs per expandare). Include operatori ierarhici, multiplicare, numerotare ($), atribute, text ({...}), etichete implicite, filtre (|bem, |c, |e), valori/culori/prefixe CSS (-), multi-cursor și navigare cu Tab / Shift+Tab.
-• Indentare automată inteligentă cu Enter în etichetele goale (<div>|</div>):
-  Apăsarea tastei Enter între etichetele de deschidere și închidere împarte și indentează automat blocul pe 3 rânduri.
-• Comutare automată a contextului și suport în filele nesalvate:
-  Funcționează imediat în filele noi și în peste 45 de tipuri de fișiere, trecând automat la modul CSS în interiorul <style> și style="".""",
+• Previzualizare divizată în timp real pentru HTML, SVG și Markdown (Alt+P):
+  Apăsați Alt+P pentru a deschide panoul de previzualizare cu actualizare automată, reîncărcare F5, separator reglabil, bare de defilare suprapuse, temă întunecată/luminoasă și încărcare de resurse locale (imagini, CSS, JS).
+• Redare fidelă CommonMark și GitHub Flavored Markdown (GFM):
+  Suport complet pentru tabele GFM, liste de sarcini (- [ ] / - [x]), liste imbricate, citate pe mai multe rânduri, alerte GFM ([!NOTE], [!TIP], [!WARNING] etc.), protecție snake_case, linkuri automate și HTML inline (<kbd>).
+• Previzualizare rapidă pentru fișiere uriașe și căutare F3 instantanee:
+  Afișează instantaneu primii 512 KB fără copiere pe disc (în 28 de limbi) și remediază blocarea la reluarea căutării cu F3 la sfârșitul fișierelor mari.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.37 kiadási megjegyzések
-⚡ Teljes natív Emmet támogatás (Villámgyors kibontás, szűrők és intelligens Enter)
+        "releaseNotes": """miu v1.0.38 kiadási megjegyzések
+🌐 WebView2 élő előnézet (Alt+P) és hű CommonMark / GFM Markdown-megjelenítés
 
-• Ultragyors natív C++ Emmet motor (kibontás a Tab billentyűvel):
-  Teljes HTML, JSX, XML és CSS Emmet rövidítéstámogatás (~29,7 µs kibontásonként). Támogatja a hierarchia-, csoportosítási és szorzási operátorokat, a számozást ($), attribútumokat, szöveget ({...}), implicit címkéket, szűrőket (|bem, |c, |e), CSS értékeket/színeket/prefixeket (-), a többkurzoros szerkesztést és a Tab / Shift+Tab navigációt.
-• Intelligens Enter behúzás üres címkékben (<div>|</div>):
-  A nyitó és záró címke között lenyomott Enter automatikusan 3 soros, behúzott blokkra bontja azokat.
-• Környezetfüggő módváltás és azonnali működés mentetlen lapokon:
-  Azonnal működik új lapokon és több mint 45 fájltípusban, a <style> és style="" részeken belül pedig automatikusan CSS módra vált.""",
+• Beépített osztott élő előnézet HTML, SVG és Markdown fájlokhoz (Alt+P):
+  Nyomja meg az Alt+P billentyűkombinációt az automatikusan frissülő előnézeti panel megnyitásához F5 újratöltéssel, átméretezhető elválasztóval, átfedő görgetősávokkal, sötét/világos témával és helyi erőforrások (képek, CSS, JS) támogatásával.
+• Hű CommonMark és GitHub Flavored Markdown (GFM) megjelenítés:
+  Teljes támogatás GFM-táblázatokhoz, feladatlistákhoz (- [ ] / - [x]), egymásba ágyazott listákhoz, többsoros idézetekhez, GFM-figyelmeztetésekhez ([!NOTE], [!TIP], [!WARNING] stb.), snake_case védelemhez, automatikus hivatkozásokhoz és `<kbd>` elemekhez.
+• Óriásfájlok gyors előnézete és azonnali F3 keresés:
+  Lemezmásolás nélkül, azonnal megjeleníti az első 512 KB-ot (28 nyelven), és javítja a nagy fájlok végén történő F3 keresési lefagyást.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.37
-⚡ Πλήρης εγγενής υποστήριξη Emmet (Υπερταχεία ανάπτυξη, φίλτρα & έξυπνο Enter)
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.38
+🌐 Ζωντανή προεπισκόπηση WebView2 (Alt+P) & πιστή απόδοση Markdown (CommonMark / GFM)
 
-• Υπερταχεία εγγενής μηχανή Emmet σε C++ (ανάπτυξη με Tab):
-  Πλήρης υποστήριξη συντομογραφιών Emmet για HTML, JSX, XML και CSS (~29,7 µs ανά ανάπτυξη). Υποστηρίζει τελεστές ιεραρχίας, πολλαπλασιασμό, αρίθμηση ($), ιδιότητες, κείμενο ({...}), έμμεσες ετικέτες, φίλτρα (|bem, |c, |e), τιμές/χρώματα/προθέματα CSS (-), πολλαπλούς δρομείς και πλοήγηση με Tab / Shift+Tab.
-• Έξυπνη αυτόματη εσοχή με Enter μέσα σε κενές ετικέτες (<div>|</div>):
-  Το πάτημα του Enter ανάμεσα σε ετικέτες ανοίγματος και κλεισίματος τις χωρίζει αυτόματα σε μπλοκ 3 γραμμών με εσοχή.
-• Αυτόματη εναλλαγή περιβάλλοντος & άμεση λειτουργία σε μη αποθηκευμένες καρτέλες:
-  Λειτουργεί αμέσως σε νέες καρτέλες και σε 45+ τύπους αρχείων, μεταβαίνοντας αυτόματα σε λειτουργία CSS εντός <style> και style="".""",
+• Ενσωματωμένη ζωντανή προεπισκόπηση για HTML, SVG & Markdown (Alt+P):
+  Πατήστε Alt+P για να ανοίξετε το παράθυρο προεπισκόπησης με αυτόματη ενημέρωση, ανανέωση F5, ρυθμιζόμενο διαχωριστικό, μπάρες κύλισης, σκοτεινό/φωτεινό θέμα και υποστήριξη τοπικών αρχείων (εικόνες, CSS, JS).
+• Πιστή απόδοση CommonMark & GitHub Flavored Markdown (GFM):
+  Πλήρης υποστήριξη για πίνακες GFM, λίστες εργασιών (- [ ] / - [x]), ένθετες λίστες, παραθέσεις, ειδοποιήσεις GFM ([!NOTE], [!TIP], [!WARNING] κ.λπ.), προστασία snake_case, αυτόματους συνδέσμους και στοιχεία HTML (<kbd>).
+• Γρήγορη προεπισκόπηση τεράστιων αρχείων & άμεση αναζήτηση F3:
+  Προβάλλει αμέσως τα πρώτα 512 KB χωρίς αντιγραφή στον δίσκο (σε 28 γλώσσες) και διορθώνει το πάγωμα κατά την αναζήτηση F3 στο τέλος μεγάλων αρχείων.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.37
-⚡ Fuld indbygget Emmet-understøttelse (Lynhurtig udvidelse, filtre & smart Enter)
+        "releaseNotes": """Udgivelsesnoter for miu v1.0.38
+🌐 WebView2 live-forhåndsvisning (Alt+P) & præcis CommonMark / GFM Markdown-gengivelse
 
-• Lynhurtig indbygget C++ Emmet-motor (udvid med Tab):
-  Fuld understøttelse af HTML-, JSX-, XML- og CSS-Emmet-forkortelser (~29,7 µs pr. udvidelse). Understøtter hierarki-, grupperings- og multiplikationsoperatorer, nummerering ($), attributter, tekst ({...}), implicitte tags, filtre (|bem, |c, |e), CSS-værdier/farver/vendor-præfikser (-), multikursor samt Tab / Skift+Tab-navigation.
-• Smart automatisk indrykning med Enter i tomme tags (<div>|</div>):
-  Tryk på Enter mellem åbnings- og lukketags opdeler og indrykker dem automatisk i en blok på 3 linjer.
-• Kontekstafhængigt tilstandsskift & ikke-gemte faner:
-  Virker med det samme i nye faner og over 45 filtyper og skifter automatisk til CSS-tilstand i <style> og style="".""",
+• Indbygget delt live-forhåndsvisning til HTML, SVG & Markdown (Alt+P):
+  Tryk på Alt+P for at åbne et forhåndsvisningspanel med automatisk opdatering, F5-genindlæsning, justerbar deler, overlay-rullepaneler, mørkt/lyst tema og lokale ressourcer (billeder, CSS, JS).
+• Præcis CommonMark & GitHub Flavored Markdown (GFM):
+  Fuld understøttelse af GFM-tabeller, opgavelister (- [ ] / - [x]), indlejrede lister, citater, GFM-advarsler ([!NOTE], [!TIP], [!WARNING] m.fl.), snake_case-beskyttelse, autolinks og inline-HTML (<kbd>).
+• Hurtig forhåndsvisning af enorme filer & øjeblikkelig F3-søgning:
+  Viser straks de første 512 KB uden diskkopiering (på 28 sprog) og retter frysning ved F3-søgning i slutningen af store filer.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.37 -julkaisutiedot
-⚡ Täysi natiivi Emmet-tuki (Huippunopea laajennus, suodattimet ja älykäs Enter)
+        "releaseNotes": """miu v1.0.38 julkaisutiedot
+🌐 WebView2-reaaliaikainen esikatselu (Alt+P) ja tarkka CommonMark / GFM Markdown -renderöinti
 
-• Huippunopea natiivi C++ Emmet -moottori (laajennus Tab-näppäimellä):
-  Täysi tuki HTML-, JSX-, XML- ja CSS-Emmet-lyhenteille (~29,7 µs / laajennus). Tukee rakenne-, ryhmittely- ja kerto-operaattoreita, numerointia ($), attribuutteja, tekstiä ({...}), oletustunnisteita, suodattimia (|bem, |c, |e), CSS-arvoja/värejä/etuliitteitä (-), monikohdistinta sekä Tab / Shift+Tab -siirtymistä.
-• Älykäs automaattinen Enter-sisennys tyhjien tunnisteiden sisällä (<div>|</div>):
-  Enterin painaminen aloitus- ja lopetustunnisteen välissä jakaa ne automaattisesti sisennetyksi 3 rivin lohkoksi.
-• Kontekstitietoinen tilanvaihto ja tallentamattomat välilehdet:
-  Toimii heti uusissa välilehdissä ja yli 45 tiedostotyypissä, ja vaihtaa automaattisesti CSS-tilaan <style>- ja style=""-osioissa.""",
+• Sisäänrakennettu jaettu esikatselu HTML-, SVG- ja Markdown-tiedostoille (Alt+P):
+  Avaa automaattisesti päivittyvä esikatselupaneeli painamalla Alt+P. Sisältää F5-päivityksen, säädettävän jakajan, vierityspalkit, tumman/vaalean teeman ja paikallisten tiedostojen (kuvat, CSS, JS) tuen.
+• Tarkka CommonMark ja GitHub Flavored Markdown (GFM):
+  Täysi tuki GFM-taulukoille, tehtävälistoille (- [ ] / - [x]), sisäkkäisille listoille, lainauksille, GFM-huomautuksille ([!NOTE], [!TIP], [!WARNING] jne.), snake_case-suojaukselle, automaattilinkeille ja `<kbd>`-tunnisteille.
+• Suurten tiedostojen nopea esikatselu ja välitön F3-haku:
+  Esikatselee ensimmäiset 512 kt välittömästi ilman levykopioita (28 kielellä) ja korjaa jäätymisen F3-haun kiertäessä tiedoston lopusta alkuun.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.37
-⚡ Full innebygd Emmet-støtte (Lynrask utvidelse, filtre og smart Enter-innrykk)
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.38
+🌐 WebView2 direkte forhåndsvisning (Alt+P) og nøyaktig CommonMark / GFM Markdown-gjengivelse
 
-• Lynrask innebygd C++ Emmet-motor (utvid med Tab):
-  Full støtte for HTML-, JSX-, XML- og CSS-Emmet-forkortelser (~29,7 µs per utvidelse). Støtter hierarki-, grupperings- og multiplikasjonsoperatorer, nummerering ($), attributter, tekst ({...}), implisitte tagger, filtre (|bem, |c, |e), CSS-verdier/farger/vendor-prefikser (-), multikursor og Tab / Shift+Tab-navigering.
-• Smart automatisk innrykk med Enter i tomme tagger (<div>|</div>):
-  Trykk på Enter mellom åpnings- og lukketagger deler dem automatisk opp i en innrykket blokk på 3 linjer.
-• Kontekstbasert modusbytte og ulagrede faner:
-  Fungerer umiddelbart i nye faner og 45+ filtyper, med automatisk bytte til CSS-modus i <style> og style="".""",
+• Innebygd delt forhåndsvisning for HTML, SVG og Markdown (Alt+P):
+  Trykk Alt+P for å åpne et forhåndsvisningspanel med automatisk oppdatering, F5-oppdatering, justerbar deler, rullefelt, mørkt/lyst tema og lokale ressurser (bilder, CSS, JS).
+• Nøyaktig CommonMark og GitHub Flavored Markdown (GFM):
+  Full støtte for GFM-tabeller, oppgavelister (- [ ] / - [x]), nestede lister, sitater, GFM-varsler ([!NOTE], [!TIP], [!WARNING] osv.), snake_case-beskyttelse, autolenker og inline-HTML (<kbd>).
+• Rask forhåndsvisning av enorme filer og umiddelbar F3-søking:
+  Forhåndsviser de første 512 KB umiddelbart uten diskkopiering (på 28 språk) og løser frysingen ved F3-søk på slutten av store filer.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.37
-⚡ Sokongan Emmet Asli Sepenuhnya (Pengembangan Sangat Pantas, Penapis & Enter Pintar)
+        "releaseNotes": """Nota Keluaran miu v1.0.38
+🌐 Pratonton Langsung WebView2 (Alt+P) & Paparan Markdown CommonMark / GFM Tepat
 
-• Enjin Emmet C++ Asli Sangat Pantas (Kembangkan dengan Tab):
-  Sokongan penuh singkatan Emmet untuk HTML, JSX, XML dan CSS (~29.7 µs setiap pengembangan). Menyokong pengendali hierarki, pendaraban, penomboran ($), atribut, teks ({...}), tag tersirat, penapis (|bem, |c, |e), nilai/warna/awalan vendor CSS (-), berbilang kursor dan navigasi Tab / Shift+Tab.
-• Lekukan Automatik Enter Pintar di Dalam Tag Kosong (<div>|</div>):
-  Menekan Enter di antara tag pembuka dan penutup secara automatik membahagikannya kepada blok 3 baris berlekuk.
-• Pertukaran Mod Mengikut Konteks & Tab Belum Disimpan:
-  Berfungsi serta-merta dalam tab baharu dan 45+ jenis fail, serta bertukar secara automatik kepada mod CSS di dalam <style> dan style="".""",
+• Pratonton Langsung Skrin Terbahagi untuk HTML, SVG & Markdown (Alt+P):
+  Tekan Alt+P untuk membuka panel pratonton langsung dengan kemas kini automatik, muat semula F5, pembahagi boleh laras, bar skrol tindanan, tema Gelap/Cerah dan pemetaan aset tempatan (imej, CSS, JS).
+• Paparan CommonMark & GitHub Flavored Markdown (GFM) yang Tepat:
+  Sokongan penuh untuk jadual GFM, senarai tugas (- [ ] / - [x]), senarai bersarang, petikan berbilang baris, kotak makluman GFM ([!NOTE], [!TIP], [!WARNING], dll.), perlindungan snake_case, pautan automatik dan tag HTML sebaris (<kbd>).
+• Pratonton Pantas Fail Gergasi & Carian F3 Segera:
+  Memaparkan pratonton 512 KB pertama secara serta-merta tanpa salinan cakera (dalam 28 bahasa) dan membetulkan masalah kaku apabila menekan F3 di penghujung fail besar.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.38": {
+        "ja-jp": """miu v1.0.38 リリースノート
+🌐 WebView2 リアルタイムプレビュー（Alt+P）＆ Markdown (GFM) 忠実レンダリング対応
+
+・WebView2 による HTML / SVG / Markdown リアルタイム分割プレビュー（Alt+P）:
+  Alt+P でエディタ右側にライブプレビューを表示できるようになりました。編集に応じた自動更新、F5 リロード、スプリッターのドラッグによる幅調整、ローカル画像・CSS・JS の読み込み、ダーク／ライトモード連動、洗練されたオーバーレイ・スクロールバーに対応しています。
+・CommonMark ＆ GitHub Flavored Markdown (GFM) 忠実プレビュー:
+  テーブル（列揃え・パイプエスケープ）、タスクリスト（- [ ] / - [x]）、多段ネストリスト、複数行・ネスト引用、GFM アラート（[!NOTE] / [!TIP] / [!WARNING] 等）、複数バッククォート、snake_case の保護、オートリンク、<kbd> 等のインライン HTML タグに対応しました。
+・巨大ファイルでの高速・安全プレビュー ＆ 検索（F3）折り返しの高速化:
+  巨大ファイルでもディスクコピーなしで先頭 512KB を瞬時にプレビュー表示（全28言語の省略案内付き）し、F3 検索でファイル末尾から先頭へ折り返す際の動作を大幅に高速化しました。""",
+
+        "en-us": """miu v1.0.38 Release Notes
+🌐 WebView2 Live Preview (Alt+P) & Faithful CommonMark / GFM Markdown Rendering
+
+- Built-in WebView2 Split Live Preview for HTML, SVG & Markdown (Alt+P):
+  Press Alt+P to open a side-by-side live preview pane with automatic debounced updates, F5 reload, draggable subtle splitter, overlay scrollbars, Dark/Light theme adaptation, and local asset mapping (images, CSS, JS).
+- Faithful CommonMark & GitHub Flavored Markdown (GFM) Rendering:
+  Full support for GFM tables (alignment & escaped pipes), task lists (- [ ] / - [x]), nested lists, multi-line & nested blockquotes, GFM alerts ([!NOTE], [!TIP], [!IMPORTANT], [!WARNING], [!CAUTION]), multi-backtick code spans, snake_case protection, autolinks, and safe inline HTML (<kbd>, <br>, etc.).
+- Huge File Preview Optimization & Instant Find (F3) Wrap-Around:
+  Safely previews the first 512 KB on clean UTF-8/line boundaries with zero disk copies (localized across all 28 languages) and fixes a freeze when wrapping around the end of large files with F3.""",
+
+        "zh-hans": """miu v1.0.38 更新日志
+🌐 新增 WebView2 实时预览（Alt+P）与 CommonMark / GFM Markdown 精准渲染
+
+- 内置 WebView2 分屏实时预览（按 Alt+P 开启）：
+  支持 HTML、SVG 与 Markdown 的分屏实时预览，具备自动防抖刷新、F5 手动刷新、可拖拽极简分隔条、自适应浅色/深色主题、叠加式滚动条以及本地图片/CSS/JS 资源映射。
+- 忠实还原 CommonMark 与 GitHub 风格 Markdown (GFM)：
+  全面支持表格（对齐与转义竖线）、任务列表（- [ ] / - [x]）、多级嵌套列表、多行与嵌套引用、GFM 提示框（[!NOTE]、[!TIP]、[!WARNING] 等）、多重反引号代码、snake_case 下划线保护、自动链接及 <kbd> 等内联 HTML 标签。
+- 超大文件极速安全预览与 F3 循环查找修复：
+  无需任何磁盘拷贝即可按 UTF-8 与行边界极速预览前 512 KB 内容（附全 28 种语言截断提示），并修复了大文件末尾按 F3 折返查找时的卡顿问题。""",
+
+        "ko": """miu v1.0.38 릴리스 노트
+🌐 WebView2 실시간 미리보기(Alt+P) 및 CommonMark / GFM 마크다운 완벽 렌더링
+
+- WebView2 기반 HTML / SVG / Markdown 분할 실시간 미리보기 (Alt+P):
+  Alt+P를 눌러 편집기 오른쪽에 실시간 미리보기 창을 열 수 있습니다. 자동 업데이트, F5 새로고침, 드래그 가능한 분할선, 다크/라이트 모드 연동, 오버레이 스크롤바 및 로컬 이미지·CSS·JS 매핑을 지원합니다.
+- CommonMark 및 GitHub Flavored Markdown (GFM) 충실한 렌더링:
+  표(정렬 및 파이프 이스케이프), 작업 목록(- [ ] / - [x]), 다단 중첩 목록, 다중 행·중첩 인용구, GFM 알림([!NOTE], [!TIP], [!WARNING] 등), 다중 백틱 코드, snake_case 보호, 자동 링크 및 <kbd> 등 인라인 HTML 태그를 완벽 지원합니다.
+- 대용량 파일 고속 미리보기 및 찾기(F3) 순환 검색 최적화:
+  디스크 복사 없이 첫 512 KB를 UTF-8 및 줄 경계에 맞춰 즉시 미리보기로 표시하며(28개 언어 안내 지원), 파일 끝에서 F3으로 처음 위치로 순환 검색할 때의 멈춤 현상을 해결했습니다."""
+    },
     "1.0.37": {
         "ja-jp": """miu v1.0.37 リリースノート
 ⚡ ネイティブ Emmet 完全対応（超高速展開・フィルター構文・全角対応・スマート改行）
