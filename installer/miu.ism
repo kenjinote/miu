@@ -1249,7 +1249,7 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<row><td>ProObjUseDefaultSettings</td><td>##IDS_PROOBJ_USEDEFAULTSETTINGS##</td><td/></row>
 		<row><td>ProductCode</td><td>{B899017B-2842-400D-84F3-D65263B7D72D}</td><td/></row>
 		<row><td>ProductName</td><td>miu</td><td/></row>
-		<row><td>ProductVersion</td><td>1.0.0.38</td><td/></row>
+		<row><td>ProductVersion</td><td>1.0.0.39</td><td/></row>
 	</table>
 
 	<table name="RadioButton">
@@ -1643,6 +1643,16 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<row><td>Registry368</td><td>2</td><td>SOFTWARE\Classes\.cmd</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
 		<row><td>Registry369</td><td>2</td><td>SOFTWARE\Classes\.cmd\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
 		<row><td>Registry370</td><td>2</td><td>SOFTWARE\Classes\.cmd\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry371</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.mmd</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry372</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.mermaid</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry373</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.mmd</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry374</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.mermaid</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry375</td><td>2</td><td>SOFTWARE\Classes\.mmd</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry376</td><td>2</td><td>SOFTWARE\Classes\.mmd\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry377</td><td>2</td><td>SOFTWARE\Classes\.mmd\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry378</td><td>2</td><td>SOFTWARE\Classes\.mermaid</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry379</td><td>2</td><td>SOFTWARE\Classes\.mermaid\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry380</td><td>2</td><td>SOFTWARE\Classes\.mermaid\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
 	</table>
 
 	<table name="Shortcut">

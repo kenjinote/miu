@@ -7,6 +7,45 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.39": {
+        "ja-jp": """miu v1.0.39 リリースノート
+📊 Mermaid 図表・グラフのリアルタイムプレビュー対応（Alt+P）
+
+・Mermaid 図表（全33種）の高速ライブ SVG 描画（Pele エンジン連携）:
+  Markdown 内の ```mermaid コードブロックや .mmd / .mermaid ファイル（および未保存タブの構文自動判定）に対応し、シーケンス図・フローチャート・XY グラフなど全33種の図表をリアルタイムに SVG 描画します。
+・インプレース差分更新（<1ms）＆ ダーク／ライトモード完全連動:
+  入力中のチラつきがない高速 DOM 差分更新と、ダーク／ライトテーマ自動連動に対応しました。
+・.mmd / .mermaid 構文ハイライト ＆ ファイル関連付け対応:
+  Mermaid 専用のシンタックスハイライトとファイル関連付けを追加しました。""",
+
+        "en-us": """miu v1.0.39 Release Notes
+📊 Instant Mermaid Diagram & Chart Live Preview (Alt+P)
+
+- Real-Time Mermaid SVG Preview Across 33 Diagram Types (Powered by Pele):
+  Renders sequence diagrams, flowcharts, XY charts, ER/class/state diagrams, mindmaps, and more inside ```mermaid fenced blocks, .mmd / .mermaid files, and auto-detected plain buffers.
+- Flicker-Free In-Place Updates (<1ms) & Auto Dark/Light Theme Sync:
+  Updates diagrams in-place as you type with zero page reloads and adapts automatically to Dark and Light modes.
+- Mermaid (.mmd / .mermaid) Syntax Highlighting & File Associations:
+  Added dedicated syntax highlighting for Mermaid keywords, arrows, and comments while keeping the ultra-lightweight single-EXE design.""",
+
+        "zh-hans": """miu v1.0.39 更新日志
+📊 新增 Mermaid 流程图与图表实时预览（Alt+P）
+
+- 支持 33 种 Mermaid 图表极速 SVG 实时渲染（集成 Pele 引擎）：
+  全面支持 Markdown 中的 ```mermaid 代码块、.mmd / .mermaid 文件及未保存标签页的语法自动识别，实时渲染时序图、流程图、XY 图表、思维导图等 33 种图表。
+- 毫秒级无闪烁增量刷新（<1ms）与深浅色主题自动联动：
+  输入时通过 DOM 增量更新即时重绘图表，自动适配深色与浅色模式配色。
+- 新增 .mmd / .mermaid 语法高亮与文件关联支持。""",
+
+        "ko": """miu v1.0.39 릴리스 노트
+📊 Mermaid 다이어그램 및 차트 실시간 미리보기 지원 (Alt+P)
+
+- 33종 Mermaid 다이어그램 초고속 SVG 실시간 렌더링 (Pele 엔진 연동):
+  마크다운 내 ```mermaid 코드 블록, .mmd / .mermaid 파일 및 새 탭의 구문 자동 감지를 통해 시퀀스 다이어그램, 플로우차트, XY 차트 등 33종 다이어그램을 즉시 렌더링합니다.
+- 깜빡임 없는 인플레이스 업데이트(<1ms) 및 다크/라이트 모드 자동 연동:
+  입력 중 페이지 새로고침 없이 즉시 그래프를 갱신하며 다크/라이트 테마 배색에 자동 연동됩니다.
+- .mmd / .mermaid 구문 강조 및 파일 연결 지원 추가."""
+    },
     "1.0.38": {
         "ja-jp": """miu v1.0.38 リリースノート
 🌐 WebView2 リアルタイムプレビュー（Alt+P）＆ Markdown (GFM) 忠実レンダリング対応
@@ -722,14 +761,27 @@ def get_or_create_submission(headers, product_id):
     app_resp.raise_for_status()
     app_data = app_resp.json()
 
-    pending = app_data.get("pendingApplicationSubmission")
-    if pending and pending.get("id"):
+    for _ in range(40):
+        app_data = requests.get(app_url, headers=headers).json()
+        pending = app_data.get("pendingApplicationSubmission")
+        if not pending or not pending.get("id"):
+            break
         sub_id = pending["id"]
-        print(f"Found existing draft submission: {sub_id}")
-        sub_url = f"{app_url}/submissions/{sub_id}"
-        sub_resp = requests.get(sub_url, headers=headers)
-        sub_resp.raise_for_status()
-        return sub_resp.json()
+        st_resp = requests.get(f"{app_url}/submissions/{sub_id}/status", headers=headers).json()
+        st = st_resp.get("status", "")
+        print(f"Existing pending submission {sub_id} status: {st}")
+        if st == "CommitStarted":
+            time.sleep(8)
+            continue
+        if st in ("PendingCommit", ""):
+            sub_resp = requests.get(f"{app_url}/submissions/{sub_id}", headers=headers)
+            sub_resp.raise_for_status()
+            return sub_resp.json()
+        # In PreProcessing / Certification / CommitFailed -> delete so we can create a fresh draft
+        del_resp = requests.delete(f"{app_url}/submissions/{sub_id}", headers=headers)
+        print(f"Deleted previous in-flight submission {sub_id}: {del_resp.status_code}")
+        time.sleep(3)
+        break
 
     print("Creating new draft submission...")
     create_url = f"{app_url}/submissions"
@@ -812,18 +864,73 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
         base["licenseTerms"] = ""
 
         prefix = meta["prefix"]
-        captions = meta.get("image_captions", ["", "", ""])
+        old_caps = meta.get("image_captions", ["", "", ""])
+        caps5 = [
+            old_caps[1] if len(old_caps) > 1 else "",
+            old_caps[0] if len(old_caps) > 0 else "",
+            "Multi-Cursor (Ctrl+D)",
+            "Regex Find & Replace (Ctrl+H)",
+            "HTML5 / JS Live Preview (Alt+P)",
+            "Mermaid Diagrams & Charts Live Preview (Alt+P)"
+        ]
         img_list = []
-        for i in (1, 2, 3):
+        for i in range(1, 7):
             fname = f"{prefix}_{i}.png"
             img_list.append({
                 "fileName": fname,
                 "fileStatus": "PendingUpload",
                 "imageType": "Screenshot",
-                "description": captions[i-1]
+                "description": caps5[i-1]
             })
         base["images"] = img_list
-        print(f"Configured listing and screenshots for [{lang}]")
+        print(f"Configured listing and 6 screenshots for [{lang}]")
+
+    base_4_prefixes = {
+        "ja-jp": ("ja", [
+            "ダークモード × Markdown リアルタイム分割プレビュー (Alt+P)",
+            "ライトモード × SVG 機械図面 (CAD) ライブプレビュー",
+            "ダークモード × マルチカーソル一括高速編集 (Ctrl+D)",
+            "ライトモード × 正規表現を使った検索と一括置換 (Ctrl+H)",
+            "ダークモード × HTML5 / JS ライブ実行 (Alt+P)",
+            "ダークモード × Mermaid 図表・グラフ リアルタイムプレビュー (Alt+P)",
+        ]),
+        "en-us": ("en", [
+            "Dark Mode × Markdown & GFM Live Split Preview (Alt+P)",
+            "Light Mode × SVG Technical CAD Drawing Live Preview",
+            "Dark Mode × Multi-Cursor Simultaneous Editing (Ctrl+D)",
+            "Light Mode × Regex Find & Batch Replace (Ctrl+H)",
+            "Dark Mode × HTML5 & JavaScript Live Execution (Alt+P)",
+            "Dark Mode × Mermaid Diagrams & Charts Live Preview (Alt+P)",
+        ]),
+        "zh-hans": ("zh_cn", [
+            "深色模式 × Markdown 与 GFM 实时分屏预览 (Alt+P)",
+            "浅色模式 × SVG 工程制图实时预览",
+            "深色模式 × 多光标同步高速编辑 (Ctrl+D)",
+            "浅色模式 × 正则表达式查找与批量替换 (Ctrl+H)",
+            "深色模式 × HTML5 / JS 编辑器内实时运行 (Alt+P)",
+            "深色模式 × Mermaid 流程图与图表实时预览 (Alt+P)",
+        ]),
+        "ko": ("ko", [
+            "다크 모드 × Markdown & GFM 실시간 분할 미리보기 (Alt+P)",
+            "라이트 모드 × SVG 기계 도면 실시간 미리보기",
+            "다크 모드 × 다중 커서 동시 고속 편집 (Ctrl+D)",
+            "라이트 모드 × 정규식 검색 및 일괄 바꾸기 (Ctrl+H)",
+            "다크 모드 × HTML5 / JS 편집기 내 실시간 실행 (Alt+P)",
+            "다크 모드 × Mermaid 다이어그램 및 차트 실시간 미리보기 (Alt+P)",
+        ]),
+    }
+    for lang, (prefix, caps5) in base_4_prefixes.items():
+        if lang in listings and "baseListing" in listings[lang]:
+            listings[lang]["baseListing"]["images"] = [
+                {
+                    "fileName": f"{prefix}_{i}.png",
+                    "fileStatus": "PendingUpload",
+                    "imageType": "Screenshot",
+                    "description": caps5[i-1]
+                }
+                for i in range(1, 7)
+            ]
+            print(f"Configured 6 screenshots for [{lang}]")
 
     if "ko" in listings and "baseListing" in listings["ko"]:
         if not listings["ko"]["baseListing"].get("title"):

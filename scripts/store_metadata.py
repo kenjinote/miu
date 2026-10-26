@@ -34,15 +34,13 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.38 更新日誌
-🌐 新增 WebView2 即時預覽（Alt+P）與 CommonMark / GFM Markdown 精準渲染
+        "releaseNotes": """miu v1.0.39 更新日誌
+📊 新增 Mermaid 流程圖與圖表即時預覽（Alt+P）
 
-・內建 WebView2 分割畫面即時預覽（按 Alt+P 開啟）：
-  支援 HTML、SVG 與 Markdown 的分割即時預覽，具備自動防抖重新整理、F5 手動重整、可拖曳極簡分隔線、自適應淺色/深色主題、疊加式捲軸以及本機圖片/CSS/JS 資源映射。
-・忠實還原 CommonMark 與 GitHub 風格 Markdown (GFM)：
-  全面支援表格（對齊與跳脫直線）、工作清單（- [ ] / - [x]）、多層巢狀清單、多行與巢狀引用、GFM 提示框（[!NOTE]、[!TIP]、[!WARNING] 等）、多重反引號程式碼、snake_case 底線保護、自動連結及 <kbd> 等行內 HTML 標籤。
-・超大檔案極速安全預覽與 F3 循環尋找修復：
-  無需任何磁碟複製即可按 UTF-8 與行邊界極速預覽前 512 KB 內容（附全 28 種語言截斷提示），並修復了大檔案末尾按 F3 折返尋找時的停頓問題。""",
+・支援 33 種 Mermaid 圖表極速 SVG 即時渲染（整合 Pele 引擎）：
+  支援 Markdown 中的 ```mermaid 程式碼區塊、.mmd / .mermaid 檔案及未儲存分頁的語法自動辨識，即時繪製循序圖、流程圖、XY 圖表等 33 種圖表。
+・毫秒級無閃爍增量更新（<1ms）與深淺色主題自動連動。
+・新增 .mmd / .mermaid 語法突顯與檔案關聯支援。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +79,13 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.38 Versionshinweise
-🌐 WebView2-Live-Vorschau (Alt+P) & originalgetreues CommonMark / GFM Markdown-Rendering
+        "releaseNotes": """miu v1.0.39 Versionshinweise
+📊 Mermaid-Diagramm- & Chart-Live-Vorschau (Alt+P)
 
-• Integrierte WebView2-Live-Vorschau für HTML, SVG & Markdown (Alt+P):
-  Öffnen Sie mit Alt+P eine geteilte Live-Vorschau mit automatischer Aktualisierung, F5-Neuladen, verschiebbarem Splitter, Overlay-Bildlaufleisten, Dark-/Light-Mode-Anpassung und lokaler Ressourcen-Zuordnung (Bilder, CSS, JS).
-• Originalgetreues CommonMark & GitHub Flavored Markdown (GFM):
-  Volle Unterstützung für GFM-Tabellen (Ausrichtung & maskierte Pipes), Aufgabenlisten (- [ ] / - [x]), verschachtelte Listen, mehrzeilige & verschachtelte Zitate, GFM-Hinweise ([!NOTE], [!TIP], [!WARNING] usw.), Mehrfach-Backticks, snake_case-Schutz, Autolinks und Inline-HTML (<kbd>, <br>).
-• Schnelle Vorschau für riesige Dateien & verzögerungsfreie F3-Suche:
-  Zeigt bei großen Dateien sofort die ersten 512 KB ohne Dateikopien an (lokalisiert in 28 Sprachen) und behebt ein Einfrieren beim Weitersuchen (F3) am Dateiende.""",
+• Echtzeit-SVG-Vorschau für 33 Mermaid-Diagrammtypen (mit Pele-Engine):
+  Rendert Sequenz-, Fluss-, XY-, Klassen-, Status- und ER-Diagramme in ```mermaid-Blöcken, .mmd/.mermaid-Dateien und neuen Tabs sofort als gestochen scharfe SVGs.
+• Flimmerfreie In-Place-Aktualisierung (<1ms) & automatische Dark-/Light-Mode-Anpassung.
+• Syntaxhervorhebung und Dateizuordnung für .mmd und .mermaid.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +124,13 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.38
-🌐 Aperçu en direct WebView2 (Alt+P) et rendu Markdown CommonMark / GFM fidèle
+        "releaseNotes": """Notes de version miu v1.0.39
+📊 Aperçu en direct des diagrammes et graphiques Mermaid (Alt+P)
 
-• Aperçu fractionné en direct WebView2 pour HTML, SVG et Markdown (Alt+P) :
-  Appuyez sur Alt+P pour afficher un volet d’aperçu en temps réel avec mise à jour automatique, rechargement F5, séparateur redimensionnable, barres de défilement superposées, adaptation au thème clair/sombre et chargement des ressources locales (images, CSS, JS).
-• Rendu fidèle CommonMark et GitHub Flavored Markdown (GFM) :
-  Prise en charge complète des tableaux GFM, listes de tâches (- [ ] / - [x]), listes imbriquées, citations multilignes et alertes GFM ([!NOTE], [!TIP], [!WARNING], etc.), blocs de code, protection snake_case, liens automatiques et balises HTML en ligne (<kbd>).
-• Optimisation pour fichiers géants et recherche circulaire (F3) instantanée :
-  Prévisualise instantanément les premiers 512 Ko sans copie disque (traduit en 28 langues) et corrige le blocage lors du retour au début du fichier avec F3.""",
+• Rendu SVG instantané pour 33 types de diagrammes Mermaid (moteur Pele) :
+  Affiche en direct les diagrammes de séquence, flux, graphiques XY, classes et états dans les blocs ```mermaid et les fichiers .mmd / .mermaid.
+• Mise à jour sans scintillement (<1ms) et synchronisation automatique avec le thème clair/sombre.
+• Coloration syntaxique et association de fichiers .mmd / .mermaid.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +169,13 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.38
-🌐 Vista previa en vivo con WebView2 (Alt+P) y renderizado fiel de Markdown (CommonMark / GFM)
+        "releaseNotes": """Notas de la versión miu v1.0.39
+📊 Vista previa en vivo de diagramas y gráficos Mermaid (Alt+P)
 
-• Vista previa dividida en tiempo real para HTML, SVG y Markdown (Alt+P):
-  Pulsa Alt+P para abrir un panel de vista previa con actualización automática, recarga con F5, divisor redimensionable, barras de desplazamiento superpuestas, modo claro/oscuro y carga de recursos locales (imágenes, CSS, JS).
-• Renderizado fiel de CommonMark y GitHub Flavored Markdown (GFM):
-  Soporte completo para tablas GFM, listas de tareas (- [ ] / - [x]), listas anidadas, citas multinivel, alertas GFM ([!NOTE], [!TIP], [!WARNING], etc.), protección snake_case, enlaces automáticos y etiquetas HTML en línea (<kbd>).
-• Vista previa ultrarrápida en archivos gigantes y búsqueda F3 optimizada:
-  Previsualiza al instante los primeros 512 KB sin copias en disco (en 28 idiomas) y corrige el bloqueo al reiniciar la búsqueda con F3 al final del archivo.""",
+• Renderizado SVG instantáneo para 33 tipos de diagramas Mermaid (motor Pele):
+  Dibuja en tiempo real diagramas de secuencia, flujo, gráficos XY, clases y estados en bloques ```mermaid y archivos .mmd / .mermaid.
+• Actualización sin parpadeos (<1ms) sincronizada con el modo oscuro y claro.
+• Resaltado de sintaxis y asociación de archivos .mmd / .mermaid.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +214,13 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.38
-🌐 Pré-visualização ao vivo WebView2 (Alt+P) e renderização fiel de Markdown (CommonMark / GFM)
+        "releaseNotes": """Notas de lançamento do miu v1.0.39
+📊 Pré-visualização ao vivo de diagramas e gráficos Mermaid (Alt+P)
 
-• Pré-visualização dividida em tempo real para HTML, SVG e Markdown (Alt+P):
-  Pressione Alt+P para abrir o painel de pré-visualização com atualização automática, recarregamento F5, divisor ajustável, barras de rolagem sobrepostas, tema claro/escuro e mapeamento de arquivos locais (imagens, CSS, JS).
-• Renderização fiel de CommonMark e GitHub Flavored Markdown (GFM):
-  Suporte completo para tabelas GFM, listas de tarefas (- [ ] / - [x]), listas aninhadas, citações em vários níveis, alertas GFM ([!NOTE], [!TIP], [!WARNING], etc.), proteção snake_case, links automáticos e HTML inline (<kbd>).
-• Prévia rápida para arquivos gigantes e busca F3 instantânea:
-  Exibe instantaneamente os primeiros 512 KB sem cópias em disco (em 28 idiomas) e corrige o travamento ao reiniciar a busca com F3 no final de arquivos grandes.""",
+• Renderização SVG instantânea para 33 tipos de diagramas Mermaid (motor Pele):
+  Desenha diagramas de sequência, fluxogramas, gráficos XY e muito mais em blocos ```mermaid e arquivos .mmd / .mermaid.
+• Atualização sem piscar (<1ms) com adaptação automática aos modos escuro e claro.
+• Realce de sintaxe e associação de arquivos .mmd / .mermaid.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +259,13 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.38
-🌐 Живой предпросмотр WebView2 (Alt+P) и точный рендеринг Markdown (CommonMark / GFM)
+        "releaseNotes": """Примечания к выпуску miu v1.0.39
+📊 Живой предпросмотр диаграмм и графиков Mermaid (Alt+P)
 
-• Встроенный предпросмотр HTML, SVG и Markdown в реальном времени (Alt+P):
-  Нажмите Alt+P для открытия панели предпросмотра с автообновлением, перезагрузкой по F5, перетаскиваемым разделителем, оверлейными полосами прокрутки, поддержкой тёмной/светлой темы и локальных ресурсов (изображений, CSS, JS).
-• Точная поддержка CommonMark и GitHub Flavored Markdown (GFM):
-  Таблицы GFM (выравнивание и экранирование `|`), списки задач (- [ ] / - [x]), вложенные списки, многострочные цитаты, блоки оповещений GFM ([!NOTE], [!TIP], [!WARNING] и др.), защита snake_case, автоссылки и теги `<kbd>`.
-• Быстрый предпросмотр гигантских файлов и мгновенный поиск (F3):
-  Мгновенный предпросмотр первых 512 КБ без копирования на диск (на 28 языках) и исправление зависания при переходе поиска F3 с конца файла в начало.""",
+• Мгновенный SVG-рендеринг 33 типов диаграмм Mermaid (движок Pele):
+  Отрисовка диаграмм последовательностей, блок-схем, XY-графиков, классов и состояний в блоках ```mermaid и файлах .mmd / .mermaid.
+• Плавное обновление без мерцания (<1ms) и синхронизация с тёмной/светлой темой.
+• Подсветка синтаксиса и ассоциация файлов .mmd / .mermaid.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +304,13 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.38
-🌐 Anteprima dal vivo WebView2 (Alt+P) e rendering fedele Markdown (CommonMark / GFM)
+        "releaseNotes": """Note di rilascio di miu v1.0.39
+📊 Anteprima live di diagrammi e grafici Mermaid (Alt+P)
 
-• Anteprima divisa in tempo reale per HTML, SVG e Markdown (Alt+P):
-  Premi Alt+P per aprire il pannello di anteprima con aggiornamento automatico, ricarica F5, divisore ridimensionabile, barre di scorrimento sovrapposte, tema chiaro/scuro e caricamento di risorse locali (immagini, CSS, JS).
-• Rendering fedele CommonMark e GitHub Flavored Markdown (GFM):
-  Supporto completo per tabelle GFM, elenchi di attività (- [ ] / - [x]), elenchi nidificati, citazioni multilinea, avvisi GFM ([!NOTE], [!TIP], [!WARNING], ecc.), protezione snake_case, link automatici e tag HTML inline (<kbd>).
-• Anteprima rapida per file enormi e ricerca F3 istantanea:
-  Mostra istantaneamente i primi 512 KB senza copie su disco (in 28 lingue) e risolve il blocco durante la ricerca circolare con F3 a fine file.""",
+• Rendering SVG istantaneo per 33 tipi di diagrammi Mermaid (motore Pele):
+  Visualizza in tempo reale diagrammi di sequenza, flussi, grafici XY, classi e stati nei blocchi ```mermaid e nei file .mmd / .mermaid.
+• Aggiornamento fluido senza sfarfallio (<1ms) con tema chiaro/scuro automatico.
+• Evidenziazione sintassi e associazione file per .mmd / .mermaid.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +349,13 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.38
-🌐 Podgląd na żywo WebView2 (Alt+P) oraz wierne renderowanie Markdown (CommonMark / GFM)
+        "releaseNotes": """Informacje o wersji miu v1.0.39
+📊 Podgląd na żywo diagramów i wykresów Mermaid (Alt+P)
 
-• Wbudowany podgląd na żywo dla HTML, SVG i Markdown (Alt+P):
-  Naciśnij Alt+P, aby otworzyć panel podglądu z automatycznym odświeżaniem, przeładowaniem F5, przesuwanym separatorem, paskami przewijania, trybem ciemnym/jasnym i obsługą lokalnych zasobów (obrazy, CSS, JS).
-• Wierne renderowanie CommonMark i GitHub Flavored Markdown (GFM):
-  Pełna obsługa tabel GFM, list zadań (- [ ] / - [x]), list zagnieżdżonych, cytatów wielowierszowych, alertów GFM ([!NOTE], [!TIP], [!WARNING] itp.), ochrona snake_case, autolinki oraz znaczniki HTML (<kbd>).
-• Szybki podgląd ogromnych plików i płynne wyszukiwanie (F3):
-  Błyskawiczny podgląd pierwszych 512 KB bez kopiowania na dysk (w 28 językach) oraz poprawka zawieszania się przy zawijaniu wyszukiwania F3 na końcu pliku.""",
+• Błyskawiczne renderowanie SVG dla 33 typów diagramów Mermaid (silnik Pele):
+  Rysuje na żywo diagramy sekwencji, schematy blokowe i wykresy XY w blokach ```mermaid oraz plikach .mmd / .mermaid.
+• Płynna aktualizacja bez migotania (<1ms) dopasowana do trybu ciemnego i jasnego.
+• Kolorowanie składni i skojarzenia plików .mmd / .mermaid.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +394,13 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.38
-🌐 WebView2 live-voorbeeld (Alt+P) & getrouwe CommonMark / GFM Markdown-weergave
+        "releaseNotes": """Releaseopmerkingen miu v1.0.39
+📊 Directe live-weergave voor Mermaid-diagrammen en grafieken (Alt+P)
 
-• Ingebouwd gesplitst live-voorbeeld voor HTML, SVG & Markdown (Alt+P):
-  Druk op Alt+P voor een live-voorbeeldvenster met automatische updates, F5-herladen, versleepbare splitslijn, overlay-schuifbalken, donker/licht-thema en lokale bestanden (afbeeldingen, CSS, JS).
-• Getrouwe CommonMark & GitHub Flavored Markdown (GFM) weergave:
-  Volledige ondersteuning voor GFM-tabellen, takenlijsten (- [ ] / - [x]), geneste lijsten, citaten, GFM-meldingen ([!NOTE], [!TIP], [!WARNING], enz.), snake_case-bescherming, autolinks en inline HTML (<kbd>).
-• Snelle weergave van enorme bestanden & directe F3-zoekopdracht:
-  Toont direct de eerste 512 KB zonder schijfkopieën (in 28 talen) en verhelpt het vastlopen bij het rondzoeken met F3 aan het einde van grote bestanden.""",
+• Razendsnelle SVG-weergave voor 33 Mermaid-diagramtypen (Pele-engine):
+  Rendert sequentie-, stroom- en XY-grafieken in ```mermaid-blokken en .mmd / .mermaid-bestanden.
+• Vloeiende updates zonder knipperen (<1ms) met automatische donkere/lichte thema-aanpassing.
+• Syntaxiskleuring en bestandsassociaties voor .mmd / .mermaid.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +439,13 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.38 Sürüm Notları
-🌐 WebView2 Canlı Önizleme (Alt+P) ve Tam Uyumlu CommonMark / GFM Markdown Görünümü
+        "releaseNotes": """miu v1.0.39 Sürüm Notları
+📊 Mermaid Diyagramları ve Grafikleri İçin Canlı Önizleme (Alt+P)
 
-• HTML, SVG ve Markdown için Bölünmüş Canlı Önizleme (Alt+P):
-  Otomatik yenileme, F5 ile yeniden yükleme, sürüklenebilir ayırıcı, kaplama kaydırma çubukları, Koyu/Açık tema uyumu ve yerel dosya (resim, CSS, JS) desteğiyle canlı önizleme panelini açmak için Alt+P'ye basın.
-• Tam Uyumlu CommonMark ve GitHub Flavored Markdown (GFM):
-  GFM tabloları, görev listeleri (- [ ] / - [x]), iç içe listeler, çok satırlı alıntılar, GFM uyarı kutuları ([!NOTE], [!TIP], [!WARNING] vb.), snake_case koruması, otomatik bağlantılar ve satır içi HTML (<kbd>) desteği.
-• Dev Dosyalarda Hızlı Önizleme ve Anında F3 Arama Döngüsü:
-  Disk kopyası olmadan ilk 512 KB'ı anında önizler (28 dilde bildirim ile) ve büyük dosyaların sonunda F3 ile başa dönerken oluşan donmayı giderir.""",
+• 33 Mermaid Diyagram Türü İçin Anında SVG Oluşturma (Pele Motoru):
+  ```mermaid blokları ve .mmd / .mermaid dosyalarındaki akış, sıralama ve XY grafiklerini canlı olarak çizer.
+• Titremesiz yerinde güncelleme (<1ms) ve Koyu/Açık tema uyumu.
+• .mmd / .mermaid sözdizimi renklendirmesi ve dosya ilişkilendirmesi.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +483,13 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.38
-🌐 Xem trước trực tiếp WebView2 (Alt+P) & Hiển thị chuẩn CommonMark / GFM Markdown
+        "releaseNotes": """Ghi chú phát hành miu v1.0.39
+📊 Xem trước trực tiếp sơ đồ và biểu đồ Mermaid (Alt+P)
 
-• Xem trước trực tiếp chia đôi màn hình cho HTML, SVG & Markdown (Alt+P):
-  Nhấn Alt+P để mở khung xem trước trực tiếp với tự động cập nhật, tải lại bằng F5, thanh chia kéo thả tinh tế, thanh cuộn nổi, đồng bộ giao diện Sáng/Tối và ánh xạ tài nguyên cục bộ (ảnh, CSS, JS).
-• Hiển thị chuẩn CommonMark & GitHub Flavored Markdown (GFM):
-  Hỗ trợ đầy đủ bảng GFM, danh sách công việc (- [ ] / - [x]), danh sách lồng nhau, trích dẫn nhiều dòng, hộp cảnh báo GFM ([!NOTE], [!TIP], [!WARNING], v.v.), bảo vệ snake_case, liên kết tự động và thẻ HTML nội tuyến (<kbd>).
-• Tối ưu xem trước tệp khổng lồ & Sửa lỗi tìm kiếm vòng lặp F3:
-  Xem trước tức thì 512 KB đầu tiên không cần sao chép đĩa (hỗ trợ 28 ngôn ngữ) và khắc phục triệt để lỗi treo khi nhấn F3 quay lại đầu tệp lớn.""",
+• Kết xuất SVG tức thì cho 33 loại sơ đồ Mermaid (nhân Pele):
+  Vẽ trực tiếp sơ đồ tuần tự, lưu đồ, biểu đồ XY trong khối ```mermaid và tệp .mmd / .mermaid.
+• Cập nhật mượt mà không nhấp nháy (<1ms), tự động đồng bộ giao diện Sáng/Tối.
+• Tô sáng cú pháp và liên kết tệp .mmd / .mermaid.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +528,13 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.38
-🌐 Живий попередній перегляд WebView2 (Alt+P) та точний рендеринг Markdown (CommonMark / GFM)
+        "releaseNotes": """Примітки до випуску miu v1.0.39
+📊 Живий перегляд діаграм і графіків Mermaid (Alt+P)
 
-• Вбудований попередній перегляд HTML, SVG і Markdown у реальному часі (Alt+P):
-  Натисніть Alt+P для відкриття панелі перегляду з автооновленням, перезавантаженням F5, розділювачем, оверлейними смугами прокручування, темною/світлою темою та підтримкою локальних ресурсів (зображень, CSS, JS).
-• Точна підтримка CommonMark і GitHub Flavored Markdown (GFM):
-  Таблиці GFM, списки завдань (- [ ] / - [x]), вкладені списки, багаторядкові цитати, блоки сповіщень GFM ([!NOTE], [!TIP], [!WARNING] тощо), захист snake_case, автопосилання та теги `<kbd>`.
-• Швидкий перегляд гігантських файлів і миттєвий пошук (F3):
-  Миттєвий перегляд перших 512 КБ без копіювання на диск (28 мовами) та виправлення зависання під час циклічного пошуку F3 наприкінці файлу.""",
+• Миттєвий SVG-рендеринг 33 типів діаграм Mermaid (рушій Pele):
+  Відображення діаграм послідовностей, блок-схем і графіків XY у блоках ```mermaid та файлах .mmd / .mermaid.
+• Плавне оновлення без мерехтіння (<1ms) та синхронізація з темною/світлою темою.
+• Підсвічування синтаксису та асоціація файлів .mmd / .mermaid.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +573,13 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.38
-🌐 Pratinjau Langsung WebView2 (Alt+P) & Rendering Markdown CommonMark / GFM Akurat
+        "releaseNotes": """Catatan Rilis miu v1.0.39
+📊 Pratinjau Langsung Diagram & Grafik Mermaid (Alt+P)
 
-• Pratinjau Langsung Layar Terpisah untuk HTML, SVG & Markdown (Alt+P):
-  Tekan Alt+P untuk membuka panel pratinjau langsung dengan pembaruan otomatis, muat ulang F5, pembagi yang dapat digeser, bilah gulir overlay, tema Gelap/Terang, dan pemetaan aset lokal (gambar, CSS, JS).
-• Rendering CommonMark & GitHub Flavored Markdown (GFM) yang Akurat:
-  Dukungan penuh untuk tabel GFM, daftar tugas (- [ ] / - [x]), daftar bersarang, kutipan multi-baris, kotak peringatan GFM ([!NOTE], [!TIP], [!WARNING], dll.), perlindungan snake_case, tautan otomatis, dan tag HTML sebaris (<kbd>).
-• Optimasi Pratinjau File Raksasa & Pencarian F3 Instan:
-  Menampilkan pratinjau 512 KB pertama secara instan tanpa salinan disk (dalam 28 bahasa) dan memperbaiki masalah macet saat menekan F3 di akhir file besar.""",
+• Render SVG Instan untuk 33 Jenis Diagram Mermaid (Mesin Pele):
+  Menampilkan diagram urutan, bagan alir, dan grafik XY secara langsung di blok ```mermaid serta file .mmd / .mermaid.
+• Pembaruan mulus tanpa kedip (<1ms) dengan sinkronisasi tema Gelap/Terang otomatis.
+• Penyorotan sintaks dan asosiasi file .mmd / .mermaid.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +618,13 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.38
-🌐 Živý náhled WebView2 (Alt+P) a věrné vykreslování Markdownu (CommonMark / GFM)
+        "releaseNotes": """Poznámky k verzi miu v1.0.39
+📊 Živý náhled diagramů a grafů Mermaid (Alt+P)
 
-• Vestavěný živý náhled pro HTML, SVG a Markdown (Alt+P):
-  Stisknutím Alt+P otevřete panel živého náhledu s automatickou aktualizací, obnovením klávesou F5, posuvným oddělovačem, překryvnými posuvníky, tmavým/světlým motivem a podporou lokálních souborů (obrázky, CSS, JS).
-• Věrné vykreslování CommonMark a GitHub Flavored Markdown (GFM):
-  Plná podpora tabulek GFM, seznamů úkolů (- [ ] / - [x]), vnořených seznamů, víceřádkových citací, upozornění GFM ([!NOTE], [!TIP], [!WARNING] atd.), ochrany snake_case, automatických odkazů a inline HTML (<kbd>).
-• Rychlý náhled obřích souborů a okamžité hledání (F3):
-  Okamžitý náhled prvních 512 KB bez kopírování na disk (ve 28 jazycích) a oprava zamrzání při přechodu hledání F3 z konce souboru na začátek.""",
+• Okamžité vykreslování SVG pro 33 typů diagramů Mermaid (engine Pele):
+  Živě vykresluje sekvenční, vývojové a XY grafy v blocích ```mermaid a souborech .mmd / .mermaid.
+• Plynulá aktualizace bez blikání (<1ms) s automatickým tmavým/světlým motivem.
+• Zvýrazňování syntaxe a asociace souborů .mmd / .mermaid.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +663,13 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.38
-🌐 WebView2 direktförhandsgranskning (Alt+P) & exakt CommonMark / GFM Markdown-rendering
+        "releaseNotes": """Versionsinformation för miu v1.0.39
+📊 Live-förhandsgranskning av Mermaid-diagram och grafer (Alt+P)
 
-• Inbyggd delad förhandsgranskning för HTML, SVG & Markdown (Alt+P):
-  Tryck på Alt+P för att öppna en panel med automatisk uppdatering, F5-omladdning, justerbar delningslinje, överliggande rullningslister, mörkt/ljust tema och lokala resurser (bilder, CSS, JS).
-• Exakt CommonMark & GitHub Flavored Markdown (GFM):
-  Fullt stöd för GFM-tabeller, uppgiftslistor (- [ ] / - [x]), kapslade listor, flerradiga citat, GFM-notiser ([!NOTE], [!TIP], [!WARNING] m.fl.), snake_case-skydd, autolänkar och inline-HTML (<kbd>).
-• Snabb förhandsgranskning av jättefiler & omedelbar F3-sökning:
-  Förhandsgranskar de första 512 KB direkt utan diskkopior (på 28 språk) och åtgärdar frysning vid F3-sökning i slutet av stora filer.""",
+• Direkt SVG-rendering för 33 Mermaid-diagramtyper (Pele-motor):
+  Ritar sekvens-, flödes- och XY-diagram i realtid i ```mermaid-block och .mmd / .mermaid-filer.
+• Flimmerfri uppdatering (<1ms) med automatisk anpassning till mörkt och ljust läge.
+• Syntaxmarkering och filassociationer för .mmd / .mermaid.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +708,13 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.38
-🌐 ดูตัวอย่างแบบสดด้วย WebView2 (Alt+P) และการแสดงผล Markdown (CommonMark / GFM) อย่างสมบูรณ์
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.39
+📊 พรีวิวแผนภาพและกราฟ Mermaid แบบเรียลไทม์ (Alt+P)
 
-• ดูตัวอย่างแบบแบ่งหน้าจอเรียลไทม์สำหรับ HTML, SVG และ Markdown (Alt+P):
-  กด Alt+P เพื่อเปิดหน้าต่างดูตัวอย่างพร้อมอัปเดตอัตโนมัติ รีโหลดด้วย F5 เส้นแบ่งปรับขนาดได้ แถบเลื่อนแบบโอเวอร์เลย์ รองรับโหมดมืด/สว่าง และการโหลดไฟล์ในเครื่อง (รูปภาพ, CSS, JS)
-• รองรับ CommonMark และ GitHub Flavored Markdown (GFM) อย่างครบถ้วน:
-  รองรับตาราง GFM รายการงาน (- [ ] / - [x]) รายการซ้อนหลายระดับ การอ้างอิงหลายบรรทัด กล่องแจ้งเตือน GFM ([!NOTE], [!TIP], [!WARNING] ฯลฯ) การป้องกัน snake_case ลิงก์อัตโนมัติ และแท็ก HTML (<kbd>)
-• ดูตัวอย่างไฟล์ขนาดใหญ่พิเศษอย่างรวดเร็วและแก้ไขการค้นหา F3:
-  แสดงตัวอย่าง 512 KB แรกทันทีโดยไม่คัดลอกไฟล์ลงดิสก์ (รองรับ 28 ภาษา) และแก้ไขอาการค้างเมื่อกด F3 ค้นหาวนกลับจากท้ายไฟล์""",
+• เรนเดอร์ SVG ความเร็วสูงสำหรับแผนภาพ Mermaid 33 รูปแบบ (ขับเคลื่อนด้วย Pele):
+  วาด Sequence, Flowchart และกราฟ XY ทันทีในบล็อก ```mermaid และไฟล์ .mmd / .mermaid
+• อัปเดตไร้การกะพริบ (<1ms) พร้อมปรับสีตามโหมดมืดและโหมดสว่างอัตโนมัติ
+• เพิ่มการไฮไลต์ไวยากรณ์และการเชื่อมโยงไฟล์ .mmd / .mermaid""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +753,13 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.38 रिलीज़ नोट्स
-🌐 WebView2 लाइव पूर्वावलोकन (Alt+P) और सटीक CommonMark / GFM Markdown रेंडरिंग
+        "releaseNotes": """miu v1.0.39 रिलीज़ नोट्स
+📊 Mermaid डायग्राम और चार्ट का तुरंत लाइव प्रीव्यू (Alt+P)
 
-• HTML, SVG और Markdown के लिए इन-बिल्ट स्प्लिट लाइव पूर्वावलोकन (Alt+P):
-  ऑटो-अपडेट, F5 रीलोड, ड्रैग करने योग्य स्प्लिटर, ओवरले स्क्रॉलबार, डार्क/लाइट थीम और लोकल फ़ाइल सपोर्ट (इमेज, CSS, JS) के साथ लाइव प्रीव्यू पैनल खोलने के लिए Alt+P दबाएँ।
-• सटीक CommonMark और GitHub Flavored Markdown (GFM) रेंडरिंग:
-  GFM टेबल, टास्क लिस्ट (- [ ] / - [x]), नेस्टेड लिस्ट, बहु-पंक्ति उद्धरण, GFM अलर्ट ([!NOTE], [!TIP], [!WARNING] आदि), snake_case सुरक्षा, ऑटोलिंक और इनलाइन HTML (<kbd>) का पूर्ण समर्थन।
-• विशाल फ़ाइलों का तेज़ पूर्वावलोकन और त्वरित F3 खोज सुधार:
-  बिना डिस्क कॉपी के पहले 512 KB का तुरंत पूर्वावलोकन दिखाता है (28 भाषाओं में सूचना सहित) और बड़ी फ़ाइलों के अंत में F3 दबाने पर होने वाली फ़्रीज़ समस्या को ठीक करता है।""",
+• 33 प्रकार के Mermaid डायग्राम के लिए तेज़ SVG रेंडरिंग (Pele इंजन):
+  ```mermaid ब्लॉक और .mmd / .mermaid फ़ाइलों में सीक्वेंस, फ़्लोचार्ट और XY चार्ट को तुरंत लाइव ग्राफ़ में बदलता है।
+• बिना झिलमिलाहट अपडेट (<1ms) और डार्क/लाइट थीम सिंक।
+• .mmd / .mermaid सिंटैक्स हाइलाइटिंग और फ़ाइल एसोसिएशन।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +798,13 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.38
-🌐 Previzualizare live WebView2 (Alt+P) și redare fidelă Markdown (CommonMark / GFM)
+        "releaseNotes": """Note de lansare miu v1.0.39
+📊 Previzualizare live pentru diagrame și grafice Mermaid (Alt+P)
 
-• Previzualizare divizată în timp real pentru HTML, SVG și Markdown (Alt+P):
-  Apăsați Alt+P pentru a deschide panoul de previzualizare cu actualizare automată, reîncărcare F5, separator reglabil, bare de defilare suprapuse, temă întunecată/luminoasă și încărcare de resurse locale (imagini, CSS, JS).
-• Redare fidelă CommonMark și GitHub Flavored Markdown (GFM):
-  Suport complet pentru tabele GFM, liste de sarcini (- [ ] / - [x]), liste imbricate, citate pe mai multe rânduri, alerte GFM ([!NOTE], [!TIP], [!WARNING] etc.), protecție snake_case, linkuri automate și HTML inline (<kbd>).
-• Previzualizare rapidă pentru fișiere uriașe și căutare F3 instantanee:
-  Afișează instantaneu primii 512 KB fără copiere pe disc (în 28 de limbi) și remediază blocarea la reluarea căutării cu F3 la sfârșitul fișierelor mari.""",
+• Redare SVG instantanee pentru 33 de tipuri de diagrame Mermaid (motor Pele):
+  Desenează în timp real diagrame de secvență, flux și grafice XY în blocuri ```mermaid și fișiere .mmd / .mermaid.
+• Actualizare fără pâlpâire (<1ms) adaptată automat la modul întunecat/luminos.
+• Evidențiere sintaxă și asociere fișiere .mmd / .mermaid.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +843,13 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.38 kiadási megjegyzések
-🌐 WebView2 élő előnézet (Alt+P) és hű CommonMark / GFM Markdown-megjelenítés
+        "releaseNotes": """miu v1.0.39 kiadási megjegyzések
+📊 Mermaid diagramok és grafikonok élő előnézete (Alt+P)
 
-• Beépített osztott élő előnézet HTML, SVG és Markdown fájlokhoz (Alt+P):
-  Nyomja meg az Alt+P billentyűkombinációt az automatikusan frissülő előnézeti panel megnyitásához F5 újratöltéssel, átméretezhető elválasztóval, átfedő görgetősávokkal, sötét/világos témával és helyi erőforrások (képek, CSS, JS) támogatásával.
-• Hű CommonMark és GitHub Flavored Markdown (GFM) megjelenítés:
-  Teljes támogatás GFM-táblázatokhoz, feladatlistákhoz (- [ ] / - [x]), egymásba ágyazott listákhoz, többsoros idézetekhez, GFM-figyelmeztetésekhez ([!NOTE], [!TIP], [!WARNING] stb.), snake_case védelemhez, automatikus hivatkozásokhoz és `<kbd>` elemekhez.
-• Óriásfájlok gyors előnézete és azonnali F3 keresés:
-  Lemezmásolás nélkül, azonnal megjeleníti az első 512 KB-ot (28 nyelven), és javítja a nagy fájlok végén történő F3 keresési lefagyást.""",
+• Azonnali SVG megjelenítés 33 Mermaid diagramtípushoz (Pele motor):
+  Élőben rajzolja ki a szekvencia-, folyamat- és XY-grafikonokat a ```mermaid blokkokban és .mmd / .mermaid fájlokban.
+• Villódzásmentes frissítés (<1ms) automatikus sötét/világos témaillesztéssel.
+• .mmd / .mermaid szintaxiskiemelés és fájltársítás.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +888,13 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.38
-🌐 Ζωντανή προεπισκόπηση WebView2 (Alt+P) & πιστή απόδοση Markdown (CommonMark / GFM)
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.39
+📊 Ζωντανή προεπισκόπηση διαγραμμάτων και γραφημάτων Mermaid (Alt+P)
 
-• Ενσωματωμένη ζωντανή προεπισκόπηση για HTML, SVG & Markdown (Alt+P):
-  Πατήστε Alt+P για να ανοίξετε το παράθυρο προεπισκόπησης με αυτόματη ενημέρωση, ανανέωση F5, ρυθμιζόμενο διαχωριστικό, μπάρες κύλισης, σκοτεινό/φωτεινό θέμα και υποστήριξη τοπικών αρχείων (εικόνες, CSS, JS).
-• Πιστή απόδοση CommonMark & GitHub Flavored Markdown (GFM):
-  Πλήρης υποστήριξη για πίνακες GFM, λίστες εργασιών (- [ ] / - [x]), ένθετες λίστες, παραθέσεις, ειδοποιήσεις GFM ([!NOTE], [!TIP], [!WARNING] κ.λπ.), προστασία snake_case, αυτόματους συνδέσμους και στοιχεία HTML (<kbd>).
-• Γρήγορη προεπισκόπηση τεράστιων αρχείων & άμεση αναζήτηση F3:
-  Προβάλλει αμέσως τα πρώτα 512 KB χωρίς αντιγραφή στον δίσκο (σε 28 γλώσσες) και διορθώνει το πάγωμα κατά την αναζήτηση F3 στο τέλος μεγάλων αρχείων.""",
+• Άμεση απόδοση SVG για 33 τύπους διαγραμμάτων Mermaid (μηχανή Pele):
+  Σχεδιάζει ζωντανά διαγράμματα ακολουθίας, ροής και γραφήματα XY σε μπλοκ ```mermaid και αρχεία .mmd / .mermaid.
+• Ενημέρωση χωρίς τρεμόπαιγμα (<1ms) με αυτόματη προσαρμογή σκοτεινού/φωτεινού θέματος.
+• Επισήμανση σύνταξης και συσχέτιση αρχείων .mmd / .mermaid.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +933,13 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.38
-🌐 WebView2 live-forhåndsvisning (Alt+P) & præcis CommonMark / GFM Markdown-gengivelse
+        "releaseNotes": """Udgivelsesnoter for miu v1.0.39
+📊 Live-forhåndsvisning af Mermaid-diagrammer og grafer (Alt+P)
 
-• Indbygget delt live-forhåndsvisning til HTML, SVG & Markdown (Alt+P):
-  Tryk på Alt+P for at åbne et forhåndsvisningspanel med automatisk opdatering, F5-genindlæsning, justerbar deler, overlay-rullepaneler, mørkt/lyst tema og lokale ressourcer (billeder, CSS, JS).
-• Præcis CommonMark & GitHub Flavored Markdown (GFM):
-  Fuld understøttelse af GFM-tabeller, opgavelister (- [ ] / - [x]), indlejrede lister, citater, GFM-advarsler ([!NOTE], [!TIP], [!WARNING] m.fl.), snake_case-beskyttelse, autolinks og inline-HTML (<kbd>).
-• Hurtig forhåndsvisning af enorme filer & øjeblikkelig F3-søgning:
-  Viser straks de første 512 KB uden diskkopiering (på 28 sprog) og retter frysning ved F3-søgning i slutningen af store filer.""",
+• Øjeblikkelig SVG-gengivelse af 33 Mermaid-diagramtyper (Pele-motor):
+  Tegner sekvens-, flow- og XY-grafer live i ```mermaid-blokke og .mmd / .mermaid-filer.
+• Flimmerfri opdatering (<1ms) med automatisk mørk/lys-tematilpasning.
+• Syntaksfremhævning ogck-filtilknytning for .mmd / .mermaid.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +978,13 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.38 julkaisutiedot
-🌐 WebView2-reaaliaikainen esikatselu (Alt+P) ja tarkka CommonMark / GFM Markdown -renderöinti
+        "releaseNotes": """miu v1.0.39 julkaisutiedot
+📊 Mermaid-kaavioiden ja -kuvaajien reaaliaikainen esikatselu (Alt+P)
 
-• Sisäänrakennettu jaettu esikatselu HTML-, SVG- ja Markdown-tiedostoille (Alt+P):
-  Avaa automaattisesti päivittyvä esikatselupaneeli painamalla Alt+P. Sisältää F5-päivityksen, säädettävän jakajan, vierityspalkit, tumman/vaalean teeman ja paikallisten tiedostojen (kuvat, CSS, JS) tuen.
-• Tarkka CommonMark ja GitHub Flavored Markdown (GFM):
-  Täysi tuki GFM-taulukoille, tehtävälistoille (- [ ] / - [x]), sisäkkäisille listoille, lainauksille, GFM-huomautuksille ([!NOTE], [!TIP], [!WARNING] jne.), snake_case-suojaukselle, automaattilinkeille ja `<kbd>`-tunnisteille.
-• Suurten tiedostojen nopea esikatselu ja välitön F3-haku:
-  Esikatselee ensimmäiset 512 kt välittömästi ilman levykopioita (28 kielellä) ja korjaa jäätymisen F3-haun kiertäessä tiedoston lopusta alkuun.""",
+• Välitön SVG-renderöinti 33 Mermaid-kaaviotyypille (Pele-moottori):
+  Piirtää sekvenssi-, vuo- ja XY-kaaviot livenä ```mermaid-lohkoissa sekä .mmd / .mermaid-tiedostoissa.
+• Välkkymätön päivitys (<1ms) ja automaattinen tumman/vaalean teeman synkronointi.
+• .mmd / .mermaid -syntaksikorostus ja tiedostokytkennät.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1023,13 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.38
-🌐 WebView2 direkte forhåndsvisning (Alt+P) og nøyaktig CommonMark / GFM Markdown-gjengivelse
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.39
+📊 Live-forhåndsvisning av Mermaid-diagrammer og grafer (Alt+P)
 
-• Innebygd delt forhåndsvisning for HTML, SVG og Markdown (Alt+P):
-  Trykk Alt+P for å åpne et forhåndsvisningspanel med automatisk oppdatering, F5-oppdatering, justerbar deler, rullefelt, mørkt/lyst tema og lokale ressurser (bilder, CSS, JS).
-• Nøyaktig CommonMark og GitHub Flavored Markdown (GFM):
-  Full støtte for GFM-tabeller, oppgavelister (- [ ] / - [x]), nestede lister, sitater, GFM-varsler ([!NOTE], [!TIP], [!WARNING] osv.), snake_case-beskyttelse, autolenker og inline-HTML (<kbd>).
-• Rask forhåndsvisning av enorme filer og umiddelbar F3-søking:
-  Forhåndsviser de første 512 KB umiddelbart uten diskkopiering (på 28 språk) og løser frysingen ved F3-søk på slutten av store filer.""",
+• Øyeblikkelig SVG-visning for 33 Mermaid-diagramtyper (Pele-motor):
+  Tegner sekvens-, flyt- og XY-grafer live i ```mermaid-blokker og .mmd / .mermaid-filer.
+• Flimmerfri oppdatering (<1ms) med automatisk mørk/lys-tematilpasning.
+• Syntaksutheving og filtilknytning for .mmd / .mermaid.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1068,13 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.38
-🌐 Pratonton Langsung WebView2 (Alt+P) & Paparan Markdown CommonMark / GFM Tepat
+        "releaseNotes": """Nota Keluaran miu v1.0.39
+📊 Pratonton Langsung Rajah & Graf Mermaid (Alt+P)
 
-• Pratonton Langsung Skrin Terbahagi untuk HTML, SVG & Markdown (Alt+P):
-  Tekan Alt+P untuk membuka panel pratonton langsung dengan kemas kini automatik, muat semula F5, pembahagi boleh laras, bar skrol tindanan, tema Gelap/Cerah dan pemetaan aset tempatan (imej, CSS, JS).
-• Paparan CommonMark & GitHub Flavored Markdown (GFM) yang Tepat:
-  Sokongan penuh untuk jadual GFM, senarai tugas (- [ ] / - [x]), senarai bersarang, petikan berbilang baris, kotak makluman GFM ([!NOTE], [!TIP], [!WARNING], dll.), perlindungan snake_case, pautan automatik dan tag HTML sebaris (<kbd>).
-• Pratonton Pantas Fail Gergasi & Carian F3 Segera:
-  Memaparkan pratonton 512 KB pertama secara serta-merta tanpa salinan cakera (dalam 28 bahasa) dan membetulkan masalah kaku apabila menekan F3 di penghujung fail besar.""",
+• Paparan SVG Segera untuk 33 Jenis Rajah Mermaid (Enjin Pele):
+  Melukis rajah urutan, carta alir dan graf XY secara langsung dalam blok ```mermaid serta fail .mmd / .mermaid.
+• Kemas kini lancar tanpa kelipan (<1ms) dengan penyelarasan tema Gelap/Cerah automatik.
+• Serlahan sintaks dan kaitan fail .mmd / .mermaid.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

@@ -11,7 +11,7 @@
   <Identity
     Name="18872KENJI.8904025CBD33"
     Publisher="CN=035A9AAC-915B-4CE1-AE39-1A101BED42F5"
-    Version="1.0.38.0" />
+    Version="1.0.39.0" />
 
   <Properties>
     <DisplayName>miu</DisplayName>
@@ -56,6 +56,8 @@
 						<uap:FileType>.md</uap:FileType>
 						<uap:FileType>.markdown</uap:FileType>
 						<uap:FileType>.mdx</uap:FileType>
+						<uap:FileType>.mmd</uap:FileType>
+						<uap:FileType>.mermaid</uap:FileType>
 						<uap:FileType>.ini</uap:FileType>
 						<uap:FileType>.inf</uap:FileType>
 						<uap:FileType>.cfg</uap:FileType>
