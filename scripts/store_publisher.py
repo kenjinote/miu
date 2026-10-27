@@ -7,6 +7,43 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.40": {
+        "ja-jp": """miu v1.0.40 リリースノート
+📐 LaTeX 数式リアルタイムプレビュー対応 ＆ 完全オフライン C++ ネイティブ図表エンジン搭載（Alt+P）
+
+・LaTeX 数式リアルタイムプレビュー（Markdown ＆ Mermaid 図表内対応）:
+  Markdown のインライン数式（$...$）、ブロック数式（$$...$$）、```math / ```latex コードブロック、および Mermaid 図表内の数式をネイティブ MathML で瞬時に美しく描画します。分数・根号・積分・総和・行列（pmatrix / bmatrix / cases）・ギリシャ文字など幅広い LaTeX 構文に対応しています。
+・100% オフライン完結・超高速 C++ ネイティブエンジン（最大約 40 倍高速）:
+  外部通信や JS ライブラリに一切依存しない C++ ネイティブ実装により、オフライン環境でも全33種の Mermaid 図表と数式を瞬時に描画します。
+・検索・置換ダイアログ（Ctrl+F ⇄ Ctrl+H）切り替え時の入力テキスト維持に対応しました。""",
+
+        "en-us": """miu v1.0.40 Release Notes
+📐 Live LaTeX Math Preview & 100% Offline Native C++ Diagram Engine (Alt+P)
+
+- Real-Time LaTeX Math Preview in Markdown & Mermaid Diagrams:
+  Renders inline ($...$), display ($$...$$), and fenced (```math / ```latex) LaTeX equations—as well as math inside Mermaid diagram nodes, edges, and titles—into crisp native MathML. Supports fractions, roots, integrals, summations, matrices (pmatrix, bmatrix, cases), accents, Greek letters, and mathematical symbols.
+- 100% Offline Ultra-Fast Native C++ Engine (Up to 40x Faster):
+  Powered by a zero-dependency native C++ engine with zero network calls or external JS libraries, rendering all 33 Mermaid diagram types and LaTeX math in microseconds.
+- Preserves search box text when switching between Find (Ctrl+F) and Replace (Ctrl+H) dialogs.""",
+
+        "zh-hans": """miu v1.0.40 更新日志
+📐 新增 LaTeX 数学公式实时预览 & 100% 离线 C++ 原生图表引擎（Alt+P）
+
+- 支持 Markdown 与 Mermaid 图表内 LaTeX 数学公式实时预览：
+  全面支持行内公式（$...$）、块级公式（$$...$$）、```math / ```latex 代码块以及 Mermaid 图表节点与连线中的 LaTeX 公式，直接转换为高清原生 MathML。支持分式、根式、积分、求和、矩阵（pmatrix / bmatrix / cases）、希腊字母与数学符号。
+- 100% 离线极速 C++ 原生渲染引擎（提速高达 40 倍）：
+  无需联网或外部 JS 库，微秒级极速渲染全部 33 种 Mermaid 图表与数学公式。
+- 优化查找与替换对话框（Ctrl+F ⇄ Ctrl+H）切换体验，完整保留已输入的查找文本。""",
+
+        "ko": """miu v1.0.40 릴리스 노트
+📐 LaTeX 수식 실시간 미리보기 지원 및 100% 오프라인 C++ 네이티브 다이어그램 엔진 탑재 (Alt+P)
+
+- Markdown 및 Mermaid 다이어그램 내 LaTeX 수식 실시간 미리보기:
+  인라인 수식($...$), 블록 수식($$...$$), ```math / ```latex 코드 블록 및 Mermaid 다이어그램 내부의 LaTeX 수식을 선명한 네이티브 MathML로 즉시 렌더링합니다. 분수, 근호, 적분, 급수, 행렬(pmatrix / bmatrix / cases), 그리스 문자 등 다양한 수식 구문을 지원합니다.
+- 100% 오프라인 초고속 C++ 네이티브 엔진 (최대 40배 고속화):
+  외부 네트워크나 JS 라이브러리 없이 오프라인에서 33종 Mermaid 다이어그램과 수식을 마이크로초 단위로 렌더링합니다.
+- 찾기/바꾸기 대화 상자(Ctrl+F ⇄ Ctrl+H) 전환 시 검색어 텍스트가 유지되도록 개선했습니다."""
+    },
     "1.0.39": {
         "ja-jp": """miu v1.0.39 リリースノート
 📊 Mermaid 図表・グラフのリアルタイムプレビュー対応（Alt+P）
@@ -865,25 +902,27 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
 
         prefix = meta["prefix"]
         old_caps = meta.get("image_captions", ["", "", ""])
-        caps5 = [
+        loc_c6_c7 = {'zh-tw': ('Mermaid 圖表 隨寫隨看 瞬間優雅成圖 (Alt+P)', 'LaTeX 數學公式 完全離線 毫秒級高畫質渲染 (Alt+P)'), 'de-de': ('Mermaid-Diagramme in Echtzeit als elegante Grafiken (Alt+P)', 'LaTeX-Formeln 100 % offline live gerendert (Alt+P)'), 'fr-fr': ('Vos diagrammes Mermaid tracés en temps réel (Alt+P)', 'Formules LaTeX rendues en direct 100 % hors ligne (Alt+P)'), 'es-es': ('Diagramas Mermaid renderizados al instante (Alt+P)', 'Fórmulas LaTeX en tiempo real 100 % sin conexión (Alt+P)'), 'pt-br': ('Diagramas Mermaid desenhados em tempo real (Alt+P)', 'Fórmulas LaTeX em tempo real 100% offline (Alt+P)'), 'ru-ru': ('Диаграммы Mermaid оживают прямо во время ввода (Alt+P)', 'Формулы LaTeX в реальном времени 100% офлайн (Alt+P)'), 'it-it': ('Diagrammi Mermaid disegnati dal vivo mentre scrivi (Alt+P)', 'Formule LaTeX rese dal vivo 100% offline (Alt+P)'), 'pl-pl': ('Diagramy Mermaid rysowane na żywo podczas pisania (Alt+P)', 'Wzory LaTeX na żywo i w 100% trybie offline (Alt+P)'), 'nl-nl': ('Mermaid-diagrammen direct live gevisualiseerd (Alt+P)', 'LaTeX-formules direct live 100% offline (Alt+P)'), 'tr-tr': ('Mermaid Şemaları Siz Yazarken Anında Çizilir (Alt+P)', 'LaTeX Formülleri %100 Çevrimdışı Canlı Önizleme (Alt+P)'), 'vi-vn': ('Sơ đồ Mermaid vẽ trực tiếp ngay khi bạn gõ (Alt+P)', 'Công thức LaTeX hiển thị trực tiếp 100% ngoại tuyến (Alt+P)'), 'uk-ua': ('Діаграми Mermaid малюються наживо під час введення (Alt+P)', 'Формули LaTeX наживо та на 100% повністю офлайн (Alt+P)'), 'id-id': ('Diagram Mermaid Langsung Terlukis Saat Anda Mengetik (Alt+P)', 'Rumus LaTeX Tampil Langsung 100% Offline (Alt+P)'), 'cs-cz': ('Diagramy Mermaid vykreslené živě během psaní (Alt+P)', 'Vzorce LaTeX vykreslené živě 100% offline (Alt+P)'), 'sv-se': ('Mermaid-diagram ritas upp live medan du skriver (Alt+P)', 'LaTeX-formler renderade live 100 % offline (Alt+P)'), 'th-th': ('วาดกราฟ Mermaid แบบเรียลไทม์ ทันทีที่พิมพ์ (Alt+P)', 'สมการ LaTeX เรนเดอร์สดทันที ออฟไลน์ 100% (Alt+P)'), 'hi-in': ('Mermaid डायग्राम टाइप करते ही तुरंत लाइव ग्राफ़ में (Alt+P)', 'LaTeX गणित सूत्र 100% ऑफ़लाइन तुरंत लाइव प्रीव्यू (Alt+P)'), 'ro-ro': ('Diagrame Mermaid redate în direct pe măsură ce scrii (Alt+P)', 'Formule LaTeX redate în direct 100% offline (Alt+P)'), 'hu-hu': ('Mermaid diagramok élő kirajzolása gépelés közben (Alt+P)', 'LaTeX képletek élő megjelenítése 100% offline (Alt+P)'), 'el-gr': ('Διαγράμματα Mermaid σχεδιασμένα ζωντανά καθώς πληκτρολογείτε (Alt+P)', 'Εξισώσεις LaTeX ζωντανή απόδοση 100% εκτός σύνδεσης (Alt+P)'), 'da-dk': ('Mermaid-diagrammer tegnes live mens du skriver (Alt+P)', 'LaTeX-formler gengivet live 100 % offline (Alt+P)'), 'fi-fi': ('Mermaid-kaaviot piirtyvät livenä kirjoittaessasi (Alt+P)', 'LaTeX-kaavat piirtyvät livenä 100 % offline (Alt+P)'), 'nb-no': ('Mermaid-diagrammer tegnes live mens du skriver (Alt+P)', 'LaTeX-formler gjengitt live 100 % offline (Alt+P)'), 'ms-my': ('Rajah Mermaid Dilukis Secara Langsung Semasa Menaip (Alt+P)', 'Formula LaTeX Dipapar Langsung 100% Luar Talian (Alt+P)')}.get(lang, ("Mermaid Diagrams & Charts Live Preview (Alt+P)", "LaTeX Math Equations Live Preview (Alt+P)"))
+        caps7 = [
             old_caps[1] if len(old_caps) > 1 else "",
             old_caps[0] if len(old_caps) > 0 else "",
             "Multi-Cursor (Ctrl+D)",
             "Regex Find & Replace (Ctrl+H)",
             "HTML5 / JS Live Preview (Alt+P)",
-            "Mermaid Diagrams & Charts Live Preview (Alt+P)"
+            loc_c6_c7[0],
+            loc_c6_c7[1]
         ]
         img_list = []
-        for i in range(1, 7):
+        for i in range(1, 8):
             fname = f"{prefix}_{i}.png"
             img_list.append({
                 "fileName": fname,
                 "fileStatus": "PendingUpload",
                 "imageType": "Screenshot",
-                "description": caps5[i-1]
+                "description": caps7[i-1]
             })
         base["images"] = img_list
-        print(f"Configured listing and 6 screenshots for [{lang}]")
+        print(f"Configured listing and 7 screenshots for [{lang}]")
 
     base_4_prefixes = {
         "ja-jp": ("ja", [
@@ -893,6 +932,7 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
             "ライトモード × 正規表現を使った検索と一括置換 (Ctrl+H)",
             "ダークモード × HTML5 / JS ライブ実行 (Alt+P)",
             "ダークモード × Mermaid 図表・グラフ リアルタイムプレビュー (Alt+P)",
+            "ライトモード × LaTeX 数式 リアルタイムプレビュー (Alt+P)",
         ]),
         "en-us": ("en", [
             "Dark Mode × Markdown & GFM Live Split Preview (Alt+P)",
@@ -901,6 +941,7 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
             "Light Mode × Regex Find & Batch Replace (Ctrl+H)",
             "Dark Mode × HTML5 & JavaScript Live Execution (Alt+P)",
             "Dark Mode × Mermaid Diagrams & Charts Live Preview (Alt+P)",
+            "Light Mode × LaTeX Math & Scientific Live Preview (Alt+P)",
         ]),
         "zh-hans": ("zh_cn", [
             "深色模式 × Markdown 与 GFM 实时分屏预览 (Alt+P)",
@@ -909,6 +950,7 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
             "浅色模式 × 正则表达式查找与批量替换 (Ctrl+H)",
             "深色模式 × HTML5 / JS 编辑器内实时运行 (Alt+P)",
             "深色模式 × Mermaid 流程图与图表实时预览 (Alt+P)",
+            "浅色模式 × LaTeX 数学公式实时预览 (Alt+P)",
         ]),
         "ko": ("ko", [
             "다크 모드 × Markdown & GFM 실시간 분할 미리보기 (Alt+P)",
@@ -917,20 +959,21 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
             "라이트 모드 × 정규식 검색 및 일괄 바꾸기 (Ctrl+H)",
             "다크 모드 × HTML5 / JS 편집기 내 실시간 실행 (Alt+P)",
             "다크 모드 × Mermaid 다이어그램 및 차트 실시간 미리보기 (Alt+P)",
+            "라이트 모드 × LaTeX 수식 실시간 미리보기 (Alt+P)",
         ]),
     }
-    for lang, (prefix, caps5) in base_4_prefixes.items():
+    for lang, (prefix, caps7) in base_4_prefixes.items():
         if lang in listings and "baseListing" in listings[lang]:
             listings[lang]["baseListing"]["images"] = [
                 {
                     "fileName": f"{prefix}_{i}.png",
                     "fileStatus": "PendingUpload",
                     "imageType": "Screenshot",
-                    "description": caps5[i-1]
+                    "description": caps7[i-1]
                 }
-                for i in range(1, 7)
+                for i in range(1, 8)
             ]
-            print(f"Configured 6 screenshots for [{lang}]")
+            print(f"Configured 7 screenshots for [{lang}]")
 
     if "ko" in listings and "baseListing" in listings["ko"]:
         if not listings["ko"]["baseListing"].get("title"):

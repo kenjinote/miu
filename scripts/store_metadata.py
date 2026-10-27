@@ -34,13 +34,13 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.39 更新日誌
-📊 新增 Mermaid 流程圖與圖表即時預覽（Alt+P）
+        "releaseNotes": """miu v1.0.40 更新日誌
+📐 新增 LaTeX 數學公式即時預覽 & 100% 離線 C++ 原生圖表引擎（Alt+P）
 
-・支援 33 種 Mermaid 圖表極速 SVG 即時渲染（整合 Pele 引擎）：
-  支援 Markdown 中的 ```mermaid 程式碼區塊、.mmd / .mermaid 檔案及未儲存分頁的語法自動辨識，即時繪製循序圖、流程圖、XY 圖表等 33 種圖表。
-・毫秒級無閃爍增量更新（<1ms）與深淺色主題自動連動。
-・新增 .mmd / .mermaid 語法突顯與檔案關聯支援。""",
+・支援 Markdown 與 Mermaid 圖表內 LaTeX 數學公式即時預覽：
+  支援行內公式（$...$）、區塊公式（$$...$$）、```math / ```latex 程式碼區塊及 Mermaid 圖表內的 LaTeX 公式，即時轉換為高畫質原生 MathML。
+・100% 離線極速 C++ 原生渲染引擎（提速高達 40 倍），無需連網即可毫秒級繪製 33 種 Mermaid 圖表與數學公式。
+・改善尋找與取代對話方塊（Ctrl+F ⇄ Ctrl+H）切換體驗，完整保留已輸入的搜尋文字。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -79,13 +79,13 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.39 Versionshinweise
-📊 Mermaid-Diagramm- & Chart-Live-Vorschau (Alt+P)
+        "releaseNotes": """miu v1.0.40 Versionshinweise
+📐 LaTeX-Formel-Live-Vorschau & 100 % Offline-C++-Diagramm-Engine (Alt+P)
 
-• Echtzeit-SVG-Vorschau für 33 Mermaid-Diagrammtypen (mit Pele-Engine):
-  Rendert Sequenz-, Fluss-, XY-, Klassen-, Status- und ER-Diagramme in ```mermaid-Blöcken, .mmd/.mermaid-Dateien und neuen Tabs sofort als gestochen scharfe SVGs.
-• Flimmerfreie In-Place-Aktualisierung (<1ms) & automatische Dark-/Light-Mode-Anpassung.
-• Syntaxhervorhebung und Dateizuordnung für .mmd und .mermaid.""",
+• Echtzeit-LaTeX-Mathematikvorschau in Markdown & Mermaid-Diagrammen:
+  Rendert Inline- ($...$), Block- ($$...$$) und ```math-Formeln sowie Gleichungen in Mermaid-Diagrammen sofort als gestochen scharfes natives MathML.
+• 100 % Offline-C++-Engine (bis zu 40× schneller) für alle 33 Mermaid-Diagrammtypen und LaTeX-Formeln ohne externe Abhängigkeiten.
+• Behält den Suchtext beim Wechsel zwischen Suchen (Strg+F) und Ersetzen (Strg+H) bei.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -124,13 +124,13 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.39
-📊 Aperçu en direct des diagrammes et graphiques Mermaid (Alt+P)
+        "releaseNotes": """Notes de version miu v1.0.40
+📐 Aperçu en direct des formules LaTeX et moteur C++ 100 % hors ligne (Alt+P)
 
-• Rendu SVG instantané pour 33 types de diagrammes Mermaid (moteur Pele) :
-  Affiche en direct les diagrammes de séquence, flux, graphiques XY, classes et états dans les blocs ```mermaid et les fichiers .mmd / .mermaid.
-• Mise à jour sans scintillement (<1ms) et synchronisation automatique avec le thème clair/sombre.
-• Coloration syntaxique et association de fichiers .mmd / .mermaid.""",
+• Aperçu mathématique LaTeX en temps réel dans Markdown et Mermaid :
+  Affiche les équations en ligne ($...$), en bloc ($$...$$), les blocs ```math et les formules dans les diagrammes Mermaid en MathML natif ultra-net.
+• Moteur C++ natif 100 % hors ligne (jusqu'à 40× plus rapide) pour les 33 types de diagrammes Mermaid et formules LaTeX.
+• Conservation du texte recherché lors du basculement entre Rechercher (Ctrl+F) et Remplacer (Ctrl+H).""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -169,13 +169,13 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.39
-📊 Vista previa en vivo de diagramas y gráficos Mermaid (Alt+P)
+        "releaseNotes": """Notas de la versión miu v1.0.40
+📐 Vista previa en vivo de fórmulas LaTeX y motor C++ 100 % sin conexión (Alt+P)
 
-• Renderizado SVG instantáneo para 33 tipos de diagramas Mermaid (motor Pele):
-  Dibuja en tiempo real diagramas de secuencia, flujo, gráficos XY, clases y estados en bloques ```mermaid y archivos .mmd / .mermaid.
-• Actualización sin parpadeos (<1ms) sincronizada con el modo oscuro y claro.
-• Resaltado de sintaxis y asociación de archivos .mmd / .mermaid.""",
+• Vista previa de matemáticas LaTeX en tiempo real en Markdown y Mermaid:
+  Renderiza ecuaciones en línea ($...$), en bloque ($$...$$), bloques ```math y fórmulas dentro de diagramas Mermaid en MathML nativo.
+• Motor C++ nativo 100 % sin conexión (hasta 40 veces más rápido) para los 33 tipos de diagramas Mermaid y fórmulas matemáticas.
+• Conserva el texto de búsqueda al alternar entre Buscar (Ctrl+F) y Reemplazar (Ctrl+H).""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -214,13 +214,13 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.39
-📊 Pré-visualização ao vivo de diagramas e gráficos Mermaid (Alt+P)
+        "releaseNotes": """Notas de lançamento do miu v1.0.40
+📐 Pré-visualização ao vivo de fórmulas LaTeX e motor C++ 100% offline (Alt+P)
 
-• Renderização SVG instantânea para 33 tipos de diagramas Mermaid (motor Pele):
-  Desenha diagramas de sequência, fluxogramas, gráficos XY e muito mais em blocos ```mermaid e arquivos .mmd / .mermaid.
-• Atualização sem piscar (<1ms) com adaptação automática aos modos escuro e claro.
-• Realce de sintaxe e associação de arquivos .mmd / .mermaid.""",
+• Pré-visualização de matemática LaTeX em tempo real no Markdown e Mermaid:
+  Renderiza equações inline ($...$), em bloco ($$...$$), blocos ```math e fórmulas em diagramas Mermaid em MathML nativo.
+• Motor C++ nativo 100% offline (até 40× mais rápido) para todos os 33 tipos de diagramas Mermaid e fórmulas LaTeX.
+• Mantém o texto pesquisado ao alternar entre Localizar (Ctrl+F) e Substituir (Ctrl+H).""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -259,13 +259,13 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.39
-📊 Живой предпросмотр диаграмм и графиков Mermaid (Alt+P)
+        "releaseNotes": """Примечания к выпуску miu v1.0.40
+📐 Живой предпросмотр формул LaTeX и 100% офлайн C++ движок диаграмм (Alt+P)
 
-• Мгновенный SVG-рендеринг 33 типов диаграмм Mermaid (движок Pele):
-  Отрисовка диаграмм последовательностей, блок-схем, XY-графиков, классов и состояний в блоках ```mermaid и файлах .mmd / .mermaid.
-• Плавное обновление без мерцания (<1ms) и синхронизация с тёмной/светлой темой.
-• Подсветка синтаксиса и ассоциация файлов .mmd / .mermaid.""",
+• Предпросмотр математических формул LaTeX в реальном времени в Markdown и Mermaid:
+  Мгновенный рендеринг строчных ($...$), блочных ($$...$$) формул, блоков ```math и формул внутри диаграмм Mermaid в чёткий нативный MathML.
+• 100% офлайн нативный C++ движок (до 40 раз быстрее) для всех 33 типов диаграмм Mermaid и формул LaTeX.
+• Сохранение текста поиска при переключении между окнами поиска (Ctrl+F) и замены (Ctrl+H).""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -304,13 +304,13 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.39
-📊 Anteprima live di diagrammi e grafici Mermaid (Alt+P)
+        "releaseNotes": """Note di rilascio di miu v1.0.40
+📐 Anteprima live di formule LaTeX e motore C++ nativo 100% offline (Alt+P)
 
-• Rendering SVG istantaneo per 33 tipi di diagrammi Mermaid (motore Pele):
-  Visualizza in tempo reale diagrammi di sequenza, flussi, grafici XY, classi e stati nei blocchi ```mermaid e nei file .mmd / .mermaid.
-• Aggiornamento fluido senza sfarfallio (<1ms) con tema chiaro/scuro automatico.
-• Evidenziazione sintassi e associazione file per .mmd / .mermaid.""",
+• Anteprima matematica LaTeX in tempo reale in Markdown e Mermaid:
+  Converte equazioni inline ($...$), in blocco ($$...$$), blocchi ```math e formule nei diagrammi Mermaid in nitido MathML nativo.
+• Motore C++ nativo 100% offline (fino a 40× più veloce) per tutti i 33 tipi di diagrammi Mermaid e formule LaTeX.
+• Mantiene il testo cercato passando tra Trova (Ctrl+F) e Sostituisci (Ctrl+H).""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -349,13 +349,13 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.39
-📊 Podgląd na żywo diagramów i wykresów Mermaid (Alt+P)
+        "releaseNotes": """Informacje o wersji miu v1.0.40
+📐 Podgląd na żywo wzorów LaTeX oraz w 100% offline'owy natywny silnik C++ (Alt+P)
 
-• Błyskawiczne renderowanie SVG dla 33 typów diagramów Mermaid (silnik Pele):
-  Rysuje na żywo diagramy sekwencji, schematy blokowe i wykresy XY w blokach ```mermaid oraz plikach .mmd / .mermaid.
-• Płynna aktualizacja bez migotania (<1ms) dopasowana do trybu ciemnego i jasnego.
-• Kolorowanie składni i skojarzenia plików .mmd / .mermaid.""",
+• Podgląd matematyki LaTeX w czasie rzeczywistym w Markdown i Mermaid:
+  Renderuje równania liniowe ($...$), blokowe ($$...$$), bloki ```math oraz wzory w diagramach Mermaid do natywnego MathML.
+• Działający w 100% offline natywny silnik C++ (do 40× szybszy) dla 33 typów diagramów Mermaid i wzorów LaTeX.
+• Zachowuje wpisany tekst podczas przełączania między Szukaj (Ctrl+F) a Zamień (Ctrl+H).""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -394,13 +394,13 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.39
-📊 Directe live-weergave voor Mermaid-diagrammen en grafieken (Alt+P)
+        "releaseNotes": """Releaseopmerkingen miu v1.0.40
+📐 Live LaTeX-formuleweergave & 100% offline native C++-diagram-engine (Alt+P)
 
-• Razendsnelle SVG-weergave voor 33 Mermaid-diagramtypen (Pele-engine):
-  Rendert sequentie-, stroom- en XY-grafieken in ```mermaid-blokken en .mmd / .mermaid-bestanden.
-• Vloeiende updates zonder knipperen (<1ms) met automatische donkere/lichte thema-aanpassing.
-• Syntaxiskleuring en bestandsassociaties voor .mmd / .mermaid.""",
+• Realtime LaTeX-wiskundeweergave in Markdown & Mermaid-diagrammen:
+  Rendert inline ($...$), blok ($$...$$), ```math-blokken en formules in Mermaid-diagrammen direct als haarscherpe native MathML.
+• 100% offline native C++-engine (tot 40× sneller) voor alle 33 Mermaid-diagramtypen en LaTeX-formules.
+• Behoudt de zoektekst bij het schakelen tussen Zoeken (Ctrl+F) en Vervangen (Ctrl+H).""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -439,13 +439,13 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.39 Sürüm Notları
-📊 Mermaid Diyagramları ve Grafikleri İçin Canlı Önizleme (Alt+P)
+        "releaseNotes": """miu v1.0.40 Sürüm Notları
+📐 Canlı LaTeX Formül Önizlemesi ve %100 Çevrimdışı Yerel C++ Motoru (Alt+P)
 
-• 33 Mermaid Diyagram Türü İçin Anında SVG Oluşturma (Pele Motoru):
-  ```mermaid blokları ve .mmd / .mermaid dosyalarındaki akış, sıralama ve XY grafiklerini canlı olarak çizer.
-• Titremesiz yerinde güncelleme (<1ms) ve Koyu/Açık tema uyumu.
-• .mmd / .mermaid sözdizimi renklendirmesi ve dosya ilişkilendirmesi.""",
+• Markdown ve Mermaid Diyagramlarında Gerçek Zamanlı LaTeX Matematik Önizlemesi:
+  Satır içi ($...$), blok ($$...$$), ```math kod blokları ve Mermaid diyagramlarındaki LaTeX formüllerini anında yerel MathML olarak çizer.
+• 33 Mermaid diyagram türü ve LaTeX formülleri için %100 çevrimdışı yerel C++ motoru (40 kata kadar daha hızlı).
+• Bul (Ctrl+F) ve Değiştir (Ctrl+H) arasında geçiş yaparken arama metnini korur.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -483,13 +483,13 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.39
-📊 Xem trước trực tiếp sơ đồ và biểu đồ Mermaid (Alt+P)
+        "releaseNotes": """Ghi chú phát hành miu v1.0.40
+📐 Xem trước trực tiếp công thức LaTeX & nhân C++ gốc ngoại tuyến 100% (Alt+P)
 
-• Kết xuất SVG tức thì cho 33 loại sơ đồ Mermaid (nhân Pele):
-  Vẽ trực tiếp sơ đồ tuần tự, lưu đồ, biểu đồ XY trong khối ```mermaid và tệp .mmd / .mermaid.
-• Cập nhật mượt mà không nhấp nháy (<1ms), tự động đồng bộ giao diện Sáng/Tối.
-• Tô sáng cú pháp và liên kết tệp .mmd / .mermaid.""",
+• Xem trước công thức toán học LaTeX theo thời gian thực trong Markdown & Mermaid:
+  Kết xuất công thức nội dòng ($...$), khối ($$...$$), khối ```math và công thức trong sơ đồ Mermaid sang MathML gốc sắc nét.
+• Nhân C++ gốc hoạt động ngoại tuyến 100% (nhanh hơn tới 40 lần) cho 33 loại sơ đồ Mermaid và công thức LaTeX.
+• Giữ nguyên văn bản tìm kiếm khi chuyển đổi giữa Tìm (Ctrl+F) và Thay thế (Ctrl+H).""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -528,13 +528,13 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.39
-📊 Живий перегляд діаграм і графіків Mermaid (Alt+P)
+        "releaseNotes": """Примітки до випуску miu v1.0.40
+📐 Живий перегляд формул LaTeX та 100% офлайн нативний C++ рушій діаграм (Alt+P)
 
-• Миттєвий SVG-рендеринг 33 типів діаграм Mermaid (рушій Pele):
-  Відображення діаграм послідовностей, блок-схем і графіків XY у блоках ```mermaid та файлах .mmd / .mermaid.
-• Плавне оновлення без мерехтіння (<1ms) та синхронізація з темною/світлою темою.
-• Підсвічування синтаксису та асоціація файлів .mmd / .mermaid.""",
+• Перегляд математичних формул LaTeX у реальному часі в Markdown і Mermaid:
+  Миттєвий рендеринг рядкових ($...$), блокових ($$...$$) формул, блоків ```math і формул у діаграмах Mermaid у чіткий нативний MathML.
+• 100% офлайн нативний C++ рушій (до 40 разів швидший) для всіх 33 типів діаграм Mermaid і формул LaTeX.
+• Збереження пошукового тексту під час перемикання між Пошуком (Ctrl+F) і Заміною (Ctrl+H).""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -573,13 +573,13 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.39
-📊 Pratinjau Langsung Diagram & Grafik Mermaid (Alt+P)
+        "releaseNotes": """Catatan Rilis miu v1.0.40
+📐 Pratinjau Langsung Rumus LaTeX & Mesin C++ Native 100% Offline (Alt+P)
 
-• Render SVG Instan untuk 33 Jenis Diagram Mermaid (Mesin Pele):
-  Menampilkan diagram urutan, bagan alir, dan grafik XY secara langsung di blok ```mermaid serta file .mmd / .mermaid.
-• Pembaruan mulus tanpa kedip (<1ms) dengan sinkronisasi tema Gelap/Terang otomatis.
-• Penyorotan sintaks dan asosiasi file .mmd / .mermaid.""",
+• Pratinjau Matematika LaTeX Real-Time di Markdown & Diagram Mermaid:
+  Merender persamaan inline ($...$), blok ($$...$$), blok ```math, serta rumus di dalam diagram Mermaid menjadi MathML native yang tajam.
+• Mesin C++ native 100% offline (hingga 40× lebih cepat) untuk 33 jenis diagram Mermaid dan rumus LaTeX.
+• Mempertahankan teks pencarian saat beralih antara Temukan (Ctrl+F) dan Ganti (Ctrl+H).""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -618,13 +618,13 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.39
-📊 Živý náhled diagramů a grafů Mermaid (Alt+P)
+        "releaseNotes": """Poznámky k verzi miu v1.0.40
+📐 Živý náhled vzorců LaTeX a 100% offline nativní C++ engine (Alt+P)
 
-• Okamžité vykreslování SVG pro 33 typů diagramů Mermaid (engine Pele):
-  Živě vykresluje sekvenční, vývojové a XY grafy v blocích ```mermaid a souborech .mmd / .mermaid.
-• Plynulá aktualizace bez blikání (<1ms) s automatickým tmavým/světlým motivem.
-• Zvýrazňování syntaxe a asociace souborů .mmd / .mermaid.""",
+• Živý náhled matematických vzorců LaTeX v Markdownu a diagramech Mermaid:
+  Okamžitě vykresluje řádkové ($...$) i blokové ($$...$$) rovnice, bloky ```math a vzorce v diagramech Mermaid do nativního MathML.
+• 100% offline nativní C++ engine (až 40× rychlejší) pro 33 typů diagramů Mermaid a vzorce LaTeX.
+• Zachovává hledaný text při přepínání mezi Najít (Ctrl+F) a Nahradit (Ctrl+H).""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -663,13 +663,13 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.39
-📊 Live-förhandsgranskning av Mermaid-diagram och grafer (Alt+P)
+        "releaseNotes": """Versionsinformation för miu v1.0.40
+📐 Live-förhandsgranskning av LaTeX-formler & 100 % offline C++-motor (Alt+P)
 
-• Direkt SVG-rendering för 33 Mermaid-diagramtyper (Pele-motor):
-  Ritar sekvens-, flödes- och XY-diagram i realtid i ```mermaid-block och .mmd / .mermaid-filer.
-• Flimmerfri uppdatering (<1ms) med automatisk anpassning till mörkt och ljust läge.
-• Syntaxmarkering och filassociationer för .mmd / .mermaid.""",
+• Realtidsgranskning av LaTeX-matematik i Markdown och Mermaid-diagram:
+  Renderar inline- ($...$), block- ($$...$$), ```math-block och formler i Mermaid-diagram direkt som knivskarp nativ MathML.
+• 100 % offline nativ C++-motor (upp till 40× snabbare) för alla 33 Mermaid-diagramtyper och LaTeX-formler.
+• Behåller söktexten vid växling mellan Sök (Ctrl+F) och Ersätt (Ctrl+H).""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -708,13 +708,13 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.39
-📊 พรีวิวแผนภาพและกราฟ Mermaid แบบเรียลไทม์ (Alt+P)
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.40
+📐 พรีวิวสมการคณิตศาสตร์ LaTeX แบบเรียลไทม์ & เอนจิน C++ เนทีฟออฟไลน์ 100% (Alt+P)
 
-• เรนเดอร์ SVG ความเร็วสูงสำหรับแผนภาพ Mermaid 33 รูปแบบ (ขับเคลื่อนด้วย Pele):
-  วาด Sequence, Flowchart และกราฟ XY ทันทีในบล็อก ```mermaid และไฟล์ .mmd / .mermaid
-• อัปเดตไร้การกะพริบ (<1ms) พร้อมปรับสีตามโหมดมืดและโหมดสว่างอัตโนมัติ
-• เพิ่มการไฮไลต์ไวยากรณ์และการเชื่อมโยงไฟล์ .mmd / .mermaid""",
+• พรีวิวสมการ LaTeX แบบเรียลไทม์ใน Markdown และแผนภาพ Mermaid:
+  แปลงสมการในบรรทัด ($...$), บล็อก ($$...$$), บล็อก ```math และสมการในแผนภาพ Mermaid เป็น MathML เนทีฟที่คมชัดทันที
+• เอนจิน C++ เนทีฟทำงานออฟไลน์ 100% (เร็วขึ้นสูงสุด 40 เท่า) สำหรับแผนภาพ Mermaid 33 รูปแบบและสมการ LaTeX
+• คงข้อความค้นหาไว้เมื่อสลับระหว่างหน้าต่างค้นหา (Ctrl+F) และแทนที่ (Ctrl+H)""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -753,13 +753,13 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.39 रिलीज़ नोट्स
-📊 Mermaid डायग्राम और चार्ट का तुरंत लाइव प्रीव्यू (Alt+P)
+        "releaseNotes": """miu v1.0.40 रिलीज़ नोट्स
+📐 LaTeX गणित सूत्र लाइव प्रीव्यू और 100% ऑफ़लाइन नेटिव C++ इंजन (Alt+P)
 
-• 33 प्रकार के Mermaid डायग्राम के लिए तेज़ SVG रेंडरिंग (Pele इंजन):
-  ```mermaid ब्लॉक और .mmd / .mermaid फ़ाइलों में सीक्वेंस, फ़्लोचार्ट और XY चार्ट को तुरंत लाइव ग्राफ़ में बदलता है।
-• बिना झिलमिलाहट अपडेट (<1ms) और डार्क/लाइट थीम सिंक।
-• .mmd / .mermaid सिंटैक्स हाइलाइटिंग और फ़ाइल एसोसिएशन।""",
+• Markdown और Mermaid डायग्राम में रीयल-टाइम LaTeX गणित प्रीव्यू:
+  इनलाइन ($...$), ब्लॉक ($$...$$), ```math ब्लॉक और Mermaid डायग्राम के भीतर के सूत्रों को तुरंत स्पष्ट नेटिव MathML में रेंडर करता है।
+• सभी 33 Mermaid डायग्राम प्रकारों और LaTeX सूत्रों के लिए 100% ऑफ़लाइन नेटिव C++ इंजन (40 गुना तक तेज़)।
+• खोजें (Ctrl+F) और बदलें (Ctrl+H) के बीच स्विच करते समय खोज टेक्स्ट को बनाए रखता है।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -798,13 +798,13 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.39
-📊 Previzualizare live pentru diagrame și grafice Mermaid (Alt+P)
+        "releaseNotes": """Note de lansare miu v1.0.40
+📐 Previzualizare live pentru formule LaTeX și motor C++ nativ 100% offline (Alt+P)
 
-• Redare SVG instantanee pentru 33 de tipuri de diagrame Mermaid (motor Pele):
-  Desenează în timp real diagrame de secvență, flux și grafice XY în blocuri ```mermaid și fișiere .mmd / .mermaid.
-• Actualizare fără pâlpâire (<1ms) adaptată automat la modul întunecat/luminos.
-• Evidențiere sintaxă și asociere fișiere .mmd / .mermaid.""",
+• Previzualizare matematică LaTeX în timp real în Markdown și diagrame Mermaid:
+  Redă instantaneu ecuații inline ($...$), bloc ($$...$$), blocuri ```math și formule din diagrame Mermaid în MathML nativ clar.
+• Motor C++ nativ 100% offline (de până la 40× mai rapid) pentru toate cele 33 de tipuri de diagrame Mermaid și formule LaTeX.
+• Păstrează textul căutat la comutarea între Căutare (Ctrl+F) și Înlocuire (Ctrl+H).""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -843,13 +843,13 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.39 kiadási megjegyzések
-📊 Mermaid diagramok és grafikonok élő előnézete (Alt+P)
+        "releaseNotes": """miu v1.0.40 kiadási megjegyzések
+📐 LaTeX képletek élő előnézete és 100%-ban offline natív C++ motor (Alt+P)
 
-• Azonnali SVG megjelenítés 33 Mermaid diagramtípushoz (Pele motor):
-  Élőben rajzolja ki a szekvencia-, folyamat- és XY-grafikonokat a ```mermaid blokkokban és .mmd / .mermaid fájlokban.
-• Villódzásmentes frissítés (<1ms) automatikus sötét/világos témaillesztéssel.
-• .mmd / .mermaid szintaxiskiemelés és fájltársítás.""",
+• Valós idejű LaTeX matematikai előnézet Markdownban és Mermaid diagramokban:
+  A sorközi ($...$), blokkos ($$...$$), ```math blokkokat és a Mermaid diagramokban lévő képleteket azonnal éles natív MathML-ként jeleníti meg.
+• 100%-ban offline natív C++ motor (akár 40× gyorsabb) mind a 33 Mermaid diagramtípushoz és LaTeX képlethez.
+• Megőrzi a keresett szöveget a Keresés (Ctrl+F) és Csere (Ctrl+H) közötti váltáskor.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -888,13 +888,13 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.39
-📊 Ζωντανή προεπισκόπηση διαγραμμάτων και γραφημάτων Mermaid (Alt+P)
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.40
+📐 Ζωντανή προεπισκόπηση εξισώσεων LaTeX & εγγενής μηχανή C++ 100% εκτός σύνδεσης (Alt+P)
 
-• Άμεση απόδοση SVG για 33 τύπους διαγραμμάτων Mermaid (μηχανή Pele):
-  Σχεδιάζει ζωντανά διαγράμματα ακολουθίας, ροής και γραφήματα XY σε μπλοκ ```mermaid και αρχεία .mmd / .mermaid.
-• Ενημέρωση χωρίς τρεμόπαιγμα (<1ms) με αυτόματη προσαρμογή σκοτεινού/φωτεινού θέματος.
-• Επισήμανση σύνταξης και συσχέτιση αρχείων .mmd / .mermaid.""",
+• Προεπισκόπηση μαθηματικών LaTeX σε πραγματικό χρόνο σε Markdown & Mermaid:
+  Αποδίδει εξισώσεις εντός γραμμής ($...$), μπλοκ ($$...$$), μπλοκ ```math και τύπους σε διαγράμματα Mermaid σε ευκρινές εγγενές MathML.
+• Εγγενής μηχανή C++ 100% εκτός σύνδεσης (έως 40× ταχύτερη) για 33 τύπους διαγραμμάτων Mermaid και εξισώσεις LaTeX.
+• Διατηρεί το κείμενο αναζήτησης κατά την εναλλαγή μεταξύ Εύρεσης (Ctrl+F) και Αντικατάστασης (Ctrl+H).""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -933,13 +933,13 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.39
-📊 Live-forhåndsvisning af Mermaid-diagrammer og grafer (Alt+P)
+        "releaseNotes": """Udgivelsesnoter for miu v1.0.40
+📐 Live-forhåndsvisning af LaTeX-formler & 100 % offline native C++-motor (Alt+P)
 
-• Øjeblikkelig SVG-gengivelse af 33 Mermaid-diagramtyper (Pele-motor):
-  Tegner sekvens-, flow- og XY-grafer live i ```mermaid-blokke og .mmd / .mermaid-filer.
-• Flimmerfri opdatering (<1ms) med automatisk mørk/lys-tematilpasning.
-• Syntaksfremhævning ogck-filtilknytning for .mmd / .mermaid.""",
+• LaTeX-matematikvisning i realtid i Markdown og Mermaid-diagrammer:
+  Gengiver inline- ($...$), blok- ($$...$$), ```math-blokke og formler i Mermaid-diagrammer straks som skarp native MathML.
+• 100 % offline native C++-motor (op til 40× hurtigere) til alle 33 Mermaid-diagramtyper og LaTeX-formler.
+• Bevarer søgeteksten ved skift mellem Find (Ctrl+F) og Erstat (Ctrl+H).""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -978,13 +978,13 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.39 julkaisutiedot
-📊 Mermaid-kaavioiden ja -kuvaajien reaaliaikainen esikatselu (Alt+P)
+        "releaseNotes": """miu v1.0.40 julkaisutiedot
+📐 LaTeX-kaavojen reaaliaikainen esikatselu & 100 % offline natiivi C++-moottori (Alt+P)
 
-• Välitön SVG-renderöinti 33 Mermaid-kaaviotyypille (Pele-moottori):
-  Piirtää sekvenssi-, vuo- ja XY-kaaviot livenä ```mermaid-lohkoissa sekä .mmd / .mermaid-tiedostoissa.
-• Välkkymätön päivitys (<1ms) ja automaattinen tumman/vaalean teeman synkronointi.
-• .mmd / .mermaid -syntaksikorostus ja tiedostokytkennät.""",
+• Reaaliaikainen LaTeX-matematiikan esikatselu Markdownissa ja Mermaid-kaavioissa:
+  Renderöi rivinsisäiset ($...$), lohko- ($$...$$), ```math-lohkot sekä Mermaid-kaavioiden kaavat välittömästi tarkaksi natiiviksi MathML:ksi.
+• 100 % offline natiivi C++-moottori (jopa 40× nopeampi) kaikille 33 Mermaid-kaaviotyypille ja LaTeX-kaavoille.
+• Säilyttää hakutekstin vaihdettaessa Etsi (Ctrl+F) ja Korvaa (Ctrl+H) -välillä.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1023,13 +1023,13 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.39
-📊 Live-forhåndsvisning av Mermaid-diagrammer og grafer (Alt+P)
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.40
+📐 Live-forhåndsvisning av LaTeX-formler & 100 % offline native C++-motor (Alt+P)
 
-• Øyeblikkelig SVG-visning for 33 Mermaid-diagramtyper (Pele-motor):
-  Tegner sekvens-, flyt- og XY-grafer live i ```mermaid-blokker og .mmd / .mermaid-filer.
-• Flimmerfri oppdatering (<1ms) med automatisk mørk/lys-tematilpasning.
-• Syntaksutheving og filtilknytning for .mmd / .mermaid.""",
+• Sanntidsvisning av LaTeX-matematikk i Markdown og Mermaid-diagrammer:
+  Gjengir inline- ($...$), blokk- ($$...$$), ```math-blokker og formler i Mermaid-diagrammer øyeblikkelig som skarp native MathML.
+• 100 % offline native C++-motor (opptil 40× raskere) for alle 33 Mermaid-diagramtyper og LaTeX-formler.
+• Beholder søketeksten ved bytte mellom Finn (Ctrl+F) og Erstatt (Ctrl+H).""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1068,13 +1068,13 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.39
-📊 Pratonton Langsung Rajah & Graf Mermaid (Alt+P)
+        "releaseNotes": """Nota Keluaran miu v1.0.40
+📐 Pratonton Langsung Formula LaTeX & Enjin C++ Asli 100% Luar Talian (Alt+P)
 
-• Paparan SVG Segera untuk 33 Jenis Rajah Mermaid (Enjin Pele):
-  Melukis rajah urutan, carta alir dan graf XY secara langsung dalam blok ```mermaid serta fail .mmd / .mermaid.
-• Kemas kini lancar tanpa kelipan (<1ms) dengan penyelarasan tema Gelap/Cerah automatik.
-• Serlahan sintaks dan kaitan fail .mmd / .mermaid.""",
+• Pratonton Matematik LaTeX Masa Nyata dalam Markdown & Rajah Mermaid:
+  Memaparkan persamaan sebaris ($...$), blok ($$...$$), blok ```math serta formula dalam rajah Mermaid kepada MathML asli yang tajam.
+• Enjin C++ asli 100% luar talian (sehingga 40× lebih pantas) untuk 33 jenis rajah Mermaid dan formula LaTeX.
+• Mengekalkan teks carian semasa bertukar antara Cari (Ctrl+F) dan Ganti (Ctrl+H).""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",
