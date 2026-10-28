@@ -34,13 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.40 更新日誌
-📐 新增 LaTeX 數學公式即時預覽 & 100% 離線 C++ 原生圖表引擎（Alt+P）
+        "releaseNotes": """miu v1.0.41 更新日誌
+🎯 100% 原版相容 Pele 圖表引擎、預覽與編輯器核心極速最佳化及全方位安全加固
 
-・支援 Markdown 與 Mermaid 圖表內 LaTeX 數學公式即時預覽：
-  支援行內公式（$...$）、區塊公式（$$...$$）、```math / ```latex 程式碼區塊及 Mermaid 圖表內的 LaTeX 公式，即時轉換為高畫質原生 MathML。
-・100% 離線極速 C++ 原生渲染引擎（提速高達 40 倍），無需連網即可毫秒級繪製 33 種 Mermaid 圖表與數學公式。
-・改善尋找與取代對話方塊（Ctrl+F ⇄ Ctrl+H）切換體驗，完整保留已輸入的搜尋文字。""",
+・100% 相容原版 Pele 的 C++ 原生圖表引擎（官方 522/522 範例完全一致）：
+  1:1 完整移植全部 33 種圖表、55 種節點形狀、分層與複合佈局演算法及區塊箭頭語法，輸出與 pele.run 完全一致的 SVG，並保持 100% 離線與原生 LaTeX 數學公式支援。
+・預覽與編輯器核心大幅提速（最高提速 319 倍）：
+  引入 Mermaid/MathML 快取與 DOM 增量更新（即時預覽提速 9.8 倍）、O(1) UTF-16 偏移映射與 Direct2D 資源快取（提速 282 倍）、單行編輯增量索引更新（提速 319 倍）及 SIMD 括號配對。
+・多層安全加固：
+  強化 WebView2 與嚴格 CSP 政策、SVG/Markdown/公式安全過濾、DLL 預載入防護、暫存檔獨佔鎖定及 CFG 與 CET 影子堆疊保護。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -79,13 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.40 Versionshinweise
-📐 LaTeX-Formel-Live-Vorschau & 100 % Offline-C++-Diagramm-Engine (Alt+P)
+        "releaseNotes": """miu v1.0.41 Versionshinweise
+🎯 100 % kompatible C++-Pele-Diagramm-Engine, bis zu 319× höheres Tempo & Sicherheits-Hardening
 
-• Echtzeit-LaTeX-Mathematikvorschau in Markdown & Mermaid-Diagrammen:
-  Rendert Inline- ($...$), Block- ($$...$$) und ```math-Formeln sowie Gleichungen in Mermaid-Diagrammen sofort als gestochen scharfes natives MathML.
-• 100 % Offline-C++-Engine (bis zu 40× schneller) für alle 33 Mermaid-Diagrammtypen und LaTeX-Formeln ohne externe Abhängigkeiten.
-• Behält den Suchtext beim Wechsel zwischen Suchen (Strg+F) und Ersetzen (Strg+H) bei.""",
+• 100 % Upstream-kompatible C++-Pele-Diagramm-Engine (522/522 Corpus-Tests exakt identisch):
+  Vollständige 1:1-Portierung aller 33 Diagrammtypen, 55 Knotenformen, Layout-Algorithmen und Blockpfeile nach C++17 – liefert exakt dieselbe SVG-Ausgabe wie pele.run (100 % offline inkl. LaTeX-MathML).
+• Massive Beschleunigung für Vorschau & Editor-Kern (bis zu 319× schneller):
+  Mermaid/MathML-Memoization & DOM-Diff-Updates (bis zu 9,8× schnellere Live-Vorschau), O(1)-UTF-16-Offsets & Direct2D-Ressourcen-Cache (bis zu 282× schneller), inkrementelle Zeilenindex-Updates (bis zu 319× schneller) und SIMD-Klammernsuche.
+• Mehrschichtige Sicherheits-Härtung:
+  Gehärtete WebView2- & CSP-Richtlinien, SVG/Markdown/MathML-Bereinigung, DLL-Hijacking-Schutz, exklusives Dateisperren sowie CFG (/guard:cf) & CET Shadow Stack (/CETCOMPAT).""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -124,13 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.40
-📐 Aperçu en direct des formules LaTeX et moteur C++ 100 % hors ligne (Alt+P)
+        "releaseNotes": """Notes de version miu v1.0.41
+🎯 Moteur de diagrammes C++ 100 % compatible Pele, accélération jusqu'à 319× et sécurité renforcée
 
-• Aperçu mathématique LaTeX en temps réel dans Markdown et Mermaid :
-  Affiche les équations en ligne ($...$), en bloc ($$...$$), les blocs ```math et les formules dans les diagrammes Mermaid en MathML natif ultra-net.
-• Moteur C++ natif 100 % hors ligne (jusqu'à 40× plus rapide) pour les 33 types de diagrammes Mermaid et formules LaTeX.
-• Conservation du texte recherché lors du basculement entre Rechercher (Ctrl+F) et Remplacer (Ctrl+H).""",
+• Moteur C++ 100 % compatible avec Pele officiel (522/522 tests officiels identiques à l'octet près) :
+  Portage C++17 1:1 des 33 types de diagrammes, 55 formes, moteurs de mise en page et flèches blocs, produisant un SVG strictement identique à pele.run tout en restant 100 % hors ligne avec support LaTeX MathML.
+• Accélération majeure de l'aperçu et du cœur de l'éditeur (jusqu'à 319× plus rapide) :
+  Mémoïsation Mermaid/MathML et mise à jour DOM différentielle (aperçu 9,8× plus rapide), table UTF-16 O(1) et cache Direct2D (282× plus rapide), indexation incrémentale des lignes (319× plus rapide) et recherche SIMD des parenthèses.
+• Sécurité multicouche renforcée :
+  Durcissement WebView2 et CSP stricte, assainissement SVG/Markdown/MathML, protection contre le détournement de DLL, verrouillage exclusif des fichiers et protections CFG + CET Shadow Stack.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -169,13 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.40
-📐 Vista previa en vivo de fórmulas LaTeX y motor C++ 100 % sin conexión (Alt+P)
+        "releaseNotes": """Notas de la versión miu v1.0.41
+🎯 Motor C++ 100 % compatible con Pele, aceleración de hasta 319× y refuerzo de seguridad
 
-• Vista previa de matemáticas LaTeX en tiempo real en Markdown y Mermaid:
-  Renderiza ecuaciones en línea ($...$), en bloque ($$...$$), bloques ```math y fórmulas dentro de diagramas Mermaid en MathML nativo.
-• Motor C++ nativo 100 % sin conexión (hasta 40 veces más rápido) para los 33 tipos de diagramas Mermaid y fórmulas matemáticas.
-• Conserva el texto de búsqueda al alternar entre Buscar (Ctrl+F) y Reemplazar (Ctrl+H).""",
+• Motor de diagramas C++ 100 % compatible con Pele oficial (522/522 casos idénticos byte a byte):
+  Portabilidad C++17 1:1 de los 33 tipos de diagramas, 55 formas de nodos, algoritmos de diseño y flechas de bloque, generando un SVG idéntico a pele.run 100 % sin conexión con soporte matemático LaTeX.
+• Gran aceleración de vista previa y núcleo del editor (hasta 319× más rápido):
+  Memoización Mermaid/MathML y actualización diferencial del DOM (vista previa 9,8× más rápida), mapeo UTF-16 O(1) y caché Direct2D (282× más rápido), actualización incremental de líneas (319× más rápida) y búsqueda SIMD de paréntesis.
+• Seguridad multicapa reforzada:
+  Endurecimiento de WebView2 y CSP estricta, saneamiento SVG/Markdown/MathML, protección contra secuestro de DLL, bloqueo exclusivo de archivos y CFG + CET Shadow Stack.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -214,13 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.40
-📐 Pré-visualização ao vivo de fórmulas LaTeX e motor C++ 100% offline (Alt+P)
+        "releaseNotes": """Notas de lançamento do miu v1.0.41
+🎯 Motor C++ 100% compatível com Pele, aceleração de até 319× e reforço de segurança
 
-• Pré-visualização de matemática LaTeX em tempo real no Markdown e Mermaid:
-  Renderiza equações inline ($...$), em bloco ($$...$$), blocos ```math e fórmulas em diagramas Mermaid em MathML nativo.
-• Motor C++ nativo 100% offline (até 40× mais rápido) para todos os 33 tipos de diagramas Mermaid e fórmulas LaTeX.
-• Mantém o texto pesquisado ao alternar entre Localizar (Ctrl+F) e Substituir (Ctrl+H).""",
+• Motor de diagramas C++ 100% compatível com o Pele oficial (522/522 exemplos idênticos byte a byte):
+  Portabilidade C++17 1:1 de todos os 33 tipos de diagramas, 55 formas, algoritmos de layout e setas em bloco, gerando SVG idêntico ao pele.run 100% offline com suporte a fórmulas LaTeX.
+• Grande aceleração da pré-visualização e do editor (até 319× mais rápido):
+  Memoização Mermaid/MathML e atualização diferencial do DOM (pré-visualização 9,8× mais rápida), tabela UTF-16 O(1) e cache Direct2D (282× mais rápido), atualização incremental de linhas (319× mais rápida) e busca SIMD de parênteses.
+• Segurança multicamada reforçada:
+  Endurecimento do WebView2 e CSP estrita, sanitização de SVG/Markdown/MathML, proteção contra sequestro de DLL, bloqueio exclusivo de arquivos e CFG + CET Shadow Stack.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -259,13 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.40
-📐 Живой предпросмотр формул LaTeX и 100% офлайн C++ движок диаграмм (Alt+P)
+        "releaseNotes": """Примечания к выпуску miu v1.0.41
+🎯 100% совместимый с Pele движок диаграмм C++, ускорение до 319 раз и усиление безопасности
 
-• Предпросмотр математических формул LaTeX в реальном времени в Markdown и Mermaid:
-  Мгновенный рендеринг строчных ($...$), блочных ($$...$$) формул, блоков ```math и формул внутри диаграмм Mermaid в чёткий нативный MathML.
-• 100% офлайн нативный C++ движок (до 40 раз быстрее) для всех 33 типов диаграмм Mermaid и формул LaTeX.
-• Сохранение текста поиска при переключении между окнами поиска (Ctrl+F) и замены (Ctrl+H).""",
+• 100% совместимый с оригинальным Pele нативный C++ движок (522/522 тестов совпадают побайтово):
+  Полный перенос 1:1 на C++17 всех 33 типов диаграмм, 55 фигур узлов, алгоритмов компоновки и блочных стрелок — идентичный pele.run вывод SVG на 100% офлайн с поддержкой формул LaTeX.
+• Масштабное ускорение предпросмотра и ядра редактора (до 319 раз быстрее):
+  Мемоизация Mermaid/MathML и инкрементальное обновление DOM (предпросмотр до 9,8× быстрее), таблица смещений UTF-16 за O(1) и кэш ресурсов Direct2D (до 282× быстрее), инкрементальное обновление индексов строк (до 319× быстрее) и SIMD-поиск скобок.
+• Многоуровневая защита безопасности:
+  Усиление WebView2 и строгая политика CSP, санитизация SVG/Markdown/MathML, защита от подмены DLL, эксклюзивная блокировка временных файлов, а также защита CFG (/guard:cf) и CET Shadow Stack.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -304,13 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.40
-📐 Anteprima live di formule LaTeX e motore C++ nativo 100% offline (Alt+P)
+        "releaseNotes": """Note di rilascio di miu v1.0.41
+🎯 Motore C++ 100% compatibile con Pele, velocità fino a 319× superiore e sicurezza potenziata
 
-• Anteprima matematica LaTeX in tempo reale in Markdown e Mermaid:
-  Converte equazioni inline ($...$), in blocco ($$...$$), blocchi ```math e formule nei diagrammi Mermaid in nitido MathML nativo.
-• Motore C++ nativo 100% offline (fino a 40× più veloce) per tutti i 33 tipi di diagrammi Mermaid e formule LaTeX.
-• Mantiene il testo cercato passando tra Trova (Ctrl+F) e Sostituisci (Ctrl+H).""",
+• Motore di diagrammi C++ 100% compatibile con Pele ufficiale (522/522 test identici byte per byte):
+  Porting C++17 1:1 di tutti i 33 tipi di diagrammi, 55 forme, algoritmi di layout e frecce a blocchi, con output SVG identico a pele.run, 100% offline e con supporto LaTeX MathML.
+• Enorme accelerazione di anteprima ed editor (fino a 319× più veloce):
+  Memoizzazione Mermaid/MathML e aggiornamento DOM differenziale (anteprima fino a 9,8× più veloce), mappa UTF-16 O(1) e cache Direct2D (282× più veloce), indici di riga incrementali (319× più veloci) e ricerca parentesi SIMD.
+• Sicurezza multilivello potenziata:
+  Hardening WebView2 e CSP rigorosa, sanitizzazione SVG/Markdown/MathML, protezione DLL hijacking, blocco file esclusivo e protezioni CFG + CET Shadow Stack.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -349,13 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.40
-📐 Podgląd na żywo wzorów LaTeX oraz w 100% offline'owy natywny silnik C++ (Alt+P)
+        "releaseNotes": """Informacje o wersji miu v1.0.41
+🎯 Silnik C++ w 100% zgodny z Pele, przyspieszenie do 319× oraz wielowarstwowe zabezpieczenia
 
-• Podgląd matematyki LaTeX w czasie rzeczywistym w Markdown i Mermaid:
-  Renderuje równania liniowe ($...$), blokowe ($$...$$), bloki ```math oraz wzory w diagramach Mermaid do natywnego MathML.
-• Działający w 100% offline natywny silnik C++ (do 40× szybszy) dla 33 typów diagramów Mermaid i wzorów LaTeX.
-• Zachowuje wpisany tekst podczas przełączania między Szukaj (Ctrl+F) a Zamień (Ctrl+H).""",
+• Natywny silnik diagramów C++ w 100% zgodny z oryginalnym Pele (522/522 testów identycznych co do bajtu):
+  Pełny port C++17 1:1 wszystkich 33 typów diagramów, 55 kształtów, algorytmów układu i strzałek blokowych — generuje SVG identyczny z pele.run w 100% offline z obsługą wzorów LaTeX.
+• Ogromne przyspieszenie podglądu i rdzenia edytora (do 319× szybciej):
+  Memoizacja Mermaid/MathML i różnicowa aktualizacja DOM (podgląd do 9,8× szybszy), mapowanie UTF-16 O(1) i pamięć podręczna Direct2D (do 282× szybciej), przyrostowa aktualizacja wierszy (do 319× szybciej) oraz wyszukiwanie nawiasów SIMD.
+• Wielowarstwowe wzmocnienie bezpieczeństwa:
+  Utwardzenie WebView2 i ścisłe CSP, sanityzacja SVG/Markdown/MathML, ochrona przed przejęciem DLL, wyłączne blokowanie plików oraz ochrona CFG i CET Shadow Stack.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -394,13 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.40
-📐 Live LaTeX-formuleweergave & 100% offline native C++-diagram-engine (Alt+P)
+        "releaseNotes": """Releaseopmerkingen miu v1.0.41
+🎯 100% Pele-compatibele C++-diagram-engine, tot 319× sneller & uitgebreide beveiliging
 
-• Realtime LaTeX-wiskundeweergave in Markdown & Mermaid-diagrammen:
-  Rendert inline ($...$), blok ($$...$$), ```math-blokken en formules in Mermaid-diagrammen direct als haarscherpe native MathML.
-• 100% offline native C++-engine (tot 40× sneller) voor alle 33 Mermaid-diagramtypen en LaTeX-formules.
-• Behoudt de zoektekst bij het schakelen tussen Zoeken (Ctrl+F) en Vervangen (Ctrl+H).""",
+• 100% met originele Pele compatibele C++-diagram-engine (522/522 tests byte-voor-byte identiek):
+  Volledige 1:1 C++17-port van alle 33 diagramtypen, 55 vormen, lay-out-engines en blokpijlen — levert exact dezelfde SVG-uitvoer als pele.run, 100% offline met LaTeX MathML-ondersteuning.
+• Enorme snelheidswinst voor voorbeeldweergave & editor (tot 319× sneller):
+  Mermaid/MathML-memoisatie en DOM-diff-updates (tot 9,8× snellere live-weergave), O(1) UTF-16-tabel en Direct2D-cache (tot 282× sneller), incrementele regelindex-updates (tot 319× sneller) en SIMD-haakjeszoeken.
+• Meerlaagse beveiligingsverbeteringen:
+  Verscherpte WebView2- & CSP-regels, SVG/Markdown/MathML-sanitisatie, DLL-hijacking-bescherming, exclusieve bestandsvergrendeling en CFG + CET Shadow Stack.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -439,13 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.40 Sürüm Notları
-📐 Canlı LaTeX Formül Önizlemesi ve %100 Çevrimdışı Yerel C++ Motoru (Alt+P)
+        "releaseNotes": """miu v1.0.41 Sürüm Notları
+🎯 %100 Pele Uyumlu C++ Diyagram Motoru, 319 Kata Kadar Hız Artışı ve Çok Katmanlı Güvenlik
 
-• Markdown ve Mermaid Diyagramlarında Gerçek Zamanlı LaTeX Matematik Önizlemesi:
-  Satır içi ($...$), blok ($$...$$), ```math kod blokları ve Mermaid diyagramlarındaki LaTeX formüllerini anında yerel MathML olarak çizer.
-• 33 Mermaid diyagram türü ve LaTeX formülleri için %100 çevrimdışı yerel C++ motoru (40 kata kadar daha hızlı).
-• Bul (Ctrl+F) ve Değiştir (Ctrl+H) arasında geçiş yaparken arama metnini korur.""",
+• %100 Orijinal Pele Uyumlu C++ Diyagram Motoru (522/522 Resmi Test İle Birebir Aynı):
+  33 diyagram türü, 55 düğüm şekli, yerleşim algoritmaları ve blok okların 1:1 C++17 portu sayesinde pele.run ile bayt-bayt aynı SVG çıktısını %100 çevrimdışı ve LaTeX matematik desteğiyle üretir.
+• Önizleme ve Düzenleyici Çekirdeğinde Dev Hızlandırma (319 Kata Kadar Daha Hızlı):
+  Mermaid/MathML önbellekleme ve DOM fark güncellemesi (9,8× daha hızlı canlı önizleme), O(1) UTF-16 tablosu ve Direct2D önbelleği (282× daha hızlı), artımlı satır dizini güncellemesi (319× daha hızlı) ve SIMD parantez eşleştirme.
+• Çok Katmanlı Güvenlik Güçlendirmesi:
+  Güçlendirilmiş WebView2 ve sıkı CSP, SVG/Markdown/MathML temizleme, DLL ele geçirme koruması, özel dosya kilitleme ve CFG + CET Shadow Stack koruması.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -483,13 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.40
-📐 Xem trước trực tiếp công thức LaTeX & nhân C++ gốc ngoại tuyến 100% (Alt+P)
+        "releaseNotes": """Ghi chú phát hành miu v1.0.41
+🎯 Nhân C++ tương thích 100% với Pele gốc, tăng tốc tới 319 lần & tăng cường bảo mật đa lớp
 
-• Xem trước công thức toán học LaTeX theo thời gian thực trong Markdown & Mermaid:
-  Kết xuất công thức nội dòng ($...$), khối ($$...$$), khối ```math và công thức trong sơ đồ Mermaid sang MathML gốc sắc nét.
-• Nhân C++ gốc hoạt động ngoại tuyến 100% (nhanh hơn tới 40 lần) cho 33 loại sơ đồ Mermaid và công thức LaTeX.
-• Giữ nguyên văn bản tìm kiếm khi chuyển đổi giữa Tìm (Ctrl+F) và Thay thế (Ctrl+H).""",
+• Nhân sơ đồ C++ tương thích 100% với Pele gốc (khớp tuyệt đối 522/522 mẫu thử nghiệm):
+  Chuyển đổi 1:1 sang C++17 toàn bộ 33 loại sơ đồ, 55 hình dạng nút, thuật toán bố cục và mũi tên khối — xuất SVG giống hệt pele.run từng byte, hoạt động 100% ngoại tuyến kèm hỗ trợ công thức LaTeX.
+• Tăng tốc vượt trội cho Xem trước & Lõi trình soạn thảo (nhanh hơn tới 319 lần):
+  Bộ nhớ đệm Mermaid/MathML và cập nhật DOM vi sai (xem trước nhanh hơn 9,8 lần), bảng ánh xạ UTF-16 O(1) & bộ đệm Direct2D (nhanh hơn 282 lần), cập nhật chỉ mục dòng tăng dần (nhanh hơn 319 lần) và khớp ngoặc SIMD.
+• Gia cố bảo mật đa lớp:
+  Siết chặt WebView2 & CSP nghiêm ngặt, làm sạch SVG/Markdown/MathML, chống chiếm quyền DLL, khóa tệp độc quyền cùng bảo vệ CFG và CET Shadow Stack.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -528,13 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.40
-📐 Живий перегляд формул LaTeX та 100% офлайн нативний C++ рушій діаграм (Alt+P)
+        "releaseNotes": """Примітки до випуску miu v1.0.41
+🎯 На 100% сумісний із Pele рушій діаграм C++, прискорення до 319 разів і посилення безпеки
 
-• Перегляд математичних формул LaTeX у реальному часі в Markdown і Mermaid:
-  Миттєвий рендеринг рядкових ($...$), блокових ($$...$$) формул, блоків ```math і формул у діаграмах Mermaid у чіткий нативний MathML.
-• 100% офлайн нативний C++ рушій (до 40 разів швидший) для всіх 33 типів діаграм Mermaid і формул LaTeX.
-• Збереження пошукового тексту під час перемикання між Пошуком (Ctrl+F) і Заміною (Ctrl+H).""",
+• На 100% сумісний з оригінальним Pele нативний C++ рушій (522/522 тестів збігаються побайтово):
+  Повне перенесення 1:1 на C++17 усіх 33 типів діаграм, 55 фігур вузлів, алгоритмів компонування та блокових стрілок — ідентичний pele.run вивід SVG на 100% офлайн із підтримкою формул LaTeX.
+• Масштабне прискорення перегляду та ядра редактора (до 319 разів швидше):
+  Мемоізація Mermaid/MathML та інкрементальне оновлення DOM (перегляд до 9,8× швидше), таблиця зміщень UTF-16 за O(1) і кеш Direct2D (до 282× швидше), інкрементальне оновлення рядків (до 319× швидше) і SIMD-пошук дужок.
+• Багаторівневий захист безпеки:
+  Посилення WebView2 і сувора політика CSP, санітизація SVG/Markdown/MathML, захист від підміни DLL, ексклюзивне блокування файлів, а також захист CFG і CET Shadow Stack.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -573,13 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.40
-📐 Pratinjau Langsung Rumus LaTeX & Mesin C++ Native 100% Offline (Alt+P)
+        "releaseNotes": """Catatan Rilis miu v1.0.41
+🎯 Mesin Diagram C++ 100% Kompatibel Pele, Kecepatan Hingga 319× Lebih Cepat & Keamanan Berlapis
 
-• Pratinjau Matematika LaTeX Real-Time di Markdown & Diagram Mermaid:
-  Merender persamaan inline ($...$), blok ($$...$$), blok ```math, serta rumus di dalam diagram Mermaid menjadi MathML native yang tajam.
-• Mesin C++ native 100% offline (hingga 40× lebih cepat) untuk 33 jenis diagram Mermaid dan rumus LaTeX.
-• Mempertahankan teks pencarian saat beralih antara Temukan (Ctrl+F) dan Ganti (Ctrl+H).""",
+• Mesin Diagram C++ 100% Kompatibel dengan Pele Resmi (522/522 Uji Korpus Identik Byte-demi-Byte):
+  Porting C++17 1:1 untuk seluruh 33 jenis diagram, 55 bentuk node, algoritma tata letak, dan panah blok — menghasilkan SVG yang identik dengan pele.run secara 100% offline dengan dukungan rumus LaTeX.
+• Peningkatan Kecepatan Pratinjau & Inti Editor (Hingga 319× Lebih Cepat):
+  Memoisasi Mermaid/MathML dan pembaruan diff DOM (pratinjau 9,8× lebih cepat), tabel UTF-16 O(1) & cache Direct2D (282× lebih cepat), pembaruan indeks baris inkremental (319× lebih cepat), serta pencarian kurung SIMD.
+• Penguatan Keamanan Berlapis:
+  Pengamanan WebView2 & kebijakan CSP ketat, sanitasi SVG/Markdown/MathML, perlindungan pembajakan DLL, penguncian berkas eksklusif, serta perlindungan CFG & CET Shadow Stack.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -618,13 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.40
-📐 Živý náhled vzorců LaTeX a 100% offline nativní C++ engine (Alt+P)
+        "releaseNotes": """Poznámky k verzi miu v1.0.41
+🎯 100% kompatibilní C++ engine Pele, zrychlení až 319× a vícevrstvé zabezpečení
 
-• Živý náhled matematických vzorců LaTeX v Markdownu a diagramech Mermaid:
-  Okamžitě vykresluje řádkové ($...$) i blokové ($$...$$) rovnice, bloky ```math a vzorce v diagramech Mermaid do nativního MathML.
-• 100% offline nativní C++ engine (až 40× rychlejší) pro 33 typů diagramů Mermaid a vzorce LaTeX.
-• Zachovává hledaný text při přepínání mezi Najít (Ctrl+F) a Nahradit (Ctrl+H).""",
+• 100% kompatibilní nativní C++ engine diagramů Pele (522/522 testů shodných bajt po bajtu):
+  Kompletní port 1:1 do C++17 všech 33 typů diagramů, 55 tvarů uzlů, rozvrhovacích algoritmů a blokových šipek — generuje SVG identické s pele.run 100% offline s podporou LaTeX vzorců.
+• Masivní zrychlení náhledu a jádra editoru (až 319× rychlejší):
+  Memoizace Mermaid/MathML a rozdílové aktualizace DOM (náhled až 9,8× rychlejší), tabulka UTF-16 O(1) a mezipaměť Direct2D (až 282× rychlejší), přírůstková aktualizace řádků (až 319× rychlejší) a SIMD hledání závorek.
+• Vícevrstvé posílení bezpečnosti:
+  Zabezpečení WebView2 a přísná politika CSP, sanitizace SVG/Markdown/MathML, ochrana proti podvržení DLL, výhradní zamykání souborů a ochrana CFG + CET Shadow Stack.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -663,13 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.40
-📐 Live-förhandsgranskning av LaTeX-formler & 100 % offline C++-motor (Alt+P)
+        "releaseNotes": """Versionsinformation för miu v1.0.41
+🎯 100 % Pele-kompatibel C++-diagrammotor, upp till 319× snabbare & flerskiktat säkerhetsskydd
 
-• Realtidsgranskning av LaTeX-matematik i Markdown och Mermaid-diagram:
-  Renderar inline- ($...$), block- ($$...$$), ```math-block och formler i Mermaid-diagram direkt som knivskarp nativ MathML.
-• 100 % offline nativ C++-motor (upp till 40× snabbare) för alla 33 Mermaid-diagramtyper och LaTeX-formler.
-• Behåller söktexten vid växling mellan Sök (Ctrl+F) och Ersätt (Ctrl+H).""",
+• 100 % kompatibel C++-diagrammotor med officiella Pele (522/522 tester identiska byte för byte):
+  Fullständig 1:1 C++17-portning av alla 33 diagramtyper, 55 nodformer, layoutmotorer och blockpilar — ger exakt samma SVG-utdata som pele.run 100 % offline med LaTeX MathML-stöd.
+• Massiv hastighetsökning för förhandsgranskning och redigerare (upp till 319× snabbare):
+  Mermaid/MathML-memoisering och DOM-diff-uppdateringar (upp till 9,8× snabbare livevy), O(1) UTF-16-tabell & Direct2D-cache (upp till 282× snabbare), inkrementella radindexuppdateringar (upp till 319× snabbare) och SIMD-parentessökning.
+• Flerskiktad säkerhetsförstärkning:
+  Härdad WebView2 och strikt CSP, sanering av SVG/Markdown/MathML, skydd mot DLL-kapning, exklusiv fillåsning samt CFG och CET Shadow Stack.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -708,13 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.40
-📐 พรีวิวสมการคณิตศาสตร์ LaTeX แบบเรียลไทม์ & เอนจิน C++ เนทีฟออฟไลน์ 100% (Alt+P)
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.41
+🎯 เอนจินแผนภาพ C++ ที่เข้ากันได้กับ Pele ต้นฉบับ 100%, เร็วขึ้นสูงสุด 319 เท่า และยกระดับความปลอดภัยหลายชั้น
 
-• พรีวิวสมการ LaTeX แบบเรียลไทม์ใน Markdown และแผนภาพ Mermaid:
-  แปลงสมการในบรรทัด ($...$), บล็อก ($$...$$), บล็อก ```math และสมการในแผนภาพ Mermaid เป็น MathML เนทีฟที่คมชัดทันที
-• เอนจิน C++ เนทีฟทำงานออฟไลน์ 100% (เร็วขึ้นสูงสุด 40 เท่า) สำหรับแผนภาพ Mermaid 33 รูปแบบและสมการ LaTeX
-• คงข้อความค้นหาไว้เมื่อสลับระหว่างหน้าต่างค้นหา (Ctrl+F) และแทนที่ (Ctrl+H)""",
+• เอนจินแผนภาพ C++ ที่เข้ากันได้กับ Pele ต้นฉบับ 100% (ตรงกันทุกไบต์ 522/522 ชุดทดสอบ):
+  พอร์ตโค้ด 1:1 สู่ C++17 สำหรับแผนภาพทั้ง 33 รูปแบบ, รูปทรงโหนด 55 แบบ, อัลกอริทึมจัดวาง และลูกศรบล็อก ให้ผลลัพธ์ SVG เหมือน pele.run ทุกประการโดยทำงานออฟไลน์ 100% พร้อมรองรับสมการ LaTeX
+• เร่งความเร็วพรีวิวและแกนหลักของเอดิเตอร์ครั้งใหญ่ (เร็วขึ้นสูงสุด 319 เท่า):
+  เพิ่มแคช Mermaid/MathML และอัปเดต DOM เฉพาะส่วนที่เปลี่ยน (พรีวิวเร็วขึ้น 9.8 เท่า), ตาราง UTF-16 แบบ O(1) และแคช Direct2D (เร็วขึ้น 282 เท่า), อัปเดตดัชนีบรรทัดแบบส่วนเพิ่ม (เร็วขึ้น 319 เท่า) และค้นหาวงเล็บด้วย SIMD
+• การป้องกันความปลอดภัยหลายชั้น:
+  ยกระดับความเข้มงวดของ WebView2 และ CSP, คัดกรองความปลอดภัย SVG/Markdown/MathML, ป้องกันการปลอมแปลง DLL, ล็อกไฟล์ชั่วคราวแบบเอกสิทธิ์ และเปิดใช้งาน CFG + CET Shadow Stack""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -753,13 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.40 रिलीज़ नोट्स
-📐 LaTeX गणित सूत्र लाइव प्रीव्यू और 100% ऑफ़लाइन नेटिव C++ इंजन (Alt+P)
+        "releaseNotes": """miu v1.0.41 रिलीज़ नोट्स
+🎯 100% Pele-संगत C++ डायग्राम इंजन, 319 गुना तक तेज़ प्रदर्शन और बहु-स्तरीय सुरक्षा
 
-• Markdown और Mermaid डायग्राम में रीयल-टाइम LaTeX गणित प्रीव्यू:
-  इनलाइन ($...$), ब्लॉक ($$...$$), ```math ब्लॉक और Mermaid डायग्राम के भीतर के सूत्रों को तुरंत स्पष्ट नेटिव MathML में रेंडर करता है।
-• सभी 33 Mermaid डायग्राम प्रकारों और LaTeX सूत्रों के लिए 100% ऑफ़लाइन नेटिव C++ इंजन (40 गुना तक तेज़)।
-• खोजें (Ctrl+F) और बदलें (Ctrl+H) के बीच स्विच करते समय खोज टेक्स्ट को बनाए रखता है।""",
+• मूल Pele के साथ 100% संगत C++ डायग्राम इंजन (522/522 आधिकारिक परीक्षण बाइट-दर-बाइट समान):
+  सभी 33 डायग्राम प्रकारों, 55 नोड आकृतियों, लेआउट एल्गोरिदम और ब्लॉक तीरों का 1:1 C++17 पोर्ट — LaTeX गणित समर्थन के साथ 100% ऑफ़लाइन रहते हुए pele.run के समान सटीक SVG आउटपुट देता है।
+• प्रीव्यू और एडिटर कोर में भारी गति वृद्धि (319 गुना तक तेज़):
+  Mermaid/MathML मेमोइज़ेशन और DOM डिफ़ अपडेट (9.8× तेज़ लाइव प्रीव्यू), O(1) UTF-16 ऑफ़सेट मैप और Direct2D कैश (282× तेज़), इंक्रीमेंटल लाइन इंडेक्स अपडेट (319× तेज़) और SIMD ब्रैकेट मैचिंग।
+• बहु-स्तरीय सुरक्षा सुदृढ़ीकरण:
+  कठोर WebView2 और सख्त CSP नीतियां, SVG/Markdown/MathML सैनिटाइजेशन, DLL हाइजैकिंग सुरक्षा, विशेष फ़ाइल लॉकिंग और CFG + CET Shadow Stack सुरक्षा।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -798,13 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.40
-📐 Previzualizare live pentru formule LaTeX și motor C++ nativ 100% offline (Alt+P)
+        "releaseNotes": """Note de lansare miu v1.0.41
+🎯 Motor C++ 100% compatibil cu Pele, accelerare de până la 319× și securitate multistrat
 
-• Previzualizare matematică LaTeX în timp real în Markdown și diagrame Mermaid:
-  Redă instantaneu ecuații inline ($...$), bloc ($$...$$), blocuri ```math și formule din diagrame Mermaid în MathML nativ clar.
-• Motor C++ nativ 100% offline (de până la 40× mai rapid) pentru toate cele 33 de tipuri de diagrame Mermaid și formule LaTeX.
-• Păstrează textul căutat la comutarea între Căutare (Ctrl+F) și Înlocuire (Ctrl+H).""",
+• Motor de diagrame C++ 100% compatibil cu Pele oficial (522/522 teste identice octet cu octet):
+  Portare C++17 1:1 a tuturor celor 33 de tipuri de diagrame, 55 de forme, algoritmi de așezare în pagină și săgeți bloc — generând SVG identic cu pele.run, 100% offline, cu suport LaTeX MathML.
+• Accelerare masivă pentru previzualizare și nucleul editorului (de până la 319× mai rapid):
+  Memoizare Mermaid/MathML și actualizare diferențială DOM (previzualizare de 9,8× mai rapidă), mapare UTF-16 O(1) și cache Direct2D (de 282× mai rapid), actualizare incrementală a rândurilor (de 319× mai rapidă) și căutare SIMD a parantezelor.
+• Securitate multistrat consolidată:
+  Politici WebView2 și CSP stricte, sanitizare SVG/Markdown/MathML, protecție împotriva deturnării DLL, blocare exclusivă a fișierelor și protecții CFG + CET Shadow Stack.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -843,13 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.40 kiadási megjegyzések
-📐 LaTeX képletek élő előnézete és 100%-ban offline natív C++ motor (Alt+P)
+        "releaseNotes": """miu v1.0.41 kiadási megjegyzések
+🎯 100%-ban Pele-kompatibilis C++ diagrammotor, akár 319× nagyobb sebesség és többrétegű biztonság
 
-• Valós idejű LaTeX matematikai előnézet Markdownban és Mermaid diagramokban:
-  A sorközi ($...$), blokkos ($$...$$), ```math blokkokat és a Mermaid diagramokban lévő képleteket azonnal éles natív MathML-ként jeleníti meg.
-• 100%-ban offline natív C++ motor (akár 40× gyorsabb) mind a 33 Mermaid diagramtípushoz és LaTeX képlethez.
-• Megőrzi a keresett szöveget a Keresés (Ctrl+F) és Csere (Ctrl+H) közötti váltáskor.""",
+• Az eredeti Pele-lel 100%-ban kompatibilis natív C++ diagrammotor (522/522 teszt bájtról bájtra azonos):
+  Mind a 33 diagramtípus, 55 alakzat, elrendezési algoritmus és blokknyíl 1:1 C++17 portja — a pele.run-nal teljesen azonos SVG-kimenetet biztosít 100% offline módban, LaTeX képlettámogatással.
+• Hatalmas gyorsulás az előnézetben és a szerkesztőmotorban (akár 319× gyorsabb):
+  Mermaid/MathML gyorsítótárazás és DOM-különbségfrissítés (9,8× gyorsabb élő előnézet), O(1) UTF-16 tábla és Direct2D gyorsítótár (282× gyorsabb), növekményes sorindex-frissítés (319× gyorsabb) és SIMD zárójelkeresés.
+• Többrétegű biztonsági megerősítés:
+  Megerősített WebView2 és szigorú CSP, SVG/Markdown/MathML szűrés, DLL-eltérítés elleni védelem, kizárólagos fájlzárolás, valamint CFG és CET Shadow Stack védelem.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -888,13 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.40
-📐 Ζωντανή προεπισκόπηση εξισώσεων LaTeX & εγγενής μηχανή C++ 100% εκτός σύνδεσης (Alt+P)
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.41
+🎯 Μηχανή C++ 100% συμβατή με το Pele, επιτάχυνση έως 319× και πολυεπίπεδη ασφάλεια
 
-• Προεπισκόπηση μαθηματικών LaTeX σε πραγματικό χρόνο σε Markdown & Mermaid:
-  Αποδίδει εξισώσεις εντός γραμμής ($...$), μπλοκ ($$...$$), μπλοκ ```math και τύπους σε διαγράμματα Mermaid σε ευκρινές εγγενές MathML.
-• Εγγενής μηχανή C++ 100% εκτός σύνδεσης (έως 40× ταχύτερη) για 33 τύπους διαγραμμάτων Mermaid και εξισώσεις LaTeX.
-• Διατηρεί το κείμενο αναζήτησης κατά την εναλλαγή μεταξύ Εύρεσης (Ctrl+F) και Αντικατάστασης (Ctrl+H).""",
+• Εγγενής μηχανή διαγραμμάτων C++ 100% συμβατή με το επίσημο Pele (522/522 δοκιμές πανομοιότυπες byte προς byte):
+  Πλήρης μεταφορά 1:1 σε C++17 και των 33 τύπων διαγραμμάτων, 55 σχημάτων, αλγορίθμων διάταξης και βελών μπλοκ — παράγει SVG πανομοιότυπο με το pele.run 100% εκτός σύνδεσης με υποστήριξη LaTeX MathML.
+• Τεράστια επιτάχυνση προεπισκόπησης και πυρήνα επεξεργαστή (έως 319× ταχύτερα):
+  Απομνημόνευση Mermaid/MathML και διαφορική ενημέρωση DOM (προεπισκόπηση 9,8× ταχύτερη), πίνακας UTF-16 O(1) & κρυφή μνήμη Direct2D (282× ταχύτερα), αυξητική ενημέρωση γραμμών (319× ταχύτερα) και αναζήτηση παρενθέσεων SIMD.
+• Πολυεπίπεδη θωράκιση ασφαλείας:
+  Ενίσχυση WebView2 και αυστηρό CSP, εξυγίανση SVG/Markdown/MathML, προστασία από DLL hijacking, αποκλειστικό κλείδωμα αρχείων και προστασία CFG + CET Shadow Stack.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -933,13 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.40
-📐 Live-forhåndsvisning af LaTeX-formler & 100 % offline native C++-motor (Alt+P)
+        "releaseNotes": """Udgivelsesnoter for miu v1.0.41
+🎯 100 % Pele-kompatibel C++-diagrammotor, op til 319× hurtigere & flerlaget sikkerhed
 
-• LaTeX-matematikvisning i realtid i Markdown og Mermaid-diagrammer:
-  Gengiver inline- ($...$), blok- ($$...$$), ```math-blokke og formler i Mermaid-diagrammer straks som skarp native MathML.
-• 100 % offline native C++-motor (op til 40× hurtigere) til alle 33 Mermaid-diagramtyper og LaTeX-formler.
-• Bevarer søgeteksten ved skift mellem Find (Ctrl+F) og Erstat (Ctrl+H).""",
+• 100 % kompatibel C++-diagrammotor med officielle Pele (522/522 tests identiske byte for byte):
+  Fuld 1:1 C++17-portering af alle 33 diagramtyper, 55 figurformer, layout-algoritmer og blokpile — leverer nøjagtig samme SVG-output som pele.run 100 % offline med LaTeX MathML-understøttelse.
+• Massiv hastighedsforøgelse i forhåndsvisning og editor-kerne (op til 319× hurtigere):
+  Mermaid/MathML-memoisering og DOM-diff-opdatering (op til 9,8× hurtigere live-visning), O(1) UTF-16-tabel og Direct2D-cache (op til 282× hurtigere), inkrementel linjeindeksopdatering (op til 319× hurtigere) samt SIMD-parentessøgning.
+• Flerlaget sikkerhedsforstærkning:
+  Hærdet WebView2 og striks CSP, SVG/Markdown/MathML-rensning, beskyttelse mod DLL-kapring, eksklusiv fillåsning samt CFG og CET Shadow Stack.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -978,13 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.40 julkaisutiedot
-📐 LaTeX-kaavojen reaaliaikainen esikatselu & 100 % offline natiivi C++-moottori (Alt+P)
+        "releaseNotes": """miu v1.0.41 julkaisutiedot
+🎯 100 % Pele-yhteensopiva C++-kaaviomoottori, jopa 319× nopeampi suorituskyky ja monikerroksinen tietoturva
 
-• Reaaliaikainen LaTeX-matematiikan esikatselu Markdownissa ja Mermaid-kaavioissa:
-  Renderöi rivinsisäiset ($...$), lohko- ($$...$$), ```math-lohkot sekä Mermaid-kaavioiden kaavat välittömästi tarkaksi natiiviksi MathML:ksi.
-• 100 % offline natiivi C++-moottori (jopa 40× nopeampi) kaikille 33 Mermaid-kaaviotyypille ja LaTeX-kaavoille.
-• Säilyttää hakutekstin vaihdettaessa Etsi (Ctrl+F) ja Korvaa (Ctrl+H) -välillä.""",
+• 100 % virallisen Pelen kanssa yhteensopiva C++-kaaviomoottori (522/522 testiä tavulleen identtisiä):
+  Täydellinen 1:1 C++17-käännös kaikista 33 kaaviotyypistä, 55 muodosta, asettelualgoritmeista ja lohkonuolista — tuottaa täsmälleen saman SVG-tulosteen kuin pele.run 100 % offline-tilassa LaTeX MathML -tuella.
+• Huima nopeutus esikatseluun ja editorin ytimeen (jopa 319× nopeampi):
+  Mermaid/MathML-välimuisti ja DOM-eropäivitys (jopa 9,8× nopeampi esikatselu), O(1) UTF-16-taulukko ja Direct2D-välimuisti (jopa 282× nopeampi), inkrementaalinen rivi-indeksin päivitys (jopa 319× nopeampi) sekä SIMD-sulkumerkkihaku.
+• Monikerroksinen tietoturvavahvistus:
+  Kovennettu WebView2 ja tiukka CSP, SVG/Markdown/MathML-suodatus, DLL-kaappaussuoja, tiedostojen yksinoikeuslukitus sekä CFG- ja CET Shadow Stack -suojaus.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1023,13 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.40
-📐 Live-forhåndsvisning av LaTeX-formler & 100 % offline native C++-motor (Alt+P)
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.41
+🎯 100 % Pele-kompatibel C++-diagrammotor, opptil 319× raskere og flerlags sikkerhet
 
-• Sanntidsvisning av LaTeX-matematikk i Markdown og Mermaid-diagrammer:
-  Gjengir inline- ($...$), blokk- ($$...$$), ```math-blokker og formler i Mermaid-diagrammer øyeblikkelig som skarp native MathML.
-• 100 % offline native C++-motor (opptil 40× raskere) for alle 33 Mermaid-diagramtyper og LaTeX-formler.
-• Beholder søketeksten ved bytte mellom Finn (Ctrl+F) og Erstatt (Ctrl+H).""",
+• 100 % kompatibel C++-diagrammotor med offisielle Pele (522/522 tester identiske byte for byte):
+  Fullstendig 1:1 C++17-portering av alle 33 diagramtyper, 55 nodeformer, layoutmotorer og blokkpiler — gir nøyaktig samme SVG-utdata som pele.run 100 % offline med LaTeX MathML-støtte.
+• Kraftig hastighetsøkning for forhåndsvisning og redigeringskjerne (opptil 319× raskere):
+  Mermaid/MathML-memoisering og DOM-diff-oppdatering (opptil 9,8× raskere sanntidsvisning), O(1) UTF-16-tabell og Direct2D-hurtigbuffer (opptil 282× raskere), inkrementell linjeindeksoppdatering (opptil 319× raskere) og SIMD-parentessøk.
+• Flerlags sikkerhetsforsterkning:
+  Herdet WebView2 og streng CSP, rensing av SVG/Markdown/MathML, beskyttelse mot DLL-kapring, eksklusiv fillåsing samt CFG og CET Shadow Stack.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1068,13 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.40
-📐 Pratonton Langsung Formula LaTeX & Enjin C++ Asli 100% Luar Talian (Alt+P)
+        "releaseNotes": """Nota Keluaran miu v1.0.41
+🎯 Enjin Rajah C++ 100% Serasi Pele, Kelajuan Sehingga 319× Lebih Pantas & Keselamatan Berlapis
 
-• Pratonton Matematik LaTeX Masa Nyata dalam Markdown & Rajah Mermaid:
-  Memaparkan persamaan sebaris ($...$), blok ($$...$$), blok ```math serta formula dalam rajah Mermaid kepada MathML asli yang tajam.
-• Enjin C++ asli 100% luar talian (sehingga 40× lebih pantas) untuk 33 jenis rajah Mermaid dan formula LaTeX.
-• Mengekalkan teks carian semasa bertukar antara Cari (Ctrl+F) dan Ganti (Ctrl+H).""",
+• Enjin Rajah C++ 100% Serasi dengan Pele Rasmi (522/522 Ujian Korpus Sepadan Bait-demi-Bait):
+  Port C++17 1:1 lengkap bagi kesemua 33 jenis rajah, 55 bentuk nod, enjin susun atur dan anak panah blok — menghasilkan output SVG yang sepadan sepenuhnya dengan pele.run secara 100% luar talian dengan sokongan formula LaTeX.
+• Pecutan Hebat bagi Pratonton & Teras Penyunting (Sehingga 319× Lebih Pantas):
+  Memoisasi Mermaid/MathML dan kemas kini diff DOM (pratonton 9.8× lebih pantas), jadual UTF-16 O(1) & cache Direct2D (282× lebih pantas), kemas kini indeks baris tokokan (319× lebih pantas) serta padanan kurungan SIMD.
+• Pengukuhan Keselamatan Berlapis:
+  Tetapan WebView2 & dasar CSP yang ketat, sanitasi SVG/Markdown/MathML, perlindungan rampasan DLL, penguncian fail eksklusif serta perlindungan CFG & CET Shadow Stack.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.41": {
+        "ja-jp": """miu v1.0.41 リリースノート
+🎯 本家 Pele 100% 完全互換エンジン・エディタ＆プレビュー超高速化・セキュリティ強化
+
+・本家 Pele 100% 完全互換 C++ 図表エンジン（公式コーパス 522/522 完全一致）:
+  全33種の Mermaid / Pele 図表・55種シェイプ・階層/複合レイアウト・ブロック矢印等を 1:1 で C++17 完全移植し、本家 pele.run と完全に同一の SVG 出力とオフライン LaTeX 数式連携を実現しました。
+・プレビュー＆エディタコアの大幅高速化（最大 319 倍高速化）:
+  Mermaid/MathML メモ化キャッシュと DOM 差分更新によるライブプレビュー高速化（最大 9.8 倍）、O(1) UTF-16 マップ＆ Direct2D リソースキャッシュ（最大 282 倍）、単一行編集の差分インデックス更新（最大 319 倍）、SIMD 括弧検索を実装しました。
+・多層セキュリティ強化:
+  WebView2/CSP ハードニング、SVG/Markdown/数式サニタイズ、DLL プリロード防止、一時ファイル排他ロック、CFG ＆ CET Shadow Stack 保護を実装しました。""",
+
+        "en-us": """miu v1.0.41 Release Notes
+🎯 100% Upstream-Compatible Pele Diagram Engine, Major Speedups & Security Hardening
+
+- 100% Upstream-Compatible C++ Pele Diagram Engine (522/522 Official Corpus Exact Match):
+  Complete 1:1 C++17 port of all 33 diagram types, 55 node shapes, Brandes-Kopf layered & compound layout engines, and block arrows—producing byte-for-byte identical SVG output to pele.run while remaining 100% offline with native LaTeX MathML support.
+- Massive Preview & Editor Core Speedups (Up to 319x Faster):
+  Added Mermaid/MathML memoization and in-place DOM diff patching (up to 9.8x faster live preview), O(1) UTF-16 offset lookup & cached Direct2D resources (up to 282x faster), incremental single-line lineStarts updates (up to 319x faster), and SIMD bracket matching.
+- Multi-Layer Security Hardening:
+  Hardened WebView2 & strict CSP policies, SVG/Markdown/MathML sanitization, DLL search-order protection, TOCTOU file locking, and Control Flow Guard (/guard:cf) + CET Shadow Stack (/CETCOMPAT).""",
+
+        "zh-hans": """miu v1.0.41 更新日志
+🎯 100% 原版兼容 Pele 图表引擎、预览与编辑器核心极速优化及多维安全加固
+
+- 100% 兼容原版 Pele 的 C++ 原生图表引擎（官方 522/522 用例完全一致）：
+  1:1 完整移植全部 33 种图表、55 种节点形状、分层与复合布局算法及块级箭头语法，输出与 pele.run 完全一致的 SVG，并保持 100% 离线与原生 LaTeX 数学公式支持。
+- 预览与编辑器核心大幅提速（最高提速 319 倍）：
+  引入 Mermaid/MathML 记忆化缓存与 DOM 增量更新（实时预览提速 9.8 倍）、O(1) UTF-16 偏移映射与 Direct2D 资源缓存（提速 282 倍）、单行编辑增量索引更新（提速 319 倍）以及 SIMD 括号匹配优化。
+- 全方位安全加固：
+  强化 WebView2 与严格 CSP 策略、SVG/Markdown/公式安全过滤、DLL 预加载防护、临时文件独占锁以及 CFG 与 CET 硬件影子栈保护。""",
+
+        "ko": """miu v1.0.41 릴리스 노트
+🎯 원본 Pele 100% 완벽 호환 엔진, 미리보기 및 편집기 초고속화, 다중 보안 강화
+
+- 원본 Pele 100% 호환 C++ 네이티브 다이어그램 엔진 (공식 코퍼스 522/522 완벽 일치):
+  33종 다이어그램, 55종 노드 도형, 계층/복합 레이아웃 및 블록 화살표 구문을 C++17로 1:1 완벽 이식하여 pele.run과 완전히 동일한 SVG 출력 및 오프라인 LaTeX 수식 연동을 제공합니다.
+- 미리보기 및 편집기 코어 대폭 고속화 (최대 319배 속도 향상):
+  Mermaid/MathML 메모이제이션 캐시 및 DOM 차분 업데이트(실시간 미리보기 최대 9.8배 고속화), O(1) UTF-16 오프셋 맵 및 Direct2D 리소스 캐시(최대 282배), 단일 행 편집 증분 인덱스 갱신(최대 319배), SIMD 괄호 검색 최적화를 적용했습니다.
+- 다중 계층 보안 강화:
+  WebView2 및 엄격한 CSP 정책, SVG/Markdown/수식 살균 처리, DLL 하이재킹 방지, 임시 파일 배타적 잠금, CFG 및 CET Shadow Stack 보호를 적용했습니다."""
+    },
     "1.0.40": {
         "ja-jp": """miu v1.0.40 リリースノート
 📐 LaTeX 数式リアルタイムプレビュー対応 ＆ 完全オフライン C++ ネイティブ図表エンジン搭載（Alt+P）
