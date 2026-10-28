@@ -30,7 +30,7 @@ namespace T {
     };
 }
 
-inline const std::vector<TokenType>& infoTokens() {
+inline const std::vector<TokenType>& infoTokens() noexcept {
     static const std::vector<TokenType> tokens = {
         common_tokens::keyword("showInfo"),
         common_tokens::keyword("info"),
@@ -78,7 +78,7 @@ inline InfoAst parseInfo(const std::string& src) {
     return ast;
 }
 
-inline std::string stripNewlineIndent(const std::string& s) {
+inline std::string stripNewlineIndent(const std::string& s) noexcept {
     std::string out;
     out.reserve(s.size());
     size_t i = 0;
@@ -99,7 +99,7 @@ inline std::string stripNewlineIndent(const std::string& s) {
     return out;
 }
 
-inline InfoModel buildInfo(const InfoAst& ast, const std::string& title) {
+inline InfoModel buildInfo(const InfoAst& ast, const std::string& title) noexcept {
     InfoModel model;
     model.title = !ast.title.empty() ? ast.title : title;
     model.accTitle = !ast.accTitle.empty() ? trimStartStr(ast.accTitle) : "";
@@ -107,7 +107,7 @@ inline InfoModel buildInfo(const InfoAst& ast, const std::string& title) {
     return model;
 }
 
-inline Rendered renderInfoModel(const InfoModel& model, const Config& /*config*/, const RenderOptions& options) {
+inline Rendered renderInfoModel(const InfoModel& model, const Config& /*config*/, const RenderOptions& options) noexcept {
     double size = options.fontSize;
     const auto& measurer = getMeasurer(options);
     double pad = options.padding;
@@ -138,7 +138,7 @@ inline Rendered renderInfo(const std::string& source, const Config& config, cons
 
 inline Rendered renderInfo(const std::string& source, const RenderOptions& options = {}) {
     auto pre = preprocess(source);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     RenderOptions opts = options;
     if (!opts.hasResponsive) {
         const auto* section = pre.config.get("info");

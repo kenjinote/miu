@@ -101,7 +101,7 @@ class WardleyBuilder {
 public:
     std::vector<std::string> nodeOrder;
     std::unordered_map<std::string, WardleyNode> nodes;
-    std::unordered_map<std::string, std::string> labels;
+    Pele::FlatMap<std::string, std::string> labels;
     bool hasLabelsCache = false;
     std::vector<WardleyLink> links;
     std::vector<std::string> trendOrder;
@@ -219,7 +219,7 @@ public:
         for (const auto& id : nodeOrder) {
             const auto& node = nodes.at(id);
             if (!node.hasX || !node.hasY) {
-                throw PeleError("Node \"" + node.label + "\" is missing coordinates", "semantic", "wardley");
+                throw PeleError(Pele::cat({"Node \"", node.label, "\" is missing coordinates"}),  "semantic",  "wardley");
             }
             out.nodes.push_back(node);
         }
@@ -291,20 +291,20 @@ namespace T {
     };
 }
 
-inline int scanDigits(const std::string& src, int from) {
+inline int scanDigits(const std::string& src, int from) noexcept {
     int i = from;
     while (i < static_cast<int>(src.size()) && isDigit(charCodeAt(src, i))) i++;
     return i;
 }
 
-inline bool isWardleyNameCont(const std::string& src, int p) {
+inline bool isWardleyNameCont(const std::string& src, int p) noexcept {
     int c = charCodeAt(src, p);
     if (isWord(c) || c == '(' || c == ')' || c == '&') return true;
     if (c == '-' && charCodeAt(src, p + 1) != '>') return true;
     return false;
 }
 
-inline const std::vector<TokenType>& wardleyTokens() {
+inline const std::vector<TokenType>& wardleyTokens() noexcept {
     static const std::vector<TokenType> types = []() {
         auto lit = [](const std::string& name, const std::string& pat) {
             TokenType t;
@@ -632,7 +632,7 @@ struct WardleyAst {
     std::vector<ForceAst> deaccelerators;
 };
 
-inline std::string wardleySingle(const std::string& text) {
+inline std::string wardleySingle(const std::string& text) noexcept {
     std::string s = trimStr(text);
     std::string out;
     size_t i = 0;
@@ -650,19 +650,19 @@ inline std::string wardleySingle(const std::string& text) {
     return out;
 }
 
-inline std::string wardleyTitleValue(const std::string& text) {
+inline std::string wardleyTitleValue(const std::string& text) noexcept {
     size_t pos = text.find("title");
     if (pos == std::string::npos) return "";
     return wardleySingle(text.substr(pos + 5));
 }
 
-inline std::string wardleyAccTitleValue(const std::string& text) {
+inline std::string wardleyAccTitleValue(const std::string& text) noexcept {
     size_t pos = text.find(':');
     if (pos == std::string::npos) return "";
     return wardleySingle(text.substr(pos + 1));
 }
 
-inline std::string wardleyAccDescrValue(const std::string& text) {
+inline std::string wardleyAccDescrValue(const std::string& text) noexcept {
     size_t brace = text.find('{');
     size_t colon = text.find(':');
     if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -904,16 +904,16 @@ inline double toPercent(double value, const std::string& context) {
     if (normalized < 0.0 || normalized > 100.0) {
         char buf[64];
         std::snprintf(buf, sizeof(buf), "%.15g", value);
-        throw PeleError(context + " must be between 0-1 (decimal) or 0-100 (percentage). Received: " + buf, "semantic", "wardley");
+        throw PeleError(Pele::cat({context, " must be between 0-1 (decimal) or 0-100 (percentage). Received: ", buf}),  "semantic",  "wardley");
     }
     return normalized;
 }
 
-inline WardleyCoord toCoordinates(double visibility, double evolution, const std::string& context) {
-    return {toPercent(evolution, context + " evolution"), toPercent(visibility, context + " visibility")};
+inline WardleyCoord toCoordinates(double visibility, double evolution, const std::string& context) noexcept {
+    return {toPercent(evolution, Pele::cat({context, " evolution"})), toPercent(visibility, Pele::cat({context, " visibility"}))};
 }
 
-inline std::string flowFromPort(const std::string& port) {
+inline std::string flowFromPort(const std::string& port) noexcept {
     if (port == "+<>") return "bidirectional";
     if (port == "+<") return "backward";
     if (port == "+>") return "forward";
@@ -926,7 +926,7 @@ struct ArrowFlowInfo {
     bool hasLabel = false;
 };
 
-inline ArrowFlowInfo flowFromArrow(const std::string& arrow) {
+inline ArrowFlowInfo flowFromArrow(const std::string& arrow) noexcept {
     if (arrow.empty() || arrow[0] != '+') return {};
     ArrowFlowInfo res;
     size_t end = arrow.find('\'', 2);
@@ -947,14 +947,14 @@ inline void populate(const WardleyAst& ast, WardleyBuilder& db) {
         std::vector<std::string> stages;
         std::vector<double> boundaries;
         for (const auto& st : ast.evolutionStages) {
-            stages.push_back(st.hasSecondName ? (trimStr(st.name) + " / " + trimStr(st.secondName)) : trimStr(st.name));
+            stages.push_back(st.hasSecondName ? Pele::cat({trimStr(st.name), " / ", trimStr(st.secondName)}) : trimStr(st.name));
             if (st.hasBoundary) boundaries.push_back(st.boundary);
         }
         db.setAxes(stages, boundaries);
     }
 
     for (const auto& anchor : ast.anchors) {
-        auto at = toCoordinates(anchor.visibility, anchor.evolution, "Anchor \"" + anchor.name + "\"");
+        auto at = toCoordinates(anchor.visibility,  anchor.evolution, Pele::cat({"Anchor \"", anchor.name, "\""}));
         WardleyNode node;
         node.id = anchor.name;
         node.label = anchor.name;
@@ -967,7 +967,7 @@ inline void populate(const WardleyAst& ast, WardleyBuilder& db) {
     }
 
     for (const auto& comp : ast.components) {
-        auto at = toCoordinates(comp.visibility, comp.evolution, "Component \"" + comp.name + "\"");
+        auto at = toCoordinates(comp.visibility,  comp.evolution, Pele::cat({"Component \"", comp.name, "\""}));
         WardleyNode node;
         node.id = comp.name;
         node.label = comp.name;
@@ -988,20 +988,20 @@ inline void populate(const WardleyAst& ast, WardleyBuilder& db) {
     }
 
     for (const auto& note : ast.notes) {
-        auto at = toCoordinates(note.visibility, note.evolution, "Note \"" + note.text + "\"");
+        auto at = toCoordinates(note.visibility,  note.evolution, Pele::cat({"Note \"", note.text, "\""}));
         db.addNote({note.text, at.x, at.y});
     }
 
     for (const auto& pipeline : ast.pipelines) {
         const WardleyNode* parent = db.getNode(pipeline.parent);
         if (!parent || !parent->hasY) {
-            throw PeleError("Pipeline \"" + pipeline.parent + "\" must reference an existing component with coordinates.", "semantic", "wardley");
+            throw PeleError(Pele::cat({"Pipeline \"", pipeline.parent, "\" must reference an existing component with coordinates."}),  "semantic",  "wardley");
         }
         double y = parent->y;
         db.startPipeline(pipeline.parent);
         for (const auto& comp : pipeline.components) {
-            std::string id = pipeline.parent + "_" + comp.name;
-            double x = toPercent(comp.evolution, "Pipeline component \"" + comp.name + "\" evolution");
+            std::string id = Pele::cat({pipeline.parent, "_", comp.name});
+            double x = toPercent(comp.evolution, Pele::cat({"Pipeline component \"", comp.name, "\" evolution"}));
             WardleyNode node;
             node.id = id;
             node.label = comp.name;
@@ -1045,7 +1045,7 @@ inline void populate(const WardleyAst& ast, WardleyBuilder& db) {
     for (const auto& evolve : ast.evolves) {
         const WardleyNode* node = db.getNode(evolve.component);
         if (node && node->hasY) {
-            db.addTrend({evolve.component, toPercent(evolve.target, "Evolve target for \"" + evolve.component + "\""), node->y});
+            db.addTrend({evolve.component, toPercent(evolve.target, Pele::cat({"Evolve target for \"", evolve.component, "\""})), node->y});
         }
     }
 
@@ -1060,17 +1060,17 @@ inline void populate(const WardleyAst& ast, WardleyBuilder& db) {
     }
 
     for (const auto& acc : ast.accelerators) {
-        auto at = toCoordinates(acc.x, acc.y, "Accelerator \"" + acc.name + "\"");
+        auto at = toCoordinates(acc.x,  acc.y, Pele::cat({"Accelerator \"", acc.name, "\""}));
         db.addAccelerator({acc.name, at.x, at.y});
     }
 
     for (const auto& deacc : ast.deaccelerators) {
-        auto at = toCoordinates(deacc.x, deacc.y, "Deaccelerator \"" + deacc.name + "\"");
+        auto at = toCoordinates(deacc.x,  deacc.y, Pele::cat({"Deaccelerator \"", deacc.name, "\""}));
         db.addDeaccelerator({deacc.name, at.x, at.y});
     }
 }
 
-inline WardleyModel buildWardley(const WardleyAst& ast, const std::string& title) {
+inline WardleyModel buildWardley(const WardleyAst& ast, const std::string& title) noexcept {
     WardleyBuilder db;
     populate(ast, db);
     WardleyModel model;
@@ -1108,7 +1108,7 @@ inline WardleyModel buildWardley(const WardleyAst& ast, const std::string& title
 // src/diagrams/wardley/render.ts
 // ============================================================================
 
-inline double wardleySetting(const Config& config, const std::string& key, double fallback, double minV, double maxV) {
+inline double wardleySetting(const Config& config, const std::string& key, double fallback, double minV, double maxV) noexcept {
     const auto* sec = config.get("wardley-beta");
     if (sec && sec->isMap()) {
         const auto* v = sec->get(key);
@@ -1117,11 +1117,11 @@ inline double wardleySetting(const Config& config, const std::string& key, doubl
     return fallback;
 }
 
-inline double wardleyClamp(double value, double minV, double maxV) {
+inline double wardleyClamp(double value, double minV, double maxV) noexcept {
     return value < minV ? minV : value > maxV ? maxV : value;
 }
 
-inline std::string startLabel(const Label& label, double x, double y, const std::string& attrs) {
+inline std::string startLabel(const Label& label, double x, double y, const std::string& attrs) noexcept {
     int shared = sharedStyle(label);
     std::string body;
     double baseline = y;
@@ -1130,22 +1130,22 @@ inline std::string startLabel(const Label& label, double x, double y, const std:
         for (const auto& span : line) {
             if (span.hasIcon) continue;
             std::string style = spanStyle(span.style & ~shared);
-            body += "<tspan" + (first ? (" x=\"" + num(x) + "\" y=\"" + num(baseline) + "\"") : std::string("")) + style + ">" + esc(span.text) + "</tspan>";
+            Pele::appendCat(body, {"<tspan", (first ? Pele::cat({" x=\"", num(x), "\" y=\"", num(baseline), "\""}) : std::string("")), style, ">", esc(span.text), "</tspan>"});
             first = false;
         }
         baseline += label.lineHeight;
     }
-    return body.empty() ? "" : ("<text" + textStyle(attrs, shared) + " xml:space=\"preserve\">" + body + "</text>");
+    return body.empty() ? "" : Pele::cat({"<text", textStyle(attrs, shared), " xml:space=\"preserve\">", body, "</text>"});
 }
 
-inline double wardleyDimension(const Config& config, double given, bool hasGiven, const std::string& key, double fallback) {
+inline double wardleyDimension(const Config& config, double given, bool hasGiven, const std::string& key, double fallback) noexcept {
     constexpr double CANVAS_MARGIN = 48.0;
     double value = (hasGiven && std::isfinite(given)) ? given : wardleySetting(config, key, fallback, 1.0, 1e6);
     return wardleyClamp(value, 200.0, 10000.0) - 2.0 * CANVAS_MARGIN;
 }
 
 template <typename DrawFn>
-inline Rendered fitWidthWardley(const RenderOptions& options, double natural, double least, DrawFn&& draw) {
+inline Rendered fitWidthWardley(const RenderOptions& options, double natural, double least, DrawFn&& draw) noexcept {
     Rendered result = draw(natural, false);
     double available = options.maxWidth;
     if (!(available > 0.0) || result.width <= available) return result;
@@ -1159,7 +1159,7 @@ inline Rendered fitWidthWardley(const RenderOptions& options, double natural, do
     return result;
 }
 
-inline Rendered drawWardley(const WardleyModel& model, const Config& config, const RenderOptions& options, double plotW, double naturalW, bool tight) {
+inline Rendered drawWardley(const WardleyModel& model, const Config& config, const RenderOptions& options, double plotW, double naturalW, bool tight) noexcept {
     static const std::vector<std::string> DEFAULT_STAGES = {"Genesis", "Custom Built", "Product", "Commodity"};
     constexpr double R = 6.0;
     constexpr double SQUARE = 10.0;
@@ -1218,24 +1218,24 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
         double end = custom ? wardleyClamp(boundaries[idx], 0.0, 1.0) : (static_cast<double>(idx + 1) / static_cast<double>(stages.size()));
         previous = end;
         if (idx > 0) {
-            frame += "<path class=\"pele-wardley-stage\" d=\"M" + num(start * plotW) + ",0V" + num(plotH) + "\" stroke=\"var(--_b)\" stroke-dasharray=\"4 4\"/>";
+            Pele::appendCat(frame, {"<path class=\"pele-wardley-stage\" d=\"M", num(start * plotW), ",0V", num(plotH), "\" stroke=\"var(--_b)\" stroke-dasharray=\"4 4\"/>"});
         }
         Label label = textFn(stages[idx], small, std::max(48.0, std::abs(end - start) * plotW - 12.0));
-        stageLabels += centered(label, ((start + end) / 2.0) * plotW, plotH + 8.0 + label.height / 2.0, " class=\"pele-wardley-stage-label\" font-size=\"" + num(small) + "\" fill=\"var(--_m)\"");
+        stageLabels += centered(label,  ((start + end) / 2.0) * plotW,  plotH + 8.0 + label.height / 2.0, Pele::cat({" class=\"pele-wardley-stage-label\" font-size=\"", num(small), "\" fill=\"var(--_m)\""}));
         stageBottom = std::max(stageBottom, plotH + 8.0 + label.height);
     }
     if (showGrid) {
         for (int i = 1; i < 4; i++) {
-            frame += "<path class=\"pele-wardley-grid\" d=\"M" + num((plotW * i) / 4.0) + ",0V" + num(plotH) + "M0," + num((plotH * i) / 4.0) + "H" + num(plotW) + "\" stroke=\"var(--_b)\" stroke-dasharray=\"2 6\"/>";
+            Pele::appendCat(frame, {"<path class=\"pele-wardley-grid\" d=\"M", num((plotW * i) / 4.0), ",0V", num(plotH), "M0,", num((plotH * i) / 4.0), "H", num(plotW), "\" stroke=\"var(--_b)\" stroke-dasharray=\"2 6\"/>"});
         }
     }
-    frame += "<path class=\"pele-wardley-axis\" d=\"M0,0V" + num(plotH) + "H" + num(plotW) + "\" stroke=\"" + LINE + "\"/>";
+    Pele::appendCat(frame, {"<path class=\"pele-wardley-axis\" d=\"M0,0V", num(plotH), "H", num(plotW), "\" stroke=\"", LINE, "\"/>"});
     Label xTitle = textFn(model.axes.hasXLabel ? model.axes.xLabel : "Evolution", small);
     Label yTitle = textFn(model.axes.hasYLabel ? model.axes.yLabel : "Visibility", small);
-    std::string axisAttrs = " class=\"pele-wardley-axis-label\" font-size=\"" + num(small) + "\" font-weight=\"var(--_hw)\"";
+    std::string axisAttrs = Pele::cat({" class=\"pele-wardley-axis-label\" font-size=\"", num(small), "\" font-weight=\"var(--_hw)\""});
     std::string axisLabels =
         centered(xTitle, plotW / 2.0, stageBottom + 6.0 + xTitle.height / 2.0, axisAttrs) +
-        labelSvg(yTitle, -16.0, plotH / 2.0, axisAttrs + " transform=\"rotate(-90 -16 " + num(plotH / 2.0) + ")\"");
+        labelSvg(yTitle,  -16.0,  plotH / 2.0, Pele::cat({axisAttrs, " transform=\"rotate(-90 -16 ", num(plotH / 2.0), ")\""}));
     grow(-16.0 - yTitle.height / 2.0, 0.0, 0.0, 0.0);
     double legendTop = stageBottom + 6.0 + xTitle.height + 10.0;
 
@@ -1252,9 +1252,9 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
     }
 
     std::string pipelines;
-    std::unordered_map<std::string, std::unordered_set<std::string>> members;
+    std::unordered_map<std::string, Pele::FlatSet<std::string>> members;
     for (const auto& pipeline : model.pipelines) {
-        members[pipeline.nodeId] = std::unordered_set<std::string>(pipeline.componentIds.begin(), pipeline.componentIds.end());
+        members[pipeline.nodeId] = Pele::FlatSet<std::string>(pipeline.componentIds.begin(), pipeline.componentIds.end());
         std::vector<PlacedNode*> parts;
         for (const auto& id : pipeline.componentIds) {
             auto it = positions.find(id);
@@ -1272,11 +1272,7 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
             pIt->second.y = top - SQUARE / 6.0;
         }
         grow(left - PIPELINE_PAD, top, right + PIPELINE_PAD, top + 4.0 * R);
-        pipelines +=
-            "<g class=\"pele-wardley-pipeline\" data-id=\"" + escText(pipeline.nodeId) + "\">" +
-            "<rect x=\"" + num(left - PIPELINE_PAD) + "\" y=\"" + num(top) + "\" width=\"" + num(right - left + 2.0 * PIPELINE_PAD) + "\" height=\"" + num(4.0 * R) + "\" fill=\"var(--_s)\" stroke=\"var(--_b)\"" + ROUNDED + "/>" +
-            (parts.size() > 1 ? ("<path d=\"M" + num(left) + "," + num(y) + "H" + num(right) + "\" stroke=\"" + LINE + "\" stroke-dasharray=\"4 4\"/>") : "") +
-            "</g>";
+        Pele::appendCat(pipelines, {"<g class=\"pele-wardley-pipeline\" data-id=\"", escText(pipeline.nodeId), "\">", "<rect x=\"", num(left - PIPELINE_PAD), "\" y=\"", num(top), "\" width=\"", num(right - left + 2.0 * PIPELINE_PAD), "\" height=\"", num(4.0 * R), "\" fill=\"var(--_s)\" stroke=\"var(--_b)\"", ROUNDED, "/>", (parts.size() > 1 ? Pele::cat({"<path d=\"M", num(left), ",", num(y), "H", num(right), "\" stroke=\"", LINE, "\" stroke-dasharray=\"4 4\"/>"}) : ""), "</g>"});
     }
 
     std::unordered_map<const WardleyNode*, Label> anchorLabels;
@@ -1342,7 +1338,7 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
             double px = uy * side;
             double py = -ux * side;
             double away = 5.0 + (std::abs(px) * label.width) / 2.0 + (std::abs(py) * label.height) / 2.0;
-            caption = centered(label, (from.x + to.x) / 2.0 + px * away, (from.y + to.y) / 2.0 + py * away, " class=\"pele-edge-label\" font-size=\"" + num(tiny + 1.0) + "\" fill=\"var(--_m)\"");
+            caption = centered(label,  (from.x + to.x) / 2.0 + px * away,  (from.y + to.y) / 2.0 + py * away, Pele::cat({" class=\"pele-edge-label\" font-size=\"", num(tiny + 1.0), "\" fill=\"var(--_m)\""}));
         }
         links +=
             "<g class=\"pele-edge" + std::string(link.dashed ? " pele-wardley-dashed" : "") + "\" data-id=\"" + escText(link.source) + "-" + escText(link.target) + "\">" +
@@ -1367,14 +1363,10 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
             double uy = dy / distance;
             double ex = tx - ux * (R + 2.0);
             double ey = ty - uy * (R + 2.0);
-            arrow =
-                "<path d=\"M" + num(origin.x + ux * start) + "," + num(origin.y + uy * start) + "L" + num(ex - ux * markerTrim("arrow_point")) + "," + num(ey - uy * markerTrim("arrow_point")) + "\" stroke=\"" + ACCENT + "\" stroke-dasharray=\"4 4\"/>" +
-                marker("arrow_point", ex, ey, ux, uy, ACCENT);
+            arrow = Pele::cat({"<path d=\"M", num(origin.x + ux * start), ",", num(origin.y + uy * start), "L", num(ex - ux * markerTrim("arrow_point")), ",", num(ey - uy * markerTrim("arrow_point")), "\" stroke=\"", ACCENT, "\" stroke-dasharray=\"4 4\"/>", marker("arrow_point", ex, ey, ux, uy, ACCENT)});
         }
         grow(tx - R, ty - R, tx + R, ty + R);
-        trends +=
-            "<g class=\"pele-wardley-trend\" data-id=\"" + escText(trend.nodeId) + "\">" + arrow +
-            "<circle cx=\"" + num(tx) + "\" cy=\"" + num(ty) + "\" r=\"" + num(R) + "\" fill=\"var(--_bg)\" stroke=\"" + ACCENT + "\"/></g>";
+        Pele::appendCat(trends, {"<g class=\"pele-wardley-trend\" data-id=\"", escText(trend.nodeId), "\">", arrow, "<circle cx=\"", num(tx), "\" cy=\"", num(ty), "\" r=\"", num(R), "\" fill=\"var(--_bg)\" stroke=\"", ACCENT, "\"/></g>"});
     }
 
     std::string nodes;
@@ -1391,24 +1383,24 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
         std::string shape;
         if (!strategy.empty()) {
             std::string fill = (strategy == "outsource") ? "var(--_m)" : (strategy == "buy") ? "var(--_a)" : (strategy == "build") ? "var(--_s)" : "var(--_bg)";
-            shape += "<circle class=\"pele-wardley-" + strategy + "\" cx=\"" + num(x) + "\" cy=\"" + num(y) + "\" r=\"" + num(2.0 * R) + "\" fill=\"" + fill + "\" stroke=\"" + LINE + "\"/>";
+            Pele::appendCat(shape, {"<circle class=\"pele-wardley-", strategy, "\" cx=\"", num(x), "\" cy=\"", num(y), "\" r=\"", num(2.0 * R), "\" fill=\"", fill, "\" stroke=\"", LINE, "\"/>"});
         }
         if (strategy == "market") {
             double bx = tri * std::cos(WARDLEY_PI / 6.0);
             double by = y + tri * std::sin(WARDLEY_PI / 6.0);
-            shape += "<path d=\"M" + num(x) + "," + num(y - tri) + "L" + num(x - bx) + "," + num(by) + "H" + num(x + bx) + "Z\" fill=\"none\" stroke=\"" + LINE + "\"/>";
+            Pele::appendCat(shape, {"<path d=\"M", num(x), ",", num(y - tri), "L", num(x - bx), ",", num(by), "H", num(x + bx), "Z\" fill=\"none\" stroke=\"", LINE, "\"/>"});
             double pts[3][2] = {{x, y - tri}, {x - bx, by}, {x + bx, by}};
             for (const auto& pt : pts) {
-                shape += "<circle cx=\"" + num(pt[0]) + "\" cy=\"" + num(pt[1]) + "\" r=\"" + num(dot) + "\" fill=\"var(--_bg)\" stroke=\"" + LINE + "\"/>";
+                Pele::appendCat(shape, {"<circle cx=\"", num(pt[0]), "\" cy=\"", num(pt[1]), "\" r=\"", num(dot), "\" fill=\"var(--_bg)\" stroke=\"", LINE, "\"/>"});
             }
         } else if (node.isPipelineParent) {
-            shape += "<rect x=\"" + num(x - SQUARE / 2.0) + "\" y=\"" + num(y - SQUARE / 2.0) + "\" width=\"" + num(SQUARE) + "\" height=\"" + num(SQUARE) + "\" fill=\"var(--_bg)\" stroke=\"" + LINE + "\"/>";
+            Pele::appendCat(shape, {"<rect x=\"", num(x - SQUARE / 2.0), "\" y=\"", num(y - SQUARE / 2.0), "\" width=\"", num(SQUARE), "\" height=\"", num(SQUARE), "\" fill=\"var(--_bg)\" stroke=\"", LINE, "\"/>"});
         } else if (!anchor) {
-            shape += "<circle cx=\"" + num(x) + "\" cy=\"" + num(y) + "\" r=\"" + num(R) + "\" fill=\"var(--_bg)\" stroke=\"" + LINE + "\"/>";
+            Pele::appendCat(shape, {"<circle cx=\"", num(x), "\" cy=\"", num(y), "\" r=\"", num(R), "\" fill=\"var(--_bg)\" stroke=\"", LINE, "\"/>"});
         }
         if (node.inertia) {
             double offset = (node.isPipelineParent ? (SQUARE / 2.0) : R) + 10.0 + (!strategy.empty() ? (R + 4.0) : 0.0);
-            shape += "<rect class=\"pele-wardley-inertia\" x=\"" + num(x + offset) + "\" y=\"" + num(y - R) + "\" width=\"4\" height=\"" + num(2.0 * R) + "\" fill=\"" + LINE + "\"/>";
+            Pele::appendCat(shape, {"<rect class=\"pele-wardley-inertia\" x=\"", num(x + offset), "\" y=\"", num(y - R), "\" width=\"4\" height=\"", num(2.0 * R), "\" fill=\"", LINE, "\"/>"});
         }
         bool hasOx = node.hasLabelOffsetX;
         bool hasOy = node.hasLabelOffsetY;
@@ -1418,10 +1410,10 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
         if (anchor) {
             auto aIt = anchorLabels.find(&node);
             Label lbl = (aIt != anchorLabels.end()) ? aIt->second : textFn(node.label, small, tight ? std::max(64.0, plotW / 2.0) : 4000.0, Style::Bold);
-            caption = centered(lbl, x + (hasOx ? ox : 0.0), y + (hasOy ? oy : -3.0), " class=\"pele-label\" font-size=\"" + num(small) + "\" font-weight=\"var(--_hw)\"");
+            caption = centered(lbl,  x + (hasOx ? ox : 0.0),  y + (hasOy ? oy : -3.0), Pele::cat({" class=\"pele-label\" font-size=\"", num(small), "\" font-weight=\"var(--_hw)\""}));
         } else {
             Label lbl = textFn(node.label, small);
-            std::string attrs = " class=\"pele-label\" font-size=\"" + num(small) + "\"";
+            std::string attrs = Pele::cat({" class=\"pele-label\" font-size=\"", num(small), "\""});
             double lift = LABEL_OFFSET + (!strategy.empty() ? 10.0 : 0.0);
             if (hasOx || hasOy) {
                 caption = starting(lbl, x + (hasOx ? ox : lift), y + (hasOy ? oy : -lift), attrs);
@@ -1437,7 +1429,7 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
         }
         grow(x - 2.0 * R, y - 2.0 * R, x + 2.0 * R + 20.0, y + 2.0 * R);
         std::string kindClass = anchor ? "anchor" : node.isPipelineParent ? "pipeline-parent" : node.inPipeline ? "pipeline-component" : "component";
-        nodes += "<g class=\"pele-node pele-wardley-" + kindClass + "\" data-id=\"" + escText(node.id) + "\">" + shape + caption + "</g>";
+        Pele::appendCat(nodes, {"<g class=\"pele-node pele-wardley-", kindClass, "\" data-id=\"", escText(node.id), "\">", shape, caption, "</g>"});
     }
 
     std::string annotations;
@@ -1449,10 +1441,9 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
             double y = projectY(coord.y);
             double r = std::max(10.0, label.width / 2.0 + 4.0);
             grow(x - r, y - r, x + r, y + r);
-            marks += "<circle cx=\"" + num(x) + "\" cy=\"" + num(y) + "\" r=\"" + num(r) + "\" fill=\"var(--_bg)\" stroke=\"" + LINE + "\"/>" +
-                     labelSvg(label, x, y, " font-size=\"" + num(tiny) + "\" font-weight=\"var(--_hw)\"");
+            Pele::appendCat(marks, {"<circle cx=\"", num(x), "\" cy=\"", num(y), "\" r=\"", num(r), "\" fill=\"var(--_bg)\" stroke=\"", LINE, "\"/>", labelSvg(label,  x,  y, Pele::cat({" font-size=\"", num(tiny), "\" font-weight=\"var(--_hw)\""}))});
         }
-        annotations += "<g class=\"pele-wardley-annotation\" data-id=\"" + escText(std::to_string(ann.number)) + "\">" + marks + "</g>";
+        Pele::appendCat(annotations, {"<g class=\"pele-wardley-annotation\" data-id=\"", escText(std::to_string(ann.number)), "\">", marks, "</g>"});
     }
     std::vector<const WardleyAnnotation*> listed;
     for (const auto& ann : model.annotations) {
@@ -1479,15 +1470,15 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
         std::string rows;
         double y = by + 7.0;
         for (const auto& line : lines) {
-            rows += startLabel(line, bx + 10.0, y + line.lineHeight / 2.0 + small * 0.35, " font-size=\"" + num(small) + "\"");
+            rows += startLabel(line,  bx + 10.0,  y + line.lineHeight / 2.0 + small * 0.35, Pele::cat({" font-size=\"", num(small), "\""}));
             y += line.height;
         }
-        annotations += "<g class=\"pele-wardley-annotations\"><rect x=\"" + num(bx) + "\" y=\"" + num(by) + "\" width=\"" + num(w) + "\" height=\"" + num(h) + "\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"" + ROUNDED + "/>" + rows + "</g>";
+        Pele::appendCat(annotations, {"<g class=\"pele-wardley-annotations\"><rect x=\"", num(bx), "\" y=\"", num(by), "\" width=\"", num(w), "\" height=\"", num(h), "\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"", ROUNDED, "/>", rows, "</g>"});
     }
 
     std::string notes;
     for (const auto& note : model.notes) {
-        notes += starting(textFn(note.text, small, std::min(360.0, plotW * 0.6), Style::Bold), projectX(note.x), projectY(note.y), " class=\"pele-wardley-note\" font-size=\"" + num(small) + "\" font-weight=\"var(--_hw)\"");
+        notes += starting(textFn(note.text, small, std::min(360.0, plotW * 0.6), Style::Bold),  projectX(note.x),  projectY(note.y), Pele::cat({" class=\"pele-wardley-note\" font-size=\"", num(small), "\" font-weight=\"var(--_hw)\""}));
     }
 
     std::string forces;
@@ -1498,12 +1489,12 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
         double tip = forward ? (x + FORCE_WIDTH) : x;
         double tail = forward ? x : (x + FORCE_WIDTH);
         double neck = forward ? (x + FORCE_WIDTH - FORCE_HEAD) : (x + FORCE_HEAD);
-        std::string d = "M" + num(tail) + "," + num(y - half) + "H" + num(neck) + "V" + num(y - half - 8.0) + "L" + num(tip) + "," + num(y) + "L" + num(neck) + "," + num(y + half + 8.0) + "V" + num(y + half) + "H" + num(tail) + "Z";
+        std::string d = Pele::cat({"M", num(tail), ",", num(y - half), "H", num(neck), "V", num(y - half - 8.0), "L", num(tip), ",", num(y), "L", num(neck), ",", num(y + half + 8.0), "V", num(y + half), "H", num(tail), "Z"});
         grow(x, y - half - 8.0, x + FORCE_WIDTH, y + half + 8.0);
         forces +=
             "<g class=\"pele-wardley-" + std::string(forward ? "accelerator" : "deaccelerator") + "\" data-id=\"" + escText(name) + "\">" +
             "<path d=\"" + d + "\" fill=\"var(--_s)\" stroke=\"" + LINE + "\"/>" +
-            centered(textFn(name, tiny + 1.0, 160.0, Style::Bold), x + FORCE_WIDTH / 2.0, y + half + 8.0 + 12.0, " font-size=\"" + num(tiny + 1.0) + "\" font-weight=\"var(--_hw)\"") +
+            centered(textFn(name, tiny + 1.0, 160.0, Style::Bold),  x + FORCE_WIDTH / 2.0,  y + half + 8.0 + 12.0, Pele::cat({" font-size=\"", num(tiny + 1.0), "\" font-weight=\"var(--_hw)\""})) +
             "</g>";
     };
     for (const auto& a : model.accelerators) force(a.name, a.x, a.y, true);
@@ -1517,20 +1508,7 @@ inline Rendered drawWardley(const WardleyModel& model, const Config& config, con
     double ty = pad + titleHeight - minY;
     double totalWidth = std::ceil(right - left + 2.0 * pad);
     double totalHeight = std::ceil(maxY - minY + titleHeight + 2.0 * pad);
-    std::string content =
-        labelSvg(title, tx + plotW / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        "<g transform=\"translate(" + num(tx) + "," + num(ty) + ")\">" +
-        "<g class=\"pele-wardley-frame\" fill=\"none\">" + frame + "</g>" +
-        stageLabels +
-        axisLabels +
-        pipelines +
-        (!links.empty() ? ("<g class=\"pele-edges\" fill=\"none\">" + links + "</g>") : "") +
-        (!trends.empty() ? ("<g class=\"pele-wardley-trends\" fill=\"none\">" + trends + "</g>") : "") +
-        nodes +
-        annotations +
-        notes +
-        forces +
-        "</g>";
+    std::string content = Pele::cat({labelSvg(title, tx + plotW / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), "<g transform=\"translate(", num(tx), ",", num(ty), ")\">", "<g class=\"pele-wardley-frame\" fill=\"none\">", frame, "</g>", stageLabels, axisLabels, pipelines, (!links.empty() ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\">", links, "</g>"}) : ""), (!trends.empty() ? Pele::cat({"<g class=\"pele-wardley-trends\" fill=\"none\">", trends, "</g>"}) : ""), nodes, annotations, notes, forces, "</g>"});
 
     return {
         svgDocument("wardley", totalWidth, totalHeight, size, options, model, content),
@@ -1556,7 +1534,7 @@ inline Rendered renderWardley(const std::string& source, const Config& config, c
 
 inline Rendered renderWardley(const std::string& raw, RenderOptions options = {}) {
     auto pre = preprocess(raw);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     const auto* section = pre.config.get("wardley-beta");
     bool fixed = (section && section->isMap() && section->get("useMaxWidth") && section->get("useMaxWidth")->isBool() && !section->get("useMaxWidth")->bVal);
     if (!options.hasResponsive) {

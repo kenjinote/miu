@@ -19,7 +19,7 @@ namespace architecture_detail {
 // Safe single-space normalizer for title/accTitle/accDescr
 // ============================================================================
 
-inline std::string archSingle(const std::string& text) {
+inline std::string archSingle(const std::string& text) noexcept {
   std::string s = trimStr(text);
   std::string out;
   int spaces = 0;
@@ -37,19 +37,19 @@ inline std::string archSingle(const std::string& text) {
   return out;
 }
 
-inline std::string archTitleValue(const std::string& text) {
+inline std::string archTitleValue(const std::string& text) noexcept {
   size_t pos = text.find("title");
   if (pos == std::string::npos) return "";
   return archSingle(text.substr(pos + 5));
 }
 
-inline std::string archAccTitleValue(const std::string& text) {
+inline std::string archAccTitleValue(const std::string& text) noexcept {
   size_t pos = text.find(':');
   if (pos == std::string::npos) return "";
   return archSingle(text.substr(pos + 1));
 }
 
-inline std::string archAccDescrValue(const std::string& text) {
+inline std::string archAccDescrValue(const std::string& text) noexcept {
   size_t brace = text.find('{');
   size_t colon = text.find(':');
   if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -96,11 +96,11 @@ enum T {
   label
 };
 
-inline bool isWordChar(char c) {
+inline bool isWordChar(char c) noexcept {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
 }
 
-inline TokenType archWord(const std::string& text) {
+inline TokenType archWord(const std::string& text) noexcept {
   TokenType t;
   t.name = text;
   t.literal = text;
@@ -109,7 +109,7 @@ inline TokenType archWord(const std::string& text) {
   return t;
 }
 
-inline TokenType archLiteral(const std::string& text, std::vector<int> longer = {}) {
+inline TokenType archLiteral(const std::string& text, std::vector<int> longer = {}) noexcept {
   TokenType t;
   t.name = text;
   t.literal = text;
@@ -118,7 +118,7 @@ inline TokenType archLiteral(const std::string& text, std::vector<int> longer = 
   return t;
 }
 
-inline const std::vector<TokenType>& getTokens() {
+inline const std::vector<TokenType>& getTokens() noexcept {
   static const std::vector<TokenType> tokens = []() {
     std::vector<TokenType> v;
     v.push_back(archWord("architecture-beta")); // 0
@@ -305,7 +305,7 @@ struct ArchitectureAst {
   std::vector<AlignmentAst> alignments;
 };
 
-inline std::string labelValue(const std::string& text) {
+inline std::string labelValue(const std::string& text) noexcept {
   std::string result = trimStr(text.substr(1, text.size() - 2));
   if (result.size() >= 2 && ((result.front() == '"' && result.back() == '"') || (result.front() == '\'' && result.back() == '\''))) {
     result = result.substr(1, result.size() - 2);
@@ -442,14 +442,14 @@ using ArchLayoutHint = AlignmentAst;
 class ArchitectureDb : public DiagramMeta {
 public:
   std::vector<ArchNode> nodeList;
-  std::unordered_map<std::string, size_t> nodeMap;
+  Pele::FlatMap<std::string, size_t> nodeMap;
   std::vector<ArchGroup> groupList;
-  std::unordered_map<std::string, size_t> groupMap;
+  Pele::FlatMap<std::string, size_t> groupMap;
   std::vector<ArchEdge> edges;
   std::vector<ArchLayoutHint> layoutHints;
 
 private:
-  std::unordered_map<std::string, std::string> registered; // id -> "node" | "group"
+  Pele::FlatMap<std::string, std::string> registered; // id -> "node" | "group"
 
   void registerId(const std::string& kind, const std::string& id, const std::optional<std::string>& parent) {
     auto it = registered.find(id);
@@ -457,12 +457,12 @@ private:
       archFail("The " + kind + " id [" + id + "] is already in use by another " + it->second);
     }
     if (parent.has_value()) {
-      if (id == *parent) archFail("The " + kind + " [" + id + "] cannot be placed within itself");
+      if (id == *parent) archFail(Pele::cat({"The ", kind, " [", id, "] cannot be placed within itself"}));
       auto pit = registered.find(*parent);
       if (pit == registered.end()) {
-        archFail("The " + kind + " [" + id + "]'s parent does not exist. Please make sure the parent is created before this " + kind);
+        archFail(Pele::cat({"The ", kind, " [", id, "]'s parent does not exist. Please make sure the parent is created before this ", kind}));
       }
-      if (pit->second == "node") archFail("The " + kind + " [" + id + "]'s parent is not a group");
+      if (pit->second == "node") archFail(Pele::cat({"The ", kind, " [", id, "]'s parent is not a group"}));
     }
     registered[id] = (kind == "group") ? "group" : "node";
   }
@@ -515,21 +515,21 @@ public:
     if (hint.members.size() < 2) {
       archFail("An align directive requires at least two members; got " + std::to_string(hint.members.size()));
     }
-    std::unordered_set<std::string> seen;
+    Pele::FlatSet<std::string> seen;
     for (const auto& id : hint.members) {
       auto it = registered.find(id);
       if (it == registered.end() || it->second != "node") {
-        archFail("align " + hint.direction + " references [" + id + "], which is not a service or junction");
+        archFail(Pele::cat({"align ", hint.direction, " references [", id, "], which is not a service or junction"}));
       }
       if (!seen.insert(id).second) {
-        archFail("align " + hint.direction + " lists [" + id + "] more than once");
+        archFail(Pele::cat({"align ", hint.direction, " lists [", id, "] more than once"}));
       }
     }
     layoutHints.push_back(hint);
   }
 };
 
-inline void populate(const ArchitectureAst& ast, ArchitectureDb& db) {
+inline void populate(const ArchitectureAst& ast, ArchitectureDb& db) noexcept {
   if (ast.accDescr.has_value() && !ast.accDescr->empty()) db.accDescr = cleanAccDescr(*ast.accDescr);
   if (ast.accTitle.has_value() && !ast.accTitle->empty()) db.accTitle = trimStartStr(*ast.accTitle);
   if (ast.title.has_value() && !ast.title->empty()) db.title = *ast.title;
@@ -544,14 +544,14 @@ inline void populate(const ArchitectureAst& ast, ArchitectureDb& db) {
 // Built-in Icons (`src/diagrams/architecture/icons.ts`)
 // ============================================================================
 
-inline std::string builtinIcon(const std::string& name) {
+inline std::string builtinIcon(const std::string& name) noexcept {
   std::string d;
   if (name == "database") d = "M4 6a8 3 0 1 0 16 0a8 3 0 1 0-16 0M4 6v12a8 3 0 0 0 16 0V6M4 12a8 3 0 0 0 16 0";
   else if (name == "server") d = "M3 4h18v7H3zM3 13h18v7H3zM7 7.5h.01M7 16.5h.01M11 7.5h6M11 16.5h6";
   else if (name == "disk") d = "M5 3h14v18H5zM12 6.5a4 4 0 1 0 0 8a4 4 0 1 0 0-8M12 10.5h.01M8 18h3";
   else if (name == "internet") d = "M3 12a9 9 0 1 0 18 0a9 9 0 1 0-18 0M3 12h18M12 3a13 13 0 0 0 0 18M12 3a13 13 0 0 1 0 18";
   else if (name == "cloud") d = "M7 18a4 4 0 0 1-.5-7.97A6 6 0 0 1 18 9.5a4.25 4.25 0 0 1-.5 8.5z";
-  return d.empty() ? "" : ("<path d=\"" + d + "\" stroke=\"var(--_fg)\" stroke-width=\"1.5\"/>");
+  return d.empty() ? "" : Pele::cat({"<path d=\"", d, "\" stroke=\"var(--_fg)\" stroke-width=\"1.5\"/>"});
 }
 
 // ============================================================================
@@ -573,7 +573,7 @@ struct Grid {
 constexpr int DX[4] = {-1, 1, 0, 0};
 constexpr int DY[4] = {0, 0, -1, 1};
 
-inline int sideIndex(char side) {
+inline int sideIndex(char side) noexcept {
   return side == 'L' ? 0 : side == 'R' ? 1 : side == 'T' ? 2 : 3;
 }
 
@@ -590,8 +590,8 @@ inline Grid placeOnGrid(
   int N = static_cast<int>(nodes.size());
   int G = static_cast<int>(groups.size());
   int root = G;
-  std::unordered_map<std::string, int> nodeIndex;
-  std::unordered_map<std::string, int> groupIndex;
+  Pele::FlatMap<std::string, int> nodeIndex;
+  Pele::FlatMap<std::string, int> groupIndex;
   std::vector<int> parent(N + G, root);
   std::vector<int> depth(G + 1, 0);
   std::vector<std::vector<int>> kids(G + 1);
@@ -678,9 +678,9 @@ inline Grid placeOnGrid(
   std::vector<uint8_t> placed(N + G, 0);
 
   std::vector<int> order;
-  std::unordered_map<int64_t, int> cells;
+  Pele::FlatMap<int64_t, int> cells;
   std::vector<int> large;
-  std::unordered_map<std::string, int> reach;
+  Pele::FlatMap<std::string, int> reach;
   size_t first = 0;
   int ax = 0, ay = 0;
 
@@ -929,7 +929,7 @@ constexpr double CORNER = 6.0;
 constexpr double LABEL_GAP = 4.0;
 constexpr double DOT = 3.0;
 
-inline double setting(const Config& config, const std::string& key, double fallback, double minV, double maxV) {
+inline double setting(const Config& config, const std::string& key, double fallback, double minV, double maxV) noexcept {
   const auto* sec = config.get("architecture");
   if (sec && sec->isMap()) {
     const auto* v = sec->get(key);
@@ -940,9 +940,9 @@ inline double setting(const Config& config, const std::string& key, double fallb
   return fallback;
 }
 
-inline std::unordered_map<int, int> rankValues(std::vector<int> values) {
+inline Pele::FlatMap<int, int> rankValues(std::vector<int> values) noexcept {
   std::sort(values.begin(), values.end());
-  std::unordered_map<int, int> out;
+  Pele::FlatMap<int, int> out;
   for (int v : values) {
     if (out.find(v) == out.end()) {
       int idx = static_cast<int>(out.size());
@@ -952,16 +952,13 @@ inline std::unordered_map<int, int> rankValues(std::vector<int> values) {
   return out;
 }
 
-inline std::string iconSlot(const std::string& name, double x, double y, double side, const IconResolver& icons) {
+inline std::string iconSlot(const std::string& name, double x, double y, double side, const IconResolver& icons) noexcept {
   std::string body = icons ? icons(name) : "";
   if (body.empty() && !icons) body = builtinIcon(name);
-  return "<svg class=\"pele-icon\" data-icon=\"" + escText(name) + "\" x=\"" + num(x) + "\" y=\"" + num(y) +
-         "\" width=\"" + num(side) + "\" height=\"" + num(side) +
-         "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">" +
-         body + "</svg>";
+  return Pele::cat({"<svg class=\"pele-icon\" data-icon=\"", escText(name), "\" x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(side), "\" height=\"", num(side), "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">", body, "</svg>"});
 }
 
-inline Label fitLabel(const Label& label, double maxWidth, size_t maxLines, const TextMeasurer& measurer) {
+inline Label fitLabel(const Label& label, double maxWidth, size_t maxLines, const TextMeasurer& measurer) noexcept {
   bool cut = label.lines.size() > maxLines;
   if (!cut && label.width <= maxWidth) return label;
   const std::string ellipsis = "\xE2\x80\xA6"; // …
@@ -1036,7 +1033,7 @@ struct Port {
   bool wire = false;
 };
 
-inline std::vector<double> routeEdge(const Port& s, const Port& e) {
+inline std::vector<double> routeEdge(const Port& s, const Port& e) noexcept {
   double sx = s.x, sy = s.y, sdx = s.dx, sdy = s.dy;
   double ex = e.x, ey = e.y, edx = e.dx, edy = e.dy;
   double s1x = sx + sdx * STUB;
@@ -1090,7 +1087,7 @@ inline std::vector<double> routeEdge(const Port& s, const Port& e) {
   return {sx, sy, sx, s1y, lane, s1y, lane, e1y, ex, e1y, ex, ey};
 }
 
-inline std::vector<double> simplifyPoints(const std::vector<double>& p) {
+inline std::vector<double> simplifyPoints(const std::vector<double>& p) noexcept {
   std::vector<double> out = {p[0], p[1]};
   for (size_t i = 2; i < p.size(); i += 2) {
     double x = p[i];
@@ -1110,7 +1107,7 @@ inline std::vector<double> simplifyPoints(const std::vector<double>& p) {
   return out;
 }
 
-inline std::string pathData(const std::vector<double>& p, double startTrim, double endTrim) {
+inline std::string pathData(const std::vector<double>& p, double startTrim, double endTrim) noexcept {
   size_t n = p.size() / 2;
   std::vector<double> xs(n), ys(n);
   for (size_t i = 0; i < n; i++) {
@@ -1127,25 +1124,25 @@ inline std::string pathData(const std::vector<double>& p, double startTrim, doub
   };
   trim(0, 1, startTrim);
   trim(n - 1, n - 2, endTrim);
-  std::string d = "M" + num(xs[0]) + "," + num(ys[0]);
+  std::string d = Pele::cat({"M", num(xs[0]), ",", num(ys[0])});
   for (size_t i = 1; i + 1 < n; i++) {
     double before = std::hypot(xs[i] - xs[i - 1], ys[i] - ys[i - 1]);
     double after = std::hypot(xs[i + 1] - xs[i], ys[i + 1] - ys[i]);
     double r = std::min({CORNER, before / 2.0, after / 2.0});
     if (r < 0.5) {
-      d += "L" + num(xs[i]) + "," + num(ys[i]);
+      Pele::appendCat(d, {"L", num(xs[i]), ",", num(ys[i])});
       continue;
     }
     double inX = xs[i] - ((xs[i] - xs[i - 1]) / before) * r;
     double inY = ys[i] - ((ys[i] - ys[i - 1]) / before) * r;
     double outX = xs[i] + ((xs[i + 1] - xs[i]) / after) * r;
     double outY = ys[i] + ((ys[i + 1] - ys[i]) / after) * r;
-    d += "L" + num(inX) + "," + num(inY) + "Q" + num(xs[i]) + "," + num(ys[i]) + " " + num(outX) + "," + num(outY);
+    Pele::appendCat(d, {"L", num(inX), ",", num(inY), "Q", num(xs[i]), ",", num(ys[i]), " ", num(outX), ",", num(outY)});
   }
-  return d + "L" + num(xs[n - 1]) + "," + num(ys[n - 1]);
+  return Pele::cat({d, "L", num(xs[n - 1]), ",", num(ys[n - 1])});
 }
 
-inline Rendered draw(const ArchitectureDb& model, const Config& config, const RenderOptions& options, bool tight) {
+inline Rendered draw(const ArchitectureDb& model, const Config& config, const RenderOptions& options, bool tight) noexcept {
   double iconSize = setting(config, "iconSize", 48.0, 8.0, 512.0);
   double size = setting(config, "fontSize", options.fontSize, 4.0, 128.0);
   double groupPad = std::min(setting(config, "padding", 20.0, 0.0, 256.0), tight ? 12.0 : std::numeric_limits<double>::infinity());
@@ -1160,7 +1157,7 @@ inline Rendered draw(const ArchitectureDb& model, const Config& config, const Re
   int N = static_cast<int>(nodes.size());
   int G = static_cast<int>(groups.size());
   Grid grid = placeOnGrid(nodes, groups, model.edges, model.layoutHints);
-  std::unordered_map<std::string, int> index;
+  Pele::FlatMap<std::string, int> index;
   for (int i = 0; i < N; i++) index[nodes[i].id] = i;
 
   std::vector<Label> labels(N);
@@ -1352,13 +1349,8 @@ inline Rendered draw(const ArchitectureDb& model, const Config& config, const Re
     }
     std::vector<double> points = simplifyPoints(routed);
     if (points.size() < 4) continue;
-    std::string id = escText(edge.lhsId + "-" + edge.rhsId);
-    edgesOut +=
-      "<g class=\"pele-edge\" data-id=\"" + id + "\">" +
-      "<path d=\"" + pathData(points, edge.lhsInto && !s.wire ? trimLength + s.gap : 0.0, edge.rhsInto && !e.wire ? trimLength + e.gap : 0.0) + "\"/>" +
-      (edge.lhsInto ? marker("arrow_point", s.x + s.dx * s.gap, s.y + s.dy * s.gap, -s.dx, -s.dy, "var(--_l)") : "") +
-      (edge.rhsInto ? marker("arrow_point", e.x + e.dx * e.gap, e.y + e.dy * e.gap, -e.dx, -e.dy, "var(--_l)") : "") +
-      "</g>";
+    std::string id = escText(Pele::cat({edge.lhsId, "-", edge.rhsId}));
+    Pele::appendCat(edgesOut, {"<g class=\"pele-edge\" data-id=\"", id, "\">", "<path d=\"", pathData(points, edge.lhsInto && !s.wire ? trimLength + s.gap : 0.0, edge.rhsInto && !e.wire ? trimLength + e.gap : 0.0), "\"/>", (edge.lhsInto ? marker("arrow_point", s.x + s.dx * s.gap, s.y + s.dy * s.gap, -s.dx, -s.dy, "var(--_l)") : ""), (edge.rhsInto ? marker("arrow_point", e.x + e.dx * e.gap, e.y + e.dy * e.gap, -e.dx, -e.dy, "var(--_l)") : ""), "</g>"});
 
     int best = -1;
     double bestLength = -1.0;
@@ -1403,7 +1395,7 @@ inline Rendered draw(const ArchitectureDb& model, const Config& config, const Re
       maxX = std::max(maxX, lx + lw / 2.0);
       minY = std::min(minY, ly - label.height / 2.0);
       maxY = std::max(maxY, ly + label.height / 2.0);
-      labelsOut += edgeLabelSvg(edge.lhsId + "-" + edge.rhsId, label, lx, ly, "", icons);
+      labelsOut += edgeLabelSvg(Pele::cat({edge.lhsId, "-", edge.rhsId}),  label,  lx,  ly,  "",  icons);
     }
   }
 
@@ -1449,9 +1441,9 @@ inline Rendered draw(const ArchitectureDb& model, const Config& config, const Re
   double textSize = std::max(6.0, std::round(size * 0.75));
   for (int i = 0; i < N; i++) {
     const auto& node = nodes[i];
-    std::string at = "data-id=\"" + escText(node.id) + "\" transform=\"translate(" + num(centerX(i)) + "," + num(Y[nodeRow[i]]) + ")\"";
+    std::string at = Pele::cat({"data-id=\"", escText(node.id), "\" transform=\"translate(", num(centerX(i)), ",", num(Y[nodeRow[i]]), ")\""});
     if (node.type == "junction") {
-      nodesOut += "<g class=\"pele-node pele-junction\" " + at + "><circle cy=\"" + num(half) + "\" r=\"" + num(DOT) + "\" fill=\"var(--_l)\"/></g>";
+      Pele::appendCat(nodesOut, {"<g class=\"pele-node pele-junction\" ", at, "><circle cy=\"", num(half), "\" r=\"", num(DOT), "\" fill=\"var(--_l)\"/></g>"});
       continue;
     }
     std::string inner;
@@ -1460,7 +1452,7 @@ inline Rendered draw(const ArchitectureDb& model, const Config& config, const Re
     } else if (node.iconText.has_value()) {
       Label text = layoutLabel(*node.iconText, false, measurer, textSize, iconSize - 8.0);
       size_t lines = static_cast<size_t>(std::max(1.0, std::floor((iconSize - 4.0) / (text.lineHeight > 0.0 ? text.lineHeight : 1.0))));
-      inner = labelSvg(fitLabel(text, iconSize - 8.0, lines, measurer), 0.0, half, " class=\"pele-icon-text\" font-size=\"" + num(textSize) + "\"", icons);
+      inner = labelSvg(fitLabel(text, iconSize - 8.0, lines, measurer),  0.0,  half, Pele::cat({" class=\"pele-icon-text\" font-size=\"", num(textSize), "\""}),  icons);
     }
     nodesOut +=
       "<g class=\"pele-node pele-service\" " + at + ">" +
@@ -1477,10 +1469,10 @@ inline Rendered draw(const ArchitectureDb& model, const Config& config, const Re
   double ox = std::round((width - (maxX - minX)) / 2.0 - minX);
   double oy = std::round(pad + titleHeight - minY);
   std::string body =
-    (!clusters.empty() ? ("<g class=\"pele-clusters\">" + clusters + "</g>") : "") +
-    (!edgesOut.empty() ? ("<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\" stroke-linejoin=\"round\">" + edgesOut + "</g>") : "") +
-    (!labelsOut.empty() ? ("<g class=\"pele-edge-labels\" font-size=\"" + num(small) + "\">" + labelsOut + "</g>") : "") +
-    (!nodesOut.empty() ? ("<g class=\"pele-nodes\">" + nodesOut + "</g>") : "");
+    (!clusters.empty() ? Pele::cat({"<g class=\"pele-clusters\">", clusters, "</g>"}) : "") +
+    (!edgesOut.empty() ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\" stroke-linejoin=\"round\">", edgesOut, "</g>"}) : "") +
+    (!labelsOut.empty() ? Pele::cat({"<g class=\"pele-edge-labels\" font-size=\"", num(small), "\">", labelsOut, "</g>"}) : "") +
+    (!nodesOut.empty() ? Pele::cat({"<g class=\"pele-nodes\">", nodesOut, "</g>"}) : "");
 
   std::string svg = svgDocument(
     "architecture",
@@ -1490,12 +1482,12 @@ inline Rendered draw(const ArchitectureDb& model, const Config& config, const Re
     options,
     model,
     labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-      (!body.empty() ? ("<g transform=\"translate(" + num(ox) + "," + num(oy) + ")\">" + body + "</g>") : "")
+      (!body.empty() ? Pele::cat({"<g transform=\"translate(", num(ox), ",", num(oy), ")\">", body, "</g>"}) : "")
   );
   return {svg, width, height, {}};
 }
 
-inline Rendered renderArchitectureModel(const ArchitectureDb& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderArchitectureModel(const ArchitectureDb& model, const Config& config, const RenderOptions& options) noexcept {
   return tighten(options, [&](bool tight) {
     return draw(model, config, options, tight);
   });
@@ -1519,7 +1511,7 @@ inline Rendered renderArchitecture(const std::string& source, const Config& conf
 
 inline Rendered renderArchitecture(const std::string& raw, RenderOptions options = {}) {
   auto pre = preprocess(raw);
-  std::string parsed = encodeEntities(pre.text) + "\n";
+  std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
   const auto* section = pre.config.get("architecture");
   bool fixed = (section && section->isMap() && section->get("useMaxWidth") && section->get("useMaxWidth")->isBool() && !section->get("useMaxWidth")->bVal);
   if (!options.hasResponsive) {

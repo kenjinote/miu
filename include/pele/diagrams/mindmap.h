@@ -38,9 +38,8 @@ public:
         while (depth > 0 && nodes[open[depth - 1]].level >= level) depth--;
         int parentIdx = depth > 0 ? open[depth - 1] : -1;
         if (parentIdx < 0 && !isRoot) {
-            throw PeleError(
-                "There can be only one root. No parent could be found for (\"" + descr + "\")",
-                "semantic",
+            throw PeleError(Pele::cat({"There can be only one root. No parent could be found for (\"", descr, "\")"}), 
+                "semantic", 
                 "mindmap"
             );
         }
@@ -88,7 +87,7 @@ constexpr double STEM = 12.0;
 constexpr double BEND = 8.0;
 constexpr double ROW_GAP = 10.0;
 
-inline std::string leftLabelMindmap(const Label& label, double left, double cy, const IconResolver& icons) {
+inline std::string leftLabelMindmap(const Label& label, double left, double cy, const IconResolver& icons) noexcept {
     if (label.lines.size() < 2) {
         return labelSvg(label, left + label.width / 2.0, cy, " class=\"pele-label\"", icons);
     }
@@ -100,12 +99,12 @@ inline std::string leftLabelMindmap(const Label& label, double left, double cy, 
     return out;
 }
 
-inline double mindmapTitleRoom(const RenderOptions& options) {
+inline double mindmapTitleRoom(const RenderOptions& options) noexcept {
     double available = options.maxWidth;
     return available > 0.0 ? std::max(80.0, available - 2.0 * options.padding) : 4000.0;
 }
 
-inline Rendered drawMindmap(const MindmapModel& model, const Config& config, const RenderOptions& options, bool down) {
+inline Rendered drawMindmap(const MindmapModel& model, const Config& config, const RenderOptions& options, bool down) noexcept {
     static const char* SHAPES[7] = {"", "rounded", "rect", "circle", "cloud", "bang", "hex"};
     static const std::string ROOT_SHAPE = "stadium";
 
@@ -294,7 +293,7 @@ inline Rendered drawMindmap(const MindmapModel& model, const Config& config, con
             double y2 = top + anchor[i];
             double bend = std::max(0.0, std::min({BEND, x2 - x1, y2 - y1}));
             trunk[p] = y2 - bend;
-            edges += "<path class=\"pele-edge\" d=\"M" + num(x1) + "," + num(y1) + "V" + num(y2 - bend) + "Q" + num(x1) + "," + num(y2) + " " + num(x1 + bend) + "," + num(y2) + "H" + num(x2) + "\"/>";
+            Pele::appendCat(edges, {"<path class=\"pele-edge\" d=\"M", num(x1), ",", num(y1), "V", num(y2 - bend), "Q", num(x1), ",", num(y2), " ", num(x1 + bend), ",", num(y2), "H", num(x2), "\"/>"});
         } else if (i > 0) {
             if (parent[i] == 0) color = seriesColor(node.hasSection ? node.section : 0);
             int p = parent[i];
@@ -306,18 +305,18 @@ inline Rendered drawMindmap(const MindmapModel& model, const Config& config, con
             double x2 = near + (!shape.empty() ? dir * shapeInset(shape, w[i], h[i], 4 - from) : 0.0);
             double y2 = top + anchor[i];
             std::string mid = num((x1 + x2) / 2.0);
-            edges += "<path class=\"pele-edge\" d=\"M" + num(x1) + "," + num(y1) + "C" + mid + "," + num(y1) + " " + mid + "," + num(y2) + " " + num(x2) + "," + num(y2) + "\"/>";
+            Pele::appendCat(edges, {"<path class=\"pele-edge\" d=\"M", num(x1), ",", num(y1), "C", mid, ",", num(y1), " ", mid, ",", num(y2), " ", num(x2), ",", num(y2), "\"/>"});
         }
 
         bool pill = shape.empty() && !node.children.empty();
-        std::string tint = " fill=\"" + color + "\" fill-opacity=\"0.22\" stroke=\"" + color + "\"";
+        std::string tint = Pele::cat({" fill=\"", color, "\" fill-opacity=\"0.22\" stroke=\"", color, "\""});
         std::string inner;
         if (!shape.empty()) {
             inner = i > 0
-                ? drawShape(shape, w[i], h[i], tint, " stroke=\"" + color + "\"")
+                ? drawShape(shape,  w[i],  h[i],  tint, Pele::cat({" stroke=\"", color, "\""}))
                 : drawShape(shape, w[i], h[i], " fill=\"var(--_s)\" stroke=\"var(--_b)\"", " stroke=\"var(--_b)\"");
         } else if (pill) {
-            inner = "<rect x=\"" + num(-w[i] / 2.0) + "\" y=\"" + num(-h[i] / 2.0) + "\" width=\"" + num(w[i]) + "\" height=\"" + num(h[i]) + "\" rx=\"" + num(h[i] / 2.0) + "\"" + tint + "/>";
+            inner = Pele::cat({"<rect x=\"", num(-w[i] / 2.0), "\" y=\"", num(-h[i] / 2.0), "\" width=\"", num(w[i]), "\" height=\"", num(h[i]), "\" rx=\"", num(h[i] / 2.0), "\"", tint, "/>"});
         }
         double shift = 0.0;
         if (!node.icon.empty() && drawn[i]) {
@@ -325,12 +324,7 @@ inline Rendered drawMindmap(const MindmapModel& model, const Config& config, con
             inner += iconSvg(node.icon, -shift - label.width / 2.0, dy[i] - glyph / 2.0, glyph, icons);
         }
         std::string shapeClass = !shape.empty() ? shape : (pill ? "branch" : "text");
-        std::string group =
-            "<g class=\"pele-node pele-shape-" + shapeClass + (i > 0 ? "" : " pele-root") + classNames(node.className) + "\" data-id=\"" + escText(node.nodeId) +
-            "\" transform=\"translate(" + num(cx) + "," + num(top + h[i] / 2.0) + ")\">" +
-            inner +
-            (down && shape.empty() ? leftLabelMindmap(label, shift - label.width / 2.0, dy[i], icons) : labelSvg(label, shift, dy[i], " class=\"pele-label\"", icons)) +
-            "</g>";
+        std::string group = Pele::cat({"<g class=\"pele-node pele-shape-", shapeClass, (i > 0 ? "" : " pele-root"), classNames(node.className), "\" data-id=\"", escText(node.nodeId), "\" transform=\"translate(", num(cx), ",", num(top + h[i] / 2.0), ")\">", inner, (down && shape.empty() ? leftLabelMindmap(label, shift - label.width / 2.0, dy[i], icons) : labelSvg(label, shift, dy[i], " class=\"pele-label\"", icons)), "</g>"});
         if (i > 0) body += group;
         else out += group;
     }
@@ -340,9 +334,7 @@ inline Rendered drawMindmap(const MindmapModel& model, const Config& config, con
     double width = std::max(maxX - minX, title.width);
     double totalWidth = std::ceil(width + 2.0 * pad);
     double totalHeight = std::ceil(maxY - minY + titleHeight + 2.0 * pad);
-    std::string content =
-        labelSvg(title, totalWidth / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        "<g transform=\"translate(" + num(pad - minX + (width - maxX + minX) / 2.0) + "," + num(pad + titleHeight - minY) + ")\">" + out + "</g>";
+    std::string content = Pele::cat({labelSvg(title, totalWidth / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), "<g transform=\"translate(", num(pad - minX + (width - maxX + minX) / 2.0), ",", num(pad + titleHeight - minY), ")\">", out, "</g>"});
 
     return {
         svgDocument("mindmap", totalWidth, totalHeight, size, options, DiagramMeta{}, content),
@@ -352,7 +344,7 @@ inline Rendered drawMindmap(const MindmapModel& model, const Config& config, con
     };
 }
 
-inline Rendered renderMindmapModel(const MindmapModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderMindmapModel(const MindmapModel& model, const Config& config, const RenderOptions& options) noexcept {
     Rendered across = drawMindmap(model, config, options, false);
     double available = options.maxWidth;
     if (!(available > 0.0) || across.width <= available || available >= 640.0) return across;
@@ -375,7 +367,7 @@ inline Rendered renderMindmap(const std::string& source, const Config& config, c
 
 inline Rendered renderMindmap(const std::string& source, const RenderOptions& options = {}) {
     auto pre = preprocess(source);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     RenderOptions opts = options;
     if (!opts.hasResponsive) {
         const auto* section = pre.config.get("mindmap");

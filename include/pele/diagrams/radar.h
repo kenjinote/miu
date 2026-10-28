@@ -41,14 +41,14 @@ enum Kind {
 };
 } // namespace T
 
-inline int matchDigits(const std::string& src, int at) {
+inline int matchDigits(const std::string& src, int at) noexcept {
     int end = at;
     int n = static_cast<int>(src.size());
     while (end < n && src[end] >= '0' && src[end] <= '9') end++;
     return end;
 }
 
-inline int matchRadarNumber(const std::string& src, int at, int) {
+inline int matchRadarNumber(const std::string& src, int at, int) noexcept {
     int whole = matchDigits(src, at);
     if (whole == at) return -1;
     bool dot = (charCodeAt(src, whole) == 46);
@@ -63,7 +63,7 @@ inline int matchRadarNumber(const std::string& src, int at, int) {
     return whole - 1 > at ? whole - 1 : -1;
 }
 
-inline bool hasNameRest(const std::string& src, int at) {
+inline bool hasNameRest(const std::string& src, int at) noexcept {
     int n = static_cast<int>(src.size());
     int p = at;
     while (p < n) {
@@ -75,7 +75,7 @@ inline bool hasNameRest(const std::string& src, int at) {
     return false;
 }
 
-inline int matchRadarId(const std::string& src, int at, int) {
+inline int matchRadarId(const std::string& src, int at, int) noexcept {
     int n = static_cast<int>(src.size());
     if (at >= n || !isWord(charCodeAt(src, at))) return -1;
     int p = at + 1;
@@ -94,7 +94,7 @@ inline int matchRadarId(const std::string& src, int at, int) {
     return lastWord;
 }
 
-inline TokenScanner makeOptionValueScanner(const std::vector<std::string>& words, int optionKind) {
+inline TokenScanner makeOptionValueScanner(const std::vector<std::string>& words, int optionKind) noexcept {
     return [words, optionKind](const std::string& src, int at, int previous) -> int {
         int end = -1;
         for (const auto& w : words) {
@@ -109,7 +109,7 @@ inline TokenScanner makeOptionValueScanner(const std::vector<std::string>& words
     };
 }
 
-inline TokenType makeRadarTitle() {
+inline TokenType makeRadarTitle() noexcept {
     TokenType t = common_tokens::makeTitle();
     t.match = [](const std::string& src, int at, int) -> int {
         int p = common_tokens::matchTabsSpaces(src, at);
@@ -124,7 +124,7 @@ inline TokenType makeRadarTitle() {
     return t;
 }
 
-inline const std::vector<TokenType>& radarTokens() {
+inline const std::vector<TokenType>& radarTokens() noexcept {
     static const std::vector<TokenType> types = []() {
         auto mark = [](const std::string& text) {
             TokenType t;
@@ -234,7 +234,7 @@ struct RadarAst {
     std::vector<OptionAst> options;
 };
 
-inline std::string fixSingle(const std::string& text) {
+inline std::string fixSingle(const std::string& text) noexcept {
     std::string s = trimStr(text);
     std::string out;
     int spaces = 0;
@@ -254,19 +254,19 @@ inline std::string fixSingle(const std::string& text) {
     return out;
 }
 
-inline std::string fixTitleValue(const std::string& text) {
+inline std::string fixTitleValue(const std::string& text) noexcept {
     size_t pos = text.find("title");
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 5));
 }
 
-inline std::string fixAccTitleValue(const std::string& text) {
+inline std::string fixAccTitleValue(const std::string& text) noexcept {
     size_t pos = text.find(':');
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 1));
 }
 
-inline std::string fixAccDescrValue(const std::string& text) {
+inline std::string fixAccDescrValue(const std::string& text) noexcept {
     size_t brace = text.find('{');
     size_t colon = text.find(':');
     if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -428,7 +428,7 @@ struct RadarModel : public DiagramMeta {
 
 constexpr int MAX_TICKS = 32;
 
-inline PeleError invalidRadar(const std::string& message) {
+inline PeleError invalidRadar(const std::string& message) noexcept {
     return PeleError(message, "semantic", "radar");
 }
 
@@ -444,7 +444,7 @@ inline RadarModel buildRadar(const RadarAst& ast, const std::string& fallbackTit
             for (const auto& e : c.entries) entries.push_back(e.value);
         } else {
             if (model.axes.empty()) throw invalidRadar("Axes must be populated before curves for reference entries");
-            std::unordered_map<std::string, double> byAxis;
+            Pele::FlatMap<std::string, double> byAxis;
             for (const auto& e : c.entries) {
                 if (e.axisRef.has_value() && !byAxis.count(*e.axisRef)) {
                     byAxis[*e.axisRef] = e.value;
@@ -452,7 +452,7 @@ inline RadarModel buildRadar(const RadarAst& ast, const std::string& fallbackTit
             }
             for (const auto& a : model.axes) {
                 auto it = byAxis.find(a.name);
-                if (it == byAxis.end()) throw invalidRadar("Missing entry for axis " + a.label);
+                if (it == byAxis.end()) throw invalidRadar(Pele::cat({"Missing entry for axis ", a.label}));
                 entries.push_back(it->second);
             }
         }
@@ -491,7 +491,7 @@ struct Point {
     double y = 0.0;
 };
 
-inline double radarOption(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) {
+inline double radarOption(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) noexcept {
     const auto* r = config.get("radar");
     if (!r || !r->isMap()) return fallback;
     const auto* v = r->get(key);
@@ -499,44 +499,42 @@ inline double radarOption(const Config& config, const std::string& key, double f
     return v->nVal >= minVal ? std::min(v->nVal, maxVal) : fallback;
 }
 
-inline double relativeRadius(double value, double minVal, double maxVal, double radius) {
+inline double relativeRadius(double value, double minVal, double maxVal, double radius) noexcept {
     double clipped = std::min(std::max(value, minVal), maxVal);
     double scaled = radius * (clipped - minVal);
     return std::isfinite(scaled) ? scaled / (maxVal - minVal) : radius * ((clipped - minVal) / (maxVal - minVal));
 }
 
-inline std::string closedRoundCurve(const std::vector<Point>& points, double tension) {
+inline std::string closedRoundCurve(const std::vector<Point>& points, double tension) noexcept {
     size_t n = points.size();
-    std::string d = "M" + num(points[0].x) + "," + num(points[0].y);
+    std::string d = Pele::cat({"M", num(points[0].x), ",", num(points[0].y)});
     for (size_t i = 0; i < n; i++) {
         const auto& p0 = points[(i + n - 1) % n];
         const auto& p1 = points[i];
         const auto& p2 = points[(i + 1) % n];
         const auto& p3 = points[(i + 2) % n];
-        d += " C" + num(p1.x + (p2.x - p0.x) * tension) + "," + num(p1.y + (p2.y - p0.y) * tension) +
-             " " + num(p2.x - (p3.x - p1.x) * tension) + "," + num(p2.y - (p3.y - p1.y) * tension) +
-             " " + num(p2.x) + "," + num(p2.y);
+        Pele::appendCat(d, {" C", num(p1.x + (p2.x - p0.x) * tension), ",", num(p1.y + (p2.y - p0.y) * tension), " ", num(p2.x - (p3.x - p1.x) * tension), ",", num(p2.y - (p3.y - p1.y) * tension), " ", num(p2.x), ",", num(p2.y)});
     }
-    return d + " Z";
+    return Pele::cat({d, " Z"});
 }
 
-inline std::string polygonPoints(const std::vector<Point>& points) {
+inline std::string polygonPoints(const std::vector<Point>& points) noexcept {
     std::string out;
     for (const auto& p : points) {
         if (!out.empty()) out.push_back(' ');
-        out += num(p.x) + "," + num(p.y);
+        Pele::appendCat(out, {num(p.x), ",", num(p.y)});
     }
     return out;
 }
 
-inline double radarTitleRoom(const RenderOptions& options) {
+inline double radarTitleRoom(const RenderOptions& options) noexcept {
     double available = options.maxWidth;
     double pad = options.hasPadding ? options.padding : 8.0;
     return available > 0 ? std::max(80.0, available - 2.0 * pad) : 4000.0;
 }
 
 template <typename DrawFn>
-inline Rendered fitWidth(const RenderOptions& options, double natural, double least, DrawFn&& draw) {
+inline Rendered fitWidth(const RenderOptions& options, double natural, double least, DrawFn&& draw) noexcept {
     Rendered result = draw(natural, false);
     double available = options.maxWidth;
     if (!(available > 0) || result.width <= available) return result;
@@ -550,7 +548,7 @@ inline Rendered fitWidth(const RenderOptions& options, double natural, double le
     return result;
 }
 
-inline Rendered drawRadar(const RadarModel& model, const Config& config, const RenderOptions& options, double width, double height, bool tight) {
+inline Rendered drawRadar(const RadarModel& model, const Config& config, const RenderOptions& options, double width, double height, bool tight) noexcept {
     double size = options.hasFontSize ? options.fontSize : 16.0;
     double small = std::round(size * 0.875);
     const TextMeasurer& measurer = getMeasurer(options);
@@ -593,12 +591,12 @@ inline Rendered drawRadar(const RadarModel& model, const Config& config, const R
     for (int i = 0; i < ticks; i++) {
         double r = std::min(radius, (radius * static_cast<double>(i + 1)) / static_cast<double>(ticks));
         if (graticule == "circle") {
-            grid += "<circle r=\"" + num(r) + "\"/>";
+            Pele::appendCat(grid, {"<circle r=\"", num(r), "\"/>"});
         } else {
             std::vector<Point> pts;
             pts.reserve(unit.size());
             for (const auto& u : unit) pts.push_back({u.x * r, u.y * r});
-            grid += "<polygon points=\"" + polygonPoints(pts) + "\"/>";
+            Pele::appendCat(grid, {"<polygon points=\"", polygonPoints(pts), "\"/>"});
         }
     }
 
@@ -607,12 +605,12 @@ inline Rendered drawRadar(const RadarModel& model, const Config& config, const R
     for (size_t i = 0; i < unit.size(); i++) {
         const auto& u = unit[i];
         double reach = radius * axisScale;
-        spokes += "M0,0L" + num(u.x * reach) + "," + num(u.y * reach);
+        Pele::appendCat(spokes, {"M0,0L", num(u.x * reach), ",", num(u.y * reach)});
         Label label = layoutLabel(axes[i].label, false, measurer, small, 4000.0);
         double at = radius * labelFactor + 6.0;
         double cx = u.x * at + (u.x > 0.01 ? label.width / 2.0 : u.x < -0.01 ? -label.width / 2.0 : 0.0);
         double cy = u.y * at + (u.y > 0.01 ? label.height / 2.0 : u.y < -0.01 ? -label.height / 2.0 : 0.0);
-        labels += "<g class=\"pele-axis-label\" data-id=\"" + escText(axes[i].name) + "\">" + labelSvg(label, cx, cy, "") + "</g>";
+        Pele::appendCat(labels, {"<g class=\"pele-axis-label\" data-id=\"", escText(axes[i].name), "\">", labelSvg(label, cx, cy, ""), "</g>"});
         x0 = std::min(x0, cx - label.width / 2.0);
         x1 = std::max(x1, cx + label.width / 2.0);
         y0 = std::min(y0, cy - label.height / 2.0);
@@ -630,10 +628,10 @@ inline Rendered drawRadar(const RadarModel& model, const Config& config, const R
             points[i] = {unit[i].x * safe, unit[i].y * safe};
         }
         std::string color = seriesColor(static_cast<int>(index));
-        std::string attrs = " class=\"pele-curve\" data-id=\"" + escText(curve.name) + "\" fill=\"" + color + "\" stroke=\"" + color + "\"";
+        std::string attrs = Pele::cat({" class=\"pele-curve\" data-id=\"", escText(curve.name), "\" fill=\"", color, "\" stroke=\"", color, "\""});
         shapes += (graticule == "circle")
-            ? ("<path" + attrs + " d=\"" + closedRoundCurve(points, tension) + "\"/>")
-            : ("<polygon" + attrs + " points=\"" + polygonPoints(points) + "\"/>");
+            ? Pele::cat({"<path", attrs, " d=\"", closedRoundCurve(points, tension), "\"/>"})
+            : Pele::cat({"<polygon", attrs, " points=\"", polygonPoints(points), "\"/>"});
     }
 
     std::vector<Label> legend;
@@ -662,11 +660,8 @@ inline Rendered drawRadar(const RadarModel& model, const Config& config, const R
         const auto& label = legend[index];
         double y = legendTop + static_cast<double>(index) * ROW + ROW / 2.0;
         std::string color = seriesColor(static_cast<int>(index));
-        legendOut +=
-            "<g class=\"pele-legend-item\" data-id=\"" + escText(curves[index].name) + "\">"
-            "<rect x=\"" + num(legendX) + "\" y=\"" + num(y - SWATCH / 2.0) + "\" width=\"" + num(SWATCH) + "\" height=\"" + num(SWATCH) + "\" rx=\"2\" fill=\"" + color + "\" fill-opacity=\"0.4\" stroke=\"" + color + "\"/>" +
-            labelSvg(label, legendX + SWATCH + 8.0 + label.width / 2.0, y, "") +
-            "</g>";
+        Pele::appendCat(legendOut, {"<g class=\"pele-legend-item\" data-id=\"", escText(curves[index].name), "\">"
+            "<rect x=\"", num(legendX), "\" y=\"", num(y - SWATCH / 2.0), "\" width=\"", num(SWATCH), "\" height=\"", num(SWATCH), "\" rx=\"2\" fill=\"", color, "\" fill-opacity=\"0.4\" stroke=\"", color, "\"/>", labelSvg(label, legendX + SWATCH + 8.0 + label.width / 2.0, y, ""), "</g>"});
     }
 
     Label title = layoutLabel(model.title, false, measurer, size, radarTitleRoom(options), Style::Bold);
@@ -674,17 +669,9 @@ inline Rendered drawRadar(const RadarModel& model, const Config& config, const R
     double bodyWidth = std::max(x1 - x0, title.width);
     double totalWidth = std::ceil(bodyWidth + 2.0 * pad);
     double totalHeight = std::ceil(y1 - y0 + titleHeight + 2.0 * pad);
-    std::string origin = "translate(" + num(pad + (bodyWidth - (x1 - x0)) / 2.0 - x0) + "," + num(pad + titleHeight - y0) + ")";
+    std::string origin = Pele::cat({"translate(", num(pad + (bodyWidth - (x1 - x0)) / 2.0 - x0), ",", num(pad + titleHeight - y0), ")"});
 
-    std::string content =
-        labelSvg(title, totalWidth / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        "<g transform=\"" + origin + "\">" +
-        (!grid.empty() ? ("<g class=\"pele-graticule\" fill=\"none\" stroke=\"var(--_a)\">" + grid + "</g>") : "") +
-        (!spokes.empty() ? ("<path class=\"pele-axes\" d=\"" + spokes + "\" fill=\"none\" stroke=\"var(--_b)\"/>") : "") +
-        (!shapes.empty() ? ("<g class=\"pele-curves\" fill-opacity=\"0.2\" stroke-width=\"1.5\" stroke-linejoin=\"round\">" + shapes + "</g>") : "") +
-        (!labels.empty() ? ("<g class=\"pele-axis-labels\" font-size=\"" + num(small) + "\">" + labels + "</g>") : "") +
-        (!legendOut.empty() ? ("<g class=\"pele-legend\" font-size=\"" + num(small) + "\">" + legendOut + "</g>") : "") +
-        "</g>";
+    std::string content = Pele::cat({labelSvg(title, totalWidth / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), "<g transform=\"", origin, "\">", (!grid.empty() ? Pele::cat({"<g class=\"pele-graticule\" fill=\"none\" stroke=\"var(--_a)\">", grid, "</g>"}) : ""), (!spokes.empty() ? Pele::cat({"<path class=\"pele-axes\" d=\"", spokes, "\" fill=\"none\" stroke=\"var(--_b)\"/>"}) : ""), (!shapes.empty() ? Pele::cat({"<g class=\"pele-curves\" fill-opacity=\"0.2\" stroke-width=\"1.5\" stroke-linejoin=\"round\">", shapes, "</g>"}) : ""), (!labels.empty() ? Pele::cat({"<g class=\"pele-axis-labels\" font-size=\"", num(small), "\">", labels, "</g>"}) : ""), (!legendOut.empty() ? Pele::cat({"<g class=\"pele-legend\" font-size=\"", num(small), "\">", legendOut, "</g>"}) : ""), "</g>"});
 
     return {
         svgDocument("radar", totalWidth, totalHeight, size, options, model, content),
@@ -694,7 +681,7 @@ inline Rendered drawRadar(const RadarModel& model, const Config& config, const R
     };
 }
 
-inline Rendered renderRadarModel(const RadarModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderRadarModel(const RadarModel& model, const Config& config, const RenderOptions& options) noexcept {
     double natural = radarOption(config, "width", 320.0, 1.0, 4000.0);
     return fitWidth(options, natural, 160.0, [&](double width, bool tight) {
         return drawRadar(model, config, options, width, (radarOption(config, "height", 320.0, 1.0, 4000.0) * width) / natural, tight);

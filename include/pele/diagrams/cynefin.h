@@ -93,7 +93,7 @@ struct CynefinAst {
     std::vector<TransitionAst> transitions;
 };
 
-inline std::string fixSingle(const std::string& text) {
+inline std::string fixSingle(const std::string& text) noexcept {
     std::string s = trimStr(text);
     std::string out;
     int spaces = 0;
@@ -113,19 +113,19 @@ inline std::string fixSingle(const std::string& text) {
     return out;
 }
 
-inline std::string fixTitleValue(const std::string& text) {
+inline std::string fixTitleValue(const std::string& text) noexcept {
     size_t pos = text.find("title");
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 5));
 }
 
-inline std::string fixAccTitleValue(const std::string& text) {
+inline std::string fixAccTitleValue(const std::string& text) noexcept {
     size_t pos = text.find(':');
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 1));
 }
 
-inline std::string fixAccDescrValue(const std::string& text) {
+inline std::string fixAccDescrValue(const std::string& text) noexcept {
     size_t brace = text.find('{');
     size_t colon = text.find(':');
     if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -225,7 +225,7 @@ struct CynefinModel : public DiagramMeta {
     std::vector<CynefinTransition> transitions;
 };
 
-inline CynefinModel buildCynefin(const CynefinAst& ast, const std::string& fallbackTitle) {
+inline CynefinModel buildCynefin(const CynefinAst& ast, const std::string& fallbackTitle) noexcept {
     CynefinModel model;
     for (const auto& block : ast.domains) {
         model.domains[block.domain] = {block.domain, block.items};
@@ -255,7 +255,7 @@ inline CynefinModel buildCynefin(const CynefinAst& ast, const std::string& fallb
 // src/diagrams/cynefin/boundaries.ts
 // ============================================================================
 
-inline double seededRandom(double seedVal) {
+inline double seededRandom(double seedVal) noexcept {
     uint32_t seed = static_cast<uint32_t>(static_cast<int32_t>(static_cast<int64_t>(seedVal)));
     uint32_t t = seed + 0x6d2b79f5u;
     t = (t ^ (t >> 15)) * (t | 1u);
@@ -263,7 +263,7 @@ inline double seededRandom(double seedVal) {
     return static_cast<double>(t ^ (t >> 14)) / 4294967296.0;
 }
 
-inline int32_t hashString(const std::string& str) {
+inline int32_t hashString(const std::string& str) noexcept {
     auto u16 = toUtf16(str);
     uint32_t hash = 0;
     for (uint16_t c : u16) {
@@ -272,7 +272,7 @@ inline int32_t hashString(const std::string& str) {
     return static_cast<int32_t>(hash);
 }
 
-inline double resolveSeed(double configured, const std::string& id) {
+inline double resolveSeed(double configured, const std::string& id) noexcept {
     if (std::isfinite(configured) && configured != 0.0) return configured;
     return static_cast<double>(hashString(id));
 }
@@ -287,7 +287,7 @@ struct WaveOptions {
     bool pinEnd = false;
 };
 
-inline std::vector<double> wave(double from, double to, double center, double seed, double amplitude, const WaveOptions& o) {
+inline std::vector<double> wave(double from, double to, double center, double seed, double amplitude, const WaveOptions& o) noexcept {
     double step = (to - from) / static_cast<double>(o.segments);
     std::vector<double> along;
     std::vector<double> across;
@@ -319,7 +319,7 @@ inline std::vector<double> wave(double from, double to, double center, double se
     return out;
 }
 
-inline std::vector<double> cliff(double cx, double top, double bottom, double amplitude) {
+inline std::vector<double> cliff(double cx, double top, double bottom, double amplitude) noexcept {
     double h = bottom - top;
     return {
         cx, top,
@@ -328,29 +328,29 @@ inline std::vector<double> cliff(double cx, double top, double bottom, double am
     };
 }
 
-inline std::string forwardCurve(const std::vector<double>& curve) {
+inline std::string forwardCurve(const std::vector<double>& curve) noexcept {
     std::string d;
     for (size_t i = 2; i + 5 < curve.size(); i += 6) {
-        d += "C" + num(curve[i]) + "," + num(curve[i + 1]) + " " + num(curve[i + 2]) + "," + num(curve[i + 3]) + " " + num(curve[i + 4]) + "," + num(curve[i + 5]);
+        Pele::appendCat(d, {"C", num(curve[i]), ",", num(curve[i + 1]), " ", num(curve[i + 2]), ",", num(curve[i + 3]), " ", num(curve[i + 4]), ",", num(curve[i + 5])});
     }
     return d;
 }
 
-inline std::string backwardCurve(const std::vector<double>& curve) {
+inline std::string backwardCurve(const std::vector<double>& curve) noexcept {
     std::string d;
     for (int i = static_cast<int>(curve.size()) - 6; i >= 2; i -= 6) {
-        d += "C" + num(curve[i + 2]) + "," + num(curve[i + 3]) + " " + num(curve[i]) + "," + num(curve[i + 1]) + " " + num(curve[i - 2]) + "," + num(curve[i - 1]);
+        Pele::appendCat(d, {"C", num(curve[i + 2]), ",", num(curve[i + 3]), " ", num(curve[i]), ",", num(curve[i + 1]), " ", num(curve[i - 2]), ",", num(curve[i - 1])});
     }
     return d;
 }
 
-inline std::string curvePath(const std::vector<double>& curve) {
-    return "M" + num(curve[0]) + "," + num(curve[1]) + forwardCurve(curve);
+inline std::string curvePath(const std::vector<double>& curve) noexcept {
+    return Pele::cat({"M", num(curve[0]), ",", num(curve[1]), forwardCurve(curve)});
 }
 
-inline std::string ellipsePath(double cx, double cy, double rx, double ry) {
-    std::string r = num(rx) + "," + num(ry);
-    return "M" + num(cx - rx) + "," + num(cy) + "A" + r + " 0 1,1 " + num(cx + rx) + "," + num(cy) + "A" + r + " 0 1,1 " + num(cx - rx) + "," + num(cy) + "Z";
+inline std::string ellipsePath(double cx, double cy, double rx, double ry) noexcept {
+    std::string r = Pele::cat({num(rx), ",", num(ry)});
+    return Pele::cat({"M", num(cx - rx), ",", num(cy), "A", r, " 0 1,1 ", num(cx + rx), ",", num(cy), "A", r, " 0 1,1 ", num(cx - rx), ",", num(cy), "Z"});
 }
 
 // ============================================================================
@@ -386,7 +386,7 @@ struct Block {
     double cy = 0.0;
 };
 
-inline double cynefinSetting(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) {
+inline double cynefinSetting(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) noexcept {
     const auto* c = config.get("cynefin");
     if (!c || !c->isMap()) return fallback;
     const auto* v = c->get(key);
@@ -394,7 +394,7 @@ inline double cynefinSetting(const Config& config, const std::string& key, doubl
     return (v->nVal >= minVal && v->nVal <= maxVal) ? v->nVal : fallback;
 }
 
-inline Rendered renderCynefinModel(const CynefinModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderCynefinModel(const CynefinModel& model, const Config& config, const RenderOptions& options) noexcept {
     double size = options.hasFontSize ? options.fontSize : 16.0;
     double small = std::round(size * 0.8125);
     double itemSize = std::round(size * 0.875);
@@ -504,49 +504,47 @@ inline Rendered renderCynefinModel(const CynefinModel& model, const Config& conf
     auto drop = cliff(cx, cy, bottom, width * 0.03);
     auto atPt = [](const std::vector<double>& c, bool end) -> std::string {
         return end
-            ? (num(c[c.size() - 2]) + "," + num(c[c.size() - 1]))
-            : (num(c[0]) + "," + num(c[1]));
+            ? Pele::cat({num(c[c.size() - 2]), ",", num(c[c.size() - 1])})
+            : Pele::cat({num(c[0]), ",", num(c[1])});
     };
 
-    std::unordered_map<std::string, std::string> regions = {
-        {"complex", "M" + num(x0) + "," + num(y0) + "L" + atPt(fold, false) + forwardCurve(fold) + backwardCurve(west) + "Z"},
-        {"complicated", "M" + atPt(fold, false) + "L" + num(right) + "," + num(y0) + "L" + atPt(east, true) + backwardCurve(east) + backwardCurve(fold) + "Z"},
-        {"chaotic", "M" + atPt(west, false) + forwardCurve(west) + forwardCurve(drop) + "L" + num(x0) + "," + num(bottom) + "Z"},
-        {"clear", "M" + atPt(east, false) + forwardCurve(east) + "L" + num(right) + "," + num(bottom) + "L" + atPt(drop, true) + backwardCurve(drop) + "Z"}
+    Pele::FlatMap<std::string, std::string> regions = {
+        {"complex", Pele::cat({"M", num(x0), ",", num(y0), "L", atPt(fold, false), forwardCurve(fold), backwardCurve(west), "Z"})},
+        {"complicated", Pele::cat({"M", atPt(fold, false), "L", num(right), ",", num(y0), "L", atPt(east, true), backwardCurve(east), backwardCurve(fold), "Z"})},
+        {"chaotic", Pele::cat({"M", atPt(west, false), forwardCurve(west), forwardCurve(drop), "L", num(x0), ",", num(bottom), "Z"})},
+        {"clear", Pele::cat({"M", atPt(east, false), forwardCurve(east), "L", num(right), ",", num(bottom), "L", atPt(drop, true), backwardCurve(drop), "Z"})}
     };
 
     std::string fills;
     for (const auto& q : QUADRANTS) {
         fills += "<path class=\"pele-cynefin-region\" data-id=\"" + std::string(q.name) + "\" d=\"" + regions[q.name] + "\" fill=\"" + seriesColor(q.color) + "\" fill-opacity=\"0.14\"/>";
     }
-    std::string boundaries =
-        "<g class=\"pele-cynefin-boundaries\" fill=\"none\" stroke=\"var(--_b)\" stroke-dasharray=\"6 3\">"
-        "<path d=\"" + curvePath(fold) + "\"/><path d=\"" + curvePath(west) + "\"/><path d=\"" + curvePath(east) + "\"/>"
-        "<path class=\"pele-cynefin-cliff\" d=\"" + curvePath(drop) + "\" stroke=\"var(--_l)\" stroke-width=\"2\" stroke-dasharray=\"none\" stroke-linecap=\"round\"/></g>";
+    std::string boundaries = Pele::cat({"<g class=\"pele-cynefin-boundaries\" fill=\"none\" stroke=\"var(--_b)\" stroke-dasharray=\"6 3\">"
+        "<path d=\"", curvePath(fold), "\"/><path d=\"", curvePath(west), "\"/><path d=\"", curvePath(east), "\"/>"
+        "<path class=\"pele-cynefin-cliff\" d=\"", curvePath(drop), "\" stroke=\"var(--_l)\" stroke-width=\"2\" stroke-dasharray=\"none\" stroke-linecap=\"round\"/></g>"});
     std::string oval = ellipsePath(cx, cy, rx, ry);
-    std::string ellipse =
-        "<path d=\"" + oval + "\" fill=\"var(--_bg)\"/>"
-        "<path class=\"pele-cynefin-region\" data-id=\"confusion\" d=\"" + oval + "\" fill=\"" + seriesColor(CONFUSION_COLOR) + "\" fill-opacity=\"0.18\" stroke=\"var(--_b)\" stroke-dasharray=\"4 2\"/>";
+    std::string ellipse = Pele::cat({"<path d=\"", oval, "\" fill=\"var(--_bg)\"/>"
+        "<path class=\"pele-cynefin-region\" data-id=\"confusion\" d=\"", oval, "\" fill=\"", seriesColor(CONFUSION_COLOR), "\" fill-opacity=\"0.18\" stroke=\"var(--_b)\" stroke-dasharray=\"4 2\"/>"});
 
     auto drawBlock = [&](const Block& b) -> std::string {
         double y = b.cy - b.h / 2.0;
         std::string out = labelSvg(b.title, b.cx, y + b.title.height / 2.0, " class=\"pele-label\" font-weight=\"var(--_hw)\"");
         y += b.title.height;
         for (const auto& s : b.subtitles) {
-            out += labelSvg(s, b.cx, y + s.height / 2.0, " class=\"pele-cynefin-subtitle\" font-size=\"" + num(small) + "\" font-style=\"italic\" fill=\"var(--_m)\"");
+            out += labelSvg(s,  b.cx,  y + s.height / 2.0, Pele::cat({" class=\"pele-cynefin-subtitle\" font-size=\"", num(small), "\" font-style=\"italic\" fill=\"var(--_m)\""}));
             y += s.height;
         }
         y += HEAD_GAP - ITEM_GAP;
         for (const auto& item : b.badges) {
             y += ITEM_GAP;
             out +=
-                "<g class=\"pele-node" + std::string(item.overflow ? " pele-cynefin-overflow" : "") + "\"" + (item.overflow ? "" : (" data-id=\"" + escText(item.text) + "\"")) + ">"
+                "<g class=\"pele-node" + std::string(item.overflow ? " pele-cynefin-overflow" : "") + "\"" + (item.overflow ? "" : Pele::cat({" data-id=\"", escText(item.text), "\""})) + ">"
                 "<rect x=\"" + num(b.cx - item.w / 2.0) + "\" y=\"" + num(y) + "\" width=\"" + num(item.w) + "\" height=\"" + num(item.h) + "\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"" + (item.overflow ? " stroke-dasharray=\"3 2\"" : "") + ROUNDED + "/>" +
-                labelSvg(item.label, b.cx, y + item.h / 2.0, " class=\"pele-label\" font-size=\"" + num(itemSize) + "\"" + (item.overflow ? " fill=\"var(--_m)\"" : ""), icons) +
+                labelSvg(item.label,  b.cx,  y + item.h / 2.0, Pele::cat({" class=\"pele-label\" font-size=\"", num(itemSize), "\"", (item.overflow ? " fill=\"var(--_m)\"" : "")}),  icons) +
                 "</g>";
             y += item.h;
         }
-        return "<g class=\"pele-cynefin-domain\" data-id=\"" + b.name + "\">" + out + "</g>";
+        return Pele::cat({"<g class=\"pele-cynefin-domain\" data-id=\"", b.name, "\">", out, "</g>"});
     };
 
     std::unordered_map<std::string, Block*> blocks;
@@ -573,14 +571,14 @@ inline Rendered renderCynefinModel(const CynefinModel& model, const Config& conf
     };
 
     std::string edges;
-    std::unordered_map<std::string, int> seen;
+    Pele::FlatMap<std::string, int> seen;
     for (const auto& transition : model.transitions) {
         auto fromIt = blocks.find(transition.from);
         auto toIt = blocks.find(transition.to);
         if (fromIt == blocks.end() || toIt == blocks.end() || fromIt->second == toIt->second) continue;
         const Block* from = fromIt->second;
         const Block* to = toIt->second;
-        std::string key = transition.from < transition.to ? (transition.from + " " + transition.to) : (transition.to + " " + transition.from);
+        std::string key = transition.from < transition.to ? Pele::cat({transition.from, " ", transition.to}) : Pele::cat({transition.to, " ", transition.from});
         int repeat = seen[key]++;
 
         double dx = to->cx - from->cx;
@@ -651,25 +649,15 @@ inline Rendered renderCynefinModel(const CynefinModel& model, const Config& conf
             double away = (std::abs(nx) * label.width) / 2.0 + (std::abs(ny) * label.height) / 2.0 + 6.0;
             double half = label.width / 2.0 + 4.0;
             double tx = std::min(std::max(lx + nx * away, x0 + half), std::max(right - half, x0 + half));
-            text = labelSvg(label, tx, ly + ny * away, " class=\"pele-edge-label\" font-size=\"" + num(small) + "\"", icons);
+            text = labelSvg(label,  tx,  ly + ny * away, Pele::cat({" class=\"pele-edge-label\" font-size=\"", num(small), "\""}),  icons);
         }
-        edges +=
-            "<g class=\"pele-edge\" data-id=\"" + transition.from + "-" + transition.to + "\">"
-            "<path d=\"M" + num(sx) + "," + num(sy) + "Q" + num(qx) + "," + num(qy) + " " + num(ex) + "," + num(ey) + "\" fill=\"none\" stroke=\"var(--_l)\"/>" +
-            head +
-            text +
-            "</g>";
+        Pele::appendCat(edges, {"<g class=\"pele-edge\" data-id=\"", transition.from, "-", transition.to, "\">"
+            "<path d=\"M", num(sx), ",", num(sy), "Q", num(qx), ",", num(qy), " ", num(ex), ",", num(ey), "\" fill=\"none\" stroke=\"var(--_l)\"/>", head, text, "</g>"});
     }
 
     double totalWidth = std::ceil(std::max(width, title.width) + 2.0 * pad);
     double totalHeight = std::ceil(height + titleHeight + 2.0 * pad);
-    std::string content =
-        labelSvg(title, x0 + width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        "<g class=\"pele-cynefin-regions\">" + fills + "</g>" +
-        boundaries +
-        ellipse +
-        domains +
-        (!edges.empty() ? ("<g class=\"pele-edges\">" + edges + "</g>") : "");
+    std::string content = Pele::cat({labelSvg(title, x0 + width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), "<g class=\"pele-cynefin-regions\">", fills, "</g>", boundaries, ellipse, domains, (!edges.empty() ? Pele::cat({"<g class=\"pele-edges\">", edges, "</g>"}) : "")});
 
     return {
         svgDocument("cynefin", totalWidth, totalHeight, size, options, model, content),

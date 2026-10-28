@@ -121,7 +121,7 @@ enum T : int {
   COMMA = 60,
 };
 
-inline const std::vector<std::string>& tokenNames() {
+inline const std::vector<std::string>& tokenNames() noexcept {
   static const std::vector<std::string> names = {
     "END",
     "ERROR",
@@ -188,8 +188,8 @@ inline const std::vector<std::string>& tokenNames() {
   return names;
 }
 
-inline const std::unordered_map<std::string, int>& keywordsMap() {
-  static const std::unordered_map<std::string, int> kw = {
+inline const Pele::FlatMap<std::string, int>& keywordsMap() noexcept {
+  static const Pele::FlatMap<std::string, int> kw = {
     {"requirementdiagram", T::RD},
     {"id", T::ID},
     {"text", T::TEXT},
@@ -250,7 +250,7 @@ inline bool isReqStopChar(unsigned char c) {
   return c == ':' || c == ',' || c == '\r' || c == '\n' || c == '{' || c == '<' || c == '>' || c == '-' || c == '=';
 }
 
-inline bool isJsSpaceAt(const std::string& src, size_t i, size_t& len) {
+inline bool isJsSpaceAt(const std::string& src, size_t i, size_t& len) noexcept {
   unsigned char c = static_cast<unsigned char>(src[i]);
   if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\v' || c == '\f') {
     len = 1;
@@ -271,7 +271,7 @@ inline bool isJsSpaceAt(const std::string& src, size_t i, size_t& len) {
   return false;
 }
 
-inline bool isLineEndAt(const std::string& src, size_t i) {
+inline bool isLineEndAt(const std::string& src, size_t i) noexcept {
   unsigned char c = static_cast<unsigned char>(src[i]);
   if (c == '\n' || c == '\r') return true;
   if (c == 0xE2 && i + 2 < src.size() && static_cast<unsigned char>(src[i + 1]) == 0x80) {
@@ -281,7 +281,7 @@ inline bool isLineEndAt(const std::string& src, size_t i) {
   return false;
 }
 
-inline bool matchPrefixCI(const std::string& src, size_t pos, const char* pat, size_t patLen) {
+inline bool matchPrefixCI(const std::string& src, size_t pos, const char* pat, size_t patLen) noexcept {
   if (pos + patLen > src.size()) return false;
   for (size_t i = 0; i < patLen; i++) {
     unsigned char a = static_cast<unsigned char>(src[pos + i]);
@@ -291,7 +291,7 @@ inline bool matchPrefixCI(const std::string& src, size_t pos, const char* pat, s
   return true;
 }
 
-inline int matchAccDirective(const std::string& src, size_t p, const char* kw, size_t kwLen, char delim) {
+inline int matchAccDirective(const std::string& src, size_t p, const char* kw, size_t kwLen, char delim) noexcept {
   if (!matchPrefixCI(src, p, kw, kwLen)) return -1;
   size_t q = p + kwLen;
   size_t len = 1;
@@ -802,7 +802,7 @@ public:
 // Port of src/diagrams/requirement/parser.ts
 // ============================================================================
 
-inline const std::vector<std::string>& requirementValues() {
+inline const std::vector<std::string>& requirementValues() noexcept {
   static const std::vector<std::string> vals = {
     "Requirement",
     "Functional Requirement",
@@ -829,7 +829,7 @@ inline const std::vector<std::string>& requirementValues() {
   return vals;
 }
 
-inline bool isStylePart(int t) {
+inline bool isStylePart(int t) noexcept {
   return t == T::ALPHA || t == T::COLON || t == T::BRKT || t == T::MINUS || t == T::SEMICOLON;
 }
 
@@ -854,9 +854,9 @@ inline void parseRequirement(const std::string& src, RequirementDb& db) {
     std::string expected;
     for (size_t idx = 0; idx < all.size(); idx++) {
       if (idx > 0) expected += ", ";
-      expected += "'" + names[static_cast<size_t>(all[idx])] + "'";
+      Pele::appendCat(expected, {"'", names[static_cast<size_t>(all[idx])], "'"});
     }
-    throw syntaxError("requirement", src, static_cast<int>(starts[i]), "Expecting " + expected + ", got '" + names[static_cast<size_t>(t)] + "'");
+    throw syntaxError("requirement",  src,  static_cast<int>(starts[i]), Pele::cat({"Expecting ", expected, ", got '", names[static_cast<size_t>(t)], "'"}));
   };
 
   auto expect = [&](int type) -> std::string {
@@ -1098,7 +1098,7 @@ struct RequirementGraph {
   std::string direction;
 };
 
-inline std::string reqJoinStr(const std::vector<std::string>& items, const std::string& sep) {
+inline std::string reqJoinStr(const std::vector<std::string>& items, const std::string& sep) noexcept {
   std::string out;
   for (size_t i = 0; i < items.size(); i++) {
     if (i > 0) out += sep;
@@ -1107,7 +1107,7 @@ inline std::string reqJoinStr(const std::vector<std::string>& items, const std::
   return out;
 }
 
-inline RequirementGraph buildRequirementGraph(const RequirementDb& model) {
+inline RequirementGraph buildRequirementGraph(const RequirementDb& model) noexcept {
   std::vector<GraphNode> nodes;
   for (const auto& name : model.requirementOrder) {
     const auto& req = model.requirements.at(name);
@@ -1169,7 +1169,7 @@ constexpr double REQ_ARROW_HALF = 4.5;
 constexpr double REQ_END_STEP = 28.0;
 constexpr double REQ_END_MARGIN = 14.0;
 
-inline std::string num(double value) {
+inline std::string num(double value) noexcept {
   if (!std::isfinite(value)) return "0";
   long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
   if (n == 0) return "0";
@@ -1202,7 +1202,7 @@ struct NodeView {
   double h = 0.0;
 };
 
-inline Label restyle(Label label, int bits, const TextMeasurer& measurer) {
+inline Label restyle(Label label, int bits, const TextMeasurer& measurer) noexcept {
   if (bits == 0 || label.lines.empty()) return label;
   double width = 0.0;
   std::vector<double> widths;
@@ -1224,7 +1224,7 @@ inline Label restyle(Label label, int bits, const TextMeasurer& measurer) {
   return label;
 }
 
-inline std::string startText(const Label& label, double x, double top, const std::string& attrs) {
+inline std::string startText(const Label& label, double x, double top, const std::string& attrs) noexcept {
   int shared = sharedStyle(label);
   std::string body;
   std::string math;
@@ -1239,32 +1239,27 @@ inline std::string startText(const Label& label, double x, double top, const std
     bool first = true;
     for (const auto& span : line) {
       if (span.hasIcon || span.text.empty()) continue;
-      body += "<tspan" + (first ? (" x=\"" + num(x) + "\" y=\"" + num(y) + "\"") : "") +
-              spanStyle(span.style & ~shared) + ">" + esc(span.text) + "</tspan>";
+      Pele::appendCat(body, {"<tspan", (first ? Pele::cat({" x=\"", num(x), "\" y=\"", num(y), "\""}) : ""), spanStyle(span.style & ~shared), ">", esc(span.text), "</tspan>"});
       first = false;
     }
   }
-  return (body.empty() ? "" : ("<text" + textStyle(attrs, shared) + " text-anchor=\"start\" xml:space=\"preserve\">" + body + "</text>")) + math;
+  return (body.empty() ? "" : Pele::cat({"<text", textStyle(attrs, shared), " text-anchor=\"start\" xml:space=\"preserve\">", body, "</text>"})) + math;
 }
 
-inline std::string containsMarker(double x, double y, double dx, double dy) {
+inline std::string containsMarker(double x, double y, double dx, double dy) noexcept {
   double r = REQ_CONTAINS_RADIUS;
   double cx = x - dx * r;
   double cy = y - dy * r;
-  return "<circle class=\"pele-marker\" cx=\"" + num(cx) + "\" cy=\"" + num(cy) + "\" r=\"" + num(r) + "\"/>" +
-         "<path class=\"pele-marker\" d=\"M" + num(cx - dx * r) + "," + num(cy - dy * r) + "L" + num(cx + dx * r) + "," + num(cy + dy * r) +
-         "M" + num(cx + dy * r) + "," + num(cy - dx * r) + "L" + num(cx - dy * r) + "," + num(cy + dx * r) + "\"/>";
+  return Pele::cat({"<circle class=\"pele-marker\" cx=\"", num(cx), "\" cy=\"", num(cy), "\" r=\"", num(r), "\"/>", "<path class=\"pele-marker\" d=\"M", num(cx - dx * r), ",", num(cy - dy * r), "L", num(cx + dx * r), ",", num(cy + dy * r), "M", num(cx + dy * r), ",", num(cy - dx * r), "L", num(cx - dy * r), ",", num(cy + dx * r), "\"/>"});
 }
 
-inline std::string arrowMarker(double x, double y, double dx, double dy) {
+inline std::string arrowMarker(double x, double y, double dx, double dy) noexcept {
   double bx = x - dx * REQ_ARROW_LENGTH;
   double by = y - dy * REQ_ARROW_LENGTH;
-  return "<path class=\"pele-marker\" d=\"M" + num(bx - dy * REQ_ARROW_HALF) + "," + num(by + dx * REQ_ARROW_HALF) +
-         "L" + num(x) + "," + num(y) + "L" + num(bx + dy * REQ_ARROW_HALF) + "," + num(by - dx * REQ_ARROW_HALF) +
-         "\" stroke-linejoin=\"round\"/>";
+  return Pele::cat({"<path class=\"pele-marker\" d=\"M", num(bx - dy * REQ_ARROW_HALF), ",", num(by + dx * REQ_ARROW_HALF), "L", num(x), ",", num(y), "L", num(bx + dy * REQ_ARROW_HALF), ",", num(by - dx * REQ_ARROW_HALF), "\" stroke-linejoin=\"round\"/>"});
 }
 
-inline void spreadEnds(std::vector<CNode>& cnodes, std::vector<CEdge>& cedges, const std::vector<NodeView>& views) {
+inline void spreadEnds(std::vector<CNode>& cnodes, std::vector<CEdge>& cedges, const std::vector<NodeView>& views) noexcept {
   struct SideEnd {
     std::vector<double>* route;
     size_t at;
@@ -1315,7 +1310,7 @@ inline void spreadEnds(std::vector<CNode>& cnodes, std::vector<CEdge>& cedges, c
   }
 }
 
-inline std::string reqDirection(const std::string& dir) {
+inline std::string reqDirection(const std::string& dir) noexcept {
   return (dir == "BT" || dir == "LR" || dir == "RL") ? dir : "TB";
 }
 
@@ -1330,11 +1325,11 @@ constexpr int MAX_DUMMIES = 20000;
 constexpr double MIN_SLOPE = 0.125;
 constexpr double MAX_GAP = 3.0;
 
-inline bool isDummyKind(uint8_t kind) {
+inline bool isDummyKind(uint8_t kind) noexcept {
   return kind == static_cast<uint8_t>(LKind::Dummy) || kind == static_cast<uint8_t>(LKind::Label);
 }
 
-inline void sortRange(std::vector<int>& list, int from, int to, const std::vector<int>& key) {
+inline void sortRange(std::vector<int>& list, int from, int to, const std::vector<int>& key) noexcept {
   for (int i = from + 1; i < to; i++) {
     int item = list[i];
     int k = key[item];
@@ -1387,7 +1382,7 @@ inline void sortByBary(
   }
 }
 
-inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) {
+inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) noexcept {
   int n = static_cast<int>(nodes.size());
   int m = static_cast<int>(edges.size());
   std::vector<int> start(n + 1, 0);
@@ -1430,7 +1425,7 @@ inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) {
   }
 }
 
-inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step) {
+inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step) noexcept {
   int n = static_cast<int>(nodes.size());
   int m = static_cast<int>(edges.size());
   std::vector<int> from(m, 0);
@@ -1550,11 +1545,11 @@ struct Graph {
   std::vector<uint8_t> fixed;
 };
 
-inline double halfRoom(const Graph& g, const LayeredOptions& opt, int v) {
+inline double halfRoom(const Graph& g, const LayeredOptions& opt, int v) noexcept {
   return g.W[v] / 2.0 + (g.KIND[v] == static_cast<uint8_t>(LKind::Node) ? opt.nodeSep : opt.edgeSep) / 2.0;
 }
 
-inline void reduceCrossings(Graph& g, const std::vector<LNode>& nodes) {
+inline void reduceCrossings(Graph& g, const std::vector<LNode>& nodes) noexcept {
   auto& n = g.n;
   auto& real = g.real;
   auto& maxRank = g.maxRank;
@@ -1783,7 +1778,7 @@ inline void reduceCrossings(Graph& g, const std::vector<LNode>& nodes) {
   }
 }
 
-inline std::vector<double> position(Graph& g, const LayeredOptions& opt) {
+inline std::vector<double> position(Graph& g, const LayeredOptions& opt) noexcept {
   auto& n = g.n;
   auto& maxRank = g.maxRank;
   auto& W = g.W;
@@ -1987,7 +1982,7 @@ inline std::vector<double> position(Graph& g, const LayeredOptions& opt) {
   return out;
 }
 
-inline std::vector<uint8_t> emptyRanks(const Graph& g) {
+inline std::vector<uint8_t> emptyRanks(const Graph& g) noexcept {
   std::vector<uint8_t> empty(g.maxRank + 1, 0);
   bool any = false;
   for (int r = 1; r < g.maxRank; r++) {
@@ -2150,7 +2145,7 @@ inline void pastLabels(
   }
 }
 
-inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt) {
+inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt) noexcept {
   int real = static_cast<int>(nodes.size());
   if (real == 0) return {0, 0, 0, 0};
   int m = static_cast<int>(edges.size());
@@ -2164,7 +2159,7 @@ inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edge
 
   int step = 1;
   if (m > 0) {
-    std::unordered_set<int64_t> seen;
+    Pele::FlatSet<int64_t> seen;
     for (const auto& e : edges) {
       int a = std::min(e.tail, e.head);
       int b = std::max(e.tail, e.head);
@@ -2531,20 +2526,20 @@ inline Size reqCompoundLayout(
   return Size{contentW, contentH};
 }
 
-inline std::string stripDefaultClass(const std::string& cssClasses) {
+inline std::string stripDefaultClass(const std::string& cssClasses) noexcept {
   if (startsWith(cssClasses, "default ")) return cssClasses.substr(8);
   if (cssClasses == "default") return "";
   return cssClasses;
 }
 
-inline Rendered draw(const RequirementDb& model, const Config& /*_config*/, const RenderOptions& options, bool turned) {
+inline Rendered draw(const RequirementDb& model, const Config& /*_config*/, const RenderOptions& options, bool turned) noexcept {
   RequirementGraph graph = buildRequirementGraph(model);
   double size = options.fontSize;
   double small = std::round(size * 0.875);
   const TextMeasurer& measurer = getMeasurer(options);
   double pad = options.padding;
 
-  std::unordered_map<std::string, int> index;
+  Pele::FlatMap<std::string, int> index;
   std::vector<NodeView> views;
   std::vector<CNode> cnodes;
   for (const auto& node : graph.nodes) {
@@ -2554,7 +2549,7 @@ inline Rendered draw(const RequirementDb& model, const Config& /*_config*/, cons
     double bodySize = style.hasFontSize ? style.fontSize : small;
     const Requirement* requirement = node.requirement;
     const RequirementElement* element = node.element;
-    std::string kindStr = "\xC2\xAB" + (requirement ? requirement->type : std::string("Element")) + "\xC2\xBB";
+    std::string kindStr = Pele::cat({"\xC2\xAB", (requirement ? requirement->type : std::string("Element")), "\xC2\xBB"});
     Label kind = restyle(layoutLabel(kindStr, false, measurer, bodySize, 4000.0), base, measurer);
     Label name = restyle(layoutLabel(node.id, true, measurer, nameSize, REQ_NAME_WRAP), base | Style::Bold, measurer);
 
@@ -2626,7 +2621,7 @@ inline Rendered draw(const RequirementDb& model, const Config& /*_config*/, cons
     if (sIt == index.end() || dIt == index.end()) continue;
     int src = sIt->second;
     int dst = dIt->second;
-    Label label = layoutLabel("\xC2\xAB" + edge.type + "\xC2\xBB", false, measurer, small, 4000.0);
+    Label label = layoutLabel(Pele::cat({"\xC2\xAB", edge.type, "\xC2\xBB"}),  false,  measurer,  small,  4000.0);
     if (src == dst) {
       if (sideways) cnodes[static_cast<size_t>(src)].h += 2.0 * (REQ_LOOP + label.height + 8.0);
       else cnodes[static_cast<size_t>(src)].w += 2.0 * (REQ_LOOP + label.width + 12.0);
@@ -2669,34 +2664,25 @@ inline Rendered draw(const RequirementDb& model, const Config& /*_config*/, cons
     std::string muted = !color.empty() ? color : " fill=\"var(--_m)\"";
     double left = -w / 2.0;
     double top = -h / 2.0;
-    std::string body =
-      "<rect x=\"" + num(left) + "\" y=\"" + num(top) + "\" width=\"" + num(w) + "\" height=\"" + num(h) +
-      "\" fill=\"var(--_s)\" stroke=\"var(--_b)\"" + rounded(style.shape) + "/>" +
-      labelSvg(
-        view.kind,
-        0.0,
-        top + REQ_PAD_Y + view.kind.height / 2.0,
-        " class=\"pele-stereotype\" font-size=\"" + num(view.kind.size) + "\"" + muted + style.text
-      ) +
-      labelSvg(
-        view.name,
-        0.0,
-        top + REQ_PAD_Y + view.kind.height + view.name.height / 2.0,
-        " class=\"pele-label\" font-size=\"" + num(view.name.size) + "\" font-weight=\"var(--_hw)\"" + color + style.text
-      );
+    std::string body = Pele::cat({"<rect x=\"", num(left), "\" y=\"", num(top), "\" width=\"", num(w), "\" height=\"", num(h), "\" fill=\"var(--_s)\" stroke=\"var(--_b)\"", rounded(style.shape), "/>", labelSvg(
+        view.kind, 
+        0.0, 
+        top + REQ_PAD_Y + view.kind.height / 2.0, Pele::cat({" class=\"pele-stereotype\" font-size=\"", num(view.kind.size), "\"", muted, style.text})), labelSvg(
+        view.name, 
+        0.0, 
+        top + REQ_PAD_Y + view.kind.height + view.name.height / 2.0, Pele::cat({" class=\"pele-label\" font-size=\"", num(view.name.size), "\" font-weight=\"var(--_hw)\"", color, style.text}))});
     if (!view.rows.empty()) {
       double divider = top + view.headHeight;
-      body += "<path class=\"pele-divider\" d=\"M" + num(left) + "," + num(divider) + "H" + num(-left) +
-              "\" stroke=\"var(--_b)\"" + style.line + "/>";
+      Pele::appendCat(body, {"<path class=\"pele-divider\" d=\"M", num(left), ",", num(divider), "H", num(-left), "\" stroke=\"var(--_b)\"", style.line, "/>"});
       double y = divider + REQ_PAD_Y;
       std::string rowsStr;
       for (const auto& row : view.rows) {
         rowsStr +=
-          startText(row.key, left + REQ_PAD_X, y, " class=\"pele-field\"" + muted + style.text) +
-          startText(row.value, left + REQ_PAD_X + view.keyWidth + REQ_COLUMN_GAP, y, " class=\"pele-value\"" + color + style.text);
+          startText(row.key,  left + REQ_PAD_X,  y, Pele::cat({" class=\"pele-field\"", muted, style.text})) +
+          startText(row.value,  left + REQ_PAD_X + view.keyWidth + REQ_COLUMN_GAP,  y, Pele::cat({" class=\"pele-value\"", color, style.text}));
         y += row.height + REQ_ROW_GAP;
       }
-      body += "<g class=\"pele-fields\" font-size=\"" + num(view.rows[0].key.size) + "\">" + rowsStr + "</g>";
+      Pele::appendCat(body, {"<g class=\"pele-fields\" font-size=\"", num(view.rows[0].key.size), "\">", rowsStr, "</g>"});
     }
     nodesOut += "<g class=\"pele-node " + std::string(view.node.requirement ? "pele-requirement" : "pele-element") +
                 classNames(stripDefaultClass(view.node.cssClasses)) +
@@ -2706,7 +2692,7 @@ inline Rendered draw(const RequirementDb& model, const Config& /*_config*/, cons
 
   std::string edgesOut;
   std::string labelsOut;
-  std::unordered_map<int, int> loopSeen;
+  Pele::FlatMap<int, int> loopSeen;
   for (size_t i = 0; i < cedges.size(); i++) {
     const auto& ce = cedges[i];
     const auto& edge = drawn[i];
@@ -2725,11 +2711,11 @@ inline Rendered draw(const RequirementDb& model, const Config& /*_config*/, cons
       double reach = REQ_LOOP + k * 8.0;
       auto at = [&](double outDist, double along) -> std::string {
         return sideways
-          ? (num(cx + along) + "," + num(cy + view.h / 2.0 + outDist))
-          : (num(cx + view.w / 2.0 + outDist) + "," + num(cy + along));
+          ? Pele::cat({num(cx + along), ",", num(cy + view.h / 2.0 + outDist)})
+          : Pele::cat({num(cx + view.w / 2.0 + outDist), ",", num(cy + along)});
       };
       double pull = reach / 0.75;
-      path.d = "M" + at(startTrim, -spread) + "C" + at(pull, -spread) + " " + at(pull, spread) + " " + at(0.0, spread);
+      path.d = Pele::cat({"M", at(startTrim, -spread), "C", at(pull, -spread), " ", at(pull, spread), " ", at(0.0, spread)});
       path.sx = sideways ? (cx - spread) : (cx + view.w / 2.0);
       path.sy = sideways ? (cy + view.h / 2.0) : (cy - spread);
       path.sdx = sideways ? 0.0 : -1.0;
@@ -2765,27 +2751,22 @@ inline Rendered draw(const RequirementDb& model, const Config& /*_config*/, cons
   }
 
   std::string svg = svgDocument(
-    "requirement",
-    width,
-    height,
-    size,
-    options,
-    model,
-    labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-      (!edgesOut.empty() ? ("<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">" + edgesOut + "</g>") : "") +
-      (!labelsOut.empty() ? ("<g class=\"pele-edge-labels\" font-size=\"" + num(small) + "\" fill=\"var(--_m)\">" + labelsOut + "</g>") : "") +
-      "<g class=\"pele-nodes\">" + nodesOut + "</g>"
-  );
+    "requirement", 
+    width, 
+    height, 
+    size, 
+    options, 
+    model, Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), (!edgesOut.empty() ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">", edgesOut, "</g>"}) : ""), (!labelsOut.empty() ? Pele::cat({"<g class=\"pele-edge-labels\" font-size=\"", num(small), "\" fill=\"var(--_m)\">", labelsOut, "</g>"}) : ""), "<g class=\"pele-nodes\">", nodesOut, "</g>"}));
 
   return Rendered{svg, width, height, {}};
 }
 
-inline bool reqRunsAcross(const std::string& direction) {
+inline bool reqRunsAcross(const std::string& direction) noexcept {
   return direction == "LR" || direction == "RL";
 }
 
 template <typename DrawFn>
-inline Rendered reqTurnToFit(const RenderOptions& options, DrawFn&& drawFn) {
+inline Rendered reqTurnToFit(const RenderOptions& options, DrawFn&& drawFn) noexcept {
   Rendered across = drawFn(false);
   double available = options.maxWidth;
   if (!options.hasMaxWidth || !(available > 0.0) || across.width <= available) return across;
@@ -2794,7 +2775,7 @@ inline Rendered reqTurnToFit(const RenderOptions& options, DrawFn&& drawFn) {
   return down.width < across.width ? down : across;
 }
 
-inline Rendered renderRequirementModel(const RequirementDb& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderRequirementModel(const RequirementDb& model, const Config& config, const RenderOptions& options) noexcept {
   if (!reqRunsAcross(model.direction)) return draw(model, config, options, false);
   return reqTurnToFit(options, [&](bool down) {
     return draw(model, config, options, down);
@@ -2819,7 +2800,7 @@ inline Rendered renderRequirement(const std::string& source, const Config& confi
 
 inline Rendered renderRequirement(const std::string& raw, RenderOptions options = {}) {
   auto pre = preprocess(raw);
-  std::string parsed = encodeEntities(pre.text) + "\n";
+  std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
   return RequirementDiagram::render(parsed, pre.config, pre.title, options);
 }
 

@@ -91,7 +91,7 @@ struct C4Rel {
 // src/diagrams/c4/db.ts
 // ============================================================================
 
-inline bool jsParseInt(const std::string& raw, int& out) {
+inline bool jsParseInt(const std::string& raw, int& out) noexcept {
     std::string s = trimStartStr(raw);
     if (s.empty()) return false;
     size_t i = 0;
@@ -111,7 +111,7 @@ inline bool jsParseInt(const std::string& raw, int& out) {
     return true;
 }
 
-inline void setElementField(C4Element& el, const std::string& field, const std::string& val) {
+inline void setElementField(C4Element& el, const std::string& field, const std::string& val) noexcept {
     if (field == "label") el.label = val;
     else if (field == "type") el.type = val;
     else if (field == "descr") el.descr = val;
@@ -129,7 +129,7 @@ inline void setElementField(C4Element& el, const std::string& field, const std::
     else el.extra[field] = val;
 }
 
-inline void setRelField(C4Rel& rel, const std::string& field, const std::string& val) {
+inline void setRelField(C4Rel& rel, const std::string& field, const std::string& val) noexcept {
     if (field == "label") rel.label = val;
     else if (field == "descr") rel.descr = val;
     else if (field == "techn") rel.techn = val;
@@ -141,11 +141,11 @@ inline void setRelField(C4Rel& rel, const std::string& field, const std::string&
     else rel.extra[field] = val;
 }
 
-inline void applyNamedEl(C4Element& el, const C4Named& attr) {
+inline void applyNamedEl(C4Element& el, const C4Named& attr) noexcept {
     setElementField(el, attr.key, attr.value);
 }
 
-inline void applyNamedRel(C4Rel& rel, const C4Named& attr) {
+inline void applyNamedRel(C4Rel& rel, const C4Named& attr) noexcept {
     if (attr.key == "offsetX" || attr.key == "offsetY") {
         int v = 0;
         if (jsParseInt(attr.value, v)) {
@@ -160,19 +160,19 @@ inline void applyNamedRel(C4Rel& rel, const C4Named& attr) {
     }
 }
 
-inline void putEl(C4Element& el, const std::string& field, const C4Attr* attr) {
+inline void putEl(C4Element& el, const std::string& field, const C4Attr* attr) noexcept {
     if (!attr) return;
     if (!attr->isNamed) setElementField(el, field, attr->str);
     else applyNamedEl(el, attr->named);
 }
 
-inline void putRel(C4Rel& rel, const std::string& field, const C4Attr* attr) {
+inline void putRel(C4Rel& rel, const std::string& field, const C4Attr* attr) noexcept {
     if (!attr) return;
     if (!attr->isNamed) setRelField(rel, field, attr->str);
     else applyNamedRel(rel, attr->named);
 }
 
-inline void textEl(C4Element& el, const std::string& field, const C4Attr* attr) {
+inline void textEl(C4Element& el, const std::string& field, const C4Attr* attr) noexcept {
     if (!attr) {
         if (field == "descr" && !el.descr.has_value()) el.descr = "";
         if (field == "techn" && !el.techn.has_value()) el.techn = "";
@@ -181,7 +181,7 @@ inline void textEl(C4Element& el, const std::string& field, const C4Attr* attr) 
     }
 }
 
-inline void textRel(C4Rel& rel, const std::string& field, const C4Attr* attr) {
+inline void textRel(C4Rel& rel, const std::string& field, const C4Attr* attr) noexcept {
     if (!attr) {
         if (field == "descr" && !rel.descr.has_value()) rel.descr = "";
         if (field == "techn" && !rel.techn.has_value()) rel.techn = "";
@@ -190,7 +190,7 @@ inline void textRel(C4Rel& rel, const std::string& field, const C4Attr* attr) {
     }
 }
 
-inline void setLabelEl(C4Element& el, const C4Attr* attr) {
+inline void setLabelEl(C4Element& el, const C4Attr* attr) noexcept {
     el.labelAttr = std::nullopt;
     if (attr && attr->isNamed) {
         el.label = "";
@@ -201,7 +201,7 @@ inline void setLabelEl(C4Element& el, const C4Attr* attr) {
     }
 }
 
-inline void setLabelRel(C4Rel& rel, const C4Attr* attr) {
+inline void setLabelRel(C4Rel& rel, const C4Attr* attr) noexcept {
     rel.labelAttr = std::nullopt;
     if (attr && attr->isNamed) {
         rel.label = "";
@@ -538,7 +538,7 @@ namespace T {
     };
 }
 
-inline const std::vector<std::string>& tokenNames() {
+inline const std::vector<std::string>& tokenNames() noexcept {
     static const std::vector<std::string> names = {
         "$end", "INVALID", "direction_tb", "direction_bt", "direction_rl", "direction_lr",
         "title", "accDescription", "acc_title", "acc_title_value", "acc_descr", "acc_descr_value",
@@ -556,8 +556,8 @@ inline const std::vector<std::string>& tokenNames() {
     return names;
 }
 
-inline const std::unordered_map<std::string, int>& c4Keywords() {
-    static const std::unordered_map<std::string, int> m = {
+inline const Pele::FlatMap<std::string, int>& c4Keywords() noexcept {
+    static const Pele::FlatMap<std::string, int> m = {
         {"C4Context", T::C4_CONTEXT},
         {"C4Container", T::C4_CONTAINER},
         {"C4Component", T::C4_COMPONENT},
@@ -958,10 +958,10 @@ inline void parseC4(const std::string& src, C4Db& db) {
     auto fail = [&](const std::string& expected) {
         int t = types[i];
         if (t == T::ERROR) throw syntaxError("c4", src, starts[i], "", true);
-        throw syntaxError("c4", src, starts[i], "Expecting " + expected + ", got '" + names[t] + "'");
+        throw syntaxError("c4",  src,  starts[i], Pele::cat({"Expecting ", expected, ", got '", names[t], "'"}));
     };
     auto expect = [&](int type) {
-        if (types[i] != type) fail("'" + names[type] + "'");
+        if (types[i] != type) fail(Pele::cat({"'", names[type], "'"}));
         i++;
     };
 
@@ -1150,19 +1150,19 @@ constexpr double NEAR = 6.0;
 constexpr double FRAME_NEAR = 3.0;
 constexpr double PORT_STEP = 12.0;
 
-inline double cylRy(double w) {
+inline double cylRy(double w) noexcept {
     return std::min(12.0, std::max(6.0, w / 14.0));
 }
 
-inline double queueRx(double h) {
+inline double queueRx(double h) noexcept {
     return std::min(12.0, h / 4.0);
 }
 
-inline double mathSign(double v) {
+inline double mathSign(double v) noexcept {
     return v > 0.0 ? 1.0 : v < 0.0 ? -1.0 : 0.0;
 }
 
-inline double hitRect(double x0, double y0, double x1, double y1, double px, double py, double dx, double dy) {
+inline double hitRect(double x0, double y0, double x1, double y1, double px, double py, double dx, double dy) noexcept {
     double enter = 0.0;
     double leave = 1.0;
     constexpr double INF = std::numeric_limits<double>::infinity();
@@ -1185,7 +1185,7 @@ inline double hitRect(double x0, double y0, double x1, double y1, double px, dou
     return enter <= leave ? enter : INF;
 }
 
-inline double hitEllipse(double cx, double cy, double rx, double ry, double px, double py, double dx, double dy) {
+inline double hitEllipse(double cx, double cy, double rx, double ry, double px, double py, double dx, double dy) noexcept {
     constexpr double INF = std::numeric_limits<double>::infinity();
     double ux = dx / rx;
     double uy = dy / ry;
@@ -1200,7 +1200,7 @@ inline double hitEllipse(double cx, double cy, double rx, double ry, double px, 
     return (t >= 0.0 && t <= 1.0) ? t : (c <= 0.0 ? 0.0 : INF);
 }
 
-inline double hit(const Box& box, double px, double py, double qx, double qy) {
+inline double hit(const Box& box, double px, double py, double qx, double qy) noexcept {
     double x = box.x, y = box.y, w = box.w, h = box.h;
     double dx = qx - px;
     double dy = qy - py;
@@ -1226,7 +1226,7 @@ inline double hit(const Box& box, double px, double py, double qx, double qy) {
     return hitRect(x, y, x + w, y + h, px, py, dx, dy);
 }
 
-inline bool crosses(const std::vector<double>& points, double x0, double y0, double x1, double y1) {
+inline bool crosses(const std::vector<double>& points, double x0, double y0, double x1, double y1) noexcept {
     for (size_t i = 2; i + 1 < points.size(); i += 2) {
         double px = points[i - 2];
         double py = points[i - 1];
@@ -1235,14 +1235,14 @@ inline bool crosses(const std::vector<double>& points, double x0, double y0, dou
     return false;
 }
 
-inline bool contains(const Box& outer, const Box& inner) {
+inline bool contains(const Box& outer, const Box& inner) noexcept {
     return outer.x <= inner.x &&
            outer.y <= inner.y &&
            outer.x + outer.w >= inner.x + inner.w &&
            outer.y + outer.h >= inner.y + inner.h;
 }
 
-inline std::array<double, 4> connect(const Box& a, const Box& b, double shift) {
+inline std::array<double, 4> connect(const Box& a, const Box& b, double shift) noexcept {
     double ax = a.x + a.w / 2.0;
     double ay = a.y + a.h / 2.0;
     double bx = b.x + b.w / 2.0;
@@ -1372,11 +1372,11 @@ public:
     }
 };
 
-inline std::string routePathStr(const std::vector<double>& points, double startTrim, double endTrim) {
+inline std::string routePathStr(const std::vector<double>& points, double startTrim, double endTrim) noexcept {
     size_t n = points.size();
     double ux = mathSign(points[2] - points[0]);
     double uy = mathSign(points[3] - points[1]);
-    std::string d = "M" + num(points[0] + ux * startTrim) + "," + num(points[1] + uy * startTrim);
+    std::string d = Pele::cat({"M", num(points[0] + ux * startTrim), ",", num(points[1] + uy * startTrim)});
     for (size_t i = 2; i < n - 2; i += 2) {
         double x = points[i];
         double y = points[i + 1];
@@ -1389,22 +1389,21 @@ inline std::string routePathStr(const std::vector<double>& points, double startT
             std::abs(x - points[i - 2] + y - points[i - 1]) / 2.0,
             std::abs(points[i + 2] - x + points[i + 3] - y) / 2.0
         });
-        d += (ix != 0.0 ? ("H" + num(x - ix * r)) : ("V" + num(y - iy * r))) +
-             "Q" + num(x) + "," + num(y) + " " + num(x + ox * r) + "," + num(y + oy * r);
+        Pele::appendCat(d, {(ix != 0.0 ? Pele::cat({"H", num(x - ix * r)}) : Pele::cat({"V", num(y - iy * r)})), "Q", num(x), ",", num(y), " ", num(x + ox * r), ",", num(y + oy * r)});
     }
     double lx = mathSign(points[n - 2] - points[n - 4]);
     double ly = mathSign(points[n - 1] - points[n - 3]);
-    return d + (lx != 0.0 ? ("H" + num(points[n - 2] - lx * endTrim)) : ("V" + num(points[n - 1] - ly * endTrim)));
+    return d + (lx != 0.0 ? Pele::cat({"H", num(points[n - 2] - lx * endTrim)}) : Pele::cat({"V", num(points[n - 1] - ly * endTrim)}));
 }
 
-inline bool clearOf(const std::vector<double>& points, const std::vector<const Box*>& others, const Box* a, const Box* b) {
+inline bool clearOf(const std::vector<double>& points, const std::vector<const Box*>& others, const Box* a, const Box* b) noexcept {
     for (const Box* other : others) {
         if (other != a && other != b && crosses(points, other->x, other->y, other->x + other->w, other->y + other->h)) return false;
     }
     return true;
 }
 
-inline Route bent(const std::vector<double>& points, size_t along, double startTrim, double endTrim, double nx, double ny, double lean, double room) {
+inline Route bent(const std::vector<double>& points, size_t along, double startTrim, double endTrim, double nx, double ny, double lean, double room) noexcept {
     size_t n = points.size();
     Route r;
     r.d = routePathStr(points, startTrim, endTrim);
@@ -1428,7 +1427,7 @@ inline Route bent(const std::vector<double>& points, size_t along, double startT
     return r;
 }
 
-inline std::vector<double> acrossLanes(double lo, double hi) {
+inline std::vector<double> acrossLanes(double lo, double hi) noexcept {
     std::vector<double> out;
     double mid = (lo + hi) / 2.0;
     double step = std::max(LANE_STEP, (hi - lo) / 4.0);
@@ -1439,7 +1438,7 @@ inline std::vector<double> acrossLanes(double lo, double hi) {
     return out;
 }
 
-inline std::optional<Route> elbow(const Box* a, const Box* b, const std::vector<const Box*>& others, Lanes& lanes, double startTrim, double endTrim) {
+inline std::optional<Route> elbow(const Box* a, const Box* b, const std::vector<const Box*>& others, Lanes& lanes, double startTrim, double endTrim) noexcept {
     double ax = a->x + a->w / 2.0;
     double ay = a->y + a->h / 2.0;
     double bx = b->x + b->w / 2.0;
@@ -1538,10 +1537,7 @@ inline Route routeRel(
         double ux = LOOP / len;
         double uy = spread / len;
         Route r;
-        r.d = "M" + num(x + ux * startTrim) + "," + num(cy - spread - uy * startTrim) +
-              "C" + num(x + LOOP) + "," + num(cy - spread * 2.0) + " " +
-              num(x + LOOP) + "," + num(cy + spread * 2.0) + " " +
-              num(x + ux * endTrim) + "," + num(cy + spread + uy * endTrim);
+        r.d = Pele::cat({"M", num(x + ux * startTrim), ",", num(cy - spread - uy * startTrim), "C", num(x + LOOP), ",", num(cy - spread * 2.0), " ", num(x + LOOP), ",", num(cy + spread * 2.0), " ", num(x + ux * endTrim), ",", num(cy + spread + uy * endTrim)});
         r.sx = x;
         r.sy = cy - spread;
         r.sdx = -ux;
@@ -1672,8 +1668,7 @@ inline Route routeRel(
     double dy = (ey - sy) / len;
     if (upright || sy == ey) lanes.take({sx, sy, ex, ey});
     Route r;
-    r.d = "M" + num(sx + dx * startTrim) + "," + num(sy + dy * startTrim) +
-          "L" + num(ex - dx * endTrim) + "," + num(ey - dy * endTrim);
+    r.d = Pele::cat({"M", num(sx + dx * startTrim), ",", num(sy + dy * startTrim), "L", num(ex - dx * endTrim), ",", num(ey - dy * endTrim)});
     r.sx = sx;
     r.sy = sy;
     r.sdx = -dx;
@@ -1709,8 +1704,8 @@ constexpr double GROUP_GAP = 48.0;
 constexpr double HEAD_LEFT = 16.0;
 constexpr double HEAD_TOP = 10.0;
 
-inline const std::unordered_map<std::string, std::string>& c4Forms() {
-    static const std::unordered_map<std::string, std::string> m = {
+inline const Pele::FlatMap<std::string, std::string>& c4Forms() noexcept {
+    static const Pele::FlatMap<std::string, std::string> m = {
         {"person", "person"},
         {"box", "rect"},
         {"rounded", "rect"},
@@ -1746,7 +1741,7 @@ struct Layout {
     std::unordered_map<const C4Element*, const Box*> boxes;
 };
 
-inline std::string formOf(const C4Shape& shape) {
+inline std::string formOf(const C4Shape& shape) noexcept {
     const auto& forms = c4Forms();
     if (shape.shape.has_value()) {
         auto it = forms.find(toLowerAscii(*shape.shape));
@@ -1769,12 +1764,12 @@ inline std::string formOf(const C4Shape& shape) {
     return "rect";
 }
 
-inline Node measureShape(const C4Shape& shape, const TextMeasurer& measurer, double size, double small, double width = SHAPE_W) {
+inline Node measureShape(const C4Shape& shape, const TextMeasurer& measurer, double size, double small, double width = SHAPE_W) noexcept {
     std::string form = formOf(shape);
     double capW = (form == "h-cyl") ? 36.0 : 0.0;
     double capH = (form == "person") ? HEAD : (form == "cyl") ? 24.0 : 0.0;
     double inner = width - 2.0 * PAD_X - capW;
-    std::string kindText = "\xC2\xAB" + replaceAllStr(shape.kind, "_", " ") + "\xC2\xBB";
+    std::string kindText = Pele::cat({"\xC2\xAB", replaceAllStr(shape.kind, "_", " "), "\xC2\xBB"});
     std::string technText = (shape.techn.has_value() && !shape.techn->empty()) ? ("[" + *shape.techn + "]") : "";
     std::string descrText = shape.descr.value_or("");
     std::vector<Label> labels = {
@@ -1802,7 +1797,7 @@ inline Node measureShape(const C4Shape& shape, const TextMeasurer& measurer, dou
 }
 
 template <typename PtrVec>
-inline std::pair<double, double> placeRows(PtrVec& boxes, int perRow, double gapX, double gapY, bool stretch) {
+inline std::pair<double, double> placeRows(PtrVec& boxes, int perRow, double gapX, double gapY, bool stretch) noexcept {
     double width = 0;
     double y = 0;
     int total = static_cast<int>(boxes.size());
@@ -1824,7 +1819,7 @@ inline std::pair<double, double> placeRows(PtrVec& boxes, int perRow, double gap
     return {width, total > 0 ? y - gapY : 0.0};
 }
 
-inline Layout layoutC4(const C4Db& db, const TextMeasurer& measurer, double size, double small, std::optional<double> room, double gap) {
+inline Layout layoutC4(const C4Db& db, const TextMeasurer& measurer, double size, double small, std::optional<double> room, double gap) noexcept {
     Layout lay;
     double groupPad = !room.has_value() ? GROUP_PAD : 12.0;
     std::unordered_map<const C4Boundary*, Group*> groups;
@@ -1938,7 +1933,7 @@ constexpr double MAX_OFFSET = 2000.0;
 constexpr double EDGE = 8.0;
 constexpr double CARE_BUDGET = 2000000.0;
 
-inline ResolvedStyle userStyle(const std::optional<std::string>& fill, const std::optional<std::string>& stroke, const std::optional<std::string>& color) {
+inline ResolvedStyle userStyle(const std::optional<std::string>& fill, const std::optional<std::string>& stroke, const std::optional<std::string>& color) noexcept {
     std::vector<std::string> declarations;
     if (fill.has_value() && !fill->empty()) declarations.push_back("fill:" + *fill);
     if (stroke.has_value() && !stroke->empty()) declarations.push_back("stroke:" + *stroke);
@@ -1946,7 +1941,7 @@ inline ResolvedStyle userStyle(const std::optional<std::string>& fill, const std
     return resolveStyle(declarations);
 }
 
-inline std::string linkC4(const std::string& body, const std::optional<std::string>& url, const std::string& id, std::vector<LinkInfo>& links, const RenderOptions& options) {
+inline std::string linkC4(const std::string& body, const std::optional<std::string>& url, const std::string& id, std::vector<LinkInfo>& links, const RenderOptions& options) noexcept {
     if (!url.has_value() || url->empty()) return body;
     std::string u = *url;
     if (u.find("\xC2\xB6\xC3\x9F") != std::string::npos) {
@@ -1986,7 +1981,7 @@ inline std::pair<Rendered, int> drawC4(const C4Db& db, const Config&, const Rend
         const Box* a = (from && lay.boxes.count(from)) ? lay.boxes.at(from) : nullptr;
         const Box* b = (to && lay.boxes.count(to)) ? lay.boxes.at(to) : nullptr;
         if (!a || !b) {
-            throw PeleError("C4 rel \"" + rel.from + "\" -> \"" + rel.to + "\" references an unknown shape or boundary", "semantic", "c4");
+            throw PeleError(Pele::cat({"C4 rel \"", rel.from, "\" -> \"", rel.to, "\" references an unknown shape or boundary"}),  "semantic",  "c4");
         }
         ends.push_back(a);
         ends.push_back(b);
@@ -2054,13 +2049,7 @@ inline std::pair<Rendered, int> drawC4(const C4Db& db, const Config&, const Rend
             ep.ex = r.ex; ep.ey = r.ey; ep.edx = r.edx; ep.edy = r.edy;
             casings += edgeCasing(ep, startArrow ? "arrow_point" : "none", endArrow ? "arrow_point" : "none", style.line);
         }
-        edgesOut +=
-            "<g class=\"pele-edge\" data-id=\"" + escText(rel.from + "-" + rel.to) + "\"" +
-            (!over.value.empty() ? (" stroke=\"" + over.value + "\"") : "") +
-            style.line + "><path d=\"" + r.d + "\"/>" +
-            (startArrow ? marker("arrow_point", r.sx, r.sy, r.sdx, r.sdy, color) : "") +
-            (endArrow ? marker("arrow_point", r.ex, r.ey, r.edx, r.edy, color) : "") +
-            "</g>";
+        Pele::appendCat(edgesOut, {"<g class=\"pele-edge\" data-id=\"", escText(Pele::cat({rel.from, "-", rel.to})), "\"", (!over.value.empty() ? Pele::cat({" stroke=\"", over.value, "\""}) : ""), style.line, "><path d=\"", r.d, "\"/>", (startArrow ? marker("arrow_point", r.sx, r.sy, r.sdx, r.sdy, color) : ""), (endArrow ? marker("arrow_point", r.ex, r.ey, r.edx, r.edy, color) : ""), "</g>"});
         routes.push_back(std::move(r));
     }
 
@@ -2089,7 +2078,7 @@ inline std::pair<Rendered, int> drawC4(const C4Db& db, const Config&, const Rend
     for (size_t index = 0; index < db.rels.size(); index++) {
         const auto& rel = db.rels[index];
         const Route& r = routes[index];
-        std::string id = rel.from + "-" + rel.to;
+        std::string id = Pele::cat({rel.from, "-", rel.to});
         ResolvedStyle style = userStyle(std::nullopt, std::nullopt, rel.textColor);
         std::string text = (db.c4Type == "C4Dynamic" ? (std::to_string(index + 1) + ": ") : "") + rel.label;
         Label label = layoutLabel(text, false, measurer, small, r.room);
@@ -2128,19 +2117,14 @@ inline std::pair<Rendered, int> drawC4(const C4Db& db, const Config&, const Rend
         double top = r.y0 + (r.y1 - r.y0) * at + dy - lh / 2.0;
         if (careful) taken.insert(taken.end(), {cx - lw / 2.0, top, cx + lw / 2.0, top + lh});
         grow(cx - lw / 2.0, top, cx + lw / 2.0, top + lh);
-        labelsOut +=
-            "<g class=\"pele-edge-label\" data-id=\"" + escText(id) + "\">" +
-            (rel.descr.has_value() && !rel.descr->empty() ? ("<title>" + escText(*rel.descr) + "</title>") : "") +
-            "<rect x=\"" + num(cx - lw / 2.0) + "\" y=\"" + num(top) + "\" width=\"" + num(lw) + "\" height=\"" + num(lh) + "\" rx=\"3\" fill=\"var(--_bg)\"/>" +
-            linkC4(
+        Pele::appendCat(labelsOut, {"<g class=\"pele-edge-label\" data-id=\"", escText(id), "\">", (rel.descr.has_value() && !rel.descr->empty() ? Pele::cat({"<title>", escText(*rel.descr), "</title>"}) : ""), "<rect x=\"", num(cx - lw / 2.0), "\" y=\"", num(top), "\" width=\"", num(lw), "\" height=\"", num(lh), "\" rx=\"3\" fill=\"var(--_bg)\"/>", linkC4(
                 labelSvg(label, cx, top + label.height / 2.0, style.text, options.icons) +
-                labelSvg(techn, cx, top + label.height + techn.height / 2.0, " class=\"pele-c4-techn\" fill=\"var(--_m)\"" + style.text, options.icons),
+                labelSvg(techn,  cx,  top + label.height + techn.height / 2.0, Pele::cat({" class=\"pele-c4-techn\" fill=\"var(--_m)\"", style.text}),  options.icons),
                 rel.link,
                 id,
                 links,
                 options
-            ) +
-            "</g>";
+            ), "</g>"});
     }
 
     std::string clusters;
@@ -2153,11 +2137,11 @@ inline std::pair<Rendered, int> drawC4(const C4Db& db, const Config&, const Rend
             double y = group->y + HEAD_TOP;
             std::string color = inkFill(style) + style.text;
             std::string muted = inkFill(style, "var(--_m)") + style.text;
-            std::string text = leftLabelSvg(group->labels[0], x, y, " class=\"pele-cluster-label\" font-weight=\"var(--_hw)\"" + color);
+            std::string text = leftLabelSvg(group->labels[0],  x,  y, Pele::cat({" class=\"pele-cluster-label\" font-weight=\"var(--_hw)\"", color}));
             y += group->labels[0].height;
-            text += leftLabelSvg(group->labels[1], x, y, " class=\"pele-c4-type\" font-size=\"" + num(small) + "\"" + muted);
+            text += leftLabelSvg(group->labels[1],  x,  y, Pele::cat({" class=\"pele-c4-type\" font-size=\"", num(small), "\"", muted}));
             y += group->labels[1].height;
-            text += leftLabelSvg(group->labels[2], x, y, " class=\"pele-c4-descr\" font-size=\"" + num(small) + "\"" + muted);
+            text += leftLabelSvg(group->labels[2],  x,  y, Pele::cat({" class=\"pele-c4-descr\" font-size=\"", num(small), "\"", muted}));
             clusters +=
                 "<g class=\"pele-cluster pele-c4-" + std::string(boundary.nodeType.has_value() ? "node" : "boundary") + "\" data-id=\"" + escText(boundary.alias) + "\">" +
                 "<rect x=\"" + num(group->x) + "\" y=\"" + num(group->y) + "\" width=\"" + num(group->w) + "\" height=\"" + num(group->h) + "\" fill=\"none\" stroke=\"var(--_b)\"" +
@@ -2179,24 +2163,20 @@ inline std::pair<Rendered, int> drawC4(const C4Db& db, const Config&, const Rend
             std::string color = inkFill(style) + style.text;
             std::string muted = inkFill(style, "var(--_m)") + style.text;
             double y = dy - node.textH / 2.0;
-            std::string text = labelSvg(labels[0], dx, y + labels[0].height / 2.0, " class=\"pele-c4-type\" font-size=\"" + num(small - 1.0) + "\"" + muted, options.icons);
+            std::string text = labelSvg(labels[0],  dx,  y + labels[0].height / 2.0, Pele::cat({" class=\"pele-c4-type\" font-size=\"", num(small - 1.0), "\"", muted}),  options.icons);
             y += labels[0].height;
-            text += labelSvg(labels[1], dx, y + labels[1].height / 2.0, " class=\"pele-label\" font-weight=\"var(--_hw)\"" + color, options.icons);
+            text += labelSvg(labels[1],  dx,  y + labels[1].height / 2.0, Pele::cat({" class=\"pele-label\" font-weight=\"var(--_hw)\"", color}),  options.icons);
             y += labels[1].height;
-            text += labelSvg(labels[2], dx, y + labels[2].height / 2.0, " class=\"pele-c4-techn\" font-size=\"" + num(small) + "\"" + muted, options.icons);
+            text += labelSvg(labels[2],  dx,  y + labels[2].height / 2.0, Pele::cat({" class=\"pele-c4-techn\" font-size=\"", num(small), "\"", muted}),  options.icons);
             y += labels[2].height + 4.0;
-            text += labelSvg(labels[3], dx, y + labels[3].height / 2.0, " class=\"pele-c4-descr\" font-size=\"" + num(small) + "\"" + color, options.icons);
-            nodesOut +=
-                "<g class=\"pele-node pele-shape-" + form + " pele-c4-" + shape.kind + (external ? " pele-c4-external" : "") + "\" data-id=\"" + escText(shape.alias) +
-                "\" transform=\"translate(" + num(node.x + w / 2.0) + "," + num(node.y + h / 2.0) + ")\">" +
-                linkC4(
+            text += labelSvg(labels[3],  dx,  y + labels[3].height / 2.0, Pele::cat({" class=\"pele-c4-descr\" font-size=\"", num(small), "\"", color}),  options.icons);
+            Pele::appendCat(nodesOut, {"<g class=\"pele-node pele-shape-", form, " pele-c4-", shape.kind, (external ? " pele-c4-external" : ""), "\" data-id=\"", escText(shape.alias), "\" transform=\"translate(", num(node.x + w / 2.0), ",", num(node.y + h / 2.0), ")\">", linkC4(
                     drawShape(form, w, h, std::string(" fill=\"var(") + (external ? "--_bg" : "--_s") + ")\"" + stroke + style.shape, stroke + style.line) + text,
                     shape.link,
                     shape.alias,
                     links,
                     options
-                ) +
-                "</g>";
+                ), "</g>"});
         }
     }
 
@@ -2209,21 +2189,12 @@ inline std::pair<Rendered, int> drawC4(const C4Db& db, const Config&, const Rend
     double oy = pad + titleHeight - minY;
 
     std::string svg = svgDocument(
-        "c4",
-        width,
-        height,
-        size,
-        options,
-        db,
-        labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"", options.icons) +
-        "<g transform=\"translate(" + num(ox) + "," + num(oy) + ")\">" +
-        (!clusters.empty() ? ("<g class=\"pele-clusters\">" + clusters + "</g>") : "") +
-        casingsSvg(casings) +
-        (!edgesOut.empty() ? ("<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">" + edgesOut + "</g>") : "") +
-        (!nodesOut.empty() ? ("<g class=\"pele-nodes\">" + nodesOut + "</g>") : "") +
-        (!labelsOut.empty() ? ("<g class=\"pele-edge-labels\" font-size=\"" + num(small) + "\">" + labelsOut + "</g>") : "") +
-        "</g>"
-    );
+        "c4", 
+        width, 
+        height, 
+        size, 
+        options, 
+        db, Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"", options.icons), "<g transform=\"translate(", num(ox), ",", num(oy), ")\">", (!clusters.empty() ? Pele::cat({"<g class=\"pele-clusters\">", clusters, "</g>"}) : ""), casingsSvg(casings), (!edgesOut.empty() ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">", edgesOut, "</g>"}) : ""), (!nodesOut.empty() ? Pele::cat({"<g class=\"pele-nodes\">", nodesOut, "</g>"}) : ""), (!labelsOut.empty() ? Pele::cat({"<g class=\"pele-edge-labels\" font-size=\"", num(small), "\">", labelsOut, "</g>"}) : ""), "</g>"}));
     return {{svg, width, height, std::move(links)}, lanes.squeezed};
 }
 

@@ -43,7 +43,7 @@ constexpr double MARGIN = 20.0;
 constexpr double LEG = 14.0;
 constexpr double CLOSE = 3.0;
 
-inline std::pair<double, double> border(const CNode& from, const CNode& to) {
+inline std::pair<double, double> border(const CNode& from, const CNode& to) noexcept {
     double dx = to.x - from.x;
     double dy = to.y - from.y;
     double hw = std::max(from.w / 2.0, 0.5);
@@ -62,7 +62,7 @@ inline std::pair<double, double> border(const CNode& from, const CNode& to) {
     return {from.x + dx * scale, from.y + dy * scale};
 }
 
-inline double jsSign(double x) {
+inline double jsSign(double x) noexcept {
     if (x > 0.0) return 1.0;
     if (x < 0.0) return -1.0;
     return 0.0;
@@ -129,7 +129,7 @@ inline CompoundResult laneLayout(
     std::vector<int> edgeOf;
     int step = 1;
     {
-        std::unordered_set<int64_t> seen;
+        Pele::FlatSet<int64_t> seen;
         int64_t rlen = static_cast<int64_t>(real.size());
         for (size_t ei = 0; ei < edges.size(); ei++) {
             const auto& e = edges[ei];
@@ -739,7 +739,7 @@ inline CompoundResult laneLayout(
 // Port of src/diagrams/swimlane/index.ts
 // ============================================================================
 
-inline void prepareSwimlane(FlowGraph& graph) {
+inline void prepareSwimlane(FlowGraph& graph) noexcept {
     const std::string DEFAULT_LANE = "__swimlane_default__";
     bool loose = false;
     for (auto& node : graph.nodes) {
@@ -778,16 +778,11 @@ inline std::string drawLane(
     bool sideways = (dir == "LR" || dir == "RL");
     double cx = sideways ? left + c.padTop / 2.0 : c.x;
     double cy = sideways ? c.y : top + c.padTop / 2.0;
-    std::string text = labelSvg(label, cx, cy, " class=\"pele-cluster-label\"" + inkFill(style, "var(--_m)") + style.text, icons);
-    return "<g class=\"pele-cluster pele-lane" + classes + "\" data-id=\"" + id + "\">" +
-           "<rect x=\"" + num(left) + "\" y=\"" + num(top) + "\" width=\"" + num(c.w) + "\" height=\"" + num(c.h) + "\" fill=\"none\" stroke=\"var(--_b)\"/>" +
-           "<rect x=\"" + num(left) + "\" y=\"" + num(top) + "\" width=\"" + num(sideways ? c.padTop : c.w) + "\" height=\"" + num(sideways ? c.h : c.padTop) +
-           "\" fill=\"var(--_a)\" stroke=\"var(--_b)\"" + style.shape + "/>" +
-           (sideways && !text.empty() ? ("<g transform=\"rotate(-90 " + num(cx) + " " + num(cy) + ")\">" + text + "</g>") : text) +
-           "</g>";
+    std::string text = labelSvg(label,  cx,  cy, Pele::cat({" class=\"pele-cluster-label\"", inkFill(style, "var(--_m)"), style.text}),  icons);
+    return Pele::cat({"<g class=\"pele-cluster pele-lane", classes, "\" data-id=\"", id, "\">", "<rect x=\"", num(left), "\" y=\"", num(top), "\" width=\"", num(c.w), "\" height=\"", num(c.h), "\" fill=\"none\" stroke=\"var(--_b)\"/>", "<rect x=\"", num(left), "\" y=\"", num(top), "\" width=\"", num(sideways ? c.padTop : c.w), "\" height=\"", num(sideways ? c.h : c.padTop), "\" fill=\"var(--_a)\" stroke=\"var(--_b)\"", style.shape, "/>", (sideways && !text.empty() ? Pele::cat({"<g transform=\"rotate(-90 ", num(cx), " ", num(cy), ")\">", text, "</g>"}) : text), "</g>"});
 }
 
-inline std::array<double, 4> laneBand(const CNode& c, const std::string& dir) {
+inline std::array<double, 4> laneBand(const CNode& c, const std::string& dir) noexcept {
     double left = c.x - c.w / 2.0;
     double top = c.y - c.h / 2.0;
     if (dir == "LR" || dir == "RL") {
@@ -796,7 +791,7 @@ inline std::array<double, 4> laneBand(const CNode& c, const std::string& dir) {
     return {left, top, left + c.w, top + c.padTop};
 }
 
-inline const FlowVariant& swimlaneVariant() {
+inline const FlowVariant& swimlaneVariant() noexcept {
     static const FlowVariant v{
         "swimlane",
         prepareSwimlane,
@@ -861,7 +856,7 @@ inline Rendered renderSwimlane(const std::string& source, const Config& config, 
 
 inline Rendered renderSwimlane(const std::string& source, const RenderOptions& options = {}) {
     auto pre = preprocess(source);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     return Swimlane::render(parsed, pre.config, pre.title, options);
 }
 

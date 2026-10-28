@@ -40,13 +40,13 @@ namespace T {
     };
 }
 
-inline int scanDigits(const std::string& src, int from) {
+inline int scanDigits(const std::string& src, int from) noexcept {
     int i = from;
     for (int c = charCodeAt(src, i); c >= 48 && c <= 57; c = charCodeAt(src, ++i)) {}
     return i;
 }
 
-inline TokenScanner numberScanner() {
+inline TokenScanner numberScanner() noexcept {
     int from = 0;
     int end = 0;
     int fraction = -1;
@@ -71,7 +71,7 @@ inline TokenScanner numberScanner() {
     };
 }
 
-inline const std::vector<TokenType>& pieTokens() {
+inline const std::vector<TokenType>& pieTokens() noexcept {
     static const std::vector<TokenType> tokens = []() {
         TokenType colonTok;
         colonTok.name = ":";
@@ -190,7 +190,7 @@ inline PieAst parsePie(const std::string& src) {
     return ast;
 }
 
-inline std::string jsNumStr(double v) {
+inline std::string jsNumStr(double v) noexcept {
     if (std::isnan(v)) return "NaN";
     if (std::isinf(v)) return v < 0 ? "-Infinity" : "Infinity";
     if (v == 0.0) return "0";
@@ -199,7 +199,7 @@ inline std::string jsNumStr(double v) {
     return oss.str();
 }
 
-inline std::string stripNewlineIndent(const std::string& s) {
+inline std::string stripNewlineIndent(const std::string& s) noexcept {
     std::string out;
     out.reserve(s.size());
     size_t i = 0;
@@ -222,12 +222,11 @@ inline std::string stripNewlineIndent(const std::string& s) {
 
 inline PieModel buildPie(const PieAst& ast, const std::string& title) {
     PieModel model;
-    std::unordered_set<std::string> seen;
+    Pele::FlatSet<std::string> seen;
     for (const auto& sec : ast.sections) {
         if (sec.value < 0.0) {
-            throw PeleError(
-                "\"" + sec.label + "\" has invalid value: " + jsNumStr(sec.value) + ". Negative values are not allowed in pie charts. All slice values must be >= 0.",
-                "semantic",
+            throw PeleError(Pele::cat({"\"", sec.label, "\" has invalid value: ", jsNumStr(sec.value), ". Negative values are not allowed in pie charts. All slice values must be >= 0."}), 
+                "semantic", 
                 "pie"
             );
         }
@@ -250,17 +249,17 @@ constexpr double GAP = 32.0;
 constexpr double OUTSIDE = 28.0;
 constexpr double PI = 3.14159265358979323846;
 
-inline const YamlValue* pieOption(const Config& config, const std::string& key) {
+inline const YamlValue* pieOption(const Config& config, const std::string& key) noexcept {
     const auto* pie = config.get("pie");
     if (!pie || !pie->isMap()) return nullptr;
     return pie->get(key);
 }
 
-inline std::string piePoint(double angle, double radius) {
-    return num(std::sin(angle) * radius) + "," + num(-std::cos(angle) * radius);
+inline std::string piePoint(double angle, double radius) noexcept {
+    return Pele::cat({num(std::sin(angle) * radius), ",", num(-std::cos(angle) * radius)});
 }
 
-inline std::string pieSlice(double start, double end, double outer, double inner) {
+inline std::string pieSlice(double start, double end, double outer, double inner) noexcept {
     if (end - start >= PI * 2.0 - 1e-9) {
         auto ring = [](double r, int sweep) {
             return "M0," + num(-r) + "A" + num(r) + "," + num(r) + " 0 1 " + std::to_string(sweep) + " 0," + num(r) + "A" + num(r) + "," + num(r) + " 0 1 " + std::to_string(sweep) + " 0," + num(-r) + "Z";
@@ -275,12 +274,12 @@ inline std::string pieSlice(double start, double end, double outer, double inner
            "L" + piePoint(end, inner) + "A" + num(inner) + "," + num(inner) + " 0 " + std::to_string(large) + " 0 " + piePoint(start, inner) + "Z";
 }
 
-inline double pieTitleRoom(const RenderOptions& options) {
+inline double pieTitleRoom(const RenderOptions& options) noexcept {
     double available = options.maxWidth;
     return available > 0.0 ? std::max(80.0, available - 2.0 * options.padding) : 4000.0;
 }
 
-inline Rendered drawPie(const PieModel& model, const Config& config, const RenderOptions& options, double radius, bool tight) {
+inline Rendered drawPie(const PieModel& model, const Config& config, const RenderOptions& options, double radius, bool tight) noexcept {
     double size = options.fontSize;
     double small = std::round(size * 0.875);
     const auto& measurer = getMeasurer(options);
@@ -301,7 +300,7 @@ inline Rendered drawPie(const PieModel& model, const Config& config, const Rende
     std::vector<Label> legend;
     legend.reserve(entries.size());
     for (const auto& [label, value] : entries) {
-        std::string txt = model.showData ? (label + " [" + jsNumStr(value) + "]") : label;
+        std::string txt = model.showData ? Pele::cat({label, " [", jsNumStr(value), "]"}) : label;
         legend.push_back(layoutLabel(txt, false, measurer, small, 4000.0));
     }
     double legendWidth = 0.0;
@@ -325,7 +324,7 @@ inline Rendered drawPie(const PieModel& model, const Config& config, const Rende
         shares[i] = (share * 100.0 >= 1.0 && toFixed0(share * 100.0) != "0") ? share : 0.0;
         if (shares[i] > 0.0 && shares[i] < 0.5) {
             double chord = 2.0 * radius * textPosition * std::sin(shares[i] * PI);
-            if (chord < measurer.width(toFixed0(shares[i] * 100.0) + "%", small, 0) + 6.0) {
+            if (chord < measurer.width(Pele::cat({toFixed0(shares[i] * 100.0), "%"}),  small,  0) + 6.0) {
                 narrow[i] = true;
                 anyNarrow = true;
             }
@@ -376,9 +375,9 @@ inline Rendered drawPie(const PieModel& model, const Config& config, const Rende
         double share = shares[index];
         if (share == 0.0) continue;
         double end = angle + share * PI * 2.0;
-        slices += "<path class=\"pele-slice\" data-id=\"" + escText(label) + "\" d=\"" + pieSlice(angle, end, radius, inner) + "\" fill=\"" + seriesColor(static_cast<int>(index)) + "\"/>";
+        Pele::appendCat(slices, {"<path class=\"pele-slice\" data-id=\"", escText(label), "\" d=\"", pieSlice(angle, end, radius, inner), "\" fill=\"", seriesColor(static_cast<int>(index)), "\"/>"});
         double mid = (angle + end) / 2.0;
-        std::string text = toFixed0(share * 100.0) + "%";
+        std::string text = Pele::cat({toFixed0(share * 100.0), "%"});
         if (narrow[index]) {
             double w = measurer.width(text, small, 0);
             double at = mid;
@@ -388,15 +387,15 @@ inline Rendered drawPie(const PieModel& model, const Config& config, const Rende
             double x = std::sin(at) * rim;
             double y = -std::cos(at) * rim;
             placedOutside.push_back({x, y, w});
-            outside += "<text x=\"" + num(x) + "\" y=\"" + num(y + small * 0.35) + "\">" + text + "</text>";
+            Pele::appendCat(outside, {"<text x=\"", num(x), "\" y=\"", num(y + small * 0.35), "\">", text, "</text>"});
         } else {
             double r = radius * textPosition;
-            labels += "<text x=\"" + num(std::sin(mid) * r) + "\" y=\"" + num(-std::cos(mid) * r + small * 0.35) + "\">" + text + "</text>";
+            Pele::appendCat(labels, {"<text x=\"", num(std::sin(mid) * r), "\" y=\"", num(-std::cos(mid) * r + small * 0.35), "\">", text, "</text>"});
         }
         angle = end;
     }
     if (slices.empty()) {
-        slices = "<circle class=\"pele-slice\" r=\"" + jsNumStr(radius) + "\" fill=\"none\" stroke=\"var(--_b)\"/>";
+        slices = Pele::cat({"<circle class=\"pele-slice\" r=\"", jsNumStr(radius), "\" fill=\"none\" stroke=\"var(--_b)\"/>"});
     }
 
     std::string legendOut;
@@ -418,25 +417,16 @@ inline Rendered drawPie(const PieModel& model, const Config& config, const Rende
     for (size_t index = 0; index < legend.size(); index++) {
         const auto& label = legend[index];
         double y = ly + static_cast<double>(index) * ROW + ROW / 2.0;
-        legendOut +=
-            "<g class=\"pele-legend-item\" data-id=\"" + escText(entries[index].first) + "\">" +
-            "<rect x=\"" + num(lx) + "\" y=\"" + num(y - SWATCH / 2.0) + "\" width=\"" + num(SWATCH) + "\" height=\"" + num(SWATCH) + "\" rx=\"2\" fill=\"" + seriesColor(static_cast<int>(index)) + "\"/>" +
-            labelSvg(label, lx + SWATCH + 8.0 + label.width / 2.0, y, "") +
-            "</g>";
+        Pele::appendCat(legendOut, {"<g class=\"pele-legend-item\" data-id=\"", escText(entries[index].first), "\">", "<rect x=\"", num(lx), "\" y=\"", num(y - SWATCH / 2.0), "\" width=\"", num(SWATCH), "\" height=\"", num(SWATCH), "\" rx=\"2\" fill=\"", seriesColor(static_cast<int>(index)), "\"/>", labelSvg(label, lx + SWATCH + 8.0 + label.width / 2.0, y, ""), "</g>"});
     }
 
     double totalWidth = std::ceil(width + 2.0 * pad);
     double totalHeight = std::ceil(height + titleHeight + 2.0 * pad);
-    std::string content =
-        labelSvg(title, totalWidth / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        "<g class=\"pele-slices\" transform=\"translate(" + num(cx) + "," + num(cy) + ")\" stroke=\"var(--_bg)\" stroke-width=\"1\" stroke-linejoin=\"round\">" + slices + "</g>" +
-        (!labels.empty()
-            ? ("<g class=\"pele-slice-labels\" transform=\"translate(" + num(cx) + "," + num(cy) + ")\" font-size=\"" + num(small) + "\" text-anchor=\"middle\" fill=\"var(--_bg)\">" + labels + "</g>")
-            : "") +
-        (!outside.empty()
-            ? ("<g class=\"pele-slice-labels\" transform=\"translate(" + num(cx) + "," + num(cy) + ")\" font-size=\"" + num(small) + "\" text-anchor=\"middle\">" + outside + "</g>")
-            : "") +
-        (!legendOut.empty() ? ("<g class=\"pele-legend\" font-size=\"" + num(small) + "\">" + legendOut + "</g>") : "");
+    std::string content = Pele::cat({labelSvg(title, totalWidth / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), "<g class=\"pele-slices\" transform=\"translate(", num(cx), ",", num(cy), ")\" stroke=\"var(--_bg)\" stroke-width=\"1\" stroke-linejoin=\"round\">", slices, "</g>", (!labels.empty()
+            ? Pele::cat({"<g class=\"pele-slice-labels\" transform=\"translate(", num(cx), ",", num(cy), ")\" font-size=\"", num(small), "\" text-anchor=\"middle\" fill=\"var(--_bg)\">", labels, "</g>"})
+            : ""), (!outside.empty()
+            ? Pele::cat({"<g class=\"pele-slice-labels\" transform=\"translate(", num(cx), ",", num(cy), ")\" font-size=\"", num(small), "\" text-anchor=\"middle\">", outside, "</g>"})
+            : ""), (!legendOut.empty() ? Pele::cat({"<g class=\"pele-legend\" font-size=\"", num(small), "\">", legendOut, "</g>"}) : "")});
 
     return {
         svgDocument("pie", totalWidth, totalHeight, size, options, model, content),
@@ -446,7 +436,7 @@ inline Rendered drawPie(const PieModel& model, const Config& config, const Rende
     };
 }
 
-inline Rendered renderPieModel(const PieModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderPieModel(const PieModel& model, const Config& config, const RenderOptions& options) noexcept {
     double natural = PIE_RADIUS * 2.0;
     double least = 140.0;
     Rendered result = drawPie(model, config, options, natural / 2.0, false);
@@ -475,7 +465,7 @@ inline Rendered renderPie(const std::string& source, const Config& config, const
 
 inline Rendered renderPie(const std::string& source, const RenderOptions& options = {}) {
     auto pre = preprocess(source);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     RenderOptions opts = options;
     if (!opts.hasResponsive) {
         const auto* section = pre.config.get("pie");

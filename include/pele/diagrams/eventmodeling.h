@@ -60,7 +60,7 @@ enum Kind {
 };
 } // namespace T
 
-inline TokenType makeEmTitle() {
+inline TokenType makeEmTitle() noexcept {
     TokenType t = common_tokens::makeTitle();
     t.name = "EM_TITLE";
     t.match = [](const std::string& src, int at, int) -> int {
@@ -293,20 +293,20 @@ struct EventModelAst {
     std::string source;
 };
 
-inline bool isTimeFrameKind(int k) {
+inline bool isTimeFrameKind(int k) noexcept {
     return k == T::tf || k == T::timeframe;
 }
 
-inline bool isResetFrameKind(int k) {
+inline bool isResetFrameKind(int k) noexcept {
     return k == T::rf || k == T::resetframe;
 }
 
-inline bool isEntityTypeKind(int k) {
+inline bool isEntityTypeKind(int k) noexcept {
     return k == T::rmo || k == T::readmodel || k == T::ui || k == T::cmd ||
            k == T::command || k == T::evt || k == T::event || k == T::pcr || k == T::processor;
 }
 
-inline bool isDataTypeKind(int k) {
+inline bool isDataTypeKind(int k) noexcept {
     return k == T::json || k == T::jsobj || k == T::figma || k == T::salt ||
            k == T::uri || k == T::md || k == T::html || k == T::text;
 }
@@ -453,7 +453,7 @@ struct EventModelingModel : public DiagramMeta {
     std::vector<std::string> entities;
 };
 
-inline std::string mapEntityKind(const std::string& raw) {
+inline std::string mapEntityKind(const std::string& raw) noexcept {
     if (raw == "ui") return "ui";
     if (raw == "pcr" || raw == "processor") return "processor";
     if (raw == "rmo" || raw == "readmodel") return "readmodel";
@@ -461,13 +461,13 @@ inline std::string mapEntityKind(const std::string& raw) {
     return "event";
 }
 
-inline std::string groupOfKind(const std::string& kind) {
+inline std::string groupOfKind(const std::string& kind) noexcept {
     if (kind == "ui" || kind == "processor") return "trigger";
     if (kind == "event") return "stream";
     return "state";
 }
 
-inline std::string blockText(const std::string& raw) {
+inline std::string blockText(const std::string& raw) noexcept {
     size_t open = raw.find('{');
     size_t close = raw.rfind('}');
     std::string inner;
@@ -497,7 +497,7 @@ inline std::string blockText(const std::string& raw) {
 }
 
 inline EventModelingModel buildEventModel(const EventModelAst& ast, const std::string& fallbackTitle) {
-    std::unordered_set<std::string> ids;
+    Pele::FlatSet<std::string> ids;
     for (const auto& frame : ast.frames) {
         if (ids.count(frame.name)) {
             int line = 1;
@@ -509,14 +509,14 @@ inline EventModelingModel buildEventModel(const EventModelAst& ast, const std::s
         ids.insert(frame.name);
     }
 
-    std::unordered_map<std::string, std::string> dataMap;
+    Pele::FlatMap<std::string, std::string> dataMap;
     for (const auto& entity : ast.dataEntities) {
         if (!dataMap.count(entity.name)) dataMap[entity.name] = entity.dataBlockValue;
     }
 
     std::unordered_map<std::string, EmLane> laneOf;
     std::vector<EmLane> laneList;
-    std::unordered_map<std::string, int> nextIdx;
+    Pele::FlatMap<std::string, int> nextIdx;
 
     auto getLane = [&](const std::string& kind, const std::optional<std::string>& ns) -> EmLane {
         std::string group = groupOfKind(kind);
@@ -568,7 +568,7 @@ inline EventModelingModel buildEventModel(const EventModelAst& ast, const std::s
         model.boxes.push_back(std::move(box));
 
         if (!frame.sourceFrames.empty()) {
-            std::unordered_set<std::string> wanted(frame.sourceFrames.begin(), frame.sourceFrames.end());
+            Pele::FlatSet<std::string> wanted(frame.sourceFrames.begin(), frame.sourceFrames.end());
             for (size_t sIdx = 0; sIdx < model.boxes.size(); sIdx++) {
                 if (wanted.count(model.boxes[sIdx].id)) {
                     model.relations.push_back({sIdx, index});
@@ -625,7 +625,7 @@ constexpr double RAIL_GAP = 8.0;
 constexpr double CARD_MIN = 120.0;
 constexpr double ARROW_ROOM = 20.0;
 
-inline std::optional<int> entitySeries(const std::string& kind) {
+inline std::optional<int> entitySeries(const std::string& kind) noexcept {
     if (kind == "command") return 0;
     if (kind == "event") return 1;
     if (kind == "readmodel") return 2;
@@ -633,7 +633,7 @@ inline std::optional<int> entitySeries(const std::string& kind) {
     return std::nullopt;
 }
 
-inline std::vector<std::string> hardWrap(const std::string& text, size_t columns) {
+inline std::vector<std::string> hardWrap(const std::string& text, size_t columns) noexcept {
     std::vector<std::string> out;
     for (const auto& line : splitStr(decodeEntities(text), '\n')) {
         std::vector<std::string> chars;
@@ -656,17 +656,17 @@ inline std::vector<std::string> hardWrap(const std::string& text, size_t columns
     return out;
 }
 
-inline std::string renderLinesSvg(const std::vector<std::string>& rows, double x, double y, double step, const std::string& attrs) {
+inline std::string renderLinesSvg(const std::vector<std::string>& rows, double x, double y, double step, const std::string& attrs) noexcept {
     std::string body;
     for (size_t i = 0; i < rows.size(); i++) {
         if (!rows[i].empty()) {
-            body += "<tspan x=\"" + num(x) + "\" y=\"" + num(y + static_cast<double>(i) * step) + "\">" + esc(rows[i]) + "</tspan>";
+            Pele::appendCat(body, {"<tspan x=\"", num(x), "\" y=\"", num(y + static_cast<double>(i) * step), "\">", esc(rows[i]), "</tspan>"});
         }
     }
-    return body.empty() ? "" : ("<text" + attrs + " xml:space=\"preserve\">" + body + "</text>");
+    return body.empty() ? "" : Pele::cat({"<text", attrs, " xml:space=\"preserve\">", body, "</text>"});
 }
 
-inline std::string joinVec(const std::vector<std::string>& v, const std::string& sep) {
+inline std::string joinVec(const std::vector<std::string>& v, const std::string& sep) noexcept {
     std::string out;
     for (size_t i = 0; i < v.size(); i++) {
         if (i > 0) out += sep;
@@ -675,7 +675,7 @@ inline std::string joinVec(const std::vector<std::string>& v, const std::string&
     return out;
 }
 
-inline Rendered verticalEventModel(const EventModelingModel& model, const RenderOptions& options) {
+inline Rendered verticalEventModel(const EventModelingModel& model, const RenderOptions& options) noexcept {
     double size = options.hasFontSize ? options.fontSize : 16.0;
     double small = std::round(size * 0.875);
     double mono = std::round(size * 0.75);
@@ -686,7 +686,7 @@ inline Rendered verticalEventModel(const EventModelingModel& model, const Render
 
     std::unordered_map<size_t, std::pair<size_t, size_t>> runs;
     std::vector<size_t> runsOrder;
-    std::unordered_set<size_t> passed;
+    Pele::FlatSet<size_t> passed;
     for (const auto& relation : model.relations) {
         size_t s = relation.sourceIdx;
         size_t t = relation.targetIdx;
@@ -758,7 +758,7 @@ inline Rendered verticalEventModel(const EventModelingModel& model, const Render
         double h = 2.0 * BOX_PAD_Y + name.height + (data.has_value() ? (data->height + 6.0) : 0.0);
         auto series = entitySeries(box.kind);
         double cy = y + headH;
-        std::string frame = "x=\"" + num(pad) + "\" y=\"" + num(cy) + "\" width=\"" + num(w) + "\" height=\"" + num(h) + "\"";
+        std::string frame = Pele::cat({"x=\"", num(pad), "\" y=\"", num(cy), "\" width=\"", num(w), "\" height=\"", num(h), "\""});
         std::string dataLinesSvg;
         if (data.has_value()) {
             std::vector<std::string> dRows;
@@ -767,15 +767,9 @@ inline Rendered verticalEventModel(const EventModelingModel& model, const Render
                 for (const auto& sp : l) rowStr += sp.text;
                 dRows.push_back(std::move(rowStr));
             }
-            dataLinesSvg = renderLinesSvg(dRows, pad + BOX_PAD_X, cy + BOX_PAD_Y + name.height + 6.0 + data->lineHeight / 2.0 + mono * 0.35, data->lineHeight, " class=\"pele-em-data\" font-family=\"" + FONT_MONO + "\" font-size=\"" + num(mono) + "\"");
+            dataLinesSvg = renderLinesSvg(dRows,  pad + BOX_PAD_X,  cy + BOX_PAD_Y + name.height + 6.0 + data->lineHeight / 2.0 + mono * 0.35,  data->lineHeight, Pele::cat({" class=\"pele-em-data\" font-family=\"", FONT_MONO, "\" font-size=\"", num(mono), "\""}));
         }
-        nodes += "<g class=\"pele-cluster pele-em-lane\" data-id=\"" + escText(box.lane.label) + "\">" +
-            leftLabelSvg(lane, pad + BOX_PAD_X, y, " class=\"pele-cluster-label\" font-size=\"" + num(small) + "\" font-weight=\"var(--_hw)\" fill=\"var(--_m)\"") +
-            "<g class=\"pele-node pele-em-" + box.kind + (box.reset ? " pele-em-reset" : "") + "\" data-id=\"" + escText(box.id) + "\"><rect " + frame + " fill=\"var(--_bg)\" stroke=\"var(--_b)\"" + ROUNDED + "/>" +
-            (!series.has_value() ? "" : ("<rect " + frame + " fill=\"" + seriesColor(*series) + "\" fill-opacity=\"0.22\" stroke=\"" + seriesColor(*series) + "\"" + ROUNDED + "/>")) +
-            labelSvg(name, pad + BOX_PAD_X + name.width / 2.0, cy + BOX_PAD_Y + name.height / 2.0, " class=\"pele-label\" font-size=\"" + num(small) + "\" font-weight=\"var(--_hw)\"") +
-            "<text class=\"pele-em-frame\" x=\"" + num(pad + w - BOX_PAD_X) + "\" y=\"" + num(cy + BOX_PAD_Y + small) + "\" text-anchor=\"end\" font-size=\"" + num(mono) + "\" fill=\"var(--_m)\">" + esc(box.id) + "</text>" +
-            dataLinesSvg + "</g></g>";
+        Pele::appendCat(nodes, {"<g class=\"pele-cluster pele-em-lane\" data-id=\"", escText(box.lane.label), "\">", leftLabelSvg(lane,  pad + BOX_PAD_X,  y, Pele::cat({" class=\"pele-cluster-label\" font-size=\"", num(small), "\" font-weight=\"var(--_hw)\" fill=\"var(--_m)\""})), "<g class=\"pele-node pele-em-", box.kind, (box.reset ? " pele-em-reset" : ""), "\" data-id=\"", escText(box.id), "\"><rect ", frame, " fill=\"var(--_bg)\" stroke=\"var(--_b)\"", ROUNDED, "/>", (!series.has_value() ? "" : Pele::cat({"<rect ", frame, " fill=\"", seriesColor(*series), "\" fill-opacity=\"0.22\" stroke=\"", seriesColor(*series), "\"", ROUNDED, "/>"})), labelSvg(name,  pad + BOX_PAD_X + name.width / 2.0,  cy + BOX_PAD_Y + name.height / 2.0, Pele::cat({" class=\"pele-label\" font-size=\"", num(small), "\" font-weight=\"var(--_hw)\""})), "<text class=\"pele-em-frame\" x=\"", num(pad + w - BOX_PAD_X), "\" y=\"", num(cy + BOX_PAD_Y + small), "\" text-anchor=\"end\" font-size=\"", num(mono), "\" fill=\"var(--_m)\">", esc(box.id), "</text>", dataLinesSvg, "</g></g>"});
         placed[index] = {cy, h, w, index, lane.width};
         width = std::max(width, w + gutter);
         bottom = cy + h;
@@ -793,23 +787,23 @@ inline Rendered verticalEventModel(const EventModelingModel& model, const Render
         std::string d, head;
         if (std::abs(static_cast<int>(s.index) - static_cast<int>(t.index)) == 1) {
             double cx = pad + std::max(std::min(s.w, t.w) / 2.0, BOX_PAD_X + (down ? t.lane : s.lane) + 16.0);
-            d = "M" + num(cx) + "," + num(sy) + "V" + num(ty - dir * markerTrim("arrow_point"));
+            d = Pele::cat({"M", num(cx), ",", num(sy), "V", num(ty - dir * markerTrim("arrow_point"))});
             head = marker("arrow_point", cx, ty, 0.0, dir, "var(--_l)");
         } else {
             size_t rIdx = railOf.count(relation.targetIdx) ? railOf[relation.targetIdx] : 0;
             double rail = pad + width - gutter + 12.0 + RAIL_GAP * static_cast<double>(rIdx);
             double fromY = s.y + s.h / 2.0 - 5.0;
             double toY = t.y + t.h / 2.0 + 5.0;
-            d = "M" + num(pad + s.w) + "," + num(fromY) + "H" + num(rail) + "V" + num(toY) + "H" + num(pad + t.w + markerTrim("arrow_point"));
+            d = Pele::cat({"M", num(pad + s.w), ",", num(fromY), "H", num(rail), "V", num(toY), "H", num(pad + t.w + markerTrim("arrow_point"))});
             head = marker("arrow_point", pad + t.w, toY, -1.0, 0.0, "var(--_l)");
         }
-        edges += "<g class=\"pele-edge\" data-id=\"" + escText(model.boxes[relation.sourceIdx].id) + "-" + escText(model.boxes[relation.targetIdx].id) + "\"><path d=\"" + d + "\" fill=\"none\" stroke=\"var(--_l)\"/>" + head + "</g>";
+        Pele::appendCat(edges, {"<g class=\"pele-edge\" data-id=\"", escText(model.boxes[relation.sourceIdx].id), "-", escText(model.boxes[relation.targetIdx].id), "\"><path d=\"", d, "\" fill=\"none\" stroke=\"var(--_l)\"/>", head, "</g>"});
     }
 
-    std::unordered_map<std::string, std::string> names;
+    Pele::FlatMap<std::string, std::string> names;
     for (const auto& box : model.boxes) names[box.id] = box.name;
     auto addCard = [&](const std::string& kind, const std::string& heading, const std::string& frame, const std::string& raw) {
-        std::string hText = heading + " \xC2\xB7 " + frame + (names.count(frame) ? (" " + names[frame]) : "");
+        std::string hText = Pele::cat({heading, " \xC2\xB7 ", frame, (names.count(frame) ? Pele::cat({" ", names[frame]}) : "")});
         Label head = layoutLabel(hText, false, measurer, small, textRoom, Style::Bold);
         Label body = textFn(raw, small);
         double w = std::max({cardWidth, head.width + 2.0 * BOX_PAD_X, body.width + 2.0 * BOX_PAD_X});
@@ -820,18 +814,16 @@ inline Rendered verticalEventModel(const EventModelingModel& model, const Render
             for (const auto& sp : l) rowStr += sp.text;
             bRows.push_back(std::move(rowStr));
         }
-        cards += "<g class=\"pele-em-" + kind + "\" data-id=\"" + escText(frame) + "\"><rect x=\"" + num(pad) + "\" y=\"" + num(y) + "\" width=\"" + num(w) + "\" height=\"" + num(h) + "\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"" + ROUNDED + "/>" +
-            labelSvg(head, pad + BOX_PAD_X + head.width / 2.0, y + BOX_PAD_Y + head.height / 2.0, " font-size=\"" + num(small) + "\" font-weight=\"var(--_hw)\"") +
-            renderLinesSvg(bRows, pad + BOX_PAD_X, y + BOX_PAD_Y + head.height + body.lineHeight / 2.0 + small * 0.35, body.lineHeight, " font-size=\"" + num(small) + "\"") + "</g>";
+        Pele::appendCat(cards, {"<g class=\"pele-em-", kind, "\" data-id=\"", escText(frame), "\"><rect x=\"", num(pad), "\" y=\"", num(y), "\" width=\"", num(w), "\" height=\"", num(h), "\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"", ROUNDED, "/>", labelSvg(head,  pad + BOX_PAD_X + head.width / 2.0,  y + BOX_PAD_Y + head.height / 2.0, Pele::cat({" font-size=\"", num(small), "\" font-weight=\"var(--_hw)\""})), renderLinesSvg(bRows,  pad + BOX_PAD_X,  y + BOX_PAD_Y + head.height + body.lineHeight / 2.0 + small * 0.35,  body.lineHeight, Pele::cat({" font-size=\"", num(small), "\""})), "</g>"});
         bottom = y + h;
         y = bottom + CARD_GAP;
         width = std::max(width, w);
     };
     for (const auto& note : model.notes) addCard("note", "Note", note.frame, note.text);
     for (const auto& spec : model.specifications) {
-        std::vector<std::string> rows = {"Given  " + joinVec(spec.given, ", ")};
-        if (!spec.when.empty()) rows.push_back("When  " + joinVec(spec.when, ", "));
-        rows.push_back("Then  " + joinVec(spec.then, ", "));
+        std::vector<std::string> rows = {Pele::cat({"Given  ", joinVec(spec.given, ", ")})};
+        if (!spec.when.empty()) rows.push_back(Pele::cat({"When  ", joinVec(spec.when, ", ")}));
+        rows.push_back(Pele::cat({"Then  ", joinVec(spec.then, ", ")}));
         addCard("specification", "Given / When / Then", spec.frame, joinVec(rows, "\n"));
     }
 
@@ -841,7 +833,7 @@ inline Rendered verticalEventModel(const EventModelingModel& model, const Render
     return {svgDocument("eventmodeling", totalWidth, height, size, options, model, content), totalWidth, height, {}};
 }
 
-inline Rendered drawEventModel(const EventModelingModel& model, const Config& config, const RenderOptions& options, bool down) {
+inline Rendered drawEventModel(const EventModelingModel& model, const Config& config, const RenderOptions& options, bool down) noexcept {
     (void)config;
     if (down) return verticalEventModel(model, options);
     double size = options.hasFontSize ? options.fontSize : 16.0;
@@ -920,11 +912,8 @@ inline Rendered drawEventModel(const EventModelingModel& model, const Config& co
     for (auto& band : bands) {
         band.y = y;
         band.h += 2.0 * LANE_PAD;
-        lanesSvg +=
-            "<g class=\"pele-cluster pele-em-lane\" data-id=\"" + escText(band.lane.label) + "\">"
-            "<rect x=\"" + num(left) + "\" y=\"" + num(y) + "\" width=\"" + num(laneWidth) + "\" height=\"" + num(band.h) + "\" fill=\"var(--_s)\"" + ROUNDED + "/>" +
-            labelSvg(band.label, left + LANE_PAD + band.label.width / 2.0, y + band.h / 2.0, " class=\"pele-cluster-label\" font-size=\"" + num(small) + "\" font-weight=\"var(--_hw)\" fill=\"var(--_m)\"") +
-            "</g>";
+        Pele::appendCat(lanesSvg, {"<g class=\"pele-cluster pele-em-lane\" data-id=\"", escText(band.lane.label), "\">"
+            "<rect x=\"", num(left), "\" y=\"", num(y), "\" width=\"", num(laneWidth), "\" height=\"", num(band.h), "\" fill=\"var(--_s)\"", ROUNDED, "/>", labelSvg(band.label,  left + LANE_PAD + band.label.width / 2.0,  y + band.h / 2.0, Pele::cat({" class=\"pele-cluster-label\" font-size=\"", num(small), "\" font-weight=\"var(--_hw)\" fill=\"var(--_m)\""})), "</g>"});
         y += band.h + LANE_GAP;
     }
     double bottom = !bands.empty() ? (y - LANE_GAP) : top;
@@ -935,20 +924,18 @@ inline Rendered drawEventModel(const EventModelingModel& model, const Config& co
         item.x += left + labelColumn;
         item.y = band.y + (band.h - item.h) / 2.0;
         auto series = entitySeries(item.box->kind);
-        std::string frame = "x=\"" + num(item.x) + "\" y=\"" + num(item.y) + "\" width=\"" + num(item.w) + "\" height=\"" + num(item.h) + "\"";
+        std::string frame = Pele::cat({"x=\"", num(item.x), "\" y=\"", num(item.y), "\" width=\"", num(item.w), "\" height=\"", num(item.h), "\""});
         std::string shape = !series.has_value()
-            ? ("<rect " + frame + " fill=\"var(--_bg)\" stroke=\"var(--_b)\"" + ROUNDED + "/>")
-            : ("<rect " + frame + " fill=\"var(--_bg)\"" + ROUNDED + "/><rect " + frame + " fill=\"" + seriesColor(*series) + "\" fill-opacity=\"0.22\" stroke=\"" + seriesColor(*series) + "\"" + ROUNDED + "/>");
+            ? Pele::cat({"<rect ", frame, " fill=\"var(--_bg)\" stroke=\"var(--_b)\"", ROUNDED, "/>"})
+            : Pele::cat({"<rect ", frame, " fill=\"var(--_bg)\"", ROUNDED, "/><rect ", frame, " fill=\"", seriesColor(*series), "\" fill-opacity=\"0.22\" stroke=\"", seriesColor(*series), "\"", ROUNDED, "/>"});
         double nameY = item.y + BOX_PAD_Y + item.name.height / 2.0;
         std::string text =
-            labelSvg(item.name, item.x + item.w / 2.0, nameY, " class=\"pele-label\" font-size=\"" + num(nameSize) + "\" font-weight=\"var(--_hw)\"") +
+            labelSvg(item.name,  item.x + item.w / 2.0,  nameY, Pele::cat({" class=\"pele-label\" font-size=\"", num(nameSize), "\" font-weight=\"var(--_hw)\""})) +
             renderLinesSvg(
-                item.data,
-                item.x + BOX_PAD_X,
-                item.y + BOX_PAD_Y + item.name.height + 6.0 + monoStep / 2.0 + mono * 0.35,
-                monoStep,
-                " class=\"pele-em-data\" font-family=\"" + FONT_MONO + "\" font-size=\"" + num(mono) + "\""
-            );
+                item.data, 
+                item.x + BOX_PAD_X, 
+                item.y + BOX_PAD_Y + item.name.height + 6.0 + monoStep / 2.0 + mono * 0.35, 
+                monoStep, Pele::cat({" class=\"pele-em-data\" font-family=\"", FONT_MONO, "\" font-size=\"", num(mono), "\""}));
         nodesSvg += "<g class=\"pele-node pele-em-" + item.box->kind + (item.box->reset ? " pele-em-reset" : "") + "\" data-id=\"" + escText(item.box->id) + "\">" + shape + text + "</g>";
     }
 
@@ -966,7 +953,7 @@ inline Rendered drawEventModel(const EventModelingModel& model, const Config& co
             double sy = s.y + s.h / 2.0;
             double ty = t.y + t.h / 2.0;
             double dir = tx >= sx ? 1.0 : -1.0;
-            d = "M" + num(sx) + "," + num(sy) + "L" + num(tx - dir * trim) + "," + num(ty);
+            d = Pele::cat({"M", num(sx), ",", num(sy), "L", num(tx - dir * trim), ",", num(ty)});
             head = marker("arrow_point", tx, ty, dir, 0.0, "var(--_l)");
         } else {
             bool downDir = t.y > s.y;
@@ -981,37 +968,33 @@ inline Rendered drawEventModel(const EventModelingModel& model, const Config& co
             double end = ty - dir * trim;
             double mid = (sy + end) / 2.0;
             d = (sx == tx)
-                ? ("M" + num(sx) + "," + num(sy) + "V" + num(end))
-                : ("M" + num(sx) + "," + num(sy) + "C" + num(sx) + "," + num(mid) + " " + num(tx) + "," + num(mid) + " " + num(tx) + "," + num(end));
+                ? Pele::cat({"M", num(sx), ",", num(sy), "V", num(end)})
+                : Pele::cat({"M", num(sx), ",", num(sy), "C", num(sx), ",", num(mid), " ", num(tx), ",", num(mid), " ", num(tx), ",", num(end)});
             head = marker("arrow_point", tx, ty, 0.0, dir, "var(--_l)");
         }
-        edgesSvg += "<g class=\"pele-edge\" data-id=\"" + escText(s.box->id) + "-" + escText(t.box->id) + "\"><path d=\"" + d + "\" fill=\"none\" stroke=\"var(--_l)\"/>" + head + "</g>";
+        Pele::appendCat(edgesSvg, {"<g class=\"pele-edge\" data-id=\"", escText(s.box->id), "-", escText(t.box->id), "\"><path d=\"", d, "\" fill=\"none\" stroke=\"var(--_l)\"/>", head, "</g>"});
     }
 
-    std::unordered_map<std::string, std::string> names;
+    Pele::FlatMap<std::string, std::string> names;
     for (const auto& box : model.boxes) names[box.id] = box.name;
     std::string cardsSvg;
     double cardsRight = 0.0;
     auto addCard = [&](const std::string& kind, const std::string& heading, const std::string& frame, const std::vector<std::string>& rows) {
-        std::string hText = heading + " \xC2\xB7 " + frame + (names.count(frame) ? (" " + names[frame]) : "");
+        std::string hText = Pele::cat({heading, " \xC2\xB7 ", frame, (names.count(frame) ? Pele::cat({" ", names[frame]}) : "")});
         Label head = layoutLabel(hText, false, measurer, small, 4000.0, Style::Bold);
         double w = std::max(head.width, widest(rows, small, 0)) + 2.0 * BOX_PAD_X;
         double h = 2.0 * BOX_PAD_Y + head.height + static_cast<double>(rows.size()) * smallStep;
         double cy = bottom + (cardsSvg.empty() && bands.empty() ? 0.0 : CARD_GAP);
-        cardsSvg +=
-            "<g class=\"pele-em-" + kind + "\" data-id=\"" + escText(frame) + "\">"
-            "<rect x=\"" + num(left) + "\" y=\"" + num(cy) + "\" width=\"" + num(w) + "\" height=\"" + num(h) + "\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"" + ROUNDED + "/>" +
-            labelSvg(head, left + BOX_PAD_X + head.width / 2.0, cy + BOX_PAD_Y + head.height / 2.0, " font-size=\"" + num(small) + "\" font-weight=\"var(--_hw)\"") +
-            renderLinesSvg(rows, left + BOX_PAD_X, cy + BOX_PAD_Y + head.height + smallStep / 2.0 + small * 0.35, smallStep, " font-size=\"" + num(small) + "\"") +
-            "</g>";
+        Pele::appendCat(cardsSvg, {"<g class=\"pele-em-", kind, "\" data-id=\"", escText(frame), "\">"
+            "<rect x=\"", num(left), "\" y=\"", num(cy), "\" width=\"", num(w), "\" height=\"", num(h), "\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"", ROUNDED, "/>", labelSvg(head,  left + BOX_PAD_X + head.width / 2.0,  cy + BOX_PAD_Y + head.height / 2.0, Pele::cat({" font-size=\"", num(small), "\" font-weight=\"var(--_hw)\""})), renderLinesSvg(rows,  left + BOX_PAD_X,  cy + BOX_PAD_Y + head.height + smallStep / 2.0 + small * 0.35,  smallStep, Pele::cat({" font-size=\"", num(small), "\""})), "</g>"});
         bottom = cy + h;
         cardsRight = std::max(cardsRight, w);
     };
     for (const auto& note : model.notes) addCard("note", "Note", note.frame, hardWrap(note.text, NOTE_COLUMNS));
     for (const auto& spec : model.specifications) {
-        std::vector<std::string> rawRows = {"Given  " + joinVec(spec.given, ", ")};
-        if (!spec.when.empty()) rawRows.push_back("When  " + joinVec(spec.when, ", "));
-        rawRows.push_back("Then  " + joinVec(spec.then, ", "));
+        std::vector<std::string> rawRows = {Pele::cat({"Given  ", joinVec(spec.given, ", ")})};
+        if (!spec.when.empty()) rawRows.push_back(Pele::cat({"When  ", joinVec(spec.when, ", ")}));
+        rawRows.push_back(Pele::cat({"Then  ", joinVec(spec.then, ", ")}));
         std::vector<std::string> wrapped;
         for (const auto& r : rawRows) {
             for (auto& w : hardWrap(r, NOTE_COLUMNS)) wrapped.push_back(std::move(w));
@@ -1035,7 +1018,7 @@ inline Rendered drawEventModel(const EventModelingModel& model, const Config& co
 }
 
 template <typename DrawFn>
-inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) {
+inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) noexcept {
     Rendered across = draw(false);
     double available = options.maxWidth;
     if (!(available > 0.0) || across.width <= available) return across;
@@ -1044,7 +1027,7 @@ inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) {
     return down.width < across.width ? down : across;
 }
 
-inline Rendered renderEventModel(const EventModelingModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderEventModel(const EventModelingModel& model, const Config& config, const RenderOptions& options) noexcept {
     return turnToFit(options, [&](bool down) {
         return drawEventModel(model, config, options, down);
     });

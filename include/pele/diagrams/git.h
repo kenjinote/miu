@@ -83,11 +83,11 @@ struct TokStream {
   std::vector<std::string> texts;
 };
 
-inline bool isAsciiWordChar(char c) {
+inline bool isAsciiWordChar(char c) noexcept {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
 }
 
-inline int matchReference(const std::string& src, int p) {
+inline int matchReference(const std::string& src, int p) noexcept {
   int n = static_cast<int>(src.size());
   if (p >= n || !isAsciiWordChar(src[p])) return -1;
   int e = p + 1;
@@ -100,7 +100,7 @@ inline int matchReference(const std::string& src, int p) {
   return e;
 }
 
-inline bool matchRefSuffix(const std::string& src, int p) {
+inline bool matchRefSuffix(const std::string& src, int p) noexcept {
   int n = static_cast<int>(src.size());
   int e = p;
   while (e < n && (isAsciiWordChar(src[e]) || src[e] == '-' || src[e] == '.' || src[e] == '/')) {
@@ -112,12 +112,12 @@ inline bool matchRefSuffix(const std::string& src, int p) {
   return e > p;
 }
 
-inline bool startsWithExact(const std::string& src, int p, const std::string& w) {
+inline bool startsWithExact(const std::string& src, int p, const std::string& w) noexcept {
   if (p + static_cast<int>(w.size()) > static_cast<int>(src.size())) return false;
   return src.compare(static_cast<size_t>(p), w.size(), w) == 0;
 }
 
-inline bool startsWithCaseless(const std::string& src, int p, const std::string& w) {
+inline bool startsWithCaseless(const std::string& src, int p, const std::string& w) noexcept {
   if (p + static_cast<int>(w.size()) > static_cast<int>(src.size())) return false;
   for (size_t i = 0; i < w.size(); ++i) {
     char c1 = src[static_cast<size_t>(p) + i];
@@ -129,7 +129,7 @@ inline bool startsWithCaseless(const std::string& src, int p, const std::string&
   return true;
 }
 
-inline int matchWordOrRef(const std::string& src, int p, const std::string& w, bool caseless, int wordKind, int& outKind) {
+inline int matchWordOrRef(const std::string& src, int p, const std::string& w, bool caseless, int wordKind, int& outKind) noexcept {
   bool ok = caseless ? startsWithCaseless(src, p, w) : startsWithExact(src, p, w);
   if (!ok) return -1;
   int wEnd = p + static_cast<int>(w.size());
@@ -290,7 +290,7 @@ inline TokStream tokenizeGit(const std::string& src) {
   return out;
 }
 
-inline std::string unescapeGitString(const std::string& tok) {
+inline std::string unescapeGitString(const std::string& tok) noexcept {
   if (tok.size() < 2) return "";
   std::string out;
   out.reserve(tok.size() - 2);
@@ -314,14 +314,14 @@ inline std::string unescapeGitString(const std::string& tok) {
   return out;
 }
 
-inline std::string extractTitleVal(const std::string& tok) {
+inline std::string extractTitleVal(const std::string& tok) noexcept {
   if (tok.size() <= 5) return "";
   size_t i = 5;
   while (i < tok.size() && (tok[i] == ' ' || tok[i] == '\t')) i++;
   return tok.substr(i);
 }
 
-inline std::string extractAccTitleVal(const std::string& tok) {
+inline std::string extractAccTitleVal(const std::string& tok) noexcept {
   size_t colon = tok.find(':');
   if (colon == std::string::npos) return "";
   size_t i = colon + 1;
@@ -329,7 +329,7 @@ inline std::string extractAccTitleVal(const std::string& tok) {
   return tok.substr(i);
 }
 
-inline std::string extractAccDescrVal(const std::string& tok) {
+inline std::string extractAccDescrVal(const std::string& tok) noexcept {
   size_t brace = tok.find('{');
   if (brace != std::string::npos && !tok.empty() && tok.back() == '}') {
     std::string inner = tok.substr(brace + 1, tok.size() - brace - 2);
@@ -507,13 +507,13 @@ inline GitGraphAst parseGit(const std::string& src) {
   return ast;
 }
 
-inline int typeCode(const std::string& name) {
+inline int typeCode(const std::string& name) noexcept {
   if (name == "REVERSE") return CommitType::REVERSE;
   if (name == "HIGHLIGHT") return CommitType::HIGHLIGHT;
   return CommitType::NORMAL;
 }
 
-inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std::string& title) {
+inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std::string& title) noexcept {
   const Config emptyObj = Config::makeMap();
   const Config* gc = config.isMap() ? config.get("gitGraph") : nullptr;
   const Config& git = (gc && gc->isMap()) ? *gc : emptyObj;
@@ -592,7 +592,7 @@ inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std
       std::string customIdStr = st.id.value_or("");
       GitCommit c;
       c.id = !customIdStr.empty() ? customIdStr : nextId();
-      c.message = "merged branch " + other + " into " + current;
+      c.message = Pele::cat({"merged branch ", other, " into ", current});
       c.seq = seq++;
       if (hasHead) {
         c.parents.push_back(headId);
@@ -613,7 +613,7 @@ inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std
       const GitCommit& source = srcIt->second;
       GitCommit c;
       c.id = nextId();
-      c.message = "cherry-picked " + source.message + " into " + current;
+      c.message = Pele::cat({"cherry-picked ", source.message, " into ", current});
       c.seq = seq++;
       if (hasHead) {
         c.parents.push_back(headId);
@@ -626,9 +626,9 @@ inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std
           if (!tg.empty()) c.tags.push_back(tg);
         }
       } else {
-        std::string autoTag = "cherry-pick:" + source.id;
+        std::string autoTag = Pele::cat({"cherry-pick:", source.id});
         if (source.type == CommitType::MERGE) {
-          autoTag += "|parent:" + st.parent.value_or("");
+          Pele::appendCat(autoTag, {"|parent:", st.parent.value_or("")});
         }
         c.tags.push_back(autoTag);
       }
@@ -650,7 +650,7 @@ inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std
   return model;
 }
 
-inline bool isBrTagAt(const std::string& s, size_t pos) {
+inline bool isBrTagAt(const std::string& s, size_t pos) noexcept {
   size_t i = pos + 1;
   if (i + 1 >= s.size()) return false;
   char c1 = s[i];
@@ -662,7 +662,7 @@ inline bool isBrTagAt(const std::string& s, size_t pos) {
   return i < s.size() && s[i] == '>';
 }
 
-inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
+inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
   std::string text;
   text.reserve(raw.size());
   for (size_t i = 0; i < raw.size(); ++i) {
@@ -678,7 +678,7 @@ inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, do
   return layoutLabel(text, false, measurer, size, max, base);
 }
 
-inline bool flagOpt(const Config& config, const std::string& key, bool fallback) {
+inline bool flagOpt(const Config& config, const std::string& key, bool fallback) noexcept {
   if (!config.isMap()) return fallback;
   const Config* gc = config.get("gitGraph");
   if (!gc || !gc->isMap()) return fallback;
@@ -686,35 +686,32 @@ inline bool flagOpt(const Config& config, const std::string& key, bool fallback)
   return (v && v->isBool()) ? v->bVal : fallback;
 }
 
-inline double tagWidth(const Label& tag) {
+inline double tagWidth(const Label& tag) noexcept {
   constexpr double NOTCH = 7.0;
   return NOTCH + 4.0 + tag.width + 6.0;
 }
 
-inline std::string symbolSvg(int type, double x, double y, const std::string& color) {
+inline std::string symbolSvg(int type, double x, double y, const std::string& color) noexcept {
   constexpr double DOT = 7.0;
-  std::string at = "cx=\"" + num(x) + "\" cy=\"" + num(y) + "\"";
+  std::string at = Pele::cat({"cx=\"", num(x), "\" cy=\"", num(y), "\""});
   if (type == CommitType::HIGHLIGHT) {
-    return "<rect x=\"" + num(x - DOT - 1.0) + "\" y=\"" + num(y - DOT - 1.0) + "\" width=\"" + num(2.0 * DOT + 2.0) + "\" height=\"" + num(2.0 * DOT + 2.0) + "\" rx=\"2\" fill=\"" + color + "\"/>";
+    return Pele::cat({"<rect x=\"", num(x - DOT - 1.0), "\" y=\"", num(y - DOT - 1.0), "\" width=\"", num(2.0 * DOT + 2.0), "\" height=\"", num(2.0 * DOT + 2.0), "\" rx=\"2\" fill=\"", color, "\"/>"});
   }
   if (type == CommitType::MERGE) {
-    return "<circle " + at + " r=\"" + num(DOT - 1.0) + "\" fill=\"var(--_bg)\" stroke=\"" + color + "\" stroke-width=\"2\"/><circle " + at + " r=\"2.5\" fill=\"" + color + "\"/>";
+    return Pele::cat({"<circle ", at, " r=\"", num(DOT - 1.0), "\" fill=\"var(--_bg)\" stroke=\"", color, "\" stroke-width=\"2\"/><circle ", at, " r=\"2.5\" fill=\"", color, "\"/>"});
   }
-  std::string dot = "<circle " + at + " r=\"" + num(DOT) + "\" fill=\"" + color + "\"/>";
+  std::string dot = Pele::cat({"<circle ", at, " r=\"", num(DOT), "\" fill=\"", color, "\"/>"});
   if (type == CommitType::REVERSE) {
-    return dot + "<path d=\"M" + num(x - 3.0) + "," + num(y - 3.0) + "l6,6M" + num(x - 3.0) + "," + num(y + 3.0) + "l6,-6\" fill=\"none\" stroke=\"var(--_bg)\" stroke-width=\"1.5\" stroke-linecap=\"round\"/>";
+    return Pele::cat({dot, "<path d=\"M", num(x - 3.0), ",", num(y - 3.0), "l6,6M", num(x - 3.0), ",", num(y + 3.0), "l6,-6\" fill=\"none\" stroke=\"var(--_bg)\" stroke-width=\"1.5\" stroke-linecap=\"round\"/>"});
   }
   if (type == CommitType::CHERRY_PICK) {
-    return dot +
-      "<path d=\"M" + num(x - 2.6) + "," + num(y + 1.0) + "L" + num(x + 0.8) + "," + num(y - 4.2) + "L" + num(x + 2.6) + "," + num(y + 1.0) + "\" fill=\"none\" stroke=\"var(--_bg)\" stroke-linejoin=\"round\"/>" +
-      "<circle cx=\"" + num(x - 2.6) + "\" cy=\"" + num(y + 2.2) + "\" r=\"1.8\" fill=\"var(--_bg)\"/>" +
-      "<circle cx=\"" + num(x + 2.6) + "\" cy=\"" + num(y + 2.2) + "\" r=\"1.8\" fill=\"var(--_bg)\"/>";
+    return Pele::cat({dot, "<path d=\"M", num(x - 2.6), ",", num(y + 1.0), "L", num(x + 0.8), ",", num(y - 4.2), "L", num(x + 2.6), ",", num(y + 1.0), "\" fill=\"none\" stroke=\"var(--_bg)\" stroke-linejoin=\"round\"/>", "<circle cx=\"", num(x - 2.6), "\" cy=\"", num(y + 2.2), "\" r=\"1.8\" fill=\"var(--_bg)\"/>", "<circle cx=\"", num(x + 2.6), "\" cy=\"", num(y + 2.2), "\" r=\"1.8\" fill=\"var(--_bg)\"/>"});
   }
   return dot;
 }
 
 template <typename DrawFn>
-inline Rendered turnToFit(const RenderOptions& options, DrawFn&& drawFn) {
+inline Rendered turnToFit(const RenderOptions& options, DrawFn&& drawFn) noexcept {
   Rendered across = drawFn(false);
   double max = options.maxWidth;
   if (!(max > 0.0) || !std::isfinite(max) || across.width <= max) return across;
@@ -722,7 +719,7 @@ inline Rendered turnToFit(const RenderOptions& options, DrawFn&& drawFn) {
   return down.width < across.width ? down : across;
 }
 
-inline Rendered drawGit(const GitModel& model, const Config& config, const RenderOptions& options, const std::string& direction) {
+inline Rendered drawGit(const GitModel& model, const Config& config, const RenderOptions& options, const std::string& direction) noexcept {
   constexpr double DOT = 7.0;
   constexpr double STEP = 44.0;
   constexpr double LANE = 44.0;
@@ -747,7 +744,7 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
   bool vertical = direction != "LR";
   bool flip = direction == "BT";
 
-  std::unordered_map<std::string, int> laneOf;
+  Pele::FlatMap<std::string, int> laneOf;
   for (size_t i = 0; i < model.lanes.size(); ++i) {
     laneOf[model.lanes[i]] = static_cast<int>(i);
   }
@@ -780,7 +777,7 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
 
   std::vector<View> views;
   views.reserve(sortedCommits.size());
-  std::unordered_map<std::string, int> byId;
+  Pele::FlatMap<std::string, int> byId;
   for (const auto& commit : sortedCommits) {
     bool labelled = showCommitLabel &&
                     commit.type != CommitType::CHERRY_PICK &&
@@ -911,14 +908,10 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
       double cy = py(from + (vertical ? h : w) / 2.0, c);
       grow(px(-LABEL_GAP, c), py(-LABEL_GAP, c), px(-LABEL_GAP, c), py(-LABEL_GAP, c));
       grow(px(end + TAIL, c), py(end + TAIL, c), px(end + TAIL, c), py(end + TAIL, c));
-      branches +=
-        "<g class=\"pele-branch\" data-id=\"" + escText(model.lanes[i]) + "\">" +
-        "<path class=\"pele-lane\" d=\"M" + point(-LABEL_GAP, c) + "L" + point(end + TAIL, c) + "\" stroke=\"" + color + "\" stroke-dasharray=\"2 4\"/>";
+      Pele::appendCat(branches, {"<g class=\"pele-branch\" data-id=\"", escText(model.lanes[i]), "\">", "<path class=\"pele-lane\" d=\"M", point(-LABEL_GAP, c), "L", point(end + TAIL, c), "\" stroke=\"", color, "\" stroke-dasharray=\"2 4\"/>"});
       if (!name.lines.empty()) {
         grow(cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0);
-        branches +=
-          "<rect x=\"" + num(cx - w / 2.0) + "\" y=\"" + num(cy - h / 2.0) + "\" width=\"" + num(w) + "\" height=\"" + num(h) + "\" fill=\"" + color + "\"" + ROUNDED + "/>" +
-          labelSvg(name, cx, cy, " class=\"pele-label\" fill=\"var(--_bg)\"");
+        Pele::appendCat(branches, {"<rect x=\"", num(cx - w / 2.0), "\" y=\"", num(cy - h / 2.0), "\" width=\"", num(w), "\" height=\"", num(h), "\" fill=\"", color, "\"", ROUNDED, "/>", labelSvg(name, cx, cy, " class=\"pele-label\" fill=\"var(--_bg)\"")});
       }
       branches += "</g>";
     }
@@ -958,18 +951,18 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
       double c1 = cross[parent.lane];
       double m1 = parent.m;
       if (parent.lane == view.lane) {
-        lines += "<path class=\"pele-edge\" d=\"M" + point(m1, c1) + "L" + point(m2, c2) + "\" stroke=\"" + seriesColor(view.lane) + "\"/>";
+        Pele::appendCat(lines, {"<path class=\"pele-edge\" d=\"M", point(m1, c1), "L", point(m2, c2), "\" stroke=\"", seriesColor(view.lane), "\"/>"});
         continue;
       }
       bool merged = j > 0 && commit.type == CommitType::MERGE;
       bool picked = j > 0 && !merged;
-      std::string d = "M" + point(m1, c1);
+      std::string d = Pele::cat({"M", point(m1, c1)});
       if (m2 <= m1) {
         double mid = (m1 + m2) / 2.0;
-        d += "C" + point(mid, c1) + " " + point(mid, c2) + " " + point(m2, c2);
+        Pele::appendCat(d, {"C", point(mid, c1), " ", point(mid, c2), " ", point(m2, c2)});
       } else if (!merged && !busy(view.lane, m1, m2)) {
         double s = std::min(CURVE, m2 - m1);
-        d += "C" + point(m1 + s / 2.0, c1) + " " + point(m1 + s / 2.0, c2) + " " + point(m1 + s, c2) + "L" + point(m2, c2);
+        Pele::appendCat(d, {"C", point(m1 + s / 2.0, c1), " ", point(m1 + s / 2.0, c2), " ", point(m1 + s, c2), "L", point(m2, c2)});
       } else {
         double to = (parent.lane < view.lane && m2 - lead[view.index] > m1) ? (m2 - lead[view.index]) : m2;
         double s = std::min(CURVE, to - m1);
@@ -977,10 +970,10 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
         if (!merged || busy(parent.lane, m1, m2)) {
           along = c1 > c2 ? (c2 + hi[view.lane] + GAP / 2.0) : (c2 - lo[view.lane] - GAP / 2.0);
           s = std::min(CURVE, (to - m1) / 2.0);
-          d += "C" + point(m1 + s / 2.0, c1) + " " + point(m1 + s / 2.0, along) + " " + point(m1 + s, along);
+          Pele::appendCat(d, {"C", point(m1 + s / 2.0, c1), " ", point(m1 + s / 2.0, along), " ", point(m1 + s, along)});
         }
-        d += "L" + point(to - s, along) + "C" + point(to - s / 2.0, along) + " " + point(to - s / 2.0, c2) + " " + point(to, c2);
-        if (to < m2) d += "L" + point(m2, c2);
+        Pele::appendCat(d, {"L", point(to - s, along), "C", point(to - s / 2.0, along), " ", point(to - s / 2.0, c2), " ", point(to, c2)});
+        if (to < m2) Pele::appendCat(d, {"L", point(m2, c2)});
       }
       curves +=
         "<path class=\"pele-edge" + std::string(merged ? " pele-edge-merge" : (picked ? " pele-edge-cherry-pick" : "")) + "\" d=\"" + d + "\" " +
@@ -996,7 +989,7 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
     int type = commit.customType.value_or(commit.type);
     grow(x - DOT - 1.0, y - DOT - 1.0, x + DOT + 1.0, y + DOT + 1.0);
     bool written = commit.type < CommitType::MERGE && !commit.message.empty();
-    std::string body = written ? ("<title>" + escText(commit.message) + "</title>") : "";
+    std::string body = written ? Pele::cat({"<title>", escText(commit.message), "</title>"}) : "";
     body += symbolSvg(type, x, y, seriesColor(view.lane));
 
     if (view.label.has_value() && !view.label->lines.empty()) {
@@ -1004,7 +997,7 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
       double w = label.width;
       double h = label.height;
       auto back = [&](double cx, double cy) -> std::string {
-        return "<rect x=\"" + num(cx - w / 2.0 - 2.0) + "\" y=\"" + num(cy - h / 2.0 + 2.0) + "\" width=\"" + num(w + 4.0) + "\" height=\"" + num(h - 4.0) + "\" rx=\"3\" fill=\"var(--_bg)\"/>";
+        return Pele::cat({"<rect x=\"", num(cx - w / 2.0 - 2.0), "\" y=\"", num(cy - h / 2.0 + 2.0), "\" width=\"", num(w + 4.0), "\" height=\"", num(h - 4.0), "\" rx=\"3\" fill=\"var(--_bg)\"/>"});
       };
       if (rotate) {
         double k = (HALF * h) / 2.0;
@@ -1021,7 +1014,7 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
         double cx = vertical ? (x - DOT - 6.0 - w / 2.0) : x;
         double cy = vertical ? y : (y + DOT + 6.0 + h / 2.0);
         grow(cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0);
-        body += "<g class=\"pele-commit-label\">" + back(cx, cy) + labelSvg(label, cx, cy, "") + "</g>";
+        Pele::appendCat(body, {"<g class=\"pele-commit-label\">", back(cx, cy), labelSvg(label, cx, cy, ""), "</g>"});
       }
     }
 
@@ -1058,13 +1051,7 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
   double dx = pad - minX + (inner - (maxX - minX)) / 2.0;
   double dy = pad + titleHeight - minY;
 
-  std::string content =
-    labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-    "<g transform=\"translate(" + num(dx) + "," + num(dy) + ")\">" +
-    (!branches.empty() ? ("<g class=\"pele-branches\" fill=\"none\" font-size=\"" + num(medium) + "\">" + branches + "</g>") : "") +
-    ((!curves.empty() || !lines.empty()) ? ("<g class=\"pele-edges\" fill=\"none\" stroke-width=\"2\" stroke-linecap=\"round\">" + curves + lines + "</g>") : "") +
-    (!commitsOut.empty() ? ("<g class=\"pele-commits\" font-size=\"" + num(small) + "\" fill=\"var(--_m)\">" + commitsOut + "</g>") : "") +
-    "</g>";
+  std::string content = Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), "<g transform=\"translate(", num(dx), ",", num(dy), ")\">", (!branches.empty() ? Pele::cat({"<g class=\"pele-branches\" fill=\"none\" font-size=\"", num(medium), "\">", branches, "</g>"}) : ""), ((!curves.empty() || !lines.empty()) ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\" stroke-width=\"2\" stroke-linecap=\"round\">", curves, lines, "</g>"}) : ""), (!commitsOut.empty() ? Pele::cat({"<g class=\"pele-commits\" font-size=\"", num(small), "\" fill=\"var(--_m)\">", commitsOut, "</g>"}) : ""), "</g>"});
 
   return {
     svgDocument("gitGraph", width, height, size, options, model, content),
@@ -1074,7 +1061,7 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
   };
 }
 
-inline Rendered renderGitModel(const GitModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderGitModel(const GitModel& model, const Config& config, const RenderOptions& options) noexcept {
   if (model.direction != "LR") return drawGit(model, config, options, model.direction);
   return turnToFit(options, [&](bool down) {
     return drawGit(model, config, options, down ? "TB" : "LR");

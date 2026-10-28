@@ -14,7 +14,7 @@ namespace Pele {
 
 namespace railroad_detail {
 
-inline std::string rrSingle(const std::string& text) {
+inline std::string rrSingle(const std::string& text) noexcept {
   std::string s = trimStr(text);
   std::string out;
   int spaces = 0;
@@ -32,19 +32,19 @@ inline std::string rrSingle(const std::string& text) {
   return out;
 }
 
-inline std::string rrTitleValue(const std::string& text) {
+inline std::string rrTitleValue(const std::string& text) noexcept {
   size_t pos = text.find("title");
   if (pos == std::string::npos) return "";
   return rrSingle(text.substr(pos + 5));
 }
 
-inline std::string rrAccTitleValue(const std::string& text) {
+inline std::string rrAccTitleValue(const std::string& text) noexcept {
   size_t pos = text.find(':');
   if (pos == std::string::npos) return "";
   return rrSingle(text.substr(pos + 1));
 }
 
-inline std::string rrAccDescrValue(const std::string& text) {
+inline std::string rrAccDescrValue(const std::string& text) noexcept {
   size_t brace = text.find('{');
   size_t colon = text.find(':');
   if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -58,23 +58,23 @@ inline std::string rrAccDescrValue(const std::string& text) {
   return "";
 }
 
-inline bool isWordDash(char c) {
+inline bool isWordDash(char c) noexcept {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
 }
 
-inline bool isAlnumDash(char c) {
+inline bool isAlnumDash(char c) noexcept {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-';
 }
 
-inline bool isAlpha(char c) {
+inline bool isAlpha(char c) noexcept {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
 
-inline bool isHexDigit(char c) {
+inline bool isHexDigit(char c) noexcept {
   return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 }
 
-inline TokenType rrLiteral(const std::string& name, std::vector<int> longer = {}) {
+inline TokenType rrLiteral(const std::string& name, std::vector<int> longer = {}) noexcept {
   TokenType t;
   t.name = name;
   t.literal = name;
@@ -83,13 +83,13 @@ inline TokenType rrLiteral(const std::string& name, std::vector<int> longer = {}
   return t;
 }
 
-inline TokenType rrOpening(const std::string& word, int nameTokIdx) {
+inline TokenType rrOpening(const std::string& word, int nameTokIdx) noexcept {
   TokenType t = common_tokens::keyword(word);
   t.longer = {nameTokIdx};
   return t;
 }
 
-inline TokenType rrIdentifier(const std::string& name) {
+inline TokenType rrIdentifier(const std::string& name) noexcept {
   TokenType t;
   t.name = name;
   t.isRegex = true;
@@ -106,13 +106,13 @@ inline TokenType rrIdentifier(const std::string& name) {
   return t;
 }
 
-inline TokenType rrQuoted(const std::string& name) {
+inline TokenType rrQuoted(const std::string& name) noexcept {
   TokenType t = common_tokens::makeString();
   t.name = name;
   return t;
 }
 
-inline TokenType rrTitle(bool allowUnderscore) {
+inline TokenType rrTitle(bool allowUnderscore) noexcept {
   TokenType t;
   t.name = "TITLE";
   t.isRegex = true;
@@ -132,7 +132,7 @@ inline TokenType rrTitle(bool allowUnderscore) {
   return t;
 }
 
-inline TokenType rrAccTitle() {
+inline TokenType rrAccTitle() noexcept {
   TokenType t;
   t.name = "ACC_TITLE";
   t.isRegex = true;
@@ -148,7 +148,7 @@ inline TokenType rrAccTitle() {
   return t;
 }
 
-inline TokenType rrAccDescr() {
+inline TokenType rrAccDescr() noexcept {
   TokenType t;
   t.name = "ACC_DESCR";
   t.isRegex = true;
@@ -180,9 +180,9 @@ inline TokenType rrAccDescr() {
   return t;
 }
 
-inline std::vector<TokenType> rrHiddenTokens(const std::string& prefix) {
+inline std::vector<TokenType> rrHiddenTokens(const std::string& prefix) noexcept {
   TokenType ws;
-  ws.name = prefix + "_WHITESPACE";
+  ws.name = Pele::cat({prefix, "_WHITESPACE"});
   ws.isRegex = true;
   ws.hidden = true;
   ws.first = "\t \r\n";
@@ -194,21 +194,21 @@ inline std::vector<TokenType> rrHiddenTokens(const std::string& prefix) {
   };
 
   TokenType yaml = common_tokens::makeYaml();
-  yaml.name = prefix + "_YAML";
+  yaml.name = Pele::cat({prefix, "_YAML"});
   yaml.first = "-";
 
   TokenType dir = common_tokens::makeDirective();
-  dir.name = prefix + "_DIRECTIVE";
+  dir.name = Pele::cat({prefix, "_DIRECTIVE"});
   dir.first = "\t %";
 
   TokenType slc = common_tokens::makeSingleLineComment();
-  slc.name = prefix + "_SINGLE_LINE_COMMENT";
+  slc.name = Pele::cat({prefix, "_SINGLE_LINE_COMMENT"});
   slc.first = "\t %";
 
   return {ws, yaml, dir, slc};
 }
 
-inline TokenType rrBlockComment(const std::string& name) {
+inline TokenType rrBlockComment(const std::string& name) noexcept {
   TokenType t;
   t.name = name;
   t.isRegex = true;
@@ -225,7 +225,7 @@ inline TokenType rrBlockComment(const std::string& name) {
   return t;
 }
 
-inline std::string rrUnescape(const std::string& text) {
+inline std::string rrUnescape(const std::string& text) noexcept {
   if (text.size() < 2) return "";
   if (text.find('\\') == std::string::npos) return text.substr(1, text.size() - 2);
   size_t end = text.size() - 1;
@@ -262,35 +262,35 @@ struct RailroadModel : DiagramMeta {
   std::vector<RailroadRule> rules;
 };
 
-inline RailroadNode makeTerminal(const std::string& value) {
+inline RailroadNode makeTerminal(const std::string& value) noexcept {
   RailroadNode n;
   n.type = "terminal";
   n.value = value;
   return n;
 }
 
-inline RailroadNode makeNonterminal(const std::string& name) {
+inline RailroadNode makeNonterminal(const std::string& name) noexcept {
   RailroadNode n;
   n.type = "nonterminal";
   n.name = name;
   return n;
 }
 
-inline RailroadNode makeSpecial(const std::string& text) {
+inline RailroadNode makeSpecial(const std::string& text) noexcept {
   RailroadNode n;
   n.type = "special";
   n.text = text;
   return n;
 }
 
-inline RailroadNode makeOptional(RailroadNode element) {
+inline RailroadNode makeOptional(RailroadNode element) noexcept {
   RailroadNode n;
   n.type = "optional";
   n.children.push_back(std::move(element));
   return n;
 }
 
-inline RailroadNode makeRepetition(RailroadNode element, double min, double max = std::numeric_limits<double>::infinity()) {
+inline RailroadNode makeRepetition(RailroadNode element, double min, double max = std::numeric_limits<double>::infinity()) noexcept {
   RailroadNode n;
   n.type = "repetition";
   n.min = min;
@@ -299,7 +299,7 @@ inline RailroadNode makeRepetition(RailroadNode element, double min, double max 
   return n;
 }
 
-inline RailroadNode makeSequence(std::vector<RailroadNode> elements) {
+inline RailroadNode makeSequence(std::vector<RailroadNode> elements) noexcept {
   if (elements.size() == 1) return std::move(elements[0]);
   RailroadNode n;
   n.type = "sequence";
@@ -307,7 +307,7 @@ inline RailroadNode makeSequence(std::vector<RailroadNode> elements) {
   return n;
 }
 
-inline RailroadNode makeChoice(std::vector<RailroadNode> alternatives) {
+inline RailroadNode makeChoice(std::vector<RailroadNode> alternatives) noexcept {
   if (alternatives.size() == 1) return std::move(alternatives[0]);
   RailroadNode n;
   n.type = "choice";
@@ -385,7 +385,7 @@ enum T {
   string
 };
 
-inline const std::vector<TokenType>& getTokens() {
+inline const std::vector<TokenType>& getTokens() noexcept {
   static const std::vector<TokenType> tokens = []() {
     std::vector<TokenType> v;
     v.push_back(rrOpening("railroad-beta", T::id));
@@ -523,7 +523,7 @@ enum T {
   special
 };
 
-inline int specialSequence(const std::string& src, int at, int) {
+inline int specialSequence(const std::string& src, int at, int) noexcept {
   int n = static_cast<int>(src.size());
   if (at >= n || src[at] != '?') return -1;
   bool solid = false;
@@ -536,7 +536,7 @@ inline int specialSequence(const std::string& src, int at, int) {
   return -1;
 }
 
-inline const std::vector<TokenType>& getTokens() {
+inline const std::vector<TokenType>& getTokens() noexcept {
   static const std::vector<TokenType> tokens = []() {
     std::vector<TokenType> v;
     // Indices:
@@ -599,7 +599,7 @@ struct Frame {
   bool except = false;
 };
 
-inline Frame makeFrame(int bracketKind, int close, bool except) {
+inline Frame makeFrame(int bracketKind, int close, bool except) noexcept {
   Frame f;
   f.alternatives.push_back({});
   f.bracketKind = bracketKind;
@@ -608,7 +608,7 @@ inline Frame makeFrame(int bracketKind, int close, bool except) {
   return f;
 }
 
-inline RailroadNode foldChoice(std::vector<std::vector<RailroadNode>>& alternatives) {
+inline RailroadNode foldChoice(std::vector<std::vector<RailroadNode>>& alternatives) noexcept {
   std::vector<RailroadNode> seqs;
   seqs.reserve(alternatives.size());
   for (auto& seq : alternatives) {
@@ -699,7 +699,7 @@ inline RailroadNode definition(TokenReader& r) {
         top.alternatives.push_back({});
       } else if (k != T::string && k != T::id && k != T::special && k != T::group && k != T::option && k != T::repeat) {
         if (stack.empty()) return foldChoice(top.alternatives);
-        r.fail("token of type '" + getTokens()[top.close].name + "'");
+        r.fail(Pele::cat({"token of type '", getTokens()[top.close].name, "'"}));
       }
       break;
     }
@@ -743,7 +743,7 @@ enum T {
   exact
 };
 
-inline const std::vector<TokenType>& getTokens() {
+inline const std::vector<TokenType>& getTokens() noexcept {
   static const std::vector<TokenType> tokens = []() {
     std::vector<TokenType> v;
     // Indices: 11 = name, 20 = ABNF_COMMENT
@@ -858,7 +858,7 @@ struct Frame {
   std::optional<std::string> repeat;
 };
 
-inline Frame makeFrame(int bracketKind, int close, std::optional<std::string> repeat) {
+inline Frame makeFrame(int bracketKind, int close, std::optional<std::string> repeat) noexcept {
   Frame f;
   f.alternatives.push_back({});
   f.bracketKind = bracketKind;
@@ -926,7 +926,7 @@ inline RailroadNode alternation(TokenReader& r) {
         top.alternatives.push_back({});
       } else if (k != T::string && k != T::number && k != T::name && k != T::group && k != T::option && k != T::repeat && k != T::exact) {
         if (stack.empty()) return ebnf::foldChoice(top.alternatives);
-        r.fail("token of type '" + getTokens()[top.close].name + "'");
+        r.fail(Pele::cat({"token of type '", getTokens()[top.close].name, "'"}));
       }
       break;
     }
@@ -977,7 +977,7 @@ enum T {
   string
 };
 
-inline const std::vector<TokenType>& getTokens() {
+inline const std::vector<TokenType>& getTokens() noexcept {
   static const std::vector<TokenType> tokens = []() {
     std::vector<TokenType> v;
     v.push_back(rrOpening("railroad-peg-beta", T::id)); // 0
@@ -1022,15 +1022,15 @@ struct Frame {
   std::optional<std::string> op;
 };
 
-inline Frame makeFrame(std::optional<std::string> op) {
+inline Frame makeFrame(std::optional<std::string> op) noexcept {
   Frame f;
   f.alternatives.push_back({});
   f.op = std::move(op);
   return f;
 }
 
-inline std::string pegLabel(const RailroadNode& node) {
-  if (node.type == "terminal") return "\"" + node.value + "\"";
+inline std::string pegLabel(const RailroadNode& node) noexcept {
+  if (node.type == "terminal") return Pele::cat({"\"", node.value, "\""});
   if (node.type == "nonterminal") return node.name;
   if (node.type == "special") return node.text;
   return "(...)";
@@ -1110,7 +1110,7 @@ inline ParsedGrammar parse(const std::string& src) {
 // DB & Notation Detection
 // ----------------------------------------------------------------------------
 
-inline std::optional<std::string> notationOf(const std::string& source) {
+inline std::optional<std::string> notationOf(const std::string& source) noexcept {
   size_t p = 0;
   while (p < source.size() && isSpace(charCodeAt(source, static_cast<int>(p)))) p++;
   std::string rem = toLowerAscii(source.substr(p, 24));
@@ -1190,7 +1190,7 @@ constexpr double RULE_GAP = 18;
 constexpr double COUNT_SIZE = 12;
 constexpr double ARROW = 7;
 
-inline double option(const Config& config, const std::string& key, double fallback, double maxVal) {
+inline double option(const Config& config, const std::string& key, double fallback, double maxVal) noexcept {
   const auto* rr = config.get("railroad");
   if (!rr || !rr->isMap()) return fallback;
   const auto* v = rr->get(key);
@@ -1200,7 +1200,7 @@ inline double option(const Config& config, const std::string& key, double fallba
   return fallback;
 }
 
-inline std::string shown(const std::string& text) {
+inline std::string shown(const std::string& text) noexcept {
   std::string s = text.find(PLACEHOLDER_CLOSE) != std::string::npos
     ? decodeEntities(replaceAllStr(text, "&", "&amp;"))
     : text;
@@ -1215,17 +1215,17 @@ inline std::string shown(const std::string& text) {
   return out;
 }
 
-inline double even(double value) {
+inline double even(double value) noexcept {
   return std::ceil(value / 2.0) * 2.0;
 }
 
-inline Box leaf(Kind kind, const std::string& text, const std::string& id, int style, const Metrics& m) {
+inline Box leaf(Kind kind, const std::string& text, const std::string& id, int style, const Metrics& m) noexcept {
   double half = m.height / 2.0;
   double width = std::max(even(m.measurer->width(text, m.size, style) + 2.0 * m.padding), m.height);
   return {kind, width, half, half, {}, text, id, 0};
 }
 
-inline std::string countStr(double min, double max) {
+inline std::string countStr(double min, double max) noexcept {
   if (!std::isfinite(max) && min <= 1.0) return "";
   auto fmt = [](double value) -> std::string {
     return std::isfinite(value) ? num(value) : "\xE2\x88\x9E"; // ∞
@@ -1237,18 +1237,18 @@ inline std::string countStr(double min, double max) {
     : fmt(min) + "\xE2\x80\x93" + fmt(max) + "\xC3\x97"; // –...×
 }
 
-inline double below(double offset, const Box& above, const Box& branch, const Metrics& m) {
+inline double below(double offset, const Box& above, const Box& branch, const Metrics& m) noexcept {
   return std::max(offset + above.down + m.sep + branch.up, 2.0 * m.arc);
 }
 
-inline Box bypass(Box kid, const Metrics& m) {
+inline Box bypass(Box kid, const Metrics& m) noexcept {
   double reach = std::max(kid.up + m.sep, 2.0 * m.arc);
   double width = kid.width + 4.0 * m.arc;
   double down = kid.down;
   return {Kind::Bypass, width, reach, down, {std::move(kid)}, "", "", reach};
 }
 
-inline bool isAllSpaces(const std::string& s) {
+inline bool isAllSpaces(const std::string& s) noexcept {
   if (s.empty()) return false;
   for (char c : s) {
     if (c != ' ') return false;
@@ -1256,7 +1256,7 @@ inline bool isAllSpaces(const std::string& s) {
   return true;
 }
 
-inline Box measure(const RailroadNode& root, const Metrics& m, double room = std::numeric_limits<double>::infinity()) {
+inline Box measure(const RailroadNode& root, const Metrics& m, double room = std::numeric_limits<double>::infinity()) noexcept {
   std::unordered_map<const RailroadNode*, double> budgets;
   if (std::isfinite(room)) {
     std::vector<std::pair<const RailroadNode*, double>> pending = {{&root, room}};
@@ -1300,7 +1300,7 @@ inline Box measure(const RailroadNode& root, const Metrics& m, double room = std
       } else if (node->type == "nonterminal") {
         value = leaf(Kind::NonTerminal, shown(node->name), node->name, 0, m);
       } else if (node->type == "special") {
-        value = leaf(Kind::Special, "? " + shown(node->text) + " ?", "", Style::Italic, m);
+        value = leaf(Kind::Special, Pele::cat({"? ", shown(node->text), " ?"}),  "",  Style::Italic,  m);
       } else if (node->type == "sequence") {
         double width = std::max(0, static_cast<int>(results.size()) - 1) * m.gap;
         double up = 0;
@@ -1384,7 +1384,7 @@ inline Box measure(const RailroadNode& root, const Metrics& m, double room = std
 }
 
 template <typename T>
-inline void reverseFrom(std::vector<T>& list, size_t from) {
+inline void reverseFrom(std::vector<T>& list, size_t from) noexcept {
   for (size_t i = from, j = list.size(); i < j && j > 0; i++) {
     j--;
     if (i >= j) break;
@@ -1392,7 +1392,7 @@ inline void reverseFrom(std::vector<T>& list, size_t from) {
   }
 }
 
-inline Rendered draw(const RailroadModel& model, const Config& config, const RenderOptions& options, bool tight) {
+inline Rendered draw(const RailroadModel& model, const Config& config, const RenderOptions& options, bool tight) noexcept {
   double base = options.fontSize;
   double fontSize = option(config, "fontSize", 0.0, 200.0);
   double size = fontSize > 0.0 ? fontSize : std::round(base * 0.875);
@@ -1443,7 +1443,7 @@ inline Rendered draw(const RailroadModel& model, const Config& config, const Ren
   std::string nodes;
 
   auto line = [&](double x1, double y, double x2) {
-    if (x2 > x1) track += "M" + num(x1) + "," + num(y) + "H" + num(x2);
+    if (x2 > x1) Pele::appendCat(track, {"M", num(x1), ",", num(y), "H", num(x2)});
   };
 
   auto place = [&](const Box& root, double left, double baseline) {
@@ -1486,13 +1486,11 @@ inline Rendered draw(const RailroadModel& model, const Config& config, const Ren
               const Box& next = kids[i + 1];
               double nextOffset = offset + kid.down + std::max(m.sep, 2.0 * arc) + next.up;
               double mid = y + offset + kid.down + std::max(m.sep, 2.0 * arc) / 2.0;
-              track += "M" + num(start + kid.width) + "," + num(ky) + "H" + num(right - 2.0 * arc)
-                     + "V" + num(mid) + "H" + num(x + arc) + "V" + num(y + nextOffset) + "H" + num(start);
-              arrows += "M" + num(start - ARROW) + "," + num(y + nextOffset - ARROW / 2.0)
-                      + "l" + num(ARROW) + "," + num(ARROW / 2.0) + "l" + num(-ARROW) + "," + num(ARROW / 2.0) + "z";
+              Pele::appendCat(track, {"M", num(start + kid.width), ",", num(ky), "H", num(right - 2.0 * arc), "V", num(mid), "H", num(x + arc), "V", num(y + nextOffset), "H", num(start)});
+              Pele::appendCat(arrows, {"M", num(start - ARROW), ",", num(y + nextOffset - ARROW / 2.0), "l", num(ARROW), ",", num(ARROW / 2.0), "l", num(-ARROW), ",", num(ARROW / 2.0), "z"});
               offset = nextOffset;
             } else {
-              track += "M" + num(start + kid.width) + "," + num(ky) + "H" + num(right - arc) + "V" + num(y) + "H" + num(right);
+              Pele::appendCat(track, {"M", num(start + kid.width), ",", num(ky), "H", num(right - arc), "V", num(y), "H", num(right)});
             }
           }
           reverseFrom(boxes, from);
@@ -1515,14 +1513,7 @@ inline Rendered draw(const RailroadModel& model, const Config& config, const Ren
               line(x, y, kx);
               line(kx + kid.width, y, right);
             } else {
-              track +=
-                (last ? "M" + num(x) + "," + num(y) + eastToSouth + "V" + num(ky - arc) : "M" + num(railIn) + "," + num(ky - arc)) +
-                southToEast +
-                (kx > railIn + arc ? "H" + num(kx) : "") +
-                "M" + num(kx + kid.width) + "," + num(ky) +
-                (kx > railIn + arc ? "H" + num(railOut - arc) : "") +
-                eastToNorth +
-                (last ? "V" + num(y + arc) + northToEast : "");
+              Pele::appendCat(track, {(last ? "M" + num(x) + "," + num(y) + eastToSouth + "V" + num(ky - arc) : "M" + num(railIn) + "," + num(ky - arc)), southToEast, (kx > railIn + arc ? "H" + num(kx) : ""), "M", num(kx + kid.width), ",", num(ky), (kx > railIn + arc ? "H" + num(railOut - arc) : ""), eastToNorth, (last ? "V" + num(y + arc) + northToEast : "")});
             }
             boxes.push_back(&kid);
             at.push_back(ky);
@@ -1537,9 +1528,7 @@ inline Rendered draw(const RailroadModel& model, const Config& config, const Ren
           double kx = x + 2.0 * arc;
           line(x, y, kx);
           line(kx + kid.width, y, right);
-          track +=
-            "M" + num(x) + "," + num(y) + eastToNorth + "V" + num(y - box->reach + arc) + northToEast + "H" + num(right - 2.0 * arc) +
-            eastToSouth + "V" + num(y - arc) + southToEast;
+          Pele::appendCat(track, {"M", num(x), ",", num(y), eastToNorth, "V", num(y - box->reach + arc), northToEast, "H", num(right - 2.0 * arc), eastToSouth, "V", num(y - arc), southToEast});
           boxes.push_back(&kid);
           at.push_back(kx);
           at.push_back(y);
@@ -1552,12 +1541,10 @@ inline Rendered draw(const RailroadModel& model, const Config& config, const Ren
           double middle = x + box->width / 2.0;
           line(x, y, kx);
           line(kx + kid.width, y, right);
-          track +=
-            "M" + num(x + arc) + "," + num(y) + loopDown + "V" + num(loopY - arc) + southToEast + "H" + num(right - arc) +
-            eastToNorth + "V" + num(y + arc) + loopUp;
-          arrows += "M" + num(middle - ARROW / 2.0) + "," + num(loopY) + "l" + num(ARROW) + "," + num(-ARROW / 2.0) + "v" + num(ARROW) + "z";
+          Pele::appendCat(track, {"M", num(x + arc), ",", num(y), loopDown, "V", num(loopY - arc), southToEast, "H", num(right - arc), eastToNorth, "V", num(y + arc), loopUp});
+          Pele::appendCat(arrows, {"M", num(middle - ARROW / 2.0), ",", num(loopY), "l", num(ARROW), ",", num(-ARROW / 2.0), "v", num(ARROW), "z"});
           if (!box->text.empty()) {
-            nodes += "<text class=\"pele-edge-label pele-count\" x=\"" + num(middle) + "\" y=\"" + num(loopY + COUNT_SIZE + 3.0) + "\" font-size=\"" + num(COUNT_SIZE) + "\" fill=\"var(--_m)\">" + esc(box->text) + "</text>";
+            Pele::appendCat(nodes, {"<text class=\"pele-edge-label pele-count\" x=\"", num(middle), "\" y=\"", num(loopY + COUNT_SIZE + 3.0), "\" font-size=\"", num(COUNT_SIZE), "\" fill=\"var(--_m)\">", esc(box->text), "</text>"});
           }
           boxes.push_back(&kid);
           at.push_back(kx);
@@ -1568,8 +1555,8 @@ inline Rendered draw(const RailroadModel& model, const Config& config, const Ren
           const std::string& text = box->text;
           bool hasSpace = (!text.empty() && (text.front() == ' ' || text.back() == ' ')) || text.find("  ") != std::string::npos;
           std::string space = hasSpace ? " xml:space=\"preserve\"" : "";
-          std::string shape = "<rect x=\"" + num(x) + "\" y=\"" + num(y - boxTop) + "\" width=\"" + num(box->width) + "\" height=\"" + num(m.height) + "\"";
-          std::string label = "<text x=\"" + num(x + box->width / 2.0) + "\" y=\"" + num(y + textShift) + "\"" + space;
+          std::string shape = Pele::cat({"<rect x=\"", num(x), "\" y=\"", num(y - boxTop), "\" width=\"", num(box->width), "\" height=\"", num(m.height), "\""});
+          std::string label = Pele::cat({"<text x=\"", num(x + box->width / 2.0), "\" y=\"", num(y + textShift), "\"", space});
           if (box->kind == Kind::Terminal) {
             nodes += "<g class=\"pele-node pele-terminal\">" + shape + " rx=\"" + num(boxTop) + "\" fill=\"var(--_s)\" stroke=\"var(--_b)\"" + stroke + "/>" + label + " font-family=\"" + std::string(FONT_MONO) + "\">" + esc(text) + "</text></g>";
           } else if (box->kind == Kind::NonTerminal) {
@@ -1608,14 +1595,9 @@ inline Rendered draw(const RailroadModel& model, const Config& config, const Ren
       ? "<circle class=\"pele-marker pele-start\" cx=\"" + num(pad + radius) + "\" cy=\"" + num(baseline) + "\" r=\"" + num(radius) + "\" fill=\"var(--_l)\"/>"
         "<circle class=\"pele-marker pele-end\" cx=\"" + num(end + radius) + "\" cy=\"" + num(baseline) + "\" r=\"" + num(radius) + "\" fill=\"var(--_l)\"/>"
       : "";
-    rules +=
-      "<g class=\"pele-rule\" data-id=\"" + escText(rule.name) + "\">"
-      "<text class=\"pele-rule-name\" x=\"" + num(pad) + "\" y=\"" + num(top + headHeight / 2.0 + headSize * 0.35) + "\" font-size=\"" + num(headSize) + "\" font-weight=\"var(--_hw)\" text-anchor=\"start\">" + esc(name) + "</text>"
-      "<path class=\"pele-edge pele-track\" d=\"" + track + "\" fill=\"none\" stroke=\"var(--_l)\"" + stroke + "/>" +
-      (!arrows.empty() ? "<path class=\"pele-marker\" d=\"" + arrows + "\" fill=\"var(--_l)\"/>" : "") +
-      markers +
-      nodes +
-      "</g>";
+    Pele::appendCat(rules, {"<g class=\"pele-rule\" data-id=\"", escText(rule.name), "\">"
+      "<text class=\"pele-rule-name\" x=\"", num(pad), "\" y=\"", num(top + headHeight / 2.0 + headSize * 0.35), "\" font-size=\"", num(headSize), "\" font-weight=\"var(--_hw)\" text-anchor=\"start\">", esc(name), "</text>"
+      "<path class=\"pele-edge pele-track\" d=\"", track, "\" fill=\"none\" stroke=\"var(--_l)\"", stroke, "/>", (!arrows.empty() ? "<path class=\"pele-marker\" d=\"" + arrows + "\" fill=\"var(--_l)\"/>" : ""), markers, nodes, "</g>"});
     width = std::max(width, std::max(end + 2.0 * radius - pad, measurer.width(name, headSize, Style::Bold)));
     bottom = baseline + box.down;
     top = bottom + m.sep + RULE_GAP;
@@ -1635,7 +1617,7 @@ inline Rendered draw(const RailroadModel& model, const Config& config, const Ren
   };
 }
 
-inline Rendered renderRailroadModel(const RailroadModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderRailroadModel(const RailroadModel& model, const Config& config, const RenderOptions& options) noexcept {
   return tighten(options, [&](bool tight) {
     return draw(model, config, options, tight);
   });
@@ -1657,7 +1639,7 @@ inline Rendered renderRailroad(const std::string& source, const Config& config, 
 
 inline Rendered renderRailroad(const std::string& raw, RenderOptions options = {}) {
   auto pre = preprocess(raw);
-  std::string parsed = encodeEntities(pre.text) + "\n";
+  std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
   const auto* section = pre.config.get("railroad");
   bool fixed = (section && section->isMap() && section->get("useMaxWidth") && section->get("useMaxWidth")->isBool() && !section->get("useMaxWidth")->bVal);
   if (!options.hasResponsive) {

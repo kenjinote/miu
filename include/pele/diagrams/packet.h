@@ -50,7 +50,7 @@ namespace T {
     };
 }
 
-inline const std::vector<TokenType>& packetTokens() {
+inline const std::vector<TokenType>& packetTokens() noexcept {
     static const std::vector<TokenType> tokens = []() {
         TokenType pb;
         pb.name = "packet-beta";
@@ -202,7 +202,7 @@ inline PacketAst parsePacket(const std::string& src) {
 
 constexpr size_t MAX_ROWS = 10000;
 
-inline double packetOption(const Config& config, const std::string& key, double fallback, double min, double max) {
+inline double packetOption(const Config& config, const std::string& key, double fallback, double min, double max) noexcept {
     const auto* pkt = config.get("packet");
     if (pkt && pkt->isMap()) {
         const auto* val = pkt->get(key);
@@ -213,7 +213,7 @@ inline double packetOption(const Config& config, const std::string& key, double 
     return fallback;
 }
 
-inline std::string stripNewlineIndent(const std::string& s) {
+inline std::string stripNewlineIndent(const std::string& s) noexcept {
     std::string out;
     out.reserve(s.size());
     size_t i = 0;
@@ -306,7 +306,7 @@ struct FittedText {
     bool valid = false;
 };
 
-inline FittedText fitPacketText(const std::string& text, double max, double size, double min, const TextMeasurer& measurer, int style = 0) {
+inline FittedText fitPacketText(const std::string& text, double max, double size, double min, const TextMeasurer& measurer, int style = 0) noexcept {
     if (text.empty() || max <= 0.0) return {};
     double width = measurer.width(text, size, style);
     if (width <= max) return {text, size, width, true};
@@ -346,12 +346,12 @@ inline FittedText fitPacketText(const std::string& text, double max, double size
     return {};
 }
 
-inline double packetTitleRoom(const RenderOptions& options) {
+inline double packetTitleRoom(const RenderOptions& options) noexcept {
     double available = options.maxWidth;
     return available > 0.0 ? std::max(80.0, available - 2.0 * options.padding) : 4000.0;
 }
 
-inline Rendered drawPacket(const PacketModel& model, const Config& config, const RenderOptions& options, bool down) {
+inline Rendered drawPacket(const PacketModel& model, const Config& config, const RenderOptions& options, bool down) noexcept {
     double size = options.fontSize;
     double labelSize = std::round(size * 0.875);
     double bitSize = std::round(size * 0.625);
@@ -479,9 +479,7 @@ inline Rendered drawPacket(const PacketModel& model, const Config& config, const
                 (down
                     ? labelSvg(downLabels[index][bIdx], x + w / 2.0, y + rh / 2.0, "")
                     : (text.valid && text.size <= rh
-                        ? ("<text x=\"" + num(x + w / 2.0) + "\" y=\"" + num(y + rh / 2.0 + text.size * 0.35) + "\"" +
-                           (text.size == labelSize ? "" : (" font-size=\"" + num(text.size) + "\"")) +
-                           ">" + esc(text.text) + "</text>")
+                        ? Pele::cat({"<text x=\"", num(x + w / 2.0), "\" y=\"", num(y + rh / 2.0 + text.size * 0.35), "\"", (text.size == labelSize ? "" : Pele::cat({" font-size=\"", num(text.size), "\""})), ">", esc(text.text), "</text>"})
                         : "")) +
                 "</g>";
             if (!showBits) continue;
@@ -500,8 +498,8 @@ inline Rendered drawPacket(const PacketModel& model, const Config& config, const
     double totalWidth = std::ceil(std::max(width, title.width) + 2.0 * pad);
     double totalHeight = std::ceil(rowsHeight + titleHeight + 2.0 * pad);
     std::string content =
-        (!fields.empty() ? ("<g class=\"pele-packet-fields\" font-size=\"" + num(labelSize) + "\" text-anchor=\"middle\">" + fields + "</g>") : "") +
-        (!bits.empty() ? ("<g class=\"pele-packet-bits\" font-size=\"" + num(bitSize) + "\" fill=\"var(--_m)\">" + bits + "</g>") : "") +
+        (!fields.empty() ? Pele::cat({"<g class=\"pele-packet-fields\" font-size=\"", num(labelSize), "\" text-anchor=\"middle\">", fields, "</g>"}) : "") +
+        (!bits.empty() ? Pele::cat({"<g class=\"pele-packet-bits\" font-size=\"", num(bitSize), "\" fill=\"var(--_m)\">", bits, "</g>"}) : "") +
         labelSvg(title, totalWidth / 2.0, totalHeight - pad - title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"");
 
     return {
@@ -512,7 +510,7 @@ inline Rendered drawPacket(const PacketModel& model, const Config& config, const
     };
 }
 
-inline Rendered renderPacketModel(const PacketModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderPacketModel(const PacketModel& model, const Config& config, const RenderOptions& options) noexcept {
     Rendered across = drawPacket(model, config, options, false);
     double available = options.maxWidth;
     if (!(available > 0.0) || across.width <= available || available >= 640.0) return across;
@@ -533,7 +531,7 @@ inline Rendered renderPacket(const std::string& source, const Config& config, co
 
 inline Rendered renderPacket(const std::string& source, const RenderOptions& options = {}) {
     auto pre = preprocess(source);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     RenderOptions opts = options;
     if (!opts.hasResponsive) {
         const auto* section = pre.config.get("packet");

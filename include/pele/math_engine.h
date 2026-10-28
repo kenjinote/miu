@@ -22,14 +22,14 @@ using MathResolver = std::function<MathBox(const std::string& tex, double fontSi
 
 namespace detail {
 
-inline std::string mathTrim(const std::string& s) {
+inline std::string mathTrim(const std::string& s) noexcept {
     size_t a = 0, b = s.size();
     while (a < b && (s[a] == ' ' || s[a] == '\t' || s[a] == '\r' || s[a] == '\n')) a++;
     while (b > a && (s[b - 1] == ' ' || s[b - 1] == '\t' || s[b - 1] == '\r' || s[b - 1] == '\n')) b--;
     return s.substr(a, b - a);
 }
 
-inline std::string mathEsc(const std::string& s) {
+inline std::string mathEsc(const std::string& s) noexcept {
     std::string out;
     out.reserve(s.size());
     for (char c : s) {
@@ -45,7 +45,7 @@ inline std::string mathEsc(const std::string& s) {
     return out;
 }
 
-inline uint32_t mathNextUtf8(const std::string& s, size_t& i) {
+inline uint32_t mathNextUtf8(const std::string& s, size_t& i) noexcept {
     unsigned char c = (unsigned char)s[i++];
     if (c < 0x80) return c;
     if ((c & 0xE0) == 0xC0 && i < s.size()) {
@@ -69,7 +69,7 @@ inline uint32_t mathNextUtf8(const std::string& s, size_t& i) {
     return c;
 }
 
-inline bool mathIsWideCodepoint(uint32_t cp) {
+inline bool mathIsWideCodepoint(uint32_t cp) noexcept {
     return (cp >= 0x1100 && cp <= 0x11FF) ||
            (cp >= 0x2E80 && cp <= 0x9FFF) ||
            (cp >= 0xAC00 && cp <= 0xD7AF) ||
@@ -87,7 +87,7 @@ struct MNode {
     bool isLargeOp = false;
 };
 
-inline std::string doubleStruckUtf8(char c) {
+inline std::string doubleStruckUtf8(char c) noexcept {
     switch (c) {
         case 'C': return "\xE2\x84\x82";
         case 'H': return "\xE2\x84\x8D";
@@ -218,7 +218,7 @@ struct LatexParser {
     }
 
     MNode parseEnvironment(const std::string& env) {
-        std::string endTag = "\\end{" + env + "}";
+        std::string endTag = Pele::cat({"\\end{", env, "}"});
         size_t endPos = s.find(endTag, pos);
         std::string body;
         if (endPos != std::string::npos) {
@@ -284,7 +284,7 @@ struct LatexParser {
             for (size_t c = 0; c < grid[r].size(); c++) {
                 const auto& cell = grid[r][c];
                 std::string alignAttr = (env == "cases" && c == 0) ? " columnalign=\"left\"" : "";
-                tableMml += "<mtd" + alignAttr + ">" + cell.mml + "</mtd>";
+                Pele::appendCat(tableMml, {"<mtd", alignAttr, ">", cell.mml, "</mtd>"});
                 colW[c] = std::max(colW[c], cell.w);
                 rowH = std::max(rowH, cell.h);
             }
@@ -308,9 +308,9 @@ struct LatexParser {
         out.w = totalW + (!lDelim.empty() ? 0.55 : 0.0) + (!rDelim.empty() ? 0.55 : 0.0);
         if (!lDelim.empty() || !rDelim.empty()) {
             out.mml = "<mrow>";
-            if (!lDelim.empty()) out.mml += "<mo stretchy=\"true\">" + mathEsc(lDelim) + "</mo>";
+            if (!lDelim.empty()) Pele::appendCat(out.mml, {"<mo stretchy=\"true\">", mathEsc(lDelim), "</mo>"});
             out.mml += tableMml;
-            if (!rDelim.empty()) out.mml += "<mo stretchy=\"true\">" + mathEsc(rDelim) + "</mo>";
+            if (!rDelim.empty()) Pele::appendCat(out.mml, {"<mo stretchy=\"true\">", mathEsc(rDelim), "</mo>"});
             out.mml += "</mrow>";
         } else {
             out.mml = tableMml;
@@ -331,7 +331,7 @@ struct LatexParser {
             pos++;
             MNode inner = parseExpr('}');
             if (pos < s.size() && s[pos] == '}') pos++;
-            return {"<mrow>" + inner.mml + "</mrow>", inner.w, inner.h, inner.isLargeOp};
+            return {Pele::cat({"<mrow>", inner.mml, "</mrow>"}),  inner.w,  inner.h,  inner.isLargeOp};
         }
         if (c == '\\') {
             std::string cmd = readCommand();
@@ -377,7 +377,7 @@ struct LatexParser {
                 cmd == "bigl" || cmd == "bigr" || cmd == "Bigl" || cmd == "Bigr" ||
                 cmd == "biggl" || cmd == "biggr" || cmd == "Biggl" || cmd == "Biggr") {
                 std::string d = readDelimToken();
-                return {"<mo stretchy=\"true\">" + mathEsc(d) + "</mo>", 0.5, 1.3, false};
+                return {Pele::cat({"<mo stretchy=\"true\">", mathEsc(d), "</mo>"}),  0.5,  1.3,  false};
             }
 
             // Fractions & Binomials
@@ -386,15 +386,14 @@ struct LatexParser {
                 MNode denNode = parseAtom();
                 double w = std::max(numNode.w, denNode.w) * 0.94 + 0.45;
                 double h = (numNode.h + denNode.h) * 0.85 + 0.50;
-                return {"<mfrac><mrow>" + numNode.mml + "</mrow><mrow>" + denNode.mml + "</mrow></mfrac>", w, h, false};
+                return {Pele::cat({"<mfrac><mrow>", numNode.mml, "</mrow><mrow>", denNode.mml, "</mrow></mfrac>"}),  w,  h,  false};
             }
             if (cmd == "binom" || cmd == "dbinom" || cmd == "tbinom") {
                 MNode nNode = parseAtom();
                 MNode kNode = parseAtom();
                 double w = std::max(nNode.w, kNode.w) * 0.94 + 1.05;
                 double h = (nNode.h + kNode.h) * 0.85 + 0.45;
-                return {"<mrow><mo stretchy=\"true\">(</mo><mfrac linethickness=\"0\"><mrow>" + nNode.mml +
-                        "</mrow><mrow>" + kNode.mml + "</mrow></mfrac><mo stretchy=\"true\">)</mo></mrow>", w, h, false};
+                return {Pele::cat({"<mrow><mo stretchy=\"true\">(</mo><mfrac linethickness=\"0\"><mrow>", nNode.mml, "</mrow><mrow>", kNode.mml, "</mrow></mfrac><mo stretchy=\"true\">)</mo></mrow>"}),  w,  h,  false};
             }
 
             // Roots
@@ -406,23 +405,23 @@ struct LatexParser {
                     MNode deg = sub.parseExpr();
                     double w = arg.w + std::max(0.85, deg.w * 0.65 + 0.45);
                     double h = arg.h + 0.32;
-                    return {"<mroot><mrow>" + arg.mml + "</mrow><mrow>" + deg.mml + "</mrow></mroot>", w, h, false};
+                    return {Pele::cat({"<mroot><mrow>", arg.mml, "</mrow><mrow>", deg.mml, "</mrow></mroot>"}),  w,  h,  false};
                 }
-                return {"<msqrt><mrow>" + arg.mml + "</mrow></msqrt>", arg.w + 0.82, arg.h + 0.28, false};
+                return {Pele::cat({"<msqrt><mrow>", arg.mml, "</mrow></msqrt>"}),  arg.w + 0.82,  arg.h + 0.28,  false};
             }
 
             // Overset / Underset / Stackrel
             if (cmd == "overset" || cmd == "stackrel") {
                 MNode topNode = parseAtom();
                 MNode baseNode = parseAtom();
-                return {"<mover><mrow>" + baseNode.mml + "</mrow><mrow>" + topNode.mml + "</mrow></mover>",
-                        std::max(baseNode.w, topNode.w * 0.75) + 0.1, baseNode.h + topNode.h * 0.65, false};
+                return {Pele::cat({"<mover><mrow>", baseNode.mml, "</mrow><mrow>", topNode.mml, "</mrow></mover>"}), 
+                        std::max(baseNode.w, topNode.w * 0.75) + 0.1,  baseNode.h + topNode.h * 0.65,  false};
             }
             if (cmd == "underset") {
                 MNode botNode = parseAtom();
                 MNode baseNode = parseAtom();
-                return {"<munder><mrow>" + baseNode.mml + "</mrow><mrow>" + botNode.mml + "</mrow></munder>",
-                        std::max(baseNode.w, botNode.w * 0.75) + 0.1, baseNode.h + botNode.h * 0.65, false};
+                return {Pele::cat({"<munder><mrow>", baseNode.mml, "</mrow><mrow>", botNode.mml, "</mrow></munder>"}), 
+                        std::max(baseNode.w, botNode.w * 0.75) + 0.1,  baseNode.h + botNode.h * 0.65,  false};
             }
 
             // Accents & Bars
@@ -438,14 +437,14 @@ struct LatexParser {
                 else if (cmd == "dot") acc = "\xCB\x99";
                 else if (cmd == "ddot") acc = "\xC2\xA8";
                 else if (cmd == "overbrace") acc = "\xE2\x8F\x9E";
-                return {"<mover accent=\"true\"><mrow>" + arg.mml + "</mrow><mo>" + acc + "</mo></mover>",
-                        arg.w, arg.h + 0.22, false};
+                return {Pele::cat({"<mover accent=\"true\"><mrow>", arg.mml, "</mrow><mo>", acc, "</mo></mover>"}), 
+                        arg.w,  arg.h + 0.22,  false};
             }
             if (cmd == "underline" || cmd == "underbrace") {
                 MNode arg = parseAtom();
                 std::string acc = (cmd == "underbrace") ? "\xE2\x8F\x9F" : "_";
-                return {"<munder accentunder=\"true\"><mrow>" + arg.mml + "</mrow><mo>" + acc + "</mo></munder>",
-                        arg.w, arg.h + 0.22, false};
+                return {Pele::cat({"<munder accentunder=\"true\"><mrow>", arg.mml, "</mrow><mo>", acc, "</mo></munder>"}), 
+                        arg.w,  arg.h + 0.22,  false};
             }
 
             // Text & Font Commands
@@ -453,15 +452,15 @@ struct LatexParser {
                 std::string txt = readRawGroup();
                 double tw = double(txt.size()) * 0.56;
                 if (cmd == "operatorname") {
-                    return {"<mi mathvariant=\"normal\">" + mathEsc(txt) + "</mi>", tw + 0.15, 1.0, false};
+                    return {Pele::cat({"<mi mathvariant=\"normal\">", mathEsc(txt), "</mi>"}),  tw + 0.15,  1.0,  false};
                 }
-                return {"<mtext>" + mathEsc(txt) + "</mtext>", tw, 1.0, false};
+                return {Pele::cat({"<mtext>", mathEsc(txt), "</mtext>"}),  tw,  1.0,  false};
             }
             if (cmd == "mathbb") {
                 std::string txt = readRawGroup();
                 std::string outStr;
                 for (char ch : txt) outStr += doubleStruckUtf8(ch);
-                return {"<mi>" + mathEsc(outStr) + "</mi>", double(txt.size()) * 0.72, 1.0, false};
+                return {Pele::cat({"<mi>", mathEsc(outStr), "</mi>"}),  double(txt.size()) * 0.72,  1.0,  false};
             }
             if (cmd == "mathrm" || cmd == "mathbf" || cmd == "mathit" || cmd == "mathcal" ||
                 cmd == "mathscr" || cmd == "mathfrak" || cmd == "mathsf" || cmd == "mathtt" ||
@@ -474,7 +473,7 @@ struct LatexParser {
                 else if (cmd == "mathsf") mv = "sans-serif";
                 else if (cmd == "mathtt") mv = "monospace";
                 MNode arg = parseAtom();
-                return {"<mstyle mathvariant=\"" + mv + "\">" + arg.mml + "</mstyle>", arg.w * 1.05, arg.h, arg.isLargeOp};
+                return {Pele::cat({"<mstyle mathvariant=\"", mv, "\">", arg.mml, "</mstyle>"}),  arg.w * 1.05,  arg.h,  arg.isLargeOp};
             }
 
             // Escaped literal delimiters
@@ -487,7 +486,7 @@ struct LatexParser {
             if (cmd == "_") return {"<mtext>_</mtext>", 0.55, 1.0, false};
 
             // Large Operators
-            static const std::unordered_map<std::string, std::string> largeOps = {
+            static const Pele::FlatMap<std::string, std::string> largeOps = {
                 {"sum", "\xE2\x88\x91"}, {"prod", "\xE2\x88\x8F"}, {"coprod", "\xE2\x88\x90"},
                 {"int", "\xE2\x88\xAB"}, {"iint", "\xE2\x88\xAC"}, {"iiint", "\xE2\x88\xAD"}, {"oint", "\xE2\x88\xAE"},
                 {"bigcup", "\xE2\x8B\x83"}, {"bigcap", "\xE2\x8B\x82"}, {"bigoplus", "\xE2\xA8\x81"},
@@ -499,7 +498,7 @@ struct LatexParser {
             }
 
             // Standard Math Functions
-            static const std::unordered_set<std::string> mathFuncs = {
+            static const Pele::FlatSet<std::string> mathFuncs = {
                 "sin", "cos", "tan", "cot", "sec", "csc", "arcsin", "arccos", "arctan",
                 "sinh", "cosh", "tanh", "coth", "log", "ln", "lg", "exp",
                 "lim", "limsup", "liminf", "max", "min", "sup", "inf",
@@ -509,11 +508,11 @@ struct LatexParser {
                 bool under = (cmd == "lim" || cmd == "limsup" || cmd == "liminf" ||
                               cmd == "max" || cmd == "min" || cmd == "sup" || cmd == "inf" ||
                               cmd == "det" || cmd == "Pr" || cmd == "gcd");
-                return {"<mi mathvariant=\"normal\">" + cmd + "</mi>", double(cmd.size()) * 0.56 + 0.18, 1.0, under};
+                return {Pele::cat({"<mi mathvariant=\"normal\">", cmd, "</mi>"}),  double(cmd.size()) * 0.56 + 0.18,  1.0,  under};
             }
 
             // Lowercase Greek & Symbols (<mi>)
-            static const std::unordered_map<std::string, std::string> greekLower = {
+            static const Pele::FlatMap<std::string, std::string> greekLower = {
                 {"alpha", "\xCE\xB1"}, {"beta", "\xCE\xB2"}, {"gamma", "\xCE\xB3"}, {"delta", "\xCE\xB4"},
                 {"epsilon", "\xCF\xB5"}, {"varepsilon", "\xCE\xB5"}, {"zeta", "\xCE\xB6"}, {"eta", "\xCE\xB7"},
                 {"theta", "\xCE\xB8"}, {"vartheta", "\xCF\x91"}, {"iota", "\xCE\xB9"}, {"kappa", "\xCE\xBA"},
@@ -537,7 +536,7 @@ struct LatexParser {
             }
 
             // Uppercase Greek (<mi mathvariant="normal">)
-            static const std::unordered_map<std::string, std::string> greekUpper = {
+            static const Pele::FlatMap<std::string, std::string> greekUpper = {
                 {"Gamma", "\xCE\x93"}, {"Delta", "\xCE\x94"}, {"Theta", "\xCE\x98"}, {"Lambda", "\xCE\x9B"},
                 {"Xi", "\xCE\x9E"}, {"Pi", "\xCE\xA0"}, {"Sigma", "\xCE\xA3"}, {"Upsilon", "\xCE\xA5"},
                 {"Phi", "\xCE\xA6"}, {"Psi", "\xCE\xA8"}, {"Omega", "\xCE\xA9"}
@@ -548,7 +547,7 @@ struct LatexParser {
             }
 
             // Operators & Relations (<mo>)
-            static const std::unordered_map<std::string, std::string> mathOps = {
+            static const Pele::FlatMap<std::string, std::string> mathOps = {
                 {"pm", "\xC2\xB1"}, {"mp", "\xE2\x88\x93"}, {"times", "\xC3\x97"}, {"div", "\xC3\xB7"},
                 {"cdot", "\xE2\x8B\x85"}, {"ast", "\xE2\x88\x97"}, {"star", "\xE2\x8B\x86"}, {"circ", "\xE2\x88\x98"},
                 {"bullet", "\xE2\x88\x99"}, {"oplus", "\xE2\x8A\x95"}, {"ominus", "\xE2\x8A\x96"},
@@ -582,7 +581,7 @@ struct LatexParser {
             }
 
             // Fallback unknown command -> identifier
-            return {"<mi>" + mathEsc(cmd) + "</mi>", double(cmd.size()) * 0.58, 1.0, false};
+            return {Pele::cat({"<mi>", mathEsc(cmd), "</mi>"}),  double(cmd.size()) * 0.58,  1.0,  false};
         }
 
         // Numbers
@@ -593,7 +592,7 @@ struct LatexParser {
                 pos++;
             }
             std::string numStr = s.substr(st, pos - st);
-            return {"<mn>" + numStr + "</mn>", double(numStr.size()) * 0.60, 1.0, false};
+            return {Pele::cat({"<mn>", numStr, "</mn>"}),  double(numStr.size()) * 0.60,  1.0,  false};
         }
 
         // ASCII letters
@@ -609,21 +608,21 @@ struct LatexParser {
             uint32_t cp = mathNextUtf8(s, pos);
             std::string u = s.substr(st, pos - st);
             double w = mathIsWideCodepoint(cp) ? 1.05 : 0.68;
-            return {"<mi>" + mathEsc(u) + "</mi>", w, 1.0, false};
+            return {Pele::cat({"<mi>", mathEsc(u), "</mi>"}),  w,  1.0,  false};
         }
 
         // Operators and punctuation
         pos++;
         if (c == '+' || c == '-' || c == '=' || c == '<' || c == '>' || c == '*' || c == '/') {
-            return {"<mo>" + mathEsc(std::string(1, c)) + "</mo>", 1.02, 1.0, false};
+            return {Pele::cat({"<mo>", mathEsc(std::string(1, c)), "</mo>"}),  1.02,  1.0,  false};
         }
         if (c == '(' || c == ')' || c == '[' || c == ']' || c == '|') {
-            return {"<mo stretchy=\"false\">" + mathEsc(std::string(1, c)) + "</mo>", 0.42, 1.0, false};
+            return {Pele::cat({"<mo stretchy=\"false\">", mathEsc(std::string(1, c)), "</mo>"}),  0.42,  1.0,  false};
         }
         if (c == ',' || c == ';' || c == ':' || c == '!' || c == '?') {
-            return {"<mo>" + mathEsc(std::string(1, c)) + "</mo>", 0.40, 1.0, false};
+            return {Pele::cat({"<mo>", mathEsc(std::string(1, c)), "</mo>"}),  0.40,  1.0,  false};
         }
-        return {"<mo>" + mathEsc(std::string(1, c)) + "</mo>", 0.55, 1.0, false};
+        return {Pele::cat({"<mo>", mathEsc(std::string(1, c)), "</mo>"}),  0.55,  1.0,  false};
     }
 
     MNode parseFactor() {
@@ -652,7 +651,7 @@ struct LatexParser {
                     pCount++;
                     pos++;
                 }
-                supNode = {"<mo>" + primes + "</mo>", double(pCount) * 0.35, 0.8, false};
+                supNode = {Pele::cat({"<mo>", primes, "</mo>"}),  double(pCount) * 0.35,  0.8,  false};
                 hasSup = true;
             } else {
                 break;
@@ -665,12 +664,12 @@ struct LatexParser {
             double w = std::max({base.w, hasSub ? subNode.w * 0.78 : 0.0, hasSup ? supNode.w * 0.78 : 0.0}) + 0.20;
             double h = base.h + (hasSub ? subNode.h * 0.65 : 0.0) + (hasSup ? supNode.h * 0.65 : 0.0) + 0.15;
             if (hasSub && hasSup) {
-                return {"<munderover><mrow>" + base.mml + "</mrow><mrow>" + subNode.mml + "</mrow><mrow>" + supNode.mml + "</mrow></munderover>", w, h, false};
+                return {Pele::cat({"<munderover><mrow>", base.mml, "</mrow><mrow>", subNode.mml, "</mrow><mrow>", supNode.mml, "</mrow></munderover>"}),  w,  h,  false};
             }
             if (hasSub) {
-                return {"<munder><mrow>" + base.mml + "</mrow><mrow>" + subNode.mml + "</mrow></munder>", w, h, false};
+                return {Pele::cat({"<munder><mrow>", base.mml, "</mrow><mrow>", subNode.mml, "</mrow></munder>"}),  w,  h,  false};
             }
-            return {"<mover><mrow>" + base.mml + "</mrow><mrow>" + supNode.mml + "</mrow></mover>", w, h, false};
+            return {Pele::cat({"<mover><mrow>", base.mml, "</mrow><mrow>", supNode.mml, "</mrow></mover>"}),  w,  h,  false};
         }
 
         double scriptW = std::max(hasSub ? subNode.w : 0.0, hasSup ? supNode.w : 0.0) * 0.75 + 0.10;
@@ -678,12 +677,12 @@ struct LatexParser {
         double h = base.h + (hasSup ? std::max(0.28, (supNode.h - 0.5) * 0.65) : 0.0) +
                             (hasSub ? std::max(0.20, (subNode.h - 0.5) * 0.55) : 0.0);
         if (hasSub && hasSup) {
-            return {"<msubsup><mrow>" + base.mml + "</mrow><mrow>" + subNode.mml + "</mrow><mrow>" + supNode.mml + "</mrow></msubsup>", w, h, false};
+            return {Pele::cat({"<msubsup><mrow>", base.mml, "</mrow><mrow>", subNode.mml, "</mrow><mrow>", supNode.mml, "</mrow></msubsup>"}),  w,  h,  false};
         }
         if (hasSub) {
-            return {"<msub><mrow>" + base.mml + "</mrow><mrow>" + subNode.mml + "</mrow></msub>", w, h, false};
+            return {Pele::cat({"<msub><mrow>", base.mml, "</mrow><mrow>", subNode.mml, "</mrow></msub>"}),  w,  h,  false};
         }
-        return {"<msup><mrow>" + base.mml + "</mrow><mrow>" + supNode.mml + "</mrow></msup>", w, h, false};
+        return {Pele::cat({"<msup><mrow>", base.mml, "</mrow><mrow>", supNode.mml, "</mrow></msup>"}),  w,  h,  false};
     }
 
     MNode parseExpr(char stopChar = 0, bool stopOnRight = false) {
@@ -708,7 +707,7 @@ struct LatexParser {
     }
 };
 
-inline MathBox typesetLatexMath(const std::string& tex, double fontSize = 16.0, bool displayMode = true) {
+inline MathBox typesetLatexMath(const std::string& tex, double fontSize = 16.0, bool displayMode = true) noexcept {
     MathBox box;
     std::string clean = mathTrim(tex);
     if (clean.empty()) return box;
@@ -721,11 +720,11 @@ inline MathBox typesetLatexMath(const std::string& tex, double fontSize = 16.0, 
     return box;
 }
 
-inline MathResolver& activeMathResolver() {
+inline MathResolver& activeMathResolver() noexcept {
     static MathResolver r = nullptr;
     return r;
 }
-inline bool looksLikeInlineMath(const std::string& inner) {
+inline bool looksLikeInlineMath(const std::string& inner) noexcept {
     if (inner.empty() || inner.front() == ' ' || inner.back() == ' ') return false;
     bool allDigits = true;
     for (char c : inner) {
@@ -744,11 +743,11 @@ inline bool looksLikeInlineMath(const std::string& inner) {
 
 } // namespace detail
 
-inline MathBox typesetMath(const std::string& tex, double fontSize = 16.0, bool displayMode = true) {
+inline MathBox typesetMath(const std::string& tex, double fontSize = 16.0, bool displayMode = true) noexcept {
     return detail::typesetLatexMath(tex, fontSize, displayMode);
 }
 
-inline std::string latexToMathML(const std::string& tex, bool displayMode = true) {
+inline std::string latexToMathML(const std::string& tex, bool displayMode = true) noexcept {
     return detail::typesetLatexMath(tex, 16.0, displayMode).html;
 }
 

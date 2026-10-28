@@ -1,5 +1,6 @@
 ﻿#pragma once
 #include <string>
+#include <string_view>
 #include <vector>
 #include <map>
 #include <unordered_map>
@@ -20,12 +21,200 @@
 
 namespace Pele {
 
+#ifdef _MSC_VER
+#define PELE_NOINLINE __declspec(noinline)
+#else
+#define PELE_NOINLINE __attribute__((noinline))
+#endif
+
+struct CatPiece {
+    const char* ptr;
+    size_t len;
+    char chBuf[2];
+    constexpr CatPiece(const char* s) noexcept
+        : ptr(s), len(s ? std::char_traits<char>::length(s) : 0), chBuf{0, 0} {}
+    CatPiece(const std::string& s) noexcept
+        : ptr(s.data()), len(s.size()), chBuf{0, 0} {}
+    constexpr CatPiece(std::string_view sv) noexcept
+        : ptr(sv.data()), len(sv.size()), chBuf{0, 0} {}
+    constexpr CatPiece(char c) noexcept
+        : ptr(nullptr), len(1), chBuf{c, 0} {}
+    const char* data() const noexcept { return ptr ? ptr : chBuf; }
+};
+
+PELE_NOINLINE inline std::string cat(std::initializer_list<CatPiece> parts) noexcept {
+    size_t total = 0;
+    for (const auto& p : parts) total += p.len;
+    std::string out;
+    out.reserve(total);
+    for (const auto& p : parts) out.append(p.data(), p.len);
+    return out;
+}
+
+PELE_NOINLINE inline void appendCat(std::string& dst, std::initializer_list<CatPiece> parts) noexcept {
+    size_t extra = 0;
+    for (const auto& p : parts) extra += p.len;
+    if (dst.size() + extra > dst.capacity()) {
+        dst.reserve(std::max(dst.size() + extra, dst.capacity() * 2));
+    }
+    for (const auto& p : parts) dst.append(p.data(), p.len);
+}
+
+template <typename K>
+class FlatSet {
+    std::vector<K> data_;
+public:
+    using iterator = typename std::vector<K>::iterator;
+    using const_iterator = typename std::vector<K>::const_iterator;
+    FlatSet() noexcept = default;
+    FlatSet(std::initializer_list<K> init) {
+        data_.reserve(init.size());
+        for (const auto& v : init) insert(v);
+    }
+    template <typename Iter>
+    FlatSet(Iter first, Iter last) {
+        for (; first != last; ++first) insert(*first);
+    }
+    bool empty() const noexcept { return data_.empty(); }
+    size_t size() const noexcept { return data_.size(); }
+    void clear() noexcept { data_.clear(); }
+    void reserve(size_t n) { data_.reserve(n); }
+    iterator begin() noexcept { return data_.begin(); }
+    const_iterator begin() const noexcept { return data_.begin(); }
+    iterator end() noexcept { return data_.end(); }
+    const_iterator end() const noexcept { return data_.end(); }
+    iterator find(const K& k) noexcept {
+        for (auto it = data_.begin(); it != data_.end(); ++it) {
+            if (*it == k) return it;
+        }
+        return data_.end();
+    }
+    const_iterator find(const K& k) const noexcept {
+        for (auto it = data_.begin(); it != data_.end(); ++it) {
+            if (*it == k) return it;
+        }
+        return data_.end();
+    }
+    size_t count(const K& k) const noexcept {
+        return find(k) != data_.end() ? 1 : 0;
+    }
+    std::pair<iterator, bool> insert(const K& k) {
+        auto it = find(k);
+        if (it != data_.end()) return {it, false};
+        data_.push_back(k);
+        return {data_.end() - 1, true};
+    }
+    std::pair<iterator, bool> insert(K&& k) {
+        auto it = find(k);
+        if (it != data_.end()) return {it, false};
+        data_.push_back(std::move(k));
+        return {data_.end() - 1, true};
+    }
+    template <typename Iter>
+    void insert(Iter first, Iter last) {
+        for (; first != last; ++first) insert(*first);
+    }
+    template <typename... Args>
+    std::pair<iterator, bool> emplace(Args&&... args) {
+        return insert(K(std::forward<Args>(args)...));
+    }
+    size_t erase(const K& k) noexcept {
+        auto it = find(k);
+        if (it == data_.end()) return 0;
+        data_.erase(it);
+        return 1;
+    }
+    iterator erase(const_iterator it) noexcept {
+        return data_.erase(it);
+    }
+};
+
+template <typename K, typename V>
+class FlatMap {
+    std::vector<std::pair<K, V>> data_;
+public:
+    using value_type = std::pair<K, V>;
+    using iterator = typename std::vector<value_type>::iterator;
+    using const_iterator = typename std::vector<value_type>::const_iterator;
+    FlatMap() noexcept = default;
+    FlatMap(std::initializer_list<value_type> init) {
+        data_.reserve(init.size());
+        for (const auto& kv : init) (*this)[kv.first] = kv.second;
+    }
+    bool empty() const noexcept { return data_.empty(); }
+    size_t size() const noexcept { return data_.size(); }
+    void clear() noexcept { data_.clear(); }
+    void reserve(size_t n) { data_.reserve(n); }
+    iterator begin() noexcept { return data_.begin(); }
+    const_iterator begin() const noexcept { return data_.begin(); }
+    iterator end() noexcept { return data_.end(); }
+    const_iterator end() const noexcept { return data_.end(); }
+    iterator find(const K& k) noexcept {
+        for (auto it = data_.begin(); it != data_.end(); ++it) {
+            if (it->first == k) return it;
+        }
+        return data_.end();
+    }
+    const_iterator find(const K& k) const noexcept {
+        for (auto it = data_.begin(); it != data_.end(); ++it) {
+            if (it->first == k) return it;
+        }
+        return data_.end();
+    }
+    size_t count(const K& k) const noexcept {
+        return find(k) != data_.end() ? 1 : 0;
+    }
+    V& operator[](const K& k) {
+        auto it = find(k);
+        if (it != data_.end()) return it->second;
+        data_.emplace_back(k, V{});
+        return data_.back().second;
+    }
+    V& operator[](K&& k) {
+        auto it = find(k);
+        if (it != data_.end()) return it->second;
+        data_.emplace_back(std::move(k), V{});
+        return data_.back().second;
+    }
+    V& at(const K& k) {
+        auto it = find(k);
+        return it->second;
+    }
+    const V& at(const K& k) const {
+        auto it = find(k);
+        return it->second;
+    }
+    std::pair<iterator, bool> insert(const value_type& kv) {
+        auto it = find(kv.first);
+        if (it != data_.end()) return {it, false};
+        data_.push_back(kv);
+        return {data_.end() - 1, true};
+    }
+    template <typename... Args>
+    std::pair<iterator, bool> emplace(Args&&... args) {
+        value_type kv(std::forward<Args>(args)...);
+        auto it = find(kv.first);
+        if (it != data_.end()) return {it, false};
+        data_.push_back(std::move(kv));
+        return {data_.end() - 1, true};
+    }
+    size_t erase(const K& k) noexcept {
+        auto it = find(k);
+        if (it == data_.end()) return 0;
+        data_.erase(it);
+        return 1;
+    }
+    iterator erase(const_iterator it) noexcept {
+        return data_.erase(it);
+    }
+};
+
 struct Size {
     double width = 0;
     double height = 0;
 };
 
-inline int charCodeAt(const std::string& s, int pos) {
+inline int charCodeAt(const std::string& s, int pos) noexcept {
     if (pos < 0 || static_cast<size_t>(pos) >= s.size()) return -1;
     return static_cast<unsigned char>(s[pos]);
 }
@@ -34,7 +223,7 @@ inline int charCodeAt(const std::string& s, int pos) {
 // UTF-8 / UTF-16 String Utilities
 // ============================================================================
 
-inline uint32_t nextCodepoint(const std::string& s, size_t& i) {
+inline uint32_t nextCodepoint(const std::string& s, size_t& i) noexcept {
     if (i >= s.size()) return 0;
     unsigned char c = static_cast<unsigned char>(s[i++]);
     if (c < 0x80) return c;
@@ -56,7 +245,7 @@ inline uint32_t nextCodepoint(const std::string& s, size_t& i) {
     return c;
 }
 
-inline void appendCodepoint(std::string& out, uint32_t cp) {
+inline void appendCodepoint(std::string& out, uint32_t cp) noexcept {
     if (cp < 0x80) {
         out.push_back(static_cast<char>(cp));
     } else if (cp < 0x800) {
@@ -74,7 +263,7 @@ inline void appendCodepoint(std::string& out, uint32_t cp) {
     }
 }
 
-inline std::vector<uint16_t> toUtf16(const std::string& s) {
+inline std::vector<uint16_t> toUtf16(const std::string& s) noexcept {
     std::vector<uint16_t> out;
     out.reserve(s.size());
     size_t i = 0;
@@ -91,7 +280,7 @@ inline std::vector<uint16_t> toUtf16(const std::string& s) {
     return out;
 }
 
-inline std::string fromUtf16(const uint16_t* data, size_t len) {
+inline std::string fromUtf16(const uint16_t* data, size_t len) noexcept {
     std::string out;
     out.reserve(len);
     size_t i = 0;
@@ -112,7 +301,7 @@ inline std::string fromUtf16(const uint16_t* data, size_t len) {
 // src/util/chars.ts
 // ============================================================================
 
-inline bool isSpace(int c) {
+inline bool isSpace(int c) noexcept {
     if (c < 0) return false;
     if (c < 128) return c == 32 || (c >= 9 && c <= 13);
     return (
@@ -128,31 +317,31 @@ inline bool isSpace(int c) {
     );
 }
 
-inline bool isBlank(int c) {
+inline bool isBlank(int c) noexcept {
     return c == 32 || c == 9;
 }
 
-inline bool isLineEnd(int c) {
+inline bool isLineEnd(int c) noexcept {
     return c == 10 || c == 13 || c == 0x2028 || c == 0x2029;
 }
 
-inline bool isDigit(int c) {
+inline bool isDigit(int c) noexcept {
     return c >= 48 && c <= 57;
 }
 
-inline bool isLetter(int c) {
+inline bool isLetter(int c) noexcept {
     return (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
 }
 
-inline bool isHex(int c) {
+inline bool isHex(int c) noexcept {
     return (c >= 48 && c <= 57) || (c >= 65 && c <= 70) || (c >= 97 && c <= 102);
 }
 
-inline bool isWord(int c) {
+inline bool isWord(int c) noexcept {
     return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95;
 }
 
-inline int charCodeAtUtf8(const std::string& s, size_t pos, size_t* nextPos = nullptr) {
+inline int charCodeAtUtf8(const std::string& s, size_t pos, size_t* nextPos = nullptr) noexcept {
     if (pos >= s.size()) {
         if (nextPos) *nextPos = pos;
         return -1;
@@ -163,7 +352,7 @@ inline int charCodeAtUtf8(const std::string& s, size_t pos, size_t* nextPos = nu
     return static_cast<int>(cp);
 }
 
-inline std::string trimStartStr(const std::string& s) {
+inline std::string trimStartStr(const std::string& s) noexcept {
     size_t i = 0;
     while (i < s.size()) {
         size_t next = i;
@@ -174,7 +363,7 @@ inline std::string trimStartStr(const std::string& s) {
     return s.substr(i);
 }
 
-inline std::string trimEndStr(const std::string& s) {
+inline std::string trimEndStr(const std::string& s) noexcept {
     size_t end = s.size();
     while (end > 0) {
         unsigned char b = static_cast<unsigned char>(s[end - 1]);
@@ -193,11 +382,11 @@ inline std::string trimEndStr(const std::string& s) {
     return s.substr(0, end);
 }
 
-inline std::string trimStr(const std::string& s) {
+inline std::string trimStr(const std::string& s) noexcept {
     return trimEndStr(trimStartStr(s));
 }
 
-inline std::string toLowerAscii(const std::string& s) {
+inline std::string toLowerAscii(const std::string& s) noexcept {
     std::string out = s;
     for (char& c : out) {
         if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + 32);
@@ -205,7 +394,7 @@ inline std::string toLowerAscii(const std::string& s) {
     return out;
 }
 
-inline std::vector<std::string> splitStr(const std::string& s, char delim) {
+inline std::vector<std::string> splitStr(const std::string& s, char delim) noexcept {
     std::vector<std::string> out;
     size_t start = 0;
     while (true) {
@@ -220,17 +409,17 @@ inline std::vector<std::string> splitStr(const std::string& s, char delim) {
     return out;
 }
 
-inline bool startsWith(const std::string& s, const std::string& prefix, size_t pos = 0) {
+inline bool startsWith(const std::string& s, const std::string& prefix, size_t pos = 0) noexcept {
     if (pos + prefix.size() > s.size()) return false;
     return std::memcmp(s.data() + pos, prefix.data(), prefix.size()) == 0;
 }
 
-inline bool endsWith(const std::string& s, const std::string& suffix) {
+inline bool endsWith(const std::string& s, const std::string& suffix) noexcept {
     if (suffix.size() > s.size()) return false;
     return std::memcmp(s.data() + s.size() - suffix.size(), suffix.data(), suffix.size()) == 0;
 }
 
-inline std::string replaceAllStr(std::string s, const std::string& from, const std::string& to) {
+inline std::string replaceAllStr(std::string s, const std::string& from, const std::string& to) noexcept {
     if (from.empty()) return s;
     size_t pos = 0;
     while ((pos = s.find(from, pos)) != std::string::npos) {
@@ -244,7 +433,7 @@ inline std::string replaceAllStr(std::string s, const std::string& from, const s
 // src/util/unicode.ts
 // ============================================================================
 
-inline const std::vector<uint16_t>& unicodeLetterTable() {
+inline const std::vector<uint16_t>& unicodeLetterTable() noexcept {
     static const std::vector<uint16_t> table = []() {
         const char* PACKED =
             "4q 0 b 0 5 0 6 m 2 u 2 cp 5 b f 4 8 0 2 0 3m 4 2 1 3 3 9 0 2 2 2 0 2 j 2 2a 2 3u 9 4d a 11 3 0 8 12 21 q 6 2 1a 16 10 1 2 2q 2 0 g 1 8 1 b 2 3 0 h 0 2 t u 2g c 0 p w a 1 5 0 6 l 5 0 a 0 4 0 o o 20 0 2 a 2g 1h 4 0 j 0 8 9 g 6 2 6 6 7 3 1 3 l 2 6 2 0 4 3 4 0 h 0 e 1 2 2 f 1 k 5 5 1 3 l 2 6 2 1 2 1 2 1 w 3 2 0 k 2 h 8 2 2 2 l 2 6 2 1 2 4 4 0 j 0 g 1 10 7 3 1 3 l 2 6 2 1 2 4 4 0 v 1 2 2 g 0 i 0 2 5 4 2 2 3 4 1 2 0 2 1 4 1 4 2 4 b n 0 1h 7 2 2 2 m 2 9 2 4 4 0 r 1 7 1 10 7 2 2 2 m 2 9 2 4 4 0 x 0 2 1 g 1 j 7 2 2 2 14 3 0 h 0 i 1 p 5 6 h 4 n 2 8 2 0 3 6 1n 1b 2 1 d 6 1n 1 2 0 3 1 2 0 3 0 7 3 2 6 2 2 2 0 2 0 3 1 2 3 2 1 a 0 3 4 2 0 m 3 x 0 1s 7 2 z s 4 38 16 l 0 h 5 5 3 4 0 4 1 8 2 5 c d 0 i 11 2 0 6 0 3 16 2 98 2 3 3 6 2 0 2 3 3 14 2 3 3 w 2 3 3 6 2 0 2 3 3 e 2 1k 2 3 3 1u 12 f h 2c d h7 3 g 2 p 6 22 m c 2 3 f h f h f c 2 2 g 1f 10 0 5 0 1w 2f 9 14 2 0 6 1x b s 1g t 3 4 c 17 m 6 1l m a 1g 2b 0 2m 1a i 6 1k t e 1 b 17 r z 16 2 b z 30 3 2 3 4 1 a 5b 1t 7p 3 5 3 11 3 5 3 7 2 0 2 0 2 0 2 u 3 1g 2 6 2 0 4 2 2 6 4 3 3 5 5 c 6 2 2 6 39 0 e 0 h c 2u 0 5 0 3 9 2 0 4 4 7 0 2 0 2 0 2 3 2 a 3 3 6 4 5 0 1h 1 22k 1a 2 1a 2 3o 7 3 4 1 d 11 2 0 6 0 3 1j 8 0 h m a 6 2 6 2 6 2 6 2 6 2 6 2 6 2 6 29 0 d2 1 17 4 6 1 5 2d 7 2 2 2h 2 3 6 14 4 2l i q 1i f e9 52t 23 g5o 1g wc 1w 19 3 7g 4 f b 1 l 1a h o 9 1x 1e 8 3 2u 3 3 2 3 d a 26 9 2 2 2 3 2 m u 1f f 1d 1r 5 4 0 f r b m q s 8 1a t 0 1d 14 o 2 2 7 l m 4 0 6 1b 2 0 4 1 3 4 3 0 2 0 p 2 3 a 8 2 d 5 3 5 3 5 a 6 2 6 42 y u 8mb d m 5 1c 6it a5 3 2x 13 6 d 4 6 0 2 9 2 c 2 4 2 0 2 1 2 1 2 2z y a2 j 1r 3 1h 15 b 39 4 2 3q 11 p 7 p c 2g 4 5 3 5 3 5 3 2";
@@ -262,7 +451,7 @@ inline const std::vector<uint16_t>& unicodeLetterTable() {
     return table;
 }
 
-inline bool isUnicodeLetter(int code) {
+inline bool isUnicodeLetter(int code) noexcept {
     if (code < 0xaa || code > 0xffdc) return false;
     const auto& t = unicodeLetterTable();
     int lo = 0;
@@ -280,7 +469,7 @@ inline bool isUnicodeLetter(int code) {
 // src/text/entities.ts
 // ============================================================================
 
-inline const std::unordered_map<std::string, std::string>& namedEntitiesMap() {
+inline const std::unordered_map<std::string, std::string>& namedEntitiesMap() noexcept {
     static const std::unordered_map<std::string, std::string> m = []() {
         const std::string NAMED =
             "amp:38,lt:60,gt:62,quot:34,apos:39,nbsp:160,shy:173,iexcl:161,cent:162,pound:163,curren:164,yen:165,sect:167,"
@@ -321,7 +510,7 @@ inline const std::unordered_map<std::string, std::string>& namedEntitiesMap() {
 inline const std::string PLACEHOLDER_OPEN = "\xEF\xAC\x82\xC2\xB0";
 inline const std::string PLACEHOLDER_CLOSE = "\xC2\xB6\xC3\x9F";
 
-inline std::string restorePlaceholders(const std::string& text) {
+inline std::string restorePlaceholders(const std::string& text) noexcept {
     std::string out;
     size_t last = 0;
     size_t from = text.find(PLACEHOLDER_OPEN);
@@ -330,14 +519,14 @@ inline std::string restorePlaceholders(const std::string& text) {
         if (stop == std::string::npos) break;
         bool numeric = startsWith(text, "\xC2\xB0", from + PLACEHOLDER_OPEN.size());
         size_t innerStart = from + PLACEHOLDER_OPEN.size() + (numeric ? 2 : 0);
-        out += text.substr(last, from - last) + (numeric ? "&#" : "&") + text.substr(innerStart, stop - innerStart) + ";";
+        Pele::appendCat(out, {text.substr(last, from - last), (numeric ? "&#" : "&"), text.substr(innerStart, stop - innerStart), ";"});
         last = stop + PLACEHOLDER_CLOSE.size();
         from = text.find(PLACEHOLDER_OPEN, last);
     }
     return last == 0 ? text : out + text.substr(last);
 }
 
-inline std::string writtenCodes(const std::string& text) {
+inline std::string writtenCodes(const std::string& text) noexcept {
     if (text.find(PLACEHOLDER_CLOSE) == std::string::npos) return text;
     std::string out;
     size_t last = 0;
@@ -347,14 +536,14 @@ inline std::string writtenCodes(const std::string& text) {
         if (stop == std::string::npos) break;
         bool numeric = startsWith(text, "\xC2\xB0", from + PLACEHOLDER_OPEN.size());
         size_t innerStart = from + PLACEHOLDER_OPEN.size() + (numeric ? 2 : 0);
-        out += text.substr(last, from - last) + "#" + text.substr(innerStart, stop - innerStart) + ";";
+        Pele::appendCat(out, {text.substr(last, from - last), "#", text.substr(innerStart, stop - innerStart), ";"});
         last = stop + PLACEHOLDER_CLOSE.size();
         from = text.find(PLACEHOLDER_OPEN, last);
     }
     return last == 0 ? text : out + text.substr(last);
 }
 
-inline std::string decodeEntities(std::string text) {
+inline std::string decodeEntities(std::string text) noexcept {
     if (text.find(PLACEHOLDER_CLOSE) != std::string::npos) {
         text = restorePlaceholders(text);
     }
@@ -487,7 +676,7 @@ public:
         : std::runtime_error(msg), code(code_), type(type_), line(line_), column(col_), snippet(snip_) {}
 };
 
-inline PeleError syntaxError(const std::string& type, const std::string& src, size_t offset, const std::string& detail, bool lexical = false) {
+inline PeleError syntaxError(const std::string& type, const std::string& src, size_t offset, const std::string& detail, bool lexical = false) noexcept {
     size_t end = trimEndStr(src).size();
     if (end > 0 && offset >= end) offset = end;
     int line = 1;
@@ -504,7 +693,7 @@ inline PeleError syntaxError(const std::string& type, const std::string& src, si
     std::string head = lexical
         ? ("Lexical error on line " + std::to_string(line) + ". Unrecognized text.")
         : ("Parse error on line " + std::to_string(line) + ":");
-    std::string message = lexical ? (head + "\n" + snippet) : (head + "\n" + snippet + "\n" + detail);
+    std::string message = lexical ? Pele::cat({head, "\n", snippet}) : Pele::cat({head, "\n", snippet, "\n", detail});
     return PeleError(message, "syntax", type, line, column, snippet);
 }
 
@@ -560,7 +749,7 @@ struct YamlValue {
 
 using Config = YamlValue;
 
-inline YamlValue yamlScalar(const std::string& raw) {
+inline YamlValue yamlScalar(const std::string& raw) noexcept {
     std::string s = trimStr(raw);
     if (s.empty() || s == "~" || s == "null" || s == "Null" || s == "NULL") return YamlValue::makeNull();
     if (s == "true" || s == "True" || s == "TRUE") return YamlValue::makeBool(true);
@@ -576,7 +765,7 @@ inline YamlValue yamlScalar(const std::string& raw) {
     return YamlValue::makeString(s);
 }
 
-inline std::pair<YamlValue, size_t> parseYamlFlow(const std::string& s, size_t pos, const std::string& stops, int depth = 0) {
+inline std::pair<YamlValue, size_t> parseYamlFlow(const std::string& s, size_t pos, const std::string& stops, int depth = 0) noexcept {
     if (depth > 64) return {YamlValue::makeNull(), s.size()};
     auto skip = [&](size_t p) {
         while (p < s.size()) {
@@ -657,7 +846,7 @@ inline std::pair<YamlValue, size_t> parseYamlFlow(const std::string& s, size_t p
     return {yamlScalar(s.substr(pos, end - pos)), end};
 }
 
-inline YamlValue parseYaml(const std::string& src) {
+inline YamlValue parseYaml(const std::string& src) noexcept {
     std::string trimmed = trimStr(src);
     if (trimmed.empty()) return YamlValue::makeNull();
     if (trimmed[0] == '{' || trimmed[0] == '[') {
@@ -723,7 +912,7 @@ inline YamlValue parseYaml(const std::string& src) {
     return parseBlock(parseBlock, 0, 0);
 }
 
-inline void mergeConfig(Config& target, const Config& source) {
+inline void mergeConfig(Config& target, const Config& source) noexcept {
     if (!source.isMap()) return;
     if (!target.isMap()) target = YamlValue::makeMap();
     for (const auto& [k, v] : source.mVal) {
@@ -745,7 +934,7 @@ struct Preprocessed {
     int lineOffset = 0;
 };
 
-inline std::string normalizeLineBreaks(const std::string& text) {
+inline std::string normalizeLineBreaks(const std::string& text) noexcept {
     if (text.find('\r') == std::string::npos) return text;
     std::string out;
     out.reserve(text.size());
@@ -760,7 +949,7 @@ inline std::string normalizeLineBreaks(const std::string& text) {
     return out;
 }
 
-inline std::string cleanupComments(const std::string& text) {
+inline std::string cleanupComments(const std::string& text) noexcept {
     if (text.find("%%") == std::string::npos) return trimStartStr(text);
     std::string out;
     size_t i = 0;
@@ -779,7 +968,7 @@ inline std::string cleanupComments(const std::string& text) {
     return trimStartStr(out);
 }
 
-inline Preprocessed preprocess(const std::string& source) {
+inline Preprocessed preprocess(const std::string& source) noexcept {
     Preprocessed res;
     std::string text = normalizeLineBreaks(source);
 
@@ -802,7 +991,7 @@ inline Preprocessed preprocess(const std::string& source) {
                         if (k + 1 < tagContent.size() && tagContent[k] == '=' && tagContent[k + 1] == '"') {
                             size_t qEnd = tagContent.find('"', k + 2);
                             if (qEnd != std::string::npos) {
-                                mod += "='" + tagContent.substr(k + 2, qEnd - (k + 2)) + "'";
+                                Pele::appendCat(mod, {"='", tagContent.substr(k + 2, qEnd - (k + 2)), "'"});
                                 k = qEnd + 1;
                                 continue;
                             }
@@ -832,7 +1021,7 @@ inline Preprocessed preprocess(const std::string& source) {
                     if (text[k] != ' ' && text[k] != '\t') { validOpen = false; break; }
                 }
                 if (validOpen) {
-                    std::string needle = "\n" + indent + "---";
+                    std::string needle = Pele::cat({"\n", indent, "---"});
                     size_t closePos = text.find(needle, nl);
                     if (closePos != std::string::npos) {
                         size_t afterFence = closePos + needle.size();
@@ -896,7 +1085,7 @@ inline Preprocessed preprocess(const std::string& source) {
     return res;
 }
 
-inline std::string dropColorSemicolons(const std::string& text, const std::string& keyword) {
+inline std::string dropColorSemicolons(const std::string& text, const std::string& keyword) noexcept {
     size_t from = text.find(keyword);
     if (from == std::string::npos) return text;
     std::string out;
@@ -927,7 +1116,7 @@ inline std::string dropColorSemicolons(const std::string& text, const std::strin
     return last == 0 ? text : out + text.substr(last);
 }
 
-inline std::string encodeEntities(std::string text) {
+inline std::string encodeEntities(std::string text) noexcept {
     if (text.find('#') == std::string::npos) return text;
     text = dropColorSemicolons(dropColorSemicolons(text, "style"), "classDef");
     std::string out;
@@ -944,7 +1133,7 @@ inline std::string encodeEntities(std::string text) {
                     if (k == 0 && inner[k] == '+' && inner.size() > 1) continue;
                     if (!isDigit(static_cast<unsigned char>(inner[k]))) { isInt = false; break; }
                 }
-                out += (isInt ? "\xEF\xAC\x82\xC2\xB0\xC2\xB0" : "\xEF\xAC\x82\xC2\xB0") + inner + "\xC2\xB6\xC3\x9F";
+                Pele::appendCat(out, {(isInt ? "\xEF\xAC\x82\xC2\xB0\xC2\xB0" : "\xEF\xAC\x82\xC2\xB0"), inner, "\xC2\xB6\xC3\x9F"});
                 i = p + 1;
                 continue;
             }
@@ -963,7 +1152,7 @@ struct Detected {
     std::string mermaidType;
 };
 
-inline bool detectDiagram(const std::string& cleaned, Detected& out) {
+inline bool detectDiagram(const std::string& cleaned, Detected& out) noexcept {
     std::string s = trimStartStr(cleaned);
     auto matchPrefix = [&](const std::string& p, bool caseInsensitive = false, bool wordBoundary = false, bool spaceOrEnd = false, bool spaceColonOrEnd = false) {
         if (s.size() < p.size()) return false;
@@ -1032,11 +1221,11 @@ inline bool detectDiagram(const std::string& cleaned, Detected& out) {
 // src/diagrams/common/caseless.ts & accDescr.ts & generics.ts & fit*.ts
 // ============================================================================
 
-inline std::string foldCase(const std::string& s) {
+inline std::string foldCase(const std::string& s) noexcept {
     return toLowerAscii(s);
 }
 
-inline std::string cleanAccDescr(const std::string& text) {
+inline std::string cleanAccDescr(const std::string& text) noexcept {
     auto lines = splitStr(text, '\n');
     std::string out;
     for (const auto& rawLine : lines) {
@@ -1061,13 +1250,13 @@ inline std::string cleanAccDescr(const std::string& text) {
     return out;
 }
 
-inline int countTildes(const std::string& text) {
+inline int countTildes(const std::string& text) noexcept {
     int count = 0;
     for (char c : text) if (c == '~') count++;
     return count;
 }
 
-inline std::string pairTildes(const std::string& text) {
+inline std::string pairTildes(const std::string& text) noexcept {
     int count = countTildes(text);
     if (count <= 1) return text;
     bool lead = (count % 2 != 0) && !text.empty() && text[0] == '~';
@@ -1083,7 +1272,7 @@ inline std::string pairTildes(const std::string& text) {
     return chars;
 }
 
-inline std::string parseGenericTypes(const std::string& input) {
+inline std::string parseGenericTypes(const std::string& input) noexcept {
     if (input.find('~') == std::string::npos) return input;
     std::vector<std::string> sets;
     size_t start = 0;
@@ -1099,7 +1288,7 @@ inline std::string parseGenericTypes(const std::string& input) {
     for (size_t i = 0; i < sets.size(); i++) {
         std::string set = sets[i];
         if (set == "," && i > 0 && i + 1 < sets.size() && countTildes(sets[i - 1]) == 1 && countTildes(sets[i + 1]) == 1) {
-            set = sets[i - 1] + "," + sets[i + 1];
+            set = Pele::cat({sets[i - 1], ",", sets[i + 1]});
             i++;
             output.pop_back();
         }
@@ -1110,7 +1299,7 @@ inline std::string parseGenericTypes(const std::string& input) {
     return res;
 }
 
-inline double fitScale(double contentWidth, double pad, const RenderOptions& options) {
+inline double fitScale(double contentWidth, double pad, const RenderOptions& options) noexcept {
     double maxWidth = options.maxWidth;
     if (!(maxWidth > 0)) return 1.0;
     double room = maxWidth - 2.0 * pad;
@@ -1118,11 +1307,11 @@ inline double fitScale(double contentWidth, double pad, const RenderOptions& opt
     return std::max(0.25, room / contentWidth);
 }
 
-inline double fitFontSize(double scale, double base, double floor = 11.0) {
+inline double fitFontSize(double scale, double base, double floor = 11.0) noexcept {
     return scale < 1.0 ? std::max(floor, std::round(base * std::pow(scale, 0.7) * 2.0) / 2.0) : base;
 }
 
-inline RenderOptions fitTextOptions(double contentWidth, double pad, const RenderOptions& options, double floor = 11.0) {
+inline RenderOptions fitTextOptions(double contentWidth, double pad, const RenderOptions& options, double floor = 11.0) noexcept {
     double scale = fitScale(contentWidth, pad, options);
     double base = options.fontSize;
     double fontSize = fitFontSize(scale, base, floor);
@@ -1132,14 +1321,14 @@ inline RenderOptions fitTextOptions(double contentWidth, double pad, const Rende
     return next;
 }
 
-inline double titleRoom(const RenderOptions& options) {
+inline double titleRoom(const RenderOptions& options) noexcept {
     double maxWidth = options.maxWidth;
     double pad = options.padding;
     return maxWidth > 0 ? std::max(120.0, maxWidth - 2.0 * pad) : 4000.0;
 }
 
 template <typename DrawFn>
-inline Rendered tighten(const RenderOptions& options, DrawFn&& draw) {
+inline Rendered tighten(const RenderOptions& options, DrawFn&& draw) noexcept {
     Rendered wide = draw(false);
     double maxWidth = options.maxWidth;
     if (!(maxWidth > 0 && wide.width > maxWidth)) return wide;

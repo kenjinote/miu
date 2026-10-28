@@ -96,7 +96,7 @@ struct Tokens {
   std::vector<std::string> texts;
 };
 
-inline bool wordAtU16(const std::vector<uint16_t>& src, int p, const std::string& word) {
+inline bool wordAtU16(const std::vector<uint16_t>& src, int p, const std::string& word) noexcept {
   int n = static_cast<int>(src.size());
   int wl = static_cast<int>(word.size());
   if (p < 0 || p + wl > n) return false;
@@ -110,7 +110,7 @@ inline bool wordAtU16(const std::vector<uint16_t>& src, int p, const std::string
   return true;
 }
 
-inline int singleTok(uint16_t c) {
+inline int singleTok(uint16_t c) noexcept {
   if (c >= 128) return 0;
   switch (c) {
     case ':': return T_COLON;
@@ -446,7 +446,7 @@ inline Tokens tokenizeQuadrant(const std::string& rawSrc) {
   return out;
 }
 
-inline std::pair<std::string, std::string> keyValue(const std::string& style) {
+inline std::pair<std::string, std::string> keyValue(const std::string& style) noexcept {
   std::string s = trimStr(style);
   size_t colon = s.find(':');
   if (colon == std::string::npos) return {s, "undefined"};
@@ -476,30 +476,30 @@ inline PointStyle parseStyles(const std::vector<std::string>& styles) {
   return out;
 }
 
-inline QuadrantText trimmedText(const QuadrantText& label) {
+inline QuadrantText trimmedText(const QuadrantText& label) noexcept {
   return {trimStr(label.text), label.type};
 }
 
-inline bool isWordTok(int t) {
+inline bool isWordTok(int t) noexcept {
   return t == T_PUNCTUATION || t == T_AMP || t == T_NUM || t == T_ALPHA ||
          t == T_COMMA || t == T_PLUS || t == T_EQUALS || t == T_MULT ||
          t == T_DOT || t == T_BRKT || t == T_UNDERSCORE || t == T_UNICODE_TEXT;
 }
 
-inline bool isIdTok(int t) {
+inline bool isIdTok(int t) noexcept {
   return t == T_ALPHA || t == T_NUM || t == T_MINUS || t == T_COMMA ||
          t == T_COLON || t == T_AMP || t == T_BRKT || t == T_MULT || t == T_UNICODE_TEXT;
 }
 
-inline bool isStyleTok(int t) {
+inline bool isStyleTok(int t) noexcept {
   return t == T_ALPHA || t == T_NUM || t == T_COLON || t == T_SPACE || t == T_BRKT || t == T_MINUS;
 }
 
-inline bool isEolTok(int t) {
+inline bool isEolTok(int t) noexcept {
   return t == T_NEWLINE || t == T_SEMI || t == T_EOF;
 }
 
-inline bool isTextTok(int t) {
+inline bool isTextTok(int t) noexcept {
   return t == T_STR || t == T_MD_STR || isWordTok(t);
 }
 
@@ -609,29 +609,29 @@ inline void parseQuadrant(const std::string& src, QuadrantModel& db) {
   }
 }
 
-inline const Config* setting(const Config& config, const std::string& key) {
+inline const Config* setting(const Config& config, const std::string& key) noexcept {
   if (!config.isMap()) return nullptr;
   const Config* qc = config.get("quadrantChart");
   if (!qc || !qc->isMap()) return nullptr;
   return qc->get(key);
 }
 
-inline double lengthOpt(const Config& config, const std::string& key, double fallback, double maxVal) {
+inline double lengthOpt(const Config& config, const std::string& key, double fallback, double maxVal) noexcept {
   const Config* v = setting(config, key);
   if (v && v->isNumber() && v->nVal >= 0.0) return std::min(v->nVal, maxVal);
   return fallback;
 }
 
-inline std::string hexColor(const std::string& color) {
-  return (!color.empty() && color[0] == '#') ? color : ("#" + color);
+inline std::string hexColor(const std::string& color) noexcept {
+  return (!color.empty() && color[0] == '#') ? color : Pele::cat({"#", color});
 }
 
-inline double capWidth(const RenderOptions& options, double natural, double least) {
+inline double capWidth(const RenderOptions& options, double natural, double least) noexcept {
   double max = options.maxWidth;
   return (max > 0.0 && std::isfinite(max)) ? std::min(natural, std::max(least, max)) : natural;
 }
 
-inline Rendered renderQuadrantModel(const QuadrantModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderQuadrantModel(const QuadrantModel& model, const Config& config, const RenderOptions& options) noexcept {
   constexpr double GAP = 4.0;
   constexpr size_t CAREFUL = 300;
 
@@ -724,7 +724,7 @@ inline Rendered renderQuadrantModel(const QuadrantModel& model, const Config& co
   if (hasY) {
     double x = yRight ? (left + w + yPad + yHeight / 2.0) : (left - yPad - yHeight / 2.0);
     auto turned = [&](const Label& text, double y) -> std::string {
-      return text.height > 0.0 ? ("<g transform=\"translate(" + num(x) + "," + num(y) + ") rotate(-90)\">" + labelSvg(text, 0.0, 0.0, "") + "</g>") : "";
+      return text.height > 0.0 ? Pele::cat({"<g transform=\"translate(", num(x), ",", num(y), ") rotate(-90)\">", labelSvg(text, 0.0, 0.0, ""), "</g>"}) : "";
     };
     axesOut +=
       turned(yBottom, yTop.height > 0.0 ? (top + (h * 3.0) / 4.0) : (top + h - yBottom.width / 2.0)) +
@@ -760,9 +760,9 @@ inline Rendered renderQuadrantModel(const QuadrantModel& model, const Config& co
     std::optional<std::string> strokeWidth = point.style.strokeWidth.has_value() ? point.style.strokeWidth : (shared ? shared->strokeWidth : std::nullopt);
 
     std::vector<std::string> styles;
-    if (color.has_value()) styles.push_back("fill:" + hexColor(*color));
+    if (color.has_value()) styles.push_back(Pele::cat({"fill:", hexColor(*color)}));
     if (strokeWidth.has_value()) {
-      if (strokeColor.has_value()) styles.push_back("stroke:" + hexColor(*strokeColor));
+      if (strokeColor.has_value()) styles.push_back(Pele::cat({"stroke:", hexColor(*strokeColor)}));
       styles.push_back("stroke-width:" + *strokeWidth);
     }
     double cx = left + point.x * w;
@@ -777,11 +777,7 @@ inline Rendered renderQuadrantModel(const QuadrantModel& model, const Config& co
       r + swReach,
       makeLabel(point.text, pointSize, 200.0)
     });
-    circles.push_back(
-      "<circle class=\"pele-point" + classNames(point.className) + "\" data-id=\"" + escText(point.text.text) + "\" cx=\"" + num(cx) + "\" cy=\"" + num(cy) + "\" r=\"" + num(r) + "\"" +
-      ((strokeWidth.has_value() && !strokeColor.has_value()) ? (" stroke=\"" + fill + "\"") : "") +
-      resolveStyle(styles).shape + "/>"
-    );
+    circles.push_back(Pele::cat({"<circle class=\"pele-point", classNames(point.className), "\" data-id=\"", escText(point.text.text), "\" cx=\"", num(cx), "\" cy=\"", num(cy), "\" r=\"", num(r), "\"", ((strokeWidth.has_value() && !strokeColor.has_value()) ? Pele::cat({" stroke=\"", fill, "\""}) : ""), resolveStyle(styles).shape, "/>"}));
   }
 
   bool careful = dots.size() <= CAREFUL;
@@ -844,14 +840,9 @@ inline Rendered renderQuadrantModel(const QuadrantModel& model, const Config& co
     circlesJoined += *it;
   }
 
-  std::string content =
-    labelSvg(title, width / 2.0, titlePad / 2.0 + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-    "<g class=\"pele-quadrants\" fill=\"var(--_s)\" stroke=\"var(--_b)\">" + quadrantsOut + "</g>" +
-    (!axesOut.empty() ? ("<g class=\"pele-axis-labels\" font-size=\"" + num(axisSize) + "\" fill=\"var(--_m)\">" + axesOut + "</g>") : "") +
-    (!dots.empty()
-      ? ("<g class=\"pele-points\" fill=\"" + fill + "\">" + circlesJoined + "</g>" +
-         "<g class=\"pele-point-labels\" font-size=\"" + num(pointSize) + "\">" + labelsOut + "</g>")
-      : "");
+  std::string content = Pele::cat({labelSvg(title, width / 2.0, titlePad / 2.0 + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), "<g class=\"pele-quadrants\" fill=\"var(--_s)\" stroke=\"var(--_b)\">", quadrantsOut, "</g>", (!axesOut.empty() ? Pele::cat({"<g class=\"pele-axis-labels\" font-size=\"", num(axisSize), "\" fill=\"var(--_m)\">", axesOut, "</g>"}) : ""), (!dots.empty()
+      ? Pele::cat({"<g class=\"pele-points\" fill=\"", fill, "\">", circlesJoined, "</g>", "<g class=\"pele-point-labels\" font-size=\"", num(pointSize), "\">", labelsOut, "</g>"})
+      : "")});
 
   return {
     svgDocument("quadrantChart", width, height, size, options, model, content),

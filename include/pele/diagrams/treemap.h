@@ -28,7 +28,7 @@ enum Kind {
 };
 } // namespace T
 
-inline TokenType makeTreemapTitle() {
+inline TokenType makeTreemapTitle() noexcept {
     TokenType t = common_tokens::makeTitle();
     t.match = [](const std::string& src, int at, int) -> int {
         int p = common_tokens::matchTabsSpaces(src, at);
@@ -43,7 +43,7 @@ inline TokenType makeTreemapTitle() {
     return t;
 }
 
-inline const std::vector<TokenType>& treemapTokens() {
+inline const std::vector<TokenType>& treemapTokens() noexcept {
     static const std::vector<TokenType> types = []() {
         TokenType kw;
         kw.name = "TREEMAP_KEYWORD";
@@ -199,7 +199,7 @@ struct TreemapAst {
     std::vector<TreemapRowEntry> rows;
 };
 
-inline std::string fixSingle(const std::string& text) {
+inline std::string fixSingle(const std::string& text) noexcept {
     std::string s = trimStr(text);
     std::string out;
     int spaces = 0;
@@ -219,19 +219,19 @@ inline std::string fixSingle(const std::string& text) {
     return out;
 }
 
-inline std::string fixTitleValue(const std::string& text) {
+inline std::string fixTitleValue(const std::string& text) noexcept {
     size_t pos = text.find("title");
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 5));
 }
 
-inline std::string fixAccTitleValue(const std::string& text) {
+inline std::string fixAccTitleValue(const std::string& text) noexcept {
     size_t pos = text.find(':');
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 1));
 }
 
-inline std::string fixAccDescrValue(const std::string& text) {
+inline std::string fixAccDescrValue(const std::string& text) noexcept {
     size_t brace = text.find('{');
     size_t colon = text.find(':');
     if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -352,7 +352,7 @@ struct TreemapModel : public DiagramMeta {
     std::unordered_map<std::string, std::vector<std::string>> classes;
 };
 
-inline std::vector<TreemapNode> buildHierarchy(const std::vector<TreemapItem>& items) {
+inline std::vector<TreemapNode> buildHierarchy(const std::vector<TreemapItem>& items) noexcept {
     // Use shared_ptr tree first so pushing onto children vectors never invalidates pointers in `stack`
     struct TempNode {
         TreemapNode data;
@@ -387,7 +387,7 @@ inline std::vector<TreemapNode> buildHierarchy(const std::vector<TreemapItem>& i
     return roots;
 }
 
-inline TreemapModel buildTreemap(const TreemapAst& ast, const std::string& fallbackTitle) {
+inline TreemapModel buildTreemap(const TreemapAst& ast, const std::string& fallbackTitle) noexcept {
     TreemapModel model;
     for (const auto& row : ast.rows) {
         if (!row.isClassDef) continue;
@@ -431,11 +431,11 @@ inline TreemapModel buildTreemap(const TreemapAst& ast, const std::string& fallb
 // src/diagrams/treemap/format.ts
 // ============================================================================
 
-inline std::string groupDigits(const std::string& digits) {
+inline std::string groupDigits(const std::string& digits) noexcept {
     std::string out;
     for (int i = static_cast<int>(digits.size()); i > 0; i -= 3) {
         int start = std::max(0, i - 3);
-        out = digits.substr(static_cast<size_t>(start), static_cast<size_t>(i - start)) + (out.empty() ? "" : ("," + out));
+        out = digits.substr(static_cast<size_t>(start), static_cast<size_t>(i - start)) + (out.empty() ? "" : Pele::cat({",", out}));
     }
     return out;
 }
@@ -570,7 +570,7 @@ struct Insets {
     double side = 0.0;
 };
 
-inline std::shared_ptr<Box> makeBox(const TreemapNode& node, const std::shared_ptr<Box>& parent, int series) {
+inline std::shared_ptr<Box> makeBox(const TreemapNode& node, const std::shared_ptr<Box>& parent, int series) noexcept {
     auto b = std::make_shared<Box>();
     b->node = &node;
     b->parent = parent;
@@ -579,11 +579,11 @@ inline std::shared_ptr<Box> makeBox(const TreemapNode& node, const std::shared_p
     return b;
 }
 
-inline double clampVal(double v, double low, double high) {
+inline double clampVal(double v, double low, double high) noexcept {
     return v >= low ? std::min(v, high) : low;
 }
 
-inline void squarify(std::vector<std::shared_ptr<Box>>& boxes, double total, double x, double y, double w, double h, double gap) {
+inline void squarify(std::vector<std::shared_ptr<Box>>& boxes, double total, double x, double y, double w, double h, double gap) noexcept {
     double rest = total;
     size_t from = 0;
     while (from < boxes.size()) {
@@ -632,7 +632,7 @@ inline void squarify(std::vector<std::shared_ptr<Box>>& boxes, double total, dou
     }
 }
 
-inline std::vector<std::shared_ptr<Box>> layoutTreemap(const std::vector<TreemapNode>& roots, double width, double height, const Insets& insets) {
+inline std::vector<std::shared_ptr<Box>> layoutTreemap(const std::vector<TreemapNode>& roots, double width, double height, const Insets& insets) noexcept {
     std::vector<std::shared_ptr<Box>> top;
     for (size_t i = 0; i < roots.size(); i++) {
         top.push_back(makeBox(roots[i], nullptr, static_cast<int>(i)));
@@ -758,11 +758,11 @@ inline std::optional<FittedText> fitText(
     return std::nullopt;
 }
 
-inline std::string titlePart(const std::string& raw) {
+inline std::string titlePart(const std::string& raw) noexcept {
     return trimStr(esc(trimStr(decodeEntities(raw))));
 }
 
-inline int leafCount(const std::vector<TreemapNode>& roots) {
+inline int leafCount(const std::vector<TreemapNode>& roots) noexcept {
     int count = 0;
     std::vector<const TreemapNode*> stack;
     for (const auto& r : roots) stack.push_back(&r);
@@ -778,15 +778,15 @@ inline int leafCount(const std::vector<TreemapNode>& roots) {
     return count;
 }
 
-inline std::string corners(const std::string& attrs, const Box& b) {
+inline std::string corners(const std::string& attrs, const Box& b) noexcept {
     double cap = std::min(b.w, b.h) / 4.0;
     if (cap < 4.0) {
-        return replaceAllStr(rounded(attrs), "rx:var(--_r)", "rx:min(var(--_r)," + num(cap) + "px)");
+        return replaceAllStr(rounded(attrs),  "rx:var(--_r)", Pele::cat({"rx:min(var(--_r),", num(cap), "px)"}));
     }
     return rounded(attrs);
 }
 
-inline double treemapOption(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) {
+inline double treemapOption(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) noexcept {
     const auto* t = config.get("treemap");
     if (!t || !t->isMap()) return fallback;
     const auto* v = t->get(key);
@@ -794,19 +794,19 @@ inline double treemapOption(const Config& config, const std::string& key, double
     return v->nVal >= minVal ? std::min(v->nVal, maxVal) : fallback;
 }
 
-inline double capWidth(const RenderOptions& options, double natural, double least, double around = 0.0) {
+inline double capWidth(const RenderOptions& options, double natural, double least, double around = 0.0) noexcept {
     double available = options.maxWidth;
     if (!(available > 0.0)) return natural;
     return std::max(std::min(least, natural), std::min(natural, available - around));
 }
 
-inline double treemapTitleRoom(const RenderOptions& options) {
+inline double treemapTitleRoom(const RenderOptions& options) noexcept {
     double available = options.maxWidth;
     double pad = options.hasPadding ? options.padding : 8.0;
     return available > 0.0 ? std::max(80.0, available - 2.0 * pad) : 4000.0;
 }
 
-inline Rendered renderTreemapModel(const TreemapModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderTreemapModel(const TreemapModel& model, const Config& config, const RenderOptions& options) noexcept {
     double size = options.hasFontSize ? options.fontSize : 16.0;
     double small = std::round(size * 0.875);
     double tiny = std::round(size * 0.75);
@@ -849,7 +849,7 @@ inline Rendered renderTreemapModel(const TreemapModel& model, const Config& conf
         double y = top + b.y;
         std::string name = trimStr(decodeEntities(node.name));
         std::string value = showValues ? format(b.value) : "";
-        std::string group = "data-id=\"" + escText(node.name) + "\">";
+        std::string group = Pele::cat({"data-id=\"", escText(node.name), "\">"});
 
         std::string own = titlePart(node.name);
         std::vector<std::string> path;
@@ -865,9 +865,9 @@ inline Rendered renderTreemapModel(const TreemapModel& model, const Config& conf
         }
         auto tooltip = [&](const std::optional<std::string>& drawn) -> std::string {
             if (full.empty() || (drawn.has_value() && *drawn == name && full == own)) return "";
-            return "<title>" + full + "</title>";
+            return Pele::cat({"<title>", full, "</title>"});
         };
-        std::string rect = "<rect x=\"" + num(x) + "\" y=\"" + num(y) + "\" width=\"" + num(b.w) + "\" height=\"" + num(b.h) + "\" fill=\"" + color + "\"";
+        std::string rect = Pele::cat({"<rect x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(b.w), "\" height=\"", num(b.h), "\" fill=\"", color, "\""});
         std::optional<double> fixed = style.hasFontSize ? std::optional<double>(style.fontSize) : std::nullopt;
         int textStyle = (style.bold ? Style::Bold : 0) | (style.italic ? Style::Italic : 0);
         std::string inkAttr = inkFill(style);
@@ -889,19 +889,17 @@ inline Rendered renderTreemapModel(const TreemapModel& model, const Config& conf
                 double baseline = y + b.header / 2.0 + 1.0;
                 if (label.has_value()) {
                     drawn = label->text;
-                    text += "<text x=\"" + num(x + SIDE + 2.0) + "\" y=\"" + num(baseline + labelSize * 0.35) + "\" font-weight=\"var(--_hw)\"" +
-                            (isShort ? (" font-size=\"" + num(labelSize) + "\"") : "") + inkAttr + style.text + ">" + esc(label->text) + "</text>";
+                    Pele::appendCat(text, {"<text x=\"", num(x + SIDE + 2.0), "\" y=\"", num(baseline + labelSize * 0.35), "\" font-weight=\"var(--_hw)\"", (isShort ? Pele::cat({" font-size=\"", num(labelSize), "\""}) : ""), inkAttr, style.text, ">", esc(label->text), "</text>"});
                 }
                 if (withValue && valueSize * LINE <= HEADER) {
-                    text += "<text class=\"pele-value\" x=\"" + num(x + b.w - SIDE - 2.0) + "\" y=\"" + num(baseline + valueSize * 0.35) + "\" font-size=\"" + num(tiny) + "\" text-anchor=\"end\"" +
-                            (!inkAttr.empty() ? inkAttr : " fill=\"var(--_m)\"") + style.text + ">" + esc(value) + "</text>";
+                    Pele::appendCat(text, {"<text class=\"pele-value\" x=\"", num(x + b.w - SIDE - 2.0), "\" y=\"", num(baseline + valueSize * 0.35), "\" font-size=\"", num(tiny), "\" text-anchor=\"end\"", (!inkAttr.empty() ? inkAttr : " fill=\"var(--_m)\""), style.text, ">", esc(value), "</text>"});
                 }
             }
             std::string tint = setsFill(style.shape) ? "" : " fill-opacity=\"0.12\"";
             std::string shape = b.headed
-                ? (rect + corners(tint + " stroke=\"" + color + "\"" + style.shape, b) + "/>")
-                : ("<rect x=\"" + num(x) + "\" y=\"" + num(y) + "\" width=\"" + num(b.w) + "\" height=\"" + num(b.h) + "\" fill=\"none\"/>");
-            sections += "<g class=\"pele-node pele-section" + classNames(node.classSelector) + "\" " + group + tooltip(drawn) + shape + text + "</g>";
+                ? Pele::cat({rect, corners(Pele::cat({tint, " stroke=\"", color, "\"", style.shape}),  b), "/>"})
+                : Pele::cat({"<rect x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(b.w), "\" height=\"", num(b.h), "\" fill=\"none\"/>"});
+            Pele::appendCat(sections, {"<g class=\"pele-node pele-section", classNames(node.classSelector), "\" ", group, tooltip(drawn), shape, text, "</g>"});
             continue;
         }
 
@@ -925,22 +923,20 @@ inline Rendered renderTreemapModel(const TreemapModel& model, const Config& conf
             if (!value.empty() && lines <= b.h - 4.0 && measurer.width(value, valueSize, textStyle) <= room) {
                 double first = cy - lines / 2.0 + (label->size * LINE) / 2.0;
                 double second = cy + lines / 2.0 - (valueSize * LINE) / 2.0;
-                text =
-                    "<text x=\"" + cx + "\" y=\"" + num(first + label->size * 0.35) + "\" font-size=\"" + num(label->size) + "\"" + inkAttr + style.text + ">" + esc(label->text) + "</text>" +
-                    "<text class=\"pele-value\" x=\"" + cx + "\" y=\"" + num(second + valueSize * 0.35) + "\" font-size=\"" + num(valueSize) + "\"" + inkAttr + style.text + ">" + esc(value) + "</text>";
+                text = Pele::cat({"<text x=\"", cx, "\" y=\"", num(first + label->size * 0.35), "\" font-size=\"", num(label->size), "\"", inkAttr, style.text, ">", esc(label->text), "</text>", "<text class=\"pele-value\" x=\"", cx, "\" y=\"", num(second + valueSize * 0.35), "\" font-size=\"", num(valueSize), "\"", inkAttr, style.text, ">", esc(value), "</text>"});
             } else {
-                text = "<text x=\"" + cx + "\" y=\"" + num(cy + label->size * 0.35) + "\" font-size=\"" + num(label->size) + "\"" + inkAttr + style.text + ">" + esc(label->text) + "</text>";
+                text = Pele::cat({"<text x=\"", cx, "\" y=\"", num(cy + label->size * 0.35), "\" font-size=\"", num(label->size), "\"", inkAttr, style.text, ">", esc(label->text), "</text>"});
             }
         }
-        leaves += "<g class=\"pele-node pele-leaf" + classNames(node.classSelector) + "\" " + group + tooltip(drawnLeaf) + rect + corners(style.shape, b) + "/>" + text + "</g>";
+        Pele::appendCat(leaves, {"<g class=\"pele-node pele-leaf", classNames(node.classSelector), "\" ", group, tooltip(drawnLeaf), rect, corners(style.shape, b), "/>", text, "</g>"});
     }
 
     double totalWidth = std::ceil(std::max(width, title.width) + 2.0 * pad);
     double totalHeight = std::ceil(height + titleHeight + 2.0 * pad);
     std::string content =
         labelSvg(title, totalWidth / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        (!sections.empty() ? ("<g class=\"pele-sections\" font-size=\"" + num(small) + "\">" + sections + "</g>") : "") +
-        (!leaves.empty() ? ("<g class=\"pele-leaves\" text-anchor=\"middle\" fill=\"var(--_bg)\">" + leaves + "</g>") : "");
+        (!sections.empty() ? Pele::cat({"<g class=\"pele-sections\" font-size=\"", num(small), "\">", sections, "</g>"}) : "") +
+        (!leaves.empty() ? Pele::cat({"<g class=\"pele-leaves\" text-anchor=\"middle\" fill=\"var(--_bg)\">", leaves, "</g>"}) : "");
 
     return {
         svgDocument("treemap", totalWidth, totalHeight, size, options, model, content),

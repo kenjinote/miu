@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.42": {
+        "ja-jp": """miu v1.0.42 リリースノート
+⚡ 検索・置換・ハイライトの超高速化（最大 605 倍）、EXEサイズ 15.3% 削減、OSプロセス保護強化
+
+・検索・一括置換・シンタックスハイライトの超高速化:
+  AVX2 先頭・末尾同時照合 SIMD 検索により 32MB 文書の前方検索を 245 倍・後方検索を 605 倍高速化し、O(N+M) 線形一括置換（323 倍高速化）、フレーム毎のヒープ確保をゼロ化した高速シンタックスハイライト（22.7 倍高速化）＆描画スクラッチバッファ、Pele 図表エンジンの高速化（1.34 倍）を実装しました。
+・EXEサイズの大幅削減（-788.5 KB / -15.3% 軽量化）:
+  Hot/Cold 最適化分離、1,107 関数の noexcept 化、lib/ced.lib の最小サイズ再構築、/OPT:ICF=5 等により実行ファイルを 4.35 MB へ大幅圧縮しました。
+・セキュリティリスク低減:
+  OS プロセス緩和策（PreferSystem32Images ＆ DisableExtensionPoints）、ヒープ破損時即時終了保護、正規表現 ReDoS 事前検証ガード、vcpkg 自動リンク遮断を実装しました。""",
+
+        "en-us": """miu v1.0.42 Release Notes
+⚡ Up to 605x Faster Search/Replace, 15.3% Smaller EXE Size & OS Process Mitigation Hardening
+
+- Massive Search, Replace & Syntax Highlighting Speedups:
+  AVX2 first+last-char SIMD search accelerates 32MB forward search by 245x and backward search by 605x; added O(N+M) linear Replace All (323x faster), zero-allocation deterministic syntax highlighting scanner (22.7x faster), persistent render scratch buffers, and 1.34x faster Pele diagram rendering.
+- 15.3% Smaller Executable (-788.5 KB Reduction):
+  Shrank miu.exe from 5,148 KB to 4,359.5 KB via Hot/Cold pragma optimization, 1,107 noexcept annotations (-41.8% .pdata), rebuilt compact ced.lib (-28.9%), and /OPT:ICF=5 linker compression.
+- Enhanced Security & Process Hardening:
+  Enabled OS Process Mitigation Policies (PreferSystem32Images & DisableExtensionPoints), HeapEnableTerminationOnCorruption, user regex ReDoS protection guard, and vcpkg auto-link isolation.""",
+
+        "zh-hans": """miu v1.0.42 更新日志
+⚡ 搜索与替换最高提速 605 倍、EXE 体积缩减 15.3% 及系统级安全加固
+
+- 搜索、批量替换与语法高亮极速优化：
+  采用 AVX2 首尾字符同步 SIMD 搜索，32MB 文档正向搜索提速 245 倍、反向搜索提速 605 倍；引入 O(N+M) 线性批量替换（提速 323 倍）、零堆分配确定性语法高亮扫描器（提速 22.7 倍）、持久化渲染缓冲池及 Pele 图表引擎提速（1.34 倍）。
+- 执行文件体积大幅缩减（减少 788.5 KB / -15.3%）：
+  通过冷热代码分离优化、1,107 个函数 noexcept 标注（异常表缩减 41.8%）、最小化重编 ced.lib 及 /OPT:ICF=5 链接压缩，将体积精简至 4.35 MB。
+- 系统级安全风险降低：
+  启用 Windows 进程缓解策略（PreferSystem32Images 与 DisableExtensionPoints）、堆损坏即时终止保护、正则表达式 ReDoS 预检防护及 vcpkg 自动链接隔离。""",
+
+        "ko": """miu v1.0.42 릴리스 노트
+⚡ 검색·치환 최대 605배 초고속화, EXE 크기 15.3% 경량화 및 OS 프로세스 보안 강화
+
+- 검색, 일괄 치환 및 구문 강조 초고속화:
+  AVX2 첫/끝 문자 동시 SIMD 검색으로 32MB 문서 전방 검색 245배·후방 검색 605배 고속화, O(N+M) 선형 모두 바꾸기(323배 고속화), 프레임당 힙 할당 제로 구문 강조 스캐너(22.7배 고속화) 및 렌더링 스크래치 버퍼, Pele 다이어그램 엔진 고속화(1.34배)를 구현했습니다.
+- 실행 파일 크기 대폭 축소 (-788.5 KB / -15.3% 절감):
+  Hot/Cold 최적화 분리, 1,107개 함수 noexcept 적용(.pdata 41.8% 감소), ced.lib 경량 리빌드 및 /OPT:ICF=5 압축으로 실행 파일을 4.35 MB로 경량화했습니다.
+- 보안 위험 저감 및 다중 방어 강화:
+  OS 프로세스 완화 정책(PreferSystem32Images 및 DisableExtensionPoints), 힙 손상 시 즉시 종료 보호, 정규식 ReDoS 사전 차단 가드 및 vcpkg 자동 링크 차단을 적용했습니다."""
+    },
     "1.0.41": {
         "ja-jp": """miu v1.0.41 リリースノート
 🎯 本家 Pele 100% 完全互換エンジン・エディタ＆プレビュー超高速化・セキュリティ強化

@@ -23,7 +23,7 @@ struct KanbanModel : public DiagramMeta {
     std::vector<KanbanSection> sections;
 };
 
-inline bool yamlTruthy(const YamlValue* v) {
+inline bool yamlTruthy(const YamlValue* v) noexcept {
     if (!v || v->isNull()) return false;
     if (v->isBool()) return v->bVal;
     if (v->isNumber()) return v->nVal != 0.0 && !std::isnan(v->nVal);
@@ -51,13 +51,13 @@ public:
             try {
                 doc = parseYaml(yaml);
             } catch (const std::exception& err) {
-                throw PeleError("Metadata of \"" + node.id + "\" is not valid YAML. " + err.what(), "syntax", "kanban");
+                throw PeleError(Pele::cat({"Metadata of \"", node.id, "\" is not valid YAML. ", err.what()}),  "syntax",  "kanban");
             }
             if (doc.isMap()) {
                 const auto* sh = doc.get("shape");
                 std::string shape = yamlTruthy(sh) ? sh->asString() : "";
                 if (shape != toLowerAscii(shape) || shape.find('_') != std::string::npos) {
-                    throw PeleError("No such shape: " + shape + ". Shape names should be lowercase.", "semantic", "kanban");
+                    throw PeleError(Pele::cat({"No such shape: ", shape, ". Shape names should be lowercase."}),  "semantic",  "kanban");
                 }
                 if (const auto* v = doc.get("label"); yamlTruthy(v)) node.label = v->asString();
                 if (const auto* v = doc.get("icon"); yamlTruthy(v)) node.icon = v->asString();
@@ -68,7 +68,7 @@ public:
         }
 
         if (hasMisplaced) {
-            throw PeleError("Items without section detected, found section (\"" + misplacedLabel + "\")", "semantic", "kanban");
+            throw PeleError(Pele::cat({"Items without section detected, found section (\"", misplacedLabel, "\")"}),  "semantic",  "kanban");
         }
         if (sections.empty()) sectionLevel = level;
         hasLast = true;
@@ -106,15 +106,15 @@ constexpr double CARD_GAP = 8.0;
 constexpr double META_GAP = 4.0;
 constexpr double ICON_GAP = 6.0;
 
-inline std::string priorityStroke(const std::string& p) {
-    if (p == "very high") return "stroke=\"" + CRITICAL + "\"";
-    if (p == "high") return "stroke=\"" + CRITICAL + "\" opacity=\"0.5\"";
+inline std::string priorityStroke(const std::string& p) noexcept {
+    if (p == "very high") return Pele::cat({"stroke=\"", CRITICAL, "\""});
+    if (p == "high") return Pele::cat({"stroke=\"", CRITICAL, "\" opacity=\"0.5\""});
     if (p == "low") return "stroke=\"var(--_m)\" opacity=\"0.5\"";
     if (p == "very low") return "stroke=\"var(--_m)\"";
     return "";
 }
 
-inline Label fitKanbanLabel(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double max, int base = 0) {
+inline Label fitKanbanLabel(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
     Label label = layoutLabel(raw, markdown, measurer, size, max, base);
     if (label.width <= max) return label;
     std::vector<std::vector<Span>> lines;
@@ -184,13 +184,13 @@ inline Label fitKanbanLabel(const std::string& raw, bool markdown, const TextMea
     return label.hasHeights ? withHeights(std::move(fitted)) : fitted;
 }
 
-inline std::string textBlock(const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons, bool end = false) {
+inline std::string textBlock(const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons, bool end = false) noexcept {
     std::string out;
     for (size_t i = 0; i < label.lines.size(); i++) {
         const auto& line = label.lines[i];
         double cy = y + lineMiddle(label, i);
         if (line.size() == 1 && !line[0].hasIcon && !line[0].hasMath && (line[0].style & (Style::Sub | Style::Sup | Style::Underline)) == 0) {
-            out += "<text" + textStyle(attrs, line[0].style) + " x=\"" + num(x) + "\" y=\"" + num(cy + label.size * 0.35) + "\"" + (end ? " text-anchor=\"end\"" : "") + ">" + esc(line[0].text) + "</text>";
+            Pele::appendCat(out, {"<text", textStyle(attrs, line[0].style), " x=\"", num(x), "\" y=\"", num(cy + label.size * 0.35), "\"", (end ? " text-anchor=\"end\"" : ""), ">", esc(line[0].text), "</text>"});
         } else {
             double width = label.widths[i];
             out += labelSvg(labelLine(label, i), x + (end ? -width : width) / 2.0, cy, attrs, icons);
@@ -199,7 +199,7 @@ inline std::string textBlock(const Label& label, double x, double y, const std::
     return out;
 }
 
-inline double kanbanTitleRoom(const RenderOptions& options) {
+inline double kanbanTitleRoom(const RenderOptions& options) noexcept {
     double available = options.maxWidth;
     return available > 0.0 ? std::max(80.0, available - 2.0 * options.padding) : 4000.0;
 }
@@ -213,7 +213,7 @@ struct KanbanCard {
     double height = 0.0;
 };
 
-inline Rendered renderKanbanModel(const KanbanModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderKanbanModel(const KanbanModel& model, const Config& config, const RenderOptions& options) noexcept {
     double size = options.fontSize;
     double small = std::round(size * 0.875);
     double line = std::round(size * 1.5);
@@ -341,9 +341,9 @@ inline Rendered renderKanbanModel(const KanbanModel& model, const Config& config
             const auto& item = *card.item;
             std::string priority = toLowerAscii(trimStr(item.priority));
             std::string color = priorityStroke(priority);
-            std::string inner = "<rect width=\"" + num(cardWidth) + "\" height=\"" + num(card.height) + "\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"" + ROUNDED + "/>";
+            std::string inner = Pele::cat({"<rect width=\"", num(cardWidth), "\" height=\"", num(card.height), "\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"", ROUNDED, "/>"});
             if (!color.empty()) {
-                inner += "<path class=\"pele-priority\" d=\"M2.5,5V" + num(card.height - 5.0) + "\" fill=\"none\" " + color + " stroke-width=\"3\" stroke-linecap=\"round\"/>";
+                Pele::appendCat(inner, {"<path class=\"pele-priority\" d=\"M2.5,5V", num(card.height - 5.0), "\" fill=\"none\" ", color, " stroke-width=\"3\" stroke-linecap=\"round\"/>"});
             }
             inner += textBlock(card.label, CARD_PAD, CARD_PAD, " class=\"pele-label\"", icons);
             if (hasIcon(item.icon)) {
@@ -364,10 +364,7 @@ inline Rendered renderKanbanModel(const KanbanModel& model, const Config& config
                 if (href.empty()) {
                     inner += textBlock(card.ticket, CARD_PAD, top, " class=\"pele-ticket\" fill=\"var(--_m)\"", icons);
                 } else {
-                    inner +=
-                        "<a href=\"" + esc(href) + "\" target=\"_blank\"" + relAttr(options) + ">" +
-                        textBlock(card.ticket, CARD_PAD, top, " class=\"pele-ticket\" fill=\"var(--_c)\"", icons) +
-                        "</a>";
+                    Pele::appendCat(inner, {"<a href=\"", esc(href), "\" target=\"_blank\"", relAttr(options), ">", textBlock(card.ticket, CARD_PAD, top, " class=\"pele-ticket\" fill=\"var(--_c)\"", icons), "</a>"});
                     links.push_back({item.id, href, false});
                 }
             }
@@ -381,17 +378,12 @@ inline Rendered renderKanbanModel(const KanbanModel& model, const Config& config
                     true
                 );
             }
-            std::string priClass = color.empty() ? "" : (" pele-priority-" + replaceAllStr(priority, " ", "-"));
-            body +=
-                "<g class=\"pele-node pele-card" + priClass + classNames(item.cssClasses) + "\" data-id=\"" + escText(item.id) +
-                "\" transform=\"translate(" + num(COLUMN_PAD) + "," + num(y) + ")\" font-size=\"" + num(small) + "\">" + inner + "</g>";
+            std::string priClass = color.empty() ? "" : Pele::cat({" pele-priority-", replaceAllStr(priority, " ", "-")});
+            Pele::appendCat(body, {"<g class=\"pele-node pele-card", priClass, classNames(item.cssClasses), "\" data-id=\"", escText(item.id), "\" transform=\"translate(", num(COLUMN_PAD), ",", num(y), ")\" font-size=\"", num(small), "\">", inner, "</g>"});
             y += card.height + CARD_GAP;
         }
 
-        out +=
-            "<g class=\"pele-cluster pele-column" + classNames(section.cssClasses) + "\" data-id=\"" + escText(section.id) +
-            "\" transform=\"translate(" + num(left + static_cast<double>(index % static_cast<size_t>(perRow)) * (columnWidth + COLUMN_GAP)) + "," +
-            num(pad + titleHeight + rowTops[row]) + ")\">" + body + "</g>";
+        Pele::appendCat(out, {"<g class=\"pele-cluster pele-column", classNames(section.cssClasses), "\" data-id=\"", escText(section.id), "\" transform=\"translate(", num(left + static_cast<double>(index % static_cast<size_t>(perRow)) * (columnWidth + COLUMN_GAP)), ",", num(pad + titleHeight + rowTops[row]), ")\">", body, "</g>"});
     }
 
     double totalWidth = std::ceil(width + 2.0 * pad);
@@ -421,7 +413,7 @@ inline Rendered renderKanban(const std::string& source, const Config& config, co
 
 inline Rendered renderKanban(const std::string& source, const RenderOptions& options = {}) {
     auto pre = preprocess(source);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     RenderOptions opts = options;
     if (!opts.hasResponsive) {
         const auto* section = pre.config.get("kanban");

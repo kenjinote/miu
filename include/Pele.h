@@ -1,4 +1,7 @@
 ﻿#pragma once
+#ifdef _MSC_VER
+#pragma optimize("s", on)
+#endif
 // Pele C++ Native Port - 1:1 Zero-dependency Mermaid-to-SVG rendering engine
 // Faithfully ported from Pele (https://pele.run / MIT License)
 
@@ -250,3 +253,6 @@ inline RenderResult render(const std::string& text, const RenderOptions& options
 #pragma pop_macro("small")
 #pragma pop_macro("max")
 #pragma pop_macro("min")
+#ifdef _MSC_VER
+#pragma optimize("", on)
+#endif

@@ -31,7 +31,7 @@ struct SankeyLink {
 struct SankeyModel : DiagramMeta {
   std::vector<SankeyNode> nodes;
   std::vector<SankeyLink> links;
-  std::unordered_map<std::string, int> lookup;
+  Pele::FlatMap<std::string, int> lookup;
 
   int findOrCreateNode(const std::string& id) {
     auto it = lookup.find(id);
@@ -65,14 +65,14 @@ struct Tokens {
   std::vector<int> starts;
 };
 
-inline bool isTextData(uint32_t c) {
+inline bool isTextData(uint32_t c) noexcept {
   return (c >= 32 && c <= 126 && c != 34 && c != 44) ||
          (c >= 0xa0 && c <= 0xd7ff) ||
          (c >= 0xe000 && c <= 0xfffd) ||
          (c >= 0x10000 && c <= 0x10ffff);
 }
 
-inline bool isBlankU16(uint16_t c) {
+inline bool isBlankU16(uint16_t c) noexcept {
   if (c == 10 || c == 13) return false;
   if (c < 128) return c == 32 || c == 9 || c == 11 || c == 12;
   return c == 0xa0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200a) ||
@@ -80,11 +80,11 @@ inline bool isBlankU16(uint16_t c) {
          c == 0x3000 || c == 0xfeff;
 }
 
-inline bool isJsTrimU16(uint16_t c) {
+inline bool isJsTrimU16(uint16_t c) noexcept {
   return c == 10 || c == 13 || isBlankU16(c);
 }
 
-inline std::vector<uint16_t> trimU16(const std::vector<uint16_t>& s) {
+inline std::vector<uint16_t> trimU16(const std::vector<uint16_t>& s) noexcept {
   size_t a = 0;
   size_t b = s.size();
   while (a < b && isJsTrimU16(s[a])) a++;
@@ -92,12 +92,12 @@ inline std::vector<uint16_t> trimU16(const std::vector<uint16_t>& s) {
   return std::vector<uint16_t>(s.begin() + static_cast<ptrdiff_t>(a), s.begin() + static_cast<ptrdiff_t>(b));
 }
 
-inline std::string trimJsStr(const std::string& s) {
+inline std::string trimJsStr(const std::string& s) noexcept {
   auto trimmed = trimU16(toUtf16(s));
   return fromUtf16(trimmed.data(), trimmed.size());
 }
 
-inline std::vector<uint16_t> prepareTextForParsingU16(const std::string& text) {
+inline std::vector<uint16_t> prepareTextForParsingU16(const std::string& text) noexcept {
   std::vector<uint16_t> u = toUtf16(text);
   size_t end = u.size();
   while (end > 0 && isBlankU16(u[end - 1])) end--;
@@ -146,7 +146,7 @@ inline std::vector<uint16_t> prepareTextForParsingU16(const std::string& text) {
   return trimU16(collapsed);
 }
 
-inline uint32_t codePointAtU16(const std::vector<uint16_t>& src, size_t q) {
+inline uint32_t codePointAtU16(const std::vector<uint16_t>& src, size_t q) noexcept {
   uint16_t c1 = src[q];
   if (c1 >= 0xD800 && c1 <= 0xDBFF && q + 1 < src.size()) {
     uint16_t c2 = src[q + 1];
@@ -252,7 +252,7 @@ inline Tokens tokenize(const std::vector<uint16_t>& src) {
   return out;
 }
 
-inline double jsParseFloat(const std::string& raw) {
+inline double jsParseFloat(const std::string& raw) noexcept {
   std::string s = trimJsStr(raw);
   if (s.empty()) return std::numeric_limits<double>::quiet_NaN();
   if (s.size() >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
@@ -347,7 +347,7 @@ struct SankeyLayout {
 };
 
 template <typename Compare>
-inline void sortSmallOrStd(std::vector<int>& list, Compare compare) {
+inline void sortSmallOrStd(std::vector<int>& list, Compare compare) noexcept {
   if (list.size() > 8) {
     std::stable_sort(list.begin(), list.end(), [&](int a, int b) {
       return compare(a, b) < 0;
@@ -365,7 +365,7 @@ inline void sortSmallOrStd(std::vector<int>& list, Compare compare) {
   }
 }
 
-inline SankeyLayout layoutSankey(const SankeyModel& model, const LayoutOptions& options) {
+inline SankeyLayout layoutSankey(const SankeyModel& model, const LayoutOptions& options) noexcept {
   constexpr int PASSES = 6;
   int n = static_cast<int>(model.nodes.size());
   std::vector<PlacedLink> links;
@@ -607,7 +607,7 @@ inline SankeyLayout layoutSankey(const SankeyModel& model, const LayoutOptions& 
   return {nodes, links};
 }
 
-inline std::string u32ToBase36(uint32_t v) {
+inline std::string u32ToBase36(uint32_t v) noexcept {
   if (v == 0) return "0";
   static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
   std::string out;
@@ -619,7 +619,7 @@ inline std::string u32ToBase36(uint32_t v) {
   return out;
 }
 
-inline std::string contentId(const std::string& text) {
+inline std::string contentId(const std::string& text) noexcept {
   std::vector<uint16_t> u = toUtf16(text);
   uint32_t a = 0x811c9dc5u;
   int32_t b = 5381;
@@ -631,7 +631,7 @@ inline std::string contentId(const std::string& text) {
   return u32ToBase36(a) + u32ToBase36(static_cast<uint32_t>(b));
 }
 
-inline double numberOption(const Config& conf, const std::string& key, double fallback, double minVal, double maxVal) {
+inline double numberOption(const Config& conf, const std::string& key, double fallback, double minVal, double maxVal) noexcept {
   if (!conf.isMap()) return fallback;
   const Config* v = conf.get(key);
   if (v && v->isNumber() && v->nVal >= minVal) {
@@ -640,7 +640,7 @@ inline double numberOption(const Config& conf, const std::string& key, double fa
   return fallback;
 }
 
-inline std::string textOption(const Config& conf, const std::string& key) {
+inline std::string textOption(const Config& conf, const std::string& key) noexcept {
   if (!conf.isMap()) return "";
   const Config* v = conf.get(key);
   if (!v) return "";
@@ -649,23 +649,23 @@ inline std::string textOption(const Config& conf, const std::string& key) {
   return "";
 }
 
-inline double rounded(double value) {
+inline double rounded(double value) noexcept {
   return std::abs(value) < 1e15 ? std::floor(value * 100.0 + 0.5) / 100.0 : value;
 }
 
-inline std::string fillStyle(const Config& color) {
+inline std::string fillStyle(const Config& color) noexcept {
   if (!color.isString()) return "";
-  return resolveStyle({"fill:" + color.sVal}).shape;
+  return resolveStyle({Pele::cat({"fill:", color.sVal})}).shape;
 }
 
-inline double sankeyTitleRoom(const RenderOptions& options) {
+inline double sankeyTitleRoom(const RenderOptions& options) noexcept {
   double pad = options.hasPadding ? options.padding : 8.0;
   double maxW = options.maxWidth;
   return maxW > 0.0 ? std::max(80.0, maxW - 2.0 * pad) : 4000.0;
 }
 
 template <typename DrawFn>
-inline Rendered fitWidth(const RenderOptions& options, double natural, double least, DrawFn&& draw) {
+inline Rendered fitWidth(const RenderOptions& options, double natural, double least, DrawFn&& draw) noexcept {
   Rendered result = draw(natural);
   double available = options.maxWidth;
   if (!(available > 0.0) || result.width <= available) return result;
@@ -678,7 +678,7 @@ inline Rendered fitWidth(const RenderOptions& options, double natural, double le
   return result;
 }
 
-inline bool isWordOrDashId(const std::string& s) {
+inline bool isWordOrDashId(const std::string& s) noexcept {
   if (s.empty()) return false;
   for (unsigned char c : s) {
     bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
@@ -687,7 +687,7 @@ inline bool isWordOrDashId(const std::string& s) {
   return true;
 }
 
-inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderOptions& options, double chartWidth, double natural) {
+inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderOptions& options, double chartWidth, double natural) noexcept {
   constexpr double LABEL_GAP = 6.0;
   constexpr double VALUE_GAP = 15.0;
   constexpr double LABEL_ROOM = 1.8;
@@ -726,7 +726,7 @@ inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderO
     });
   };
   SankeyLayout layout = lay(small);
-  std::unordered_map<int, int> rows;
+  Pele::FlatMap<int, int> rows;
   int fullest = 1;
   for (const auto& node : layout.nodes) {
     int count = ++rows[node.layer];
@@ -741,7 +741,7 @@ inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderO
   const auto& links = layout.links;
   double lineHeight = small * 1.5;
 
-  std::unordered_map<std::string, std::string> custom;
+  Pele::FlatMap<std::string, std::string> custom;
   const Config* nc = conf.isMap() ? conf.get("nodeColors") : nullptr;
   if (nc && nc->isMap()) {
     for (const auto& kv : nc->mVal) {
@@ -792,7 +792,7 @@ inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderO
     const auto& node = nodes[i];
     std::string name = decodeEntities(model.nodes[i].id);
     std::string value = showValues ? (prefix + num(rounded(node.value)) + suffix) : "";
-    double width = measurer.width(!value.empty() ? (name + " " + value) : name, small, 0);
+    double width = measurer.width(!value.empty() ? Pele::cat({name, " ", value}) : name, small, 0);
     bool after = outlined ? (node.layer >= central) : (node.x < chartWidth / 2.0);
     double x = after ? (node.x + nodeWidth + LABEL_GAP) : (node.x - LABEL_GAP);
     double y = node.y + node.height / 2.0;
@@ -820,7 +820,7 @@ inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderO
     const std::string& id = model.nodes[i].id;
     std::string name = decodeEntities(id);
     double height = std::max(node.height, 1.0);
-    nodesOut += "<rect class=\"pele-sankey-node\" data-id=\"" + escText(id) + "\" x=\"" + num(node.x) + "\" y=\"" + num(node.y) + "\" width=\"" + num(nodeWidth) + "\" height=\"" + num(height) + "\" rx=\"" + num(std::min(2.0, height / 2.0)) + "\" fill=\"" + seriesColor(static_cast<int>(i)) + "\"" + nodeStyle(static_cast<int>(i)) + "/>";
+    Pele::appendCat(nodesOut, {"<rect class=\"pele-sankey-node\" data-id=\"", escText(id), "\" x=\"", num(node.x), "\" y=\"", num(node.y), "\" width=\"", num(nodeWidth), "\" height=\"", num(height), "\" rx=\"", num(std::min(2.0, height / 2.0)), "\" fill=\"", seriesColor(static_cast<int>(i)), "\"", nodeStyle(static_cast<int>(i)), "/>"});
 
     auto& label = labels[i];
     auto overlapsLabel = [&](double left, double y) -> bool {
@@ -881,20 +881,18 @@ inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderO
     }
 
     double x = label.after ? (node.x + nodeWidth + LABEL_GAP) : (node.x - LABEL_GAP);
-    std::string position = " x=\"" + num(x) + "\" y=\"" + num(label.y + small * 0.35) + "\" text-anchor=\"" + (label.after ? "start" : "end") + "\"";
-    std::string text = esc(name) + (!label.value.empty() ? (" <tspan class=\"pele-sankey-value\" fill=\"var(--_m)\">" + esc(label.value) + "</tspan>") : "");
-    labelsOut += "<g class=\"pele-label\" data-id=\"" + escText(id) + "\">" +
-      (outlined
-        ? ("<text" + position + " fill=\"none\" stroke=\"var(--_bg)\" stroke-width=\"3\" stroke-linejoin=\"round\">" + esc(name) + (!label.value.empty() ? (" " + esc(label.value)) : "") + "</text>")
-        : "") +
-      "<text" + position + ">" + text + "</text></g>";
+    std::string position = Pele::cat({" x=\"", num(x), "\" y=\"", num(label.y + small * 0.35), "\" text-anchor=\"", (label.after ? "start" : "end"), "\""});
+    std::string text = esc(name) + (!label.value.empty() ? Pele::cat({" <tspan class=\"pele-sankey-value\" fill=\"var(--_m)\">", esc(label.value), "</tspan>"}) : "");
+    Pele::appendCat(labelsOut, {"<g class=\"pele-label\" data-id=\"", escText(id), "\">", (outlined
+        ? Pele::cat({"<text", position, " fill=\"none\" stroke=\"var(--_bg)\" stroke-width=\"3\" stroke-linejoin=\"round\">", esc(name), (!label.value.empty() ? Pele::cat({" ", esc(label.value)}) : ""), "</text>"})
+        : ""), "<text", position, ">", text, "</text></g>"});
   }
 
   std::string fixed = (linkColor == "gradient" || linkColor == "source" || linkColor == "target") ? "" : fillStyle(Config::makeString(linkColor));
   std::string idPrefix = "";
   bool gradient = (linkColor == "gradient") && isWordOrDashId(idPrefix);
   std::vector<std::string> gradientOrder;
-  std::unordered_map<std::string, std::string> gradients;
+  Pele::FlatMap<std::string, std::string> gradients;
   std::string linksOut;
   for (const auto& link : links) {
     int end = (linkColor == "target") ? link.target : link.source;
@@ -902,26 +900,20 @@ inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderO
     double x0 = nodes[link.source].x + nodeWidth;
     double x1 = nodes[link.target].x;
     std::string endStyle = !fixed.empty() ? fixed : nodeStyle(end);
-    std::string paint = "fill=\"" + seriesColor(end) + "\"" + endStyle;
+    std::string paint = Pele::cat({"fill=\"", seriesColor(end), "\"", endStyle});
     if (gradient) {
-      std::string stops = "x1=\"" + num(x0) + "\" x2=\"" + num(x1) + "\"><stop offset=\"0\" stop-color=\"" + nodeColor(link.source) + "\"/><stop offset=\"1\" stop-color=\"" + nodeColor(link.target) + "\"/>";
-      std::string id = idPrefix + "-sankey-" + contentId(stops);
+      std::string stops = Pele::cat({"x1=\"", num(x0), "\" x2=\"", num(x1), "\"><stop offset=\"0\" stop-color=\"", nodeColor(link.source), "\"/><stop offset=\"1\" stop-color=\"", nodeColor(link.target), "\"/>"});
+      std::string id = Pele::cat({idPrefix, "-sankey-", contentId(stops)});
       if (gradients.find(id) == gradients.end()) {
         gradientOrder.push_back(id);
       }
       gradients[id] = "<linearGradient id=\"" + id + "\" gradientUnits=\"userSpaceOnUse\" " + stops + "</linearGradient>";
-      paint = "fill=\"url(#" + id + ") " + nodeColor(link.source) + "\"";
+      paint = Pele::cat({"fill=\"url(#", id, ") ", nodeColor(link.source), "\""});
     }
     std::string mid = num((x0 + x1) / 2.0);
     std::string from = escText(model.nodes[link.source].id);
     std::string to = escText(model.nodes[link.target].id);
-    linksOut +=
-      "<path class=\"pele-sankey-link\" data-id=\"" + from + "-&gt;" + to + "\" d=\"M" + num(x0) + "," + num(link.sourceY - half) +
-      "C" + mid + "," + num(link.sourceY - half) + " " + mid + "," + num(link.targetY - half) + " " + num(x1) + "," + num(link.targetY - half) +
-      "L" + num(x1) + "," + num(link.targetY + half) +
-      "C" + mid + "," + num(link.targetY + half) + " " + mid + "," + num(link.sourceY + half) + " " + num(x0) + "," + num(link.sourceY + half) +
-      "Z\" " + paint + ">" +
-      "<title>" + from + " \xE2\x86\x92 " + to + ": " + esc(prefix) + num(rounded(link.value)) + esc(suffix) + "</title></path>";
+    Pele::appendCat(linksOut, {"<path class=\"pele-sankey-link\" data-id=\"", from, "-&gt;", to, "\" d=\"M", num(x0), ",", num(link.sourceY - half), "C", mid, ",", num(link.sourceY - half), " ", mid, ",", num(link.targetY - half), " ", num(x1), ",", num(link.targetY - half), "L", num(x1), ",", num(link.targetY + half), "C", mid, ",", num(link.targetY + half), " ", mid, ",", num(link.sourceY + half), " ", num(x0), ",", num(link.sourceY + half), "Z\" ", paint, ">", "<title>", from, " \xE2\x86\x92 ", to, ": ", esc(prefix), num(rounded(link.value)), esc(suffix), "</title></path>"});
   }
 
   Label title = layoutLabel(model.title, false, measurer, size, sankeyTitleRoom(options), Style::Bold);
@@ -941,20 +933,13 @@ inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderO
     defsStr += "</defs>";
   }
 
-  std::string body =
-    labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-    "<g transform=\"translate(" + num(ox) + "," + num(oy) + ")\">" +
-    defsStr +
-    "<g class=\"pele-sankey-links\" fill-opacity=\"0.4\">" + linksOut + "</g>" +
-    "<g class=\"pele-sankey-nodes\">" + nodesOut + "</g>" +
-    "<g class=\"pele-labels\" font-size=\"" + num(small) + "\">" + labelsOut + "</g>" +
-    "</g>";
+  std::string body = Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), "<g transform=\"translate(", num(ox), ",", num(oy), ")\">", defsStr, "<g class=\"pele-sankey-links\" fill-opacity=\"0.4\">", linksOut, "</g>", "<g class=\"pele-sankey-nodes\">", nodesOut, "</g>", "<g class=\"pele-labels\" font-size=\"", num(small), "\">", labelsOut, "</g>", "</g>"});
 
   std::string svg = svgDocument("sankey", width, height, size, options, model, body);
   return {svg, width, height, {}};
 }
 
-inline Rendered renderSankeyModel(const SankeyModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderSankeyModel(const SankeyModel& model, const Config& config, const RenderOptions& options) noexcept {
   const Config emptyObj = Config::makeMap();
   const Config* sc = config.isMap() ? config.get("sankey") : nullptr;
   const Config& conf = (sc && sc->isMap()) ? *sc : emptyObj;

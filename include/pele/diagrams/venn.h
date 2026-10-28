@@ -27,7 +27,7 @@ struct VennStyle {
     std::vector<std::pair<std::string, std::string>> styles;
 };
 
-inline std::string normalizeText(const std::string& text) {
+inline std::string normalizeText(const std::string& text) noexcept {
     std::string trimmed = trimStr(text);
     if (trimmed.size() >= 2 && trimmed.front() == '"' && trimmed.back() == '"') {
         return trimmed.substr(1, trimmed.size() - 2);
@@ -35,7 +35,7 @@ inline std::string normalizeText(const std::string& text) {
     return trimmed;
 }
 
-inline std::vector<std::string> normalizeIds(const std::vector<std::string>& ids) {
+inline std::vector<std::string> normalizeIds(const std::vector<std::string>& ids) noexcept {
     std::vector<std::string> out;
     out.reserve(ids.size());
     for (const auto& id : ids) out.push_back(normalizeText(id));
@@ -48,7 +48,7 @@ public:
     std::vector<VennSubset> subsets;
     std::vector<VennText> textNodes;
     std::vector<VennStyle> styles;
-    std::unordered_set<std::string> known;
+    Pele::FlatSet<std::string> known;
     std::vector<std::string> current;
     bool hasCurrent = false;
     bool indent = false;
@@ -100,7 +100,7 @@ public:
                 if (i > 0) joined += ", ";
                 joined += unknown[i];
             }
-            throw PeleError("unknown set identifier: " + joined, "semantic", "venn");
+            throw PeleError(Pele::cat({"unknown set identifier: ", joined}),  "semantic",  "venn");
         }
     }
 
@@ -137,7 +137,7 @@ namespace T {
     };
 }
 
-inline const char* tokenName(int t) {
+inline const char* tokenName(int t) noexcept {
     static const char* NAMES[] = {
         "$end", "INVALID", "EOF", "NEWLINE", "VENN", "TITLE", "SET", "UNION",
         "TEXT", "INDENT_TEXT", "STYLE", "BRACKET_LABEL", "NUMERIC", "HEXCOLOR",
@@ -357,7 +357,7 @@ inline void parseVenn(const std::string& src, VennDb& db) {
 
     auto fail = [&](const std::string& expected) {
         if (peek() == T::ERROR) throw syntaxError("venn", src, lexer.start, "", true);
-        throw syntaxError("venn", src, lexer.start, "Expecting " + expected + ", got '" + tokenName(type) + "'");
+        throw syntaxError("venn",  src,  lexer.start, Pele::cat({"Expecting ", expected, ", got '", tokenName(type), "'"}));
     };
 
     auto take = [&]() -> std::string {
@@ -480,7 +480,7 @@ struct Spot {
 constexpr double VENN_PI = 3.14159265358979323846;
 constexpr double VENN_TAU = VENN_PI * 2.0;
 
-inline std::string jsonStrArray(const std::vector<std::string>& arr) {
+inline std::string jsonStrArray(const std::vector<std::string>& arr) noexcept {
     std::string out = "[";
     for (size_t i = 0; i < arr.size(); i++) {
         if (i > 0) out.push_back(',');
@@ -495,13 +495,13 @@ inline std::string jsonStrArray(const std::vector<std::string>& arr) {
     return out;
 }
 
-inline std::string keyOf(const std::vector<std::string>& ids) {
+inline std::string keyOf(const std::vector<std::string>& ids) noexcept {
     return ids.size() == 1 ? ids[0] : jsonStrArray(ids);
 }
 
-inline std::vector<VennSubset> ensurePairwiseSubsets(const std::vector<VennSubset>& subsets) {
-    std::unordered_set<std::string> present;
-    std::unordered_map<std::string, double> sizes;
+inline std::vector<VennSubset> ensurePairwiseSubsets(const std::vector<VennSubset>& subsets) noexcept {
+    Pele::FlatSet<std::string> present;
+    Pele::FlatMap<std::string, double> sizes;
     for (const auto& subset : subsets) {
         auto sorted = subset.sets;
         std::sort(sorted.begin(), sorted.end());
@@ -532,7 +532,7 @@ inline std::vector<VennSubset> ensurePairwiseSubsets(const std::vector<VennSubse
     return res;
 }
 
-inline double lensArea(double r1, double r2, double d) {
+inline double lensArea(double r1, double r2, double d) noexcept {
     if (d >= r1 + r2) return 0.0;
     double small = std::min(r1, r2);
     if (d <= std::abs(r1 - r2)) return VENN_PI * small * small;
@@ -542,7 +542,7 @@ inline double lensArea(double r1, double r2, double d) {
     return a1 + a2 - a3;
 }
 
-inline double distanceForOverlap(double r1, double r2, double area) {
+inline double distanceForOverlap(double r1, double r2, double area) noexcept {
     double low = std::abs(r1 - r2);
     double high = r1 + r2;
     if (!(area > 0.0)) return high;
@@ -556,7 +556,7 @@ inline double distanceForOverlap(double r1, double r2, double area) {
     return (low + high) / 2.0;
 }
 
-inline double circleMargin(const std::vector<Circle>& circles, const std::vector<int>& inside, const std::vector<int>& outside, double x, double y, double floor) {
+inline double circleMargin(const std::vector<Circle>& circles, const std::vector<int>& inside, const std::vector<int>& outside, double x, double y, double floor) noexcept {
     double best = std::numeric_limits<double>::infinity();
     for (int i : inside) {
         const auto& c = circles[i];
@@ -581,7 +581,7 @@ inline double circleMargin(const std::vector<Circle>& circles, const std::vector
     return best;
 }
 
-inline Spot findSpot(const std::vector<Circle>& circles, const std::vector<int>& inside, const std::vector<int>& outside) {
+inline Spot findSpot(const std::vector<Circle>& circles, const std::vector<int>& inside, const std::vector<int>& outside) noexcept {
     double cx = 0.0;
     double cy = 0.0;
     const Circle* smallest = &circles[inside[0]];
@@ -629,9 +629,9 @@ inline Spot findSpot(const std::vector<Circle>& circles, const std::vector<int>&
     return {x, y, best};
 }
 
-inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets) {
+inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets) noexcept {
     std::vector<std::string> sizeOrder;
-    std::unordered_map<std::string, double> sizes;
+    Pele::FlatMap<std::string, double> sizes;
     auto setSize = [&](const std::string& id, double val, bool onlyIfNew) {
         auto it = sizes.find(id);
         if (it == sizes.end()) {
@@ -648,7 +648,7 @@ inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets)
         if (subset.sets.size() == 1) setSize(subset.sets[0], subset.size, false);
     }
 
-    std::unordered_map<std::string, int> index;
+    Pele::FlatMap<std::string, int> index;
     std::vector<Circle> circles;
     double largest = 0.0;
     for (const auto& id : sizeOrder) {
@@ -666,14 +666,14 @@ inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets)
     int n = static_cast<int>(circles.size());
     if (n < 2) return circles;
 
-    std::unordered_map<int, double> overlaps;
+    Pele::FlatMap<int, double> overlaps;
     for (const auto& subset : ensurePairwiseSubsets(subsets)) {
         if (subset.sets.size() != 2) continue;
         int a = index[subset.sets[0]];
         int b = index[subset.sets[1]];
         if (a != b) overlaps[std::min(a, b) * n + std::max(a, b)] = subset.size;
     }
-    std::unordered_map<int, double> wanted;
+    Pele::FlatMap<int, double> wanted;
     for (const auto& [key, area] : overlaps) {
         wanted[key] = distanceForOverlap(circles[key / n].r, circles[key % n].r, area);
     }
@@ -694,7 +694,7 @@ inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets)
         double bc = distance(1, 2);
         bool triple = false;
         for (const auto& subset : subsets) {
-            std::unordered_set<std::string> uniq(subset.sets.begin(), subset.sets.end());
+            Pele::FlatSet<std::string> uniq(subset.sets.begin(), subset.sets.end());
             if (uniq.size() == 3) { triple = true; break; }
         }
         for (int attempt = 0; attempt < 40; attempt++) {
@@ -768,9 +768,9 @@ inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets)
     return circles;
 }
 
-inline std::string regionPath(const std::vector<Circle>& circles) {
+inline std::string regionPath(const std::vector<Circle>& circles) noexcept {
     auto whole = [](const Circle& c) -> std::string {
-        return "M" + num(c.x - c.r) + "," + num(c.y) + "A" + num(c.r) + "," + num(c.r) + " 0 1 1 " + num(c.x + c.r) + "," + num(c.y) + "A" + num(c.r) + "," + num(c.r) + " 0 1 1 " + num(c.x - c.r) + "," + num(c.y) + "Z";
+        return Pele::cat({"M", num(c.x - c.r), ",", num(c.y), "A", num(c.r), ",", num(c.r), " 0 1 1 ", num(c.x + c.r), ",", num(c.y), "A", num(c.r), ",", num(c.r), " 0 1 1 ", num(c.x - c.r), ",", num(c.y), "Z"});
     };
     if (circles.size() == 1) return whole(circles[0]);
     auto within = [&](double x, double y, size_t skip, size_t other) -> bool {
@@ -848,17 +848,17 @@ inline std::string regionPath(const std::vector<Circle>& circles) {
                 large = sweep > VENN_PI ? 1 : 0;
             }
         }
-        if (!arc) d += "L" + num(to.x) + "," + num(to.y);
+        if (!arc) Pele::appendCat(d, {"L", num(to.x), ",", num(to.y)});
         else d += "A" + num(arc->r) + "," + num(arc->r) + " 0 " + std::to_string(large) + " 1 " + num(to.x) + "," + num(to.y);
     }
-    return d + "Z";
+    return Pele::cat({d, "Z"});
 }
 
 // ============================================================================
 // src/diagrams/venn/render.ts
 // ============================================================================
 
-inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, const RenderOptions& options) {
+inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, const RenderOptions& options) noexcept {
     constexpr double VENN_RADIUS = 100.0;
     constexpr double MAX_GROWTH = 1.6;
     const ResolvedStyle NO_STYLE = resolveStyle({});
@@ -870,7 +870,7 @@ inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, c
     double pad = options.padding;
 
     auto circles = layoutCircles(model.subsets);
-    std::unordered_map<std::string, int> index;
+    Pele::FlatMap<std::string, int> index;
     for (size_t i = 0; i < circles.size(); i++) index[circles[i].id] = static_cast<int>(i);
 
     std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> styles;
@@ -893,7 +893,7 @@ inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, c
         auto it = styles.find(key);
         if (it == styles.end()) return NO_STYLE;
         std::vector<std::string> list;
-        for (const auto& [prop, val] : it->second) list.push_back(prop + ":" + val);
+        for (const auto& [prop, val] : it->second) list.push_back(Pele::cat({prop, ":", val}));
         return resolveStyle(list);
     };
 
@@ -938,12 +938,12 @@ inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, c
     for (const auto& key : statedOrder) {
         const auto& subset = stated[key];
         std::vector<std::string> sets;
-        std::unordered_set<std::string> seenSets;
+        Pele::FlatSet<std::string> seenSets;
         for (const auto& s : subset.sets) {
             if (seenSets.insert(s).second) sets.push_back(s);
         }
         std::vector<int> inside;
-        std::unordered_set<int> within;
+        Pele::FlatSet<int> within;
         for (const auto& id : sets) {
             int idx = index[id];
             inside.push_back(idx);
@@ -1050,7 +1050,7 @@ inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, c
         std::string color = seriesColor(static_cast<int>(i));
         auto it = regions.find(c.id);
         const ResolvedStyle& style = (it != regions.end()) ? it->second.style : NO_STYLE;
-        sets += "<circle class=\"pele-venn-set\" data-id=\"" + escText(c.id) + "\" cx=\"" + num(c.x) + "\" cy=\"" + num(c.y) + "\" r=\"" + num(c.r) + "\" fill=\"" + color + "\" fill-opacity=\"0.2\" stroke=\"" + color + "\"" + style.shape + "/>";
+        Pele::appendCat(sets, {"<circle class=\"pele-venn-set\" data-id=\"", escText(c.id), "\" cx=\"", num(c.x), "\" cy=\"", num(c.y), "\" r=\"", num(c.r), "\" fill=\"", color, "\" fill-opacity=\"0.2\" stroke=\"", color, "\"", style.shape, "/>"});
     }
 
     std::vector<const Region*> painted;
@@ -1090,7 +1090,7 @@ inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, c
             for (int idx : region.inside) insideCircles.push_back(placed[idx]);
             std::string d = regionPath(insideCircles);
             if (!d.empty()) {
-                overlaps += "<path class=\"pele-venn-overlap\" data-id=\"" + id + "\" d=\"" + d + "\" fill=\"none\"" + region.style.shape + "/>";
+                Pele::appendCat(overlaps, {"<path class=\"pele-venn-overlap\" data-id=\"", id, "\" d=\"", d, "\" fill=\"none\"", region.style.shape, "/>"});
             }
         }
         double total = 0.0;
@@ -1104,26 +1104,21 @@ inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, c
             std::string own = !line.hasId ? region.style.text : styleOf(line.id).text;
             std::string color = ink(fill, own);
             std::string attrs = !line.hasId
-                ? (" class=\"pele-label\"" + (line.size == size ? std::string("") : (" font-size=\"" + num(line.size) + "\"")) + (!color.empty() ? (" fill=\"" + color + "\"") : std::string("")) + own)
-                : (" class=\"pele-venn-text\" data-id=\"" + escText(line.id) + "\" font-size=\"" + num(tiny) + "\" fill=\"" + (!color.empty() ? color : std::string("var(--_m)")) + "\"" + own);
+                ? Pele::cat({" class=\"pele-label\"", (line.size == size ? std::string("") : Pele::cat({" font-size=\"", num(line.size), "\""})), (!color.empty() ? Pele::cat({" fill=\"", color, "\""}) : std::string("")), own})
+                : Pele::cat({" class=\"pele-venn-text\" data-id=\"", escText(line.id), "\" font-size=\"", num(tiny), "\" fill=\"", (!color.empty() ? color : std::string("var(--_m)")), "\"", own});
             content += labelSvg(line.label, x, y + line.label.height / 2.0, attrs);
             y += line.label.height;
         }
-        labels += "<g class=\"pele-venn-region\" data-id=\"" + id + "\">" + content + "</g>";
+        Pele::appendCat(labels, {"<g class=\"pele-venn-region\" data-id=\"", id, "\">", content, "</g>"});
     }
 
     std::string svg = svgDocument(
-        "venn",
-        width,
-        height,
-        size,
-        options,
-        DiagramMeta{},
-        labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        "<g class=\"pele-venn-sets\">" + sets + "</g>" +
-        (!overlaps.empty() ? ("<g class=\"pele-venn-overlaps\">" + overlaps + "</g>") : "") +
-        (!labels.empty() ? ("<g class=\"pele-venn-labels\">" + labels + "</g>") : "")
-    );
+        "venn", 
+        width, 
+        height, 
+        size, 
+        options, 
+        DiagramMeta{}, Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), "<g class=\"pele-venn-sets\">", sets, "</g>", (!overlaps.empty() ? Pele::cat({"<g class=\"pele-venn-overlaps\">", overlaps, "</g>"}) : ""), (!labels.empty() ? Pele::cat({"<g class=\"pele-venn-labels\">", labels, "</g>"}) : "")}));
     return {svg, width, height, {}};
 }
 
@@ -1142,7 +1137,7 @@ inline Rendered renderVenn(const std::string& source, const Config& config, cons
 
 inline Rendered renderVenn(const std::string& raw, RenderOptions options = {}) {
     auto pre = preprocess(raw);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     const auto* section = pre.config.get("venn");
     bool fixed = (section && section->isMap() && section->get("useMaxWidth") && section->get("useMaxWidth")->isBool() && !section->get("useMaxWidth")->bVal);
     if (!options.hasResponsive) {

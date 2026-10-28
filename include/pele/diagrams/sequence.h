@@ -20,7 +20,7 @@
 
 namespace Pele::SequenceDiagram {
 
-inline std::string num(double value) {
+inline std::string num(double value) noexcept {
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
     bool neg = n < 0;
@@ -134,8 +134,8 @@ struct SeqActor {
     bool hasPrevActor = false;
     std::string nextActor;
     bool hasNextActor = false;
-    std::unordered_map<std::string, std::string> links;
-    std::unordered_map<std::string, std::string> properties;
+    Pele::FlatMap<std::string, std::string> links;
+    Pele::FlatMap<std::string, std::string> properties;
     std::string details;
     std::string type;
 };
@@ -271,7 +271,7 @@ enum class K {
     None
 };
 
-inline K kind(const std::string& term) {
+inline K kind(const std::string& term) noexcept {
     std::string lower = toLowerAscii(term);
     if (lower == "none") return K::None;
     size_t n = lower.size();
@@ -306,12 +306,12 @@ inline K kind(const std::string& term) {
     return K::Bad;
 }
 
-inline bool isAlpha(const std::string& term, bool modern) {
+inline bool isAlpha(const std::string& term, bool modern) noexcept {
     K k = kind(term);
     return k == K::Number || k == K::Percent || (modern && k == K::None);
 }
 
-inline std::vector<std::string> splitWhitespace(const std::string& s) {
+inline std::vector<std::string> splitWhitespace(const std::string& s) noexcept {
     std::vector<std::string> out;
     size_t i = 0;
     size_t n = s.size();
@@ -335,7 +335,7 @@ inline std::vector<std::string> splitWhitespace(const std::string& s) {
     return out;
 }
 
-inline bool isFunction(const std::string& color) {
+inline bool isFunction(const std::string& color) noexcept {
     bool hsl = startsWith(color, "hsl");
     size_t open = color.find('(');
     if (open == std::string::npos) return false;
@@ -379,9 +379,9 @@ inline bool isFunction(const std::string& color) {
     return true;
 }
 
-inline bool isCssColor(const std::string& color) {
+inline bool isCssColor(const std::string& color) noexcept {
     if (color.find('(') != std::string::npos) return isFunction(color);
-    static const std::unordered_set<std::string> keywords = []() {
+    static const Pele::FlatSet<std::string> keywords = []() {
         const std::string KEYWORDS =
             "aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue blueviolet brown burlywood "
             "cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan darkblue darkcyan darkgoldenrod darkgray "
@@ -402,7 +402,7 @@ inline bool isCssColor(const std::string& color) {
             "activeborder activecaption appworkspace background buttonhighlight buttonshadow captiontext inactiveborder "
             "inactivecaption inactivecaptiontext infobackground infotext menu menutext scrollbar threeddarkshadow threedface "
             "threedhighlight threedlightshadow threedshadow window windowframe windowtext";
-        std::unordered_set<std::string> set;
+        Pele::FlatSet<std::string> set;
         for (const auto& w : splitStr(KEYWORDS, ' ')) {
             if (!w.empty()) set.insert(w);
         }
@@ -428,7 +428,7 @@ namespace detail_db {
     throw PeleError(message, "semantic", "sequence");
 }
 
-inline SeqText extractWrap(const std::string& raw) {
+inline SeqText extractWrap(const std::string& raw) noexcept {
     std::string text = trimStr(raw);
     std::optional<bool> wrap;
     size_t prefixLen = 0;
@@ -451,7 +451,7 @@ inline SeqText extractWrap(const std::string& raw) {
     return {text, wrap, "", false};
 }
 
-inline bool hasLineTerminator(const std::string& s) {
+inline bool hasLineTerminator(const std::string& s) noexcept {
     for (size_t i = 0; i < s.size();) {
         size_t next = i;
         int cp = charCodeAtUtf8(s, i, &next);
@@ -461,7 +461,7 @@ inline bool hasLineTerminator(const std::string& s) {
     return false;
 }
 
-inline std::optional<std::pair<std::string, std::string>> splitBox(const std::string& str) {
+inline std::optional<std::pair<std::string, std::string>> splitBox(const std::string& str) noexcept {
     // Check /^(?:rgba?|hsla?)\s*\(/
     size_t fnLen = 0;
     if (startsWith(str, "rgba") || startsWith(str, "hsla")) fnLen = 4;
@@ -495,8 +495,8 @@ class SeqDb {
 public:
     std::vector<std::string> actorOrder;
     std::unordered_map<std::string, SeqActor> actors;
-    std::unordered_map<std::string, int> createdActors;
-    std::unordered_map<std::string, int> destroyedActors;
+    Pele::FlatMap<std::string, int> createdActors;
+    Pele::FlatMap<std::string, int> destroyedActors;
     std::vector<std::shared_ptr<SeqBox>> boxes;
     std::vector<SeqMessage> messages;
     std::vector<SeqNote> notes;
@@ -514,7 +514,7 @@ private:
     bool hasLastDestroyed_ = false;
     std::optional<bool> wrapEnabled_;
     bool sequenceWrap_ = false;
-    std::unordered_map<std::string, int> active_;
+    Pele::FlatMap<std::string, int> active_;
 
 public:
     explicit SeqDb(const SeqDbOptions& options = {})
@@ -607,7 +607,7 @@ public:
                     : ("{\n" + *metadata + "\n}");
                 parsed = parseYaml(yamlInput);
             } catch (const std::exception& err) {
-                throw PeleError("Config of participant \"" + id + "\" is not valid YAML. " + err.what(), "syntax", "sequence");
+                throw PeleError(Pele::cat({"Config of participant \"", id, "\" is not valid YAML. ", err.what()}),  "syntax",  "sequence");
             }
             if (parsed.isMap()) {
                 doc = std::move(parsed);
@@ -647,10 +647,7 @@ public:
             if (currentBox_ && old.box && currentBox_ != old.box) {
                 std::string oldBoxName = old.box->hasName ? old.box->name : "undefined";
                 std::string curBoxName = currentBox_->hasName ? currentBox_->name : "undefined";
-                detail_db::fail(
-                    "A same participant should only be defined in one Box: " + old.name +
-                    " can't be in '" + oldBoxName + "' and in '" + curBoxName + "' at the same time."
-                );
+                detail_db::fail(Pele::cat({"A same participant should only be defined in one Box: ", old.name, " can't be in '", oldBoxName, "' and in '", curBoxName, "' at the same time."}));
             }
             assignedBox = old.box ? old.box : currentBox_;
             old.box = assignedBox;
@@ -700,7 +697,7 @@ public:
         if (hasType && type == LINETYPE::ACTIVE_END) {
             int count = (from && !from->empty()) ? active_[*from] : 0;
             if (count < 1) {
-                detail_db::fail("Trying to inactivate an inactive participant (" + (from ? *from : "undefined") + ")");
+                detail_db::fail(Pele::cat({"Trying to inactivate an inactive participant (", (from ? *from : "undefined"), ")"}));
             }
             active_[*from] = count - 1;
         } else if (hasType && type == LINETYPE::ACTIVE_START && from && !from->empty()) {
@@ -877,19 +874,13 @@ private:
         } else if (t == "addMessage") {
             if (hasLastCreated_) {
                 if (!param.hasTo || param.to != lastCreated_) {
-                    detail_db::fail(
-                        "The created participant " + lastCreated_ +
-                        " does not have an associated creating message after its declaration. Please check the sequence diagram."
-                    );
+                    detail_db::fail(Pele::cat({"The created participant ", lastCreated_, " does not have an associated creating message after its declaration. Please check the sequence diagram."}));
                 }
                 hasLastCreated_ = false;
                 lastCreated_.clear();
             } else if (hasLastDestroyed_) {
                 if ((!param.hasTo || param.to != lastDestroyed_) && (!param.hasFrom || param.from != lastDestroyed_)) {
-                    detail_db::fail(
-                        "The destroyed participant " + lastDestroyed_ +
-                        " does not have an associated destroying message after its declaration. Please check the sequence diagram."
-                    );
+                    detail_db::fail(Pele::cat({"The destroyed participant ", lastDestroyed_, " does not have an associated destroying message after its declaration. Please check the sequence diagram."}));
                 }
                 hasLastDestroyed_ = false;
                 lastDestroyed_.clear();
@@ -1020,7 +1011,7 @@ enum T : int {
     T_STICK_ARROW_BOTTOM_REVERSE_DOTTED = 78
 };
 
-inline const std::vector<std::string>& tokenNames() {
+inline const std::vector<std::string>& tokenNames() noexcept {
     static const std::vector<std::string> names = {
         "$end",
         "INVALID",
@@ -1129,7 +1120,7 @@ constexpr uint8_t C_IdWide = 8;
 constexpr uint8_t C_Line = 16;
 constexpr uint8_t C_Menu = 32;
 
-inline const std::array<uint8_t, 128>& classTable() {
+inline const std::array<uint8_t, 128>& classTable() noexcept {
     static const std::array<uint8_t, 128> tab = []() {
         std::array<uint8_t, 128> t{};
         const std::string actorStartEx = "/\\+()<->:\n,;";
@@ -1658,7 +1649,7 @@ struct ParseFrame {
     std::vector<FrameSection> sections;
 };
 
-inline int signalForToken(int tok) {
+inline int signalForToken(int tok) noexcept {
     switch (tok) {
         case T_SOLID_OPEN_ARROW: return LINETYPE::SOLID_OPEN;
         case T_DOTTED_OPEN_ARROW: return LINETYPE::DOTTED_OPEN;
@@ -1690,7 +1681,7 @@ inline int signalForToken(int tok) {
     }
 }
 
-inline K blockForToken(int tok) {
+inline K blockForToken(int tok) noexcept {
     switch (tok) {
         case T_loop: return K::Loop;
         case T_rect: return K::Rect;
@@ -1715,10 +1706,10 @@ inline void parseSequence(const std::string& src, SeqDb& db) {
     auto fail = [&](const std::string& expected) -> void {
         int t = types[i];
         if (t == T_ERROR) throw syntaxError("sequence", src, starts[i], "", true);
-        throw syntaxError("sequence", src, starts[i], "Expecting " + expected + ", got '" + names[t] + "'");
+        throw syntaxError("sequence",  src,  starts[i], Pele::cat({"Expecting ", expected, ", got '", names[t], "'"}));
     };
     auto expect = [&](int type) -> std::string {
-        if (types[i] != type) fail("'" + names[type] + "'");
+        if (types[i] != type) fail(Pele::cat({"'", names[type], "'"}));
         return texts[i++];
     };
     auto actor = [&]() -> SeqStatement {
@@ -2264,20 +2255,20 @@ constexpr double CAP = 6.0;
 inline const std::string SHAPE = " fill=\"var(--_s)\" stroke=\"var(--_b)\"";
 inline const std::string LINE = " fill=\"none\" stroke=\"var(--_b)\"";
 
-inline bool isKnownKind(const std::string& type) {
+inline bool isKnownKind(const std::string& type) noexcept {
     return type == "participant" || type == "actor" || type == "boundary" || type == "control" ||
            type == "entity" || type == "database" || type == "collections" || type == "queue";
 }
 
-inline std::string actorKind(const std::string& type) {
+inline std::string actorKind(const std::string& type) noexcept {
     return isKnownKind(type) ? type : "participant";
 }
 
-inline bool isFigure(const std::string& kind) {
+inline bool isFigure(const std::string& kind) noexcept {
     return kind == "actor" || kind == "boundary" || kind == "control" || kind == "entity" || kind == "database";
 }
 
-inline ActorSize actorSize(const std::string& kind, const Label& label, double minW, double minH, double paddingX = PAD_X) {
+inline ActorSize actorSize(const std::string& kind, const Label& label, double minW, double minH, double paddingX = PAD_X) noexcept {
     if (isFigure(kind)) {
         return {std::max(40.0, label.width + 8.0), GLYPH + (label.height > 0.0 ? GLYPH_GAP + label.height : 0.0)};
     }
@@ -2288,34 +2279,24 @@ inline ActorSize actorSize(const std::string& kind, const Label& label, double m
     };
 }
 
-inline std::string figure(const std::string& kind, double cx, double top) {
+inline std::string figure(const std::string& kind, double cx, double top) noexcept {
     std::string x = num(cx);
     auto y = [&](double dy) -> std::string { return num(top + dy); };
     if (kind == "actor") {
-        return "<circle cx=\"" + x + "\" cy=\"" + y(7.0) + "\" r=\"6\"" + SHAPE + "/>" +
-               "<path d=\"M" + x + "," + y(13.0) + "V" + y(24.0) + "M" + num(cx - 10.0) + "," + y(17.0) +
-               "H" + num(cx + 10.0) + "M" + num(cx - 8.0) + "," + y(34.0) + "L" + x + "," + y(24.0) +
-               "L" + num(cx + 8.0) + "," + y(34.0) + "\"" + LINE + "/>";
+        return Pele::cat({"<circle cx=\"", x, "\" cy=\"", y(7.0), "\" r=\"6\"", SHAPE, "/>", "<path d=\"M", x, ",", y(13.0), "V", y(24.0), "M", num(cx - 10.0), ",", y(17.0), "H", num(cx + 10.0), "M", num(cx - 8.0), ",", y(34.0), "L", x, ",", y(24.0), "L", num(cx + 8.0), ",", y(34.0), "\"", LINE, "/>"});
     }
     if (kind == "boundary") {
-        return "<path d=\"M" + num(cx - 19.0) + "," + y(6.0) + "V" + y(28.0) + "M" + num(cx - 19.0) + "," +
-               y(17.0) + "H" + num(cx - 8.0) + "\"" + LINE + "/>" +
-               "<circle cx=\"" + num(cx + 3.0) + "\" cy=\"" + y(17.0) + "\" r=\"11\"" + SHAPE + "/>";
+        return Pele::cat({"<path d=\"M", num(cx - 19.0), ",", y(6.0), "V", y(28.0), "M", num(cx - 19.0), ",", y(17.0), "H", num(cx - 8.0), "\"", LINE, "/>", "<circle cx=\"", num(cx + 3.0), "\" cy=\"", y(17.0), "\" r=\"11\"", SHAPE, "/>"});
     }
     if (kind == "control") {
-        return "<circle cx=\"" + x + "\" cy=\"" + y(21.0) + "\" r=\"11\"" + SHAPE + "/>" +
-               "<path d=\"M" + num(cx + 5.0) + "," + y(5.0) + "L" + num(cx - 1.0) + "," + y(10.0) +
-               "L" + num(cx + 5.0) + "," + y(15.0) + "\"" + LINE + "/>";
+        return Pele::cat({"<circle cx=\"", x, "\" cy=\"", y(21.0), "\" r=\"11\"", SHAPE, "/>", "<path d=\"M", num(cx + 5.0), ",", y(5.0), "L", num(cx - 1.0), ",", y(10.0), "L", num(cx + 5.0), ",", y(15.0), "\"", LINE, "/>"});
     }
     if (kind == "entity") {
-        return "<circle cx=\"" + x + "\" cy=\"" + y(15.0) + "\" r=\"11\"" + SHAPE + "/>" +
-               "<path d=\"M" + num(cx - 11.0) + "," + y(30.0) + "H" + num(cx + 11.0) + "\"" + LINE + "/>";
+        return Pele::cat({"<circle cx=\"", x, "\" cy=\"", y(15.0), "\" r=\"11\"", SHAPE, "/>", "<path d=\"M", num(cx - 11.0), ",", y(30.0), "H", num(cx + 11.0), "\"", LINE, "/>"});
     }
     std::string l = num(cx - 14.0);
     std::string r = num(cx + 14.0);
-    return "<path d=\"M" + l + "," + y(7.0) + "V" + y(27.0) + "A14,5 0 0 0 " + r + "," + y(27.0) +
-           "V" + y(7.0) + "A14,5 0 0 0 " + l + "," + y(7.0) + "Z\"" + SHAPE + "/>" +
-           "<path d=\"M" + l + "," + y(7.0) + "A14,5 0 0 0 " + r + "," + y(7.0) + "\"" + LINE + "/>";
+    return Pele::cat({"<path d=\"M", l, ",", y(7.0), "V", y(27.0), "A14,5 0 0 0 ", r, ",", y(27.0), "V", y(7.0), "A14,5 0 0 0 ", l, ",", y(7.0), "Z\"", SHAPE, "/>", "<path d=\"M", l, ",", y(7.0), "A14,5 0 0 0 ", r, ",", y(7.0), "\"", LINE, "/>"});
 }
 
 inline std::string drawActor(
@@ -2337,8 +2318,8 @@ inline std::string drawActor(
     if (kind == "collections") {
         double bw = w - STACK;
         double bh = h - STACK;
-        std::string back = "<rect x=\"" + num(left + STACK) + "\" y=\"" + num(top) + "\" width=\"" + num(bw) + "\" height=\"" + num(bh) + "\"" + SHAPE + ROUNDED + "/>";
-        std::string front = "<rect x=\"" + num(left) + "\" y=\"" + num(top + STACK) + "\" width=\"" + num(bw) + "\" height=\"" + num(bh) + "\"" + SHAPE + ROUNDED + "/>";
+        std::string back = Pele::cat({"<rect x=\"", num(left + STACK), "\" y=\"", num(top), "\" width=\"", num(bw), "\" height=\"", num(bh), "\"", SHAPE, ROUNDED, "/>"});
+        std::string front = Pele::cat({"<rect x=\"", num(left), "\" y=\"", num(top + STACK), "\" width=\"", num(bw), "\" height=\"", num(bh), "\"", SHAPE, ROUNDED, "/>"});
         return back + front + labelSvg(label, left + bw / 2.0, top + STACK + bh / 2.0, textAttr, icons);
     }
     if (kind == "queue") {
@@ -2346,12 +2327,9 @@ inline std::string drawActor(
         std::string r = num(left + w - CAP);
         std::string b = num(top + h);
         std::string ry = num(h / 2.0);
-        return "<path d=\"M" + l + "," + num(top) + "H" + r + "A6," + ry + " 0 0 1 " + r + "," + b + "H" + l + "A6," + ry + " 0 0 1 " + l + "," + num(top) + "Z\"" + SHAPE + "/>" +
-               "<path d=\"M" + r + "," + num(top) + "A6," + ry + " 0 0 0 " + r + "," + b + "\"" + LINE + "/>" +
-               labelSvg(label, cx - CAP / 2.0, top + h / 2.0, textAttr, icons);
+        return Pele::cat({"<path d=\"M", l, ",", num(top), "H", r, "A6,", ry, " 0 0 1 ", r, ",", b, "H", l, "A6,", ry, " 0 0 1 ", l, ",", num(top), "Z\"", SHAPE, "/>", "<path d=\"M", r, ",", num(top), "A6,", ry, " 0 0 0 ", r, ",", b, "\"", LINE, "/>", labelSvg(label, cx - CAP / 2.0, top + h / 2.0, textAttr, icons)});
     }
-    return "<rect x=\"" + num(left) + "\" y=\"" + num(top) + "\" width=\"" + num(w) + "\" height=\"" + num(h) + "\"" + SHAPE + ROUNDED + "/>" +
-           labelSvg(label, cx, top + h / 2.0, textAttr, icons);
+    return Pele::cat({"<rect x=\"", num(left), "\" y=\"", num(top), "\" width=\"", num(w), "\" height=\"", num(h), "\"", SHAPE, ROUNDED, "/>", labelSvg(label, cx, top + h / 2.0, textAttr, icons)});
 }
 
 } // namespace detail_actors
@@ -2382,7 +2360,7 @@ struct LineStyle {
     bool bottom = false;
 };
 
-inline const std::array<LineStyle, 64>& lineStyles() {
+inline const std::array<LineStyle, 64>& lineStyles() noexcept {
     static const std::array<LineStyle, 64> styles = []() {
         std::array<LineStyle, 64> s{};
         auto style = [&](int type, bool dotted, Head head, int ends = 1, bool bottom = false) {
@@ -2414,7 +2392,7 @@ inline const std::array<LineStyle, 64>& lineStyles() {
     return styles;
 }
 
-inline std::string frameKindFor(int type) {
+inline std::string frameKindFor(int type) noexcept {
     switch (type) {
         case LINETYPE::LOOP_START: return "loop";
         case LINETYPE::ALT_START: return "alt";
@@ -2450,12 +2428,12 @@ struct Numbering {
     bool visible = false;
 };
 
-inline bool isLineMessage(int type, bool hasType) {
+inline bool isLineMessage(int type, bool hasType) noexcept {
     if (!hasType || type < 0 || type >= 64) return false;
     return lineStyles()[type].valid;
 }
 
-inline Numbering numberMessages(const std::vector<SeqMessage>& messages, bool always) {
+inline Numbering numberMessages(const std::vector<SeqMessage>& messages, bool always) noexcept {
     Numbering out;
     out.index.assign(messages.size(), std::numeric_limits<double>::quiet_NaN());
     out.shown.assign(messages.size(), false);
@@ -2529,28 +2507,27 @@ struct BoxRun {
     double grow = 0.0;
 };
 
-inline double option(const Config& conf, const std::string& key, double fallback) {
+inline double option(const Config& conf, const std::string& key, double fallback) noexcept {
     if (const auto* v = conf.get(key); v && v->isNumber() && v->nVal >= 0.0 && v->nVal <= 2000.0) {
         return v->nVal;
     }
     return fallback;
 }
 
-inline std::string half(double x, double y, double dir, double up, bool stick, const std::string& color) {
+inline std::string half(double x, double y, double dir, double up, bool stick, const std::string& color) noexcept {
     std::string bx = num(x - dir * ARROW);
-    if (stick) return "<path class=\"pele-marker\" d=\"M" + num(x) + "," + num(y) + "L" + bx + "," + num(y + up * 5.0) + "\"/>";
-    return "<path class=\"pele-marker\" d=\"M" + num(x) + "," + num(y) + "L" + bx + "," + num(y + up * 4.5) + "V" + num(y) + "Z\" fill=\"" + color + "\" stroke=\"none\"/>";
+    if (stick) return Pele::cat({"<path class=\"pele-marker\" d=\"M", num(x), ",", num(y), "L", bx, ",", num(y + up * 5.0), "\"/>"});
+    return Pele::cat({"<path class=\"pele-marker\" d=\"M", num(x), ",", num(y), "L", bx, ",", num(y + up * 4.5), "V", num(y), "Z\" fill=\"", color, "\" stroke=\"none\"/>"});
 }
 
-inline std::string head(Head type, double x, double y, double dir, double up, const std::string& color) {
+inline std::string head(Head type, double x, double y, double dir, double up, const std::string& color) noexcept {
     switch (type) {
         case Head::Arrow:
             return marker("arrow_point", x, y, dir, 0.0, color);
         case Head::Cross:
             return marker("arrow_cross", x, y, dir, 0.0, color);
         case Head::Open:
-            return "<path class=\"pele-marker\" d=\"M" + num(x - dir * ARROW) + "," + num(y - 4.5) + "L" + num(x) + "," + num(y) +
-                   "L" + num(x - dir * ARROW) + "," + num(y + 4.5) + "\" stroke-linejoin=\"round\"/>";
+            return Pele::cat({"<path class=\"pele-marker\" d=\"M", num(x - dir * ARROW), ",", num(y - 4.5), "L", num(x), ",", num(y), "L", num(x - dir * ARROW), ",", num(y + 4.5), "\" stroke-linejoin=\"round\"/>"});
         case Head::HalfSolid:
             return half(x, y, dir, up, false, color);
         case Head::HalfStick:
@@ -2560,11 +2537,11 @@ inline std::string head(Head type, double x, double y, double dir, double up, co
     }
 }
 
-inline double trim(Head type) {
+inline double trim(Head type) noexcept {
     return type == Head::Arrow ? ARROW - 1.0 : (type == Head::Cross ? 4.0 : 0.0);
 }
 
-inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions& options, bool tight, double hold = 0.0, bool byNeed = true) {
+inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions& options, bool tight, double hold = 0.0, bool byNeed = true) noexcept {
     const double INF = std::numeric_limits<double>::infinity();
     Config conf = YamlValue::makeMap();
     if (const auto* sc = config.get("sequence"); sc && sc->isMap()) conf = *sc;
@@ -2619,7 +2596,7 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
 
     bool hideUnused = false;
     if (const auto* hu = conf.get("hideUnusedParticipants"); hu && hu->isBool() && hu->bVal) hideUnused = true;
-    std::unordered_set<std::string> used;
+    Pele::FlatSet<std::string> used;
     if (hideUnused) {
         for (const auto& m : messages) {
             if (m.hasFrom) used.insert(m.from);
@@ -2633,7 +2610,7 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
     }
 
     std::vector<Column> cols;
-    std::unordered_map<std::string, int> colOf;
+    Pele::FlatMap<std::string, int> colOf;
     for (const auto& id : db.actorOrder) {
         if (hideUnused && used.count(id) == 0) continue;
         const auto& actor = db.actors.at(id);
@@ -2665,7 +2642,7 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
     }
     int last = static_cast<int>(cols.size()) - 1;
 
-    std::unordered_map<int, double> needs;
+    Pele::FlatMap<int, double> needs;
     auto need = [&](int lo, int hi, double width) {
         if (lo < 0 || hi > last) return;
         int key = lo * static_cast<int>(cols.size()) + hi;
@@ -2853,7 +2830,7 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
                         double room = frame->x1 - frame->x0 - 16.0 - tab;
                         Label label;
                         if (!raw.empty()) {
-                            std::string bracketed = "[" + raw + "]";
+                            std::string bracketed = Pele::cat({"[", raw, "]"});
                             label = text(&bracketed, small, true, std::max(room, tight ? std::min(FRAME_TEXT, wrapW) : FRAME_TEXT));
                         }
                         if (label.width > room) frame->x1 += label.width - room;
@@ -3011,12 +2988,12 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
     };
 
     std::vector<std::shared_ptr<Frame>> stack;
-    std::unordered_map<std::string, std::string> inks;
+    Pele::FlatMap<std::string, std::string> inks;
     auto inkOf = [&](const std::string& fill) -> std::string {
         if (fill.empty()) return "";
         auto it = inks.find(fill);
         if (it == inks.end()) {
-            std::string val = ink(resolveStyle({"fill:" + fill}).shape);
+            std::string val = ink(resolveStyle({Pele::cat({"fill:", fill})}).shape);
             inks[fill] = val;
             return val;
         }
@@ -3024,7 +3001,7 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
     };
     auto inkOn = [&](const std::string& fill) -> std::string {
         std::string color = inkOf(fill);
-        return !color.empty() ? (" fill=\"" + color + "\"") : "";
+        return !color.empty() ? Pele::cat({" fill=\"", color, "\""}) : "";
     };
     auto fillUnder = [&](double l, double r) -> std::string {
         for (int k = static_cast<int>(stack.size()) - 1; k >= 0; k--) {
@@ -3044,15 +3021,14 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
         double l = cx - label.width / 2.0;
         bool plate = crosses(l, l + label.width);
         std::string back = plate
-            ? ("<rect x=\"" + num(l - 3.0) + "\" y=\"" + num(cy - label.height / 2.0 + 2.0) + "\" width=\"" +
-               num(label.width + 6.0) + "\" height=\"" + num(label.height - 4.0) + "\" rx=\"3\" fill=\"var(--_bg)\" stroke=\"none\"/>")
+            ? Pele::cat({"<rect x=\"", num(l - 3.0), "\" y=\"", num(cy - label.height / 2.0 + 2.0), "\" width=\"", num(label.width + 6.0), "\" height=\"", num(label.height - 4.0), "\" rx=\"3\" fill=\"var(--_bg)\" stroke=\"none\"/>"})
             : "";
         std::string fill = plate ? "" : under(l, l + label.width);
         return back + labelSvg(
             label,
             cx,
             cy,
-            frame ? (" class=\"pele-frame-label\"" + (!fill.empty() ? fill : std::string(" fill=\"var(--_m)\"")) + " stroke=\"none\"") : fill,
+            frame ? Pele::cat({" class=\"pele-frame-label\"", (!fill.empty() ? fill : std::string(" fill=\"var(--_m)\"")), " stroke=\"none\""}) : fill,
             icons
         );
     };
@@ -3079,19 +3055,14 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
         double bottom = std::max(end, start + ACT_MIN);
         double x = col.x - ACT_W / 2.0 + col.activations.size() * ACT_STEP;
         extend(x, x + ACT_W);
-        activationsOut.push_back(
-            "<rect class=\"pele-activation\" data-id=\"" + escText(col.id) + "\" x=\"" + num(x) + "\" y=\"" + num(start) +
-            "\" width=\"10\" height=\"" + num(bottom - start) + "\" rx=\"2\"/>"
-        );
+        activationsOut.push_back(Pele::cat({"<rect class=\"pele-activation\" data-id=\"", escText(col.id), "\" x=\"", num(x), "\" y=\"", num(start), "\" width=\"10\" height=\"", num(bottom - start), "\" rx=\"2\"/>"}));
         return bottom;
     };
     auto destroy = [&](Column& col, double lineY) -> double {
         double cx = col.x;
         double cy = lineY + 16.0;
         col.lifeEnd = cy;
-        crossesOut += "<path class=\"pele-destroy\" data-id=\"" + escText(col.id) + "\" d=\"M" + num(cx - 6.0) + "," +
-                      num(cy - 6.0) + "L" + num(cx + 6.0) + "," + num(cy + 6.0) + "M" + num(cx + 6.0) + "," +
-                      num(cy - 6.0) + "L" + num(cx - 6.0) + "," + num(cy + 6.0) + "\"/>";
+        Pele::appendCat(crossesOut, {"<path class=\"pele-destroy\" data-id=\"", escText(col.id), "\" d=\"M", num(cx - 6.0), ",", num(cy - 6.0), "L", num(cx + 6.0), ",", num(cy + 6.0), "M", num(cx + 6.0), ",", num(cy - 6.0), "L", num(cx - 6.0), ",", num(cy + 6.0), "\"/>"});
         return cy + 6.0;
     };
     auto actorSvg = [&](const Column& col, double top, bool footer) -> std::string {
@@ -3099,16 +3070,10 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
         if (auto it = col.actor.properties.find("class"); it != col.actor.properties.end()) {
             cls = classNames(it->second);
         }
-        return "<g class=\"pele-node pele-actor pele-actor-" + col.kind + (footer ? " pele-actor-footer" : "") + cls +
-               "\" data-id=\"" + escText(col.id) + "\">" +
-               drawActor(col.kind, col.x, top, col.size, col.label, icons, isFigure(col.kind) ? inkOn(col.actor.box ? col.actor.box->fill : "") : "") +
-               "</g>";
+        return Pele::cat({"<g class=\"pele-node pele-actor pele-actor-", col.kind, (footer ? " pele-actor-footer" : ""), cls, "\" data-id=\"", escText(col.id), "\">", drawActor(col.kind, col.x, top, col.size, col.label, icons, isFigure(col.kind) ? inkOn(col.actor.box ? col.actor.box->fill : "") : ""), "</g>"});
     };
     auto badge = [&](size_t i, double cx, double cy, double w) -> std::string {
-        return "<g class=\"pele-sequence-number\"><rect x=\"" + num(cx - w / 2.0) + "\" y=\"" + num(cy - BADGE_H / 2.0) +
-               "\" width=\"" + num(w) + "\" height=\"16\" rx=\"8\" fill=\"var(--_l)\" stroke=\"none\"/><text x=\"" +
-               num(cx) + "\" y=\"" + num(cy + tiny * 0.35) + "\" text-anchor=\"middle\" font-size=\"" + num(tiny) +
-               "\" fill=\"var(--_bg)\" stroke=\"none\">" + esc(num(numbering.index[i])) + "</text></g>";
+        return Pele::cat({"<g class=\"pele-sequence-number\"><rect x=\"", num(cx - w / 2.0), "\" y=\"", num(cy - BADGE_H / 2.0), "\" width=\"", num(w), "\" height=\"16\" rx=\"8\" fill=\"var(--_l)\" stroke=\"none\"/><text x=\"", num(cx), "\" y=\"", num(cy + tiny * 0.35), "\" text-anchor=\"middle\" font-size=\"", num(tiny), "\" fill=\"var(--_bg)\" stroke=\"none\">", esc(num(numbering.index[i])), "</text></g>"});
     };
 
     const auto& styles = lineStyles();
@@ -3146,18 +3111,13 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
             std::string w = num(frame->x1 - frame->x0);
             if (frame->kind == "rect") {
                 std::string fill = !frame->fill.empty() ? resolveStyle({"fill:" + frame->fill}).shape : "";
-                rectsOut.push_back(
-                    "<rect class=\"pele-rect\" x=\"" + x + "\" y=\"" + num(frame->top) + "\" width=\"" + w +
-                    "\" height=\"" + num(bottom - frame->top) + "\"" + rounded((!fill.empty() ? "" : " fill-opacity=\"0.5\"") + fill) + "/>"
-                );
+                rectsOut.push_back(Pele::cat({"<rect class=\"pele-rect\" x=\"", x, "\" y=\"", num(frame->top), "\" width=\"", w, "\" height=\"", num(bottom - frame->top), "\"", rounded((!fill.empty() ? "" : " fill-opacity=\"0.5\"") + fill), "/>"}));
             } else {
-                std::string inner = "<rect x=\"" + x + "\" y=\"" + num(frame->top) + "\" width=\"" + w + "\" height=\"" +
-                                    num(bottom - frame->top) + "\" fill=\"none\"" + ROUNDED + "/>";
+                std::string inner = Pele::cat({"<rect x=\"", x, "\" y=\"", num(frame->top), "\" width=\"", w, "\" height=\"", num(bottom - frame->top), "\" fill=\"none\"", ROUNDED, "/>"});
                 for (size_t k = 0; k < frame->dividerY.size(); k++) {
                     double dy = frame->dividerY[k];
                     const auto& label = frame->dividerLabels[k];
-                    inner += "<path d=\"M" + x + "," + num(dy) + "H" + num(frame->x1) + "\"" + DASH + "/>" +
-                             backed(label, frame->x0 + 8.0 + label.width / 2.0, dy + 2.0 + label.height / 2.0, true);
+                    Pele::appendCat(inner, {"<path d=\"M", x, ",", num(dy), "H", num(frame->x1), "\"", DASH, "/>", backed(label, frame->x0 + 8.0 + label.width / 2.0, dy + 2.0 + label.height / 2.0, true)});
                 }
                 inner += "<rect x=\"" + x + "\" y=\"" + num(frame->top) + "\" width=\"" + num(frame->tabW) + "\" height=\"20\" fill=\"var(--_s)\"" + ROUNDED + "/>" +
                          "<text class=\"pele-frame-kind\" x=\"" + num(frame->x0 + frame->tabW / 2.0) + "\" y=\"" +
@@ -3188,10 +3148,7 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
             if (m.placement == PLACEMENT::RIGHTOF) x += rightEdge(a) - a.x;
             else if (m.placement == PLACEMENT::LEFTOF) x += leftEdge(a) - a.x;
             extend(x, x + view.w);
-            notesOut += "<g class=\"pele-note\" data-id=\"i" + escText(m.id) + "\">" +
-                        "<rect x=\"" + num(x) + "\" y=\"" + num(top) + "\" width=\"" + num(view.w) + "\" height=\"" + num(h) + "\"" + ROUNDED + "/>" +
-                        labelSvg(view.label, x + view.w / 2.0, top + h / 2.0, " class=\"pele-label\" stroke=\"none\" fill=\"var(--_fg)\"", icons) +
-                        "</g>";
+            Pele::appendCat(notesOut, {"<g class=\"pele-note\" data-id=\"i", escText(m.id), "\">", "<rect x=\"", num(x), "\" y=\"", num(top), "\" width=\"", num(view.w), "\" height=\"", num(h), "\"", ROUNDED, "/>", labelSvg(view.label, x + view.w / 2.0, top + h / 2.0, " class=\"pele-label\" stroke=\"none\" fill=\"var(--_fg)\"", icons), "</g>"});
             y = top + h;
         } else if (views[i].has_value()) {
             const auto& view = *views[i];
@@ -3218,7 +3175,7 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
             std::string line;
             std::string color = "var(--_l)";
             auto circle = [&](double cx, double cy) -> std::string {
-                return "<circle class=\"pele-central\" cx=\"" + num(cx) + "\" cy=\"" + num(cy) + "\" r=\"4\" fill=\"" + color + "\" stroke=\"none\"/>";
+                return Pele::cat({"<circle class=\"pele-central\" cx=\"", num(cx), "\" cy=\"", num(cy), "\" r=\"4\" fill=\"", color, "\" stroke=\"none\"/>"});
             };
             bool tailAtEnd = st.atStart && !st.atEnd;
             double headTrim = trim(st.head);
@@ -3245,15 +3202,12 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
                 std::string from = num(x0 + (st.atStart ? headTrim : 0.0));
                 std::string to = num(x1 + (st.atEnd ? headTrim : 0.0));
                 std::string d = rightAngles
-                    ? ("M" + from + "," + num(top) + "H" + num(out) + "V" + num(bottom) + "H" + to)
-                    : ("M" + from + "," + num(top) + "H" + num(out - 6.0) + "A6,6 0 0 1 " + num(out) + "," + num(top + 6.0) +
-                       "V" + num(bottom - 6.0) + "A6,6 0 0 1 " + num(out - 6.0) + "," + num(bottom) + "H" + to);
-                inner = "<path d=\"" + d + "\"" + attrs + "/>" + heads + inner;
+                    ? Pele::cat({"M", from, ",", num(top), "H", num(out), "V", num(bottom), "H", to})
+                    : Pele::cat({"M", from, ",", num(top), "H", num(out - 6.0), "A6,6 0 0 1 ", num(out), ",", num(top + 6.0), "V", num(bottom - 6.0), "A6,6 0 0 1 ", num(out - 6.0), ",", num(bottom), "H", to});
+                inner = Pele::cat({"<path d=\"", d, "\"", attrs, "/>", heads, inner});
                 extend(a.x, out + 8.0 + label.width);
                 if (label.width > 0.0) {
-                    labelsOut += "<g class=\"pele-edge-label\" data-id=\"i" + escText(m.id) + "\">" +
-                                 labelSvg(label, out + 8.0 + label.width / 2.0, (top + bottom) / 2.0, under(out + 8.0, out + 8.0 + label.width), icons) +
-                                 "</g>";
+                    Pele::appendCat(labelsOut, {"<g class=\"pele-edge-label\" data-id=\"i", escText(m.id), "\">", labelSvg(label, out + 8.0 + label.width / 2.0, (top + bottom) / 2.0, under(out + 8.0, out + 8.0 + label.width), icons), "</g>"});
                 }
                 lineY = std::max(bottom, (top + bottom) / 2.0 + label.height / 2.0);
             } else {
@@ -3292,19 +3246,17 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
                                     (st.atEnd ? head(st.head, x1, lineY, dir, up * dir, color) : "");
                 double from = x0 + (st.atStart ? dir * headTrim : 0.0);
                 double to = x1 - (st.atEnd ? dir * headTrim : 0.0);
-                inner = "<path d=\"M" + num(from) + "," + num(lineY) + "H" + num(to) + "\"" + attrs + "/>" + heads + inner;
+                inner = Pele::cat({"<path d=\"M", num(from), ",", num(lineY), "H", num(to), "\"", attrs, "/>", heads, inner});
                 if (label.width > 0.0) {
                     double l = std::min(x0, x1);
                     double r = std::max(x0, x1);
                     double cx = align < 0 ? l + msgPad + label.width / 2.0 : (align > 0 ? r - msgPad - label.width / 2.0 : (l + r) / 2.0);
                     extend(cx - label.width / 2.0, cx + label.width / 2.0);
-                    labelsOut += "<g class=\"pele-edge-label\" data-id=\"i" + escText(m.id) + "\">" +
-                                 backed(label, cx, lineY - 4.0 - label.height / 2.0) + "</g>";
+                    Pele::appendCat(labelsOut, {"<g class=\"pele-edge-label\" data-id=\"i", escText(m.id), "\">", backed(label, cx, lineY - 4.0 - label.height / 2.0), "</g>"});
                 }
                 if (creating) y = lineY + b.size.h / 2.0 - 6.0;
             }
-            edgesOut += "<g class=\"pele-edge pele-message\" data-id=\"i" + escText(m.id) + "\"" +
-                        (!line.empty() ? (" stroke=\"" + line + "\"") : "") + ">" + inner + "</g>";
+            Pele::appendCat(edgesOut, {"<g class=\"pele-edge pele-message\" data-id=\"i", escText(m.id), "\"", (!line.empty() ? Pele::cat({" stroke=\"", line, "\""}) : ""), ">", inner, "</g>"});
             y = std::max(y, lineY);
             if (a.destroyAt == static_cast<int>(i)) y = std::max(y, destroy(a, lineY));
             if (b.destroyAt == static_cast<int>(i) && view.b != view.a) y = std::max(y, destroy(b, lineY));
@@ -3328,8 +3280,7 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
         actorsOut += actorSvg(col, col.top, false);
         double end = col.lifeEnd >= 0.0 ? col.lifeEnd : y;
         if (end > col.lifeStart) {
-            lifelines += "<path class=\"pele-lifeline\" data-id=\"" + escText(col.id) + "\" d=\"M" + num(col.x) + "," +
-                         num(col.lifeStart) + "V" + num(end) + "\"/>";
+            Pele::appendCat(lifelines, {"<path class=\"pele-lifeline\" data-id=\"", escText(col.id), "\" d=\"M", num(col.x), ",", num(col.lifeStart), "V", num(end), "\"/>"});
         }
     }
 
@@ -3337,17 +3288,12 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
     for (const auto& run : runs) {
         auto [x0, x1] = boxEdges(run);
         std::string fill = run.box->fill == "transparent" ? "" : resolveStyle({"fill:" + run.box->fill}).shape;
-        boxesOut += "<g class=\"pele-cluster pele-box\"" + (run.box->hasName ? (" data-id=\"" + escText(run.box->name) + "\"") : "") + ">" +
-                    "<rect x=\"" + num(x0) + "\" y=\"0\" width=\"" + num(x1 - x0) + "\" height=\"" + num(bottom + boxPad) +
-                    "\" fill=\"var(--_a)\" stroke=\"var(--_b)\"" + rounded((!fill.empty() ? "" : " fill-opacity=\"0.5\"") + fill) + "/>" +
-                    labelSvg(
-                        run.title,
-                        (x0 + x1) / 2.0,
-                        boxPad / 2.0 + 2.0 + run.title.height / 2.0,
-                        " class=\"pele-cluster-label\"" + (!inkOn(run.box->fill).empty() ? inkOn(run.box->fill) : std::string(" fill=\"var(--_m)\"")),
+        Pele::appendCat(boxesOut, {"<g class=\"pele-cluster pele-box\"", (run.box->hasName ? Pele::cat({" data-id=\"", escText(run.box->name), "\""}) : ""), ">", "<rect x=\"", num(x0), "\" y=\"0\" width=\"", num(x1 - x0), "\" height=\"", num(bottom + boxPad), "\" fill=\"var(--_a)\" stroke=\"var(--_b)\"", rounded((!fill.empty() ? "" : " fill-opacity=\"0.5\"") + fill), "/>", labelSvg(
+                        run.title, 
+                        (x0 + x1) / 2.0, 
+                        boxPad / 2.0 + 2.0 + run.title.height / 2.0, Pele::cat({" class=\"pele-cluster-label\"", (!inkOn(run.box->fill).empty() ? inkOn(run.box->fill) : std::string(" fill=\"var(--_m)\""))}), 
                         icons
-                    ) +
-                    "</g>";
+                    ), "</g>"});
     }
     if (!runs.empty()) bottom += boxPad;
 
@@ -3384,16 +3330,16 @@ inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions&
         db.asMeta(),
         "<g transform=\"translate(" + num(pad - minX) + "," + num(pad - minY) + ")\">" +
             titleOut +
-            (!boxesOut.empty() ? ("<g class=\"pele-boxes\" font-size=\"" + num(small) + "\">" + boxesOut + "</g>") : "") +
-            (!rectsOut.empty() ? ("<g class=\"pele-rects\" fill=\"var(--_a)\">" + rectsJoined + "</g>") : "") +
-            (!lifelines.empty() ? ("<g class=\"pele-lifelines\" fill=\"none\" stroke=\"var(--_b)\">" + lifelines + "</g>") : "") +
-            (!activationsOut.empty() ? ("<g class=\"pele-activations\" fill=\"var(--_s)\" stroke=\"var(--_b)\">" + actsJoined + "</g>") : "") +
-            (!framesOut.empty() ? ("<g class=\"pele-frames\" font-size=\"" + num(small) + "\" stroke=\"var(--_b)\">" + framesOut + "</g>") : "") +
-            (!edgesOut.empty() ? ("<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">" + edgesOut + "</g>") : "") +
-            (!crossesOut.empty() ? ("<g class=\"pele-destroys\" fill=\"none\" stroke=\"var(--_l)\" stroke-width=\"1.5\" stroke-linecap=\"round\">" + crossesOut + "</g>") : "") +
-            (!labelsOut.empty() ? ("<g class=\"pele-edge-labels\" font-size=\"" + num(small) + "\">" + labelsOut + "</g>") : "") +
-            (!notesOut.empty() ? ("<g class=\"pele-notes\" font-size=\"" + num(small) + "\" fill=\"var(--_a)\" stroke=\"var(--_b)\">" + notesOut + "</g>") : "") +
-            (!actorsOut.empty() ? ("<g class=\"pele-nodes\">" + actorsOut + "</g>") : "") +
+            (!boxesOut.empty() ? Pele::cat({"<g class=\"pele-boxes\" font-size=\"", num(small), "\">", boxesOut, "</g>"}) : "") +
+            (!rectsOut.empty() ? Pele::cat({"<g class=\"pele-rects\" fill=\"var(--_a)\">", rectsJoined, "</g>"}) : "") +
+            (!lifelines.empty() ? Pele::cat({"<g class=\"pele-lifelines\" fill=\"none\" stroke=\"var(--_b)\">", lifelines, "</g>"}) : "") +
+            (!activationsOut.empty() ? Pele::cat({"<g class=\"pele-activations\" fill=\"var(--_s)\" stroke=\"var(--_b)\">", actsJoined, "</g>"}) : "") +
+            (!framesOut.empty() ? Pele::cat({"<g class=\"pele-frames\" font-size=\"", num(small), "\" stroke=\"var(--_b)\">", framesOut, "</g>"}) : "") +
+            (!edgesOut.empty() ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">", edgesOut, "</g>"}) : "") +
+            (!crossesOut.empty() ? Pele::cat({"<g class=\"pele-destroys\" fill=\"none\" stroke=\"var(--_l)\" stroke-width=\"1.5\" stroke-linecap=\"round\">", crossesOut, "</g>"}) : "") +
+            (!labelsOut.empty() ? Pele::cat({"<g class=\"pele-edge-labels\" font-size=\"", num(small), "\">", labelsOut, "</g>"}) : "") +
+            (!notesOut.empty() ? Pele::cat({"<g class=\"pele-notes\" font-size=\"", num(small), "\" fill=\"var(--_a)\" stroke=\"var(--_b)\">", notesOut, "</g>"}) : "") +
+            (!actorsOut.empty() ? Pele::cat({"<g class=\"pele-nodes\">", actorsOut, "</g>"}) : "") +
         "</g>"
     );
     return {svg, width, height, {}};
@@ -3417,7 +3363,7 @@ inline SeqDb parse(const std::string& source, const Config& config, const std::s
     return db;
 }
 
-inline Rendered renderSequence(const SeqDb& db, const Config& config, const RenderOptions& options) {
+inline Rendered renderSequence(const SeqDb& db, const Config& config, const RenderOptions& options) noexcept {
     return Pele::tighten(options, [&](bool tight) {
         return detail_render::draw(db, config, options, tight);
     });

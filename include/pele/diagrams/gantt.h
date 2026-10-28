@@ -20,7 +20,7 @@ namespace gantt_detail {
 // Proleptic Gregorian Date in Local Time (`src/diagrams/gantt/dates.ts`)
 // ============================================================================
 
-inline int localTzOffsetMinutes() {
+inline int localTzOffsetMinutes() noexcept {
   static const int offset = []() {
     std::time_t sample = 1704067200; // 2024-01-01 00:00:00 UTC
     std::tm utcTm{};
@@ -50,7 +50,7 @@ inline int localTzOffsetMinutes() {
   return offset;
 }
 
-inline long long daysFromCivil(long long y, long long m, long long d) {
+inline long long daysFromCivil(long long y, long long m, long long d) noexcept {
   y -= m <= 2;
   const long long era = (y >= 0 ? y : y - 399) / 400;
   const long long yoe = y - era * 400;
@@ -70,7 +70,7 @@ struct CivilDate {
   int ms = 0;
 };
 
-inline CivilDate decomposeMs(double utcMs, int tzOffsetMin) {
+inline CivilDate decomposeMs(double utcMs, int tzOffsetMin) noexcept {
   double localMs = std::floor(utcMs - static_cast<double>(tzOffsetMin) * 60000.0);
   double daysD = std::floor(localMs / 86400000.0);
   long long z = static_cast<long long>(daysD);
@@ -105,7 +105,7 @@ inline CivilDate decomposeMs(double utcMs, int tzOffsetMin) {
   return c;
 }
 
-inline double composeMs(long long year, long long month0, long long day, long long hours, long long minutes, long long seconds, double ms, int tzOffsetMin) {
+inline double composeMs(long long year, long long month0, long long day, long long hours, long long minutes, long long seconds, double ms, int tzOffsetMin) noexcept {
   long long ym = year + (month0 >= 0 ? month0 / 12 : (month0 - 11) / 12);
   long long mn = ((month0 % 12) + 12) % 12;
   long long epochDays = daysFromCivil(ym, mn + 1, 1) + (day - 1);
@@ -186,7 +186,7 @@ struct GanttDate {
   }
 };
 
-inline const std::vector<std::string>& MONTHS() {
+inline const std::vector<std::string>& MONTHS() noexcept {
   static const std::vector<std::string> m = {
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
@@ -194,7 +194,7 @@ inline const std::vector<std::string>& MONTHS() {
   return m;
 }
 
-inline const std::vector<std::string>& WEEKDAYS() {
+inline const std::vector<std::string>& WEEKDAYS() noexcept {
   static const std::vector<std::string> w = {
     "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
   };
@@ -204,16 +204,16 @@ inline const std::vector<std::string>& WEEKDAYS() {
 constexpr double DAY_MS = 86400000.0;
 constexpr double WEEK_MS = 7.0 * DAY_MS;
 
-inline bool isValid(const GanttDate& date) {
+inline bool isValid(const GanttDate& date) noexcept {
   return date.isValid();
 }
 
-inline std::string padZero(int value, size_t length) {
+inline std::string padZero(int value, size_t length) noexcept {
   std::string s = std::to_string(value);
   return s.size() >= length ? s : std::string(length - s.size(), '0') + s;
 }
 
-inline std::string ordinal(int n) {
+inline std::string ordinal(int n) noexcept {
   static const char* s[4] = {"th", "st", "nd", "rd"};
   int v = n % 100;
   int idx1 = (v - 20) % 10;
@@ -221,36 +221,36 @@ inline std::string ordinal(int n) {
   return std::to_string(n) + suf;
 }
 
-inline int utcOffset(const GanttDate& date) {
+inline int utcOffset(const GanttDate& date) noexcept {
   int offset = -static_cast<int>(std::round(static_cast<double>(date.getTimezoneOffset()) / 15.0)) * 15;
   return offset == 0 ? 0 : offset;
 }
 
-inline std::string zone(const GanttDate& date) {
+inline std::string zone(const GanttDate& date) noexcept {
   int offset = utcOffset(date);
   int minutes = std::abs(offset);
   return std::string(offset >= 0 ? "+" : "-") + padZero(minutes / 60, 2) + ":" + padZero(minutes % 60, 2);
 }
 
-inline int isoWeekday(const GanttDate& date) {
+inline int isoWeekday(const GanttDate& date) noexcept {
   int d = date.getDay();
   return d == 0 ? 7 : d;
 }
 
-inline GanttDate addDays(const GanttDate& date, int days) {
+inline GanttDate addDays(const GanttDate& date, int days) noexcept {
   GanttDate next = date;
   next.setDate(next.getDate() + days);
   return next;
 }
 
-inline int daysInMonth(const GanttDate& date) {
+inline int daysInMonth(const GanttDate& date) noexcept {
   GanttDate last = GanttDate::fromLocal(date.getFullYear(), date.getMonth() + 1, 0, 0, 0, 0, 0, false);
   last.setHours(23, 59, 59, 999);
   return last.getDate();
 }
 
 template <typename ApplyFn>
-inline GanttDate setCalendar(const GanttDate& date, ApplyFn apply) {
+inline GanttDate setCalendar(const GanttDate& date, ApplyFn apply) noexcept {
   GanttDate next = date;
   next.setDate(1);
   apply(next);
@@ -258,7 +258,7 @@ inline GanttDate setCalendar(const GanttDate& date, ApplyFn apply) {
   return next;
 }
 
-inline GanttDate add(const GanttDate& date, double amount, const std::string& unit) {
+inline GanttDate add(const GanttDate& date, double amount, const std::string& unit) noexcept {
   if (unit == "M") {
     return setCalendar(date, [&](GanttDate& d) { d.setMonth(date.getMonth() + static_cast<int>(amount)); });
   }
@@ -283,11 +283,11 @@ inline GanttDate add(const GanttDate& date, double amount, const std::string& un
   return GanttDate(date.getTime() + amount);
 }
 
-inline GanttDate weekThursday(const GanttDate& date) {
+inline GanttDate weekThursday(const GanttDate& date) noexcept {
   return addDays(date, 4 - isoWeekday(date));
 }
 
-inline int isoWeek(const GanttDate& date) {
+inline int isoWeek(const GanttDate& date) noexcept {
   GanttDate thursday = weekThursday(date);
   GanttDate jan1 = GanttDate::fromLocal(thursday.getFullYear(), 0, 1, 0, 0, 0, 0, false);
   int weekday = isoWeekday(jan1);
@@ -298,7 +298,7 @@ inline int isoWeek(const GanttDate& date) {
   return w + 1;
 }
 
-inline std::string isoDate(const GanttDate& date) {
+inline std::string isoDate(const GanttDate& date) noexcept {
   int year = date.getFullYear();
   int month = date.getMonth() + 1;
   int day = date.getDate();
@@ -306,7 +306,7 @@ inline std::string isoDate(const GanttDate& date) {
   return yStr + (month < 10 ? "-0" : "-") + std::to_string(month) + (day < 10 ? "-0" : "-") + std::to_string(day);
 }
 
-inline std::optional<std::string> format(const GanttDate& date, const std::string& tmpl) {
+inline std::optional<std::string> format(const GanttDate& date, const std::string& tmpl) noexcept {
   if (!isValid(date)) return "Invalid Date";
   std::string str = tmpl.empty() ? "YYYY-MM-DDTHH:mm:ssZ" : tmpl;
   if (str == "YYYY-MM-DD") return isoDate(date);
@@ -444,17 +444,17 @@ struct ParseStep {
   std::string token; // literal text or format token name
 };
 
-inline bool isSepChar(char c) {
+inline bool isSepChar(char c) noexcept {
   return c == '-' || c == '_' || c == ':' || c == '/' || c == '.' || c == ',' || c == '(' || c == ')' ||
          isSpace(static_cast<unsigned char>(c));
 }
 
-inline bool isWordNonSepNonDigit(char c) {
+inline bool isWordNonSepNonDigit(char c) noexcept {
   return !(c >= '0' && c <= '9') && c != '-' && c != '_' && c != ':' && c != '/' && c != ',' && c != '(' && c != ')' &&
          !isSpace(static_cast<unsigned char>(c));
 }
 
-inline std::optional<std::string> findMatchInSlice(const std::string& slice, MatchKind kind) {
+inline std::optional<std::string> findMatchInSlice(const std::string& slice, MatchKind kind) noexcept {
   size_t n = slice.size();
   auto isDig = [](char c) { return c >= '0' && c <= '9'; };
   switch (kind) {
@@ -588,7 +588,7 @@ inline bool applyStepReader(Fields& f, const std::string& token, const std::stri
   return false;
 }
 
-inline std::optional<MatchKind> readerKindForToken(const std::string& tok) {
+inline std::optional<MatchKind> readerKindForToken(const std::string& tok) noexcept {
   if (tok == "A" || tok == "a" || tok == "Do" || tok == "MMM" || tok == "MMMM") return MatchKind::Word;
   if (tok == "Q" || tok == "S") return MatchKind::Digit1;
   if (tok == "SS" || tok == "DD" || tok == "ww" || tok == "MM" || tok == "YY") return MatchKind::Digit2;
@@ -601,7 +601,7 @@ inline std::optional<MatchKind> readerKindForToken(const std::string& tok) {
   return std::nullopt;
 }
 
-inline std::optional<std::vector<ParseStep>> compileFormat(const std::string& tmpl) {
+inline std::optional<std::vector<ParseStep>> compileFormat(const std::string& tmpl) noexcept {
   // Check for 'L' or 'l' outside [...]
   for (size_t i = 0; i < tmpl.size(); ) {
     if (tmpl[i] == '[') {
@@ -658,7 +658,7 @@ inline std::optional<std::vector<ParseStep>> compileFormat(const std::string& tm
   return steps;
 }
 
-inline bool isAllDigitsOrSign(const std::string& s, bool allowDot = true) {
+inline bool isAllDigitsOrSign(const std::string& s, bool allowDot = true) noexcept {
   std::string t = trimStr(s);
   if (t.empty()) return false;
   size_t i = (t[0] == '+' || t[0] == '-') ? 1 : 0;
@@ -770,11 +770,11 @@ struct Calendar {
   double ms = 1.0;
 };
 
-inline void startOfDay(GanttDate& d) {
+inline void startOfDay(GanttDate& d) noexcept {
   d.setHours(0, 0, 0, 0);
 }
 
-inline Calendar weekCalendar(int weekStart) {
+inline Calendar weekCalendar(int weekStart) noexcept {
   Calendar c;
   c.floorFn = [weekStart](GanttDate& d) {
     d.setDate(d.getDate() - ((d.getDay() + 7 - weekStart) % 7));
@@ -788,7 +788,7 @@ inline Calendar weekCalendar(int weekStart) {
   return c;
 }
 
-inline Calendar baseCalendar(const std::string& unit, int weekStart = 0) {
+inline Calendar baseCalendar(const std::string& unit, int weekStart = 0) noexcept {
   if (unit == "week") return weekCalendar(weekStart);
   Calendar c;
   if (unit == "millisecond") {
@@ -835,15 +835,15 @@ inline Calendar baseCalendar(const std::string& unit, int weekStart = 0) {
   return c;
 }
 
-inline int spanUnits(const GanttDate& start, const GanttDate& end, double unit) {
+inline int spanUnits(const GanttDate& start, const GanttDate& end, double unit) noexcept {
   return static_cast<int>(std::floor((end.getTime() - start.getTime() - (end.getTimezoneOffset() - start.getTimezoneOffset()) * MINUTE) / unit));
 }
 
-inline int posMod(int a, int b) {
+inline int posMod(int a, int b) noexcept {
   return ((a % b) + b) % b;
 }
 
-inline Calendar every(const std::string& unit, int step, int weekStart) {
+inline Calendar every(const std::string& unit, int step, int weekStart) noexcept {
   Calendar base = baseCalendar(unit, weekStart);
   if (step <= 1) return base;
   if (unit == "millisecond") {
@@ -890,7 +890,7 @@ inline Calendar every(const std::string& unit, int step, int weekStart) {
   return c;
 }
 
-inline std::optional<std::vector<double>> rangeTicks(const Calendar& calendar, double start, double stop, size_t limit) {
+inline std::optional<std::vector<double>> rangeTicks(const Calendar& calendar, double start, double stop, size_t limit) noexcept {
   GanttDate d(start - 1.0);
   calendar.floorFn(d);
   calendar.offsetFn(d, 1);
@@ -907,7 +907,7 @@ inline std::optional<std::vector<double>> rangeTicks(const Calendar& calendar, d
   return out;
 }
 
-inline int tickStep(double start, double stop, int count) {
+inline int tickStep(double start, double stop, int count) noexcept {
   double step = (stop - start) / std::max(0, count);
   double power = std::floor(std::log10(step));
   double error = step / std::pow(10.0, power);
@@ -915,7 +915,7 @@ inline int tickStep(double start, double stop, int count) {
   return static_cast<int>(std::pow(10.0, power) * factor);
 }
 
-inline std::vector<double> autoTicks(double start, double stop, int count) {
+inline std::vector<double> autoTicks(double start, double stop, int count) noexcept {
   struct AutoEntry { const char* unit; int step; double ms; };
   static const AutoEntry AUTO[] = {
     {"second", 1, SECOND},
@@ -980,7 +980,7 @@ inline std::optional<std::vector<double>> intervalTicks(
   return rangeTicks(calendar, start, stop, limit);
 }
 
-inline std::string d3Pad(long long value, const std::string& fill, size_t width) {
+inline std::string d3Pad(long long value, const std::string& fill, size_t width) noexcept {
   std::string sign = value < 0 ? "-" : "";
   std::string digits = std::to_string(value < 0 ? -value : value);
   if (digits.size() < width) {
@@ -991,19 +991,19 @@ inline std::string d3Pad(long long value, const std::string& fill, size_t width)
   return sign + digits;
 }
 
-inline GanttDate floored(const GanttDate& date, const Calendar& calendar) {
+inline GanttDate floored(const GanttDate& date, const Calendar& calendar) noexcept {
   GanttDate d(date.getTime());
   calendar.floorFn(d);
   return d;
 }
 
-inline int weekOfYear(const GanttDate& date, int weekStart) {
+inline int weekOfYear(const GanttDate& date, int weekStart) noexcept {
   Calendar week = weekCalendar(weekStart);
   GanttDate yearStart = floored(date, baseCalendar("year"));
   return spanUnits(floored(GanttDate(yearStart.getTime() - 1.0), week), floored(date, week), WEEK);
 }
 
-inline GanttDate isoThursday(const GanttDate& date) {
+inline GanttDate isoThursday(const GanttDate& date) noexcept {
   Calendar thursday = weekCalendar(4);
   int day = date.getDay();
   GanttDate d = floored((day >= 4 || day == 0) ? date : GanttDate(date.getTime() - 1.0), thursday);
@@ -1016,7 +1016,7 @@ inline GanttDate isoThursday(const GanttDate& date) {
 
 inline std::string timeFormat(const std::string& specifier, const GanttDate& date);
 
-inline std::string directive(char c, const GanttDate& d, const std::string& p) {
+inline std::string directive(char c, const GanttDate& d, const std::string& p) noexcept {
   switch (c) {
     case 'a': return WEEKDAYS()[d.getDay()].substr(0, 3);
     case 'A': return WEEKDAYS()[d.getDay()];
@@ -1131,7 +1131,7 @@ enum T {
   EOF_TOK
 };
 
-inline const std::vector<std::string>& TOKEN_NAMES() {
+inline const std::vector<std::string>& TOKEN_NAMES() noexcept {
   static const std::vector<std::string> names = {
     "$end", "INVALID", "open_directive", "acc_title", "acc_title_value",
     "acc_descr", "acc_descr_value", "acc_descr_multiline_value", "NL",
@@ -1145,7 +1145,7 @@ inline const std::vector<std::string>& TOKEN_NAMES() {
   return names;
 }
 
-inline bool ciAt(const std::string& src, int p, const std::string& word) {
+inline bool ciAt(const std::string& src, int p, const std::string& word) noexcept {
   if (p + static_cast<int>(word.size()) > static_cast<int>(src.size())) return false;
   for (size_t i = 0; i < word.size(); i++) {
     char a = src[p + i];
@@ -1157,11 +1157,11 @@ inline bool ciAt(const std::string& src, int p, const std::string& word) {
   return true;
 }
 
-inline bool isWordChar(char c) {
+inline bool isWordChar(char c) noexcept {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
 }
 
-inline bool wordBoundaryAt(const std::string& src, int p) {
+inline bool wordBoundaryAt(const std::string& src, int p) noexcept {
   return p >= static_cast<int>(src.size()) || !isWordChar(src[p]);
 }
 
@@ -1502,7 +1502,7 @@ struct GanttTask {
   } raw;
 };
 
-inline double ganttClock(std::optional<double> nowOpt = std::nullopt) {
+inline double ganttClock(std::optional<double> nowOpt = std::nullopt) noexcept {
   if (nowOpt.has_value() && std::isfinite(*nowOpt)) return *nowOpt;
   auto tp = std::chrono::system_clock::now();
   auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
@@ -1537,9 +1537,9 @@ inline std::pair<double, std::string> parseDuration(const std::string& str) {
   return {std::stod(numPart), unit};
 }
 
-inline std::vector<std::string> mergeTokens(const std::vector<std::string>& existing, const std::string& txt) {
+inline std::vector<std::string> mergeTokens(const std::vector<std::string>& existing, const std::string& txt) noexcept {
   std::vector<std::string> out;
-  std::unordered_set<std::string> seen;
+  Pele::FlatSet<std::string> seen;
   for (const auto& e : existing) {
     if (seen.insert(e).second) out.push_back(e);
   }
@@ -1572,19 +1572,19 @@ public:
   std::optional<std::string> weekday;
   std::string weekend = "saturday";
   std::vector<std::string> sections;
-  std::unordered_map<std::string, std::string> links;
+  Pele::FlatMap<std::string, std::string> links;
   std::vector<GanttTask> tasks;
 
 private:
-  std::unordered_map<std::string, size_t> byId;
+  Pele::FlatMap<std::string, size_t> byId;
   std::string currentSection;
   int taskCount = 0;
   int lastOrder = 0;
   std::optional<std::string> lastTaskId;
   double now = 0.0;
   double work = 0.0;
-  std::unordered_set<std::string> includeSet;
-  std::unordered_set<std::string> excludeSet;
+  Pele::FlatSet<std::string> includeSet;
+  Pele::FlatSet<std::string> excludeSet;
   std::vector<bool> excludedDays;
   bool datedTokens = false;
 
@@ -1643,12 +1643,11 @@ public:
       data.erase(data.begin());
     }
     if (data.empty()) {
-      throw PeleError("Task \"" + trimStr(descr) + "\" needs a duration or an end date.", "semantic", "gantt");
+      throw PeleError(Pele::cat({"Task \"", trimStr(descr), "\" needs a duration or an end date."}),  "semantic",  "gantt");
     }
     if (data.size() > 3) {
-      throw PeleError(
-        "Task \"" + trimStr(descr) + "\" has too many fields. A task takes an id, a start, and an end or duration.",
-        "semantic",
+      throw PeleError(Pele::cat({"Task \"", trimStr(descr), "\" has too many fields. A task takes an id, a start, and an end or duration."}), 
+        "semantic", 
         "gantt"
       );
     }
@@ -1725,7 +1724,7 @@ public:
     }
 
     datedTokens = !includes.empty() || !isNumericFormat(trimStr(dateFormat));
-    static const std::unordered_set<std::string> dayNames = {
+    static const Pele::FlatSet<std::string> dayNames = {
       "sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"
     };
     for (const auto& token : excludes) {
@@ -1756,7 +1755,7 @@ public:
       spend(FORMAT_STEP + static_cast<double>(tmpl.size()) * 8.0);
       formatted = format(date, tmpl);
     }
-    auto listed = [&](const std::unordered_set<std::string>& set) -> bool {
+    auto listed = [&](const Pele::FlatSet<std::string>& set) -> bool {
       return set.find(dateOnly) != set.end() || (formatted.has_value() && set.find(*formatted) != set.end());
     };
     if (listed(includeSet)) return false;
@@ -1866,13 +1865,13 @@ private:
 
     GanttDate fallback = parseJsFallbackDate(str);
     if (!isValid(fallback) || fallback.getFullYear() < -10000 || fallback.getFullYear() > 10000) {
-      throw PeleError("Invalid date:" + str, "semantic", "gantt");
+      throw PeleError(Pele::cat({"Invalid date:", str}),  "semantic",  "gantt");
     }
     return fallback;
   }
 
   GanttDate checked(const GanttDate& date, const std::string& str) {
-    if (!isValid(date)) throw PeleError("Invalid date:" + str, "semantic", "gantt");
+    if (!isValid(date)) throw PeleError(Pele::cat({"Invalid date:", str}),  "semantic",  "gantt");
     return date;
   }
 
@@ -1962,7 +1961,7 @@ inline void parseGantt(const std::string& src, GanttDb& db) {
   auto fail = [&](const std::string& expected) {
     int t = toks.types[i];
     std::string got = (t == T::END) ? "1" : TOKEN_NAMES()[t];
-    throw syntaxError("gantt", src, toks.starts[i], "Expecting " + expected + ", got '" + got + "'");
+    throw syntaxError("gantt",  src,  toks.starts[i], Pele::cat({"Expecting ", expected, ", got '", got, "'"}));
   };
 
   auto end = [&](const std::string& also = "") {
@@ -2109,12 +2108,12 @@ constexpr double WIDTH = 800.0;
 constexpr double MIN_PLOT = 240.0;
 constexpr double LABEL_GAP = 8.0;
 
-inline double ganttCapWidth(const RenderOptions& options, double natural, double floor) {
+inline double ganttCapWidth(const RenderOptions& options, double natural, double floor) noexcept {
   double maxWidth = options.maxWidth;
   return maxWidth > 0.0 ? std::max(std::min(floor, natural), std::min(natural, maxWidth)) : natural;
 }
 
-inline std::optional<double> setting(const Config& config, const std::string& key, double minV, double maxV) {
+inline std::optional<double> setting(const Config& config, const std::string& key, double minV, double maxV) noexcept {
   const auto* sec = config.get("gantt");
   if (sec && sec->isMap()) {
     const auto* v = sec->get(key);
@@ -2125,7 +2124,7 @@ inline std::optional<double> setting(const Config& config, const std::string& ke
   return std::nullopt;
 }
 
-inline std::optional<std::string> textSetting(const Config& config, const std::string& key) {
+inline std::optional<std::string> textSetting(const Config& config, const std::string& key) noexcept {
   const auto* sec = config.get("gantt");
   if (sec && sec->isMap()) {
     const auto* v = sec->get(key);
@@ -2134,7 +2133,7 @@ inline std::optional<std::string> textSetting(const Config& config, const std::s
   return std::nullopt;
 }
 
-inline bool flagSetting(const Config& config, const std::string& key) {
+inline bool flagSetting(const Config& config, const std::string& key) noexcept {
   const auto* sec = config.get("gantt");
   if (sec && sec->isMap()) {
     const auto* v = sec->get(key);
@@ -2143,7 +2142,7 @@ inline bool flagSetting(const Config& config, const std::string& key) {
   return false;
 }
 
-inline std::string replaceBreakTags(const std::string& raw) {
+inline std::string replaceBreakTags(const std::string& raw) noexcept {
   std::string out;
   for (size_t i = 0; i < raw.size(); ) {
     if (raw[i] == '<' && i + 3 < raw.size() &&
@@ -2163,7 +2162,7 @@ inline std::string replaceBreakTags(const std::string& raw) {
   return out;
 }
 
-inline Label oneLine(const std::string& raw, const TextMeasurer& measurer, double size) {
+inline Label oneLine(const std::string& raw, const TextMeasurer& measurer, double size) noexcept {
   Label label = layoutLabel(replaceBreakTags(raw), false, measurer, size, 4000.0);
   if (label.lines.size() <= 1) return label;
   Label single = label;
@@ -2174,12 +2173,12 @@ inline Label oneLine(const std::string& raw, const TextMeasurer& measurer, doubl
   return single;
 }
 
-inline bool scheduled(const GanttTask& task) {
+inline bool scheduled(const GanttTask& task) noexcept {
   return task.startTime.has_value() && task.endTime.has_value() &&
          std::isfinite(task.startTime->getTime()) && std::isfinite(task.endTime->getTime());
 }
 
-inline int packRows(const std::vector<const GanttTask*>& tasks, int offset, std::unordered_map<const GanttTask*, int>& rowOf) {
+inline int packRows(const std::vector<const GanttTask*>& tasks, int offset, std::unordered_map<const GanttTask*, int>& rowOf) noexcept {
   std::vector<const GanttTask*> sorted;
   for (const auto* t : tasks) if (scheduled(*t)) sorted.push_back(t);
   std::stable_sort(sorted.begin(), sorted.end(), [](const GanttTask* a, const GanttTask* b) {
@@ -2214,7 +2213,7 @@ struct Bar {
   bool inside = false;
 };
 
-inline Rendered renderGanttModel(GanttDb& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderGanttModel(GanttDb& model, const Config& config, const RenderOptions& options) noexcept {
   double size = options.fontSize;
   const TextMeasurer& measurer = getMeasurer(options);
   double pad = options.padding;
@@ -2238,7 +2237,7 @@ inline Rendered renderGanttModel(GanttDb& model, const Config& config, const Ren
     else if (scheduled(t)) verts.push_back(&t);
   }
 
-  std::unordered_map<std::string, int> categories;
+  Pele::FlatMap<std::string, int> categories;
   std::vector<std::string> categoryOrder;
   for (const auto* task : rowTasks) {
     if (categories.find(task->section) == categories.end()) {
@@ -2366,16 +2365,16 @@ inline Rendered renderGanttModel(GanttDb& model, const Config& config, const Ren
   double topY = plotTop - gridLead - tickHeight / 2.0 - 2.0;
   for (double t : ticks) {
     double tx = x(t);
-    grid += "M" + num(tx) + "," + num(plotTop - gridLead) + "V" + num(plotBottom);
+    Pele::appendCat(grid, {"M", num(tx), ",", num(plotTop - gridLead), "V", num(plotBottom)});
     std::string label = tickLabel(t);
     double w = measurer.width(label, tickSize, 0);
     if (tx - w / 2.0 < lastRight + 8.0 || label == lastLabel) continue;
     lastRight = tx + w / 2.0;
     lastLabel = label;
     extent = std::max(extent, lastRight);
-    std::string body = "text-anchor=\"middle\">" + esc(label) + "</text>";
-    axisBottom += "<text x=\"" + num(tx) + "\" y=\"" + num(bottomY + tickSize * 0.35) + "\" " + body;
-    if (topAxis) axisTop += "<text x=\"" + num(tx) + "\" y=\"" + num(topY + tickSize * 0.35) + "\" " + body;
+    std::string body = Pele::cat({"text-anchor=\"middle\">", esc(label), "</text>"});
+    Pele::appendCat(axisBottom, {"<text x=\"", num(tx), "\" y=\"", num(bottomY + tickSize * 0.35), "\" ", body});
+    if (topAxis) Pele::appendCat(axisTop, {"<text x=\"", num(tx), "\" y=\"", num(topY + tickSize * 0.35), "\" ", body});
   }
 
   std::string vertLines;
@@ -2396,8 +2395,8 @@ inline Rendered renderGanttModel(GanttDb& model, const Config& config, const Ren
     if (line == vertEnds.size()) vertEnds.push_back(cx + label.width / 2.0);
     else vertEnds[line] = cx + label.width / 2.0;
     extent = std::max(extent, vertEnds[line]);
-    vertLines += "<path class=\"pele-vert\" data-id=\"" + escText(task->id) + "\" d=\"M" + num(vx) + "," + num(plotTop - gridLead) + "V" + num(plotBottom) + "\"/>";
-    vertLabels += labelSvg(label, cx, vertTop + static_cast<double>(line) * vertLine + vertLine / 2.0, " class=\"pele-vert-label\" data-id=\"" + escText(task->id) + "\"");
+    Pele::appendCat(vertLines, {"<path class=\"pele-vert\" data-id=\"", escText(task->id), "\" d=\"M", num(vx), ",", num(plotTop - gridLead), "V", num(plotBottom), "\"/>"});
+    vertLabels += labelSvg(label,  cx,  vertTop + static_cast<double>(line) * vertLine + vertLine / 2.0, Pele::cat({" class=\"pele-vert-label\" data-id=\"", escText(task->id), "\""}));
   }
 
   double width = std::ceil(std::max(extent, pad + title.width) + pad);
@@ -2417,7 +2416,7 @@ inline Rendered renderGanttModel(GanttDb& model, const Config& config, const Ren
                std::string(index % 2 == 0 ? "var(--_s)" : "none") + "\"/>";
     }
     const Label& label = sectionLabels[section];
-    sectionOut += labelSvg(label, pad + 8.0 + label.width / 2.0, y + h / 2.0, " class=\"pele-section-label\" data-id=\"" + escText(section) + "\"", options.icons);
+    sectionOut += labelSvg(label,  pad + 8.0 + label.width / 2.0,  y + h / 2.0, Pele::cat({" class=\"pele-section-label\" data-id=\"", escText(section), "\""}),  options.icons);
     row = end;
   }
 
@@ -2434,7 +2433,7 @@ inline Rendered renderGanttModel(GanttDb& model, const Config& config, const Ren
       double ex0 = std::max(left, x(dayStart.getTime()));
       double ex1 = std::min(right, x(dayEnd.getTime()));
       if (ex1 > ex0) {
-        excluded += "<rect x=\"" + num(ex0) + "\" y=\"" + num(plotTop) + "\" width=\"" + num(ex1 - ex0) + "\" height=\"" + num(plotHeight) + "\"/>";
+        Pele::appendCat(excluded, {"<rect x=\"", num(ex0), "\" y=\"", num(plotTop), "\" width=\"", num(ex1 - ex0), "\" height=\"", num(plotHeight), "\"/>"});
       }
       from.reset();
       to.reset();
@@ -2457,7 +2456,7 @@ inline Rendered renderGanttModel(GanttDb& model, const Config& config, const Ren
     double cy = plotTop + bar.row * rowHeight + rowHeight / 2.0;
     std::string state = task.active ? "active" : task.done ? "done" : "";
     std::string classes = "pele-task";
-    if (!state.empty()) classes += " pele-" + state;
+    if (!state.empty()) Pele::appendCat(classes, {" pele-", state});
     if (task.crit) classes += " pele-crit";
     if (task.milestone) classes += " pele-milestone";
     if (std::find(task.classes.begin(), task.classes.end(), "clickable") != task.classes.end()) {
@@ -2474,13 +2473,13 @@ inline Rendered renderGanttModel(GanttDb& model, const Config& config, const Ren
       std::string paint = (state == "done")
         ? "fill=\"var(--_a)\""
         : (state == "active")
-          ? ("fill=\"" + color + "\" fill-opacity=\"0.25\"")
-          : ("fill=\"" + color + "\"");
+          ? Pele::cat({"fill=\"", color, "\" fill-opacity=\"0.25\""})
+          : Pele::cat({"fill=\"", color, "\""});
       std::string stroke = "stroke=\"" + std::string(state == "done" && !task.crit ? "var(--_b)" : color) + "\"";
       if (task.milestone) {
         double cx = (bar.x0 + bar.x1) / 2.0;
         double r = barHeight / 2.0;
-        shape = "<path d=\"M" + num(cx) + "," + num(cy - r) + "L" + num(cx + r) + "," + num(cy) + "L" + num(cx) + "," + num(cy + r) + "L" + num(cx - r) + "," + num(cy) + "Z\" " + paint + " " + stroke + " stroke-linejoin=\"round\"/>";
+        shape = Pele::cat({"<path d=\"M", num(cx), ",", num(cy - r), "L", num(cx + r), ",", num(cy), "L", num(cx), ",", num(cy + r), "L", num(cx - r), ",", num(cy), "Z\" ", paint, " ", stroke, " stroke-linejoin=\"round\"/>"});
       } else {
         shape = "<rect x=\"" + num(bar.x0) + "\" y=\"" + num(cy - barHeight / 2.0) + "\" width=\"" + num(bar.x1 - bar.x0) + "\" height=\"" + num(barHeight) + "\" " + paint + " " + stroke + std::string(ROUNDED) + "/>";
       }
@@ -2488,12 +2487,12 @@ inline Rendered renderGanttModel(GanttDb& model, const Config& config, const Ren
       else if (state == "done") textFill = " fill=\"var(--_m)\"";
     }
 
-    std::string body = shape + labelSvg(bar.label, bar.labelX, cy, " class=\"pele-label\"" + textFill);
+    std::string body = shape + labelSvg(bar.label,  bar.labelX,  cy, Pele::cat({" class=\"pele-label\"", textFill}));
     auto linkIt = model.links.find(task.id);
     if (linkIt != model.links.end()) {
       body = linked(body, linkIt->second, task.id, links, options);
     }
-    tasksOut += "<g class=\"" + classes + "\" data-id=\"" + escText(task.id) + "\">" + body + "</g>";
+    Pele::appendCat(tasksOut, {"<g class=\"", classes, "\" data-id=\"", escText(task.id), "\">", body, "</g>"});
   }
 
   std::string today;
@@ -2512,25 +2511,11 @@ inline Rendered renderGanttModel(GanttDb& model, const Config& config, const Ren
       }
       style = resolveStyle(parts).line;
     }
-    today =
-      "<g class=\"pele-today\"><path d=\"M" + num(tx) + "," + num(top) + "V" + num(plotBottom) + "\" fill=\"none\" stroke=\"var(--_c)\" stroke-width=\"2\"" + style + "/>" +
-      (!style.empty() ? "" : "<path d=\"M" + num(tx - 4.0) + "," + num(top - 5.0) + "H" + num(tx + 4.0) + "L" + num(tx) + "," + num(top + 1.0) + "Z\" fill=\"var(--_c)\"/>") +
-      "</g>";
+    today = Pele::cat({"<g class=\"pele-today\"><path d=\"M", num(tx), ",", num(top), "V", num(plotBottom), "\" fill=\"none\" stroke=\"var(--_c)\" stroke-width=\"2\"", style, "/>", (!style.empty() ? "" : "<path d=\"M" + num(tx - 4.0) + "," + num(top - 5.0) + "H" + num(tx + 4.0) + "L" + num(tx) + "," + num(top + 1.0) + "Z\" fill=\"var(--_c)\"/>"), "</g>"});
   }
 
-  std::string axisLine = "M" + num(left) + "," + num(plotBottom) + "H" + num(right) +
-                         (topAxis ? ("M" + num(left) + "," + num(plotTop - gridLead) + "H" + num(right)) : "");
-  std::string content =
-    labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-    (!bands.empty() ? ("<g class=\"pele-sections\">" + bands + "</g>") : "") +
-    (!excluded.empty() ? ("<g class=\"pele-excluded\" fill=\"var(--_a)\">" + excluded + "</g>") : "") +
-    "<g class=\"pele-grid\" fill=\"none\"><path d=\"" + grid + "\" stroke=\"var(--_b)\" stroke-dasharray=\"1 3\"/><path d=\"" + axisLine + "\" stroke=\"var(--_b)\"/></g>" +
-    (!vertLines.empty() ? ("<g class=\"pele-verts\" fill=\"none\" stroke=\"var(--_l)\" stroke-width=\"1.5\" stroke-dasharray=\"4 3\">" + vertLines + "</g>") : "") +
-    today +
-    "<g class=\"pele-tasks\" font-size=\"" + num(labelSize) + "\">" + tasksOut + "</g>" +
-    "<g class=\"pele-section-labels\" font-size=\"" + num(sectionSize) + "\">" + sectionOut + "</g>" +
-    "<g class=\"pele-axis\" font-size=\"" + num(tickSize) + "\" fill=\"var(--_m)\">" + axisBottom + axisTop + "</g>" +
-    (!vertLabels.empty() ? ("<g class=\"pele-vert-labels\" font-size=\"" + num(labelSize) + "\">" + vertLabels + "</g>") : "");
+  std::string axisLine = Pele::cat({"M", num(left), ",", num(plotBottom), "H", num(right), (topAxis ? Pele::cat({"M", num(left), ",", num(plotTop - gridLead), "H", num(right)}) : "")});
+  std::string content = Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), (!bands.empty() ? Pele::cat({"<g class=\"pele-sections\">", bands, "</g>"}) : ""), (!excluded.empty() ? Pele::cat({"<g class=\"pele-excluded\" fill=\"var(--_a)\">", excluded, "</g>"}) : ""), "<g class=\"pele-grid\" fill=\"none\"><path d=\"", grid, "\" stroke=\"var(--_b)\" stroke-dasharray=\"1 3\"/><path d=\"", axisLine, "\" stroke=\"var(--_b)\"/></g>", (!vertLines.empty() ? Pele::cat({"<g class=\"pele-verts\" fill=\"none\" stroke=\"var(--_l)\" stroke-width=\"1.5\" stroke-dasharray=\"4 3\">", vertLines, "</g>"}) : ""), today, "<g class=\"pele-tasks\" font-size=\"", num(labelSize), "\">", tasksOut, "</g>", "<g class=\"pele-section-labels\" font-size=\"", num(sectionSize), "\">", sectionOut, "</g>", "<g class=\"pele-axis\" font-size=\"", num(tickSize), "\" fill=\"var(--_m)\">", axisBottom, axisTop, "</g>", (!vertLabels.empty() ? Pele::cat({"<g class=\"pele-vert-labels\" font-size=\"", num(labelSize), "\">", vertLabels, "</g>"}) : "")});
 
   return {svgDocument("gantt", width, height, size, options, model, content), width, height, links};
 }
@@ -2558,7 +2543,7 @@ inline Rendered renderGantt(const std::string& source, const Config& config, con
 
 inline Rendered renderGantt(const std::string& raw, RenderOptions options = {}) {
   auto pre = preprocess(raw);
-  std::string parsed = encodeEntities(pre.text) + "\n";
+  std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
   const auto* section = pre.config.get("gantt");
   bool fixed = (section && section->isMap() && section->get("useMaxWidth") && section->get("useMaxWidth")->isBool() && !section->get("useMaxWidth")->bVal);
   if (!options.hasResponsive) {

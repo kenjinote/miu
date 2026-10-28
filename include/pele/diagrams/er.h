@@ -29,7 +29,7 @@ using StateDiagram::direction;
 using StateDiagram::runsAcross;
 using StateDiagram::turnToFit;
 
-inline std::string num(double value) {
+inline std::string num(double value) noexcept {
     if (!std::isfinite(value)) return "0";
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
@@ -44,7 +44,7 @@ inline std::string num(double value) {
     return s + "." + std::to_string(r);
 }
 
-inline CEdge cedge(int src, int dst, int minlen = 1, double labelW = 0.0, double labelH = 0.0) {
+inline CEdge cedge(int src, int dst, int minlen = 1, double labelW = 0.0, double labelH = 0.0) noexcept {
     CEdge e;
     e.src = src;
     e.dst = dst;
@@ -54,7 +54,7 @@ inline CEdge cedge(int src, int dst, int minlen = 1, double labelW = 0.0, double
     return e;
 }
 
-inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, double dx, double dy) {
+inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, double dx, double dy) noexcept {
     for (auto& c : nodes) {
         c.x += dx;
         c.y += dy;
@@ -71,14 +71,14 @@ inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, do
 
 using Crossings = std::unordered_map<int, std::vector<double>>;
 
-inline void markCrossings(Crossings& crossings, const std::vector<double>& route) {
+inline void markCrossings(Crossings& crossings, const std::vector<double>& route) noexcept {
     for (size_t k = 0; k + 1 < route.size(); k += 3) {
         int key = static_cast<int>(std::llround(route[k + 1]));
         crossings[key].push_back(route[k]);
     }
 }
 
-inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) {
+inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) noexcept {
     if (width == 0.0) return c.x;
     double top = c.y - c.h / 2.0;
     double left = c.x - c.w / 2.0;
@@ -103,7 +103,7 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
     return best;
 }
 
-inline bool internalLink(const std::string& name, const RenderOptions& options) {
+inline bool internalLink(const std::string& name, const RenderOptions& options) noexcept {
     std::string url = sanitizeUrl(name);
     if (url == "about:blank" || linkUrl(url, options).empty()) return false;
     std::string seen;
@@ -188,7 +188,7 @@ public:
 
 private:
     std::unordered_map<std::string, ErSubgraphPtr> subgraphLookup;
-    std::unordered_set<std::string> claimed;
+    Pele::FlatSet<std::string> claimed;
 
 public:
     ErEntityPtr addEntity(const std::string& name, const std::string& alias = "") {
@@ -270,7 +270,7 @@ public:
 
     std::string addSubGraph(const std::string& rawId, const std::vector<DocItem>& list, const std::string& rawTitle, const std::string& rawLabelType = "") {
         std::string id = trimStr(rawId);
-        std::unordered_set<std::string> seen;
+        Pele::FlatSet<std::string> seen;
         std::vector<std::string> nodes;
         std::string dir;
         bool hasDir = false;
@@ -358,7 +358,7 @@ struct ErGraph {
     std::vector<ErGraphEdge> edges;
 };
 
-inline ErGraph buildErGraph(const ErDb& model) {
+inline ErGraph buildErGraph(const ErDb& model) noexcept {
     std::vector<ErGraphNode> nodes;
     std::vector<ErGraphEdge> edges;
     const auto& subgraphs = model.subgraphs;
@@ -374,8 +374,8 @@ inline ErGraph buildErGraph(const ErDb& model) {
         return out;
     };
 
-    std::unordered_map<std::string, std::string> parentOf;
-    std::unordered_set<std::string> subgraphIds;
+    Pele::FlatMap<std::string, std::string> parentOf;
+    Pele::FlatSet<std::string> subgraphIds;
     for (int i = static_cast<int>(subgraphs.size()) - 1; i >= 0; i--) {
         const auto& subgraph = *subgraphs[i];
         subgraphIds.insert(subgraph.id);
@@ -405,7 +405,7 @@ inline ErGraph buildErGraph(const ErDb& model) {
         nodes.push_back(std::move(gn));
     }
 
-    std::unordered_map<std::string, std::string> moved;
+    Pele::FlatMap<std::string, std::string> moved;
     for (const auto& [name, entityPtr] : model.entitiesList) {
         const auto& entity = *entityPtr;
         if (subgraphIds.count(name)) {
@@ -450,31 +450,31 @@ inline ErGraph buildErGraph(const ErDb& model) {
 
 constexpr double MARKER_LENGTH = 18.0;
 
-inline std::string erMarker(const std::string& type, double x, double y, double dx, double dy) {
+inline std::string erMarker(const std::string& type, double x, double y, double dx, double dy) noexcept {
     constexpr double BAR = 5.0;
     constexpr double FOOT = 6.0;
     constexpr double FOOT_LENGTH = 10.0;
     constexpr double RING = 3.5;
 
     auto at = [&](double back, double side) -> std::string {
-        return num(x - dx * back - dy * side) + "," + num(y - dy * back + dx * side);
+        return Pele::cat({num(x - dx * back - dy * side), ",", num(y - dy * back + dx * side)});
     };
     auto bar = [&](double back) -> std::string {
-        return "M" + at(back, -BAR) + "L" + at(back, BAR);
+        return Pele::cat({"M", at(back, -BAR), "L", at(back, BAR)});
     };
-    std::string foot = "M" + at(0.0, -FOOT) + "L" + at(FOOT_LENGTH, 0.0) + "L" + at(0.0, FOOT);
+    std::string foot = Pele::cat({"M", at(0.0, -FOOT), "L", at(FOOT_LENGTH, 0.0), "L", at(0.0, FOOT)});
     auto ring = [&](double back) -> std::string {
-        return "<circle class=\"pele-marker\" cx=\"" + num(x - dx * back) + "\" cy=\"" + num(y - dy * back) + "\" r=\"3.5\" fill=\"var(--_bg)\"/>";
+        return Pele::cat({"<circle class=\"pele-marker\" cx=\"", num(x - dx * back), "\" cy=\"", num(y - dy * back), "\" r=\"3.5\" fill=\"var(--_bg)\"/>"});
     };
     auto path = [](const std::string& d) -> std::string {
-        return "<path class=\"pele-marker\" d=\"" + d + "\"/>";
+        return Pele::cat({"<path class=\"pele-marker\" d=\"", d, "\"/>"});
     };
 
     if (type == "only_one") return path(bar(6.0) + bar(10.0));
     if (type == "zero_or_one") return path(bar(6.0)) + ring(13.5);
     if (type == "one_or_more") return path(foot + bar(FOOT_LENGTH + 3.5));
     if (type == "zero_or_more") return path(foot) + ring(FOOT_LENGTH + RING + 0.5);
-    if (type == "md_parent") return "<path class=\"pele-marker\" d=\"M" + at(0.0, 0.0) + "L" + at(6.0, 4.0) + "L" + at(12.0, 0.0) + "L" + at(6.0, -4.0) + "Z\" fill=\"var(--_bg)\"/>";
+    if (type == "md_parent") return Pele::cat({"<path class=\"pele-marker\" d=\"M", at(0.0, 0.0), "L", at(6.0, 4.0), "L", at(12.0, 0.0), "L", at(6.0, -4.0), "Z\" fill=\"var(--_bg)\"/>"});
     return "";
 }
 
@@ -1066,9 +1066,8 @@ inline void parseEr(const std::string& src, ErDb& db) {
     static const char* const DIRECTIONS[4] = {"TB", "BT", "RL", "LR"};
     const std::string NAME = "'UNICODE_TEXT', 'NUM', 'ENTITY_NAME', 'DECIMAL_NUM', 'ENTITY_ONE'";
     const std::string CARDS = "'ZERO_OR_ONE', 'ZERO_OR_MORE', 'ONE_OR_MORE', 'ONLY_ONE', 'MD_PARENT'";
-    const std::string LINE =
-        "'EOF', 'NEWLINE', 'title', 'acc_title', 'acc_descr', 'acc_descr_multiline_value', 'SUBGRAPH', 'direction_tb', "
-        "'direction_bt', 'direction_rl', 'direction_lr', 'CLASSDEF', 'CLASS', 'STYLE', " + NAME;
+    const std::string LINE = Pele::cat({"'EOF', 'NEWLINE', 'title', 'acc_title', 'acc_descr', 'acc_descr_multiline_value', 'SUBGRAPH', 'direction_tb', "
+        "'direction_bt', 'direction_rl', 'direction_lr', 'CLASSDEF', 'CLASS', 'STYLE', ", NAME});
 
     auto [types, texts, starts] = tokenize(src);
     size_t i = 0;
@@ -1077,7 +1076,7 @@ inline void parseEr(const std::string& src, ErDb& db) {
         int t = types[i];
         if (t == T::ERROR) throw syntaxError("er", src, starts[i], "", true);
         std::string got = (t == T::CHAR) ? texts[i] : std::string(TOKEN_NAMES[t]);
-        throw syntaxError("er", src, starts[i], "Expecting " + expected + ", got '" + got + "'");
+        throw syntaxError("er",  src,  starts[i], Pele::cat({"Expecting ", expected, ", got '", got, "'"}));
     };
     auto expect = [&](int type) -> std::string {
         if (types[i] != type) fail("'" + std::string(TOKEN_NAMES[type]) + "'");
@@ -1250,7 +1249,7 @@ inline void parseEr(const std::string& src, ErDb& db) {
                 break;
             case T::EOF_TOK:
                 i++;
-                if (nested) fail("'END', " + LINE);
+                if (nested) fail(Pele::cat({"'END', ", LINE}));
                 return;
             case T::END_KW: {
                 if (!nested) fail(LINE);
@@ -1332,7 +1331,7 @@ inline void parseEr(const std::string& src, ErDb& db) {
                 break;
             }
             default: {
-                if (!isName(t)) fail(nested ? ("'END', " + LINE) : LINE);
+                if (!isName(t)) fail(nested ? Pele::cat({"'END', ", LINE}) : LINE);
                 auto names = entityStatement();
                 if (nested) {
                     for (const auto& name : names) frames.back().list.push_back({false, name});
@@ -1374,7 +1373,7 @@ template <typename Opts>
 struct HasMonospaceVec<Opts, std::void_t<decltype(std::declval<const Opts&>().monospace)>> : std::true_type {};
 
 template <typename Opts>
-inline bool hasMonospaceOption(const Opts& opts, const std::string& item) {
+inline bool hasMonospaceOption(const Opts& opts, const std::string& item) noexcept {
     if constexpr (HasMonospaceVec<Opts>::value) {
         for (const auto& m : opts.monospace) {
             if (m == item) return true;
@@ -1383,7 +1382,7 @@ inline bool hasMonospaceOption(const Opts& opts, const std::string& item) {
     return false;
 }
 
-inline double numberOption(const Config& config, const std::string& key, double fallback) {
+inline double numberOption(const Config& config, const std::string& key, double fallback) noexcept {
     if (!config.isMap()) return fallback;
     auto itEr = config.mVal.find("er");
     if (itEr == config.mVal.end() || !itEr->second.isMap()) return fallback;
@@ -1420,13 +1419,13 @@ struct Loop {
     double at = 0.0;
 };
 
-inline std::string textLeft(const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons, int mono = 0) {
+inline std::string textLeft(const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons, int mono = 0) noexcept {
     const auto& lines = label.lines;
     if (lines.empty()) return "";
     if (lines.size() == 1 && lines[0].size() == 1) {
         const auto& only = lines[0][0];
         if (!only.hasIcon && !only.hasMath && only.style == mono && !(mono != 0 && only.text.find("  ") != std::string::npos)) {
-            return "<text" + textStyle(attrs, mono) + " x=\"" + num(x) + "\" y=\"" + num(y) + "\">" + esc(only.text) + "</text>";
+            return Pele::cat({"<text", textStyle(attrs, mono), " x=\"", num(x), "\" y=\"", num(y), "\">", esc(only.text), "</text>"});
         }
     }
     int shared = sharedStyle(label);
@@ -1451,16 +1450,16 @@ inline std::string textLeft(const Label& label, double x, double y, const std::s
         for (const auto& span : line) {
             if (span.hasIcon) {
                 double side = label.size * 1.1;
-                extra += "<svg class=\"pele-icon\" data-icon=\"" + escText(span.icon) + "\" x=\"" + num(sx) + "\" y=\"" + num(y - label.size * 0.35 - side / 2.0) + "\" width=\"" + num(side) + "\" height=\"" + num(side) + "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">" + (icons ? icons(span.icon) : "") + "</svg>";
+                Pele::appendCat(extra, {"<svg class=\"pele-icon\" data-icon=\"", escText(span.icon), "\" x=\"", num(sx), "\" y=\"", num(y - label.size * 0.35 - side / 2.0), "\" width=\"", num(side), "\" height=\"", num(side), "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">", (icons ? icons(span.icon) : ""), "</svg>"});
             } else if (!span.text.empty()) {
-                std::string pos = (hasIcon || !placed) ? (" x=\"" + num(sx) + "\" y=\"" + num(y) + "\"") : "";
-                body += "<tspan" + pos + spanStyle(span.style & ~shared) + ">" + esc(span.text) + "</tspan>";
+                std::string pos = (hasIcon || !placed) ? Pele::cat({" x=\"", num(sx), "\" y=\"", num(y), "\""}) : "";
+                Pele::appendCat(body, {"<tspan", pos, spanStyle(span.style & ~shared), ">", esc(span.text), "</tspan>"});
                 placed = true;
             }
             sx += span.width;
         }
     }
-    return "<text" + textStyle(attrs, shared) + " xml:space=\"preserve\">" + body + "</text>" + extra;
+    return Pele::cat({"<text", textStyle(attrs, shared), " xml:space=\"preserve\">", body, "</text>", extra});
 }
 
 inline std::string cellText(const std::string& raw) {
@@ -1468,7 +1467,7 @@ inline std::string cellText(const std::string& raw) {
     return (converted == raw) ? raw : replaceAllStr(replaceAllStr(converted, "<", "&lt;"), ">", "&gt;");
 }
 
-inline std::vector<double> straighten(const std::vector<double>& route) {
+inline std::vector<double> straighten(const std::vector<double>& route) noexcept {
     std::vector<double> out;
     for (size_t i = 0; i < 3 && i < route.size(); i++) out.push_back(route[i]);
     for (size_t k = 3; k + 2 < route.size(); k += 3) {
@@ -1485,7 +1484,7 @@ inline std::vector<double> straighten(const std::vector<double>& route) {
     return out;
 }
 
-inline void spreadEnds(std::vector<CEdge>& cedges, const std::vector<CNode>& cnodes, const std::vector<NodeView>& views) {
+inline void spreadEnds(std::vector<CEdge>& cedges, const std::vector<CNode>& cnodes, const std::vector<NodeView>& views) noexcept {
     struct End {
         size_t edgeIdx = 0;
         size_t at = 0;
@@ -1533,7 +1532,7 @@ inline void spreadEnds(std::vector<CEdge>& cedges, const std::vector<CNode>& cno
     }
 }
 
-inline void inset(std::vector<double>& route, size_t at, const NodeView& view, const CNode& c) {
+inline void inset(std::vector<double>& route, size_t at, const NodeView& view, const CNode& c) noexcept {
     if (c.isGroup) return;
     double dx = route[at] - c.x;
     double dy = route[at + 1] - c.y;
@@ -1546,7 +1545,7 @@ inline void inset(std::vector<double>& route, size_t at, const NodeView& view, c
     }
 }
 
-inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& options, bool turned) {
+inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& options, bool turned) noexcept {
     ErGraph graph = buildErGraph(db);
     bool monospaced = hasMonospaceOption(options, "attributes");
     double size = options.fontSize > 0.0 ? options.fontSize : 16.0;
@@ -1555,7 +1554,7 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
     double pad = options.hasPadding ? options.padding : 8.0;
     const auto& icons = options.icons;
 
-    std::unordered_map<std::string, int> index;
+    Pele::FlatMap<std::string, int> index;
     std::vector<NodeView> views;
     std::vector<CNode> cnodes;
     for (size_t i = 0; i < graph.nodes.size(); i++) {
@@ -1773,10 +1772,8 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
             if (paints(view.style.shape)) {
                 fills.push_back({{x, y, x + c.w, y + c.h}, view.style.shape});
             }
-            clusters += "<g class=\"pele-cluster" + classes + "\" data-id=\"" + escText(node.id) + "\">"
-                "<rect x=\"" + num(x) + "\" y=\"" + num(y) + "\" width=\"" + num(c.w) + "\" height=\"" + num(c.h) + "\" fill=\"var(--_a)\"" + (setsFill(view.style.shape) ? "" : " fill-opacity=\"0.5\"") + " stroke=\"var(--_b)\"" + rounded(view.style.shape) + "/>" +
-                labelSvg(view.label, titleX, y + 8.0 + view.label.height / 2.0, " class=\"pele-cluster-label\"" + inkFill(view.style, "var(--_m)") + view.style.text, icons) +
-                "</g>";
+            Pele::appendCat(clusters, {"<g class=\"pele-cluster", classes, "\" data-id=\"", escText(node.id), "\">"
+                "<rect x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(c.w), "\" height=\"", num(c.h), "\" fill=\"var(--_a)\"", (setsFill(view.style.shape) ? "" : " fill-opacity=\"0.5\""), " stroke=\"var(--_b)\"", rounded(view.style.shape), "/>", labelSvg(view.label,  titleX,  y + 8.0 + view.label.height / 2.0, Pele::cat({" class=\"pele-cluster-label\"", inkFill(view.style, "var(--_m)"), view.style.text}),  icons), "</g>"});
             continue;
         }
 
@@ -1787,19 +1784,19 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
         const std::string& text = view.style.text;
         std::string color = inkFill(view.style);
         std::string muted = !color.empty() ? color : " fill=\"var(--_m)\"";
-        std::string shape = "x=\"" + num(x0) + "\" y=\"" + num(y0) + "\" width=\"" + num(w) + "\" height=\"" + num(h) + "\"";
-        std::string name = labelSvg(view.label, 0.0, !view.rows.empty() ? (y0 + view.headH / 2.0) : 0.0, " class=\"pele-label\"" + color + text, icons);
+        std::string shape = Pele::cat({"x=\"", num(x0), "\" y=\"", num(y0), "\" width=\"", num(w), "\" height=\"", num(h), "\""});
+        std::string name = labelSvg(view.label,  0.0,  !view.rows.empty() ? (y0 + view.headH / 2.0) : 0.0, Pele::cat({" class=\"pele-label\"", color, text}),  icons);
         std::string display = decodeEntities(!node.alias.empty() ? node.alias : node.label);
-        if ((classes + " ").find(" internal-link ") != std::string::npos && !name.empty() && options.links) {
+        if ((Pele::cat({classes, " "})).find(" internal-link ") != std::string::npos && !name.empty() && options.links) {
             bool safe = internalLink(display, options);
             std::string target = esc(display);
-            name = "<a class=\"internal-link\"" + (safe ? (" href=\"" + target + "\"" + relAttr(options)) : "") + " data-href=\"" + target + "\">" + name + "</a>";
+            name = Pele::cat({"<a class=\"internal-link\"", (safe ? Pele::cat({" href=\"", target, "\"", relAttr(options)}) : ""), " data-href=\"", target, "\">", name, "</a>"});
             links.push_back({node.label, display, true});
         }
 
         std::string body;
         if (view.rows.empty()) {
-            body = "<rect " + shape + rounded(BOX_ATTRS + view.style.shape) + "/>" + name;
+            body = Pele::cat({"<rect ", shape, rounded(BOX_ATTRS + view.style.shape), "/>", name});
         } else {
             double rowLine = std::round(view.rowSize * 1.5);
             std::string lineColor = view.style.hasStroke ? esc(view.style.stroke) : "var(--_b)";
@@ -1809,34 +1806,28 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
             for (size_t r = 0; r < view.rows.size(); r++) {
                 const auto& row = view.rows[r];
                 if (r % 2 == 0) {
-                    std::string span = "x=\"" + num(x0) + "\" width=\"" + num(w) + "\"";
+                    std::string span = Pele::cat({"x=\"", num(x0), "\" width=\"", num(w), "\""});
                     if (r == view.rows.size() - 1) {
-                        stripes += "<rect " + span + " y=\"" + num(y) + "\" height=\"" + num(row.h) + "\"" + ROUNDED + "/>"
-                            "<rect " + span + " y=\"" + num(y) + "\" height=\"" + num(row.h / 2.0) + "\"/>";
+                        Pele::appendCat(stripes, {"<rect ", span, " y=\"", num(y), "\" height=\"", num(row.h), "\"", ROUNDED, "/>"
+                            "<rect ", span, " y=\"", num(y), "\" height=\"", num(row.h / 2.0), "\"/>"});
                     } else {
-                        stripes += "<rect " + span + " y=\"" + num(y) + "\" height=\"" + num(row.h) + "\"/>";
+                        Pele::appendCat(stripes, {"<rect ", span, " y=\"", num(y), "\" height=\"", num(row.h), "\"/>"});
                     }
                 }
                 double baseline = y + ROW_PAD / 2.0 + rowLine / 2.0 + view.rowSize * 0.35;
                 cells +=
-                    textLeft(row.cells[0], x0 + view.cols[0], baseline, " class=\"pele-er-type\"" + muted + text, icons, view.mono) +
-                    textLeft(row.cells[1], x0 + view.cols[1], baseline, " class=\"pele-er-name\"" + color + text, icons, view.mono) +
-                    textLeft(row.cells[2], x0 + view.cols[2], baseline, " class=\"pele-er-keys\" font-size=\"" + num(view.keySize) + "\"" + muted + text, icons, view.mono) +
-                    textLeft(row.cells[3], x0 + view.cols[3], baseline, " class=\"pele-er-comment\"" + muted + text, icons);
+                    textLeft(row.cells[0],  x0 + view.cols[0],  baseline, Pele::cat({" class=\"pele-er-type\"", muted, text}),  icons,  view.mono) +
+                    textLeft(row.cells[1],  x0 + view.cols[1],  baseline, Pele::cat({" class=\"pele-er-name\"", color, text}),  icons,  view.mono) +
+                    textLeft(row.cells[2],  x0 + view.cols[2],  baseline, Pele::cat({" class=\"pele-er-keys\" font-size=\"", num(view.keySize), "\"", muted, text}),  icons,  view.mono) +
+                    textLeft(row.cells[3],  x0 + view.cols[3],  baseline, Pele::cat({" class=\"pele-er-comment\"", muted, text}),  icons);
                 y += row.h;
             }
             std::string dividerY = num(y0 + view.headH);
             std::string tone = ink(view.style.shape);
             std::string shade = (tone == ON_LIGHT) ? ON_DARK : (tone == ON_DARK) ? ON_LIGHT : "var(--_bg)";
-            body =
-                "<rect " + shape + rounded(BOX_ATTRS + view.style.shape) + "/>" +
-                "<g class=\"pele-er-stripes\" fill=\"" + shade + "\"" + (view.style.shape.find("fill:") != std::string::npos ? " opacity=\"0.6\"" : "") + ">" + stripes + "</g>" +
-                "<path class=\"pele-er-divider\" d=\"M" + num(x0) + "," + dividerY + "H" + num(x0 + w) + "\" stroke=\"" + lineColor + "\"/>" +
-                "<rect " + shape + " fill=\"none\" stroke=\"var(--_b)\"" + rounded(view.style.line) + "/>" +
-                name +
-                "<g class=\"pele-er-attributes\" font-size=\"" + num(view.rowSize) + "\">" + cells + "</g>";
+            body = Pele::cat({"<rect ", shape, rounded(BOX_ATTRS + view.style.shape), "/>", "<g class=\"pele-er-stripes\" fill=\"", shade, "\"", (view.style.shape.find("fill:") != std::string::npos ? " opacity=\"0.6\"" : ""), ">", stripes, "</g>", "<path class=\"pele-er-divider\" d=\"M", num(x0), ",", dividerY, "H", num(x0 + w), "\" stroke=\"", lineColor, "\"/>", "<rect ", shape, " fill=\"none\" stroke=\"var(--_b)\"", rounded(view.style.line), "/>", name, "<g class=\"pele-er-attributes\" font-size=\"", num(view.rowSize), "\">", cells, "</g>"});
         }
-        nodesOut += "<g class=\"pele-node pele-entity" + classes + "\" data-id=\"" + escText(node.label) + "\" transform=\"translate(" + num(c.x) + "," + num(c.y) + ")\">" + body + "</g>";
+        Pele::appendCat(nodesOut, {"<g class=\"pele-node pele-entity", classes, "\" data-id=\"", escText(node.label), "\" transform=\"translate(", num(c.x), ",", num(c.y), ")\">", body, "</g>"});
     }
 
     for (int i : loopKeys) {
@@ -1874,7 +1865,7 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
                 double y = c.y + view.h / 2.0;
                 std::string turn = num(y + MARKER_LENGTH);
                 std::string out = num(y + MARKER_LENGTH + LOOP);
-                d = "M" + num(x - spread) + "," + num(y) + "V" + turn + "C" + num(x - spread) + "," + out + " " + num(x + spread) + "," + out + " " + num(x + spread) + "," + turn + "V" + num(y);
+                d = Pele::cat({"M", num(x - spread), ",", num(y), "V", turn, "C", num(x - spread), ",", out, " ", num(x + spread), ",", out, " ", num(x + spread), ",", turn, "V", num(y)});
                 start = erMarker(edge.arrowTypeStart, x - spread, y, 0.0, -1.0);
                 end = erMarker(edge.arrowTypeEnd, x + spread, y, 0.0, -1.0);
                 ce.labelX = x;
@@ -1884,7 +1875,7 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
                 double y = c.y + loop->at;
                 std::string turn = num(x + MARKER_LENGTH);
                 std::string out = num(x + MARKER_LENGTH + LOOP);
-                d = "M" + num(x) + "," + num(y - spread) + "H" + turn + "C" + out + "," + num(y - spread) + " " + out + "," + num(y + spread) + " " + turn + "," + num(y + spread) + "H" + num(x);
+                d = Pele::cat({"M", num(x), ",", num(y - spread), "H", turn, "C", out, ",", num(y - spread), " ", out, ",", num(y + spread), " ", turn, ",", num(y + spread), "H", num(x)});
                 start = erMarker(edge.arrowTypeStart, x, y - spread, -1.0, 0.0);
                 end = erMarker(edge.arrowTypeEnd, x, y + spread, -1.0, 0.0);
                 ce.labelX = x + far + label.width / 2.0;
@@ -1900,7 +1891,7 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
             bool direct = (route.size() == 6) && (dx < 0.01 || dy < 0.01 || std::hypot(dx, dy) <= 3.0 * MARKER_LENGTH);
             double stub = direct ? 0.0 : MARKER_LENGTH;
             EdgePath path = routePath(route, "", stub, stub);
-            d = stub > 0.0 ? ("M" + num(path.sx) + "," + num(path.sy) + "L" + path.d.substr(1) + "L" + num(path.ex) + "," + num(path.ey)) : path.d;
+            d = stub > 0.0 ? Pele::cat({"M", num(path.sx), ",", num(path.sy), "L", path.d.substr(1), "L", num(path.ex), ",", num(path.ey)}) : path.d;
             start = erMarker(edge.arrowTypeStart, path.sx, path.sy, path.sdx, path.sdy);
             end = erMarker(edge.arrowTypeEnd, path.ex, path.ey, path.edx, path.edy);
         }
@@ -1913,7 +1904,7 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
             end = hollowOn(end, underRes.fill);
         }
         bool dashed = (edge.pattern == "dashed");
-        edgesOut += "<g class=\"pele-edge pele-er-" + std::string(dashed ? "non-identifying" : "identifying") + "\" data-id=\"" + escText(edge.id) + "\"" + (!over.empty() ? (" stroke=\"" + over + "\"") : "") + ">"
+        edgesOut += "<g class=\"pele-edge pele-er-" + std::string(dashed ? "non-identifying" : "identifying") + "\" data-id=\"" + escText(edge.id) + "\"" + (!over.empty() ? Pele::cat({" stroke=\"", over, "\""}) : "") + ">"
             "<path d=\"" + d + "\"" + (dashed ? " stroke-dasharray=\"4 3\"" : "") + "/>" +
             start + end + "</g>";
         if (label.width > 0.0) {
@@ -1922,19 +1913,12 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
     }
 
     std::string svg = svgDocument(
-        "er",
-        width,
-        height,
-        size,
-        options,
-        db,
-        labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        (!clusters.empty() ? ("<g class=\"pele-clusters\">" + clusters + "</g>") : "") +
-        casingsSvg(casings) +
-        (!edgesOut.empty() ? ("<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">" + edgesOut + "</g>") : "") +
-        (!labelsOut.empty() ? ("<g class=\"pele-edge-labels\" font-size=\"" + num(smallSize) + "\">" + labelsOut + "</g>") : "") +
-        "<g class=\"pele-nodes\">" + nodesOut + "</g>"
-    );
+        "er", 
+        width, 
+        height, 
+        size, 
+        options, 
+        db, Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), (!clusters.empty() ? Pele::cat({"<g class=\"pele-clusters\">", clusters, "</g>"}) : ""), casingsSvg(casings), (!edgesOut.empty() ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">", edgesOut, "</g>"}) : ""), (!labelsOut.empty() ? Pele::cat({"<g class=\"pele-edge-labels\" font-size=\"", num(smallSize), "\">", labelsOut, "</g>"}) : ""), "<g class=\"pele-nodes\">", nodesOut, "</g>"}));
 
     return {std::move(svg), width, height, std::move(links)};
 }

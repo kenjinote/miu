@@ -60,7 +60,7 @@ struct BlockModel : public DiagramMeta {
 // src/diagrams/block/db.ts
 // ============================================================================
 
-inline std::string typeStr2Type(const std::string& typeStr) {
+inline std::string typeStr2Type(const std::string& typeStr) noexcept {
     if (typeStr == "[]") return "square";
     if (typeStr == "()") return "round";
     if (typeStr == "(())") return "circle";
@@ -79,7 +79,7 @@ inline std::string typeStr2Type(const std::string& typeStr) {
     return "na";
 }
 
-inline std::string edgeStrToEdgeData(const std::string& typeStr) {
+inline std::string edgeStrToEdgeData(const std::string& typeStr) noexcept {
     std::string t = trimStr(typeStr);
     if (t.empty()) return "";
     switch (t.back()) {
@@ -90,7 +90,7 @@ inline std::string edgeStrToEdgeData(const std::string& typeStr) {
     }
 }
 
-inline std::string edgeStrToEdgeStartData(const std::string& typeStr) {
+inline std::string edgeStrToEdgeStartData(const std::string& typeStr) noexcept {
     std::string t = trimStr(typeStr);
     if (t.empty()) return "arrow_open";
     switch (t.front()) {
@@ -101,11 +101,11 @@ inline std::string edgeStrToEdgeStartData(const std::string& typeStr) {
     }
 }
 
-inline std::string edgeStrToThickness(const std::string& typeStr) {
+inline std::string edgeStrToThickness(const std::string& typeStr) noexcept {
     return typeStr.find("==") != std::string::npos ? "thick" : "normal";
 }
 
-inline std::string edgeStrToPattern(const std::string& typeStr) {
+inline std::string edgeStrToPattern(const std::string& typeStr) noexcept {
     return typeStr.find(".-") != std::string::npos ? "dotted" : "solid";
 }
 
@@ -113,8 +113,8 @@ class BlockDb : public BlockModel {
 public:
     int ids = 0;
     int colors = 0;
-    std::unordered_set<std::string> pending;
-    std::unordered_map<std::string, int> edgeCount;
+    Pele::FlatSet<std::string> pending;
+    Pele::FlatMap<std::string, int> edgeCount;
     std::unordered_map<std::string, Block> namedStore;
 
     BlockDb() {
@@ -308,7 +308,7 @@ struct Tokens {
     std::vector<size_t> starts;
 };
 
-inline bool isBlockIdStop(int ch) {
+inline bool isBlockIdStop(int ch) noexcept {
     if (ch < 0) return true;
     if (ch < 128) {
         switch (ch) {
@@ -742,7 +742,7 @@ inline Tokens tokenize(const std::string& src) {
 // src/diagrams/block/parser.ts
 // ============================================================================
 
-inline std::vector<Statement> closeDocument(std::vector<Statement> list) {
+inline std::vector<Statement> closeDocument(std::vector<Statement> list) noexcept {
     if (list.empty() || !list.back().isList) return list;
     auto last = std::move(list.back().list);
     list.pop_back();
@@ -841,7 +841,7 @@ inline void parseBlock(const std::string& src, BlockDb& db) {
             from.directions = to.directions;
 
             Block edgeBlk;
-            edgeBlk.id = chain.back().id + "-" + to.id;
+            edgeBlk.id = Pele::cat({chain.back().id, "-", to.id});
             edgeBlk.hasId = true;
             edgeBlk.start = chain.back().id;
             edgeBlk.end = to.id;
@@ -985,7 +985,7 @@ struct ArrowSize {
     double dy = 0.0;
 };
 
-inline int arrowMask(const std::vector<std::string>& directions) {
+inline int arrowMask(const std::vector<std::string>& directions) noexcept {
     int mask = 0;
     for (const auto& rawDir : directions) {
         std::string d = trimStr(rawDir);
@@ -999,13 +999,13 @@ inline int arrowMask(const std::vector<std::string>& directions) {
     return mask;
 }
 
-inline char arrowAxis(int mask) {
+inline char arrowAxis(int mask) noexcept {
     if (mask != 0 && (mask & (ARR_UP | ARR_DOWN)) == 0) return 'x';
     if (mask != 0 && (mask & (ARR_RIGHT | ARR_LEFT)) == 0) return 'y';
     return '\0';
 }
 
-inline ArrowSize arrowSize(int mask, double tw, double th) {
+inline ArrowSize arrowSize(int mask, double tw, double th) noexcept {
     char axis = arrowAxis(mask);
     auto bit = [&](int flag) -> int { return (mask & flag) ? 1 : 0; };
     int across = bit(ARR_LEFT) - bit(ARR_RIGHT);
@@ -1028,7 +1028,7 @@ inline ArrowSize arrowSize(int mask, double tw, double th) {
     };
 }
 
-inline std::string drawArrow(int mask, double w, double h, const std::string& attrs) {
+inline std::string drawArrow(int mask, double w, double h, const std::string& attrs) noexcept {
     char axis = arrowAxis(mask);
     double x = w / 2.0;
     double y = h / 2.0;
@@ -1072,9 +1072,9 @@ inline std::string drawArrow(int mask, double w, double h, const std::string& at
     std::string points;
     for (size_t i = 0; i + 1 < p.size(); i += 2) {
         if (i > 0) points.push_back(' ');
-        points += num(p[i]) + "," + num(p[i + 1]);
+        Pele::appendCat(points, {num(p[i]), ",", num(p[i + 1])});
     }
-    return "<polygon points=\"" + points + "\" stroke-linejoin=\"round\"" + attrs + "/>";
+    return Pele::cat({"<polygon points=\"", points, "\" stroke-linejoin=\"round\"", attrs, "/>"});
 }
 
 // ============================================================================
@@ -1132,13 +1132,13 @@ struct Route {
     double ly = 0.0;
 };
 
-inline double totalGaps(const std::vector<double>& gaps) {
+inline double totalGaps(const std::vector<double>& gaps) noexcept {
     double sum = 0.0;
     for (double g : gaps) sum += g;
     return sum;
 }
 
-inline void measureCell(View& box, double gap, double inset) {
+inline void measureCell(View& box, double gap, double inset) noexcept {
     int columns = box.columns;
     std::vector<double> heights;
     int position = 0;
@@ -1174,7 +1174,7 @@ inline void measureCell(View& box, double gap, double inset) {
     box.nh = height + 2.0 * inset + box.head;
 }
 
-inline void arrangeCell(View& box, double gap, double inset) {
+inline void arrangeCell(View& box, double gap, double inset) noexcept {
     int cols = box.cols;
     const auto& heights = box.heights;
     const auto& rowGaps = box.rowGaps;
@@ -1212,7 +1212,7 @@ inline void arrangeCell(View& box, double gap, double inset) {
     }
 }
 
-inline std::pair<double, double> layoutCells(View& root, double gap) {
+inline std::pair<double, double> layoutCells(View& root, double gap) noexcept {
     std::vector<View*> order = {&root};
     for (size_t i = 0; i < order.size(); i++) {
         for (View* child : order[i]->children) order.push_back(child);
@@ -1232,11 +1232,11 @@ inline std::pair<double, double> layoutCells(View& root, double gap) {
     return {root.w, root.h};
 }
 
-inline bool isRoundView(const View& v) {
+inline bool isRoundView(const View& v) noexcept {
     return v.kind == ViewKind::Leaf && (v.shape == "circle" || v.shape == "dbl-circ");
 }
 
-inline double blockEdgeY(const View& v, double x, double sign) {
+inline double blockEdgeY(const View& v, double x, double sign) noexcept {
     double hw = v.bw / 2.0;
     double hh = v.bh / 2.0;
     double dx = std::abs(x - v.x);
@@ -1248,7 +1248,7 @@ inline double blockEdgeY(const View& v, double x, double sign) {
     return v.y + sign * reach;
 }
 
-inline double blockEdgeX(const View& v, double y, double sign) {
+inline double blockEdgeX(const View& v, double y, double sign) noexcept {
     double hw = v.bw / 2.0;
     double hh = v.bh / 2.0;
     double dy = std::abs(y - v.y);
@@ -1260,7 +1260,7 @@ inline double blockEdgeX(const View& v, double y, double sign) {
     return v.x + sign * reach;
 }
 
-inline void blockBorder(const View& v, double tx, double ty, std::vector<double>& out) {
+inline void blockBorder(const View& v, double tx, double ty, std::vector<double>& out) noexcept {
     double dx = tx - v.x;
     double dy = ty - v.y;
     double hw = v.bw / 2.0;
@@ -1282,7 +1282,7 @@ inline void blockBorder(const View& v, double tx, double ty, std::vector<double>
     out.push_back(v.y + dy * k);
 }
 
-inline bool crossesBox(double x1, double y1, double x2, double y2, const View& v) {
+inline bool crossesBox(double x1, double y1, double x2, double y2, const View& v) noexcept {
     double l = v.x - v.bw / 2.0 + 1.0;
     double r = v.x + v.bw / 2.0 - 1.0;
     double t = v.y - v.bh / 2.0 + 1.0;
@@ -1299,7 +1299,7 @@ inline bool crossesBox(double x1, double y1, double x2, double y2, const View& v
     return first == 0 || side(r, t) != first || side(r, b) != first || side(l, b) != first;
 }
 
-inline int countHits(const std::vector<double>& points, const View* s, const View* t, const std::vector<View*>& obstacles) {
+inline int countHits(const std::vector<double>& points, const View* s, const View* t, const std::vector<View*>& obstacles) noexcept {
     int count = 0;
     for (const View* v : obstacles) {
         if (v == s || v == t) continue;
@@ -1313,7 +1313,7 @@ inline int countHits(const std::vector<double>& points, const View* s, const Vie
     return count;
 }
 
-inline std::vector<double> routeBlockEdge(const View& s, const View& t, double shift, const std::vector<View*>* obstacles) {
+inline std::vector<double> routeBlockEdge(const View& s, const View& t, double shift, const std::vector<View*>* obstacles) noexcept {
     double sl = s.x - s.bw / 2.0;
     double sr = s.x + s.bw / 2.0;
     double st = s.y - s.bh / 2.0;
@@ -1380,7 +1380,7 @@ inline std::vector<double> routeBlockEdge(const View& s, const View& t, double s
     return countHits(direct, &s, &t, *obstacles) < least ? direct : best;
 }
 
-inline EdgePath traceBlockEdge(const std::vector<double>& p, double startTrim, double endTrim) {
+inline EdgePath traceBlockEdge(const std::vector<double>& p, double startTrim, double endTrim) noexcept {
     size_t n = p.size();
     double sx = p[0];
     double sy = p[1];
@@ -1403,12 +1403,12 @@ inline EdgePath traceBlockEdge(const std::vector<double>& p, double startTrim, d
     }
     startTrim = std::min(startTrim, first);
     endTrim = std::min(endTrim, last);
-    std::string d = "M" + num(sx + ax * startTrim) + "," + num(sy + ay * startTrim);
+    std::string d = Pele::cat({"M", num(sx + ax * startTrim), ",", num(sy + ay * startTrim)});
     if (n == 6) {
         double r = std::max(0.0, std::min({8.0, first - startTrim, last - endTrim}));
-        d += "L" + num(p[2] - ax * r) + "," + num(p[3] - ay * r) + "Q" + num(p[2]) + "," + num(p[3]) + " " + num(p[2] + bx * r) + "," + num(p[3] + by * r);
+        Pele::appendCat(d, {"L", num(p[2] - ax * r), ",", num(p[3] - ay * r), "Q", num(p[2]), ",", num(p[3]), " ", num(p[2] + bx * r), ",", num(p[3] + by * r)});
     }
-    d += "L" + num(ex - bx * endTrim) + "," + num(ey - by * endTrim);
+    Pele::appendCat(d, {"L", num(ex - bx * endTrim), ",", num(ey - by * endTrim)});
     return {d, {}, false, sx, sy, -ax, -ay, ex, ey, bx, by};
 }
 
@@ -1416,7 +1416,7 @@ struct LoopArcInfo {
     double px, py, r, a1, a2;
 };
 
-inline LoopArcInfo blockLoopArc(const View& v, int k) {
+inline LoopArcInfo blockLoopArc(const View& v, int k) noexcept {
     constexpr double PI = 3.14159265358979323846;
     constexpr double SQRT1_2 = 0.70710678118654752440;
     double hw = v.bw / 2.0;
@@ -1438,7 +1438,7 @@ inline LoopArcInfo blockLoopArc(const View& v, int k) {
     return {v.x + hw, v.y - hh, r, PI, PI / 2.0};
 }
 
-inline EdgePath blockLoopPath(const View& v, int k, double startTrim, double endTrim) {
+inline EdgePath blockLoopPath(const View& v, int k, double startTrim, double endTrim) noexcept {
     constexpr double PI = 3.14159265358979323846;
     auto arc = blockLoopArc(v, k);
     double from = arc.a1 + startTrim / arc.r;
@@ -1455,7 +1455,7 @@ inline EdgePath blockLoopPath(const View& v, int k, double startTrim, double end
     double ey = arc.py + arc.r * std::sin(arc.a2);
     double sl = std::hypot(sx - x1, sy - y1);
     double el = std::hypot(ex - x2, ey - y2);
-    std::string d = "M" + num(x1) + "," + num(y1) + "A" + num(arc.r) + "," + num(arc.r) + " 0 " + (sweep > PI ? "1" : "0") + " 1 " + num(x2) + "," + num(y2);
+    std::string d = Pele::cat({"M", num(x1), ",", num(y1), "A", num(arc.r), ",", num(arc.r), " 0 ", (sweep > PI ? "1" : "0"), " 1 ", num(x2), ",", num(y2)});
     return {
         d, {}, false,
         sx, sy,
@@ -1467,7 +1467,7 @@ inline EdgePath blockLoopPath(const View& v, int k, double startTrim, double end
     };
 }
 
-inline bool coversBox(double x, double y, double w, double h, const View* s, const View* t, const std::vector<Box>* obstacles) {
+inline bool coversBox(double x, double y, double w, double h, const View* s, const View* t, const std::vector<Box>* obstacles) noexcept {
     if (!obstacles) return false;
     for (const auto& v : *obstacles) {
         if (v.viewPtr != s && v.viewPtr != t && std::abs(x - v.x) < (w + v.bw) / 2.0 && std::abs(y - v.y) < (h + v.bh) / 2.0) return true;
@@ -1475,7 +1475,7 @@ inline bool coversBox(double x, double y, double w, double h, const View* s, con
     return false;
 }
 
-inline double labelSpot(const std::vector<double>& p, size_t at, double w, double h, const View* s, const View* t, const std::vector<View*>* obstacles) {
+inline double labelSpot(const std::vector<double>& p, size_t at, double w, double h, const View* s, const View* t, const std::vector<View*>* obstacles) noexcept {
     if (!obstacles) return 0.5;
     static const double SPOTS[5] = {0.5, 0.3, 0.7, 0.15, 0.85};
     for (double spot : SPOTS) {
@@ -1493,7 +1493,7 @@ inline double labelSpot(const std::vector<double>& p, size_t at, double w, doubl
     return 0.5;
 }
 
-inline double stackLabels(const std::vector<size_t>& stack, std::vector<Route>& routes, const std::vector<std::vector<double>>& legs, const View* s, const View* t, const std::vector<Box>* obstacles) {
+inline double stackLabels(const std::vector<size_t>& stack, std::vector<Route>& routes, const std::vector<std::vector<double>>& legs, const View* s, const View* t, const std::vector<Box>* obstacles) noexcept {
     constexpr double LABEL_GAP = 4.0;
     bool vertical = (legs[stack[0]][0] == legs[stack[0]][2]);
     double lo = -std::numeric_limits<double>::infinity();
@@ -1531,7 +1531,7 @@ inline double stackLabels(const std::vector<size_t>& stack, std::vector<Route>& 
     return 0.0;
 }
 
-inline bool widenGap(const std::vector<View*>& parents, View* s, View* t, bool vertical, double shortAmt, std::unordered_map<std::vector<double>*, std::vector<double>>& base) {
+inline bool widenGap(const std::vector<View*>& parents, View* s, View* t, bool vertical, double shortAmt, std::unordered_map<std::vector<double>*, std::vector<double>>& base) noexcept {
     std::unordered_set<View*> chain;
     for (View* v = s; v != nullptr; v = parents[v->index]) chain.insert(v);
     View* tb = nullptr;
@@ -1562,7 +1562,7 @@ inline bool widenGap(const std::vector<View*>& parents, View* s, View* t, bool v
     return true;
 }
 
-inline Rendered drawBlock(const BlockModel& model, const Config& config, const RenderOptions& options, bool tight) {
+inline Rendered drawBlock(const BlockModel& model, const Config& config, const RenderOptions& options, bool tight) noexcept {
     double size = options.fontSize;
     double edgeSize = std::round(size * 0.875);
     const TextMeasurer& measurer = getMeasurer(options);
@@ -1577,15 +1577,15 @@ inline Rendered drawBlock(const BlockModel& model, const Config& config, const R
     double gap = std::min(configuredGap, tight ? 6.0 : std::numeric_limits<double>::infinity());
     double wrap = tight ? 80.0 : 200.0;
 
-    static const std::unordered_map<std::string, std::string> SHAPES = {
+    static const Pele::FlatMap<std::string, std::string> SHAPES = {
         {"square", "rect"}, {"round", "rounded"}, {"circle", "circle"},
         {"doublecircle", "dbl-circ"}, {"diamond", "diam"}, {"hexagon", "hex"},
         {"stadium", "stadium"}, {"subroutine", "fr-rect"}, {"cylinder", "cyl"},
         {"rect_left_inv_arrow", "odd"}, {"lean_right", "lean-r"}, {"lean_left", "lean-l"},
         {"trapezoid", "trap-b"}, {"inv_trapezoid", "trap-t"}
     };
-    static const std::unordered_set<std::string> FIXED = {"circle", "dbl-circ", "diam"};
-    static const std::unordered_set<std::string> WIDE = {"stadium", "hex", "odd", "lean-r", "lean-l", "trap-b", "trap-t"};
+    static const Pele::FlatSet<std::string> FIXED = {"circle", "dbl-circ", "diam"};
+    static const Pele::FlatSet<std::string> WIDE = {"stadium", "hex", "odd", "lean-r", "lean-l", "trap-b", "trap-t"};
 
     auto styleOf = [&](const Block& block) -> ResolvedStyle {
         std::vector<std::string> declarations;
@@ -1704,8 +1704,8 @@ inline Rendered drawBlock(const BlockModel& model, const Config& config, const R
     };
     auto content = place();
 
-    std::unordered_map<size_t, int> pairs;
-    std::unordered_set<size_t> labelled;
+    Pele::FlatMap<size_t, int> pairs;
+    Pele::FlatSet<size_t> labelled;
     std::vector<std::pair<View*, View*>> ends;
     std::vector<const Block*> drawn;
     for (const auto& edge : model.edges) {
@@ -1727,7 +1727,7 @@ inline Rendered drawBlock(const BlockModel& model, const Config& config, const R
     std::vector<std::vector<double>> legs(drawn.size());
 
     auto routeAll = [&]() {
-        std::unordered_map<size_t, int> seen;
+        Pele::FlatMap<size_t, int> seen;
         routes.clear();
         stacks.clear();
         for (size_t i = 0; i < drawn.size(); i++) {
@@ -1874,21 +1874,14 @@ inline Rendered drawBlock(const BlockModel& model, const Config& config, const R
             if (paints(v.style.shape)) {
                 fills.push_back({{v.x - v.w / 2.0, top, v.x + v.w / 2.0, top + v.h}, v.style.shape});
             }
-            clusters +=
-                "<g class=\"pele-cluster" + classes + "\" data-id=\"" + id + "\">"
-                "<rect x=\"" + num(v.x - v.w / 2.0) + "\" y=\"" + num(top) + "\" width=\"" + num(v.w) + "\" height=\"" + num(v.h) + "\" fill=\"var(--_a)\"" + (setsFill(v.style.shape) ? "" : " fill-opacity=\"0.5\"") + " stroke=\"var(--_b)\"" + rounded(v.style.shape) + "/>" +
-                labelSvg(v.label, v.x, top + (v.head + gap) / 2.0 + 2.0, " class=\"pele-cluster-label\"" + inkFill(v.style, "var(--_m)") + v.style.text, icons) +
-                "</g>";
+            Pele::appendCat(clusters, {"<g class=\"pele-cluster", classes, "\" data-id=\"", id, "\">"
+                "<rect x=\"", num(v.x - v.w / 2.0), "\" y=\"", num(top), "\" width=\"", num(v.w), "\" height=\"", num(v.h), "\" fill=\"var(--_a)\"", (setsFill(v.style.shape) ? "" : " fill-opacity=\"0.5\""), " stroke=\"var(--_b)\"", rounded(v.style.shape), "/>", labelSvg(v.label,  v.x,  top + (v.head + gap) / 2.0 + 2.0, Pele::cat({" class=\"pele-cluster-label\"", inkFill(v.style, "var(--_m)"), v.style.text}),  icons), "</g>"});
             continue;
         }
         bool isArr = (v.kind == ViewKind::Arrow);
-        nodes +=
-            "<g class=\"pele-node pele-shape-" + (isArr ? std::string("block-arrow") : v.shape) + classes + "\" data-id=\"" + id + "\" transform=\"translate(" + num(v.x) + "," + num(v.y) + ")\">" +
-            (isArr
+        Pele::appendCat(nodes, {"<g class=\"pele-node pele-shape-", (isArr ? std::string("block-arrow") : v.shape), classes, "\" data-id=\"", id, "\" transform=\"translate(", num(v.x), ",", num(v.y), ")\">", (isArr
                 ? drawArrow(v.mask, v.bw, v.bh, SHAPE_ATTRS + v.style.shape)
-                : drawShape(v.shape, v.bw, v.bh, SHAPE_ATTRS + v.style.shape, LINE_ATTRS + v.style.line)) +
-            labelSvg(v.label, v.dx, v.dy, " class=\"pele-label\"" + ((isArr || shapeFilled(v.shape)) ? inkFill(v.style) : std::string("")) + v.style.text, icons) +
-            "</g>";
+                : drawShape(v.shape, v.bw, v.bh, SHAPE_ATTRS + v.style.shape, LINE_ATTRS + v.style.line)), labelSvg(v.label,  v.dx,  v.dy, Pele::cat({" class=\"pele-label\"", ((isArr || shapeFilled(v.shape)) ? inkFill(v.style) : std::string("")), v.style.text}),  icons), "</g>"});
     }
 
     std::string casings;
@@ -1915,12 +1908,8 @@ inline Rendered drawBlock(const BlockModel& model, const Config& config, const R
         }
         std::string id = escText(edge.id);
         std::string strokeCol = !over.value.empty() ? over.value : "var(--_l)";
-        edges +=
-            "<g class=\"pele-edge\" data-id=\"" + id + "\"" + (!over.value.empty() ? (" stroke=\"" + over.value + "\"") : "") + ">"
-            "<path d=\"" + path.d + "\"" + (edge.thickness == "thick" ? " stroke-width=\"2.5\"" : "") + (edge.pattern == "dotted" ? " stroke-dasharray=\"3 4\"" : "") + "/>" +
-            marker(startType, path.sx, path.sy, path.sdx, path.sdy, strokeCol) +
-            marker(endType, path.ex, path.ey, path.edx, path.edy, strokeCol) +
-            "</g>";
+        Pele::appendCat(edges, {"<g class=\"pele-edge\" data-id=\"", id, "\"", (!over.value.empty() ? Pele::cat({" stroke=\"", over.value, "\""}) : ""), ">"
+            "<path d=\"", path.d, "\"", (edge.thickness == "thick" ? " stroke-width=\"2.5\"" : ""), (edge.pattern == "dotted" ? " stroke-dasharray=\"3 4\"" : ""), "/>", marker(startType, path.sx, path.sy, path.sdx, path.sdy, strokeCol), marker(endType, path.ex, path.ey, path.edx, path.edy, strokeCol), "</g>"});
         if (rt.label.width > 0.0) {
             double x = rt.lx + ox;
             double y = rt.ly + oy;
@@ -1929,19 +1918,12 @@ inline Rendered drawBlock(const BlockModel& model, const Config& config, const R
     }
 
     std::string svg = svgDocument(
-        "block",
-        width,
-        height,
-        size,
-        options,
-        model,
-        labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        (!clusters.empty() ? ("<g class=\"pele-clusters\">" + clusters + "</g>") : "") +
-        casingsSvg(casings) +
-        (!edges.empty() ? ("<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">" + edges + "</g>") : "") +
-        "<g class=\"pele-nodes\">" + nodes + "</g>" +
-        (!labels.empty() ? ("<g class=\"pele-edge-labels\" font-size=\"" + num(edgeSize) + "\">" + labels + "</g>") : "")
-    );
+        "block", 
+        width, 
+        height, 
+        size, 
+        options, 
+        model, Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), (!clusters.empty() ? Pele::cat({"<g class=\"pele-clusters\">", clusters, "</g>"}) : ""), casingsSvg(casings), (!edges.empty() ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">", edges, "</g>"}) : ""), "<g class=\"pele-nodes\">", nodes, "</g>", (!labels.empty() ? Pele::cat({"<g class=\"pele-edge-labels\" font-size=\"", num(edgeSize), "\">", labels, "</g>"}) : "")}));
 
     return {svg, width, height, {}};
 }

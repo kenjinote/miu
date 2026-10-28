@@ -219,20 +219,23 @@ def main():
         notes = args.notes
         if not notes:
             # Default release notes template
-            notes = f"# miu {release_name} リリースノート\n\n" + r"""### 🎯 本家 Pele 100% 完全互換エンジン搭載・プレビュー＆エディタ超高速化・徹底的なセキュリティ強化
+            notes = f"# miu {release_name} リリースノート\n\n" + r"""### ⚡ 全文検索・置換・描画の超高速化（最大 605 倍）、EXEサイズ 788 KB 削減（-15.3%）、OS/ランタイム多層セキュリティ強化
 
-1. **本家 Pele (`pele.run`) 100% 完全互換 C++ ネイティブ図表エンジン（公式コーパス 522/522 完全一致）**
-   - 本家 Pele の全 33 ダイアグラムカテゴリ・55 種ノードシェイプ・Brandes-Köpf 階層レイアウト・複合グラフレイアウト・スイムレーン・ブロック矢印構文（`blockArrowId<["Label"]>(right)` 等）を C++17 ヘッダオンリー実装（`include/Pele.h` / `include/pele/*`）へ 1:1 完全移植しました。
-   - 公式テストコーパス全 33 カテゴリ・522 件すべてにおいて、本家 Pele と **1 バイトの差異もない完全同一の SVG 出力（522 / 522 = 100.00%）** を実現しつつ、完全オフライン動作とネイティブ C++ LaTeX-to-MathML 数式連携（`$$...$$`）を維持しています。
+1. **エディタ検索・一括置換・シンタックスハイライト・図表描画のさらなる超高速化**
+   - **AVX2 先頭・末尾文字同時照合 SIMD 全文検索（最大 605.1 倍高速化）**: `PieceTable` のピース内連続メモリ走査と AVX2（32バイト単位）による先頭・末尾文字同時ベクトル照合を実装し、32 MB（256分割ピース）の大規模文書における前方検索を **245.3 倍**（`705.66 ms` → `2.88 ms`）、後方検索を **605.1 倍**（`2,708.09 ms` → `4.48 ms`）へ劇的に高速化しました。
+   - **$O(N + M)$ 線形一括置換（323.3 倍高速化）**: 多数のマッチを一括置換する `replaceAll` に単一パスでピース配列を再構築するアルゴリズムを導入し、5,000箇所の一括置換を `169.53 ms` から **`0.52 ms`（323.3 倍高速化）** に短縮しました。
+   - **シンタックスハイライト高速スキャナ＆描画スクラッチバッファ永続化（フレーム毎のヒープ確保ゼロ化）**: 数値リテラル・`#include`・プリプロセッサディレクティブ等の決定論的ファストパス・スキャナと必須文字事前フィルタにより、シンタックスハイライト走査を **22.7 倍高速化**（`1,110.99 µs` → `48.94 µs/frame`、フレーム毎ヒープ確保 0 回）し、`Editor::render()` のスクラッチバッファ再利用により描画補助処理を **2.42 倍高速化**（フレーム毎ヒープ確保 0 回）しました。
+   - **Pele 図表エンジンのアロケーション削減（1.34 倍高速化）**: 5,742箇所の文字列連結を一括確保する `Pele::cat` / `Pele::appendCat`、スタックバッファ版 `Pele::num(double)`、および連続メモリ上の `Pele::FlatSet` / `Pele::FlatMap` により、公式 522 ダイアグラムの完全互換（100.00% 一致）を維持したまま 1 パスあたり **58,576 回のヒープ確保を削減**しました。
 
-2. **プレビュー＆テキストエディタコアの大幅高速化（最大 319 倍高速化）**
-   - **ライブプレビュー高速化（最大 9.8 倍）**: Mermaid SVG / LaTeX MathML の FNV-1a メモ化キャッシュとインプレース DOM 差分パッチ更新により、Markdown 編集中のプレビュー更新時間を大幅に短縮し、スクロール位置やズーム状態を完全に維持します。
-   - **描画・オフセット計算の高速化（最大 282 倍）**: 行内 UTF-8 ⇄ UTF-16 オフセット変換の $O(1)$ ルックアップテーブル化、および Direct2D ソリッドブラシ・改行マーク PathGeometry のデバイスリソースキャッシュ化により、フレーム毎の描画前計算を劇的に高速化しました。
-   - **キー入力・大ファイル編集の高速化（最大 319 倍）**: 単一行編集時の `lineStarts` インクリメンタル差分更新（約 2.4 μs）と、AVX2 / SSE2 SIMD を活用した括弧対応ジャンプ（`findMatchingBracket`）の高速化を実装しました。
+2. **EXEサイズの大幅最小化（-788.50 KB / -15.32% 削減：`5,148.00 KB` → `4,359.50 KB`）**
+   - **Hot / Cold 最適化プラグマ分離**: エディタ Hot ループに `#pragma optimize("t", on)` を維持しつつ、Cold パス（図表・Markdown・Emmet・UIダイアログ）に `#pragma optimize("s", on)` を適用して `.text` セクションを **-568.00 KB（-13.82%）** 圧縮しました。
+   - **計 1,107 関数への `noexcept` 付与と静的ライブラリ最小化**: 非スロー関数への徹底的な `noexcept` 付与により `.pdata`（例外テーブル）を **-41.77%**、`.rdata` を **-22.53%** 削減し、さらに `lib/ced.lib` の `/O1 /Os /Gy /Gw` リビルド（**-28.94%**）およびリンカ圧縮（`/Zc:inline`・`/OPT:ICF=5`・`/Brepro`）を適用しました。
 
-3. **プレビュー機能および Windows ランタイムの多層セキュリティ強化**
-   - **プレビューの多層防御**: WebView2 設定のハードニング（不要なブラウザ機能・コンテキストメニュー・DevTools・オートフィルの無効化）、厳格な CSP（Content Security Policy）、Markdown / SVG / MathML / Mermaid パーサーにおける危険スキーム・イベントハンドラ・外部リソース参照の遮断、および再帰深度・入力サイズ上限による DoS 保護を実装しました。
-   - **Windows ランタイム保護**: 起動時の DLL プリロード攻撃防止（`SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32)`）、一時ファイル生成時の排他共有ロックによる TOCTOU 防止、WebView2 IPC メッセージ長検証、およびリンカ・コンパイラ保護（Control Flow Guard `/guard:cf`・CET Shadow Stack `/CETCOMPAT`）を有効化しました。
+3. **OS・ランタイムレベルのセキュリティリスク低減**
+   - **OS プロセス緩和策ポリシーの有効化**: 起動時に `SetProcessMitigationPolicy` により `ProcessImageLoadPolicy`（`PreferSystem32Images = 1`：System32 DLL の最優先ロード）と `ProcessExtensionPointDisablePolicy`（`DisableExtensionPoints = 1`：AppInit_DLLs / グローバルフック等の拡張ポイントインジェクション遮断）を有効化しました。
+   - **ヒープ破損時即時終了保護**: `wWinMain` 最先頭で `HeapSetInformation(NULL, HeapEnableTerminationOnCorruption, NULL, 0)` を有効化しました。
+   - **正規表現検索の ReDoS（壊滅的バックトラッキング）防止ガード**: ユーザー入力正規表現のネストされた反復量指定子（`(a+)+`, `(.*)*` 等）や過大なネスト深度を $O(N)$ で事前検出・拒否する `isSafeUserRegex` を実装しました。
+   - **サプライチェーン保護**: `<VcpkgEnabled>false</VcpkgEnabled>` によりシステム環境の外部 `.lib` ワイルドカード自動リンクを完全に遮断しました。
 """
         elif os.path.exists(notes):
             with open(notes, "r", encoding="utf-8") as f:

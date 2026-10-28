@@ -17,7 +17,7 @@ struct TimelineModel : public DiagramMeta {
     std::vector<TimelinePeriod> periods;
 };
 
-inline std::string stripNewlineIndent(const std::string& s) {
+inline std::string stripNewlineIndent(const std::string& s) noexcept {
     std::string out;
     out.reserve(s.size());
     size_t i = 0;
@@ -95,7 +95,7 @@ namespace T {
     };
 }
 
-inline const char* timelineTokenName(int t) {
+inline const char* timelineTokenName(int t) noexcept {
     static const char* NAMES[] = {
         "$end", "EOF", "INVALID", "NEWLINE", "timeline", "timeline_lr", "timeline_td",
         "title", "acc_title", "acc_title_value", "acc_descr", "acc_descr_value",
@@ -104,7 +104,7 @@ inline const char* timelineTokenName(int t) {
     return (t >= 0 && t <= 15) ? NAMES[t] : "$end";
 }
 
-inline int skipSpaceUtf8(const std::string& src, int from) {
+inline int skipSpaceUtf8(const std::string& src, int from) noexcept {
     size_t p = static_cast<size_t>(from);
     while (p < src.size()) {
         size_t next = p;
@@ -115,7 +115,7 @@ inline int skipSpaceUtf8(const std::string& src, int from) {
     return static_cast<int>(p);
 }
 
-inline int skipTriviaUtf8(const std::string& src, int from) {
+inline int skipTriviaUtf8(const std::string& src, int from) noexcept {
     int n = static_cast<int>(src.size());
     int p = from;
     while (p < n) {
@@ -142,7 +142,7 @@ inline int skipTriviaUtf8(const std::string& src, int from) {
     return p;
 }
 
-inline int scanAccessibility(const std::string& src, int p, ScanTokens& out, int first) {
+inline int scanAccessibility(const std::string& src, int p, ScanTokens& out, int first) noexcept {
     bool descr = keywordAt(src, p, "accdescr");
     if (!descr && !keywordAt(src, p, "acctitle")) return p;
     int n = static_cast<int>(src.size());
@@ -284,7 +284,7 @@ inline void parseTimeline(const std::string& src, TimelineDb& db) {
 
     auto fail = [&](size_t i, const std::string& expected) {
         std::string got = (types[i] == T::END) ? "1" : timelineTokenName(types[i]);
-        throw syntaxError("timeline", src, static_cast<size_t>(starts[i]), "Expecting " + expected + ", got '" + got + "'");
+        throw syntaxError("timeline",  src,  static_cast<size_t>(starts[i]), Pele::cat({"Expecting ", expected, ", got '", got, "'"}));
     };
 
     int head = types[0];
@@ -340,7 +340,7 @@ inline void parseTimeline(const std::string& src, TimelineDb& db) {
 // Port of src/diagrams/common/fit.ts (plainLabel, fitLabel)
 // ============================================================================
 
-inline size_t matchBrTag(const std::string& s, size_t pos) {
+inline size_t matchBrTag(const std::string& s, size_t pos) noexcept {
     if (pos + 3 >= s.size() || s[pos] != '<') return 0;
     if ((s[pos + 1] != 'b' && s[pos + 1] != 'B') || (s[pos + 2] != 'r' && s[pos + 2] != 'R')) return 0;
     size_t p = pos + 3;
@@ -355,7 +355,7 @@ inline size_t matchBrTag(const std::string& s, size_t pos) {
     return 0;
 }
 
-inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
+inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
     if (raw.empty()) return Label{};
     std::string text;
     if (raw.find('<') != std::string::npos) {
@@ -376,7 +376,7 @@ inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, do
     return layoutLabel(text, false, measurer, size, max, base);
 }
 
-inline Label fitPlainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
+inline Label fitPlainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
     Label label = plainLabel(raw, measurer, size, max, base);
     if (raw.empty() || label.width <= max) return label;
     std::string out;
@@ -452,11 +452,11 @@ struct TimelineGroup {
     std::vector<int> periods;
 };
 
-inline std::string timelineBox(double x, double y, double w, double h, const std::string& attrs) {
-    return "<rect x=\"" + num(x) + "\" y=\"" + num(y) + "\" width=\"" + num(w) + "\" height=\"" + num(h) + "\"" + rounded(attrs) + "/>";
+inline std::string timelineBox(double x, double y, double w, double h, const std::string& attrs) noexcept {
+    return Pele::cat({"<rect x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(w), "\" height=\"", num(h), "\"", rounded(attrs), "/>"});
 }
 
-inline Rendered drawTimeline(const TimelineModel& model, const Config& config, const RenderOptions& options, bool vertical) {
+inline Rendered drawTimeline(const TimelineModel& model, const Config& config, const RenderOptions& options, bool vertical) noexcept {
     static const std::string ON_COLOR = " fill=\"var(--_bg)\"";
     static const std::string LINE = " fill=\"none\" stroke=\"var(--_b)\"";
 
@@ -555,27 +555,24 @@ inline Rendered drawTimeline(const TimelineModel& model, const Config& config, c
         return fitPlainLabel(model.sections[group.section], measurer, size, w - 2.0 * PAD_X, Style::Bold);
     };
     auto header = [&](const TimelineGroup& group, const Label& label, double x, double y, double w, double h) {
-        return timelineBox(x, y, w, h, " fill=\"" + seriesColor(group.section) + "\"") +
-               labelSvg(label, x + w / 2.0, y + h / 2.0, " font-weight=\"var(--_hw)\"" + ON_COLOR);
+        return timelineBox(x,  y,  w,  h, Pele::cat({" fill=\"", seriesColor(group.section), "\""})) +
+               labelSvg(label,  x + w / 2.0,  y + h / 2.0, Pele::cat({" font-weight=\"var(--_hw)\"", ON_COLOR}));
     };
     auto periodSvg = [&](int i, const std::string& color, double x, double y, double h) {
-        return timelineBox(x, y, colW, h, " fill=\"" + color + "\"") +
+        return timelineBox(x,  y,  colW,  h, Pele::cat({" fill=\"", color, "\""})) +
                labelSvg(periodLabels[i], x + colW / 2.0, y + h / 2.0, ON_COLOR);
     };
     auto eventSvg = [&](const Label& label, const std::string& color, double x, double y, double h) {
-        return "<g class=\"pele-node pele-event\">" +
-               timelineBox(x, y, eventW, h, " fill=\"" + color + "\" fill-opacity=\"0.16\"") +
-               labelSvg(label, x + eventW / 2.0, y + h / 2.0, " font-size=\"" + num(small) + "\"") +
-               "</g>";
+        return Pele::cat({"<g class=\"pele-node pele-event\">", timelineBox(x,  y,  eventW,  h, Pele::cat({" fill=\"", color, "\" fill-opacity=\"0.16\""})), labelSvg(label,  x + eventW / 2.0,  y + h / 2.0, Pele::cat({" font-size=\"", num(small), "\""})), "</g>"});
     };
     auto dotSvg = [](double x, double y, const std::string& color) {
-        return "<circle class=\"pele-dot\" cx=\"" + num(x) + "\" cy=\"" + num(y) + "\" r=\"4\" fill=\"" + color + "\" stroke=\"var(--_bg)\" stroke-width=\"2\"/>";
+        return Pele::cat({"<circle class=\"pele-dot\" cx=\"", num(x), "\" cy=\"", num(y), "\" r=\"4\" fill=\"", color, "\" stroke=\"var(--_bg)\" stroke-width=\"2\"/>"});
     };
     auto openGroup = [&](const TimelineGroup& group) -> std::string {
-        return group.section >= 0 ? ("<g class=\"pele-cluster pele-section\" data-id=\"" + escText(trimStr(model.sections[group.section])) + "\">") : "";
+        return group.section >= 0 ? Pele::cat({"<g class=\"pele-cluster pele-section\" data-id=\"", escText(trimStr(model.sections[group.section])), "\">"}) : "";
     };
     auto openPeriod = [&](int i) -> std::string {
-        return "<g class=\"pele-node pele-period\" data-id=\"" + escText(trimStr(periods[i].text)) + "\">";
+        return Pele::cat({"<g class=\"pele-node pele-period\" data-id=\"", escText(trimStr(periods[i].text)), "\">"});
     };
 
     std::string body;
@@ -599,25 +596,19 @@ inline Rendered drawTimeline(const TimelineModel& model, const Config& config, c
                 double h = chipHeight(periodLabels[i]);
                 double first = !eventLabels[i].empty() ? eventHeight(eventLabels[i][0]) : h;
                 double cy = y + std::max(h, first) / 2.0;
-                std::string d = "M" + num(left + colW) + "," + num(cy) + "H" + num(axisX);
+                std::string d = Pele::cat({"M", num(left + colW), ",", num(cy), "H", num(axisX)});
                 std::string cards;
                 double ey = cy - first / 2.0;
                 double last = cy;
                 for (const auto& label : eventLabels[i]) {
                     double eh = eventHeight(label);
                     last = ey + eh / 2.0;
-                    d += "M" + num(spineX) + "," + num(last) + "H" + num(eventsX);
+                    Pele::appendCat(d, {"M", num(spineX), ",", num(last), "H", num(eventsX)});
                     cards += eventSvg(label, color, eventsX, ey, eh);
                     ey += eh + EVENT_GAP;
                 }
-                if (!cards.empty()) d += "M" + num(axisX) + "," + num(cy) + "H" + num(spineX) + "V" + num(last);
-                body +=
-                    openPeriod(i) +
-                    periodSvg(i, color, left, cy - h / 2.0, h) +
-                    "<path class=\"pele-edge\" d=\"" + d + "\"" + LINE + "/>" +
-                    dotSvg(axisX, cy, color) +
-                    cards +
-                    "</g>";
+                if (!cards.empty()) Pele::appendCat(d, {"M", num(axisX), ",", num(cy), "H", num(spineX), "V", num(last)});
+                Pele::appendCat(body, {openPeriod(i), periodSvg(i, color, left, cy - h / 2.0, h), "<path class=\"pele-edge\" d=\"", d, "\"", LINE, "/>", dotSvg(axisX, cy, color), cards, "</g>"});
                 y = std::max(cy + h / 2.0, ey - EVENT_GAP) + GAP;
             }
             if (group.periods.empty()) y += GAP - SECTION_GAP - 4.0;
@@ -626,10 +617,7 @@ inline Rendered drawTimeline(const TimelineModel& model, const Config& config, c
         if (!groups.empty()) y -= GAP;
         if (drawn) {
             double tip = y + TAIL + ARROW;
-            body =
-                "<path class=\"pele-axis\" d=\"M" + num(axisX) + "," + num(top) + "V" + num(tip - ARROW + 1.0) + "\" fill=\"none\" stroke=\"var(--_l)\"/>" +
-                marker("arrow_point", axisX, tip, 0.0, 1.0, "var(--_l)") +
-                body;
+            body = Pele::cat({"<path class=\"pele-axis\" d=\"M", num(axisX), ",", num(top), "V", num(tip - ARROW + 1.0), "\" fill=\"none\" stroke=\"var(--_l)\"/>", marker("arrow_point", axisX, tip, 0.0, 1.0, "var(--_l)"), body});
             y = tip;
         }
         height = y + pad;
@@ -662,33 +650,24 @@ inline Rendered drawTimeline(const TimelineModel& model, const Config& config, c
                 std::string color = colorOf(group, i);
                 double x = gx + static_cast<double>(k) * pitch;
                 double cx = x + colW / 2.0;
-                std::string d = "M" + num(cx) + "," + num(periodsY + chipH) + "V" + num(!eventLabels[i].empty() ? eventsY : axisY);
+                std::string d = Pele::cat({"M", num(cx), ",", num(periodsY + chipH), "V", num(!eventLabels[i].empty() ? eventsY : axisY)});
                 std::string cards;
                 double ey = eventsY;
                 for (const auto& eventLabel : eventLabels[i]) {
                     double eh = eventHeight(eventLabel);
-                    if (ey > eventsY) d += "M" + num(cx) + "," + num(ey - EVENT_GAP) + "V" + num(ey);
+                    if (ey > eventsY) Pele::appendCat(d, {"M", num(cx), ",", num(ey - EVENT_GAP), "V", num(ey)});
                     cards += eventSvg(eventLabel, color, x, ey, eh);
                     ey += eh + EVENT_GAP;
                 }
                 bottom = std::max(bottom, ey - EVENT_GAP);
-                body +=
-                    openPeriod(i) +
-                    periodSvg(i, color, x, periodsY, chipH) +
-                    "<path class=\"pele-edge\" d=\"" + d + "\"" + LINE + "/>" +
-                    dotSvg(cx, axisY, color) +
-                    cards +
-                    "</g>";
+                Pele::appendCat(body, {openPeriod(i), periodSvg(i, color, x, periodsY, chipH), "<path class=\"pele-edge\" d=\"", d, "\"", LINE, "/>", dotSvg(cx, axisY, color), cards, "</g>"});
             }
             if (group.section >= 0) body += "</g>";
             slot += span;
         }
         if (drawn) {
             double tip = left + bodyW;
-            body =
-                "<path class=\"pele-axis\" d=\"M" + num(left) + "," + num(axisY) + "H" + num(tip - ARROW + 1.0) + "\" fill=\"none\" stroke=\"var(--_l)\"/>" +
-                marker("arrow_point", tip, axisY, 1.0, 0.0, "var(--_l)") +
-                body;
+            body = Pele::cat({"<path class=\"pele-axis\" d=\"M", num(left), ",", num(axisY), "H", num(tip - ARROW + 1.0), "\" fill=\"none\" stroke=\"var(--_l)\"/>", marker("arrow_point", tip, axisY, 1.0, 0.0, "var(--_l)"), body});
         }
         height = bottom + pad;
     }
@@ -705,7 +684,7 @@ inline Rendered drawTimeline(const TimelineModel& model, const Config& config, c
     };
 }
 
-inline Rendered renderTimelineModel(const TimelineModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderTimelineModel(const TimelineModel& model, const Config& config, const RenderOptions& options) noexcept {
     if (model.direction == "TD") return drawTimeline(model, config, options, true);
     Rendered across = drawTimeline(model, config, options, false);
     double available = options.maxWidth;
@@ -729,7 +708,7 @@ inline Rendered renderTimeline(const std::string& source, const Config& config, 
 
 inline Rendered renderTimeline(const std::string& source, const RenderOptions& options = {}) {
     auto pre = preprocess(source);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     RenderOptions opts = options;
     if (!opts.hasResponsive) {
         const auto* section = pre.config.get("timeline");

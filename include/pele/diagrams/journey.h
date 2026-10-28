@@ -16,8 +16,8 @@ struct JourneyModel : public DiagramMeta {
     std::vector<JourneyTask> tasks;
 };
 
-inline std::vector<std::string> journeyActors(const std::vector<JourneyTask>& tasks) {
-    std::unordered_set<std::string> seen;
+inline std::vector<std::string> journeyActors(const std::vector<JourneyTask>& tasks) noexcept {
+    Pele::FlatSet<std::string> seen;
     std::vector<std::string> names;
     for (const auto& t : tasks) {
         for (const auto& name : t.people) {
@@ -46,7 +46,7 @@ inline double jsNumber(const std::string& raw) {
     return std::numeric_limits<double>::quiet_NaN();
 }
 
-inline std::string stripNewlineIndent(const std::string& s) {
+inline std::string stripNewlineIndent(const std::string& s) noexcept {
     std::string out;
     out.reserve(s.size());
     size_t i = 0;
@@ -118,7 +118,7 @@ namespace T {
     };
 }
 
-inline const char* journeyTokenName(int t) {
+inline const char* journeyTokenName(int t) noexcept {
     static const char* NAMES[] = {
         "$end", "EOF", "INVALID", "NEWLINE", "journey", "title",
         "acc_title", "acc_title_value", "acc_descr", "acc_descr_value",
@@ -127,7 +127,7 @@ inline const char* journeyTokenName(int t) {
     return (t >= 0 && t <= 14) ? NAMES[t] : "$end";
 }
 
-inline int textEnd(const std::string& src, int from, bool colon) {
+inline int textEnd(const std::string& src, int from, bool colon) noexcept {
     int n = static_cast<int>(src.size());
     int e = from;
     for (; e < n; e++) {
@@ -137,7 +137,7 @@ inline int textEnd(const std::string& src, int from, bool colon) {
     return e;
 }
 
-inline int skipSpaceUtf8(const std::string& src, int from) {
+inline int skipSpaceUtf8(const std::string& src, int from) noexcept {
     size_t p = static_cast<size_t>(from);
     while (p < src.size()) {
         size_t next = p;
@@ -148,7 +148,7 @@ inline int skipSpaceUtf8(const std::string& src, int from) {
     return static_cast<int>(p);
 }
 
-inline int skipTriviaUtf8(const std::string& src, int from) {
+inline int skipTriviaUtf8(const std::string& src, int from) noexcept {
     int n = static_cast<int>(src.size());
     int p = from;
     while (p < n) {
@@ -175,7 +175,7 @@ inline int skipTriviaUtf8(const std::string& src, int from) {
     return p;
 }
 
-inline int scanAccessibility(const std::string& src, int p, ScanTokens& out, int first) {
+inline int scanAccessibility(const std::string& src, int p, ScanTokens& out, int first) noexcept {
     bool descr = keywordAt(src, p, "accdescr");
     if (!descr && !keywordAt(src, p, "acctitle")) return p;
     int n = static_cast<int>(src.size());
@@ -298,7 +298,7 @@ inline void parseJourney(const std::string& src, JourneyDb& db) {
 
     auto fail = [&](size_t i, const std::string& expected) {
         std::string got = (types[i] == T::END) ? "1" : journeyTokenName(types[i]);
-        throw syntaxError("journey", src, static_cast<size_t>(starts[i]), "Expecting " + expected + ", got '" + got + "'");
+        throw syntaxError("journey",  src,  static_cast<size_t>(starts[i]), Pele::cat({"Expecting ", expected, ", got '", got, "'"}));
     };
 
     if (types[0] != T::journey) fail(0, "'journey'");
@@ -341,7 +341,7 @@ inline void parseJourney(const std::string& src, JourneyDb& db) {
     }
 }
 
-inline size_t matchBrTag(const std::string& s, size_t pos) {
+inline size_t matchBrTag(const std::string& s, size_t pos) noexcept {
     if (pos + 3 >= s.size() || s[pos] != '<') return 0;
     if ((s[pos + 1] != 'b' && s[pos + 1] != 'B') || (s[pos + 2] != 'r' && s[pos + 2] != 'R')) return 0;
     size_t p = pos + 3;
@@ -356,7 +356,7 @@ inline size_t matchBrTag(const std::string& s, size_t pos) {
     return 0;
 }
 
-inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
+inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
     if (raw.empty()) return Label{};
     std::string text;
     if (raw.find('<') != std::string::npos) {
@@ -377,7 +377,7 @@ inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, do
     return layoutLabel(text, false, measurer, size, max, base);
 }
 
-inline Label fitPlainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
+inline Label fitPlainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
     Label label = plainLabel(raw, measurer, size, max, base);
     if (raw.empty() || label.width <= max) return label;
     std::string out;
@@ -449,17 +449,17 @@ constexpr double DOT = 5.0;
 constexpr double DOT_STEP = 13.0;
 constexpr double LEGEND_GAP = 20.0;
 
-inline std::string faceSvg(double x, double y, const std::string& mood) {
+inline std::string faceSvg(double x, double y, const std::string& mood) noexcept {
     static const std::string EYES = "<circle cx=\"-3.6\" cy=\"-2.8\" r=\"1.3\"/><circle cx=\"3.6\" cy=\"-2.8\" r=\"1.3\"/>";
     std::string mouth = (mood == "happy") ? "M-5,2A6,6 0 0 0 5,2" : (mood == "sad") ? "M-5,6.5A6,6 0 0 1 5,6.5" : "M-4.5,4.5H4.5";
-    return "<g class=\"pele-face pele-face-" + mood + "\" transform=\"translate(" + num(x) + "," + num(y) + ")\">"
+    return Pele::cat({"<g class=\"pele-face pele-face-", mood, "\" transform=\"translate(", num(x), ",", num(y), ")\">"
            "<circle r=\"11\" fill=\"var(--_bg)\" stroke=\"var(--_l)\"/>"
-           "<g fill=\"var(--_l)\">" + EYES + "</g>"
-           "<path d=\"" + mouth + "\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\"/>"
-           "</g>";
+           "<g fill=\"var(--_l)\">", EYES, "</g>"
+           "<path d=\"", mouth, "\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\"/>"
+           "</g>"});
 }
 
-inline Rendered verticalJourney(const JourneyModel& model, const RenderOptions& options) {
+inline Rendered verticalJourney(const JourneyModel& model, const RenderOptions& options) noexcept {
     double size = options.fontSize;
     double small = std::round(size * 0.875);
     const auto& measurer = getMeasurer(options);
@@ -472,7 +472,7 @@ inline Rendered verticalJourney(const JourneyModel& model, const RenderOptions& 
     for (const auto& name : journeyActors(model.tasks)) {
         if (!name.empty()) names.push_back(name);
     }
-    std::unordered_map<std::string, int> actors;
+    Pele::FlatMap<std::string, int> actors;
     for (size_t i = 0; i < names.size(); i++) actors[names[i]] = static_cast<int>(i);
 
     double y = pad + (title.height > 0.0 ? title.height + 16.0 : 0.0);
@@ -508,19 +508,18 @@ inline Rendered verticalJourney(const JourneyModel& model, const RenderOptions& 
         double cx = pad + w - 28.0;
         body += faceSvg(cx, y + PAD_Y + FACE, task.score > 3.0 ? "happy" : task.score < 3.0 ? "sad" : "neutral");
         if (!std::isnan(task.score)) {
-            body += "<text class=\"pele-journey-score\" x=\"" + num(cx) + "\" y=\"" + num(y + PAD_Y + 2.0 * FACE + small) + "\" font-size=\"" + num(small) + "\" text-anchor=\"middle\">" + num(std::min(5.0, std::max(1.0, task.score))) + "</text>";
+            Pele::appendCat(body, {"<text class=\"pele-journey-score\" x=\"", num(cx), "\" y=\"", num(y + PAD_Y + 2.0 * FACE + small), "\" font-size=\"", num(small), "\" text-anchor=\"middle\">", num(std::min(5.0, std::max(1.0, task.score))), "</text>"});
         }
         double py = y + PAD_Y + textH + 4.0;
         for (const auto& person : people) {
             double ph = std::max(16.0, person.label.height);
-            body += "<circle class=\"pele-actor\" cx=\"" + num(pad + 16.0) + "\" cy=\"" + num(py + ph / 2.0) + "\" r=\"5\" fill=\"" + seriesColor(actors[person.name]) + "\"/>" +
-                    labelSvg(person.label, pad + 28.0 + person.label.width / 2.0, py + ph / 2.0, " class=\"pele-journey-actor\" font-size=\"" + num(small) + "\"");
+            Pele::appendCat(body, {"<circle class=\"pele-actor\" cx=\"", num(pad + 16.0), "\" cy=\"", num(py + ph / 2.0), "\" r=\"5\" fill=\"", seriesColor(actors[person.name]), "\"/>", labelSvg(person.label,  pad + 28.0 + person.label.width / 2.0,  py + ph / 2.0, Pele::cat({" class=\"pele-journey-actor\" font-size=\"", num(small), "\""}))});
             py += ph + 4.0;
         }
         body += "</g>";
         y += h;
         if (index + 1 < model.tasks.size()) {
-            body += "<path class=\"pele-edge\" d=\"M" + num(pad + w / 2.0) + "," + num(y) + "v16\" fill=\"none\" stroke=\"var(--_l)\"/>";
+            Pele::appendCat(body, {"<path class=\"pele-edge\" d=\"M", num(pad + w / 2.0), ",", num(y), "v16\" fill=\"none\" stroke=\"var(--_l)\"/>"});
         }
         y += 16.0;
         width = std::max(width, w);
@@ -531,7 +530,7 @@ inline Rendered verticalJourney(const JourneyModel& model, const RenderOptions& 
     return {svgDocument("journey", totalWidth, height, size, options, model, content), totalWidth, height, {}};
 }
 
-inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/, const RenderOptions& options, bool down) {
+inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/, const RenderOptions& options, bool down) noexcept {
     if (down) return verticalJourney(model, options);
     double size = options.fontSize;
     double small = std::round(size * 0.875);
@@ -545,7 +544,7 @@ inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/,
     for (const auto& name : journeyActors(tasks)) {
         if (!name.empty()) names.push_back(name);
     }
-    std::unordered_map<std::string, int> actor;
+    Pele::FlatMap<std::string, int> actor;
     for (size_t i = 0; i < names.size(); i++) actor[names[i]] = static_cast<int>(i);
 
     double textW = MIN_TEXT;
@@ -638,12 +637,10 @@ inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/,
         std::string scale;
         for (int score = 5; score >= 1; score--) {
             double y = chartTop + static_cast<double>(5 - score) * LEVEL;
-            grid += "M" + num(left - 6.0) + "," + num(y) + "H" + num(right);
+            Pele::appendCat(grid, {"M", num(left - 6.0), ",", num(y), "H", num(right)});
             scale += "<text x=\"" + num(left - 12.0) + "\" y=\"" + num(y + tiny * 0.35) + "\">" + std::to_string(score) + "</text>";
         }
-        body +=
-            "<path class=\"pele-grid\" d=\"" + grid + "\" fill=\"none\" stroke=\"var(--_a)\"/>" +
-            "<g class=\"pele-scale\" font-size=\"" + num(tiny) + "\" text-anchor=\"end\" fill=\"var(--_m)\">" + scale + "</g>";
+        Pele::appendCat(body, {"<path class=\"pele-grid\" d=\"", grid, "\" fill=\"none\" stroke=\"var(--_a)\"/>", "<g class=\"pele-scale\" font-size=\"", num(tiny), "\" text-anchor=\"end\" fill=\"var(--_m)\">", scale, "</g>"});
 
         std::string line;
         std::string stems;
@@ -657,8 +654,8 @@ inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/,
             double score = task.score;
             double level = std::isnan(score) ? 3.0 : std::min(5.0, std::max(1.0, score));
             double y = chartTop + (5.0 - level) * LEVEL;
-            line += (i == 0 ? "M" : "L") + num(cx) + "," + num(y);
-            stems += "M" + num(cx) + "," + num(cardsY + cardH) + "V" + num(y - FACE);
+            Pele::appendCat(line, {(i == 0 ? "M" : "L"), num(cx), ",", num(y)});
+            Pele::appendCat(stems, {"M", num(cx), ",", num(cardsY + cardH), "V", num(y - FACE)});
             faces += faceSvg(cx, y, score > 3.0 ? "happy" : score < 3.0 ? "sad" : "neutral");
 
             std::string dots;
@@ -671,23 +668,11 @@ inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/,
                 const auto& name = people[k];
                 auto it = actor.find(name);
                 int cIdx = (it != actor.end()) ? it->second : 0;
-                dots +=
-                    "<circle class=\"pele-actor\" cx=\"" + num(cx + (static_cast<double>(k) - static_cast<double>(people.size() - 1) / 2.0) * step) +
-                    "\" cy=\"" + num(cardsY + cardH - PAD_Y - DOT) + "\" r=\"5\" fill=\"" + seriesColor(cIdx) + "\" stroke=\"var(--_s)\">" +
-                    "<title>" + escText(name) + "</title></circle>";
+                Pele::appendCat(dots, {"<circle class=\"pele-actor\" cx=\"", num(cx + (static_cast<double>(k) - static_cast<double>(people.size() - 1) / 2.0) * step), "\" cy=\"", num(cardsY + cardH - PAD_Y - DOT), "\" r=\"5\" fill=\"", seriesColor(cIdx), "\" stroke=\"var(--_s)\">", "<title>", escText(name), "</title></circle>"});
             }
-            cards.push_back(
-                "<g class=\"pele-node pele-task\" data-id=\"" + escText(trimStr(task.task)) + "\">" +
-                "<rect x=\"" + num(x) + "\" y=\"" + num(cardsY) + "\" width=\"" + num(cardW) + "\" height=\"" + num(cardH) + "\" fill=\"var(--_s)\" stroke=\"var(--_b)\"" + ROUNDED + "/>" +
-                labelSvg(labels[i], cx, cardsY + PAD_Y + textH / 2.0, " font-size=\"" + num(small) + "\"") +
-                dots +
-                "</g>"
-            );
+            cards.push_back(Pele::cat({"<g class=\"pele-node pele-task\" data-id=\"", escText(trimStr(task.task)), "\">", "<rect x=\"", num(x), "\" y=\"", num(cardsY), "\" width=\"", num(cardW), "\" height=\"", num(cardH), "\" fill=\"var(--_s)\" stroke=\"var(--_b)\"", ROUNDED, "/>", labelSvg(labels[i],  cx,  cardsY + PAD_Y + textH / 2.0, Pele::cat({" font-size=\"", num(small), "\""})), dots, "</g>"}));
         }
-        body +=
-            "<path class=\"pele-stems\" d=\"" + stems + "\" fill=\"none\" stroke=\"var(--_b)\" stroke-dasharray=\"2 3\"/>" +
-            (n > 1 ? ("<path class=\"pele-edge\" d=\"" + line + "\" fill=\"none\" stroke=\"var(--_l)\" stroke-linejoin=\"round\"/>") : "") +
-            faces;
+        Pele::appendCat(body, {"<path class=\"pele-stems\" d=\"", stems, "\" fill=\"none\" stroke=\"var(--_b)\" stroke-dasharray=\"2 3\"/>", (n > 1 ? Pele::cat({"<path class=\"pele-edge\" d=\"", line, "\" fill=\"none\" stroke=\"var(--_l)\" stroke-linejoin=\"round\"/>"}) : ""), faces});
 
         for (const auto& run : runs) {
             std::string members;
@@ -698,12 +683,7 @@ inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/,
             }
             double x = left + static_cast<double>(run.start) * pitch;
             double w = static_cast<double>(run.count) * pitch - GAP;
-            body +=
-                "<g class=\"pele-cluster pele-section\" data-id=\"" + escText(trimStr(tasks[run.start].section)) + "\">" +
-                "<rect x=\"" + num(x) + "\" y=\"" + num(top) + "\" width=\"" + num(w) + "\" height=\"" + num(bandH) + "\" fill=\"var(--_a)\"" + ROUNDED + "/>" +
-                labelSvg(*run.label, x + w / 2.0, top + bandH / 2.0, " font-size=\"" + num(small) + "\" font-weight=\"var(--_hw)\"") +
-                members +
-                "</g>";
+            Pele::appendCat(body, {"<g class=\"pele-cluster pele-section\" data-id=\"", escText(trimStr(tasks[run.start].section)), "\">", "<rect x=\"", num(x), "\" y=\"", num(top), "\" width=\"", num(w), "\" height=\"", num(bandH), "\" fill=\"var(--_a)\"", ROUNDED, "/>", labelSvg(*run.label,  x + w / 2.0,  top + bandH / 2.0, Pele::cat({" font-size=\"", num(small), "\" font-weight=\"var(--_hw)\""})), members, "</g>"});
         }
         bottom = chartBottom + FACE;
 
@@ -715,13 +695,9 @@ inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/,
                 double cy = y0 + item.y + item.h / 2.0;
                 auto it = actor.find(item.name);
                 int cIdx = (it != actor.end()) ? it->second : 0;
-                items +=
-                    "<g class=\"pele-legend-item\" data-id=\"" + escText(item.name) + "\">" +
-                    "<circle cx=\"" + num(x0 + item.x + DOT) + "\" cy=\"" + num(cy) + "\" r=\"5\" fill=\"" + seriesColor(cIdx) + "\"/>" +
-                    labelSvg(item.label, x0 + item.x + 2.0 * DOT + 6.0 + item.label.width / 2.0, cy, "") +
-                    "</g>";
+                Pele::appendCat(items, {"<g class=\"pele-legend-item\" data-id=\"", escText(item.name), "\">", "<circle cx=\"", num(x0 + item.x + DOT), "\" cy=\"", num(cy), "\" r=\"5\" fill=\"", seriesColor(cIdx), "\"/>", labelSvg(item.label, x0 + item.x + 2.0 * DOT + 6.0 + item.label.width / 2.0, cy, ""), "</g>"});
             }
-            body += "<g class=\"pele-legend\" font-size=\"" + num(small) + "\">" + items + "</g>";
+            Pele::appendCat(body, {"<g class=\"pele-legend\" font-size=\"", num(small), "\">", items, "</g>"});
             bottom = y0 + legendH;
         }
     }
@@ -738,7 +714,7 @@ inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/,
     };
 }
 
-inline Rendered renderJourneyModel(const JourneyModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderJourneyModel(const JourneyModel& model, const Config& config, const RenderOptions& options) noexcept {
     Rendered across = drawJourney(model, config, options, false);
     double available = options.maxWidth;
     if (!(available > 0.0) || across.width <= available || available >= 640.0) return across;
@@ -761,7 +737,7 @@ inline Rendered renderJourney(const std::string& source, const Config& config, c
 
 inline Rendered renderJourney(const std::string& source, const RenderOptions& options = {}) {
     auto pre = preprocess(source);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     RenderOptions opts = options;
     if (!opts.hasResponsive) {
         const auto* section = pre.config.get("journey");

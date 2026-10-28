@@ -5,7 +5,7 @@
 namespace Pele {
 namespace Agentflow {
 
-inline std::string afNum(double v) {
+inline std::string afNum(double v) noexcept {
     return num(Flowchart::jsRound(v * 100.0) / 100.0);
 }
 
@@ -13,8 +13,8 @@ inline std::string afNum(double v) {
 // Port of src/diagrams/agentflow/colorSlots.ts
 // ============================================================================
 
-inline const std::unordered_map<std::string, int>& kindSlotMap() {
-    static const std::unordered_map<std::string, int> m = {
+inline const Pele::FlatMap<std::string, int>& kindSlotMap() noexcept {
+    static const Pele::FlatMap<std::string, int> m = {
         {"tool", 0},
         {"task", 1},
         {"decision", 2},
@@ -28,11 +28,11 @@ inline const std::unordered_map<std::string, int>& kindSlotMap() {
 
 constexpr int KIND_COUNT = 7;
 
-inline int containerSlotCount(int paletteLength) {
+inline int containerSlotCount(int paletteLength) noexcept {
     return std::max(1, paletteLength - KIND_COUNT);
 }
 
-inline int containerSlot(int n, int paletteLength) {
+inline int containerSlot(int n, int paletteLength) noexcept {
     int slot = KIND_COUNT + (n % containerSlotCount(paletteLength));
     return paletteLength > 0 ? (slot % paletteLength) : slot;
 }
@@ -41,8 +41,8 @@ inline int containerSlot(int n, int paletteLength) {
 // Port of src/diagrams/agentflow/shapes.ts
 // ============================================================================
 
-inline const std::unordered_map<std::string, std::string>& shapeAliasesMap() {
-    static const std::unordered_map<std::string, std::string> m = {
+inline const Pele::FlatMap<std::string, std::string>& shapeAliasesMap() noexcept {
+    static const Pele::FlatMap<std::string, std::string> m = {
         {"task", "roundedRect"},
         {"tool", "subroutine"},
         {"input", "lean-right"},
@@ -54,8 +54,8 @@ inline const std::unordered_map<std::string, std::string>& shapeAliasesMap() {
     return m;
 }
 
-inline const std::unordered_set<std::string>& removedShapesSet() {
-    static const std::unordered_set<std::string> s = {
+inline const Pele::FlatSet<std::string>& removedShapesSet() noexcept {
+    static const Pele::FlatSet<std::string> s = {
         "doc",
         "stadium",
         "terminal",
@@ -87,8 +87,8 @@ inline const std::unordered_set<std::string>& removedShapesSet() {
     return s;
 }
 
-inline const std::unordered_set<std::string>& allowedShapesSet() {
-    static const std::unordered_set<std::string> s = {
+inline const Pele::FlatSet<std::string>& allowedShapesSet() noexcept {
+    static const Pele::FlatSet<std::string> s = {
         "roundedRect",
         "subroutine",
         "subprocess",
@@ -108,14 +108,14 @@ inline const std::unordered_set<std::string>& allowedShapesSet() {
 
 inline const std::string DEFAULT_SHAPE = "roundedRect";
 
-inline std::string resolveShapeAlias(const std::string& shape) {
+inline std::string resolveShapeAlias(const std::string& shape) noexcept {
     if (shape.empty()) return shape;
     const auto& m = shapeAliasesMap();
     auto it = m.find(shape);
     return it != m.end() ? it->second : shape;
 }
 
-inline bool isValidShape(const std::string& name) {
+inline bool isValidShape(const std::string& name) noexcept {
     return Flowchart::isValidShape(name) || name == "constructor";
 }
 
@@ -243,24 +243,24 @@ struct AgentflowDbOptions {
     bool hasSource = false;
 };
 
-inline bool isToolDefinition(const AgentNode& vertex) {
-    static const std::unordered_set<std::string> TOOL_SHAPES = {
+inline bool isToolDefinition(const AgentNode& vertex) noexcept {
+    static const Pele::FlatSet<std::string> TOOL_SHAPES = {
         "subroutine", "subprocess", "subproc", "framed-rectangle", "tool"
     };
     return vertex.hasType && TOOL_SHAPES.count(vertex.type) > 0;
 }
 
-inline std::string agentLabelType(const std::string& type) {
+inline std::string agentLabelType(const std::string& type) noexcept {
     return (type == "markdown" || type == "string" || type == "text") ? type : "markdown";
 }
 
-inline std::string agentUnquote(const std::string& text) {
+inline std::string agentUnquote(const std::string& text) noexcept {
     return (text.size() >= 2 && text.front() == '"' && text.back() == '"')
         ? text.substr(1, text.size() - 2)
         : text;
 }
 
-inline YamlValue stripPrototypeKeys(const YamlValue& root) {
+inline YamlValue stripPrototypeKeys(const YamlValue& root) noexcept {
     if (root.isArray()) {
         YamlValue out = YamlValue::makeArray();
         for (const auto& entry : root.aVal) {
@@ -279,7 +279,7 @@ inline YamlValue stripPrototypeKeys(const YamlValue& root) {
     return root;
 }
 
-inline void mergeMetadata(YamlValue& into, bool& hasInto, const YamlValue& doc) {
+inline void mergeMetadata(YamlValue& into, bool& hasInto, const YamlValue& doc) noexcept {
     if (!hasInto || !into.isMap()) {
         into = YamlValue::makeMap();
         hasInto = true;
@@ -295,7 +295,7 @@ inline void mergeMetadata(YamlValue& into, bool& hasInto, const YamlValue& doc) 
     }
 }
 
-inline bool isBlockScalarHeaderLine(const std::string& code) {
+inline bool isBlockScalarHeaderLine(const std::string& code) noexcept {
     // /:\s*[>|][\d+-]*\s*$/
     size_t colon = code.rfind(':');
     if (colon == std::string::npos) return false;
@@ -308,7 +308,7 @@ inline bool isBlockScalarHeaderLine(const std::string& code) {
     return p == code.size();
 }
 
-inline std::string stripTrailingComma(const std::string& code) {
+inline std::string stripTrailingComma(const std::string& code) noexcept {
     // code.replace(/,([\t ]*)$/, '$1')
     size_t p = code.size();
     while (p > 0 && (code[p - 1] == ' ' || code[p - 1] == '\t')) p--;
@@ -318,7 +318,7 @@ inline std::string stripTrailingComma(const std::string& code) {
     return code;
 }
 
-inline std::string stripLineTrailingCommas(const std::string& body) {
+inline std::string stripLineTrailingCommas(const std::string& body) noexcept {
     bool inSingle = false;
     bool inDouble = false;
     int flowDepth = 0;
@@ -373,14 +373,14 @@ inline std::string stripLineTrailingCommas(const std::string& body) {
     return result;
 }
 
-inline std::string edgeSemanticOf(const std::string& type, const std::string& stroke) {
+inline std::string edgeSemanticOf(const std::string& type, const std::string& stroke) noexcept {
     if (type == "arrow_point" && stroke == "normal") return "sequence";
     if (type == "arrow_cross" && stroke == "normal") return "failure";
     if (type == "arrow_open" && stroke == "dotted") return "reference";
     return "";
 }
 
-inline AgentLinkInfo destructEndLink(const std::string& raw) {
+inline AgentLinkInfo destructEndLink(const std::string& raw) noexcept {
     std::string str = trimStr(raw);
     std::string line = str.empty() ? "" : str.substr(0, str.size() - 1);
     std::string type = "arrow_open";
@@ -424,7 +424,7 @@ public:
     std::vector<std::string> connectorOrder;
     std::unordered_map<std::string, AgentNode> connectors;
     std::unordered_map<std::string, AgentClassDef> classes;
-    std::unordered_map<std::string, std::string> tooltips;
+    Pele::FlatMap<std::string, std::string> tooltips;
     std::vector<std::string> defaultEdgeStyle;
     bool hasDefaultEdgeStyle = false;
     std::string defaultInterpolate;
@@ -432,13 +432,13 @@ public:
     std::vector<Diagnostic> diagnostics;
     int lineOffset = 0;
 
-    std::unordered_map<std::string, size_t> subgraphLookup;
-    std::unordered_set<std::string> globalNodes;
-    std::unordered_set<std::string> members;
-    std::unordered_map<std::string, size_t> edgeById;
-    std::unordered_map<std::string, int> pairCount;
+    Pele::FlatMap<std::string, size_t> subgraphLookup;
+    Pele::FlatSet<std::string> globalNodes;
+    Pele::FlatSet<std::string> members;
+    Pele::FlatMap<std::string, size_t> edgeById;
+    Pele::FlatMap<std::string, int> pairCount;
     int subCount = 0;
-    std::unordered_map<std::string, size_t> firstMapping;
+    Pele::FlatMap<std::string, size_t> firstMapping;
     std::unordered_map<std::string, std::vector<Diagnostic>> reported;
     AgentflowDbOptions options;
 
@@ -475,7 +475,7 @@ public:
     YamlValue metadata(const std::string& id, const std::string& source, const Loc* loc) {
         bool multiline = source.find('\n') != std::string::npos;
         std::string stripped = multiline ? stripLineTrailingCommas(source) : source;
-        YamlValue parsed = parseYaml(multiline ? (stripped + "\n") : ("{\n" + source + "\n}"));
+        YamlValue parsed = parseYaml(multiline ? Pele::cat({stripped, "\n"}) : Pele::cat({"{\n", source, "\n}"}));
         if (parsed.isNull()) parsed = YamlValue::makeMap();
         return stripPrototypeKeys(parsed);
     }
@@ -603,11 +603,11 @@ public:
                 }
                 std::string authored = hasAuthoredShape ? authoredShape : shVal->sVal;
                 if (authored != toLowerAscii(authored) || authored.find('_') != std::string::npos) {
-                    throw shapeError("No such shape: " + authored + ". Shape names should be lowercase.", metadataLoc);
+                    throw shapeError(Pele::cat({"No such shape: ", authored, ". Shape names should be lowercase."}),  metadataLoc);
                 }
                 std::string shape = shVal->sVal;
                 if (!isValidShape(shape)) {
-                    throw shapeError("No such shape: " + shape + ".", metadataLoc);
+                    throw shapeError(Pele::cat({"No such shape: ", shape, "."}),  metadataLoc);
                 }
                 vertex.type = shape;
                 vertex.hasType = true;
@@ -813,7 +813,7 @@ public:
             if (hasSpace) id.clear();
         }
 
-        std::unordered_set<std::string> seen;
+        Pele::FlatSet<std::string> seen;
         std::vector<std::string> nodeList;
         std::string dir;
         for (const auto& entry : list) {
@@ -1143,7 +1143,7 @@ enum T : int {
     EOF_TOK
 };
 
-inline const char* tokenName(int t) {
+inline const char* tokenName(int t) noexcept {
     static const char* NAMES[] = {
         "$end",
         "INVALID",
@@ -2276,7 +2276,7 @@ struct AgentFrame {
     bool collect = false;
 };
 
-inline std::pair<std::string, std::vector<std::pair<size_t, size_t>>> stripBraceTrail(const std::string& source) {
+inline std::pair<std::string, std::vector<std::pair<size_t, size_t>>> stripBraceTrail(const std::string& source) noexcept {
     // Replaces /}[^\S\n]*\n/g with "}\n"
     std::string out;
     out.reserve(source.size());
@@ -2433,7 +2433,7 @@ inline void parseAgentflow(const std::string& source, AgentflowDb& db, bool raw 
         if (t == STR) type = "string";
         else if (t == MD_STR) type = "markdown";
         else if (t == TEXT || t == TAGSTART || t == TAGEND || t == UNICODE_TEXT) type = "text";
-        else fail(TEXT_TOKENS + ", 'TAGEND', 'STR', 'MD_STR'");
+        else fail(Pele::cat({TEXT_TOKENS, ", 'TAGEND', 'STR', 'MD_STR'"}));
         std::string s = texts[i++];
         while (true) {
             int n = types[i];
@@ -2869,7 +2869,7 @@ inline void parseAgentflow(const std::string& source, AgentflowDb& db, bool raw 
         }
         bool hasData = (types[i] == SHAPE_DATA);
         std::string data = hasData ? shapeData() : "";
-        if (SEPARATOR_TBL[types[i]] == 0) fail(SEPARATORS + ", 'SHAPE_DATA'");
+        if (SEPARATOR_TBL[types[i]] == 0) fail(Pele::cat({SEPARATORS, ", 'SHAPE_DATA'"}));
         detail::AgentFrame frame;
         frame.global = false;
         frame.at = at;
@@ -3107,7 +3107,7 @@ struct AgentGraph {
     std::vector<GraphEdge> edges;
 };
 
-inline void normaliseNodeShapes(std::vector<GraphNode>& nodes, AgentflowDb& sink) {
+inline void normaliseNodeShapes(std::vector<GraphNode>& nodes, AgentflowDb& sink) noexcept {
     const auto& removed = removedShapesSet();
     const auto& allowed = allowedShapesSet();
     for (auto& node : nodes) {
@@ -3116,10 +3116,10 @@ inline void normaliseNodeShapes(std::vector<GraphNode>& nodes, AgentflowDb& sink
             node.shape = DEFAULT_SHAPE;
         }
         if (removed.count(node.shape)) {
-            sink.emitError("SHAPE_REMOVED", "shape \"" + node.shape + "\" was removed in v0.8.1, using \"" + DEFAULT_SHAPE + "\"", node.id);
+            sink.emitError("SHAPE_REMOVED", Pele::cat({"shape \"", node.shape, "\" was removed in v0.8.1, using \"", DEFAULT_SHAPE, "\""}),  node.id);
             node.shape = DEFAULT_SHAPE;
         } else if (!allowed.count(node.shape)) {
-            sink.emitWarning("SHAPE_UNSUPPORTED", "shape \"" + node.shape + "\" is not supported, using \"" + DEFAULT_SHAPE + "\"", node.id);
+            sink.emitWarning("SHAPE_UNSUPPORTED", Pele::cat({"shape \"", node.shape, "\" is not supported, using \"", DEFAULT_SHAPE, "\""}),  node.id);
             node.shape = DEFAULT_SHAPE;
         }
     }
@@ -3129,7 +3129,7 @@ template <typename KindOfFn>
 inline void assignColorSlots(
     std::vector<GraphNode>& nodes,
     KindOfFn&& kindOf,
-    const std::unordered_map<std::string, int>& containerOrder,
+    const Pele::FlatMap<std::string, int>& containerOrder,
     int paletteLength
 ) {
     const auto& ks = kindSlotMap();
@@ -3150,7 +3150,7 @@ inline void assignColorSlots(
     }
 }
 
-inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std::string& defaultCurve = "") {
+inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std::string& defaultCurve = "") noexcept {
     std::vector<GraphNode> nodes;
     std::vector<GraphEdge> edges;
     const auto& subgraphs = db.subgraphs;
@@ -3183,9 +3183,9 @@ inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std:
     };
 
     std::vector<std::string> hiddenList;
-    std::unordered_set<std::string> hidden;
-    std::unordered_map<std::string, std::string> owner;
-    std::unordered_set<std::string> walked;
+    Pele::FlatSet<std::string> hidden;
+    Pele::FlatMap<std::string, std::string> owner;
+    Pele::FlatSet<std::string> walked;
     for (const auto& sg : subgraphs) {
         bool isCollapsed = sg.hasMetadata && sg.metadata.isMap() &&
                            sg.metadata.get("view") != nullptr &&
@@ -3209,7 +3209,7 @@ inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std:
         walked.insert(sg.id);
     }
 
-    std::unordered_map<std::string, std::string> collapsedInto;
+    Pele::FlatMap<std::string, std::string> collapsedInto;
     for (const auto& id : hiddenList) {
         std::vector<std::string> path = {id};
         std::string top = owner[id];
@@ -3226,10 +3226,10 @@ inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std:
         for (const auto& p : path) collapsedInto[p] = top;
     }
 
-    std::unordered_map<std::string, size_t> posMap;
+    Pele::FlatMap<std::string, size_t> posMap;
     for (size_t i = 0; i < subgraphs.size(); i++) posMap[subgraphs[i].id] = i;
 
-    std::unordered_map<std::string, std::string> parentOf;
+    Pele::FlatMap<std::string, std::string> parentOf;
     auto closesLoop = [&](const std::string& childId, const std::string& parentId, size_t at) -> bool {
         auto cIt = posMap.find(childId);
         if (cIt == posMap.end() || cIt->second < at) return false;
@@ -3248,8 +3248,7 @@ inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std:
         for (const auto& id : sg.nodes) {
             if (closesLoop(id, sg.id, static_cast<size_t>(i))) {
                 db.emitWarning(
-                    "CONTAINMENT_VIOLATION",
-                    "Container \"" + sg.id + "\" cannot contain \"" + id + "\" because \"" + id + "\" already contains it. The nesting that would close the loop is dropped.",
+                    "CONTAINMENT_VIOLATION", Pele::cat({"Container \"", sg.id, "\" cannot contain \"", id, "\" because \"", id, "\" already contains it. The nesting that would close the loop is dropped."}), 
                     id
                 );
                 continue;
@@ -3258,7 +3257,7 @@ inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std:
         }
     }
 
-    std::unordered_map<std::string, size_t> byId;
+    Pele::FlatMap<std::string, size_t> byId;
     for (int i = static_cast<int>(subgraphs.size()) - 1; i >= 0; i--) {
         const auto& sg = subgraphs[static_cast<size_t>(i)];
         if (hidden.count(sg.id)) continue;
@@ -3320,7 +3319,7 @@ inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std:
         std::vector<std::string> fullClasses = {"default", "node"};
         fullClasses.insert(fullClasses.end(), vertex.classes.begin(), vertex.classes.end());
         node.cssCompiledStyles = compiled(fullClasses);
-        node.cssClasses = "default " + joinSpace(vertex.classes);
+        node.cssClasses = Pele::cat({"default ", joinSpace(vertex.classes)});
         node.dir = vertex.dir;
         node.link = vertex.link;
         node.linkTarget = vertex.linkTarget;
@@ -3382,7 +3381,7 @@ inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std:
         if (pIt == parentOf.end()) continue;
         children[pIt->second].push_back(sg.id);
     }
-    std::unordered_map<std::string, int> order;
+    Pele::FlatMap<std::string, int> order;
     for (const auto& sg : subgraphs) {
         if (parentOf.count(sg.id)) continue;
         std::vector<std::string> pending = {sg.id};
@@ -3428,14 +3427,14 @@ constexpr double GROUP_PAD = 20.0;
 constexpr double LOOP = 26.0;
 constexpr double DOTS = 14.0;
 
-inline int flowEndSide(const std::string& dir) {
+inline int flowEndSide(const std::string& dir) noexcept {
     if (dir == "RL") return 3;
     if (dir == "BT") return 0;
     if (dir == "LR") return 1;
     return 2; // TB
 }
 
-inline double numberOption(const Config& config, const std::string& key, double fallback) {
+inline double numberOption(const Config& config, const std::string& key, double fallback) noexcept {
     if (!config.isMap()) return fallback;
     const auto* af = config.get("agentflow");
     if (!af || !af->isMap()) return fallback;
@@ -3444,37 +3443,37 @@ inline double numberOption(const Config& config, const std::string& key, double 
     return fallback;
 }
 
-inline std::string tint(int slot, const std::string& wash, const ResolvedStyle& style) {
+inline std::string tint(int slot, const std::string& wash, const ResolvedStyle& style) noexcept {
     std::string color = seriesColor(slot);
-    return " fill=\"" + color + "\"" + (setsFill(style.shape) ? "" : (" fill-opacity=\"" + wash + "\"")) + " stroke=\"" + color + "\"";
+    return Pele::cat({" fill=\"", color, "\"", (setsFill(style.shape) ? "" : Pele::cat({" fill-opacity=\"", wash, "\""})), " stroke=\"", color, "\""});
 }
 
-inline std::string dotPath(double x, double y) {
-    return "M" + afNum(x - 1.75) + "," + afNum(y) + "a1.75,1.75 0 1 0 3.5,0a1.75,1.75 0 1 0 -3.5,0Z";
+inline std::string dotPath(double x, double y) noexcept {
+    return Pele::cat({"M", afNum(x - 1.75), ",", afNum(y), "a1.75,1.75 0 1 0 3.5,0a1.75,1.75 0 1 0 -3.5,0Z"});
 }
 
-inline std::string drawAgentShape(const std::string& shape, double w, double h, const std::string& a, const std::string& line) {
+inline std::string drawAgentShape(const std::string& shape, double w, double h, const std::string& a, const std::string& line) noexcept {
     auto afRect = [&](double rw, double rh, const std::string& attrs, const std::string& extra = "") {
-        return "<rect x=\"" + afNum(-rw / 2.0) + "\" y=\"" + afNum(-rh / 2.0) + "\" width=\"" + afNum(rw) + "\" height=\"" + afNum(rh) + "\"" + extra + attrs + "/>";
+        return Pele::cat({"<rect x=\"", afNum(-rw / 2.0), "\" y=\"", afNum(-rh / 2.0), "\" width=\"", afNum(rw), "\" height=\"", afNum(rh), "\"", extra, attrs, "/>"});
     };
     auto afPoly = [&](const std::vector<double>& pts, const std::string& attrs) {
         std::string s = "<polygon points=\"";
         for (size_t i = 0; i < pts.size(); i += 2) {
             if (i > 0) s.push_back(' ');
-            s += afNum(pts[i]) + "," + afNum(pts[i + 1]);
+            Pele::appendCat(s, {afNum(pts[i]), ",", afNum(pts[i + 1])});
         }
-        return s + "\"" + attrs + "/>";
+        return Pele::cat({s, "\"", attrs, "/>"});
     };
     auto afWave = [&](double ww, double wh, const std::string& attrs) {
         double x = ww / 2.0;
         double y = wh / 2.0 - 10.0;
         double q = ww / 4.0;
-        return "<path d=\"M" + afNum(-x) + "," + afNum(-wh / 2.0) + "H" + afNum(x) + "V" + afNum(y) + "q" + afNum(-q) + ",-12 " + afNum(-2.0 * q) + ",0t" + afNum(-2.0 * q) + ",0Z\"" + attrs + "/>";
+        return Pele::cat({"<path d=\"M", afNum(-x), ",", afNum(-wh / 2.0), "H", afNum(x), "V", afNum(y), "q", afNum(-q), ",-12 ", afNum(-2.0 * q), ",0t", afNum(-2.0 * q), ",0Z\"", attrs, "/>"});
     };
-    if (shape == "rounded") return afRect(w, h, a, " rx=\"" + afNum(std::min(12.0, h / 2.0)) + "\"");
+    if (shape == "rounded") return afRect(w,  h,  a, Pele::cat({" rx=\"", afNum(std::min(12.0, h / 2.0)), "\""}));
     if (shape == "fr-rect") {
         double x = w / 2.0 - 8.0;
-        return afRect(w, h, rounded(a)) + "<path d=\"M" + afNum(-x) + "," + afNum(-h / 2.0) + "V" + afNum(h / 2.0) + "M" + afNum(x) + "," + afNum(-h / 2.0) + "V" + afNum(h / 2.0) + "\" fill=\"none\"" + line + "/>";
+        return Pele::cat({afRect(w, h, rounded(a)), "<path d=\"M", afNum(-x), ",", afNum(-h / 2.0), "V", afNum(h / 2.0), "M", afNum(x), ",", afNum(-h / 2.0), "V", afNum(h / 2.0), "\" fill=\"none\"", line, "/>"});
     }
     if (shape == "diam") return afPoly({0.0, -h / 2.0, w / 2.0, 0.0, 0.0, h / 2.0, -w / 2.0, 0.0}, a);
     if (shape == "hex") {
@@ -3486,7 +3485,7 @@ inline std::string drawAgentShape(const std::string& shape, double w, double h, 
         return afPoly({-w / 2.0 + s, -h / 2.0, w / 2.0, -h / 2.0, w / 2.0 - s, h / 2.0, -w / 2.0, h / 2.0}, a);
     }
     if (shape == "lin-doc") {
-        return afWave(w, h, a) + "<path d=\"M" + afNum(-w / 2.0 + 8.0) + "," + afNum(-h / 2.0) + "V" + afNum(h / 2.0 - 6.0) + "\" fill=\"none\"" + line + "/>";
+        return Pele::cat({afWave(w, h, a), "<path d=\"M", afNum(-w / 2.0 + 8.0), ",", afNum(-h / 2.0), "V", afNum(h / 2.0 - 6.0), "\" fill=\"none\"", line, "/>"});
     }
     return drawShape(shape, w, h, a, line);
 }
@@ -3517,7 +3516,7 @@ inline Rendered drawAgentflow(
     double pad = options.hasPadding ? options.padding : 8.0;
     const auto& icons = options.icons;
 
-    std::unordered_map<std::string, int> index;
+    Pele::FlatMap<std::string, int> index;
     std::vector<NodeView> views;
     std::vector<Flowchart::CNode> cnodes;
     views.reserve(graph.nodes.size());
@@ -3775,12 +3774,7 @@ inline Rendered drawAgentflow(
             }
             double titleX = Flowchart::clusterTitleX(c, view.label.width, crossings, GROUP_PAD);
             int slot = node.hasColorIndex ? node.colorIndex : KIND_COUNT;
-            clusters +=
-                "<g class=\"pele-cluster pele-flow" + classes + "\" data-id=\"" + id + "\">" +
-                "<rect x=\"" + afNum(x - c.w / 2.0) + "\" y=\"" + afNum(y - c.h / 2.0) + "\" width=\"" + afNum(c.w) + "\" height=\"" + afNum(c.h) + "\"" +
-                rounded(tint(slot, "0.06", view.style) + view.style.shape) + "/>" +
-                labelSvg(view.label, titleX, y - c.h / 2.0 + 8.0 + view.label.height / 2.0, " class=\"pele-cluster-label\"" + inkFill(view.style, "var(--_m)") + view.style.text, icons) +
-                "</g>";
+            Pele::appendCat(clusters, {"<g class=\"pele-cluster pele-flow", classes, "\" data-id=\"", id, "\">", "<rect x=\"", afNum(x - c.w / 2.0), "\" y=\"", afNum(y - c.h / 2.0), "\" width=\"", afNum(c.w), "\" height=\"", afNum(c.h), "\"", rounded(tint(slot, "0.06", view.style) + view.style.shape), "/>", labelSvg(view.label,  titleX,  y - c.h / 2.0 + 8.0 + view.label.height / 2.0, Pele::cat({" class=\"pele-cluster-label\"", inkFill(view.style, "var(--_m)"), view.style.text}),  icons), "</g>"});
             continue;
         }
 
@@ -3793,41 +3787,35 @@ inline Rendered drawAgentflow(
             std::string color = seriesColor(slot);
             double lineY = h / 2.0 - DOTS - 2.0;
             double dotsY = lineY + (DOTS + 2.0) / 2.0;
-            shapeSvg =
-                "<rect x=\"" + afNum(-w / 2.0) + "\" y=\"" + afNum(-h / 2.0) + "\" width=\"" + afNum(w) + "\" height=\"" + afNum(h) + "\"" +
-                rounded(tint(slot, "0.06", view.style) + view.style.shape) + "/>" +
-                "<path d=\"M" + afNum(-w / 2.0 + 10.0) + "," + afNum(lineY) + "H" + afNum(w / 2.0 - 10.0) + "\" fill=\"none\" stroke=\"" + color + "\" stroke-dasharray=\"3 3\"" + view.style.line + "/>" +
-                "<path class=\"pele-collapsed-mark\" d=\"" + dotPath(-9.0, dotsY) + dotPath(0.0, dotsY) + dotPath(9.0, dotsY) + "\" fill=\"" + color + "\" stroke=\"none\"/>";
+            shapeSvg = Pele::cat({"<rect x=\"", afNum(-w / 2.0), "\" y=\"", afNum(-h / 2.0), "\" width=\"", afNum(w), "\" height=\"", afNum(h), "\"", rounded(tint(slot, "0.06", view.style) + view.style.shape), "/>", "<path d=\"M", afNum(-w / 2.0 + 10.0), ",", afNum(lineY), "H", afNum(w / 2.0 - 10.0), "\" fill=\"none\" stroke=\"", color, "\" stroke-dasharray=\"3 3\"", view.style.line, "/>", "<path class=\"pele-collapsed-mark\" d=\"", dotPath(-9.0, dotsY), dotPath(0.0, dotsY), dotPath(9.0, dotsY), "\" fill=\"", color, "\" stroke=\"none\"/>"});
         } else {
             std::string kName = node.hasKind ? node.kind : "task";
             auto kIt = ksMap.find(kName);
             int slot = (kIt != ksMap.end()) ? kIt->second : 1;
-            kindAttr = " pele-kind-" + kName;
+            kindAttr = Pele::cat({" pele-kind-", kName});
             shapeSvg = drawAgentShape(
-                view.shape,
-                w,
-                h,
-                tint(slot, "0.14", view.style) + view.style.shape,
-                " stroke=\"" + seriesColor(slot) + "\"" + view.style.line
-            );
+                view.shape, 
+                w, 
+                h, 
+                tint(slot, "0.14", view.style) + view.style.shape, Pele::cat({" stroke=\"", seriesColor(slot), "\"", view.style.line}));
         }
 
         std::string ink = (view.shape == "collapsed" || shapeFilled(view.shape)) ? inkFill(view.style) : "";
-        std::string text = labelSvg(view.label, 0.0, view.dy, " class=\"pele-label\"" + ink + view.style.text, icons);
-        bool isInternal = ((classes + " ").find(" internal-link ") != std::string::npos);
+        std::string text = labelSvg(view.label,  0.0,  view.dy, Pele::cat({" class=\"pele-label\"", ink, view.style.text}),  icons);
+        bool isInternal = ((Pele::cat({classes, " "})).find(" internal-link ") != std::string::npos);
         if (isInternal && !node.label.empty() && options.links) {
             std::string name = decodeEntities(node.label);
             bool safe = Flowchart::internalLink(name, options);
             std::string target = esc(name);
-            text = "<a class=\"internal-link\"" + (safe ? (" href=\"" + target + "\"" + relAttr(options)) : "") + " data-href=\"" + target + "\">" + text + "</a>";
+            text = Pele::cat({"<a class=\"internal-link\"", (safe ? Pele::cat({" href=\"", target, "\"", relAttr(options)}) : ""), " data-href=\"", target, "\">", text, "</a>"});
             links.push_back({node.id, name, true});
         }
         std::string body = shapeSvg + text;
         if (!node.tooltip.empty()) body = "<title>" + escText(node.tooltip) + "</title>" + body;
         if (!node.link.empty()) {
-            body = linked(body, node.link, node.id, links, options, !node.linkTarget.empty() ? (" target=\"" + esc(node.linkTarget) + "\"") : "");
+            body = linked(body, node.link, node.id, links, options, !node.linkTarget.empty() ? Pele::cat({" target=\"", esc(node.linkTarget), "\""}) : "");
         }
-        nodesOut += "<g class=\"pele-node pele-shape-" + view.shape + kindAttr + classes + "\" data-id=\"" + id + "\" transform=\"translate(" + afNum(x) + "," + afNum(y) + ")\">" + body + "</g>";
+        Pele::appendCat(nodesOut, {"<g class=\"pele-node pele-shape-", view.shape, kindAttr, classes, "\" data-id=\"", id, "\" transform=\"translate(", afNum(x), ",", afNum(y), ")\">", body, "</g>"});
     }
 
     std::string casings;
@@ -3853,19 +3841,13 @@ inline Rendered drawAgentflow(
         if (over.onFill && over.value.empty()) {
             casings += edgeCasing(path, "none", endType, hasStyle ? style.line : "");
         }
-        edgesOut +=
-            "<g class=\"pele-edge pele-edge-" + kind + classes + "\" data-id=\"" + escText(edge.id) + "\"" +
-            (!over.value.empty() ? (" stroke=\"" + over.value + "\"") : "") +
-            (hasStyle ? style.line : "") + ">" +
-            "<path d=\"" + path.d + "\"" + (edge.thickness == "dotted" ? " stroke-dasharray=\"3 4\"" : "") + "/>" +
-            marker(endType, path.ex, path.ey, path.edx, path.edy, color) +
-            "</g>";
+        Pele::appendCat(edgesOut, {"<g class=\"pele-edge pele-edge-", kind, classes, "\" data-id=\"", escText(edge.id), "\"", (!over.value.empty() ? Pele::cat({" stroke=\"", over.value, "\""}) : ""), (hasStyle ? style.line : ""), ">", "<path d=\"", path.d, "\"", (edge.thickness == "dotted" ? " stroke-dasharray=\"3 4\"" : ""), "/>", marker(endType, path.ex, path.ey, path.edx, path.edy, color), "</g>"});
         if (label.width > 0.0) {
             labelsOut += edgeLabelSvg(edge.id, label, x, y, hasStyle ? style.text : "", icons);
         }
     };
 
-    std::unordered_map<int, int> loopSeen;
+    Pele::FlatMap<int, int> loopSeen;
     for (size_t i = 0; i < cedges.size(); i++) {
         auto& ce = cedges[i];
         const auto& edge = drawn[i];
@@ -3891,24 +3873,17 @@ inline Rendered drawAgentflow(
     }
 
     std::string svg = svgDocument(
-        "agentflow",
-        width,
-        height,
-        size,
-        options,
-        db,
-        labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-            (!clusters.empty() ? ("<g class=\"pele-clusters\">" + clusters + "</g>") : "") +
-            casingsSvg(casings) +
-            (!edgesOut.empty() ? ("<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">" + edgesOut + "</g>") : "") +
-            (!labelsOut.empty() ? ("<g class=\"pele-edge-labels\" font-size=\"" + afNum(edgeSize) + "\">" + labelsOut + "</g>") : "") +
-            "<g class=\"pele-nodes\">" + nodesOut + "</g>"
-    );
+        "agentflow", 
+        width, 
+        height, 
+        size, 
+        options, 
+        db, Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), (!clusters.empty() ? Pele::cat({"<g class=\"pele-clusters\">", clusters, "</g>"}) : ""), casingsSvg(casings), (!edgesOut.empty() ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">", edgesOut, "</g>"}) : ""), (!labelsOut.empty() ? Pele::cat({"<g class=\"pele-edge-labels\" font-size=\"", afNum(edgeSize), "\">", labelsOut, "</g>"}) : ""), "<g class=\"pele-nodes\">", nodesOut, "</g>"}));
 
     return {std::move(svg), width, height, std::move(links)};
 }
 
-inline Rendered renderAgentflowDiagram(AgentflowDb& db, const Config& config, const RenderOptions& options) {
+inline Rendered renderAgentflowDiagram(AgentflowDb& db, const Config& config, const RenderOptions& options) noexcept {
     std::string curve;
     if (config.isMap()) {
         if (const auto* fc = config.get("flowchart"); fc && fc->isMap()) {
@@ -3926,7 +3901,7 @@ inline Rendered renderAgentflowDiagram(AgentflowDb& db, const Config& config, co
 
 inline Rendered renderAgentflow(const std::string& source, const RenderOptions& options = {}) {
     Preprocessed pre = preprocess(source);
-    std::string body = encodeEntities(pre.withComments) + "\n";
+    std::string body = Pele::cat({encodeEntities(pre.withComments), "\n"});
     Agentflow::AgentflowDbOptions dbOpts;
     dbOpts.maxEdges = 5000;
     dbOpts.hasMaxEdges = true;

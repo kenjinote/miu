@@ -7,11 +7,11 @@ namespace Pele {
 // src/svg/builder.ts
 // ============================================================================
 
-inline bool isInvalidXmlCodepoint(uint32_t cp) {
+inline bool isInvalidXmlCodepoint(uint32_t cp) noexcept {
     return (cp <= 0x08) || cp == 0x0b || cp == 0x0c || (cp >= 0x0e && cp <= 0x1f) || cp == 0x7f || (cp >= 0xd800 && cp <= 0xdfff) || cp == 0xfffe || cp == 0xffff;
 }
 
-inline bool hasInvalidXml(const std::string& text) {
+inline bool hasInvalidXml(const std::string& text) noexcept {
     size_t i = 0;
     while (i < text.size()) {
         uint32_t cp = nextCodepoint(text, i);
@@ -20,7 +20,7 @@ inline bool hasInvalidXml(const std::string& text) {
     return false;
 }
 
-inline std::string esc(const std::string& text) {
+PELE_NOINLINE inline std::string esc(const std::string& text) noexcept {
     std::string out;
     out.reserve(text.size() + 8);
     size_t i = 0;
@@ -37,26 +37,42 @@ inline std::string esc(const std::string& text) {
     return out;
 }
 
-inline std::string escText(const std::string& text) {
+PELE_NOINLINE inline std::string escText(const std::string& text) noexcept {
     return esc(decodeEntities(text));
 }
 
-inline std::string num(double value) {
+PELE_NOINLINE inline std::string num(double value) noexcept {
     if (!std::isfinite(value)) return "0";
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
-    bool neg = n < 0;
-    long long m = neg ? -n : n;
-    long long q = m / 100;
-    long long r = m % 100;
-    std::string s = (neg ? "-" : "") + std::to_string(q);
-    if (r == 0) return s;
-    if (r % 10 == 0) return s + "." + std::to_string(r / 10);
-    if (r < 10) return s + ".0" + std::to_string(r);
-    return s + "." + std::to_string(r);
+    char buf[32];
+    char* end = buf + sizeof(buf);
+    char* p = end;
+    unsigned long long m = (n < 0) ? (0ULL - static_cast<unsigned long long>(n)) : static_cast<unsigned long long>(n);
+    unsigned long long q = m / 100ULL;
+    unsigned int r = static_cast<unsigned int>(m % 100ULL);
+    if (r != 0) {
+        if (r % 10 == 0) {
+            *--p = static_cast<char>('0' + (r / 10));
+        } else {
+            *--p = static_cast<char>('0' + (r % 10));
+            *--p = static_cast<char>('0' + (r / 10));
+        }
+        *--p = '.';
+    }
+    if (q == 0) {
+        *--p = '0';
+    } else {
+        while (q > 0) {
+            *--p = static_cast<char>('0' + (q % 10ULL));
+            q /= 10ULL;
+        }
+    }
+    if (n < 0) *--p = '-';
+    return std::string(p, static_cast<size_t>(end - p));
 }
 
-inline std::string spanStyle(int style) {
+inline std::string spanStyle(int style) noexcept {
     std::string out;
     if (style & Style::Bold) out += " font-weight=\"var(--_w)\"";
     if (style & Style::Italic) out += " font-style=\"italic\"";
@@ -67,7 +83,7 @@ inline std::string spanStyle(int style) {
     return out;
 }
 
-inline int sharedStyle(const Label& label) {
+inline int sharedStyle(const Label& label) noexcept {
     int shared = Style::Bold | Style::Italic | Style::Mono;
     bool any = false;
     for (const auto& line : label.lines) {
@@ -80,7 +96,7 @@ inline int sharedStyle(const Label& label) {
     return any ? shared : 0;
 }
 
-inline std::string textStyle(const std::string& attrs, int shared) {
+inline std::string textStyle(const std::string& attrs, int shared) noexcept {
     std::string out = attrs;
     if ((shared & Style::Bold) && attrs.find(" font-weight=\"") == std::string::npos) out += " font-weight=\"var(--_w)\"";
     if ((shared & Style::Italic) && attrs.find(" font-style=\"") == std::string::npos) out += " font-style=\"italic\"";
@@ -94,8 +110,8 @@ struct MathLook {
     bool hasHalo = false;
 };
 
-inline std::string extractAttrVal(const std::string& s, const std::string& key) {
-    std::string needle = " " + key + "=\"";
+inline std::string extractAttrVal(const std::string& s, const std::string& key) noexcept {
+    std::string needle = Pele::cat({" ", key, "=\""});
     size_t pos = s.find(needle);
     if (pos == std::string::npos) return "";
     size_t start = pos + needle.size();
@@ -104,7 +120,7 @@ inline std::string extractAttrVal(const std::string& s, const std::string& key) 
     return s.substr(start, end - start);
 }
 
-inline std::string extractCssProp(const std::string& css, const std::string& prop) {
+inline std::string extractCssProp(const std::string& css, const std::string& prop) noexcept {
     for (const auto& decl : splitStr(css, ';')) {
         size_t colon = decl.find(':');
         if (colon == std::string::npos) continue;
@@ -115,7 +131,7 @@ inline std::string extractCssProp(const std::string& css, const std::string& pro
     return "";
 }
 
-inline MathLook computeMathLook(const std::string& attrs) {
+inline MathLook computeMathLook(const std::string& attrs) noexcept {
     std::string style = extractAttrVal(attrs, "style");
     std::string fill = extractCssProp(style, "fill");
     if (fill.empty()) fill = trimStr(extractAttrVal(attrs, "fill"));
@@ -124,20 +140,20 @@ inline MathLook computeMathLook(const std::string& attrs) {
         return {"", stroke.empty() ? "none" : stroke, true};
     }
     std::string opacity = extractCssProp(style, "opacity");
-    std::string res = (fill.empty() ? "" : (" color=\"" + fill + "\"")) + (opacity.empty() ? "" : (" opacity=\"" + opacity + "\""));
+    std::string res = (fill.empty() ? "" : Pele::cat({" color=\"", fill, "\""})) + (opacity.empty() ? "" : Pele::cat({" opacity=\"", opacity, "\""}));
     return {res, "", false};
 }
 
-inline std::string mathSvg(const MathMarkup& math, const std::string& box, double size, const std::string& attrs) {
+inline std::string mathSvg(const MathMarkup& math, const std::string& box, double size, const std::string& attrs) noexcept {
     if (math.hasSvg) {
-        return "<svg class=\"pele-math\" " + box + " overflow=\"visible\"" + attrs + ">" + math.svg + "</svg>";
+        return Pele::cat({"<svg class=\"pele-math\" ", box, " overflow=\"visible\"", attrs, ">", math.svg, "</svg>"});
     }
     return "<foreignObject class=\"pele-math\" " + box + " overflow=\"visible\"" + attrs + ">"
         "<div xmlns=\"http://www.w3.org/1999/xhtml\" style=\"display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:" + num(size) + "px;line-height:normal;white-space:nowrap\">" + math.html + "</div>"
         "</foreignObject>";
 }
 
-inline std::string labelSvg(const Label& label, double cx, double cy, std::string attrs, const IconResolver& icons = nullptr) {
+inline std::string labelSvg(const Label& label, double cx, double cy, std::string attrs, const IconResolver& icons = nullptr) noexcept {
     const auto& lines = label.lines;
     if (lines.empty()) return "";
     double lh = label.lineHeight;
@@ -147,7 +163,7 @@ inline std::string labelSvg(const Label& label, double cx, double cy, std::strin
     if (lines.size() == 1 && lines[0].size() == 1) {
         const auto& only = lines[0][0];
         if (!only.hasIcon && !only.hasMath && only.style == 0) {
-            return "<text" + attrs + " x=\"" + num(cx) + "\" y=\"" + num(top + lh / 2.0 + shift) + "\" text-anchor=\"middle\">" + esc(only.text) + "</text>";
+            return Pele::cat({"<text", attrs, " x=\"", num(cx), "\" y=\"", num(top + lh / 2.0 + shift), "\" text-anchor=\"middle\">", esc(only.text), "</text>"});
         }
     }
 
@@ -171,38 +187,38 @@ inline std::string labelSvg(const Label& label, double cx, double cy, std::strin
             double x = cx - label.widths[i] / 2.0;
             for (const auto& span : line) {
                 if (span.hasMath) {
-                    std::string box = "x=\"" + num(x) + "\" y=\"" + num(mid - span.math.height / 2.0) + "\" width=\"" + num(span.math.width) + "\" height=\"" + num(span.math.height) + "\"";
+                    std::string box = Pele::cat({"x=\"", num(x), "\" y=\"", num(mid - span.math.height / 2.0), "\" width=\"", num(span.math.width), "\" height=\"", num(span.math.height), "\""});
                     if (!hasMathLook) { mLook = computeMathLook(given); hasMathLook = true; }
-                    extra += !mLook.hasHalo ? mathSvg(span.math, box, label.size, mLook.attrs) : ("<rect " + box + " rx=\"2\" fill=\"" + mLook.halo + "\"/>");
+                    extra += !mLook.hasHalo ? mathSvg(span.math, box, label.size, mLook.attrs) : Pele::cat({"<rect ", box, " rx=\"2\" fill=\"", mLook.halo, "\"/>"});
                 } else if (span.hasIcon) {
                     double side = label.size * 1.1;
                     std::string inner = icons ? icons(span.icon) : "";
-                    extra += "<svg class=\"pele-icon\" data-icon=\"" + escText(span.icon) + "\" x=\"" + num(x) + "\" y=\"" + num(mid - side / 2.0) + "\" width=\"" + num(side) + "\" height=\"" + num(side) + "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">" + inner + "</svg>";
+                    Pele::appendCat(extra, {"<svg class=\"pele-icon\" data-icon=\"", escText(span.icon), "\" x=\"", num(x), "\" y=\"", num(mid - side / 2.0), "\" width=\"", num(side), "\" height=\"", num(side), "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">", inner, "</svg>"});
                 } else if (!span.text.empty()) {
-                    body += "<tspan x=\"" + num(x) + "\" y=\"" + num(y) + "\" text-anchor=\"start\"" + spanStyle(span.style & ~shared) + ">" + esc(span.text) + "</tspan>";
+                    Pele::appendCat(body, {"<tspan x=\"", num(x), "\" y=\"", num(y), "\" text-anchor=\"start\"", spanStyle(span.style & ~shared), ">", esc(span.text), "</tspan>"});
                 }
                 x += span.width;
             }
         } else {
             for (size_t j = 0; j < line.size(); j++) {
                 const auto& span = line[j];
-                std::string pos = (j == 0) ? (" x=\"" + num(cx) + "\" y=\"" + num(y) + "\"") : "";
-                body += "<tspan" + pos + spanStyle(span.style & ~shared) + ">" + esc(span.text) + "</tspan>";
+                std::string pos = (j == 0) ? Pele::cat({" x=\"", num(cx), "\" y=\"", num(y), "\""}) : "";
+                Pele::appendCat(body, {"<tspan", pos, spanStyle(span.style & ~shared), ">", esc(span.text), "</tspan>"});
             }
-            if (line.empty()) body += "<tspan x=\"" + num(cx) + "\" y=\"" + num(y) + "\"> </tspan>";
+            if (line.empty()) Pele::appendCat(body, {"<tspan x=\"", num(cx), "\" y=\"", num(y), "\"> </tspan>"});
         }
         top += h;
     }
-    return "<text" + attrs + " text-anchor=\"middle\" xml:space=\"preserve\">" + body + "</text>" + extra;
+    return Pele::cat({"<text", attrs, " text-anchor=\"middle\" xml:space=\"preserve\">", body, "</text>", extra});
 }
 
-inline std::string iconSvg(const std::string& name, double x, double y, double side, const IconResolver& icons = nullptr) {
-    return "<svg class=\"pele-icon\" data-icon=\"" + escText(name) + "\" x=\"" + num(x) + "\" y=\"" + num(y) + "\" width=\"" + num(side) + "\" height=\"" + num(side) + "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">" + (icons ? icons(name) : "") + "</svg>";
+inline std::string iconSvg(const std::string& name, double x, double y, double side, const IconResolver& icons = nullptr) noexcept {
+    return Pele::cat({"<svg class=\"pele-icon\" data-icon=\"", escText(name), "\" x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(side), "\" height=\"", num(side), "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">", (icons ? icons(name) : ""), "</svg>"});
 }
 
-inline std::string leftLabelSvg(const Label& label, double x, double top, const std::string& attrs) {
+inline std::string leftLabelSvg(const Label& label, double x, double top, const std::string& attrs) noexcept {
     int shared = sharedStyle(label);
-    std::string open = "<text" + textStyle(attrs, shared);
+    std::string open = Pele::cat({"<text", textStyle(attrs, shared)});
     std::string body;
     for (size_t i = 0; i < label.lines.size(); i++) {
         const auto& spans = label.lines[i];
@@ -222,10 +238,10 @@ inline std::string leftLabelSvg(const Label& label, double x, double top, const 
         std::string text;
         for (const auto& span : spans) {
             std::string own = spanStyle(span.style & ~shared);
-            text += !own.empty() ? ("<tspan" + own + ">" + esc(span.text) + "</tspan>") : esc(span.text);
+            text += !own.empty() ? Pele::cat({"<tspan", own, ">", esc(span.text), "</tspan>"}) : esc(span.text);
         }
         if (!text.empty()) {
-            body += open + " x=\"" + num(x) + "\" y=\"" + num(cy + label.size * 0.35) + "\" text-anchor=\"start\" xml:space=\"preserve\">" + text + "</text>";
+            Pele::appendCat(body, {open, " x=\"", num(x), "\" y=\"", num(cy + label.size * 0.35), "\" text-anchor=\"start\" xml:space=\"preserve\">", text, "</text>"});
         }
     }
     return body;
@@ -245,17 +261,17 @@ inline const std::string RADIUS = "var(--pele-radius,4px)";
 inline const std::string ROUNDED = " style=\"rx:var(--_r)\"";
 inline const std::string CRITICAL = "var(--pele-critical,#e45756)";
 
-inline bool setsFill(const std::string& shape) {
+inline bool setsFill(const std::string& shape) noexcept {
     return shape.find("\"fill:") != std::string::npos || shape.find(";fill:") != std::string::npos;
 }
 
-inline std::string rounded(const std::string& attrs) {
+inline std::string rounded(const std::string& attrs) noexcept {
     size_t at = attrs.find(" style=\"");
     if (at == std::string::npos) return attrs + ROUNDED;
-    return attrs.substr(0, at + 8) + "rx:var(--_r);" + attrs.substr(at + 8);
+    return Pele::cat({attrs.substr(0, at + 8), "rx:var(--_r);", attrs.substr(at + 8)});
 }
 
-inline bool isSafeFontFamilies(const std::string& list) {
+inline bool isSafeFontFamilies(const std::string& list) noexcept {
     if (trimStr(list).empty()) return false;
     for (char c : list) {
         if (c == '\\' || c == '\n' || c == '\r' || c == '<' || c == '>' || c == '{' || c == '}' || c == '(' || c == ')' || c == ';' || c == ':' || c == '@') return false;
@@ -263,14 +279,14 @@ inline bool isSafeFontFamilies(const std::string& list) {
     return true;
 }
 
-inline std::string fontFamilies(const std::string& list, const std::string& generic) {
+inline std::string fontFamilies(const std::string& list, const std::string& generic) noexcept {
     return isSafeFontFamilies(list) ? list : generic;
 }
 
-inline std::string fontStyle(double size, const std::string& family, const std::string& mono) {
-    return ";--_fm:var(--pele-font-mono," + fontFamilies(mono, "monospace") + ");font:" + num(size) + "px sans-serif;"
+inline std::string fontStyle(double size, const std::string& family, const std::string& mono) noexcept {
+    return Pele::cat({";--_fm:var(--pele-font-mono,", fontFamilies(mono, "monospace"), ");font:", num(size), "px sans-serif;"
         "letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;"
-        "font-family:var(--pele-font," + fontFamilies(family, "sans-serif") + ")";
+        "font-family:var(--pele-font,", fontFamilies(family, "sans-serif"), ")"});
 }
 
 struct ResolvedStyle {
@@ -285,7 +301,7 @@ struct ResolvedStyle {
     bool hasFontSize = false;
 };
 
-inline bool isUnsafeCssValue(const std::string& v) {
+inline bool isUnsafeCssValue(const std::string& v) noexcept {
     std::string low = toLowerAscii(v);
     if (low.find("url(") != std::string::npos || low.find("url ") != std::string::npos ||
         low.find("expression") != std::string::npos || low.find("javascript:") != std::string::npos ||
@@ -297,25 +313,25 @@ inline bool isUnsafeCssValue(const std::string& v) {
     return hasInvalidXml(v);
 }
 
-inline ResolvedStyle resolveStyle(const std::vector<std::string>& declarations) {
+inline ResolvedStyle resolveStyle(const std::vector<std::string>& declarations) noexcept {
     ResolvedStyle none;
     if (declarations.empty()) return none;
-    static const std::unordered_set<std::string> SHAPE_PROPS = {
+    static const Pele::FlatSet<std::string> SHAPE_PROPS = {
         "fill", "fill-opacity", "stroke", "stroke-width", "stroke-dasharray",
         "stroke-dashoffset", "stroke-linecap", "stroke-linejoin", "stroke-opacity",
         "opacity", "rx", "ry"
     };
-    static const std::unordered_set<std::string> TEXT_PROPS = {
+    static const Pele::FlatSet<std::string> TEXT_PROPS = {
         "color", "font-size", "font-family", "font-weight", "font-style",
         "text-decoration", "letter-spacing", "word-spacing", "opacity"
     };
 
     std::vector<std::string> shapeOrder;
-    std::unordered_map<std::string, std::string> shape;
+    Pele::FlatMap<std::string, std::string> shape;
     std::vector<std::string> textOrder;
-    std::unordered_map<std::string, std::string> text;
+    Pele::FlatMap<std::string, std::string> text;
 
-    auto setMap = [](std::vector<std::string>& order, std::unordered_map<std::string, std::string>& m, const std::string& k, const std::string& v) {
+    auto setMap = [](std::vector<std::string>& order, Pele::FlatMap<std::string, std::string>& m, const std::string& k, const std::string& v) {
         if (!m.count(k)) order.push_back(k);
         m[k] = v;
     };
@@ -343,12 +359,12 @@ inline ResolvedStyle resolveStyle(const std::vector<std::string>& declarations) 
     std::string lineCss;
     for (const auto& prop : shapeOrder) {
         const auto& val = shape[prop];
-        shapeCss += prop + ":" + val + ";";
-        if (prop != "fill" && prop != "fill-opacity") lineCss += prop + ":" + val + ";";
+        Pele::appendCat(shapeCss, {prop, ":", val, ";"});
+        if (prop != "fill" && prop != "fill-opacity") Pele::appendCat(lineCss, {prop, ":", val, ";"});
     }
     std::string textCss;
     for (const auto& prop : textOrder) {
-        textCss += prop + ":" + text[prop] + ";";
+        Pele::appendCat(textCss, {prop, ":", text[prop], ";"});
     }
 
     ResolvedStyle res;
@@ -389,7 +405,7 @@ inline ResolvedStyle resolveStyle(const std::vector<std::string>& declarations) 
     return res;
 }
 
-inline std::string classNames(const std::string& raw) {
+inline std::string classNames(const std::string& raw) noexcept {
     std::string cleaned;
     bool inSpace = false;
     for (char c : raw) {
@@ -404,10 +420,10 @@ inline std::string classNames(const std::string& raw) {
         }
     }
     cleaned = trimStr(cleaned);
-    return cleaned.empty() ? "" : (" " + cleaned);
+    return cleaned.empty() ? "" : Pele::cat({" ", cleaned});
 }
 
-inline std::string seriesColor(int index) {
+inline std::string seriesColor(int index) noexcept {
     static const char* SERIES[8] = {"#4c78a8", "#f58518", "#54a24b", "#e45756", "#72b7b2", "#eeca3b", "#b279a2", "#9d755d"};
     int k = ((index % 8) + 8) % 8;
     return "var(--pele-series-" + std::to_string(k + 1) + "," + SERIES[k] + ")";
@@ -420,22 +436,22 @@ inline std::string seriesColor(int index) {
 inline const std::string ON_LIGHT = "var(--pele-fg-on-light,#1f1f1f)";
 inline const std::string ON_DARK = "var(--pele-fg-on-dark,#fff)";
 
-inline double srgbLinear(double c) {
+inline double srgbLinear(double c) noexcept {
     return c <= 0.04045 ? c / 12.92 : std::pow((c + 0.055) / 1.055, 2.4);
 }
 
-inline double srgbLuminance(double r, double g, double b) {
+inline double srgbLuminance(double r, double g, double b) noexcept {
     return 0.2126 * srgbLinear(r) + 0.7152 * srgbLinear(g) + 0.0722 * srgbLinear(b);
 }
 
-inline bool parseColorLumAlpha(const std::string& raw, double& outLum, double& outAlpha) {
-    static const std::unordered_set<std::string> DARK = {
+inline bool parseColorLumAlpha(const std::string& raw, double& outLum, double& outAlpha) noexcept {
+    static const Pele::FlatSet<std::string> DARK = {
         "black","blue","blueviolet","brown","crimson","darkblue","darkcyan","darkgreen","darkmagenta","darkolivegreen",
         "darkorchid","darkred","darkslateblue","darkslategray","darkviolet","dimgray","firebrick","forestgreen","green",
         "indigo","maroon","mediumblue","mediumslateblue","mediumvioletred","midnightblue","navy","olive","purple",
         "rebeccapurple","royalblue","saddlebrown","seagreen","sienna","slateblue","steelblue","teal"
     };
-    static const std::unordered_set<std::string> LIGHT = {
+    static const Pele::FlatSet<std::string> LIGHT = {
         "aliceblue","antiquewhite","aqua","aquamarine","azure","beige","bisque","blanchedalmond","burlywood","cadetblue",
         "chartreuse","chocolate","coral","cornflowerblue","cornsilk","cyan","darkgoldenrod","darkgray","darkkhaki",
         "darkorange","darksalmon","darkseagreen","darkturquoise","deeppink","deepskyblue","dodgerblue","floralwhite",
@@ -537,7 +553,7 @@ inline bool parseColorLumAlpha(const std::string& raw, double& outLum, double& o
     return false;
 }
 
-inline std::string findStyleProp(const std::string& styleAttr, const std::string& prop) {
+inline std::string findStyleProp(const std::string& styleAttr, const std::string& prop) noexcept {
     for (const char* prefix : {"\"", ";"}) {
         std::string needle = std::string(prefix) + prop + ":";
         size_t pos = styleAttr.find(needle);
@@ -550,7 +566,7 @@ inline std::string findStyleProp(const std::string& styleAttr, const std::string
     return "";
 }
 
-inline double shapeOpacityProduct(const std::string& shape) {
+inline double shapeOpacityProduct(const std::string& shape) noexcept {
     double prod = 1.0;
     for (const char* prop : {"fill-opacity", "opacity"}) {
         std::string val = findStyleProp(shape, prop);
@@ -570,7 +586,7 @@ inline double shapeOpacityProduct(const std::string& shape) {
     return prod;
 }
 
-inline std::string ink(const std::string& shape, const std::string& text = "") {
+inline std::string ink(const std::string& shape, const std::string& text = "") noexcept {
     std::string fillVal = findStyleProp(shape, "fill");
     if (fillVal.empty() || !findStyleProp(text, "fill").empty()) return "";
     double lum = 0, alpha = 1;
@@ -581,7 +597,7 @@ inline std::string ink(const std::string& shape, const std::string& text = "") {
     return lum > EVEN ? ON_LIGHT : ON_DARK;
 }
 
-inline bool paints(const std::string& shape) {
+inline bool paints(const std::string& shape) noexcept {
     std::string fill = toLowerAscii(findStyleProp(shape, "fill"));
     if (fill.empty() || fill == "none" || fill == "transparent") return false;
     double scale = shapeOpacityProduct(shape);
@@ -590,10 +606,10 @@ inline bool paints(const std::string& shape) {
     return alpha * (std::isnan(scale) ? 1.0 : scale) > 0;
 }
 
-inline std::string inkFill(const ResolvedStyle& style, const std::string& fallback = "") {
+inline std::string inkFill(const ResolvedStyle& style, const std::string& fallback = "") noexcept {
     std::string color = ink(style.shape, style.text);
     if (color.empty()) color = fallback;
-    return color.empty() ? "" : (" fill=\"" + color + "\"");
+    return color.empty() ? "" : Pele::cat({" fill=\"", color, "\""});
 }
 
 // ============================================================================
@@ -610,46 +626,46 @@ constexpr double SHAPE_PAD_X = 18.0;
 constexpr double SHAPE_PAD_Y = 12.0;
 constexpr double SHAPE_CORNER = 12.0;
 
-inline double shapeBulge(double t, double half, double depth) {
+inline double shapeBulge(double t, double half, double depth) noexcept {
     double k = std::min(1.0, std::abs(t) / (half == 0 ? 1.0 : half));
     return depth * (1.0 - std::sqrt(1.0 - k * k));
 }
 
-inline ShapeSize triShapeSize(double tw, double th, bool flip) {
+inline ShapeSize triShapeSize(double tw, double th, bool flip) noexcept {
     double w = std::max(1.6 * tw + 40.0, 80.0);
     double h = (th + 10.0) / (1.0 - (tw + 8.0) / w);
     double dy = h / 2.0 - 10.0 - th / 2.0;
     return {w, h, flip ? -dy : dy};
 }
 
-inline std::string svgPoly(const std::vector<double>& points, const std::string& a) {
+inline std::string svgPoly(const std::vector<double>& points, const std::string& a) noexcept {
     std::string d;
     for (size_t i = 0; i + 1 < points.size(); i += 2) {
         if (i > 0) d.push_back(' ');
-        d += num(points[i]) + "," + num(points[i + 1]);
+        Pele::appendCat(d, {num(points[i]), ",", num(points[i + 1])});
     }
-    return "<polygon points=\"" + d + "\"" + a + "/>";
+    return Pele::cat({"<polygon points=\"", d, "\"", a, "/>"});
 }
 
-inline std::string svgRectCentered(double w, double h, const std::string& a, const std::string& rx = "") {
-    return "<rect x=\"" + num(-w / 2.0) + "\" y=\"" + num(-h / 2.0) + "\" width=\"" + num(w) + "\" height=\"" + num(h) + "\"" + rx + a + "/>";
+inline std::string svgRectCentered(double w, double h, const std::string& a, const std::string& rx = "") noexcept {
+    return Pele::cat({"<rect x=\"", num(-w / 2.0), "\" y=\"", num(-h / 2.0), "\" width=\"", num(w), "\" height=\"", num(h), "\"", rx, a, "/>"});
 }
 
-inline std::string svgBrace(double x, double h, double dir, const std::string& line) {
+inline std::string svgBrace(double x, double h, double dir, const std::string& line) noexcept {
     double y = h / 2.0;
     double k = 6.0 * dir;
-    return "<path d=\"M" + num(x) + "," + num(-y) + "q" + num(k) + ",0 " + num(k) + ",6V-6q0,6 " + num(k) + ",6q" + num(-k) + ",0 " + num(-k) + ",6V" + num(y - 6.0) + "q0,6 " + num(-k) + ",6\" fill=\"none\"" + line + "/>";
+    return Pele::cat({"<path d=\"M", num(x), ",", num(-y), "q", num(k), ",0 ", num(k), ",6V-6q0,6 ", num(k), ",6q", num(-k), ",0 ", num(-k), ",6V", num(y - 6.0), "q0,6 ", num(-k), ",6\" fill=\"none\"", line, "/>"});
 }
 
-inline std::string svgWave(double w, double h, const std::string& a) {
+inline std::string svgWave(double w, double h, const std::string& a) noexcept {
     double x = w / 2.0;
     double top = -h / 2.0;
     double base = h / 2.0 - 10.0;
     double q = w / 4.0;
-    return "<path d=\"M" + num(-x) + "," + num(top) + "H" + num(x) + "V" + num(base) + "q" + num(-q) + ",-12 " + num(-2.0 * q) + ",0t" + num(-2.0 * q) + ",0Z\"" + a + "/>";
+    return Pele::cat({"<path d=\"M", num(-x), ",", num(top), "H", num(x), "V", num(base), "q", num(-q), ",-12 ", num(-2.0 * q), ",0t", num(-2.0 * q), ",0Z\"", a, "/>"});
 }
 
-inline ShapeSize shapeSize(const std::string& shape, double tw, double th) {
+inline ShapeSize shapeSize(const std::string& shape, double tw, double th) noexcept {
     const double PX = SHAPE_PAD_X;
     const double PY = SHAPE_PAD_Y;
     if (shape == "stadium") {
@@ -733,7 +749,7 @@ inline ShapeSize shapeSize(const std::string& shape, double tw, double th) {
     return {std::max(tw + 2 * PX, 2 * PX + 12.0), th + 2 * PY, 0};
 }
 
-inline double shapeInset(const std::string& shape, double w, double h, int side, double t = 0.0) {
+inline double shapeInset(const std::string& shape, double w, double h, int side, double t = 0.0) noexcept {
     if (shape == "stadium") return (side & 1) ? shapeBulge(t, h / 2.0, h / 2.0) : 0.0;
     if (shape == "cyl" || shape == "lin-cyl") return (side & 1) ? 0.0 : shapeBulge(t, w / 2.0, std::min(12.0, std::max(6.0, w / 14.0)));
     if (shape == "circle" || shape == "dbl-circ" || shape == "ellipse" || shape == "sm-circ" || shape == "f-circ" || shape == "fr-circ" || shape == "cross-circ") {
@@ -755,7 +771,7 @@ inline double shapeInset(const std::string& shape, double w, double h, int side,
     return 0.0;
 }
 
-inline double shapeSpan(const std::string& shape, double w, double h, bool sideways) {
+inline double shapeSpan(const std::string& shape, double w, double h, bool sideways) noexcept {
     const double C = SHAPE_CORNER;
     double res = 0.0;
     if (shape == "rect" || shape == "rounded" || shape == "fr-rect" || shape == "text" || shape == "notch-rect" || shape == "lin-rect" || shape == "div-rect" || shape == "win-pane" || shape == "notch-pent" || shape == "datastore" || shape == "console" || shape == "browser" || shape == "tag-rect") {
@@ -782,32 +798,32 @@ inline double shapeSpan(const std::string& shape, double w, double h, bool sidew
     return std::max(0.0, res);
 }
 
-inline bool shapeHasLabel(const std::string& shape) {
+inline bool shapeHasLabel(const std::string& shape) noexcept {
     return !(shape == "sm-circ" || shape == "f-circ" || shape == "fr-circ" || shape == "fork" || shape == "hourglass" || shape == "cross-circ" || shape == "bolt");
 }
 
-inline bool shapeFilled(const std::string& shape) {
+inline bool shapeFilled(const std::string& shape) noexcept {
     return !(shape == "text" || shape == "brace" || shape == "brace-r" || shape == "braces");
 }
 
-inline std::string drawShape(const std::string& shape, double w, double h, const std::string& a, const std::string& line) {
-    if (shape == "rounded") return svgRectCentered(w, h, a, " rx=\"" + num(std::min(12.0, h / 2.0)) + "\"");
-    if (shape == "stadium") return svgRectCentered(w, h, a, " rx=\"" + num(h / 2.0) + "\"");
+inline std::string drawShape(const std::string& shape, double w, double h, const std::string& a, const std::string& line) noexcept {
+    if (shape == "rounded") return svgRectCentered(w,  h,  a, Pele::cat({" rx=\"", num(std::min(12.0, h / 2.0)), "\""}));
+    if (shape == "stadium") return svgRectCentered(w,  h,  a, Pele::cat({" rx=\"", num(h / 2.0), "\""}));
     if (shape == "fr-rect") {
         double x = w / 2.0 - 8.0;
-        return svgRectCentered(w, h, rounded(a)) + "<path d=\"M" + num(-x) + "," + num(-h / 2.0) + "V" + num(h / 2.0) + "M" + num(x) + "," + num(-h / 2.0) + "V" + num(h / 2.0) + "\" fill=\"none\"" + line + "/>";
+        return Pele::cat({svgRectCentered(w, h, rounded(a)), "<path d=\"M", num(-x), ",", num(-h / 2.0), "V", num(h / 2.0), "M", num(x), ",", num(-h / 2.0), "V", num(h / 2.0), "\" fill=\"none\"", line, "/>"});
     }
     if (shape == "cyl") {
         double rx = w / 2.0;
         double ry = std::min(12.0, std::max(6.0, w / 14.0));
         double top = -h / 2.0 + ry;
         double bottom = h / 2.0 - ry;
-        return "<path d=\"M" + num(-rx) + "," + num(top) + "A" + num(rx) + "," + num(ry) + " 0 0 1 " + num(rx) + "," + num(top) + "V" + num(bottom) + "A" + num(rx) + "," + num(ry) + " 0 0 1 " + num(-rx) + "," + num(bottom) + "Z\"" + a + "/>"
-            "<path d=\"M" + num(-rx) + "," + num(top) + "A" + num(rx) + "," + num(ry) + " 0 0 0 " + num(rx) + "," + num(top) + "\" fill=\"none\"" + line + "/>";
+        return Pele::cat({"<path d=\"M", num(-rx), ",", num(top), "A", num(rx), ",", num(ry), " 0 0 1 ", num(rx), ",", num(top), "V", num(bottom), "A", num(rx), ",", num(ry), " 0 0 1 ", num(-rx), ",", num(bottom), "Z\"", a, "/>"
+            "<path d=\"M", num(-rx), ",", num(top), "A", num(rx), ",", num(ry), " 0 0 0 ", num(rx), ",", num(top), "\" fill=\"none\"", line, "/>"});
     }
-    if (shape == "circle" || shape == "sm-circ") return "<circle r=\"" + num(w / 2.0) + "\"" + a + "/>";
-    if (shape == "dbl-circ") return "<circle r=\"" + num(w / 2.0) + "\"" + a + "/><circle r=\"" + num(w / 2.0 - 5.0) + "\" fill=\"none\"" + line + "/>";
-    if (shape == "ellipse") return "<ellipse rx=\"" + num(w / 2.0) + "\" ry=\"" + num(h / 2.0) + "\"" + a + "/>";
+    if (shape == "circle" || shape == "sm-circ") return Pele::cat({"<circle r=\"", num(w / 2.0), "\"", a, "/>"});
+    if (shape == "dbl-circ") return Pele::cat({"<circle r=\"", num(w / 2.0), "\"", a, "/><circle r=\"", num(w / 2.0 - 5.0), "\" fill=\"none\"", line, "/>"});
+    if (shape == "ellipse") return Pele::cat({"<ellipse rx=\"", num(w / 2.0), "\" ry=\"", num(h / 2.0), "\"", a, "/>"});
     if (shape == "diam") return svgPoly({0, -h / 2.0, w / 2.0, 0, 0, h / 2.0, -w / 2.0, 0}, a);
     if (shape == "hex") {
         double m = h / 4.0;
@@ -834,16 +850,16 @@ inline std::string drawShape(const std::string& shape, double w, double h, const
         return svgPoly({-w / 2.0, -h / 2.0, w / 2.0, -h / 2.0, w / 2.0 - s, h / 2.0, -w / 2.0 + s, h / 2.0}, a);
     }
     if (shape == "text") return svgRectCentered(w, h, " fill=\"none\" stroke=\"none\"");
-    if (shape == "f-circ") return "<circle r=\"" + num(w / 2.0) + "\" fill=\"var(--_l)\"" + line + "/>";
-    if (shape == "fr-circ") return "<circle r=\"" + num(w / 2.0) + "\"" + a + "/><circle r=\"" + num(w / 2.0 - 4.0) + "\" fill=\"var(--_l)\"" + line + "/>";
-    if (shape == "fork") return svgRectCentered(w, h, " fill=\"var(--_l)\"" + line, " rx=\"2\"");
+    if (shape == "f-circ") return Pele::cat({"<circle r=\"", num(w / 2.0), "\" fill=\"var(--_l)\"", line, "/>"});
+    if (shape == "fr-circ") return Pele::cat({"<circle r=\"", num(w / 2.0), "\"", a, "/><circle r=\"", num(w / 2.0 - 4.0), "\" fill=\"var(--_l)\"", line, "/>"});
+    if (shape == "fork") return svgRectCentered(w,  h, Pele::cat({" fill=\"var(--_l)\"", line}),  " rx=\"2\"");
     if (shape == "notch-rect") {
         double c = 10.0;
         return svgPoly({-w / 2.0 + c, -h / 2.0, w / 2.0, -h / 2.0, w / 2.0, h / 2.0, -w / 2.0, h / 2.0, -w / 2.0, -h / 2.0 + c}, a);
     }
-    if (shape == "lin-rect") return svgRectCentered(w, h, rounded(a)) + "<path d=\"M" + num(-w / 2.0 + 8.0) + "," + num(-h / 2.0) + "V" + num(h / 2.0) + "\" fill=\"none\"" + line + "/>";
-    if (shape == "div-rect") return svgRectCentered(w, h, rounded(a)) + "<path d=\"M" + num(-w / 2.0) + "," + num(-h / 2.0 + 8.0) + "H" + num(w / 2.0) + "\" fill=\"none\"" + line + "/>";
-    if (shape == "win-pane") return svgRectCentered(w, h, rounded(a)) + "<path d=\"M" + num(-w / 2.0 + 8.0) + "," + num(-h / 2.0) + "V" + num(h / 2.0) + "M" + num(-w / 2.0) + "," + num(-h / 2.0 + 8.0) + "H" + num(w / 2.0) + "\" fill=\"none\"" + line + "/>";
+    if (shape == "lin-rect") return Pele::cat({svgRectCentered(w, h, rounded(a)), "<path d=\"M", num(-w / 2.0 + 8.0), ",", num(-h / 2.0), "V", num(h / 2.0), "\" fill=\"none\"", line, "/>"});
+    if (shape == "div-rect") return Pele::cat({svgRectCentered(w, h, rounded(a)), "<path d=\"M", num(-w / 2.0), ",", num(-h / 2.0 + 8.0), "H", num(w / 2.0), "\" fill=\"none\"", line, "/>"});
+    if (shape == "win-pane") return Pele::cat({svgRectCentered(w, h, rounded(a)), "<path d=\"M", num(-w / 2.0 + 8.0), ",", num(-h / 2.0), "V", num(h / 2.0), "M", num(-w / 2.0), ",", num(-h / 2.0 + 8.0), "H", num(w / 2.0), "\" fill=\"none\"", line, "/>"});
     if (shape == "tri") return svgPoly({0, -h / 2.0, w / 2.0, h / 2.0, -w / 2.0, h / 2.0}, a);
     if (shape == "flip-tri") return svgPoly({-w / 2.0, -h / 2.0, w / 2.0, -h / 2.0, 0, h / 2.0}, a);
     if (shape == "sl-rect") return svgPoly({-w / 2.0, -h / 2.0 + 10.0, w / 2.0, -h / 2.0, w / 2.0, h / 2.0, -w / 2.0, h / 2.0}, a);
@@ -854,20 +870,20 @@ inline std::string drawShape(const std::string& shape, double w, double h, const
     if (shape == "hourglass") return svgPoly({-w / 2.0, -h / 2.0, w / 2.0, -h / 2.0, -w / 2.0, h / 2.0, w / 2.0, h / 2.0}, a);
     if (shape == "delay") {
         double r = h / 2.0;
-        return "<path d=\"M" + num(-w / 2.0) + "," + num(-r) + "H" + num(w / 2.0 - r) + "A" + num(r) + "," + num(r) + " 0 0 1 " + num(w / 2.0 - r) + "," + num(r) + "H" + num(-w / 2.0) + "Z\"" + a + "/>";
+        return Pele::cat({"<path d=\"M", num(-w / 2.0), ",", num(-r), "H", num(w / 2.0 - r), "A", num(r), ",", num(r), " 0 0 1 ", num(w / 2.0 - r), ",", num(r), "H", num(-w / 2.0), "Z\"", a, "/>"});
     }
     if (shape == "h-cyl") {
         double ry = h / 2.0;
         double rx = std::min(12.0, h / 4.0);
         double l = -w / 2.0 + rx;
         double r = w / 2.0 - rx;
-        return "<path d=\"M" + num(l) + "," + num(-ry) + "H" + num(r) + "A" + num(rx) + "," + num(ry) + " 0 0 1 " + num(r) + "," + num(ry) + "H" + num(l) + "A" + num(rx) + "," + num(ry) + " 0 0 1 " + num(l) + "," + num(-ry) + "Z\"" + a + "/>"
-            "<path d=\"M" + num(r) + "," + num(-ry) + "A" + num(rx) + "," + num(ry) + " 0 0 0 " + num(r) + "," + num(ry) + "\" fill=\"none\"" + line + "/>";
+        return Pele::cat({"<path d=\"M", num(l), ",", num(-ry), "H", num(r), "A", num(rx), ",", num(ry), " 0 0 1 ", num(r), ",", num(ry), "H", num(l), "A", num(rx), ",", num(ry), " 0 0 1 ", num(l), ",", num(-ry), "Z\"", a, "/>"
+            "<path d=\"M", num(r), ",", num(-ry), "A", num(rx), ",", num(ry), " 0 0 0 ", num(r), ",", num(ry), "\" fill=\"none\"", line, "/>"});
     }
     if (shape == "cross-circ") {
         double r = w / 2.0;
         double k = r * 0.70710678118654752440;
-        return "<circle r=\"" + num(r) + "\"" + a + "/><path d=\"M" + num(-k) + "," + num(-k) + "L" + num(k) + "," + num(k) + "M" + num(k) + "," + num(-k) + "L" + num(-k) + "," + num(k) + "\" fill=\"none\"" + line + "/>";
+        return Pele::cat({"<circle r=\"", num(r), "\"", a, "/><path d=\"M", num(-k), ",", num(-k), "L", num(k), ",", num(k), "M", num(k), ",", num(-k), "L", num(-k), ",", num(k), "\" fill=\"none\"", line, "/>"});
     }
     if (shape == "st-rect") {
         double bw = w - 8.0;
@@ -876,7 +892,7 @@ inline std::string drawShape(const std::string& shape, double w, double h, const
         for (int i = 0; i < 3; i++) {
             double x = -w / 2.0 + (2 - i) * 4.0;
             double y = -h / 2.0 + i * 4.0;
-            out += "<rect x=\"" + num(x) + "\" y=\"" + num(y) + "\" width=\"" + num(bw) + "\" height=\"" + num(bh) + "\"" + rounded(a) + "/>";
+            Pele::appendCat(out, {"<rect x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(bw), "\" height=\"", num(bh), "\"", rounded(a), "/>"});
         }
         return out;
     }
@@ -885,37 +901,37 @@ inline std::string drawShape(const std::string& shape, double w, double h, const
         double x = w / 2.0;
         double y = h / 2.0 - 8.0;
         double q = w / 4.0;
-        return "<path d=\"M" + num(-x) + "," + num(-y) + "q" + num(q) + ",-10 " + num(2.0 * q) + ",0t" + num(2.0 * q) + ",0V" + num(y) + "q" + num(-q) + ",10 " + num(-2.0 * q) + ",0t" + num(-2.0 * q) + ",0Z\"" + a + "/>";
+        return Pele::cat({"<path d=\"M", num(-x), ",", num(-y), "q", num(q), ",-10 ", num(2.0 * q), ",0t", num(2.0 * q), ",0V", num(y), "q", num(-q), ",10 ", num(-2.0 * q), ",0t", num(-2.0 * q), ",0Z\"", a, "/>"});
     }
     if (shape == "datastore") {
         std::string aNoStroke = replaceAllStr(a, "stroke=\"var(--_b)\"", "stroke=\"none\"");
-        return svgRectCentered(w, h, aNoStroke) + "<path d=\"M" + num(-w / 2.0) + "," + num(-h / 2.0) + "H" + num(w / 2.0) + "M" + num(-w / 2.0) + "," + num(h / 2.0) + "H" + num(w / 2.0) + "\" fill=\"none\"" + line + "/>";
+        return Pele::cat({svgRectCentered(w, h, aNoStroke), "<path d=\"M", num(-w / 2.0), ",", num(-h / 2.0), "H", num(w / 2.0), "M", num(-w / 2.0), ",", num(h / 2.0), "H", num(w / 2.0), "\" fill=\"none\"", line, "/>"});
     }
     if (shape == "folder") {
         double x = w / 2.0;
         double y = h / 2.0;
         double tab = std::min(w * 0.4, 48.0);
-        return "<path d=\"M" + num(-x) + "," + num(-y) + "H" + num(-x + tab) + "L" + num(-x + tab + 8.0) + "," + num(-y + 8.0) + "H" + num(x) + "V" + num(y) + "H" + num(-x) + "Z\"" + a + "/>";
+        return Pele::cat({"<path d=\"M", num(-x), ",", num(-y), "H", num(-x + tab), "L", num(-x + tab + 8.0), ",", num(-y + 8.0), "H", num(x), "V", num(y), "H", num(-x), "Z\"", a, "/>"});
     }
     if (shape == "bucket") {
         double x = w / 2.0;
         double y = h / 2.0;
         double ry = 5.0;
         double taper = h / 6.0;
-        return "<path d=\"M" + num(-x) + "," + num(-y + ry) + "A" + num(x) + "," + num(ry) + " 0 0 1 " + num(x) + "," + num(-y + ry) + "L" + num(x - taper) + "," + num(y - ry) + "A" + num(x - taper) + "," + num(ry) + " 0 0 1 " + num(-x + taper) + "," + num(y - ry) + "Z\"" + a + "/>"
-            "<path d=\"M" + num(-x) + "," + num(-y + ry) + "A" + num(x) + "," + num(ry) + " 0 0 0 " + num(x) + "," + num(-y + ry) + "\" fill=\"none\"" + line + "/>";
+        return Pele::cat({"<path d=\"M", num(-x), ",", num(-y + ry), "A", num(x), ",", num(ry), " 0 0 1 ", num(x), ",", num(-y + ry), "L", num(x - taper), ",", num(y - ry), "A", num(x - taper), ",", num(ry), " 0 0 1 ", num(-x + taper), ",", num(y - ry), "Z\"", a, "/>"
+            "<path d=\"M", num(-x), ",", num(-y + ry), "A", num(x), ",", num(ry), " 0 0 0 ", num(x), ",", num(-y + ry), "\" fill=\"none\"", line, "/>"});
     }
     if (shape == "console") {
-        return svgRectCentered(w, h, rounded(a)) + "<path d=\"M" + num(-w / 2.0) + "," + num(-h / 2.0 + 12.0) + "H" + num(w / 2.0) + "M" + num(-w / 2.0 + 7.0) + "," + num(-h / 2.0 + 4.0) + "l3,2.5l-3,2.5M" + num(-w / 2.0 + 13.0) + "," + num(-h / 2.0 + 9.0) + "h4\" fill=\"none\"" + line + "/>";
+        return Pele::cat({svgRectCentered(w, h, rounded(a)), "<path d=\"M", num(-w / 2.0), ",", num(-h / 2.0 + 12.0), "H", num(w / 2.0), "M", num(-w / 2.0 + 7.0), ",", num(-h / 2.0 + 4.0), "l3,2.5l-3,2.5M", num(-w / 2.0 + 13.0), ",", num(-h / 2.0 + 9.0), "h4\" fill=\"none\"", line, "/>"});
     }
     if (shape == "browser") {
         std::string dots;
         for (int i = 0; i < 3; i++) dots += "<circle cx=\"" + num(-w / 2.0 + 8.0 + i * 7.0) + "\" cy=\"" + num(-h / 2.0 + 6.0) + "\" r=\"1.5\" fill=\"none\"" + line + "/>";
-        return svgRectCentered(w, h, rounded(a)) + "<path d=\"M" + num(-w / 2.0) + "," + num(-h / 2.0 + 12.0) + "H" + num(w / 2.0) + "\" fill=\"none\"" + line + "/>" + dots;
+        return Pele::cat({svgRectCentered(w, h, rounded(a)), "<path d=\"M", num(-w / 2.0), ",", num(-h / 2.0 + 12.0), "H", num(w / 2.0), "\" fill=\"none\"", line, "/>", dots});
     }
     if (shape == "person") {
         double top = -h / 2.0;
-        return "<rect x=\"" + num(-w / 2.0) + "\" y=\"" + num(top + 26.0) + "\" width=\"" + num(w) + "\" height=\"" + num(h - 26.0) + "\" rx=\"12\"" + a + "/><circle cy=\"" + num(top + 14.0) + "\" r=\"13\"" + a + "/>";
+        return Pele::cat({"<rect x=\"", num(-w / 2.0), "\" y=\"", num(top + 26.0), "\" width=\"", num(w), "\" height=\"", num(h - 26.0), "\" rx=\"12\"", a, "/><circle cy=\"", num(top + 14.0), "\" r=\"13\"", a, "/>"});
     }
     if (shape == "bang") {
         const int spikes = 14;
@@ -932,7 +948,7 @@ inline std::string drawShape(const std::string& shape, double w, double h, const
         double x = w / 2.0;
         double y = h / 2.0;
         double r = y * 0.55;
-        return "<path d=\"M" + num(-x + r) + "," + num(y) + "A" + num(r) + "," + num(r) + " 0 0 1 " + num(-x + r * 0.6) + "," + num(-y * 0.1) + "A" + num(x * 0.42) + "," + num(y * 0.7) + " 0 0 1 " + num(-x * 0.1) + "," + num(-y * 0.72) + "A" + num(x * 0.4) + "," + num(y * 0.62) + " 0 0 1 " + num(x * 0.62) + "," + num(-y * 0.42) + "A" + num(r * 1.05) + "," + num(r * 1.05) + " 0 0 1 " + num(x - r) + "," + num(y) + "Z\"" + a + "/>";
+        return Pele::cat({"<path d=\"M", num(-x + r), ",", num(y), "A", num(r), ",", num(r), " 0 0 1 ", num(-x + r * 0.6), ",", num(-y * 0.1), "A", num(x * 0.42), ",", num(y * 0.7), " 0 0 1 ", num(-x * 0.1), ",", num(-y * 0.72), "A", num(x * 0.4), ",", num(y * 0.62), " 0 0 1 ", num(x * 0.62), ",", num(-y * 0.42), "A", num(r * 1.05), ",", num(r * 1.05), " 0 0 1 ", num(x - r), ",", num(y), "Z\"", a, "/>"});
     }
     if (shape == "brace") return svgRectCentered(w, h, " fill=\"none\" stroke=\"none\"") + svgBrace(-w / 2.0 + 12.0, h, -1.0, line);
     if (shape == "brace-r") return svgRectCentered(w, h, " fill=\"none\" stroke=\"none\"") + svgBrace(w / 2.0 - 12.0, h, 1.0, line);
@@ -944,14 +960,14 @@ inline std::string drawShape(const std::string& shape, double w, double h, const
         double top = -h / 2.0 + ry;
         double bottom = h / 2.0 - ry;
         auto arc = [&](double y) { return "M" + num(-rx) + "," + num(y) + "A" + num(rx) + "," + num(ry) + " 0 0 0 " + num(rx) + "," + num(y); };
-        return "<path d=\"M" + num(-rx) + "," + num(top) + "A" + num(rx) + "," + num(ry) + " 0 0 1 " + num(rx) + "," + num(top) + "V" + num(bottom) + "A" + num(rx) + "," + num(ry) + " 0 0 1 " + num(-rx) + "," + num(bottom) + "Z\"" + a + "/>"
-            "<path d=\"" + arc(top) + arc(top + 8.0) + "\" fill=\"none\"" + line + "/>";
+        return Pele::cat({"<path d=\"M", num(-rx), ",", num(top), "A", num(rx), ",", num(ry), " 0 0 1 ", num(rx), ",", num(top), "V", num(bottom), "A", num(rx), ",", num(ry), " 0 0 1 ", num(-rx), ",", num(bottom), "Z\"", a, "/>"
+            "<path d=\"", arc(top), arc(top + 8.0), "\" fill=\"none\"", line, "/>"});
     }
     if (shape == "curv-trap") {
         double x = w / 2.0;
         double y = h / 2.0;
         double k = h * 0.3;
-        return "<path d=\"M" + num(-x + k) + "," + num(-y) + "H" + num(x - k) + "A" + num(k) + "," + num(y) + " 0 0 1 " + num(x - k) + "," + num(y) + "H" + num(-x + k) + "L" + num(-x) + ",0Z\"" + a + "/>";
+        return Pele::cat({"<path d=\"M", num(-x + k), ",", num(-y), "H", num(x - k), "A", num(k), ",", num(y), " 0 0 1 ", num(x - k), ",", num(y), "H", num(-x + k), "L", num(-x), ",0Z\"", a, "/>"});
     }
     if (shape == "docs") {
         std::string out;
@@ -964,14 +980,14 @@ inline std::string drawShape(const std::string& shape, double w, double h, const
         double x = w / 2.0;
         double y = h / 2.0;
         double k = h * 0.2;
-        return "<path d=\"M" + num(-x + k) + "," + num(-y) + "H" + num(x) + "A" + num(k) + "," + num(y) + " 0 0 0 " + num(x) + "," + num(y) + "H" + num(-x + k) + "A" + num(k) + "," + num(y) + " 0 0 1 " + num(-x + k) + "," + num(-y) + "Z\"" + a + "/>";
+        return Pele::cat({"<path d=\"M", num(-x + k), ",", num(-y), "H", num(x), "A", num(k), ",", num(y), " 0 0 0 ", num(x), ",", num(y), "H", num(-x + k), "A", num(k), ",", num(y), " 0 0 1 ", num(-x + k), ",", num(-y), "Z\"", a, "/>"});
     }
-    if (shape == "tag-rect") return svgRectCentered(w, h, rounded(a)) + "<path d=\"M" + num(w / 2.0 - 12.0) + "," + num(h / 2.0) + "L" + num(w / 2.0) + "," + num(h / 2.0 - 12.0) + "\" fill=\"none\"" + line + "/>";
-    if (shape == "tag-doc") return svgWave(w, h, a) + "<path d=\"M" + num(w / 2.0 - 12.0) + "," + num(h / 2.0 - 14.0) + "L" + num(w / 2.0) + "," + num(h / 2.0 - 26.0) + "\" fill=\"none\"" + line + "/>";
-    if (shape == "lin-doc") return svgWave(w, h, a) + "<path d=\"M" + num(-w / 2.0 + 8.0) + "," + num(-h / 2.0) + "V" + num(h / 2.0 - 6.0) + "\" fill=\"none\"" + line + "/>";
+    if (shape == "tag-rect") return Pele::cat({svgRectCentered(w, h, rounded(a)), "<path d=\"M", num(w / 2.0 - 12.0), ",", num(h / 2.0), "L", num(w / 2.0), ",", num(h / 2.0 - 12.0), "\" fill=\"none\"", line, "/>"});
+    if (shape == "tag-doc") return Pele::cat({svgWave(w, h, a), "<path d=\"M", num(w / 2.0 - 12.0), ",", num(h / 2.0 - 14.0), "L", num(w / 2.0), ",", num(h / 2.0 - 26.0), "\" fill=\"none\"", line, "/>"});
+    if (shape == "lin-doc") return Pele::cat({svgWave(w, h, a), "<path d=\"M", num(-w / 2.0 + 8.0), ",", num(-h / 2.0), "V", num(h / 2.0 - 6.0), "\" fill=\"none\"", line, "/>"});
     if (shape == "collapsedGroup") {
-        return "<rect x=\"" + num(-w / 2.0 + 6.0) + "\" y=\"" + num(-h / 2.0 + 8.0) + "\" width=\"" + num(w - 12.0) + "\" height=\"" + num(h - 8.0) + "\"" + rounded(a) + "/>"
-            "<rect x=\"" + num(-w / 2.0) + "\" y=\"" + num(-h / 2.0) + "\" width=\"" + num(w) + "\" height=\"" + num(h - 4.0) + "\"" + rounded(a) + "/>";
+        return Pele::cat({"<rect x=\"", num(-w / 2.0 + 6.0), "\" y=\"", num(-h / 2.0 + 8.0), "\" width=\"", num(w - 12.0), "\" height=\"", num(h - 8.0), "\"", rounded(a), "/>"
+            "<rect x=\"", num(-w / 2.0), "\" y=\"", num(-h / 2.0), "\" width=\"", num(w), "\" height=\"", num(h - 4.0), "\"", rounded(a), "/>"});
     }
     return svgRectCentered(w, h, rounded(a));
 }
@@ -997,30 +1013,30 @@ struct EdgePath {
     double edy = 0.0;
 };
 
-inline double easeCurve(double across, double along) {
+inline double easeCurve(double across, double along) noexcept {
     double den = std::abs(across);
     if (den == 0.0) den = 1.0;
     return std::max(0.25, std::min(0.5, (4.0 * std::abs(along)) / den));
 }
 
-inline double markerTrim(const std::string& type) {
+inline double markerTrim(const std::string& type) noexcept {
     if (type == "arrow_point") return ARROW - 1.0;
     if (type == "arrow_circle") return ARROW;
     if (type == "arrow_cross") return 4.0;
     return 0.0;
 }
 
-inline std::string marker(const std::string& type, double x, double y, double dx, double dy, const std::string& color, const std::string& stroke = "none") {
+inline std::string marker(const std::string& type, double x, double y, double dx, double dy, const std::string& color, const std::string& stroke = "none") noexcept {
     double nx = -dy;
     double ny = dx;
     if (type == "arrow_point") {
         double bx = x - dx * ARROW;
         double by = y - dy * ARROW;
         double half = ARROW * 0.42;
-        return "<path class=\"pele-marker\" d=\"M" + num(x) + "," + num(y) + "L" + num(bx + nx * half) + "," + num(by + ny * half) + "L" + num(bx - nx * half) + "," + num(by - ny * half) + "Z\" fill=\"" + color + "\" stroke=\"" + stroke + "\"/>";
+        return Pele::cat({"<path class=\"pele-marker\" d=\"M", num(x), ",", num(y), "L", num(bx + nx * half), ",", num(by + ny * half), "L", num(bx - nx * half), ",", num(by - ny * half), "Z\" fill=\"", color, "\" stroke=\"", stroke, "\"/>"});
     }
     if (type == "arrow_circle") {
-        return "<circle class=\"pele-marker\" cx=\"" + num(x - dx * 4.0) + "\" cy=\"" + num(y - dy * 4.0) + "\" r=\"3.5\" fill=\"" + color + "\" stroke=\"" + stroke + "\"/>";
+        return Pele::cat({"<circle class=\"pele-marker\" cx=\"", num(x - dx * 4.0), "\" cy=\"", num(y - dy * 4.0), "\" r=\"3.5\" fill=\"", color, "\" stroke=\"", stroke, "\"/>"});
     }
     if (type == "arrow_cross") {
         double cx = x - dx * 4.0;
@@ -1030,13 +1046,13 @@ inline std::string marker(const std::string& type, double x, double y, double dx
         double uy = (dy + ny) * a;
         double vx = (dx - nx) * a;
         double vy = (dy - ny) * a;
-        return "<path class=\"pele-marker\" d=\"M" + num(cx - ux) + "," + num(cy - uy) + "L" + num(cx + ux) + "," + num(cy + uy) + "M" + num(cx - vx) + "," + num(cy - vy) + "L" + num(cx + vx) + "," + num(cy + vy) + "\"/>";
+        return Pele::cat({"<path class=\"pele-marker\" d=\"M", num(cx - ux), ",", num(cy - uy), "L", num(cx + ux), ",", num(cy + uy), "M", num(cx - vx), ",", num(cy - vy), "L", num(cx + vx), ",", num(cy + vy), "\"/>"});
     }
     return "";
 }
 
 struct SideReach {
-    std::unordered_map<int, double> reach;
+    Pele::FlatMap<int, double> reach;
     void add(int node, int side, const std::string& type) {
         double trim = markerTrim(type);
         if (side >= 0 && trim > 0) {
@@ -1051,7 +1067,7 @@ struct SideReach {
     }
 };
 
-inline double writtenCoord(double v) {
+inline double writtenCoord(double v) noexcept {
     long long n = static_cast<long long>(std::llround(v * 100.0));
     return n == 0 ? 0.0 : static_cast<double>(n) / 100.0;
 }
@@ -1164,14 +1180,14 @@ inline EdgePath routePath(
     };
     tokens.push_back(77);
     tokens.push_back(2);
-    std::string d = "M" + tok(xs[0]) + "," + tok(ys[0]);
+    std::string d = Pele::cat({"M", tok(xs[0]), ",", tok(ys[0])});
     double atX = xs[0];
     double atY = ys[0];
     auto lineTo = [&](double x, double y) {
         if (nearPt(x, y, atX, atY)) return;
         tokens.push_back(76);
         tokens.push_back(2);
-        d += "L" + tok(x) + "," + tok(y);
+        Pele::appendCat(d, {"L", tok(x), ",", tok(y)});
         atX = x;
         atY = y;
     };
@@ -1188,7 +1204,7 @@ inline EdgePath routePath(
             double uy = down ? sgnAl * k : 0.0;
             tokens.push_back(67);
             tokens.push_back(6);
-            d += "C" + tok(atX + ux) + "," + tok(atY + uy) + " " + tok(x - ux) + "," + tok(y - uy) + " " + tok(x) + "," + tok(y);
+            Pele::appendCat(d, {"C", tok(atX + ux), ",", tok(atY + uy), " ", tok(x - ux), ",", tok(y - uy), " ", tok(x), ",", tok(y)});
             atX = x;
             atY = y;
             continue;
@@ -1209,17 +1225,17 @@ inline EdgePath routePath(
         if (stepped) {
             tokens.push_back(81);
             tokens.push_back(4);
-            d += "Q" + tok(x) + "," + tok(y) + " " + tok(atX) + "," + tok(atY);
+            Pele::appendCat(d, {"Q", tok(x), ",", tok(y), " ", tok(atX), ",", tok(atY)});
         } else {
             tokens.push_back(67);
             tokens.push_back(6);
-            d += "C" + tok(x - ux * before * (1.0 - HANDLE)) + "," + tok(y - uy * before * (1.0 - HANDLE)) + " " + tok(x + vx * after * (1.0 - HANDLE)) + "," + tok(y + vy * after * (1.0 - HANDLE)) + " " + tok(atX) + "," + tok(atY);
+            Pele::appendCat(d, {"C", tok(x - ux * before * (1.0 - HANDLE)), ",", tok(y - uy * before * (1.0 - HANDLE)), " ", tok(x + vx * after * (1.0 - HANDLE)), ",", tok(y + vy * after * (1.0 - HANDLE)), " ", tok(atX), ",", tok(atY)});
         }
     }
     return {d, std::move(tokens), true, sx, sy, -sdx, -sdy, ex, ey, edx, edy};
 }
 
-inline std::vector<double> tokenizeSvgPath(const std::string& d) {
+inline std::vector<double> tokenizeSvgPath(const std::string& d) noexcept {
     std::vector<double> out;
     int at = -1;
     size_t i = 0;
@@ -1256,7 +1272,7 @@ inline std::vector<double> tokenizeSvgPath(const std::string& d) {
     return out;
 }
 
-inline void sampleSvgArc(std::vector<double>& out, double x1, double y1, double rx, double ry, double large, double sweep, double x2, double y2) {
+inline void sampleSvgArc(std::vector<double>& out, double x1, double y1, double rx, double ry, double large, double sweep, double x2, double y2) noexcept {
     double hx = (x1 - x2) / 2.0;
     double hy = (y1 - y2) / 2.0;
     if (rx == 0 || ry == 0 || (hx == 0 && hy == 0)) {
@@ -1281,7 +1297,7 @@ inline void sampleSvgArc(std::vector<double>& out, double x1, double y1, double 
     }
 }
 
-inline std::vector<double> sampleSvgTokens(const std::vector<double>& tokens) {
+inline std::vector<double> sampleSvgTokens(const std::vector<double>& tokens) noexcept {
     std::vector<double> out;
     double x = 0, y = 0;
     size_t i = 0;
@@ -1346,7 +1362,7 @@ inline std::vector<double> sampleSvgTokens(const std::vector<double>& tokens) {
     return out;
 }
 
-inline bool clipsSegmentBox(double x, double y, double dx, double dy, double l, double t, double r, double b) {
+inline bool clipsSegmentBox(double x, double y, double dx, double dy, double l, double t, double r, double b) noexcept {
     double lo = 0.0, hi = 1.0;
     for (int side = 0; side < 4; side++) {
         double p = (side == 0) ? -dx : (side == 1) ? dx : (side == 2) ? -dy : dy;
@@ -1362,7 +1378,7 @@ inline bool clipsSegmentBox(double x, double y, double dx, double dy, double l, 
     return lo < hi;
 }
 
-inline bool entersPointsBox(const std::vector<double>& points, double l, double t, double r, double b) {
+inline bool entersPointsBox(const std::vector<double>& points, double l, double t, double r, double b) noexcept {
     for (size_t k = 0; k + 3 < points.size(); k += 2) {
         double x = points[k], y = points[k + 1], x2 = points[k + 2], y2 = points[k + 3];
         if (std::isnan(x) || std::isnan(x2)) continue;
@@ -1382,7 +1398,7 @@ struct FillLookup {
     Fill fill;
 };
 
-inline FillLookup fillUnder(const std::string& d, const std::vector<double>& tips, const std::vector<Fill>& fills, const std::vector<double>* tokens = nullptr) {
+inline FillLookup fillUnder(const std::string& d, const std::vector<double>& tips, const std::vector<Fill>& fills, const std::vector<double>* tokens = nullptr) noexcept {
     if (fills.empty()) return {FillLookup::None, {}};
     std::vector<double> points = tokens ? sampleSvgTokens(*tokens) : sampleSvgTokens(tokenizeSvgPath(d));
     double minX = std::numeric_limits<double>::infinity();
@@ -1419,14 +1435,14 @@ inline FillLookup fillUnder(const std::string& d, const std::vector<double>& tip
     return {FillLookup::None, {}};
 }
 
-inline std::string edgeInk(const Fill& fill, const std::string& line = "") {
+inline std::string edgeInk(const Fill& fill, const std::string& line = "") noexcept {
     if (!findStyleProp(line, "stroke").empty()) return "";
     return ink(fill.shape);
 }
 
-inline std::string hollowOn(const std::string& markers, const Fill& fill) {
+inline std::string hollowOn(const std::string& markers, const Fill& fill) noexcept {
     std::string color = findStyleProp(fill.shape, "fill");
-    return !color.empty() ? replaceAllStr(markers, " fill=\"var(--_bg)\"", " fill=\"" + color + "\"") : markers;
+    return !color.empty() ? replaceAllStr(markers,  " fill=\"var(--_bg)\"", Pele::cat({" fill=\"", color, "\""})) : markers;
 }
 
 // Returns: hasValue=false (undefined off fills), or string ('' when crosses border or unknown ink, or ink color)
@@ -1435,14 +1451,14 @@ struct OverFillResult {
     std::string value;
 };
 
-inline OverFillResult overFills(const std::string& d, const std::vector<double>& tips, const std::vector<Fill>& fills, const std::string& line = "", const std::vector<double>* tokens = nullptr) {
+inline OverFillResult overFills(const std::string& d, const std::vector<double>& tips, const std::vector<Fill>& fills, const std::string& line = "", const std::vector<double>* tokens = nullptr) noexcept {
     auto res = fillUnder(d, tips, fills, tokens);
     if (res.state == FillLookup::None) return {false, ""};
     if (res.state == FillLookup::CrossesBorder) return {true, ""};
     return {true, edgeInk(res.fill, line)};
 }
 
-inline std::string casing(const std::string& d, const std::string& markers, const std::string& line = "", bool thick = false) {
+inline std::string casing(const std::string& d, const std::string& markers, const std::string& line = "", bool thick = false) noexcept {
     constexpr double CASE = 4.0;
     std::string stroke = findStyleProp(line, "stroke");
     if (stroke == "none" || stroke == "transparent") return "";
@@ -1457,18 +1473,18 @@ inline std::string casing(const std::string& d, const std::string& markers, cons
             double wVal = std::stod(numPart);
             if (wVal != 1.0) attrs = " stroke-width=\"" + num(wVal + CASE) + "\"";
         } else {
-            style += "stroke-width:calc(" + width + " + 4px);";
+            Pele::appendCat(style, {"stroke-width:calc(", width, " + 4px);"});
         }
     }
     for (const char* prop : {"opacity", "stroke-opacity"}) {
         std::string val = findStyleProp(line, prop);
         if (!val.empty()) style += std::string(prop) + ":" + val + ";";
     }
-    std::string body = "<path d=\"" + d + "\"/>" + replaceAllStr(markers, " class=\"pele-marker\"", "");
-    return (!attrs.empty() || !style.empty()) ? ("<g" + attrs + (!style.empty() ? (" style=\"" + style + "\"") : "") + ">" + body + "</g>") : body;
+    std::string body = Pele::cat({"<path d=\"", d, "\"/>", replaceAllStr(markers, " class=\"pele-marker\"", "")});
+    return (!attrs.empty() || !style.empty()) ? Pele::cat({"<g", attrs, (!style.empty() ? Pele::cat({" style=\"", style, "\""}) : ""), ">", body, "</g>"}) : body;
 }
 
-inline std::string edgeCasing(const EdgePath& path, const std::string& startType, const std::string& endType, const std::string& line = "", bool thick = false) {
+inline std::string edgeCasing(const EdgePath& path, const std::string& startType, const std::string& endType, const std::string& line = "", bool thick = false) noexcept {
     return casing(
         path.d,
         marker(startType, path.sx, path.sy, path.sdx, path.sdy, "var(--_bg)", "var(--_bg)") +
@@ -1478,26 +1494,24 @@ inline std::string edgeCasing(const EdgePath& path, const std::string& startType
     );
 }
 
-inline std::string casingsSvg(const std::string& casings) {
+inline std::string casingsSvg(const std::string& casings) noexcept {
     return !casings.empty()
-        ? ("<g class=\"pele-casings\" fill=\"none\" stroke=\"var(--_bg)\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pointer-events=\"none\">" + casings + "</g>")
+        ? Pele::cat({"<g class=\"pele-casings\" fill=\"none\" stroke=\"var(--_bg)\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pointer-events=\"none\">", casings, "</g>"})
         : "";
 }
 
-inline std::string edgeLabelSvg(const std::string& id, const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons = nullptr) {
+inline std::string edgeLabelSvg(const std::string& id, const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons = nullptr) noexcept {
     double w = label.width + 8.0;
     double h = label.height;
-    return "<g class=\"pele-edge-label\" data-id=\"" + escText(id) + "\">"
-        "<rect x=\"" + num(x - w / 2.0) + "\" y=\"" + num(y - h / 2.0) + "\" width=\"" + num(w) + "\" height=\"" + num(h) + "\" rx=\"3\" fill=\"var(--_bg)\"/>"
-        + labelSvg(label, x, y, attrs, icons) +
-        "</g>";
+    return Pele::cat({"<g class=\"pele-edge-label\" data-id=\"", escText(id), "\">"
+        "<rect x=\"", num(x - w / 2.0), "\" y=\"", num(y - h / 2.0), "\" width=\"", num(w), "\" height=\"", num(h), "\" rx=\"3\" fill=\"var(--_bg)\"/>", labelSvg(label, x, y, attrs, icons), "</g>"});
 }
 
 // ============================================================================
 // src/svg/title.ts & src/svg/root.ts & src/util/url.ts
 // ============================================================================
 
-inline Label titleLabel(const std::string& title, const TextMeasurer& measurer, double size, double maxWidth) {
+inline Label titleLabel(const std::string& title, const TextMeasurer& measurer, double size, double maxWidth) noexcept {
     return withoutMath([&]() { return layoutLabel(title, false, measurer, size, maxWidth, Style::Bold); });
 }
 
@@ -1507,17 +1521,14 @@ struct Titled {
     std::string content;
 };
 
-inline Titled withTitle(const std::string& title, const TextMeasurer& measurer, double size, double pad, double width, double height, const std::string& content) {
+inline Titled withTitle(const std::string& title, const TextMeasurer& measurer, double size, double pad, double width, double height, const std::string& content) noexcept {
     Label label = titleLabel(title, measurer, size, 4000.0);
     if (label.height == 0.0) return {width, height, content};
     double shift = label.height + 12.0;
     double full = std::max(width, std::ceil(label.width + 2.0 * pad));
     return {
-        full,
-        std::ceil(height + shift),
-        labelSvg(label, full / 2.0, pad + label.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        "<g transform=\"translate(" + num((full - width) / 2.0) + "," + num(shift) + ")\">" + content + "</g>"
-    };
+        full, 
+        std::ceil(height + shift), Pele::cat({labelSvg(label, full / 2.0, pad + label.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), "<g transform=\"translate(", num((full - width) / 2.0), ",", num(shift), ")\">", content, "</g>"})};
 }
 
 inline std::string svgDocument(
@@ -1533,16 +1544,16 @@ inline std::string svgDocument(
     std::string head;
     std::string aria;
     if (!acc.accTitle.empty()) {
-        head += "<title id=\"" + prefix + "-title\">" + escText(acc.accTitle) + "</title>";
-        aria += " aria-labelledby=\"" + prefix + "-title\"";
+        Pele::appendCat(head, {"<title id=\"", prefix, "-title\">", escText(acc.accTitle), "</title>"});
+        Pele::appendCat(aria, {" aria-labelledby=\"", prefix, "-title\""});
     }
     if (!acc.accDescr.empty()) {
-        head += "<desc id=\"" + prefix + "-desc\">" + escText(acc.accDescr) + "</desc>";
-        aria += " aria-describedby=\"" + prefix + "-desc\"";
+        Pele::appendCat(head, {"<desc id=\"", prefix, "-desc\">", escText(acc.accDescr), "</desc>"});
+        Pele::appendCat(aria, {" aria-describedby=\"", prefix, "-desc\""});
     }
     std::string fit = (options.hasResponsive && !options.responsive) ? "" : "max-width:100%;height:auto;";
     std::string weights;
-    if (content.find("var(--_r)") != std::string::npos) weights += ";--_r:" + RADIUS;
+    if (content.find("var(--_r)") != std::string::npos) Pele::appendCat(weights, {";--_r:", RADIUS});
     if (content.find("var(--_tw)") != std::string::npos) weights += ";--_tw:var(--pele-title-weight,bold)";
     if (content.find("var(--_hw)") != std::string::npos) weights += ";--_hw:var(--pele-heading-weight,bold)";
     if (content.find("var(--_w)") != std::string::npos) weights += ";--_w:var(--pele-bold-weight,bold)";
@@ -1552,7 +1563,7 @@ inline std::string svgDocument(
     return "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"pele pele-" + type + "\" viewBox=\"0 0 " + wStr + " " + hStr + "\" width=\"" + wStr + "\" height=\"" + hStr + "\" style=\"" + fit + ROOT_STYLE + weights + esc(fontStyle(fontSize, options.fontFamily, options.fontFamilyMono)) + "\" fill=\"var(--_fg)\" role=\"graphics-document document\" aria-roledescription=\"" + type + "\"" + aria + ">" + head + content + "</svg>";
 }
 
-inline std::string sanitizeUrl(const std::string& rawUrl) {
+inline std::string sanitizeUrl(const std::string& rawUrl) noexcept {
     std::string u = trimStr(decodeEntities(rawUrl));
     if (u.empty()) return "about:blank";
     std::string low = toLowerAscii(u);
@@ -1560,7 +1571,7 @@ inline std::string sanitizeUrl(const std::string& rawUrl) {
     return u;
 }
 
-inline std::string linkUrl(const std::string& url, const RenderOptions& options) {
+inline std::string linkUrl(const std::string& url, const RenderOptions& options) noexcept {
     if (!options.links) return "";
     std::string s = sanitizeUrl(url);
     if (s == "about:blank" || startsWith(s, "//") || startsWith(s, "\\\\")) return "";
@@ -1579,7 +1590,7 @@ inline std::string linkUrl(const std::string& url, const RenderOptions& options)
     return s;
 }
 
-inline std::string imageUrl(const std::string& url, const RenderOptions& options) {
+inline std::string imageUrl(const std::string& url, const RenderOptions& options) noexcept {
     if (!options.images) return "";
     std::string s = sanitizeUrl(url);
     if (s == "about:blank" || startsWith(s, "//") || startsWith(s, "\\\\")) return "";
@@ -1591,15 +1602,15 @@ inline std::string imageUrl(const std::string& url, const RenderOptions& options
     return s;
 }
 
-inline std::string relAttr(const RenderOptions& options) {
-    return options.linkRel.empty() ? "" : (" rel=\"" + esc(options.linkRel) + "\"");
+inline std::string relAttr(const RenderOptions& options) noexcept {
+    return options.linkRel.empty() ? "" : Pele::cat({" rel=\"", esc(options.linkRel), "\""});
 }
 
-inline std::string linked(const std::string& body, const std::string& url, const std::string& id, std::vector<LinkInfo>& links, const RenderOptions& options, const std::string& attrs = "") {
+inline std::string linked(const std::string& body, const std::string& url, const std::string& id, std::vector<LinkInfo>& links, const RenderOptions& options, const std::string& attrs = "") noexcept {
     std::string href = linkUrl(url, options);
     if (href.empty()) return body;
     links.push_back({id, href, false});
-    return "<a href=\"" + esc(href) + "\"" + attrs + relAttr(options) + ">" + body + "</a>";
+    return Pele::cat({"<a href=\"", esc(href), "\"", attrs, relAttr(options), ">", body, "</a>"});
 }
 
 } // namespace Pele

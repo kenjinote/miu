@@ -17,7 +17,7 @@ namespace Style {
     constexpr int Underline = 32;
 }
 
-inline const std::vector<uint16_t>& regularMetricsTable() {
+inline const std::vector<uint16_t>& regularMetricsTable() noexcept {
     static const std::vector<uint16_t> t = []() {
         const std::string REGULAR =
             "7q7q9vfgfgopij5b9999atg87q997q7qfgfgfgfgfgfgfgfgfgfg7q7qg8g8g8fgs7ijijk2k2ijgzlmk27qdwijfgn5k2lmijlmk2ijgzk2ijq8ijijgz7q7q7qd1fg99fgfgdwfgfg7qfgfg6666dw66n5fgfgfgfg99dw7qfgdwk2dwdwdw9a789ag8";
@@ -30,7 +30,7 @@ inline const std::vector<uint16_t>& regularMetricsTable() {
     return t;
 }
 
-inline const std::vector<uint16_t>& boldMetricsTable() {
+inline const std::vector<uint16_t>& boldMetricsTable() noexcept {
     static const std::vector<uint16_t> t = []() {
         const std::string BOLD =
             "7q99d6fgfgopk26m9999atg87q997q7qfgfgfgfgfgfgfgfgfgfg9999g8g8g8gzr3k2k2k2k2ijgzlmk27qfgk2gzn5k2lmijlmk2ijgzk2ijq8ijijgz997q99g8fg99fggzfggzfg99gzgz7q7qfg7qopgzgzgzgzatfg99gzfglmfgfgdwat7satg8";
@@ -43,7 +43,7 @@ inline const std::vector<uint16_t>& boldMetricsTable() {
     return t;
 }
 
-inline bool isWideCodeUnit(uint16_t c) {
+inline bool isWideCodeUnit(uint16_t c) noexcept {
     return (
         (c >= 0x1100 && c <= 0x115f) ||
         (c >= 0x2e80 && c <= 0xa4cf) ||
@@ -56,7 +56,7 @@ inline bool isWideCodeUnit(uint16_t c) {
     );
 }
 
-inline bool isZeroWidthCodeUnit(uint16_t c) {
+inline bool isZeroWidthCodeUnit(uint16_t c) noexcept {
     return (
         c == 0xad ||
         (c >= 0x300 && c <= 0x36f) ||
@@ -87,12 +87,12 @@ public:
     }
 };
 
-inline const TextMeasurer& defaultMeasurer() {
+inline const TextMeasurer& defaultMeasurer() noexcept {
     static const MetricsMeasurer instance;
     return instance;
 }
 
-inline const TextMeasurer& getMeasurer(const RenderOptions& options) {
+inline const TextMeasurer& getMeasurer(const RenderOptions& options) noexcept {
     return options.measurer ? *options.measurer : defaultMeasurer();
 }
 
@@ -100,13 +100,13 @@ inline const TextMeasurer& getMeasurer(const RenderOptions& options) {
 // src/text/icons.ts & src/text/math.ts
 // ============================================================================
 
-inline IconResolver& activeIconResolver() {
+inline IconResolver& activeIconResolver() noexcept {
     static thread_local IconResolver resolver;
     return resolver;
 }
 
-inline std::unordered_map<std::string, std::string>& activeIconCache() {
-    static thread_local std::unordered_map<std::string, std::string> cache;
+inline Pele::FlatMap<std::string, std::string>& activeIconCache() noexcept {
+    static thread_local Pele::FlatMap<std::string, std::string> cache;
     return cache;
 }
 
@@ -118,7 +118,7 @@ inline auto withIcons(const IconResolver& icons, Fn&& run) -> decltype(run()) {
     activeIconCache().clear();
     struct Guard {
         IconResolver outer;
-        std::unordered_map<std::string, std::string> outerCache;
+        Pele::FlatMap<std::string, std::string> outerCache;
         ~Guard() {
             activeIconResolver() = std::move(outer);
             activeIconCache() = std::move(outerCache);
@@ -127,7 +127,7 @@ inline auto withIcons(const IconResolver& icons, Fn&& run) -> decltype(run()) {
     return run();
 }
 
-inline std::string iconMarkup(const std::string& name) {
+inline std::string iconMarkup(const std::string& name) noexcept {
     auto& resolver = activeIconResolver();
     if (!resolver) return "";
     auto& cache = activeIconCache();
@@ -138,12 +138,12 @@ inline std::string iconMarkup(const std::string& name) {
     return m;
 }
 
-inline MathMarkupResolver& activeMathResolver() {
+inline MathMarkupResolver& activeMathResolver() noexcept {
     static thread_local MathMarkupResolver resolver;
     return resolver;
 }
 
-inline bool mathActive() {
+inline bool mathActive() noexcept {
     return static_cast<bool>(activeMathResolver());
 }
 
@@ -169,7 +169,7 @@ inline auto withoutMath(Fn&& run) -> decltype(run()) {
     return run();
 }
 
-inline bool typesetMathSpan(const std::string& tex, double size, MathMarkup& out) {
+inline bool typesetMathSpan(const std::string& tex, double size, MathMarkup& out) noexcept {
     auto& resolver = activeMathResolver();
     if (!resolver) return false;
     MathMarkup res;
@@ -208,19 +208,19 @@ struct Label {
 constexpr double LINE_HEIGHT = 1.5;
 constexpr double WRAPPED_LINE_HEIGHT = 1.3;
 
-inline bool isPlainSpan(const Span& s) {
+inline bool isPlainSpan(const Span& s) noexcept {
     return !s.hasIcon && !s.hasMath;
 }
 
-inline bool isCjkCodepoint(uint32_t cp) {
+inline bool isCjkCodepoint(uint32_t cp) noexcept {
     return (cp >= 0x2e80 && cp <= 0x9fff) || (cp >= 0xf900 && cp <= 0xfaff) || (cp >= 0xff00 && cp <= 0xff60);
 }
 
-inline bool isHintCodepoint(uint32_t cp) {
+inline bool isHintCodepoint(uint32_t cp) noexcept {
     return cp == 0x200b || cp == 0x00ad;
 }
 
-inline bool isOpenCodepoint(uint32_t cp) {
+inline bool isOpenCodepoint(uint32_t cp) noexcept {
     switch (cp) {
         case 0xFF08: case 0xFF3B: case 0xFF5B: case 0x300C: case 0x300E:
         case 0x3010: case 0x3014: case 0x3008: case 0x300A: case 0x3018:
@@ -231,7 +231,7 @@ inline bool isOpenCodepoint(uint32_t cp) {
     }
 }
 
-inline bool isCloseCodepoint(uint32_t cp) {
+inline bool isCloseCodepoint(uint32_t cp) noexcept {
     // 、。，．：；！？）］｝」』】〕〉》〙〗ー…‥・ゝゞぁぃぅぇぉっゃゅょゎァィゥェォッャュョヮ,.:;!?)\\]}
     switch (cp) {
         case 0x3001: case 0x3002: case 0xFF0C: case 0xFF0E: case 0xFF1A: case 0xFF1B:
@@ -249,7 +249,7 @@ inline bool isCloseCodepoint(uint32_t cp) {
     }
 }
 
-inline bool hasCjkOrHint(const std::string& s) {
+inline bool hasCjkOrHint(const std::string& s) noexcept {
     size_t i = 0;
     while (i < s.size()) {
         uint32_t cp = nextCodepoint(s, i);
@@ -259,7 +259,7 @@ inline bool hasCjkOrHint(const std::string& s) {
 }
 
 // Matches RE_PIECE = /\s*(?:[OPEN]*[CJK][CLOSE]*|[^\sCJKHINT]+[HINT]*[CLOSE]*|[HINT]+)\s*|\s+/g
-inline std::vector<std::string> splitWrapPieces(const std::string& text) {
+inline std::vector<std::string> splitWrapPieces(const std::string& text) noexcept {
     struct CpSlice {
         uint32_t cp;
         size_t start;
@@ -303,7 +303,7 @@ inline std::vector<std::string> splitWrapPieces(const std::string& text) {
     return pieces;
 }
 
-inline std::string dedentLabel(const std::string& text) {
+inline std::string dedentLabel(const std::string& text) noexcept {
     auto lines = splitStr(text, '\n');
     size_t minIndent = std::numeric_limits<size_t>::max();
     for (const auto& line : lines) {
@@ -321,8 +321,8 @@ inline std::string dedentLabel(const std::string& text) {
     return out;
 }
 
-inline const std::unordered_map<std::string, int>& tagStylesMap() {
-    static const std::unordered_map<std::string, int> m = {
+inline const Pele::FlatMap<std::string, int>& tagStylesMap() noexcept {
+    static const Pele::FlatMap<std::string, int> m = {
         {"b", Style::Bold}, {"strong", Style::Bold},
         {"i", Style::Italic}, {"em", Style::Italic}, {"cite", Style::Italic}, {"dfn", Style::Italic}, {"var", Style::Italic},
         {"code", Style::Mono}, {"kbd", Style::Mono}, {"samp", Style::Mono}, {"tt", Style::Mono},
@@ -332,8 +332,8 @@ inline const std::unordered_map<std::string, int>& tagStylesMap() {
     return m;
 }
 
-inline const std::unordered_set<std::string>& htmlTagsSet() {
-    static const std::unordered_set<std::string> s = {
+inline const Pele::FlatSet<std::string>& htmlTagsSet() noexcept {
+    static const Pele::FlatSet<std::string> s = {
         "a","abbr","address","article","aside","audio","b","bdi","bdo","big","blockquote","body","br","button","caption","center","cite","code","col",
         "colgroup","data","dd","del","details","dfn","dialog","div","dl","dt","em","embed","fieldset","figcaption","figure","font","footer","form","h1","h2",
         "h3","h4","h5","h6","head","header","hr","html","i","iframe","img","input","ins","kbd","label","legend","li","link","main","map","mark","meta","meter","nav",
@@ -344,7 +344,7 @@ inline const std::unordered_set<std::string>& htmlTagsSet() {
     return s;
 }
 
-inline void pushPlainSpan(std::vector<Span>& line, const std::string& text, int style) {
+inline void pushPlainSpan(std::vector<Span>& line, const std::string& text, int style) noexcept {
     if (text.empty()) return;
     std::string decoded = decodeEntities(text);
     if (!line.empty() && isPlainSpan(line.back()) && line.back().style == style) {
@@ -363,7 +363,7 @@ struct MathMarks {
     std::vector<bool> hasMath;
 };
 
-inline void pushTextSpan(std::vector<Span>& line, const std::string& text, int style, const MathMarks* marks) {
+inline void pushTextSpan(std::vector<Span>& line, const std::string& text, int style, const MathMarks* marks) noexcept {
     if (text.empty()) return;
     if (marks && !marks->tex.empty()) {
         std::string plainBuf;
@@ -399,7 +399,7 @@ inline void pushTextSpan(std::vector<Span>& line, const std::string& text, int s
     pushPlainSpan(line, text, style);
 }
 
-inline void pushIconsSpan(std::vector<Span>& line, const std::string& text, int style, const MathMarks* marks) {
+inline void pushIconsSpan(std::vector<Span>& line, const std::string& text, int style, const MathMarks* marks) noexcept {
     if (text.find(":fa-") == std::string::npos) {
         pushTextSpan(line, text, style, marks);
         return;
@@ -453,7 +453,7 @@ struct OpenStyleState {
     std::vector<int> shifts;
 };
 
-inline void parseInlineSpans(std::vector<Span>& line, const std::string& source, bool markdown, int base, OpenStyleState& open, const MathMarks* marks) {
+inline void parseInlineSpans(std::vector<Span>& line, const std::string& source, bool markdown, int base, OpenStyleState& open, const MathMarks* marks) noexcept {
     int style = open.style;
     int marked = 0;
     std::string text;
@@ -547,7 +547,7 @@ inline void parseInlineSpans(std::vector<Span>& line, const std::string& source,
     flush();
 }
 
-inline double measureSpans(std::vector<Span>& line, const TextMeasurer& measurer, double size) {
+inline double measureSpans(std::vector<Span>& line, const TextMeasurer& measurer, double size) noexcept {
     double total = 0;
     for (auto& span : line) {
         span.width = span.hasIcon ? (size * 1.25) : span.hasMath ? span.math.width : measurer.width(span.text, size, span.style);
@@ -556,7 +556,7 @@ inline double measureSpans(std::vector<Span>& line, const TextMeasurer& measurer
     return total;
 }
 
-inline void wrapLineSpans(const std::vector<Span>& line, const TextMeasurer& measurer, double size, double max, std::vector<std::vector<Span>>& out, std::vector<double>& widths) {
+inline void wrapLineSpans(const std::vector<Span>& line, const TextMeasurer& measurer, double size, double max, std::vector<std::vector<Span>>& out, std::vector<double>& widths) noexcept {
     std::vector<Span> current;
     double width = 0;
     const std::string SHY_UTF8 = "\xC2\xAD";
@@ -566,7 +566,7 @@ inline void wrapLineSpans(const std::vector<Span>& line, const TextMeasurer& mea
             auto& last = current.back();
             std::string trimmed = trimEndStr(last.text);
             if (hyphen && endsWith(last.text, SHY_UTF8)) {
-                trimmed = trimmed.substr(0, last.text.size() - SHY_UTF8.size()) + "-";
+                trimmed = Pele::cat({trimmed.substr(0, last.text.size() - SHY_UTF8.size()), "-"});
             }
             if (trimmed != last.text) {
                 last.text = trimmed;
@@ -610,7 +610,7 @@ inline void wrapLineSpans(const std::vector<Span>& line, const TextMeasurer& mea
             double partWidth = soft ? own[p] : measurer.width(trimEndStr(part), size, span.style);
             bool fits = (!soft || !endsWith(part, SHY_UTF8))
                 ? (width + partWidth <= max)
-                : (width + measurer.width(part.substr(0, part.size() - SHY_UTF8.size()) + "-", size, span.style) <= max || width + rest[p] <= max);
+                : (width + measurer.width(Pele::cat({part.substr(0, part.size() - SHY_UTF8.size()), "-"}),  size,  span.style) <= max || width + rest[p] <= max);
             if (width > 0 && !fits) {
                 commit(trimStartStr(part) == part);
                 part = trimStartStr(part);
@@ -638,7 +638,7 @@ inline void wrapLineSpans(const std::vector<Span>& line, const TextMeasurer& mea
 }
 
 // Splits string by RE_BREAK = /<br\s*\/?>|\\n|\n/gi
-inline std::vector<std::string> splitLabelBreaks(const std::string& s) {
+inline std::vector<std::string> splitLabelBreaks(const std::string& s) noexcept {
     std::vector<std::string> parts;
     size_t last = 0;
     size_t i = 0;
@@ -670,7 +670,7 @@ inline std::vector<std::string> splitLabelBreaks(const std::string& s) {
     return parts;
 }
 
-inline Label withHeights(Label label) {
+inline Label withHeights(Label label) noexcept {
     std::vector<double> heights;
     bool needed = false;
     for (size_t i = 0; i < label.lines.size(); i++) {
@@ -700,7 +700,7 @@ inline Label withHeights(Label label) {
     return label;
 }
 
-inline Label layoutLines(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double maxWidth, int base, double lineHeight, const MathMarks* marks = nullptr) {
+inline Label layoutLines(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double maxWidth, int base, double lineHeight, const MathMarks* marks = nullptr) noexcept {
     std::string source = markdown ? trimStr(dedentLabel(normalizeLineBreaks(raw))) : trimStr(raw);
     std::vector<std::vector<Span>> lines;
     std::vector<double> widths;
@@ -729,7 +729,7 @@ inline Label layoutLines(const std::string& raw, bool markdown, const TextMeasur
     return marks ? withHeights(std::move(res)) : res;
 }
 
-inline bool hasMarkupChars(const std::string& s) {
+inline bool hasMarkupChars(const std::string& s) noexcept {
     // RE_MARKUP = /[<\\\n*_]|fa[bklrs]?:fa-/
     for (char c : s) {
         if (c == '<' || c == '\\' || c == '\n' || c == '*' || c == '_' || c == '&') return true;
@@ -739,7 +739,7 @@ inline bool hasMarkupChars(const std::string& s) {
     return false;
 }
 
-inline Label layoutLabel(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double maxWidth, int base = 0) {
+inline Label layoutLabel(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double maxWidth, int base = 0) noexcept {
     if (raw.empty()) return Label{};
     double lineHeight = std::round(size * LINE_HEIGHT);
 
@@ -815,19 +815,19 @@ inline Label layoutLabel(const std::string& raw, bool markdown, const TextMeasur
     return layoutLines(raw, markdown, measurer, size, maxWidth, base, lineHeight, nullptr);
 }
 
-inline bool hasMath(const std::vector<Span>& line) {
+inline bool hasMath(const std::vector<Span>& line) noexcept {
     for (const auto& s : line) if (s.hasMath) return true;
     return false;
 }
 
-inline double lineMiddle(const Label& label, size_t i) {
+inline double lineMiddle(const Label& label, size_t i) noexcept {
     if (!label.hasHeights) return (static_cast<double>(i) + 0.5) * label.lineHeight;
     double top = 0;
     for (size_t k = 0; k < i; k++) top += label.heights[k];
     return top + label.heights[i] / 2.0;
 }
 
-inline Label labelLine(const Label& label, size_t i) {
+inline Label labelLine(const Label& label, size_t i) noexcept {
     double width = label.widths[i];
     double height = label.hasHeights ? label.heights[i] : label.lineHeight;
     Label line;
@@ -848,7 +848,7 @@ inline Label labelLine(const Label& label, size_t i) {
 // src/diagrams/common/literal-label.ts (literalLabel, breakLabel)
 // ============================================================================
 
-inline Label literalLabel(const std::string& text, const TextMeasurer& measurer, double size, double room, int style = 0) {
+inline Label literalLabel(const std::string& text, const TextMeasurer& measurer, double size, double room, int style = 0) noexcept {
     std::vector<std::string> lines;
     for (const auto& raw : splitStr(text, '\n')) {
         std::vector<std::string> chars;
@@ -917,7 +917,7 @@ inline Label literalLabel(const std::string& text, const TextMeasurer& measurer,
     return out;
 }
 
-inline Label breakLabel(const Label& label, const TextMeasurer& measurer, double room) {
+inline Label breakLabel(const Label& label, const TextMeasurer& measurer, double room) noexcept {
     if (label.width <= room) return label;
     std::vector<std::vector<Span>> lines;
     std::vector<double> widths;

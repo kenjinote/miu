@@ -34,15 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.41 更新日誌
-🎯 100% 原版相容 Pele 圖表引擎、預覽與編輯器核心極速最佳化及全方位安全加固
+        "releaseNotes": """miu v1.0.42 更新日誌
+⚡ 搜尋與取代最高提速 605 倍、EXE 體積縮減 15.3% 及系統級安全加固
 
-・100% 相容原版 Pele 的 C++ 原生圖表引擎（官方 522/522 範例完全一致）：
-  1:1 完整移植全部 33 種圖表、55 種節點形狀、分層與複合佈局演算法及區塊箭頭語法，輸出與 pele.run 完全一致的 SVG，並保持 100% 離線與原生 LaTeX 數學公式支援。
-・預覽與編輯器核心大幅提速（最高提速 319 倍）：
-  引入 Mermaid/MathML 快取與 DOM 增量更新（即時預覽提速 9.8 倍）、O(1) UTF-16 偏移映射與 Direct2D 資源快取（提速 282 倍）、單行編輯增量索引更新（提速 319 倍）及 SIMD 括號配對。
-・多層安全加固：
-  強化 WebView2 與嚴格 CSP 政策、SVG/Markdown/公式安全過濾、DLL 預載入防護、暫存檔獨佔鎖定及 CFG 與 CET 影子堆疊保護。""",
+・搜尋、全部取代與語法高亮極速最佳化：
+  採用 AVX2 首尾字元同步 SIMD 搜尋，32MB 文件正向搜尋提速 245 倍、反向搜尋提速 605 倍；引入 O(N+M) 線性全部取代（提速 323 倍）、零配置語法高亮掃描器（提速 22.7 倍）與 Pele 圖表引擎提速（1.34 倍）。
+・執行檔體積大幅縮減（減少 788.5 KB / -15.3%）：
+  透過冷熱程式碼分離、1,107 個函式 noexcept 標註、最小化重編 ced.lib 及 /OPT:ICF=5 連結壓縮，將體積精簡至 4.35 MB。
+・系統級安全風險降低：
+  啟用 Windows 處理序緩解原則（PreferSystem32Images 與 DisableExtensionPoints）、堆積損毀即時終止保護、正規表示式 ReDoS 防護及 vcpkg 自動連結隔離。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.41 Versionshinweise
-🎯 100 % kompatible C++-Pele-Diagramm-Engine, bis zu 319× höheres Tempo & Sicherheits-Hardening
+        "releaseNotes": """miu v1.0.42 Versionshinweise
+⚡ Bis zu 605× schnellere Suche/Ersetzung, 15,3 % kleinere EXE & OS-Prozesshärtung
 
-• 100 % Upstream-kompatible C++-Pele-Diagramm-Engine (522/522 Corpus-Tests exakt identisch):
-  Vollständige 1:1-Portierung aller 33 Diagrammtypen, 55 Knotenformen, Layout-Algorithmen und Blockpfeile nach C++17 – liefert exakt dieselbe SVG-Ausgabe wie pele.run (100 % offline inkl. LaTeX-MathML).
-• Massive Beschleunigung für Vorschau & Editor-Kern (bis zu 319× schneller):
-  Mermaid/MathML-Memoization & DOM-Diff-Updates (bis zu 9,8× schnellere Live-Vorschau), O(1)-UTF-16-Offsets & Direct2D-Ressourcen-Cache (bis zu 282× schneller), inkrementelle Zeilenindex-Updates (bis zu 319× schneller) und SIMD-Klammernsuche.
-• Mehrschichtige Sicherheits-Härtung:
-  Gehärtete WebView2- & CSP-Richtlinien, SVG/Markdown/MathML-Bereinigung, DLL-Hijacking-Schutz, exklusives Dateisperren sowie CFG (/guard:cf) & CET Shadow Stack (/CETCOMPAT).""",
+• Massive Beschleunigung für Suche, Ersetzen & Syntaxhervorhebung:
+  AVX2-SIMD-Suche beschleunigt die Vorwärtssuche um das 245-Fache und die Rückwärtssuche um das 605-Fache; lineares O(N+M)-„Alle ersetzen“ (323× schneller), Zero-Allocation-Syntaxscanner (22,7× schneller) und 1,34× schnelleres Pele-Rendering.
+• 15,3 % kleinere ausführbare Datei (-788,5 KB):
+  Reduziert auf 4,35 MB durch Hot/Cold-Optimierung, 1.107 noexcept-Annotationen (-41,8 % .pdata), kompakte ced.lib und /OPT:ICF=5.
+• Reduzierte Sicherheitsrisiken:
+  OS-Prozessschutzrichtlinien (PreferSystem32Images & DisableExtensionPoints), HeapEnableTerminationOnCorruption, ReDoS-Regex-Schutz und vcpkg-Link-Isolierung.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.41
-🎯 Moteur de diagrammes C++ 100 % compatible Pele, accélération jusqu'à 319× et sécurité renforcée
+        "releaseNotes": """Notes de version miu v1.0.42
+⚡ Recherche/remplacement jusqu'à 605× plus rapide, EXE réduit de 15,3 % et sécurité OS renforcée
 
-• Moteur C++ 100 % compatible avec Pele officiel (522/522 tests officiels identiques à l'octet près) :
-  Portage C++17 1:1 des 33 types de diagrammes, 55 formes, moteurs de mise en page et flèches blocs, produisant un SVG strictement identique à pele.run tout en restant 100 % hors ligne avec support LaTeX MathML.
-• Accélération majeure de l'aperçu et du cœur de l'éditeur (jusqu'à 319× plus rapide) :
-  Mémoïsation Mermaid/MathML et mise à jour DOM différentielle (aperçu 9,8× plus rapide), table UTF-16 O(1) et cache Direct2D (282× plus rapide), indexation incrémentale des lignes (319× plus rapide) et recherche SIMD des parenthèses.
-• Sécurité multicouche renforcée :
-  Durcissement WebView2 et CSP stricte, assainissement SVG/Markdown/MathML, protection contre le détournement de DLL, verrouillage exclusif des fichiers et protections CFG + CET Shadow Stack.""",
+• Accélération majeure de la recherche, du remplacement et de la coloration syntaxique :
+  Recherche SIMD AVX2 (245× plus rapide en avant, 605× en arrière), remplacement global linéaire O(N+M) (323× plus rapide), coloration syntaxique sans allocation (22,7× plus rapide) et moteur Pele 1,34× plus rapide.
+• Exécutable réduit de 15,3 % (-788,5 Ko) :
+  Allégé à 4,35 Mo via séparation Hot/Cold, 1 107 fonctions noexcept (-41,8 % .pdata), ced.lib compactée et compression /OPT:ICF=5.
+• Réduction des risques de sécurité :
+  Politiques d'atténuation OS (PreferSystem32Images et DisableExtensionPoints), arrêt immédiat sur corruption du tas, garde anti-ReDoS regex et isolation vcpkg.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.41
-🎯 Motor C++ 100 % compatible con Pele, aceleración de hasta 319× y refuerzo de seguridad
+        "releaseNotes": """Notas de la versión miu v1.0.42
+⚡ Búsqueda y reemplazo hasta 605× más rápidos, EXE un 15,3 % menor y protección de procesos del SO
 
-• Motor de diagramas C++ 100 % compatible con Pele oficial (522/522 casos idénticos byte a byte):
-  Portabilidad C++17 1:1 de los 33 tipos de diagramas, 55 formas de nodos, algoritmos de diseño y flechas de bloque, generando un SVG idéntico a pele.run 100 % sin conexión con soporte matemático LaTeX.
-• Gran aceleración de vista previa y núcleo del editor (hasta 319× más rápido):
-  Memoización Mermaid/MathML y actualización diferencial del DOM (vista previa 9,8× más rápida), mapeo UTF-16 O(1) y caché Direct2D (282× más rápido), actualización incremental de líneas (319× más rápida) y búsqueda SIMD de paréntesis.
-• Seguridad multicapa reforzada:
-  Endurecimiento de WebView2 y CSP estricta, saneamiento SVG/Markdown/MathML, protección contra secuestro de DLL, bloqueo exclusivo de archivos y CFG + CET Shadow Stack.""",
+• Gran aceleración en búsqueda, reemplazo y resaltado de sintaxis:
+  Búsqueda SIMD AVX2 (245× más rápida hacia adelante, 605× hacia atrás), Reemplazar todo lineal O(N+M) (323× más rápido), escáner de sintaxis sin asignaciones (22,7× más rápido) y motor Pele 1,34× más rápido.
+• Ejecutable un 15,3 % más pequeño (-788,5 KB):
+  Reducido a 4,35 MB mediante optimización Hot/Cold, 1.107 funciones noexcept (-41,8 % .pdata), ced.lib compactada y /OPT:ICF=5.
+• Reducción de riesgos de seguridad:
+  Políticas de mitigación del SO (PreferSystem32Images y DisableExtensionPoints), terminación ante corrupción de montón, protección anti-ReDoS en regex y aislamiento de vcpkg.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.41
-🎯 Motor C++ 100% compatível com Pele, aceleração de até 319× e reforço de segurança
+        "releaseNotes": """Notas de lançamento do miu v1.0.42
+⚡ Busca e substituição até 605× mais rápidas, EXE 15,3% menor e proteção de processos do SO
 
-• Motor de diagramas C++ 100% compatível com o Pele oficial (522/522 exemplos idênticos byte a byte):
-  Portabilidade C++17 1:1 de todos os 33 tipos de diagramas, 55 formas, algoritmos de layout e setas em bloco, gerando SVG idêntico ao pele.run 100% offline com suporte a fórmulas LaTeX.
-• Grande aceleração da pré-visualização e do editor (até 319× mais rápido):
-  Memoização Mermaid/MathML e atualização diferencial do DOM (pré-visualização 9,8× mais rápida), tabela UTF-16 O(1) e cache Direct2D (282× mais rápido), atualização incremental de linhas (319× mais rápida) e busca SIMD de parênteses.
-• Segurança multicamada reforçada:
-  Endurecimento do WebView2 e CSP estrita, sanitização de SVG/Markdown/MathML, proteção contra sequestro de DLL, bloqueio exclusivo de arquivos e CFG + CET Shadow Stack.""",
+• Grande aceleração em busca, substituição e realce de sintaxe:
+  Busca SIMD AVX2 (245× mais rápida para frente, 605× para trás), Substituir tudo linear O(N+M) (323× mais rápido), scanner de sintaxe sem alocações (22,7× mais rápido) e motor Pele 1,34× mais rápido.
+• Executável 15,3% menor (-788,5 KB):
+  Reduzido para 4,35 MB com otimização Hot/Cold, 1.107 anotações noexcept (-41,8% .pdata), ced.lib compactada e /OPT:ICF=5.
+• Redução de riscos de segurança:
+  Políticas de mitigação do SO (PreferSystem32Images e DisableExtensionPoints), encerramento em corrupção de heap, proteção anti-ReDoS para regex e isolamento do vcpkg.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.41
-🎯 100% совместимый с Pele движок диаграмм C++, ускорение до 319 раз и усиление безопасности
+        "releaseNotes": """Примечания к выпуску miu v1.0.42
+⚡ Ускорение поиска и замены до 605 раз, уменьшение EXE на 15,3% и защита процессов ОС
 
-• 100% совместимый с оригинальным Pele нативный C++ движок (522/522 тестов совпадают побайтово):
-  Полный перенос 1:1 на C++17 всех 33 типов диаграмм, 55 фигур узлов, алгоритмов компоновки и блочных стрелок — идентичный pele.run вывод SVG на 100% офлайн с поддержкой формул LaTeX.
-• Масштабное ускорение предпросмотра и ядра редактора (до 319 раз быстрее):
-  Мемоизация Mermaid/MathML и инкрементальное обновление DOM (предпросмотр до 9,8× быстрее), таблица смещений UTF-16 за O(1) и кэш ресурсов Direct2D (до 282× быстрее), инкрементальное обновление индексов строк (до 319× быстрее) и SIMD-поиск скобок.
-• Многоуровневая защита безопасности:
-  Усиление WebView2 и строгая политика CSP, санитизация SVG/Markdown/MathML, защита от подмены DLL, эксклюзивная блокировка временных файлов, а также защита CFG (/guard:cf) и CET Shadow Stack.""",
+• Кардинальное ускорение поиска, замены и подсветки синтаксиса:
+  SIMD-поиск AVX2 ускоряет прямой поиск в 245 раз и обратный в 605 раз; линейная замена всех совпадений O(N+M) (в 323 раза быстрее), сканер синтаксиса без аллокаций (в 22,7 раза быстрее) и ускорение движка Pele в 1,34 раза.
+• Сокращение размера EXE на 15,3% (-788,5 КБ):
+  Размер уменьшен до 4,35 МБ благодаря разделению Hot/Cold, 1 107 функциям noexcept (-41,8% .pdata), пересборке ced.lib и /OPT:ICF=5.
+• Снижение рисков безопасности:
+  Политики защиты процессов ОС (PreferSystem32Images и DisableExtensionPoints), защита от повреждения кучи, защита регулярных выражений от ReDoS и изоляция автолинковки vcpkg.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.41
-🎯 Motore C++ 100% compatibile con Pele, velocità fino a 319× superiore e sicurezza potenziata
+        "releaseNotes": """Note di rilascio di miu v1.0.42
+⚡ Ricerca e sostituzione fino a 605× più veloci, EXE ridotto del 15,3% e protezione processi OS
 
-• Motore di diagrammi C++ 100% compatibile con Pele ufficiale (522/522 test identici byte per byte):
-  Porting C++17 1:1 di tutti i 33 tipi di diagrammi, 55 forme, algoritmi di layout e frecce a blocchi, con output SVG identico a pele.run, 100% offline e con supporto LaTeX MathML.
-• Enorme accelerazione di anteprima ed editor (fino a 319× più veloce):
-  Memoizzazione Mermaid/MathML e aggiornamento DOM differenziale (anteprima fino a 9,8× più veloce), mappa UTF-16 O(1) e cache Direct2D (282× più veloce), indici di riga incrementali (319× più veloci) e ricerca parentesi SIMD.
-• Sicurezza multilivello potenziata:
-  Hardening WebView2 e CSP rigorosa, sanitizzazione SVG/Markdown/MathML, protezione DLL hijacking, blocco file esclusivo e protezioni CFG + CET Shadow Stack.""",
+• Accelerazione estrema per ricerca, sostituzione ed evidenziazione sintassi:
+  Ricerca SIMD AVX2 (245× più veloce in avanti, 605× indietro), Sostituisci tutto lineare O(N+M) (323× più veloce), scanner sintattico zero-allocation (22,7× più veloce) e motore Pele 1,34× più rapido.
+• Eseguibile ridotto del 15,3% (-788,5 KB):
+  Compattato a 4,35 MB tramite ottimizzazione Hot/Cold, 1.107 funzioni noexcept (-41,8% .pdata), ced.lib ricompilata e /OPT:ICF=5.
+• Riduzione dei rischi di sicurezza:
+  Criteri di mitigazione processi OS (PreferSystem32Images e DisableExtensionPoints), arresto su corruzione heap, guardia anti-ReDoS regex e isolamento vcpkg.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.41
-🎯 Silnik C++ w 100% zgodny z Pele, przyspieszenie do 319× oraz wielowarstwowe zabezpieczenia
+        "releaseNotes": """Informacje o wersji miu v1.0.42
+⚡ Wyszukiwanie i zamiana do 605× szybsze, EXE mniejszy o 15,3% oraz wzmocnienie ochrony procesów
 
-• Natywny silnik diagramów C++ w 100% zgodny z oryginalnym Pele (522/522 testów identycznych co do bajtu):
-  Pełny port C++17 1:1 wszystkich 33 typów diagramów, 55 kształtów, algorytmów układu i strzałek blokowych — generuje SVG identyczny z pele.run w 100% offline z obsługą wzorów LaTeX.
-• Ogromne przyspieszenie podglądu i rdzenia edytora (do 319× szybciej):
-  Memoizacja Mermaid/MathML i różnicowa aktualizacja DOM (podgląd do 9,8× szybszy), mapowanie UTF-16 O(1) i pamięć podręczna Direct2D (do 282× szybciej), przyrostowa aktualizacja wierszy (do 319× szybciej) oraz wyszukiwanie nawiasów SIMD.
-• Wielowarstwowe wzmocnienie bezpieczeństwa:
-  Utwardzenie WebView2 i ścisłe CSP, sanityzacja SVG/Markdown/MathML, ochrona przed przejęciem DLL, wyłączne blokowanie plików oraz ochrona CFG i CET Shadow Stack.""",
+• Ogromne przyspieszenie wyszukiwania, zamiany i kolorowania składni:
+  Wyszukiwanie SIMD AVX2 (245× szybciej w przód, 605× w tył), liniowa funkcja Zamień wszystko O(N+M) (323× szybciej), skaner składni bez alokacji (22,7× szybciej) oraz silnik Pele szybszy o 1,34×.
+• Plik wykonywalny mniejszy o 15,3% (-788,5 KB):
+  Zmniejszony do 4,35 MB dzięki optymalizacji Hot/Cold, 1107 adnotacjom noexcept (-41,8% .pdata), przebudowie ced.lib i kompresji /OPT:ICF=5.
+• Redukcja ryzyka bezpieczeństwa:
+  Zasady ochrony procesów systemu (PreferSystem32Images i DisableExtensionPoints), natychmiastowe zakończenie przy uszkodzeniu sterty, ochrona przed ReDoS w regex oraz izolacja vcpkg.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.41
-🎯 100% Pele-compatibele C++-diagram-engine, tot 319× sneller & uitgebreide beveiliging
+        "releaseNotes": """Releaseopmerkingen miu v1.0.42
+⚡ Tot 605× sneller zoeken/vervangen, 15,3% kleinere EXE & OS-procesbeveiliging
 
-• 100% met originele Pele compatibele C++-diagram-engine (522/522 tests byte-voor-byte identiek):
-  Volledige 1:1 C++17-port van alle 33 diagramtypen, 55 vormen, lay-out-engines en blokpijlen — levert exact dezelfde SVG-uitvoer als pele.run, 100% offline met LaTeX MathML-ondersteuning.
-• Enorme snelheidswinst voor voorbeeldweergave & editor (tot 319× sneller):
-  Mermaid/MathML-memoisatie en DOM-diff-updates (tot 9,8× snellere live-weergave), O(1) UTF-16-tabel en Direct2D-cache (tot 282× sneller), incrementele regelindex-updates (tot 319× sneller) en SIMD-haakjeszoeken.
-• Meerlaagse beveiligingsverbeteringen:
-  Verscherpte WebView2- & CSP-regels, SVG/Markdown/MathML-sanitisatie, DLL-hijacking-bescherming, exclusieve bestandsvergrendeling en CFG + CET Shadow Stack.""",
+• Enorme versnelling voor zoeken, vervangen & syntaxisaccentuering:
+  AVX2 SIMD-zoeken versnelt voorwaarts zoeken 245× en achterwaarts zoeken 605×; lineair O(N+M) Alles vervangen (323× sneller), zero-allocation syntaxisscanner (22,7× sneller) en 1,34× snellere Pele-rendering.
+• 15,3% kleiner uitvoerbaar bestand (-788,5 KB):
+  Verkleind naar 4,35 MB via Hot/Cold-optimalisatie, 1.107 noexcept-functies (-41,8% .pdata), compacte ced.lib en /OPT:ICF=5.
+• Verlaagde beveiligingsrisico's:
+  OS-procesbeveiligingsbeleid (PreferSystem32Images & DisableExtensionPoints), beëindiging bij heap-corruptie, regex ReDoS-bescherming en vcpkg-isolatie.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.41 Sürüm Notları
-🎯 %100 Pele Uyumlu C++ Diyagram Motoru, 319 Kata Kadar Hız Artışı ve Çok Katmanlı Güvenlik
+        "releaseNotes": """miu v1.0.42 Sürüm Notları
+⚡ 605 Kata Kadar Daha Hızlı Arama/Değiştirme, %15,3 Daha Küçük EXE ve İşletim Sistemi Süreç Koruması
 
-• %100 Orijinal Pele Uyumlu C++ Diyagram Motoru (522/522 Resmi Test İle Birebir Aynı):
-  33 diyagram türü, 55 düğüm şekli, yerleşim algoritmaları ve blok okların 1:1 C++17 portu sayesinde pele.run ile bayt-bayt aynı SVG çıktısını %100 çevrimdışı ve LaTeX matematik desteğiyle üretir.
-• Önizleme ve Düzenleyici Çekirdeğinde Dev Hızlandırma (319 Kata Kadar Daha Hızlı):
-  Mermaid/MathML önbellekleme ve DOM fark güncellemesi (9,8× daha hızlı canlı önizleme), O(1) UTF-16 tablosu ve Direct2D önbelleği (282× daha hızlı), artımlı satır dizini güncellemesi (319× daha hızlı) ve SIMD parantez eşleştirme.
-• Çok Katmanlı Güvenlik Güçlendirmesi:
-  Güçlendirilmiş WebView2 ve sıkı CSP, SVG/Markdown/MathML temizleme, DLL ele geçirme koruması, özel dosya kilitleme ve CFG + CET Shadow Stack koruması.""",
+• Arama, Değiştirme ve Sözdizimi Vurgulamada Dev Hızlandırma:
+  AVX2 SIMD arama ile ileri arama 245×, geri arama 605× hızlandı; O(N+M) doğrusal Tümünü Değiştir (323× daha hızlı), sıfır tahsisli sözdizimi tarayıcısı (22,7× daha hızlı) ve 1,34× daha hızlı Pele motoru eklendi.
+• %15,3 Daha Küçük Çalıştırılabilir Dosya (-788,5 KB):
+  Hot/Cold optimizasyonu, 1.107 noexcept işlevi (-%41,8 .pdata), kompakt ced.lib ve /OPT:ICF=5 ile 4,35 MB'a düşürüldü.
+• Güvenlik Risklerinin Azaltılması:
+  İşletim sistemi süreç azaltma ilkeleri (PreferSystem32Images ve DisableExtensionPoints), yığın bozulmasında anında sonlandırma, regex ReDoS koruması ve vcpkg yalıtımı etkinleştirildi.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.41
-🎯 Nhân C++ tương thích 100% với Pele gốc, tăng tốc tới 319 lần & tăng cường bảo mật đa lớp
+        "releaseNotes": """Ghi chú phát hành miu v1.0.42
+⚡ Tìm kiếm & Thay thế nhanh hơn tới 605 lần, giảm 15,3% dung lượng EXE & tăng cường bảo mật tiến trình
 
-• Nhân sơ đồ C++ tương thích 100% với Pele gốc (khớp tuyệt đối 522/522 mẫu thử nghiệm):
-  Chuyển đổi 1:1 sang C++17 toàn bộ 33 loại sơ đồ, 55 hình dạng nút, thuật toán bố cục và mũi tên khối — xuất SVG giống hệt pele.run từng byte, hoạt động 100% ngoại tuyến kèm hỗ trợ công thức LaTeX.
-• Tăng tốc vượt trội cho Xem trước & Lõi trình soạn thảo (nhanh hơn tới 319 lần):
-  Bộ nhớ đệm Mermaid/MathML và cập nhật DOM vi sai (xem trước nhanh hơn 9,8 lần), bảng ánh xạ UTF-16 O(1) & bộ đệm Direct2D (nhanh hơn 282 lần), cập nhật chỉ mục dòng tăng dần (nhanh hơn 319 lần) và khớp ngoặc SIMD.
-• Gia cố bảo mật đa lớp:
-  Siết chặt WebView2 & CSP nghiêm ngặt, làm sạch SVG/Markdown/MathML, chống chiếm quyền DLL, khóa tệp độc quyền cùng bảo vệ CFG và CET Shadow Stack.""",
+• Tăng tốc vượt trội cho Tìm kiếm, Thay thế & Tô sáng cú pháp:
+  Tìm kiếm SIMD AVX2 giúp tìm tiến nhanh hơn 245 lần và tìm lùi nhanh hơn 605 lần; Thay thế tất cả tuyến tính O(N+M) (nhanh hơn 323 lần), bộ quét cú pháp không cấp phát bộ nhớ (nhanh hơn 22,7 lần) và nhân Pele nhanh hơn 1,34 lần.
+• Giảm 15,3% dung lượng tệp thực thi (-788,5 KB):
+  Thu gọn xuống 4,35 MB nhờ tối ưu hóa Hot/Cold, 1.107 hàm noexcept (-41,8% .pdata), biên dịch lại ced.lib gọn nhẹ và nén /OPT:ICF=5.
+• Giảm thiểu rủi ro bảo mật:
+  Bật chính sách bảo vệ tiến trình của HĐH (PreferSystem32Images & DisableExtensionPoints), dừng ngay khi hỏng heap, chống ReDoS biểu thức chính quy và cô lập vcpkg.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.41
-🎯 На 100% сумісний із Pele рушій діаграм C++, прискорення до 319 разів і посилення безпеки
+        "releaseNotes": """Примітки до випуску miu v1.0.42
+⚡ Прискорення пошуку й заміни до 605 разів, зменшення EXE на 15,3% і захист процесів ОС
 
-• На 100% сумісний з оригінальним Pele нативний C++ рушій (522/522 тестів збігаються побайтово):
-  Повне перенесення 1:1 на C++17 усіх 33 типів діаграм, 55 фігур вузлів, алгоритмів компонування та блокових стрілок — ідентичний pele.run вивід SVG на 100% офлайн із підтримкою формул LaTeX.
-• Масштабне прискорення перегляду та ядра редактора (до 319 разів швидше):
-  Мемоізація Mermaid/MathML та інкрементальне оновлення DOM (перегляд до 9,8× швидше), таблиця зміщень UTF-16 за O(1) і кеш Direct2D (до 282× швидше), інкрементальне оновлення рядків (до 319× швидше) і SIMD-пошук дужок.
-• Багаторівневий захист безпеки:
-  Посилення WebView2 і сувора політика CSP, санітизація SVG/Markdown/MathML, захист від підміни DLL, ексклюзивне блокування файлів, а також захист CFG і CET Shadow Stack.""",
+• Кардинальне прискорення пошуку, заміни та підсвічування синтаксису:
+  SIMD-пошук AVX2 прискорює прямий пошук у 245 разів і зворотний у 605 разів; лінійна заміна O(N+M) (у 323 рази швидше), сканер синтаксису без алокацій (у 22,7 раза швидше) і прискорення рушія Pele в 1,34 раза.
+• Зменшення розміру EXE на 15,3% (-788,5 КБ):
+  Розмір скорочено до 4,35 МБ завдяки розділенню Hot/Cold, 1 107 функціям noexcept (-41,8% .pdata), перезбиранню ced.lib і /OPT:ICF=5.
+• Зниження ризиків безпеки:
+  Політики захисту процесів ОС (PreferSystem32Images і DisableExtensionPoints), захист від пошкодження купи, захист регулярних виразів від ReDoS та ізоляція vcpkg.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.41
-🎯 Mesin Diagram C++ 100% Kompatibel Pele, Kecepatan Hingga 319× Lebih Cepat & Keamanan Berlapis
+        "releaseNotes": """Catatan Rilis miu v1.0.42
+⚡ Pencarian & Penggantian Hingga 605× Lebih Cepat, Ukuran EXE 15,3% Lebih Kecil & Keamanan Proses OS
 
-• Mesin Diagram C++ 100% Kompatibel dengan Pele Resmi (522/522 Uji Korpus Identik Byte-demi-Byte):
-  Porting C++17 1:1 untuk seluruh 33 jenis diagram, 55 bentuk node, algoritma tata letak, dan panah blok — menghasilkan SVG yang identik dengan pele.run secara 100% offline dengan dukungan rumus LaTeX.
-• Peningkatan Kecepatan Pratinjau & Inti Editor (Hingga 319× Lebih Cepat):
-  Memoisasi Mermaid/MathML dan pembaruan diff DOM (pratinjau 9,8× lebih cepat), tabel UTF-16 O(1) & cache Direct2D (282× lebih cepat), pembaruan indeks baris inkremental (319× lebih cepat), serta pencarian kurung SIMD.
-• Penguatan Keamanan Berlapis:
-  Pengamanan WebView2 & kebijakan CSP ketat, sanitasi SVG/Markdown/MathML, perlindungan pembajakan DLL, penguncian berkas eksklusif, serta perlindungan CFG & CET Shadow Stack.""",
+• Peningkatan Kecepatan Pencarian, Ganti Semua & Penyorotan Sintaks:
+  Pencarian SIMD AVX2 mempercepat pencarian maju 245× dan mundur 605×; Ganti Semua linear O(N+M) (323× lebih cepat), pemindai sintaks tanpa alokasi (22,7× lebih cepat), dan mesin Pele 1,34× lebih cepat.
+• Ukuran File Eksekusi 15,3% Lebih Kecil (-788,5 KB):
+  Diperkecil menjadi 4,35 MB melalui optimasi Hot/Cold, 1.107 fungsi noexcept (-41,8% .pdata), ced.lib ringkas, dan kompresi /OPT:ICF=5.
+• Pengurangan Risiko Keamanan:
+  Kebijakan mitigasi proses OS (PreferSystem32Images & DisableExtensionPoints), penghentian saat kerusakan heap, perlindungan anti-ReDoS regex, dan isolasi vcpkg.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.41
-🎯 100% kompatibilní C++ engine Pele, zrychlení až 319× a vícevrstvé zabezpečení
+        "releaseNotes": """Poznámky k verzi miu v1.0.42
+⚡ Až 605× rychlejší hledání a nahrazování, o 15,3 % menší EXE a ochrana procesů OS
 
-• 100% kompatibilní nativní C++ engine diagramů Pele (522/522 testů shodných bajt po bajtu):
-  Kompletní port 1:1 do C++17 všech 33 typů diagramů, 55 tvarů uzlů, rozvrhovacích algoritmů a blokových šipek — generuje SVG identické s pele.run 100% offline s podporou LaTeX vzorců.
-• Masivní zrychlení náhledu a jádra editoru (až 319× rychlejší):
-  Memoizace Mermaid/MathML a rozdílové aktualizace DOM (náhled až 9,8× rychlejší), tabulka UTF-16 O(1) a mezipaměť Direct2D (až 282× rychlejší), přírůstková aktualizace řádků (až 319× rychlejší) a SIMD hledání závorek.
-• Vícevrstvé posílení bezpečnosti:
-  Zabezpečení WebView2 a přísná politika CSP, sanitizace SVG/Markdown/MathML, ochrana proti podvržení DLL, výhradní zamykání souborů a ochrana CFG + CET Shadow Stack.""",
+• Obrovské zrychlení hledání, nahrazování a zvýrazňování syntaxe:
+  AVX2 SIMD hledání zrychluje dopředné hledání 245× a zpětné 605×; lineární Nahradit vše O(N+M) (323× rychlejší), bezalokační skener syntaxe (22,7× rychlejší) a 1,34× rychlejší engine Pele.
+• O 15,3 % menší spustitelný soubor (-788,5 KB):
+  Zmenšeno na 4,35 MB díky optimalizaci Hot/Cold, 1 107 funkcím noexcept (-41,8 % .pdata), kompaktní ced.lib a /OPT:ICF=5.
+• Snížení bezpečnostních rizik:
+  Zásady ochrany procesů OS (PreferSystem32Images a DisableExtensionPoints), ukončení při poškození haldy, ochrana proti ReDoS u regulárních výrazů a izolace vcpkg.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.41
-🎯 100 % Pele-kompatibel C++-diagrammotor, upp till 319× snabbare & flerskiktat säkerhetsskydd
+        "releaseNotes": """Versionsinformation för miu v1.0.42
+⚡ Upp till 605× snabbare sök/ersätt, 15,3 % mindre EXE & OS-processkydd
 
-• 100 % kompatibel C++-diagrammotor med officiella Pele (522/522 tester identiska byte för byte):
-  Fullständig 1:1 C++17-portning av alla 33 diagramtyper, 55 nodformer, layoutmotorer och blockpilar — ger exakt samma SVG-utdata som pele.run 100 % offline med LaTeX MathML-stöd.
-• Massiv hastighetsökning för förhandsgranskning och redigerare (upp till 319× snabbare):
-  Mermaid/MathML-memoisering och DOM-diff-uppdateringar (upp till 9,8× snabbare livevy), O(1) UTF-16-tabell & Direct2D-cache (upp till 282× snabbare), inkrementella radindexuppdateringar (upp till 319× snabbare) och SIMD-parentessökning.
-• Flerskiktad säkerhetsförstärkning:
-  Härdad WebView2 och strikt CSP, sanering av SVG/Markdown/MathML, skydd mot DLL-kapning, exklusiv fillåsning samt CFG och CET Shadow Stack.""",
+• Massiv hastighetsökning för sökning, ersättning & syntaxmarkering:
+  AVX2 SIMD-sökning gör framåtsökning 245× snabbare och bakåtsökning 605× snabbare; linjär O(N+M) Ersätt alla (323× snabbare), syntaxskanner utan allokeringar (22,7× snabbare) och 1,34× snabbare Pele-motor.
+• 15,3 % mindre körbar fil (-788,5 KB):
+  Kryisen till 4,35 MB via Hot/Cold-optimering, 1 107 noexcept-funktioner (-41,8 % .pdata), kompakt ced.lib och /OPT:ICF=5.
+• Minskad säkerhetsrisk:
+  OS-processkyddspolicyer (PreferSystem32Images & DisableExtensionPoints), omedelbart avslut vid heap-korruption, ReDoS-skydd för regex och vcpkg-isolering.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.41
-🎯 เอนจินแผนภาพ C++ ที่เข้ากันได้กับ Pele ต้นฉบับ 100%, เร็วขึ้นสูงสุด 319 เท่า และยกระดับความปลอดภัยหลายชั้น
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.42
+⚡ ค้นหาและแทนที่เร็วขึ้นสูงสุด 605 เท่า, ขนาด EXE เล็กลง 15.3% และเสริมความปลอดภัยระดับโปรเซส OS
 
-• เอนจินแผนภาพ C++ ที่เข้ากันได้กับ Pele ต้นฉบับ 100% (ตรงกันทุกไบต์ 522/522 ชุดทดสอบ):
-  พอร์ตโค้ด 1:1 สู่ C++17 สำหรับแผนภาพทั้ง 33 รูปแบบ, รูปทรงโหนด 55 แบบ, อัลกอริทึมจัดวาง และลูกศรบล็อก ให้ผลลัพธ์ SVG เหมือน pele.run ทุกประการโดยทำงานออฟไลน์ 100% พร้อมรองรับสมการ LaTeX
-• เร่งความเร็วพรีวิวและแกนหลักของเอดิเตอร์ครั้งใหญ่ (เร็วขึ้นสูงสุด 319 เท่า):
-  เพิ่มแคช Mermaid/MathML และอัปเดต DOM เฉพาะส่วนที่เปลี่ยน (พรีวิวเร็วขึ้น 9.8 เท่า), ตาราง UTF-16 แบบ O(1) และแคช Direct2D (เร็วขึ้น 282 เท่า), อัปเดตดัชนีบรรทัดแบบส่วนเพิ่ม (เร็วขึ้น 319 เท่า) และค้นหาวงเล็บด้วย SIMD
-• การป้องกันความปลอดภัยหลายชั้น:
-  ยกระดับความเข้มงวดของ WebView2 และ CSP, คัดกรองความปลอดภัย SVG/Markdown/MathML, ป้องกันการปลอมแปลง DLL, ล็อกไฟล์ชั่วคราวแบบเอกสิทธิ์ และเปิดใช้งาน CFG + CET Shadow Stack""",
+• เร่งความเร็วการค้นหา แทนที่ทั้งหมด และการเน้นไวยากรณ์:
+  การค้นหา AVX2 SIMD ช่วยให้ค้นหาไปข้างหน้าเร็วขึ้น 245 เท่า และย้อนกลับเร็วขึ้น 605 เท่า; แทนที่ทั้งหมดแบบเชิงเส้น O(N+M) (เร็วขึ้น 323 เท่า), ตัวสแกนไวยากรณ์แบบไม่จองหน่วยความจำเพิ่ม (เร็วขึ้น 22.7 เท่า) และเอนจิน Pele เร็วขึ้น 1.34 เท่า
+• ลดขนาดไฟล์ EXE ลง 15.3% (-788.5 KB):
+  ลดขนาดเหลือ 4.35 MB ด้วยการแยกปรับแต่ง Hot/Cold, ระบุ noexcept 1,107 ฟังก์ชัน (-41.8% .pdata), คอมไพล์ ced.lib ใหม่ให้กะทัดรัด และบีบอัดด้วย /OPT:ICF=5
+• ลดความเสี่ยงด้านความปลอดภัย:
+  เปิดใช้นโยบายป้องกันโปรเซสของ OS (PreferSystem32Images และ DisableExtensionPoints), ยุติทันทีเมื่อฮีปเสียหาย, ป้องกัน ReDoS ของ Regex และแยกการลิงก์อัตโนมัติของ vcpkg""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.41 रिलीज़ नोट्स
-🎯 100% Pele-संगत C++ डायग्राम इंजन, 319 गुना तक तेज़ प्रदर्शन और बहु-स्तरीय सुरक्षा
+        "releaseNotes": """miu v1.0.42 रिलीज़ नोट्स
+⚡ 605 गुना तक तेज़ खोज/बदलाव, 15.3% छोटा EXE आकार और OS प्रोसेस सुरक्षा सुदृढ़ीकरण
 
-• मूल Pele के साथ 100% संगत C++ डायग्राम इंजन (522/522 आधिकारिक परीक्षण बाइट-दर-बाइट समान):
-  सभी 33 डायग्राम प्रकारों, 55 नोड आकृतियों, लेआउट एल्गोरिदम और ब्लॉक तीरों का 1:1 C++17 पोर्ट — LaTeX गणित समर्थन के साथ 100% ऑफ़लाइन रहते हुए pele.run के समान सटीक SVG आउटपुट देता है।
-• प्रीव्यू और एडिटर कोर में भारी गति वृद्धि (319 गुना तक तेज़):
-  Mermaid/MathML मेमोइज़ेशन और DOM डिफ़ अपडेट (9.8× तेज़ लाइव प्रीव्यू), O(1) UTF-16 ऑफ़सेट मैप और Direct2D कैश (282× तेज़), इंक्रीमेंटल लाइन इंडेक्स अपडेट (319× तेज़) और SIMD ब्रैकेट मैचिंग।
-• बहु-स्तरीय सुरक्षा सुदृढ़ीकरण:
-  कठोर WebView2 और सख्त CSP नीतियां, SVG/Markdown/MathML सैनिटाइजेशन, DLL हाइजैकिंग सुरक्षा, विशेष फ़ाइल लॉकिंग और CFG + CET Shadow Stack सुरक्षा।""",
+• खोज, सभी बदलें और सिंटैक्स हाइलाइटिंग में भारी गति वृद्धि:
+  AVX2 SIMD खोज से फॉरवर्ड सर्च 245× और बैकवर्ड सर्च 605× तेज़; O(N+M) लीनियर Replace All (323× तेज़), ज़ीरो-एलोकेशन सिंटैक्स स्कैनर (22.7× तेज़) और 1.34× तेज़ Pele इंजन।
+• EXE आकार में 15.3% की कमी (-788.5 KB):
+  Hot/Cold ऑप्टिमाइज़ेशन, 1,107 noexcept फ़ंक्शन (-41.8% .pdata), कॉम्पैक्ट ced.lib और /OPT:ICF=5 द्वारा आकार घटाकर 4.35 MB किया गया।
+• सुरक्षा जोखिम में कमी:
+  OS प्रोसेस मिटिगेशन नीतियां (PreferSystem32Images और DisableExtensionPoints), हीप करप्शन पर तुरंत समाप्ति, रेगेक्स ReDoS सुरक्षा गार्ड और vcpkg आइसोलेशन।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.41
-🎯 Motor C++ 100% compatibil cu Pele, accelerare de până la 319× și securitate multistrat
+        "releaseNotes": """Note de lansare miu v1.0.42
+⚡ Căutare și înlocuire de până la 605× mai rapide, EXE mai mic cu 15,3% și protecție OS
 
-• Motor de diagrame C++ 100% compatibil cu Pele oficial (522/522 teste identice octet cu octet):
-  Portare C++17 1:1 a tuturor celor 33 de tipuri de diagrame, 55 de forme, algoritmi de așezare în pagină și săgeți bloc — generând SVG identic cu pele.run, 100% offline, cu suport LaTeX MathML.
-• Accelerare masivă pentru previzualizare și nucleul editorului (de până la 319× mai rapid):
-  Memoizare Mermaid/MathML și actualizare diferențială DOM (previzualizare de 9,8× mai rapidă), mapare UTF-16 O(1) și cache Direct2D (de 282× mai rapid), actualizare incrementală a rândurilor (de 319× mai rapidă) și căutare SIMD a parantezelor.
-• Securitate multistrat consolidată:
-  Politici WebView2 și CSP stricte, sanitizare SVG/Markdown/MathML, protecție împotriva deturnării DLL, blocare exclusivă a fișierelor și protecții CFG + CET Shadow Stack.""",
+• Accelerare masivă pentru căutare, înlocuire și evidențierea sintaxei:
+  Căutare SIMD AVX2 (de 245× mai rapidă înainte, de 605× înapoi), Înlocuire totală liniară O(N+M) (de 323× mai rapidă), scaner de sintaxă fără alocări (de 22,7× mai rapid) și motor Pele de 1,34× mai rapid.
+• Executabil mai mic cu 15,3% (-788,5 KB):
+  Redus la 4,35 MB prin optimizare Hot/Cold, 1.107 funcții noexcept (-41,8% .pdata), ced.lib compactată și /OPT:ICF=5.
+• Reducerea riscurilor de securitate:
+  Politici de protecție a proceselor OS (PreferSystem32Images și DisableExtensionPoints), oprire imediată la coruperea heap-ului, protecție anti-ReDoS pentru regex și izolare vcpkg.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.41 kiadási megjegyzések
-🎯 100%-ban Pele-kompatibilis C++ diagrammotor, akár 319× nagyobb sebesség és többrétegű biztonság
+        "releaseNotes": """miu v1.0.42 kiadási megjegyzések
+⚡ Akár 605× gyorsabb keresés és csere, 15,3%-kal kisebb EXE és OS folyamatszintű védelem
 
-• Az eredeti Pele-lel 100%-ban kompatibilis natív C++ diagrammotor (522/522 teszt bájtról bájtra azonos):
-  Mind a 33 diagramtípus, 55 alakzat, elrendezési algoritmus és blokknyíl 1:1 C++17 portja — a pele.run-nal teljesen azonos SVG-kimenetet biztosít 100% offline módban, LaTeX képlettámogatással.
-• Hatalmas gyorsulás az előnézetben és a szerkesztőmotorban (akár 319× gyorsabb):
-  Mermaid/MathML gyorsítótárazás és DOM-különbségfrissítés (9,8× gyorsabb élő előnézet), O(1) UTF-16 tábla és Direct2D gyorsítótár (282× gyorsabb), növekményes sorindex-frissítés (319× gyorsabb) és SIMD zárójelkeresés.
-• Többrétegű biztonsági megerősítés:
-  Megerősített WebView2 és szigorú CSP, SVG/Markdown/MathML szűrés, DLL-eltérítés elleni védelem, kizárólagos fájlzárolás, valamint CFG és CET Shadow Stack védelem.""",
+• Hatalmas gyorsulás a keresésben, cserében és szintaxiskiemelésben:
+  AVX2 SIMD keresés (245× gyorsabb előre, 605× hátra), O(N+M) lineáris Összes cseréje (323× gyorsabb), allokációmentes szintaxisszkenner (22,7× gyorsabb) és 1,34× gyorsabb Pele motor.
+• 15,3%-kal kisebb futtatható fájl (-788,5 KB):
+  4,35 MB-ra csökkentve Hot/Cold optimalizálással, 1107 noexcept függvénnyel (-41,8% .pdata), kompakt ced.lib-bel és /OPT:ICF=5 tömörítéssel.
+• Csökkentett biztonsági kockázatok:
+  OS folyamatvédelmi házirendek (PreferSystem32Images és DisableExtensionPoints), azonnali leállás heap-sérüléskor, regex ReDoS elleni védelem és vcpkg izoláció.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.41
-🎯 Μηχανή C++ 100% συμβατή με το Pele, επιτάχυνση έως 319× και πολυεπίπεδη ασφάλεια
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.42
+⚡ Έως 605× ταχύτερη αναζήτηση/αντικατάσταση, 15,3% μικρότερο EXE & ενίσχυση ασφάλειας διεργασιών
 
-• Εγγενής μηχανή διαγραμμάτων C++ 100% συμβατή με το επίσημο Pele (522/522 δοκιμές πανομοιότυπες byte προς byte):
-  Πλήρης μεταφορά 1:1 σε C++17 και των 33 τύπων διαγραμμάτων, 55 σχημάτων, αλγορίθμων διάταξης και βελών μπλοκ — παράγει SVG πανομοιότυπο με το pele.run 100% εκτός σύνδεσης με υποστήριξη LaTeX MathML.
-• Τεράστια επιτάχυνση προεπισκόπησης και πυρήνα επεξεργαστή (έως 319× ταχύτερα):
-  Απομνημόνευση Mermaid/MathML και διαφορική ενημέρωση DOM (προεπισκόπηση 9,8× ταχύτερη), πίνακας UTF-16 O(1) & κρυφή μνήμη Direct2D (282× ταχύτερα), αυξητική ενημέρωση γραμμών (319× ταχύτερα) και αναζήτηση παρενθέσεων SIMD.
-• Πολυεπίπεδη θωράκιση ασφαλείας:
-  Ενίσχυση WebView2 και αυστηρό CSP, εξυγίανση SVG/Markdown/MathML, προστασία από DLL hijacking, αποκλειστικό κλείδωμα αρχείων και προστασία CFG + CET Shadow Stack.""",
+• Τεράστια επιτάχυνση σε αναζήτηση, αντικατάσταση και επισήμανση σύνταξης:
+  Αναζήτηση SIMD AVX2 (245× ταχύτερη προς τα εμπρός, 605× προς τα πίσω), γραμμική Αντικατάσταση όλων O(N+M) (323× ταχύτερη), σαρωτής σύνταξης μηδενικών δεσμεύσεων (22,7× ταχύτερος) και 1,34× ταχύτερη μηχανή Pele.
+• 15,3% μικρότερο εκτελέσιμο αρχείο (-788,5 KB):
+  Μειώθηκε σε 4,35 MB μέσω βελτιστοποίησης Hot/Cold, 1.107 συναρτήσεων noexcept (-41,8% .pdata), ανακατασκευής ced.lib και /OPT:ICF=5.
+• Μείωση κινδύνων ασφαλείας:
+  Πολιτικές προστασίας διεργασιών OS (PreferSystem32Images & DisableExtensionPoints), άμεσος τερματισμός σε καταστροφή σωρού, προστασία ReDoS για regex και απομόνωση vcpkg.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.41
-🎯 100 % Pele-kompatibel C++-diagrammotor, op til 319× hurtigere & flerlaget sikkerhed
+        "releaseNotes": """Udgivelsesnoter for miu v1.0.42
+⚡ Op til 605× hurtigere søg/erstat, 15,3 % mindre EXE & OS-procesbeskyttelse
 
-• 100 % kompatibel C++-diagrammotor med officielle Pele (522/522 tests identiske byte for byte):
-  Fuld 1:1 C++17-portering af alle 33 diagramtyper, 55 figurformer, layout-algoritmer og blokpile — leverer nøjagtig samme SVG-output som pele.run 100 % offline med LaTeX MathML-understøttelse.
-• Massiv hastighedsforøgelse i forhåndsvisning og editor-kerne (op til 319× hurtigere):
-  Mermaid/MathML-memoisering og DOM-diff-opdatering (op til 9,8× hurtigere live-visning), O(1) UTF-16-tabel og Direct2D-cache (op til 282× hurtigere), inkrementel linjeindeksopdatering (op til 319× hurtigere) samt SIMD-parentessøgning.
-• Flerlaget sikkerhedsforstærkning:
-  Hærdet WebView2 og striks CSP, SVG/Markdown/MathML-rensning, beskyttelse mod DLL-kapring, eksklusiv fillåsning samt CFG og CET Shadow Stack.""",
+• Massiv hastighedsforøgelse i søgning, erstatning og syntaksfremhævning:
+  AVX2 SIMD-søgning gør fremadrettet søgning 245× hurtigere og bagudrettet søgning 605× hurtigere; lineær O(N+M) Erstat alle (323× hurtigere), syntaksscanner uden allokeringer (22,7× hurtigere) og 1,34× hurtigere Pele-motor.
+• 15,3 % mindre eksekverbar fil (-788,5 KB):
+  Reduceret til 4,35 MB via Hot/Cold-optimering, 1.107 noexcept-funktioner (-41,8 % .pdata), kompakt ced.lib og /OPT:ICF=5.
+• Reduceret sikkerhedsrisiko:
+  OS-procesbeskyttelsespolitikker (PreferSystem32Images & DisableExtensionPoints), øjeblikkelig afslutning ved heap-korruption, regex ReDoS-beskyttelse og vcpkg-isolering.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.41 julkaisutiedot
-🎯 100 % Pele-yhteensopiva C++-kaaviomoottori, jopa 319× nopeampi suorituskyky ja monikerroksinen tietoturva
+        "releaseNotes": """miu v1.0.42 julkaisutiedot
+⚡ Jopa 605× nopeampi haku ja korvaus, 15,3 % pienempi EXE ja käyttöjärjestelmätason prosessisuojaus
 
-• 100 % virallisen Pelen kanssa yhteensopiva C++-kaaviomoottori (522/522 testiä tavulleen identtisiä):
-  Täydellinen 1:1 C++17-käännös kaikista 33 kaaviotyypistä, 55 muodosta, asettelualgoritmeista ja lohkonuolista — tuottaa täsmälleen saman SVG-tulosteen kuin pele.run 100 % offline-tilassa LaTeX MathML -tuella.
-• Huima nopeutus esikatseluun ja editorin ytimeen (jopa 319× nopeampi):
-  Mermaid/MathML-välimuisti ja DOM-eropäivitys (jopa 9,8× nopeampi esikatselu), O(1) UTF-16-taulukko ja Direct2D-välimuisti (jopa 282× nopeampi), inkrementaalinen rivi-indeksin päivitys (jopa 319× nopeampi) sekä SIMD-sulkumerkkihaku.
-• Monikerroksinen tietoturvavahvistus:
-  Kovennettu WebView2 ja tiukka CSP, SVG/Markdown/MathML-suodatus, DLL-kaappaussuoja, tiedostojen yksinoikeuslukitus sekä CFG- ja CET Shadow Stack -suojaus.""",
+• Huima nopeutus hakuun, korvaukseen ja syntaksikorostukseen:
+  AVX2 SIMD -haku nopeuttaa eteenpäin hakua 245× ja taaksepäin hakua 605×; lineaarinen O(N+M) Korvaa kaikki (323× nopeampi), muistivaraukseton syntaksiskanneri (22,7× nopeampi) ja 1,34× nopeampi Pele-moottori.
+• 15,3 % pienempi suoritettava tiedosto (-788,5 kt):
+  Pienennetty 4,35 megatavuun Hot/Cold-optimoinnilla, 1 107 noexcept-funktiolla (-41,8 % .pdata), tiiviillä ced.lib-kirjastolla ja /OPT:ICF=5-pakkauksella.
+• Pienemmät tietoturvariskit:
+  Käyttöjärjestelmän prosessisuojauskäytännöt (PreferSystem32Images & DisableExtensionPoints), välitön lopetus keon korruptoituessa, regex ReDoS -suojaus ja vcpkg-eristys.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.41
-🎯 100 % Pele-kompatibel C++-diagrammotor, opptil 319× raskere og flerlags sikkerhet
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.42
+⚡ Opptil 605× raskere søk/erstatt, 15,3 % mindre EXE og OS-prosessbeskyttelse
 
-• 100 % kompatibel C++-diagrammotor med offisielle Pele (522/522 tester identiske byte for byte):
-  Fullstendig 1:1 C++17-portering av alle 33 diagramtyper, 55 nodeformer, layoutmotorer og blokkpiler — gir nøyaktig samme SVG-utdata som pele.run 100 % offline med LaTeX MathML-støtte.
-• Kraftig hastighetsøkning for forhåndsvisning og redigeringskjerne (opptil 319× raskere):
-  Mermaid/MathML-memoisering og DOM-diff-oppdatering (opptil 9,8× raskere sanntidsvisning), O(1) UTF-16-tabell og Direct2D-hurtigbuffer (opptil 282× raskere), inkrementell linjeindeksoppdatering (opptil 319× raskere) og SIMD-parentessøk.
-• Flerlags sikkerhetsforsterkning:
-  Herdet WebView2 og streng CSP, rensing av SVG/Markdown/MathML, beskyttelse mot DLL-kapring, eksklusiv fillåsing samt CFG og CET Shadow Stack.""",
+• Kraftig hastighetsøkning for søk, erstatning og syntaksutheving:
+  AVX2 SIMD-søk gjør fremoversøk 245× raskere og bakoversøk 605× raskere; lineær O(N+M) Erstatt alle (323× raskere), syntaksskanner uten allokeringer (22,7× raskere) og 1,34× raskere Pele-motor.
+• 15,3 % mindre kjørbar fil (-788,5 KB):
+  Redusert til 4,35 MB via Hot/Cold-optimering, 1 107 noexcept-funksjoner (-41,8 % .pdata), kompakt ced.lib og /OPT:ICF=5.
+• Redusert sikkerhetsrisiko:
+  OS-prosessbeskyttelsespolicyer (PreferSystem32Images og DisableExtensionPoints), umiddelbar avslutning ved heap-korrupsjon, regex ReDoS-beskyttelse og vcpkg-isolasjon.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.41
-🎯 Enjin Rajah C++ 100% Serasi Pele, Kelajuan Sehingga 319× Lebih Pantas & Keselamatan Berlapis
+        "releaseNotes": """Nota Keluaran miu v1.0.42
+⚡ Carian & Gantian Sehingga 605× Lebih Pantas, Saiz EXE 15.3% Lebih Kecil & Perlindungan Proses OS
 
-• Enjin Rajah C++ 100% Serasi dengan Pele Rasmi (522/522 Ujian Korpus Sepadan Bait-demi-Bait):
-  Port C++17 1:1 lengkap bagi kesemua 33 jenis rajah, 55 bentuk nod, enjin susun atur dan anak panah blok — menghasilkan output SVG yang sepadan sepenuhnya dengan pele.run secara 100% luar talian dengan sokongan formula LaTeX.
-• Pecutan Hebat bagi Pratonton & Teras Penyunting (Sehingga 319× Lebih Pantas):
-  Memoisasi Mermaid/MathML dan kemas kini diff DOM (pratonton 9.8× lebih pantas), jadual UTF-16 O(1) & cache Direct2D (282× lebih pantas), kemas kini indeks baris tokokan (319× lebih pantas) serta padanan kurungan SIMD.
-• Pengukuhan Keselamatan Berlapis:
-  Tetapan WebView2 & dasar CSP yang ketat, sanitasi SVG/Markdown/MathML, perlindungan rampasan DLL, penguncian fail eksklusif serta perlindungan CFG & CET Shadow Stack.""",
+• Pecutan Hebat untuk Carian, Ganti Semua & Penyerlahan Sintaks:
+  Carian SIMD AVX2 mempercepatkan carian ke hadapan 245× dan ke belakang 605×; Ganti Semua linear O(N+M) (323× lebih pantas), pengimbas sintaks sifar-peruntukan (22.7× lebih pantas) dan enjin Pele 1.34× lebih pantas.
+• Fail Boleh Laku 15.3% Lebih Kecil (-788.5 KB):
+  Dikecilkan kepada 4.35 MB melalui pengoptimuman Hot/Cold, 1,107 fungsi noexcept (-41.8% .pdata), ced.lib padat dan pemampatan /OPT:ICF=5.
+• Pengurangan Risiko Keselamatan:
+  Dasar mitigasi proses OS (PreferSystem32Images & DisableExtensionPoints), penamatan serta-merta apabila heap rosak, perlindungan anti-ReDoS regex dan pengasingan vcpkg.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

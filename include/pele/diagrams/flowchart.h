@@ -5,11 +5,11 @@
 namespace Pele {
 namespace Flowchart {
 
-inline double jsRound(double x) {
+inline double jsRound(double x) noexcept {
     return std::floor(x + 0.5);
 }
 
-inline bool objectIs(double a, double b) {
+inline bool objectIs(double a, double b) noexcept {
     if (std::isnan(a) && std::isnan(b)) return true;
     return a == b && std::signbit(a) == std::signbit(b);
 }
@@ -77,7 +77,7 @@ struct LayeredResult {
     int declared = 0;
 };
 
-inline LNode lnode(double w, double h, LKind kind = LKind::Node) {
+inline LNode lnode(double w, double h, LKind kind = LKind::Node) noexcept {
     LNode n;
     n.w = w;
     n.h = h;
@@ -85,7 +85,7 @@ inline LNode lnode(double w, double h, LKind kind = LKind::Node) {
     return n;
 }
 
-inline LEdge ledge(int tail, int head, int minlen = 1, double labelW = 0.0, double labelH = 0.0) {
+inline LEdge ledge(int tail, int head, int minlen = 1, double labelW = 0.0, double labelH = 0.0) noexcept {
     LEdge e;
     e.tail = tail;
     e.head = head;
@@ -125,11 +125,11 @@ enum EndKind : uint8_t {
     EndArrives = 2
 };
 
-inline bool isDummy(uint8_t kind) {
+inline bool isDummy(uint8_t kind) noexcept {
     return kind == static_cast<uint8_t>(LKind::Dummy) || kind == static_cast<uint8_t>(LKind::Label);
 }
 
-inline void sortRange(std::vector<int>& list, int from, int to, const std::vector<int>& key) {
+inline void sortRange(std::vector<int>& list, int from, int to, const std::vector<int>& key) noexcept {
     for (int i = from + 1; i < to; i++) {
         int item = list[i];
         int k = key[item];
@@ -142,7 +142,7 @@ inline void sortRange(std::vector<int>& list, int from, int to, const std::vecto
     }
 }
 
-inline void sortByBary(std::vector<int>& list, int count, const std::vector<double>& bary, const std::vector<int>& pos, bool right, std::vector<int>& spare) {
+inline void sortByBary(std::vector<int>& list, int count, const std::vector<double>& bary, const std::vector<int>& pos, bool right, std::vector<int>& spare) noexcept {
     auto before = [&](int a, int b) -> bool {
         return bary[a] < bary[b] || (bary[a] == bary[b] && (right ? pos[a] > pos[b] : pos[a] < pos[b]));
     };
@@ -211,19 +211,19 @@ struct Graph {
     std::vector<int> groupParent;
 };
 
-inline double halfRoom(const Graph& g, const LayeredOptions& opt, int v) {
+inline double halfRoom(const Graph& g, const LayeredOptions& opt, int v) noexcept {
     return g.W[v] / 2.0 + (g.KIND[v] == static_cast<uint8_t>(LKind::Node) ? opt.nodeSep : opt.edgeSep) / 2.0;
 }
 
 } // namespace detail
 
-inline double ease(double across, double along) {
+inline double ease(double across, double along) noexcept {
     double den = std::abs(across);
     if (den == 0.0) den = 1.0;
     return std::max(0.25, std::min(0.5, (4.0 * std::abs(along)) / den));
 }
 
-inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) {
+inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) noexcept {
     int n = static_cast<int>(nodes.size());
     int m = static_cast<int>(edges.size());
     std::vector<int> start(n + 1, 0);
@@ -263,7 +263,7 @@ inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) {
     }
 }
 
-inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step) {
+inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step) noexcept {
     int n = static_cast<int>(nodes.size());
     int m = static_cast<int>(edges.size());
     std::vector<int> from(m), to(m), len(m);
@@ -355,7 +355,7 @@ inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step)
 
 namespace detail {
 
-inline double sideEnds(const Graph& g, int v, int side, double span, const std::vector<uint8_t>& kinds, std::vector<int>& ids, std::vector<double>& room) {
+inline double sideEnds(const Graph& g, int v, int side, double span, const std::vector<uint8_t>& kinds, std::vector<int>& ids, std::vector<double>& room) noexcept {
     const auto& start = side == 0 ? g.predStart : g.succStart;
     const auto& list = side == 0 ? g.predE : g.succE;
     const auto& other = side == 0 ? g.EF : g.ET;
@@ -386,7 +386,7 @@ inline double sideEnds(const Graph& g, int v, int side, double span, const std::
     return total * pitch;
 }
 
-inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) {
+inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) noexcept {
     for (int v = 0; v < g.real; v++) {
         double span = std::min(nodes[v].span, g.W[v]);
         if (span <= 0.0 || nodes[v].kind != LKind::Node) continue;
@@ -405,7 +405,7 @@ inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<
     }
 }
 
-inline int follow(const Graph& g, const std::vector<uint8_t>* empty, int e, int side) {
+inline int follow(const Graph& g, const std::vector<uint8_t>* empty, int e, int side) noexcept {
     if (!empty) return e;
     for (int hops = 0; hops < 100000; hops++) {
         int u = side == 0 ? g.EF[e] : g.ET[e];
@@ -415,7 +415,7 @@ inline int follow(const Graph& g, const std::vector<uint8_t>* empty, int e, int 
     return e;
 }
 
-inline std::pair<std::vector<int>, std::vector<int>> freeEnds(const Graph& g, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) {
+inline std::pair<std::vector<int>, std::vector<int>> freeEnds(const Graph& g, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) noexcept {
     std::pair<std::vector<int>, std::vector<int>> free{std::vector<int>(g.n, 0), std::vector<int>(g.n, 0)};
     for (size_t e = 0; e < g.EF.size(); e++) {
         if (ETK[e] != EndHeld) free.first[g.ET[e]]++;
@@ -424,7 +424,7 @@ inline std::pair<std::vector<int>, std::vector<int>> freeEnds(const Graph& g, co
     return free;
 }
 
-inline void alignLabels(const Graph& g, const std::vector<LNode>& nodes, std::vector<double>& xs, const std::pair<std::vector<int>, std::vector<int>>& free, const LayeredOptions& opt, const std::vector<uint8_t>* empty) {
+inline void alignLabels(const Graph& g, const std::vector<LNode>& nodes, std::vector<double>& xs, const std::pair<std::vector<int>, std::vector<int>>& free, const LayeredOptions& opt, const std::vector<uint8_t>* empty) noexcept {
     double sep = opt.edgeSep;
     auto placed = [&](int v) -> bool {
         return g.KIND[v] == static_cast<uint8_t>(LKind::Label) || (g.KIND[v] == static_cast<uint8_t>(LKind::Dummy) && !(empty && (*empty)[g.RANK[v]] == 1));
@@ -487,7 +487,7 @@ inline void alignLabels(const Graph& g, const std::vector<LNode>& nodes, std::ve
     }
 }
 
-inline void settle(Graph& g, const std::vector<LNode>& nodes, const std::vector<double>& xs, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK, const std::pair<std::vector<int>, std::vector<int>>& free, const std::vector<uint8_t>* empty) {
+inline void settle(Graph& g, const std::vector<LNode>& nodes, const std::vector<double>& xs, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK, const std::pair<std::vector<int>, std::vector<int>>& free, const std::vector<uint8_t>* empty) noexcept {
     auto wanted = [&](int e, int side, int v, double span, bool again) -> double {
         int fv = side == 0 ? free.first[v] : free.second[v];
         if (fv < 2) return 0.0;
@@ -593,7 +593,7 @@ inline void settle(Graph& g, const std::vector<LNode>& nodes, const std::vector<
     }
 }
 
-inline void snap(const Graph& g, std::vector<double>& xs, const std::vector<uint8_t>* empty, const LayeredOptions& opt) {
+inline void snap(const Graph& g, std::vector<double>& xs, const std::vector<uint8_t>* empty, const LayeredOptions& opt) noexcept {
     auto passed = [&](int u) -> bool {
         return empty && g.KIND[u] == static_cast<uint8_t>(LKind::Dummy) && (*empty)[g.RANK[u]] == 1;
     };
@@ -672,7 +672,7 @@ inline void snap(const Graph& g, std::vector<double>& xs, const std::vector<uint
     }
 }
 
-inline bool emptyRanks(const Graph& g, std::vector<uint8_t>& empty) {
+inline bool emptyRanks(const Graph& g, std::vector<uint8_t>& empty) noexcept {
     empty.assign(g.maxRank + 1, 0);
     bool any = false;
     for (int r = 1; r < g.maxRank; r++) {
@@ -688,7 +688,7 @@ inline bool emptyRanks(const Graph& g, std::vector<uint8_t>& empty) {
     return any;
 }
 
-inline void assignTracks(Pieces& pieces, std::vector<int>& trackCount, bool curved, const std::vector<double>& room, std::vector<double>& tall) {
+inline void assignTracks(Pieces& pieces, std::vector<int>& trackCount, bool curved, const std::vector<double>& room, std::vector<double>& tall) noexcept {
     auto& from = pieces.from;
     auto& to = pieces.to;
     auto& rank = pieces.rank;
@@ -816,7 +816,7 @@ inline void assignTracks(Pieces& pieces, std::vector<int>& trackCount, bool curv
                 for (int j : after[pick]) waiting[j]--;
             }
         }
-        std::unordered_set<int> taken;
+        Pele::FlatSet<int> taken;
         std::vector<std::vector<int>> onTrack;
         int rows = 0;
         for (int at : sequence) {
@@ -903,7 +903,7 @@ inline void assignTracks(Pieces& pieces, std::vector<int>& trackCount, bool curv
         std::vector<int> far;
         for (int k : all) if (wide[k] == 1) far.push_back(k);
         lay(far);
-        std::unordered_set<int> level;
+        Pele::FlatSet<int> level;
         for (int k : far) if (levels[k] > 1) level.insert(k);
         std::vector<int> pairs = nearPairs(all);
         for (size_t p = 0; p < pairs.size(); p += 2) {
@@ -922,7 +922,7 @@ inline void assignTracks(Pieces& pieces, std::vector<int>& trackCount, bool curv
         if (level.empty()) continue;
         int crossing = 0;
         int alongside = 0;
-        std::unordered_set<int> beside;
+        Pele::FlatSet<int> beside;
         for (size_t p = 0; p < pairs.size(); p += 2) {
             int a = all[pairs[p]];
             int b = all[pairs[p + 1]];
@@ -948,7 +948,7 @@ inline void assignTracks(Pieces& pieces, std::vector<int>& trackCount, bool curv
     }
 }
 
-inline void straighten(const Graph& g, std::vector<double>& xs, const std::vector<uint8_t>& empty, const std::vector<int>& firstDummy, const std::vector<int>& span, double sep, std::vector<uint8_t>& onLine) {
+inline void straighten(const Graph& g, std::vector<double>& xs, const std::vector<uint8_t>& empty, const std::vector<int>& firstDummy, const std::vector<int>& span, double sep, std::vector<uint8_t>& onLine) noexcept {
     std::vector<double> want(xs.size(), 0.0);
     std::vector<double> from(xs.size(), 0.0);
     std::vector<double> to(xs.size(), 0.0);
@@ -1002,7 +1002,7 @@ inline void straighten(const Graph& g, std::vector<double>& xs, const std::vecto
     }
 }
 
-inline void pastLabels(const Graph& g, std::vector<double>& xs, const std::vector<int>& firstDummy, const std::vector<int>& span, double clear, std::vector<uint8_t>& onLine) {
+inline void pastLabels(const Graph& g, std::vector<double>& xs, const std::vector<int>& firstDummy, const std::vector<int>& span, double clear, std::vector<uint8_t>& onLine) noexcept {
     std::vector<uint8_t> labelled(g.maxRank + 1, 0);
     bool any = false;
     for (int r = 1; r < g.maxRank; r++) {
@@ -1048,7 +1048,7 @@ inline void pastLabels(const Graph& g, std::vector<double>& xs, const std::vecto
     }
 }
 
-inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& nodes) {
+inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& nodes) noexcept {
     int widest = 0;
     for (int r = 0; r <= g.maxRank; r++) widest = std::max(widest, g.layerStart[r + 1] - g.layerStart[r]);
     if (widest < 2) return {0, 0};
@@ -1381,7 +1381,7 @@ inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& n
     return {best, declared};
 }
 
-inline std::vector<double> position(Graph& g, const LayeredOptions& opt) {
+inline std::vector<double> position(Graph& g, const LayeredOptions& opt) noexcept {
     int segments = static_cast<int>(g.EF.size());
     std::vector<double> gap(g.n, 0.0);
     for (int i = 0; i < g.n; i++) gap[i] = halfRoom(g, opt, i);
@@ -1561,7 +1561,7 @@ inline std::vector<double> position(Graph& g, const LayeredOptions& opt) {
 
 } // namespace detail
 
-inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt) {
+inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt) noexcept {
     using namespace detail;
     int real = static_cast<int>(nodes.size());
     if (real == 0) return {0.0, 0.0, 0, 0};
@@ -1576,7 +1576,7 @@ inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edge
 
     int step = 1;
     if (m > 0) {
-        std::unordered_set<long long> seen;
+        Pele::FlatSet<long long> seen;
         for (const auto& e : edges) {
             long long a = std::min(e.tail, e.head);
             long long b = std::max(e.tail, e.head);
@@ -1782,7 +1782,7 @@ inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edge
         if (e - s < 2) return false;
         for (int i = s; i < e; i++) if (std::isnan(keyFn(order[i]))) return false;
         std::vector<int> layer(order.begin() + s, order.begin() + e);
-        std::unordered_map<int, int> index;
+        Pele::FlatMap<int, int> index;
         for (size_t i = 0; i < layer.size(); i++) index[layer[i]] = static_cast<int>(i);
         std::sort(layer.begin(), layer.end(), [&](int a, int b) {
             double ka = keyFn(a), kb = keyFn(b);
@@ -1800,7 +1800,7 @@ inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edge
         for (int r = 0; r <= maxRank; r++) {
             int s = layerStart[r], e = layerStart[r + 1];
             std::vector<int> layer(order.begin() + s, order.begin() + e);
-            std::unordered_map<int, int> index;
+            Pele::FlatMap<int, int> index;
             for (size_t i = 0; i < layer.size(); i++) index[layer[i]] = static_cast<int>(i);
             auto pinOf = [&](int v) -> int { return v < real ? nodes[v].pin : 0; };
             std::sort(layer.begin(), layer.end(), [&](int a, int b) {
@@ -2077,7 +2077,7 @@ inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edge
 // Port of src/layout/compound.ts
 // ============================================================================
 
-inline std::string direction(const std::string& dir) {
+inline std::string direction(const std::string& dir) noexcept {
     return (dir == "BT" || dir == "LR" || dir == "RL") ? dir : "TB";
 }
 
@@ -2126,7 +2126,7 @@ enum class RouteStyle : int {
     Linear = 2
 };
 
-inline RouteStyle styleOf(const LayeredOptions& opt) {
+inline RouteStyle styleOf(const LayeredOptions& opt) noexcept {
     return opt.tracks ? RouteStyle::Stepped : opt.straight ? RouteStyle::Linear : RouteStyle::Curved;
 }
 
@@ -2155,7 +2155,7 @@ struct Level {
     std::vector<int> items;
     std::vector<LevelEdge> edges;
     std::vector<PortEdge> ports;
-    std::unordered_map<int, int> portIdxOf; // key: ei * 2 + (out ? 0 : 1) -> index in ports
+    Pele::FlatMap<int, int> portIdxOf; // key: ei * 2 + (out ? 0 : 1) -> index in ports
     std::unordered_map<int, std::vector<double>> routes;
     double x = 0.0;
     inline PortEdge& getPort(int key) { return ports[portIdxOf.at(key)]; }
@@ -2182,7 +2182,7 @@ struct Snapshot {
     CompoundResult total;
 };
 
-inline Snapshot snapshot(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, const std::vector<Level>& levels, CompoundResult total) {
+inline Snapshot snapshot(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, const std::vector<Level>& levels, CompoundResult total) noexcept {
     Snapshot s;
     s.nodes.reserve(nodes.size() * 4);
     for (const auto& c : nodes) {
@@ -2210,7 +2210,7 @@ inline Snapshot snapshot(const std::vector<CNode>& nodes, const std::vector<CEdg
     return s;
 }
 
-inline CompoundResult restore(const Snapshot& s, std::vector<CNode>& nodes, std::vector<CEdge>& edges, std::vector<Level>& levels) {
+inline CompoundResult restore(const Snapshot& s, std::vector<CNode>& nodes, std::vector<CEdge>& edges, std::vector<Level>& levels) noexcept {
     for (size_t i = 0; i < nodes.size(); i++) {
         nodes[i].x = s.nodes[4 * i];
         nodes[i].y = s.nodes[4 * i + 1];
@@ -2234,17 +2234,17 @@ inline CompoundResult restore(const Snapshot& s, std::vector<CNode>& nodes, std:
     return s.total;
 }
 
-inline Side startSide(const std::string& dir) {
+inline Side startSide(const std::string& dir) noexcept {
     return dir == "TB" ? Side::Top : dir == "BT" ? Side::Bottom : dir == "LR" ? Side::Left : Side::Right;
 }
 
-inline Side opposite(Side side) {
+inline Side opposite(Side side) noexcept {
     return static_cast<Side>((static_cast<int>(side) + 2) & 3);
 }
 
 } // namespace detail
 
-inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, RouteStyle style = RouteStyle::Curved) {
+inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, RouteStyle style = RouteStyle::Curved) noexcept {
     using namespace detail;
     size_t size = 0;
     for (const auto& e : edges) {
@@ -2485,9 +2485,9 @@ inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEd
     return total;
 }
 
-inline void inheritCrossedDirections(std::vector<CNode>& nodes, const std::vector<std::pair<int, int>>& ends) {
-    auto ancestors = [&](int i) -> std::unordered_set<int> {
-        std::unordered_set<int> set;
+inline void inheritCrossedDirections(std::vector<CNode>& nodes, const std::vector<std::pair<int, int>>& ends) noexcept {
+    auto ancestors = [&](int i) -> Pele::FlatSet<int> {
+        Pele::FlatSet<int> set;
         for (int p = nodes[i].parent; p >= 0 && !set.count(p); p = nodes[p].parent) set.insert(p);
         return set;
     };
@@ -2500,7 +2500,7 @@ inline void inheritCrossedDirections(std::vector<CNode>& nodes, const std::vecto
     }
 }
 
-inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, double ox, double oy) {
+inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, double ox, double oy) noexcept {
     for (auto& c : nodes) {
         c.x += ox;
         c.y += oy;
@@ -2515,7 +2515,7 @@ inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, do
     }
 }
 
-inline CNode cnode(double w, double h, int parent = -1) {
+inline CNode cnode(double w, double h, int parent = -1) noexcept {
     CNode c;
     c.w = w;
     c.h = h;
@@ -2523,11 +2523,11 @@ inline CNode cnode(double w, double h, int parent = -1) {
     return c;
 }
 
-inline CompoundResult compoundLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, const std::string& rootDir, const LayeredOptions& opt) {
+inline CompoundResult compoundLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, const std::string& rootDir, const LayeredOptions& opt) noexcept {
     using namespace detail;
     int n = static_cast<int>(nodes.size());
     std::vector<Level> order;
-    std::unordered_map<int, int> levelIdxOf; // level.id -> index in order
+    Pele::FlatMap<int, int> levelIdxOf; // level.id -> index in order
     auto makeLevel = [&](int id, const std::string& dir) -> int {
         int idx = static_cast<int>(order.size());
         Level lv;
@@ -3145,7 +3145,7 @@ inline CompoundResult compoundLayout(std::vector<CNode>& nodes, std::vector<CEdg
 // Port of SVG, Cluster, Edge, URL, and Fit-Width helpers for Flowchart
 // ============================================================================
 
-inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) {
+inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) noexcept {
     double dx = route[at] - c.x;
     double dy = route[at + 1] - c.y;
     if (std::abs(std::abs(dy) - c.h / 2.0) < 0.5) return dy < 0.0 ? 0 : 2;
@@ -3154,7 +3154,7 @@ inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) 
 }
 
 template <typename ViewT>
-inline void insetRoute(std::vector<double>& route, size_t at, const ViewT& view, const CNode& c) {
+inline void insetRoute(std::vector<double>& route, size_t at, const ViewT& view, const CNode& c) noexcept {
     if (c.isGroup) return;
     int side = endSide(route, at, c);
     if (side == 0 || side == 2) {
@@ -3168,14 +3168,14 @@ inline void insetRoute(std::vector<double>& route, size_t at, const ViewT& view,
 
 using Crossings = std::unordered_map<int, std::vector<double>>;
 
-inline void markCrossings(Crossings& crossings, const std::vector<double>& route) {
+inline void markCrossings(Crossings& crossings, const std::vector<double>& route) noexcept {
     for (size_t k = 0; k < route.size(); k += 3) {
         int key = static_cast<int>(std::round(route[k + 1]));
         crossings[key].push_back(route[k]);
     }
 }
 
-inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) {
+inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) noexcept {
     if (width == 0.0) return c.x;
     double top = c.y - c.h / 2.0;
     double left = c.x - c.w / 2.0;
@@ -3200,7 +3200,7 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
     return best;
 }
 
-inline bool titleCrossed(const CNode& c, double width, double x, const Crossings& crossings) {
+inline bool titleCrossed(const CNode& c, double width, double x, const Crossings& crossings) noexcept {
     if (width <= 0.0) return false;
     auto it = crossings.find(static_cast<int>(std::round(c.y - c.h / 2.0)));
     if (it == crossings.end()) return false;
@@ -3224,11 +3224,8 @@ inline std::string struckTitle(
     int depth = 1;
     for (int p = nodes[index].parent; p >= 0 && depth < 8; p = nodes[p].parent) depth++;
     double pct = 100.0 * (1.0 - std::pow(0.5, depth));
-    std::string fill = "color-mix(in srgb,var(--_a) " + num(pct) + "%,var(--_bg))";
-    return "<g class=\"pele-cluster-title\" data-id=\"" + id + "\">" +
-           labelSvg(label, x, y, " fill=\"none\" stroke=\"" + fill + "\" stroke-width=\"5\" stroke-linejoin=\"round\"", icons) +
-           labelSvg(label, x, y, attrs, icons) +
-           "</g>";
+    std::string fill = Pele::cat({"color-mix(in srgb,var(--_a) ", num(pct), "%,var(--_bg))"});
+    return Pele::cat({"<g class=\"pele-cluster-title\" data-id=\"", id, "\">", labelSvg(label,  x,  y, Pele::cat({" fill=\"none\" stroke=\"", fill, "\" stroke-width=\"5\" stroke-linejoin=\"round\""}),  icons), labelSvg(label, x, y, attrs, icons), "</g>"});
 }
 
 inline EdgePath loopPath(
@@ -3248,8 +3245,8 @@ inline EdgePath loopPath(
     if (len == 0.0) len = 1.0;
     auto at = [&](double out, double along) -> std::string {
         return sideways
-            ? (num(c.x + along) + "," + num(c.y + h / 2.0 + out))
-            : (num(c.x + w / 2.0 + out) + "," + num(c.y + along));
+            ? Pele::cat({num(c.x + along), ",", num(c.y + h / 2.0 + out)})
+            : Pele::cat({num(c.x + w / 2.0 + out), ",", num(c.y + along)});
     };
     double tx = (reach / len) * trim;
     double ty = (spread / len) * trim;
@@ -3261,7 +3258,7 @@ inline EdgePath loopPath(
         e.labelY = c.y;
     }
     EdgePath ep;
-    ep.d = "M" + at(0.0, -spread) + "C" + at(reach, -spread * 2.0) + " " + at(reach, spread * 2.0) + " " + at(tx, spread + ty);
+    ep.d = Pele::cat({"M", at(0.0, -spread), "C", at(reach, -spread * 2.0), " ", at(reach, spread * 2.0), " ", at(tx, spread + ty)});
     ep.sx = sideways ? c.x - spread : c.x + w / 2.0;
     ep.sy = sideways ? c.y + h / 2.0 : c.y - spread;
     ep.sdx = sideways ? 0.0 : -1.0;
@@ -3273,18 +3270,18 @@ inline EdgePath loopPath(
     return ep;
 }
 
-inline double titleRoomExact(const RenderOptions& options) {
+inline double titleRoomExact(const RenderOptions& options) noexcept {
     double available = options.maxWidth;
     double pad = options.hasPadding ? options.padding : 8.0;
     return (options.hasMaxWidth && available > 0.0) ? std::max(80.0, available - 2.0 * pad) : 4000.0;
 }
 
-inline bool runsAcross(const std::string& dir) {
+inline bool runsAcross(const std::string& dir) noexcept {
     return dir == "LR" || dir == "RL";
 }
 
 template <typename DrawFn>
-inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) {
+inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) noexcept {
     Rendered across = draw(false);
     double available = options.maxWidth;
     if (!options.hasMaxWidth || !(available > 0.0) || across.width <= available) return across;
@@ -3294,7 +3291,7 @@ inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) {
 }
 
 template <typename DrawFn>
-inline Rendered tightenExact(const RenderOptions& options, DrawFn&& draw) {
+inline Rendered tightenExact(const RenderOptions& options, DrawFn&& draw) noexcept {
     Rendered loose = draw(false);
     double available = options.maxWidth;
     if (!options.hasMaxWidth || !(available > 0.0) || loose.width <= available) return loose;
@@ -3302,7 +3299,7 @@ inline Rendered tightenExact(const RenderOptions& options, DrawFn&& draw) {
     return tight.width < loose.width ? tight : loose;
 }
 
-inline bool internalLink(const std::string& name, const RenderOptions& options) {
+inline bool internalLink(const std::string& name, const RenderOptions& options) noexcept {
     std::string url = sanitizeUrl(name);
     if (url == "about:blank" || linkUrl(url, options).empty()) return false;
     std::string seen;
@@ -3323,8 +3320,8 @@ inline bool internalLink(const std::string& name, const RenderOptions& options) 
 // Port of src/diagrams/flowchart/shapes.ts
 // ============================================================================
 
-inline const std::unordered_map<std::string, std::string>& canonicalShapeMap() {
-    static const std::unordered_map<std::string, std::string> m = []() {
+inline const Pele::FlatMap<std::string, std::string>& canonicalShapeMap() noexcept {
+    static const Pele::FlatMap<std::string, std::string> m = []() {
         static const std::vector<std::vector<std::string>> SHAPES = {
             {"rect", "proc", "process", "rectangle", "squareRect"},
             {"rounded", "event", "roundedRect"},
@@ -3388,7 +3385,7 @@ inline const std::unordered_map<std::string, std::string>& canonicalShapeMap() {
             "usecaseActor", "usecaseActorHollow", "usecaseActorAwesome",
             "usecaseActorIcon", "usecaseBusiness", "usecaseEllipse", "usecaseJsonTable"
         };
-        std::unordered_map<std::string, std::string> res;
+        Pele::FlatMap<std::string, std::string> res;
         for (const auto& names : SHAPES) {
             for (const auto& name : names) res[name] = names[0];
         }
@@ -3398,11 +3395,11 @@ inline const std::unordered_map<std::string, std::string>& canonicalShapeMap() {
     return m;
 }
 
-inline bool isValidShape(const std::string& name) {
+inline bool isValidShape(const std::string& name) noexcept {
     return canonicalShapeMap().count(name) > 0;
 }
 
-inline std::string canonicalShape(const std::string& name) {
+inline std::string canonicalShape(const std::string& name) noexcept {
     if (name.empty()) return "rect";
     if (name == "square") return "rect";
     if (name == "round") return "rounded";
@@ -3529,23 +3526,23 @@ struct FlowDbOptions {
     std::string direction;
 };
 
-inline std::string flowLabelType(const std::string& type) {
+inline std::string flowLabelType(const std::string& type) noexcept {
     return (type == "markdown" || type == "string" || type == "text") ? type : "markdown";
 }
 
-inline std::string flowUnquote(const std::string& text) {
+inline std::string flowUnquote(const std::string& text) noexcept {
     return (text.size() >= 2 && text.front() == '"' && text.back() == '"')
         ? text.substr(1, text.size() - 2)
         : text;
 }
 
-inline int flowCountChar(char ch, const std::string& str) {
+inline int flowCountChar(char ch, const std::string& str) noexcept {
     int count = 0;
     for (char c : str) if (c == ch) count++;
     return count;
 }
 
-inline FlowLinkInfo destructStartLink(const std::string& raw) {
+inline FlowLinkInfo destructStartLink(const std::string& raw) noexcept {
     std::string str = trimStr(raw);
     std::string type = "arrow_open";
     if (!str.empty()) {
@@ -3573,7 +3570,7 @@ inline FlowLinkInfo destructStartLink(const std::string& raw) {
     return info;
 }
 
-inline FlowLinkInfo destructEndLink(const std::string& raw) {
+inline FlowLinkInfo destructEndLink(const std::string& raw) noexcept {
     std::string str = trimStr(raw);
     std::string line = str.empty() ? "" : str.substr(0, str.size() - 1);
     std::string type = "arrow_open";
@@ -3582,21 +3579,21 @@ inline FlowLinkInfo destructEndLink(const std::string& raw) {
             case 'x':
                 type = "arrow_cross";
                 if (str.front() == 'x') {
-                    type = "double_" + type;
+                    type = Pele::cat({"double_", type});
                     if (!line.empty()) line = line.substr(1);
                 }
                 break;
             case '>':
                 type = "arrow_point";
                 if (str.front() == '<') {
-                    type = "double_" + type;
+                    type = Pele::cat({"double_", type});
                     if (!line.empty()) line = line.substr(1);
                 }
                 break;
             case 'o':
                 type = "arrow_circle";
                 if (str.front() == 'o') {
-                    type = "double_" + type;
+                    type = Pele::cat({"double_", type});
                     if (!line.empty()) line = line.substr(1);
                 }
                 break;
@@ -3619,7 +3616,7 @@ inline FlowLinkInfo destructEndLink(const std::string& raw) {
     return info;
 }
 
-inline std::string flowSafeUrl(const std::string& rawUrl) {
+inline std::string flowSafeUrl(const std::string& rawUrl) noexcept {
     std::string u = sanitizeUrl(rawUrl);
     if (u == "about:blank") return u;
     std::string normalized = replaceAllStr(u, "\\", "/");
@@ -3650,15 +3647,15 @@ public:
     std::vector<FlowEdge> edges;
     std::vector<FlowSubgraph> subgraphs;
     std::unordered_map<std::string, FlowClassDef> classes;
-    std::unordered_map<std::string, std::string> tooltips;
+    Pele::FlatMap<std::string, std::string> tooltips;
     std::vector<std::string> defaultEdgeStyle;
     bool hasDefaultEdgeStyle = false;
     std::string defaultInterpolate;
 
-    std::unordered_map<std::string, size_t> subgraphLookup;
-    std::unordered_set<std::string> members;
-    std::unordered_map<std::string, size_t> edgeById;
-    std::unordered_map<std::string, int> pairCount;
+    Pele::FlatMap<std::string, size_t> subgraphLookup;
+    Pele::FlatSet<std::string> members;
+    Pele::FlatMap<std::string, size_t> edgeById;
+    Pele::FlatMap<std::string, int> pairCount;
     int subCount = 0;
     FlowDbOptions options;
 
@@ -3757,10 +3754,10 @@ public:
             std::string shape = v->asString();
             if (!shape.empty()) {
                 if (shape != toLowerAscii(shape) || shape.find('_') != std::string::npos) {
-                    throw PeleError("No such shape: " + shape + ". Shape names should be lowercase.", "semantic", "flowchart");
+                    throw PeleError(Pele::cat({"No such shape: ", shape, ". Shape names should be lowercase."}),  "semantic",  "flowchart");
                 }
                 if (!isValidShape(shape)) {
-                    throw PeleError("No such shape: " + shape + ".", "semantic", "flowchart");
+                    throw PeleError(Pele::cat({"No such shape: ", shape, "."}),  "semantic",  "flowchart");
                 }
                 vertex.type = shape;
                 vertex.hasType = true;
@@ -3986,7 +3983,7 @@ public:
             if (hasSpace) id.clear();
         }
 
-        std::unordered_set<std::string> seen;
+        Pele::FlatSet<std::string> seen;
         std::vector<std::string> nodeList;
         std::string dir;
         for (const auto& entry : list) {
@@ -4057,7 +4054,7 @@ public:
                 inv.stroke = "INVALID";
                 return inv;
             }
-            startInfo.type = "double_" + startInfo.type;
+            startInfo.type = Pele::cat({"double_", startInfo.type});
         }
         if (startInfo.type == "double_arrow") startInfo.type = "double_arrow_point";
         startInfo.length = info.length;
@@ -4156,7 +4153,7 @@ enum T : int {
     EOF_TOK
 };
 
-inline const char* tokenName(int t) {
+inline const char* tokenName(int t) noexcept {
     static const char* NAMES[] = {
         "$end", "INVALID", "acc_title", "acc_title_value", "acc_descr", "acc_descr_value",
         "acc_descr_multiline_value", "SHAPE_DATA", "CALLBACKNAME", "CALLBACKARGS", "MD_STR", "STR",
@@ -4182,7 +4179,7 @@ struct FlowTokens {
 
 namespace detail {
 
-inline const std::array<uint8_t, 128>& nodeCharTable() {
+inline const std::array<uint8_t, 128>& nodeCharTable() noexcept {
     static const std::array<uint8_t, 128> tbl = []() {
         std::array<uint8_t, 128> a{};
         const char* chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!\"#$%&'*+.`?\\_/";
@@ -4192,21 +4189,21 @@ inline const std::array<uint8_t, 128>& nodeCharTable() {
     return tbl;
 }
 
-inline int codepointAt(const std::string& src, size_t pos, size_t& nextPos) {
+inline int codepointAt(const std::string& src, size_t pos, size_t& nextPos) noexcept {
     if (pos >= src.size()) { nextPos = pos; return -1; }
     unsigned char c = static_cast<unsigned char>(src[pos]);
     if (c < 0x80) { nextPos = pos + 1; return c; }
     return charCodeAtUtf8(src, pos, &nextPos);
 }
 
-inline bool isSpaceAt(const std::string& src, size_t pos, size_t* nextPos = nullptr) {
+inline bool isSpaceAt(const std::string& src, size_t pos, size_t* nextPos = nullptr) noexcept {
     size_t np = pos;
     int cp = codepointAt(src, pos, np);
     if (nextPos) *nextPos = np;
     return isSpace(cp);
 }
 
-inline size_t skipSpaces(const std::string& src, size_t pos) {
+inline size_t skipSpaces(const std::string& src, size_t pos) noexcept {
     while (pos < src.size()) {
         size_t np = pos;
         int cp = codepointAt(src, pos, np);
@@ -4217,7 +4214,7 @@ inline size_t skipSpaces(const std::string& src, size_t pos) {
 }
 
 // Sticky matchers corresponding to RE_* in lexer.ts
-inline int matchAccHeader(const std::string& src, size_t q, const char* word, char sep) {
+inline int matchAccHeader(const std::string& src, size_t q, const char* word, char sep) noexcept {
     size_t len = std::strlen(word);
     if (!startsWith(src, word, q)) return -1;
     size_t p = skipSpaces(src, q + len);
@@ -4225,14 +4222,14 @@ inline int matchAccHeader(const std::string& src, size_t q, const char* word, ch
     return static_cast<int>(skipSpaces(src, p + 1));
 }
 
-inline int matchWordSpaces(const std::string& src, size_t q, const char* word) {
+inline int matchWordSpaces(const std::string& src, size_t q, const char* word) noexcept {
     size_t len = std::strlen(word);
     if (!startsWith(src, word, q)) return -1;
     size_t p = skipSpaces(src, q + len);
     return p > q + len ? static_cast<int>(p) : -1;
 }
 
-inline int matchNoDir(const std::string& src, size_t q) {
+inline int matchNoDir(const std::string& src, size_t q) noexcept {
     size_t p = q;
     int lastNl = -1;
     while (p < src.size()) {
@@ -4245,7 +4242,7 @@ inline int matchNoDir(const std::string& src, size_t q) {
     return lastNl;
 }
 
-inline int matchDirWord(const std::string& src, size_t q) {
+inline int matchDirWord(const std::string& src, size_t q) noexcept {
     size_t p = skipSpaces(src, q);
     if (p + 2 > src.size()) return -1;
     char a = src[p], b = src[p + 1];
@@ -4257,13 +4254,13 @@ inline int matchDirWord(const std::string& src, size_t q) {
     return static_cast<int>(p + 2);
 }
 
-inline int matchDirSym(const std::string& src, size_t q) {
+inline int matchDirSym(const std::string& src, size_t q) noexcept {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == '<' || src[p] == '>' || src[p] == '^')) return static_cast<int>(p + 1);
     return -1;
 }
 
-inline int matchDirV(const std::string& src, size_t q) {
+inline int matchDirV(const std::string& src, size_t q) noexcept {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && src[p] == 'v' && (p + 1 >= src.size() || !isWord(static_cast<unsigned char>(src[p + 1])))) {
         return static_cast<int>(p + 1);
@@ -4271,7 +4268,7 @@ inline int matchDirV(const std::string& src, size_t q) {
     return -1;
 }
 
-inline int matchDirectionStmt(const std::string& src, size_t q, size_t lineEnd, const char* dirCode) {
+inline int matchDirectionStmt(const std::string& src, size_t q, size_t lineEnd, const char* dirCode) noexcept {
     // Matches /.*direction\s+(TB|BT|RL|LR|TD)[^\n]*/y starting at q
     size_t pos = q;
     while (pos < lineEnd) {
@@ -4294,7 +4291,7 @@ inline int matchDirectionStmt(const std::string& src, size_t q, size_t lineEnd, 
 }
 
 // RE_LINK = /\s*[xo<]?--+[-xo>]\s*/y
-inline int matchLink(const std::string& src, size_t q) {
+inline int matchLink(const std::string& src, size_t q) noexcept {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     size_t dashStart = p;
@@ -4307,7 +4304,7 @@ inline int matchLink(const std::string& src, size_t q) {
 }
 
 // RE_START_LINK = /\s*[xo<]?--\s*/y
-inline int matchStartLink(const std::string& src, size_t q) {
+inline int matchStartLink(const std::string& src, size_t q) noexcept {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     if (p + 2 > src.size() || src[p] != '-' || src[p + 1] != '-') return -1;
@@ -4315,7 +4312,7 @@ inline int matchStartLink(const std::string& src, size_t q) {
 }
 
 // RE_THICK_LINK = /\s*[xo<]?==+[=xo>]\s*/y
-inline int matchThickLink(const std::string& src, size_t q) {
+inline int matchThickLink(const std::string& src, size_t q) noexcept {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     size_t eqStart = p;
@@ -4328,7 +4325,7 @@ inline int matchThickLink(const std::string& src, size_t q) {
 }
 
 // RE_THICK_START = /\s*[xo<]?==\s*/y
-inline int matchThickStart(const std::string& src, size_t q) {
+inline int matchThickStart(const std::string& src, size_t q) noexcept {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     if (p + 2 > src.size() || src[p] != '=' || src[p + 1] != '=') return -1;
@@ -4336,7 +4333,7 @@ inline int matchThickStart(const std::string& src, size_t q) {
 }
 
 // RE_DOTTED_LINK = /\s*[xo<]?-?\.+-[xo>]?\s*/y
-inline int matchDottedLink(const std::string& src, size_t q) {
+inline int matchDottedLink(const std::string& src, size_t q) noexcept {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     if (p < src.size() && src[p] == '-') p++;
@@ -4350,7 +4347,7 @@ inline int matchDottedLink(const std::string& src, size_t q) {
 }
 
 // RE_DOTTED_START = /\s*[xo<]?-\.\s*/y
-inline int matchDottedStart(const std::string& src, size_t q) {
+inline int matchDottedStart(const std::string& src, size_t q) noexcept {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     if (p + 2 > src.size() || src[p] != '-' || src[p + 1] != '.') return -1;
@@ -4358,7 +4355,7 @@ inline int matchDottedStart(const std::string& src, size_t q) {
 }
 
 // RE_INVIS_LINK = /\s*~~~+\s*/y
-inline int matchInvisLink(const std::string& src, size_t q) {
+inline int matchInvisLink(const std::string& src, size_t q) noexcept {
     size_t p = skipSpaces(src, q);
     size_t tildeStart = p;
     while (p < src.size() && src[p] == '~') p++;
@@ -4367,7 +4364,7 @@ inline int matchInvisLink(const std::string& src, size_t q) {
 }
 
 // RE_NEWLINE = /(?:\r?\n)+/y
-inline int matchNewline(const std::string& src, size_t q) {
+inline int matchNewline(const std::string& src, size_t q) noexcept {
     size_t p = q;
     while (p < src.size()) {
         if (src[p] == '\n') p++;
@@ -4378,7 +4375,7 @@ inline int matchNewline(const std::string& src, size_t q) {
 }
 
 // RE_SPACE = /[^\S\n\r]+/y
-inline int matchNonNlSpace(const std::string& src, size_t q) {
+inline int matchNonNlSpace(const std::string& src, size_t q) noexcept {
     size_t p = q;
     while (p < src.size()) {
         size_t np = p;
@@ -4390,14 +4387,14 @@ inline int matchNonNlSpace(const std::string& src, size_t q) {
 }
 
 // RE_EMPTY_CALL = /\(\s*\)/y
-inline int matchEmptyCall(const std::string& src, size_t q) {
+inline int matchEmptyCall(const std::string& src, size_t q) noexcept {
     if (q >= src.size() || src[q] != '(') return -1;
     size_t p = skipSpaces(src, q + 1);
     if (p < src.size() && src[p] == ')') return static_cast<int>(p + 1);
     return -1;
 }
 
-inline std::string replaceNewlineIndentsWithBr(const std::string& s) {
+inline std::string replaceNewlineIndentsWithBr(const std::string& s) noexcept {
     std::string out;
     size_t i = 0;
     while (i < s.size()) {
@@ -5367,7 +5364,7 @@ inline void parseFlowchart(const std::string& source, FlowDb& db) {
 
     auto expect = [&](int type, const std::string& also = "") -> std::string {
         if (types[i] != type) {
-            fail("'" + std::string(tokenName(type)) + "'" + (!also.empty() ? (", " + also) : ""));
+            fail("'" + std::string(tokenName(type)) + "'" + (!also.empty() ? Pele::cat({", ", also}) : ""));
         }
         return texts[i++];
     };
@@ -5998,7 +5995,7 @@ struct FlowGraph {
     std::vector<GraphEdge> edges;
 };
 
-inline std::string flowShapeOf(const FlowNode& vertex) {
+inline std::string flowShapeOf(const FlowNode& vertex) noexcept {
     if (!vertex.img.empty()) return "imageSquare";
     if (!vertex.icon.empty()) {
         if (vertex.form == "circle") return "iconCircle";
@@ -6011,7 +6008,7 @@ inline std::string flowShapeOf(const FlowNode& vertex) {
     return vertex.type;
 }
 
-inline std::pair<std::string, std::string> flowArrows(const std::string& type) {
+inline std::pair<std::string, std::string> flowArrows(const std::string& type) noexcept {
     if (type == "arrow_point" || type == "arrow_circle" || type == "arrow_cross") {
         return {"none", type};
     }
@@ -6022,7 +6019,7 @@ inline std::pair<std::string, std::string> flowArrows(const std::string& type) {
     return {"none", "arrow_point"};
 }
 
-inline FlowGraph buildFlowGraph(const FlowDb& model, const std::string& defaultCurve = "") {
+inline FlowGraph buildFlowGraph(const FlowDb& model, const std::string& defaultCurve = "") noexcept {
     std::vector<GraphNode> nodes;
     std::vector<GraphEdge> edges;
     const auto& subgraphs = model.subgraphs;
@@ -6038,14 +6035,14 @@ inline FlowGraph buildFlowGraph(const FlowDb& model, const std::string& defaultC
         return out;
     };
 
-    std::unordered_map<std::string, std::string> subgraphParent;
+    Pele::FlatMap<std::string, std::string> subgraphParent;
     for (const auto& sg : subgraphs) {
         for (const auto& childId : sg.nodes) {
             if (model.subgraph(childId) != nullptr) subgraphParent[childId] = sg.id;
         }
     }
 
-    std::unordered_map<std::string, int> declarationIndex;
+    Pele::FlatMap<std::string, int> declarationIndex;
     std::unordered_map<std::string, std::vector<std::string>> childrenOf;
     for (const auto& sg : subgraphs) {
         auto it = subgraphParent.find(sg.id);
@@ -6083,10 +6080,10 @@ inline FlowGraph buildFlowGraph(const FlowDb& model, const std::string& defaultC
         }
     }
 
-    std::unordered_map<std::string, std::string> outermost; // empty string = undefined
+    Pele::FlatMap<std::string, std::string> outermost; // empty string = undefined
     auto outermostCollapsed = [&](const std::string& id) -> std::string {
         std::vector<std::string> chain;
-        std::unordered_set<std::string> seen;
+        Pele::FlatSet<std::string> seen;
         std::string current = id;
         while (!current.empty() && !outermost.count(current) && !seen.count(current)) {
             seen.insert(current);
@@ -6102,8 +6099,8 @@ inline FlowGraph buildFlowGraph(const FlowDb& model, const std::string& defaultC
         return result;
     };
 
-    std::unordered_set<std::string> hidden;
-    std::unordered_map<std::string, std::string> collapsedInto;
+    Pele::FlatSet<std::string> hidden;
+    Pele::FlatMap<std::string, std::string> collapsedInto;
     if (anyCollapsed) {
         for (const auto& sg : subgraphs) {
             std::string ancestor = outermostCollapsed(sg.id);
@@ -6120,8 +6117,8 @@ inline FlowGraph buildFlowGraph(const FlowDb& model, const std::string& defaultC
         }
     }
 
-    std::unordered_map<std::string, std::string> parentOf;
-    std::unordered_set<std::string> groups;
+    Pele::FlatMap<std::string, std::string> parentOf;
+    Pele::FlatSet<std::string> groups;
     for (int i = static_cast<int>(subgraphs.size()) - 1; i >= 0; i--) {
         const auto& sg = subgraphs[i];
         if (hidden.count(sg.id)) continue;
@@ -6138,7 +6135,7 @@ inline FlowGraph buildFlowGraph(const FlowDb& model, const std::string& defaultC
         return out;
     };
 
-    std::unordered_map<std::string, size_t> byId;
+    Pele::FlatMap<std::string, size_t> byId;
     for (int i = static_cast<int>(subgraphs.size()) - 1; i >= 0; i--) {
         const auto& sg = subgraphs[i];
         if (hidden.count(sg.id)) continue;
@@ -6191,7 +6188,7 @@ inline FlowGraph buildFlowGraph(const FlowDb& model, const std::string& defaultC
         std::vector<std::string> allCls = {"default", "node"};
         allCls.insert(allCls.end(), vertex.classes.begin(), vertex.classes.end());
         node.cssCompiledStyles = compiled(allCls);
-        node.cssClasses = "default " + joinClasses(vertex.classes);
+        node.cssClasses = Pele::cat({"default ", joinClasses(vertex.classes)});
         node.dir = vertex.dir;
         node.link = vertex.link;
         node.linkTarget = vertex.linkTarget;
@@ -6269,14 +6266,14 @@ struct NodeView {
     int loops = 0;
 };
 
-inline double flowNumberOption(const Config& section, const std::string& key, double fallback) {
+inline double flowNumberOption(const Config& section, const std::string& key, double fallback) noexcept {
     if (!section.isMap()) return fallback;
     const auto* v = section.get(key);
     if (v && v->isNumber() && v->nVal > 0.0) return std::min(v->nVal, 2000.0);
     return fallback;
 }
 
-inline double flowAssetSize(bool hasValue, double value, double fallback) {
+inline double flowAssetSize(bool hasValue, double value, double fallback) noexcept {
     return (hasValue && value > 0.0 && value <= 4000.0) ? value : fallback;
 }
 
@@ -6314,7 +6311,7 @@ inline Rendered drawFlowchart(
     double pad = options.hasPadding ? options.padding : 8.0;
     const IconResolver& icons = options.icons;
 
-    std::unordered_map<std::string, int> index;
+    Pele::FlatMap<std::string, int> index;
     std::vector<NodeView> views;
     std::vector<CNode> cnodes;
     views.reserve(graph.nodes.size());
@@ -6494,17 +6491,10 @@ inline Rendered drawFlowchart(
             double titleX = clusterTitleX(c, view.label.width, crossings, groupPad);
             double titleY = y - c.h / 2.0 + 8.0 + view.label.height / 2.0;
             bool struck = titleCrossed(c, view.label.width, titleX, crossings);
-            std::string titleAttrs = " class=\"pele-cluster-label\"" +
-                (struck ? std::string(" fill=\"var(--_m)\"") : inkFill(view.style, "var(--_m)")) +
-                view.style.text;
+            std::string titleAttrs = Pele::cat({" class=\"pele-cluster-label\"", (struck ? std::string(" fill=\"var(--_m)\"") : inkFill(view.style, "var(--_m)")), view.style.text});
             if (struck) struckTitles += struckTitle(view.label, titleX, titleY, titleAttrs, id, cnodes, i, icons);
-            clusters +=
-                "<g class=\"pele-cluster" + classes + "\" data-id=\"" + id + "\">"
-                "<rect x=\"" + num(x - c.w / 2.0) + "\" y=\"" + num(y - c.h / 2.0) + "\" width=\"" + num(c.w) + "\" height=\"" + num(c.h) + "\" fill=\"var(--_a)\"" +
-                (setsFill(view.style.shape) ? "" : " fill-opacity=\"0.5\"") +
-                " stroke=\"var(--_b)\"" + rounded(view.style.shape) + "/>" +
-                (struck ? "" : labelSvg(view.label, titleX, titleY, titleAttrs, icons)) +
-                "</g>";
+            Pele::appendCat(clusters, {"<g class=\"pele-cluster", classes, "\" data-id=\"", id, "\">"
+                "<rect x=\"", num(x - c.w / 2.0), "\" y=\"", num(y - c.h / 2.0), "\" width=\"", num(c.w), "\" height=\"", num(c.h), "\" fill=\"var(--_a)\"", (setsFill(view.style.shape) ? "" : " fill-opacity=\"0.5\""), " stroke=\"var(--_b)\"", rounded(view.style.shape), "/>", (struck ? "" : labelSvg(view.label, titleX, titleY, titleAttrs, icons)), "</g>"});
             continue;
         }
 
@@ -6519,8 +6509,7 @@ inline Rendered drawFlowchart(
             std::string src = imageUrl(sanitizeUrl(node.img), options);
             inner = src.empty()
                 ? ""
-                : ("<image href=\"" + esc(src) + "\" x=\"" + num(-aw / 2.0) + "\" y=\"" + num(top) + "\" width=\"" + num(aw) + "\" height=\"" + num(ah) + "\" preserveAspectRatio=\"" +
-                   (node.constraint == "on" ? "xMidYMid meet" : "none") + "\"/>");
+                : Pele::cat({"<image href=\"", esc(src), "\" x=\"", num(-aw / 2.0), "\" y=\"", num(top), "\" width=\"", num(aw), "\" height=\"", num(ah), "\" preserveAspectRatio=\"", (node.constraint == "on" ? "xMidYMid meet" : "none"), "\"/>"});
         } else if (!node.icon.empty()) {
             double box = flowAssetSize(node.hasAssetHeight, node.assetHeight, 48.0);
             double top = view.label.height > 0.0 ? (node.pos == "t" ? h / 2.0 - box : -h / 2.0) : -box / 2.0;
@@ -6528,42 +6517,36 @@ inline Rendered drawFlowchart(
             if (node.shape == "icon") {
                 frame = "";
             } else if (node.shape == "iconCircle") {
-                frame = "<circle cy=\"" + num(top + box / 2.0) + "\" r=\"" + num(box / 2.0) + "\"" + SHAPE_ATTRS + view.style.shape + "/>";
+                frame = Pele::cat({"<circle cy=\"", num(top + box / 2.0), "\" r=\"", num(box / 2.0), "\"", SHAPE_ATTRS, view.style.shape, "/>"});
             } else {
-                frame = "<rect x=\"" + num(-box / 2.0) + "\" y=\"" + num(top) + "\" width=\"" + num(box) + "\" height=\"" + num(box) + "\" rx=\"" +
-                        (node.shape == "iconRounded" ? "8" : "0") + "\"" + SHAPE_ATTRS + view.style.shape + "/>";
+                frame = Pele::cat({"<rect x=\"", num(-box / 2.0), "\" y=\"", num(top), "\" width=\"", num(box), "\" height=\"", num(box), "\" rx=\"", (node.shape == "iconRounded" ? "8" : "0"), "\"", SHAPE_ATTRS, view.style.shape, "/>"});
             }
             double glyph = box * 0.6;
-            inner = frame +
-                "<svg class=\"pele-icon\" data-icon=\"" + escText(node.icon) + "\" x=\"" + num(-glyph / 2.0) + "\" y=\"" +
-                num(top + (box - glyph) / 2.0) + "\" width=\"" + num(glyph) + "\" height=\"" + num(glyph) +
-                "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">" +
-                (icons ? icons(node.icon) : "") + "</svg>";
+            inner = Pele::cat({frame, "<svg class=\"pele-icon\" data-icon=\"", escText(node.icon), "\" x=\"", num(-glyph / 2.0), "\" y=\"", num(top + (box - glyph) / 2.0), "\" width=\"", num(glyph), "\" height=\"", num(glyph), "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">", (icons ? icons(node.icon) : ""), "</svg>"});
         } else if (view.shape == "diam") {
             auto jn = [](double v) { return num(jsRound(v * 100.0) / 100.0); };
-            inner = "<polygon points=\"0," + jn(-h / 2.0) + " " + jn(w / 2.0) + ",0 0," + jn(h / 2.0) + " " + jn(-w / 2.0) + ",0\"" + SHAPE_ATTRS + view.style.shape + "/>";
+            inner = Pele::cat({"<polygon points=\"0,", jn(-h / 2.0), " ", jn(w / 2.0), ",0 0,", jn(h / 2.0), " ", jn(-w / 2.0), ",0\"", SHAPE_ATTRS, view.style.shape, "/>"});
             if (shapeFilled(view.shape)) inkStr = inkFill(view.style);
         } else {
             inner = drawShape(view.shape, w, h, SHAPE_ATTRS + view.style.shape, LINE_ATTRS + view.style.line);
             if (shapeFilled(view.shape)) inkStr = inkFill(view.style);
         }
 
-        std::string text = labelSvg(view.label, 0.0, view.dy, " class=\"pele-label\"" + inkStr + view.style.text, icons);
-        bool isInternal = (classes + " ").find(" internal-link ") != std::string::npos;
+        std::string text = labelSvg(view.label,  0.0,  view.dy, Pele::cat({" class=\"pele-label\"", inkStr, view.style.text}),  icons);
+        bool isInternal = Pele::cat({classes, " "}).find(" internal-link ") != std::string::npos;
         if (isInternal && node.hasLabel && !node.label.empty() && options.links) {
             std::string name = decodeEntities(node.label);
             bool safe = internalLink(name, options);
             std::string target = esc(name);
-            text = "<a class=\"internal-link\"" + (safe ? (" href=\"" + target + "\"" + relAttr(options)) : "") + " data-href=\"" + target + "\">" + text + "</a>";
+            text = Pele::cat({"<a class=\"internal-link\"", (safe ? Pele::cat({" href=\"", target, "\"", relAttr(options)}) : ""), " data-href=\"", target, "\">", text, "</a>"});
             links.push_back({node.id, name, true});
         }
         std::string body = inner + text;
         if (!node.tooltip.empty()) body = "<title>" + escText(node.tooltip) + "</title>" + body;
         if (!node.link.empty()) {
-            body = linked(body, node.link, node.id, links, options, !node.linkTarget.empty() ? (" target=\"" + esc(node.linkTarget) + "\"") : "");
+            body = linked(body, node.link, node.id, links, options, !node.linkTarget.empty() ? Pele::cat({" target=\"", esc(node.linkTarget), "\""}) : "");
         }
-        nodesOut += "<g class=\"pele-node pele-shape-" + view.shape + classes + "\" data-id=\"" + id + "\" transform=\"translate(" +
-                    num(x) + "," + num(y) + ")\">" + body + "</g>";
+        Pele::appendCat(nodesOut, {"<g class=\"pele-node pele-shape-", view.shape, classes, "\" data-id=\"", id, "\" transform=\"translate(", num(x), ",", num(y), ")\">", body, "</g>"});
     }
 
     SideReach reach;
@@ -6577,7 +6560,7 @@ inline Rendered drawFlowchart(
     std::string casings;
     std::string edgesOut;
     std::string labelsOut;
-    std::unordered_map<int, int> loopSeen;
+    Pele::FlatMap<int, int> loopSeen;
     for (size_t i = 0; i < cedges.size(); i++) {
         auto& ce = cedges[i];
         const auto& edge = drawn[i];
@@ -6620,14 +6603,8 @@ inline Rendered drawFlowchart(
             if (over.onFill && over.value.empty()) {
                 casings += edgeCasing(path, startType, endType, hasStyle ? style.line : "", edge.thickness == "thick");
             }
-            edgesOut +=
-                "<g class=\"pele-edge" + classes + "\" data-id=\"" + escText(edge.id) + "\"" +
-                (!over.value.empty() ? (" stroke=\"" + over.value + "\"") : "") +
-                (hasStyle ? style.line : "") + ">"
-                "<path d=\"" + path.d + "\"" + attrs + "/>" +
-                marker(startType, path.sx, path.sy, path.sdx, path.sdy, color) +
-                marker(endType, path.ex, path.ey, path.edx, path.edy, color) +
-                "</g>";
+            Pele::appendCat(edgesOut, {"<g class=\"pele-edge", classes, "\" data-id=\"", escText(edge.id), "\"", (!over.value.empty() ? Pele::cat({" stroke=\"", over.value, "\""}) : ""), (hasStyle ? style.line : ""), ">"
+                "<path d=\"", path.d, "\"", attrs, "/>", marker(startType, path.sx, path.sy, path.sdx, path.sdy, color), marker(endType, path.ex, path.ey, path.edx, path.edy, color), "</g>"});
         }
         if (label.width > 0.0) {
             labelsOut += edgeLabelSvg(edge.id, label, ce.labelX, ce.labelY, hasStyle ? style.text : "", icons);
@@ -6635,25 +6612,17 @@ inline Rendered drawFlowchart(
     }
 
     std::string svg = svgDocument(
-        variant ? variant->type : "flowchart",
-        width,
-        height,
-        size,
-        options,
-        db,
-        labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-            (!clusters.empty() ? ("<g class=\"pele-clusters\">" + clusters + "</g>") : "") +
-            casingsSvg(casings) +
-            (!edgesOut.empty() ? ("<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">" + edgesOut + "</g>") : "") +
-            (!struckTitles.empty() ? ("<g class=\"pele-cluster-titles\">" + struckTitles + "</g>") : "") +
-            (!labelsOut.empty() ? ("<g class=\"pele-edge-labels\" font-size=\"" + num(edgeSize) + "\">" + labelsOut + "</g>") : "") +
-            "<g class=\"pele-nodes\">" + nodesOut + "</g>"
-    );
+        variant ? variant->type : "flowchart", 
+        width, 
+        height, 
+        size, 
+        options, 
+        db, Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), (!clusters.empty() ? Pele::cat({"<g class=\"pele-clusters\">", clusters, "</g>"}) : ""), casingsSvg(casings), (!edgesOut.empty() ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">", edgesOut, "</g>"}) : ""), (!struckTitles.empty() ? Pele::cat({"<g class=\"pele-cluster-titles\">", struckTitles, "</g>"}) : ""), (!labelsOut.empty() ? Pele::cat({"<g class=\"pele-edge-labels\" font-size=\"", num(edgeSize), "\">", labelsOut, "</g>"}) : ""), "<g class=\"pele-nodes\">", nodesOut, "</g>"}));
 
     return {std::move(svg), width, height, std::move(links)};
 }
 
-inline Rendered renderFlowchartModel(const FlowDb& db, const Config& config, const RenderOptions& options, const FlowVariant* variant = nullptr) {
+inline Rendered renderFlowchartModel(const FlowDb& db, const Config& config, const RenderOptions& options, const FlowVariant* variant = nullptr) noexcept {
     auto fitted = [&](bool down) -> Rendered {
         return tightenExact(options, [&](bool tight) {
             return drawFlowchart(db, config, options, variant, down, tight);
@@ -6713,7 +6682,7 @@ inline Rendered renderFlowchart(const std::string& source, const Config& config,
 
 inline Rendered renderFlowchart(const std::string& source, const RenderOptions& options = {}) {
     auto pre = preprocess(source);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     return Flowchart::render(parsed, pre.config, pre.title, options);
 }
 

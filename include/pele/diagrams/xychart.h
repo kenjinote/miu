@@ -8,7 +8,7 @@ namespace XyChartDiagram {
 // Helpers
 // ============================================================================
 
-inline std::string jsNumberToString(double v) {
+inline std::string jsNumberToString(double v) noexcept {
     if (std::isnan(v)) return "NaN";
     if (!std::isfinite(v)) return v > 0 ? "Infinity" : "-Infinity";
     if (v == 0.0) v = 0.0;
@@ -25,11 +25,11 @@ inline std::string jsNumberToString(double v) {
     return s;
 }
 
-inline double jsRound(double x) {
+inline double jsRound(double x) noexcept {
     return std::floor(x + 0.5);
 }
 
-inline bool wordAtAscii(const std::string& src, size_t at, const std::string& word) {
+inline bool wordAtAscii(const std::string& src, size_t at, const std::string& word) noexcept {
     if (at + word.size() > src.size()) return false;
     for (size_t k = 0; k < word.size(); k++) {
         int c = static_cast<unsigned char>(src[at + k]);
@@ -39,7 +39,7 @@ inline bool wordAtAscii(const std::string& src, size_t at, const std::string& wo
     return true;
 }
 
-inline double capWidth(const RenderOptions& options, double natural, double least, double around = 0.0) {
+inline double capWidth(const RenderOptions& options, double natural, double least, double around = 0.0) noexcept {
     double available = options.maxWidth;
     if (!(available > 0.0)) return natural;
     return std::max(std::min(least, natural), std::min(natural, available - around));
@@ -49,7 +49,7 @@ inline double capWidth(const RenderOptions& options, double natural, double leas
 // src/diagrams/xychart/ticks.ts
 // ============================================================================
 
-inline double tickStep(double span, double count) {
+inline double tickStep(double span, double count) noexcept {
     double raw = span / std::max(count, 1.0);
     double power = std::floor(std::log10(raw));
     double unit = raw / std::pow(10.0, power);
@@ -57,16 +57,16 @@ inline double tickStep(double span, double count) {
     return power < 0.0 ? (-std::pow(10.0, -power) / factor) : (factor * std::pow(10.0, power));
 }
 
-inline double tickIndex(double step, double value) {
+inline double tickIndex(double step, double value) noexcept {
     return step > 0.0 ? (value / step) : (value * -step);
 }
 
-inline double tickValue(double step, double index) {
+inline double tickValue(double step, double index) noexcept {
     double v = step > 0.0 ? (index * step) : (index / -step);
     return v == 0.0 ? 0.0 : v;
 }
 
-inline std::vector<double> ticksBetween(double lo, double hi, double step) {
+inline std::vector<double> ticksBetween(double lo, double hi, double step) noexcept {
     double first = jsRound(tickIndex(step, lo));
     if (tickValue(step, first) < lo) first += 1.0;
     double last = jsRound(tickIndex(step, hi));
@@ -296,7 +296,7 @@ namespace T {
     };
 }
 
-inline const char* tokenName(int t) {
+inline const char* tokenName(int t) noexcept {
     static const char* NAMES[] = {
         "$end", "INVALID", "NEWLINE", "title", "acc_title", "acc_title_value",
         "acc_descr", "acc_descr_value", "acc_descr_multiline_value", "XYCHART",
@@ -621,7 +621,7 @@ inline void parseXyChart(const std::string& src, XyChartDb& db) {
     auto fail = [&](const std::string& expected) {
         int t = types[i];
         if (t == T::ERROR) throw syntaxError("xychart", src, starts[i], "", true);
-        throw syntaxError("xychart", src, starts[i], "Expecting " + expected + ", got '" + tokenName(t) + "'");
+        throw syntaxError("xychart",  src,  starts[i], Pele::cat({"Expecting ", expected, ", got '", tokenName(t), "'"}));
     };
 
     auto expect = [&](int type) -> std::string {
@@ -726,36 +726,36 @@ struct Mark {
     Label label;
 };
 
-inline Config record(const YamlValue* value) {
+inline Config record(const YamlValue* value) noexcept {
     return (value && value->isMap()) ? *value : YamlValue::makeMap();
 }
 
-inline bool on(const Config& config, const std::string& key, bool fallback = true) {
+inline bool on(const Config& config, const std::string& key, bool fallback = true) noexcept {
     const auto* v = config.get(key);
     return (v && v->isBool()) ? v->bVal : fallback;
 }
 
-inline double dimension(const YamlValue* value, double fallback) {
+inline double dimension(const YamlValue* value, double fallback) noexcept {
     return (value && value->isNumber() && value->nVal > 0.0)
         ? std::round(std::min(std::max(value->nVal, 100.0), 4000.0))
         : fallback;
 }
 
-inline std::optional<double> finiteVal(double value, bool hasValue = true) {
+inline std::optional<double> finiteVal(double value, bool hasValue = true) noexcept {
     constexpr double LIMIT = 1e300;
     if (!hasValue || !std::isfinite(value)) return std::nullopt;
     return std::min(std::max(value, -LIMIT), LIMIT);
 }
 
-inline double widestMark(const std::vector<Mark>& marks) {
+inline double widestMark(const std::vector<Mark>& marks) noexcept {
     double w = 0.0;
     for (const auto& m : marks) w = std::max(w, m.label.width);
     return w;
 }
 
-inline std::string aligned(const Label& label, double x, double y, const std::string& anchor) {
+inline std::string aligned(const Label& label, double x, double y, const std::string& anchor) noexcept {
     if (label.lines.size() == 1 && label.lines[0].size() == 1 && !label.lines[0][0].hasIcon && label.lines[0][0].style == 0) {
-        return "<text x=\"" + num(x) + "\" y=\"" + num(y + label.size * 0.35) + "\" text-anchor=\"" + anchor + "\">" + esc(label.lines[0][0].text) + "</text>";
+        return Pele::cat({"<text x=\"", num(x), "\" y=\"", num(y + label.size * 0.35), "\" text-anchor=\"", anchor, "\">", esc(label.lines[0][0].text), "</text>"});
     }
     double shift = (anchor == "start") ? (label.width / 2.0) : (anchor == "end") ? (-label.width / 2.0) : 0.0;
     return labelSvg(label, x + shift, y, "");
@@ -955,8 +955,8 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
     auto clampFn = [](double v) -> double { return std::min(std::max(v, 0.0), 1.0); };
     auto rule = [&](double v) -> std::string {
         return horizontal
-            ? ("M" + num(px(0.0, v)) + "," + num(top) + "V" + num(bottom))
-            : ("M" + num(left) + "," + num(py(0.0, v)) + "H" + num(right));
+            ? Pele::cat({"M", num(px(0.0, v)), ",", num(top), "V", num(bottom)})
+            : Pele::cat({"M", num(left), ",", num(py(0.0, v)), "H", num(right)});
     };
 
     std::string grid;
@@ -964,16 +964,16 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
 
     std::string axis;
     std::string labels;
-    if (on(leftConf, "showAxisLine")) axis += "M" + num(left) + "," + num(top) + "V" + num(bottom);
-    if (on(bottomConf, "showAxisLine")) axis += "M" + num(left) + "," + num(bottom) + "H" + num(right);
+    if (on(leftConf, "showAxisLine")) Pele::appendCat(axis, {"M", num(left), ",", num(top), "V", num(bottom)});
+    if (on(bottomConf, "showAxisLine")) Pele::appendCat(axis, {"M", num(left), ",", num(bottom), "H", num(right)});
     for (const auto& mark : leftMarks) {
         double y = horizontal ? (top + mark.at * plotHeight) : (bottom - mark.at * plotHeight);
-        if (leftTick > 0.0) axis += "M" + num(left) + "," + num(y) + "h" + num(-leftTick);
+        if (leftTick > 0.0) Pele::appendCat(axis, {"M", num(left), ",", num(y), "h", num(-leftTick)});
         if (leftLabels) labels += aligned(mark.label, left - leftTick - 6.0, y, "end");
     }
     for (const auto& mark : bottomMarks) {
         double at = left + mark.at * plotWidth;
-        if (bottomTick > 0.0) axis += "M" + num(at) + "," + num(bottom) + "v" + num(bottomTick);
+        if (bottomTick > 0.0) Pele::appendCat(axis, {"M", num(at), ",", num(bottom), "v", num(bottomTick)});
         if (bottomLabels) labels += aligned(mark.label, at, bottom + bottomTick + 4.0 + mark.label.height / 2.0, "middle");
     }
 
@@ -992,7 +992,7 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
     for (size_t idx = 0; idx < plots.size(); idx++) {
         const auto& plot = plots[idx];
         std::string color = seriesColor(static_cast<int>(idx));
-        std::string id = !plot.title.empty() ? (" data-id=\"" + escText(plot.title) + "\"") : "";
+        std::string id = !plot.title.empty() ? Pele::cat({" data-id=\"", escText(plot.title), "\""}) : "";
         size_t n = (x.type == "band") ? std::min(plot.data.size(), count) : plot.data.size();
         if (plot.type == "bar") {
             double offset = (bar++ - (bars - 1) / 2.0) * thickness - (thickness - gap) / 2.0;
@@ -1008,7 +1008,7 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
                 double by = horizontal ? (py(c, 0.0) + offset) : py(c, to);
                 double bw = horizontal ? ((to - from) * plotWidth) : (thickness - gap);
                 double bh = horizontal ? (thickness - gap) : ((to - from) * plotHeight);
-                rects += "<rect x=\"" + num(bx) + "\" y=\"" + num(by) + "\" width=\"" + num(bw) + "\" height=\"" + num(bh) + "\"/>";
+                Pele::appendCat(rects, {"<rect x=\"", num(bx), "\" y=\"", num(by), "\" width=\"", num(bw), "\" height=\"", num(bh), "\"/>"});
                 if (!showValues) continue;
                 std::string lblStr = jsNumberToString(*val);
                 double w = measurer.width(lblStr, tiny, 0);
@@ -1024,9 +1024,9 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
                     if (w + 2.0 > span / bars) continue;
                     ty = (outDir > 0.0 ? by : (by + bh)) - outDir * (tinyHeight / 2.0 + 2.0);
                 }
-                outside += "<text x=\"" + num(tx) + "\" y=\"" + num(ty + tiny * 0.35) + "\" text-anchor=\"" + anchor + "\">" + lblStr + "</text>";
+                Pele::appendCat(outside, {"<text x=\"", num(tx), "\" y=\"", num(ty + tiny * 0.35), "\" text-anchor=\"", anchor, "\">", lblStr, "</text>"});
             }
-            series += "<g class=\"pele-series pele-bars\"" + id + " fill=\"" + color + "\">" + rects + "</g>";
+            Pele::appendCat(series, {"<g class=\"pele-series pele-bars\"", id, " fill=\"", color, "\">", rects, "</g>"});
             continue;
         }
 
@@ -1045,7 +1045,7 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
             double v = scaleFn(*val);
             bool visible = (v >= 0.0 && v <= 1.0);
             if (std::isnan(pv)) {
-                if (visible) d += "M" + num(px(c, v)) + "," + num(py(c, v));
+                if (visible) Pele::appendCat(d, {"M", num(px(c, v)), ",", num(py(c, v))});
                 pen = visible;
             } else {
                 double dv = v - pv;
@@ -1064,8 +1064,8 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
                     double v0 = pv + dv * t0;
                     double c1 = pc + (c - pc) * t1;
                     double v1 = pv + dv * t1;
-                    if (!pen || t0 > 0.0) d += "M" + num(px(c0, v0)) + "," + num(py(c0, v0));
-                    d += "L" + num(px(c1, v1)) + "," + num(py(c1, v1));
+                    if (!pen || t0 > 0.0) Pele::appendCat(d, {"M", num(px(c0, v0)), ",", num(py(c0, v0))});
+                    Pele::appendCat(d, {"L", num(px(c1, v1)), ",", num(py(c1, v1))});
                 }
                 pen = visible;
             }
@@ -1074,7 +1074,7 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
             if (!visible) continue;
             double cx = px(c, v);
             double cy = py(c, v);
-            if (span >= 12.0) dots += "<circle cx=\"" + num(cx) + "\" cy=\"" + num(cy) + "\" r=\"3\"/>";
+            if (span >= 12.0) Pele::appendCat(dots, {"<circle cx=\"", num(cx), "\" cy=\"", num(cy), "\" r=\"3\"/>"});
             std::string ptRaw = (plot.hasPointLabels && i < plot.pointLabels.size()) ? plot.pointLabels[i] : "";
             Label lbl = textFn(ptRaw, tiny, 4000.0);
             if (lbl.height > 0.0) {
@@ -1084,14 +1084,12 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
                     : aligned(lbl, std::max(std::min(cx, right - half), left + half), cy - 6.0 - lbl.height / 2.0, "middle");
             }
         }
-        lines += "<g class=\"pele-series pele-line\"" + id + " fill=\"" + color + "\">" +
-            (!d.empty() ? ("<path d=\"" + d + "\" fill=\"none\" stroke=\"" + color + "\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>") : "") +
-            dots + "</g>";
+        Pele::appendCat(lines, {"<g class=\"pele-series pele-line\"", id, " fill=\"", color, "\">", (!d.empty() ? Pele::cat({"<path d=\"", d, "\" fill=\"none\" stroke=\"", color, "\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"}) : ""), dots, "</g>"});
     }
 
     std::string titles;
     if (leftTitle.height > 0.0) {
-        titles += "<g transform=\"translate(" + num(pad + leftTitle.height / 2.0) + "," + num(top + plotHeight / 2.0) + ") rotate(-90)\">" + labelSvg(leftTitle, 0.0, 0.0, "") + "</g>";
+        Pele::appendCat(titles, {"<g transform=\"translate(", num(pad + leftTitle.height / 2.0), ",", num(top + plotHeight / 2.0), ") rotate(-90)\">", labelSvg(leftTitle, 0.0, 0.0, ""), "</g>"});
     }
     titles += labelSvg(bottomTitle, left + plotWidth / 2.0, height - pad - bottomTitle.height / 2.0, "");
 
@@ -1105,25 +1103,13 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
         if (ly + row > height) break;
         double y = ly + row / 2.0;
         std::string color = seriesColor(static_cast<int>(item.index));
-        legendOut += "<g class=\"pele-legend-item\" data-id=\"" + escText(plots[item.index].title) + "\">" +
-            (plots[item.index].type == "bar"
-                ? ("<rect x=\"" + num(lx) + "\" y=\"" + num(y - SWATCH / 2.0) + "\" width=\"" + num(SWATCH) + "\" height=\"" + num(SWATCH) + "\" rx=\"2\" fill=\"" + color + "\"/>")
-                : ("<path d=\"M" + num(lx) + "," + num(y) + "h" + num(SWATCH) + "\" stroke=\"" + color + "\" stroke-width=\"2\" stroke-linecap=\"round\"/>")) +
-            labelSvg(item.label, lx + SWATCH + 8.0 + item.label.width / 2.0, y, "") +
-            "</g>";
+        Pele::appendCat(legendOut, {"<g class=\"pele-legend-item\" data-id=\"", escText(plots[item.index].title), "\">", (plots[item.index].type == "bar"
+                ? Pele::cat({"<rect x=\"", num(lx), "\" y=\"", num(y - SWATCH / 2.0), "\" width=\"", num(SWATCH), "\" height=\"", num(SWATCH), "\" rx=\"2\" fill=\"", color, "\"/>"})
+                : Pele::cat({"<path d=\"M", num(lx), ",", num(y), "h", num(SWATCH), "\" stroke=\"", color, "\" stroke-width=\"2\" stroke-linecap=\"round\"/>"})), labelSvg(item.label, lx + SWATCH + 8.0 + item.label.width / 2.0, y, ""), "</g>"});
         ly += row;
     }
 
-    std::string content =
-        labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-        (!grid.empty() ? ("<path class=\"pele-grid\" d=\"" + grid + "\" stroke=\"var(--_a)\"/>") : "") +
-        "<g class=\"pele-plot\">" + series + lines + "</g>" +
-        (!axis.empty() ? ("<path class=\"pele-axis\" d=\"" + axis + "\" fill=\"none\" stroke=\"var(--_b)\"/>") : "") +
-        (!labels.empty() ? ("<g class=\"pele-axis-labels\" font-size=\"" + num(small) + "\" fill=\"var(--_m)\">" + labels + "</g>") : "") +
-        (!titles.empty() ? ("<g class=\"pele-axis-titles\" font-size=\"" + num(small) + "\">" + titles + "</g>") : "") +
-        (!outside.empty() ? ("<g class=\"pele-data-labels\" font-size=\"" + num(tiny) + "\">" + outside + "</g>") : "") +
-        (!pointLabels.empty() ? ("<g class=\"pele-point-labels\" font-size=\"" + num(tiny) + "\">" + pointLabels + "</g>") : "") +
-        (!legendOut.empty() ? ("<g class=\"pele-legend\" font-size=\"" + num(small) + "\">" + legendOut + "</g>") : "");
+    std::string content = Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), (!grid.empty() ? Pele::cat({"<path class=\"pele-grid\" d=\"", grid, "\" stroke=\"var(--_a)\"/>"}) : ""), "<g class=\"pele-plot\">", series, lines, "</g>", (!axis.empty() ? Pele::cat({"<path class=\"pele-axis\" d=\"", axis, "\" fill=\"none\" stroke=\"var(--_b)\"/>"}) : ""), (!labels.empty() ? Pele::cat({"<g class=\"pele-axis-labels\" font-size=\"", num(small), "\" fill=\"var(--_m)\">", labels, "</g>"}) : ""), (!titles.empty() ? Pele::cat({"<g class=\"pele-axis-titles\" font-size=\"", num(small), "\">", titles, "</g>"}) : ""), (!outside.empty() ? Pele::cat({"<g class=\"pele-data-labels\" font-size=\"", num(tiny), "\">", outside, "</g>"}) : ""), (!pointLabels.empty() ? Pele::cat({"<g class=\"pele-point-labels\" font-size=\"", num(tiny), "\">", pointLabels, "</g>"}) : ""), (!legendOut.empty() ? Pele::cat({"<g class=\"pele-legend\" font-size=\"", num(small), "\">", legendOut, "</g>"}) : "")});
 
     return {
         svgDocument("xychart", width, height, size, options, model, content),
@@ -1148,7 +1134,7 @@ inline Rendered renderXYChart(const std::string& source, const Config& config, c
 
 inline Rendered renderXYChart(const std::string& raw, RenderOptions options = {}) {
     auto pre = preprocess(raw);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     const auto* section = pre.config.get("xyChart");
     bool fixed = (section && section->isMap() && section->get("useMaxWidth") && section->get("useMaxWidth")->isBool() && !section->get("useMaxWidth")->bVal);
     if (!options.hasResponsive) {

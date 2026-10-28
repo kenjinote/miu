@@ -432,19 +432,19 @@ public:
   }
 
   std::string expect(int k) {
-    if (tokens.kinds[i] != k) fail("token of type '" + types[k].name + "'");
+    if (tokens.kinds[i] != k) fail(Pele::cat({"token of type '", types[k].name, "'"}));
     return take();
   }
 
   [[noreturn]] void fail(const std::string& expected) const {
-    std::string found = kind() == -1 ? "end of input" : ("`" + text() + "`");
+    std::string found = kind() == -1 ? "end of input" : Pele::cat({"`", text(), "`"});
     int at = tokens.starts[i];
     if (kind() == -1) {
       int k = i;
       while (k > 0 && trimStr(tokens.src.substr(tokens.starts[k - 1], tokens.ends[k - 1] - tokens.starts[k - 1])).empty()) k--;
       if (k > 0) at = tokens.ends[k - 1];
     }
-    throw syntaxError(diagram, tokens.src, at, "Expecting " + expected + " but found " + found + ".");
+    throw syntaxError(diagram,  tokens.src,  at, Pele::cat({"Expecting ", expected, " but found ", found, "."}));
   }
 };
 
@@ -792,16 +792,16 @@ inline void parseOutline(const std::string& src, OutlineDb& db, bool kanban) {
   auto fail = [&](const std::string& expected) -> void {
     int t = types[i];
     if (t == T::ERROR) throw syntaxError(diagram, src, starts[i], "", true);
-    throw syntaxError(diagram, src, starts[i], "Expecting " + expected + ", got '" + tokenName(t, kanban) + "'");
+    throw syntaxError(diagram,  src,  starts[i], Pele::cat({"Expecting ", expected, ", got '", tokenName(t, kanban), "'"}));
   };
 
-  std::string keyword = "'" + tokenName(T::KEYWORD, kanban) + "'";
+  std::string keyword = Pele::cat({"'", tokenName(T::KEYWORD, kanban), "'"});
   if (types[i] == T::SPACELINE) {
     i++;
     while (types[i] == T::SPACELINE || types[i] == T::NL) i++;
-    if (types[i] != T::KEYWORD) fail("'SPACELINE', 'NL', " + keyword);
+    if (types[i] != T::KEYWORD) fail(Pele::cat({"'SPACELINE', 'NL', ", keyword}));
   } else if (types[i] != T::KEYWORD) {
-    fail("'SPACELINE', " + keyword);
+    fail(Pele::cat({"'SPACELINE', ", keyword}));
   }
   i++;
   std::string first = "'SPACELINE', 'NL', 'SPACELIST', 'ICON', 'CLASS', 'NODE_DSTART', 'NODE_ID'";
@@ -832,7 +832,7 @@ inline void parseOutline(const std::string& src, OutlineDb& db, bool kanban) {
         if (!isStop(types[i]) && types[i] != T::SHAPE_DATA) fail(STOP + data);
         type = db.getType(start, end);
       } else {
-        if (!isStop(types[i]) && types[i] != T::SHAPE_DATA) fail(STOP + ", 'NODE_DSTART'" + data);
+        if (!isStop(types[i]) && types[i] != T::SHAPE_DATA) fail(Pele::cat({STOP, ", 'NODE_DSTART'", data}));
         descr = *id;
       }
       if (types[i] == T::SHAPE_DATA) {
@@ -851,7 +851,7 @@ inline void parseOutline(const std::string& src, OutlineDb& db, bool kanban) {
       else dec.className = text;
       db.decorateNode(dec);
     } else if (indented) {
-      if (!isStop(t)) fail(STOP + ", 'ICON', 'CLASS', 'NODE_DSTART', 'NODE_ID'");
+      if (!isStop(t)) fail(Pele::cat({STOP, ", 'ICON', 'CLASS', 'NODE_DSTART', 'NODE_ID'"}));
     } else if (t == T::SPACELINE) {
       if (!isStop(types[++i])) fail(STOP);
     } else {
@@ -861,7 +861,7 @@ inline void parseOutline(const std::string& src, OutlineDb& db, bool kanban) {
     i++;
     while (types[i] == T::NL || types[i] == T::EOF_TOK) i++;
     if (types[i] == T::END) return;
-    if (!isStart(types[i])) fail(STOP + ", 'SPACELIST', 'ICON', 'CLASS', 'NODE_DSTART', 'NODE_ID'");
+    if (!isStart(types[i])) fail(Pele::cat({STOP, ", 'SPACELIST', 'ICON', 'CLASS', 'NODE_DSTART', 'NODE_ID'"}));
   }
 }
 

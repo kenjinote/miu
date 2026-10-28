@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "flowchart.h"
 
 namespace Pele {
@@ -203,7 +203,7 @@ enum T {
     RPAREN
 };
 
-inline const std::vector<std::string>& tokenNames() {
+inline const std::vector<std::string>& tokenNames() noexcept {
     static const std::vector<std::string> names = splitStr(
         "EOF USECASE ACTOR SYSTEM_BOUNDARY END DIRECTION TD TB BT LR RL NOTE FOR JSON CLASS_DEF CLASS STYLE INCLUDE EXTEND TRUE FALSE IDENTIFIER NUMBER AT COMMA COLON HASH_COLOR CSS_IDENTIFIER CSS_ESCAPED_COMMA DASH DOT PERCENT CSS_PUNCTUATION LABEL_PUNCTUATION LABEL_SYMBOL PLAIN_STRING MARKDOWN_STRING UNCLOSED_MARKDOWN_STRING COMMENT NEWLINE ACC_DESCR_BLOCK ACC_TITLE_LINE ACC_DESCR_LINE JSON_DECLARATION_START JSON_OBJECT_LITERAL UNCLOSED_JSON_OBJECT_LITERAL GENERALIZATION DEPENDENCY_ARROW STEREOTYPE_START STEREOTYPE_END STEREOTYPE_TEXT UNCLOSED_STEREOTYPE_TEXT CLASS_SEPARATOR FORWARD_SOLID BACKWARD_SOLID FORWARD_CIRCLE BACKWARD_CIRCLE FORWARD_CROSS BACKWARD_CROSS MARKERLESS_SOLID METADATA_START LBRACE RBRACE LBRACKET RBRACKET LPAREN RPAREN",
         ' '
@@ -234,7 +234,7 @@ inline bool isLexWord(int c) {
     return c >= 0 && c < 128 && (lexClassTable()[c] & 1) != 0;
 }
 
-inline bool startsWithNoCase(const std::string& src, int at, const std::string& word) {
+inline bool startsWithNoCase(const std::string& src, int at, const std::string& word) noexcept {
     if (at < 0 || static_cast<size_t>(at) + word.size() > src.size()) return false;
     for (size_t k = 0; k < word.size(); k++) {
         if ((static_cast<unsigned char>(src[at + k]) | 32) != static_cast<unsigned char>(word[k])) return false;
@@ -242,7 +242,7 @@ inline bool startsWithNoCase(const std::string& src, int at, const std::string& 
     return true;
 }
 
-inline int keywordAt(const std::string& src, int at, int c) {
+inline int keywordAt(const std::string& src, int at, int c) noexcept {
     size_t pos = static_cast<size_t>(at);
     switch (c) {
         case 97: return startsWith(src, "actor", pos) ? ACTOR : 0;
@@ -266,7 +266,7 @@ inline int keywordAt(const std::string& src, int at, int c) {
     }
 }
 
-inline std::pair<int, int> lineColumn(const std::string& src, int offset) {
+inline std::pair<int, int> lineColumn(const std::string& src, int offset) noexcept {
     int line = 1;
     int lineStart = 0;
     int limit = std::min(offset, static_cast<int>(src.size()));
@@ -280,7 +280,7 @@ inline std::pair<int, int> lineColumn(const std::string& src, int offset) {
     return {line, limit - lineStart + 1};
 }
 
-inline int stringEnd(const std::string& src, int at, int quote) {
+inline int stringEnd(const std::string& src, int at, int quote) noexcept {
     int n = static_cast<int>(src.size());
     for (int k = at + 1; k < n; k++) {
         int c = charCodeAt(src, k);
@@ -290,7 +290,7 @@ inline int stringEnd(const std::string& src, int at, int quote) {
     return -1;
 }
 
-inline bool startsToken(const std::string& src, int at) {
+inline bool startsToken(const std::string& src, int at) noexcept {
     int c = charCodeAt(src, at);
     if (c != 34 && c != 39) return true;
     return (c == 34 && charCodeAt(src, at + 1) == 96) || stringEnd(src, at, c) != -1;
@@ -694,7 +694,7 @@ inline OrderedJson parseOrderedJson(const std::string& text) {
                 skip();
                 if (charCodeAt(text, at) != 58) throw PeleError("Invalid JSON token", "syntax", "usecase");
                 at++;
-                std::string childPtr = pointer + "/" + replaceAllStr(replaceAllStr(key, "~", "~0"), "/", "~1");
+                std::string childPtr = Pele::cat({pointer, "/", replaceAllStr(replaceAllStr(key, "~", "~0"), "/", "~1")});
                 v.obj[key] = self(self, childPtr);
                 ranges[key] = {from, created.size()};
                 skip();
@@ -898,7 +898,7 @@ struct Drafts {
     std::string accDescription;
 };
 
-inline void pushUnique(std::vector<std::string>& target, const std::vector<std::string>& values) {
+inline void pushUnique(std::vector<std::string>& target, const std::vector<std::string>& values) noexcept {
     if (values.empty()) return;
     for (const auto& v : values) {
         if (std::find(target.begin(), target.end(), v) == target.end()) {
@@ -950,8 +950,8 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
     std::unordered_map<std::string, ElementState> elements;
     std::vector<std::string> boundaryStateOrder;
     std::unordered_map<std::string, BoundaryState> boundaries;
-    std::unordered_map<std::string, size_t> edgeIdxMap;
-    std::unordered_map<std::string, int> first;
+    Pele::FlatMap<std::string, size_t> edgeIdxMap;
+    Pele::FlatMap<std::string, int> first;
 
     auto fail = [&](const std::string& msg, Span sp) {
         auto [ln, col] = lineColumn(src, sp.first);
@@ -974,14 +974,14 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
             fail("ID '" + id + "' is declared as both " + it->second.kind + " and " + kind, sp);
         }
         if (it->second.generated || gen) {
-            fail("Generated ID '" + id + "' collides with another declaration", sp);
+            fail(Pele::cat({"Generated ID '", id, "' collides with another declaration"}),  sp);
         }
     };
 
     auto uniqueSym = [&](const std::string& id, const std::string& kind, Span sp) {
         auto it = symbols.find(id);
         if (it != symbols.end()) {
-            fail("ID '" + id + "' is declared more than once", sp);
+            fail(Pele::cat({"ID '", id, "' is declared more than once"}),  sp);
         }
         symbols[id] = {kind, sp, false, ""};
     };
@@ -989,22 +989,22 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
     auto actorProperty = [&](ElementState& state, const DraftProperty& prop, bool replace) {
         if (prop.key == "type" && !prop.isBool && (prop.strVal == "normal" || prop.strVal == "hollow" || prop.strVal == "awesome")) {
             if (!replace && !state.actorType.empty() && state.actorType != prop.strVal) {
-                fail("Actor '" + state.id + "' has conflicting type metadata", prop.keySpan);
+                fail(Pele::cat({"Actor '", state.id, "' has conflicting type metadata"}),  prop.keySpan);
             }
             state.actorType = prop.strVal;
         } else if (prop.key == "icon" && !prop.isBool) {
             if (!replace && !state.icon.empty() && state.icon != prop.strVal) {
-                fail("Actor '" + state.id + "' has conflicting icon metadata", prop.keySpan);
+                fail(Pele::cat({"Actor '", state.id, "' has conflicting icon metadata"}),  prop.keySpan);
             }
             state.icon = prop.strVal;
         } else if (prop.key == "business" && prop.isBool) {
             if (!replace && state.hasBusiness && state.business != prop.boolVal) {
-                fail("Actor '" + state.id + "' has conflicting business metadata", prop.keySpan);
+                fail(Pele::cat({"Actor '", state.id, "' has conflicting business metadata"}),  prop.keySpan);
             }
             state.hasBusiness = true;
             state.business = prop.boolVal;
         } else {
-            fail("Metadata property '" + prop.key + "' is invalid for actor '" + state.id + "'", prop.keySpan);
+            fail(Pele::cat({"Metadata property '", prop.key, "' is invalid for actor '", state.id, "'"}),  prop.keySpan);
         }
     };
 
@@ -1013,12 +1013,12 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
             if (state.kind == "actor") actorProperty(state, prop, replace);
             else if (prop.key == "business" && prop.isBool) {
                 if (!replace && state.hasBusiness && state.business != prop.boolVal) {
-                    fail("Use case '" + state.id + "' has conflicting business metadata", prop.keySpan);
+                    fail(Pele::cat({"Use case '", state.id, "' has conflicting business metadata"}),  prop.keySpan);
                 }
                 state.hasBusiness = true;
                 state.business = prop.boolVal;
             } else {
-                fail("Metadata property '" + prop.key + "' is invalid for usecase '" + state.id + "'", prop.keySpan);
+                fail(Pele::cat({"Metadata property '", prop.key, "' is invalid for usecase '", state.id, "'"}),  prop.keySpan);
             }
         }
     };
@@ -1096,16 +1096,16 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
         }
         ElementState& existing = it->second;
         if (existing.label.text != draft.label.text || existing.label.type != draft.label.type) {
-            fail("ID '" + draft.id + "' has conflicting labels", draft.span);
+            fail(Pele::cat({"ID '", draft.id, "' has conflicting labels"}),  draft.span);
         }
         if (!draft.shape.empty() && !existing.shape.empty() && draft.shape != existing.shape) {
-            fail("Use case '" + draft.id + "' has conflicting shapes", draft.span);
+            fail(Pele::cat({"Use case '", draft.id, "' has conflicting shapes"}),  draft.span);
         }
         if (hasParent && existing.hasParent && !existing.parent.id.empty() && draft.parent.id != existing.parent.id) {
-            fail("Element '" + draft.id + "' belongs to more than one system boundary", draft.parent.span);
+            fail(Pele::cat({"Element '", draft.id, "' belongs to more than one system boundary"}),  draft.parent.span);
         }
         if (!draft.stereotype.empty() && !existing.stereotype.empty() && draft.stereotype != existing.stereotype) {
-            fail("Element '" + draft.id + "' has conflicting stereotypes", draft.span);
+            fail(Pele::cat({"Element '", draft.id, "' has conflicting stereotypes"}),  draft.span);
         }
         if (existing.shape.empty()) existing.shape = draft.shape;
         if (!existing.hasParent && draft.hasParent) {
@@ -1126,7 +1126,7 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
         auto it = boundaries.find(draft.id);
         if (it != boundaries.end()) {
             if (it->second.label.text != draft.label.text || it->second.label.type != draft.label.type) {
-                fail("Boundary '" + draft.id + "' has conflicting titles", draft.span);
+                fail(Pele::cat({"Boundary '", draft.id, "' has conflicting titles"}),  draft.span);
             }
             pushUnique(it->second.classes, draft.classes);
             return;
@@ -1144,7 +1144,7 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
 
     auto endpoint = [&](const DraftEndpoint& end) -> std::string {
         if (end.classed && !end.declares) {
-            fail("Relationship endpoint '" + end.id + "' uses ::: without declaring the node", end.span);
+            fail(Pele::cat({"Relationship endpoint '", end.id, "' uses ::: without declaring the node"}),  end.span);
         }
         auto it = symbols.find(end.id);
         if (it != symbols.end()) return it->second.kind;
@@ -1235,10 +1235,10 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
         std::string sourceKind = endpoint(draft.source);
         std::string targetKind = endpoint(draft.target);
         auto related = [](const std::string& k) { return k == "actor" || k == "usecase" || k == "json"; };
-        if (!related(sourceKind)) fail("Relationship source '" + draft.source.id + "' cannot be " + sourceKind, draft.source.span);
-        if (!related(targetKind)) fail("Relationship target '" + draft.target.id + "' cannot be " + targetKind, draft.target.span);
+        if (!related(sourceKind)) fail(Pele::cat({"Relationship source '", draft.source.id, "' cannot be ", sourceKind}),  draft.source.span);
+        if (!related(targetKind)) fail(Pele::cat({"Relationship target '", draft.target.id, "' cannot be ", targetKind}),  draft.target.span);
         if ((draft.type == "include" || draft.type == "extend") && (sourceKind != "usecase" || targetKind != "usecase")) {
-            fail(draft.type + " relationship requires use-case endpoints", draft.span);
+            fail(Pele::cat({draft.type, " relationship requires use-case endpoints"}),  draft.span);
         }
         if (draft.type == "generalization" && (sourceKind == "json" || sourceKind != targetKind)) {
             fail("Generalization requires actor-to-actor or use-case-to-use-case endpoints", draft.span);
@@ -1289,7 +1289,7 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
     for (const auto& m : drafts.metadata) {
         auto oIt = symbols.find(m.target);
         if (oIt == symbols.end()) {
-            fail("Metadata target '" + m.target + "' is unresolved", m.span);
+            fail(Pele::cat({"Metadata target '", m.target, "' is unresolved"}),  m.span);
         }
         std::string kind = oIt->second.kind;
         if (kind == "actor" || kind == "usecase") {
@@ -1304,7 +1304,7 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
                     model.relationships[edgeIdxMap[m.target]].animation = prop.strVal;
                     model.relationships[edgeIdxMap[m.target]].animate = true;
                 } else {
-                    fail("Metadata property '" + prop.key + "' is invalid", prop.keySpan);
+                    fail(Pele::cat({"Metadata property '", prop.key, "' is invalid"}),  prop.keySpan);
                 }
             }
         }
@@ -1317,13 +1317,13 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
         const auto& state = elements[id];
         if (state.kind == "actor") {
             if (!state.icon.empty() && !state.actorType.empty() && state.actorType != "normal") {
-                fail("Actor '" + state.id + "' cannot combine icon with type '" + state.actorType + "'", state.span);
+                fail(Pele::cat({"Actor '", state.id, "' cannot combine icon with type '", state.actorType, "'"}),  state.span);
             }
             if (state.hasBusiness && state.business && (!state.icon.empty() || state.actorType == "awesome")) {
-                fail("Business actor '" + state.id + "' must use normal or hollow geometry", state.span);
+                fail(Pele::cat({"Business actor '", state.id, "' must use normal or hollow geometry"}),  state.span);
             }
         } else if (state.shape == "rect" && state.hasBusiness && state.business) {
-            fail("Rectangular use case '" + state.id + "' cannot be a business use case", state.span);
+            fail(Pele::cat({"Rectangular use case '", state.id, "' cannot be a business use case"}),  state.span);
         }
         publish(state);
     }
@@ -1351,9 +1351,9 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
     int notesCount = 0;
     for (const auto& draft : drafts.notes) {
         auto oIt = symbols.find(draft.target);
-        if (oIt == symbols.end()) fail("Note target '" + draft.target + "' is unresolved", draft.span);
+        if (oIt == symbols.end()) fail(Pele::cat({"Note target '", draft.target, "' is unresolved"}),  draft.span);
         if (oIt->second.kind != "actor" && oIt->second.kind != "usecase") {
-            fail("Note target '" + draft.target + "' must be an actor or use case", draft.span);
+            fail(Pele::cat({"Note target '", draft.target, "' must be an actor or use case"}),  draft.span);
         }
         std::string id = "note-" + std::to_string(notesCount++);
         model.noteOrder.push_back(id);
@@ -1369,7 +1369,7 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
 
     auto getStylable = [&](const std::string& id, Span sp) -> std::pair<std::vector<std::string>*, std::vector<std::string>*> {
         auto oIt = symbols.find(id);
-        if (oIt == symbols.end()) fail("Class/style target '" + id + "' is unresolved or anonymous", sp);
+        if (oIt == symbols.end()) fail(Pele::cat({"Class/style target '", id, "' is unresolved or anonymous"}),  sp);
         const std::string& kind = oIt->second.kind;
         if (kind == "actor" && model.actors.count(id)) return {&model.actors[id].classes, &model.actors[id].styles};
         if (kind == "usecase" && model.useCases.count(id)) return {&model.useCases[id].classes, &model.useCases[id].styles};
@@ -1379,7 +1379,7 @@ inline UsecaseModel resolveUsecase(const std::string& src, const Drafts& drafts,
             auto& r = model.relationships[edgeIdxMap[id]];
             return {&r.classes, &r.styles};
         }
-        fail("Class/style target '" + id + "' is unresolved or anonymous", sp);
+        fail(Pele::cat({"Class/style target '", id, "' is unresolved or anonymous"}),  sp);
         return {nullptr, nullptr};
     };
 
@@ -1452,11 +1452,11 @@ inline const std::array<uint8_t, RPAREN + 1>& parserFlags() {
         const std::string STATEMENTS = "ACC_TITLE_LINE|ACC_DESCR_LINE|ACC_DESCR_BLOCK|DIRECTION|ACTOR|SYSTEM_BOUNDARY|NOTE|JSON_DECLARATION_START|CLASS_DEF|CLASS|STYLE";
         const std::string STYLE_PARTS = "WORD|PLAIN_STRING|NUMBER|HASH_COLOR|CSS_IDENTIFIER|CSS_ESCAPED_COMMA|DASH|DOT|PERCENT|CSS_PUNCTUATION|COLON|LPAREN|RPAREN|LBRACKET|RBRACKET|LBRACE|RBRACE|AT|MARKERLESS_SOLID";
 
-        flag("NEWLINE|COMMENT|" + STATEMENTS + "|" + NAMES, P_LINE);
-        flag("IDENTIFIER|" + ARROWS, P_RELATION);
+        flag(Pele::cat({"NEWLINE|COMMENT|", STATEMENTS, "|", NAMES}),  P_LINE);
+        flag(Pele::cat({"IDENTIFIER|", ARROWS}),  P_RELATION);
         flag(STYLE_PARTS, P_STYLE_PART);
-        flag("STEREOTYPE_START|CLASS_SEPARATOR|IDENTIFIER|" + ARROWS + "|NEWLINE|EOF", P_FOLLOWS_NAME);
-        flag("NEWLINE|COMMENT|ACTOR|" + NAMES, P_BOUNDARY_LINE);
+        flag(Pele::cat({"STEREOTYPE_START|CLASS_SEPARATOR|IDENTIFIER|", ARROWS, "|NEWLINE|EOF"}),  P_FOLLOWS_NAME);
+        flag(Pele::cat({"NEWLINE|COMMENT|ACTOR|", NAMES}),  P_BOUNDARY_LINE);
         flag("FORWARD_SOLID|MARKERLESS_SOLID|FORWARD_CIRCLE|FORWARD_CROSS", P_CLOSES_LABEL);
         flag("NEWLINE|IDENTIFIER|PLAIN_STRING|RBRACE", P_METADATA_FIRST);
         return f;
@@ -1464,7 +1464,7 @@ inline const std::array<uint8_t, RPAREN + 1>& parserFlags() {
     return flags;
 }
 
-inline std::string generatedId(const std::string& label) {
+inline std::string generatedId(const std::string& label) noexcept {
     auto u16 = toUtf16(label);
     std::string out;
     out.reserve(u16.size());
@@ -1511,7 +1511,7 @@ struct ParseTail {
 
 inline UsecaseModel parseUsecase(const std::string& source, const std::string& title = "") {
     const auto& FLAGS = parserFlags();
-    static const std::unordered_set<std::string> FORBIDDEN = {"allowmixing", "newpage", "package", "rectangle", "skinparam"};
+    static const Pele::FlatSet<std::string> FORBIDDEN = {"allowmixing", "newpage", "package", "rectangle", "skinparam"};
 
     Tokens toks = tokenize(source);
     const auto& types = toks.types;
@@ -1534,7 +1534,7 @@ inline UsecaseModel parseUsecase(const std::string& source, const std::string& t
 
     auto fail = [&](const std::string& detail) {
         auto [ln, col] = lineColumn(source, starts[p]);
-        throw PeleError("Error parsing usecase diagram: " + detail, "syntax", "usecase", ln, col);
+        throw PeleError(Pele::cat({"Error parsing usecase diagram: ", detail}),  "syntax",  "usecase",  ln,  col);
     };
 
     auto expect = [&](int type) -> int {
@@ -2097,7 +2097,7 @@ struct UsecaseGraph {
     std::vector<UsecaseGraphEdge> edges;
 };
 
-inline std::vector<JsonRow> flattenJsonRows(const UsecaseJsonNode& json) {
+inline std::vector<JsonRow> flattenJsonRows(const UsecaseJsonNode& json) noexcept {
     std::vector<JsonRow> rows;
     struct StackItem {
         const JsonVal* val;
@@ -2148,8 +2148,8 @@ inline std::vector<JsonRow> flattenJsonRows(const UsecaseJsonNode& json) {
             for (const auto& key : keys) {
                 auto vIt = current->obj.find(key);
                 const JsonVal* childVal = (vIt != current->obj.end()) ? &vIt->second : nullptr;
-                std::string childPath = path.empty() ? key : (path + "." + key);
-                std::string childPtr = pointer + "/" + replaceAllStr(replaceAllStr(key, "~", "~0"), "/", "~1");
+                std::string childPath = path.empty() ? key : Pele::cat({path, ".", key});
+                std::string childPtr = Pele::cat({pointer, "/", replaceAllStr(replaceAllStr(key, "~", "~0"), "/", "~1")});
                 children.push_back({childVal, std::move(childPath), std::move(childPtr)});
             }
         } else {
@@ -2162,7 +2162,7 @@ inline std::vector<JsonRow> flattenJsonRows(const UsecaseJsonNode& json) {
     return rows;
 }
 
-inline std::string joinClassList(const std::vector<std::string>& parts) {
+inline std::string joinClassList(const std::vector<std::string>& parts) noexcept {
     std::string out;
     for (const auto& p : parts) {
         if (p.empty()) continue;
@@ -2172,7 +2172,7 @@ inline std::string joinClassList(const std::vector<std::string>& parts) {
     return out;
 }
 
-inline std::pair<std::string, std::string> relationshipMarkers(const Relationship& rel) {
+inline std::pair<std::string, std::string> relationshipMarkers(const Relationship& rel) noexcept {
     static const std::pair<const char*, const char*> MARKERS[] = {
         {"none", "arrow_point"},
         {"arrow_point", "none"},
@@ -2188,12 +2188,12 @@ inline std::pair<std::string, std::string> relationshipMarkers(const Relationshi
     return {MARKERS[LINE_SOLID].first, MARKERS[LINE_SOLID].second};
 }
 
-inline UsecaseGraph buildUsecaseGraph(const UsecaseModel& model) {
+inline UsecaseGraph buildUsecaseGraph(const UsecaseModel& model) noexcept {
     UsecaseGraph g;
 
     auto compiled = [&](const std::vector<std::string>& classNames) -> std::vector<std::string> {
         std::vector<std::string> order;
-        std::unordered_map<std::string, std::string> out;
+        Pele::FlatMap<std::string, std::string> out;
         std::vector<std::string> all = {"default"};
         all.insert(all.end(), classNames.begin(), classNames.end());
         for (const auto& name : all) {
@@ -2226,7 +2226,7 @@ inline UsecaseGraph buildUsecaseGraph(const UsecaseModel& model) {
                 : "usecaseActor";
         n.isGroup = false;
         n.padding = 10.0;
-        std::vector<std::string> cls = {"default", "usecase-actor", "usecase-actor-" + actor.type};
+        std::vector<std::string> cls = {"default",  "usecase-actor", Pele::cat({"usecase-actor-", actor.type})};
         if (actor.business) cls.push_back("usecase-business");
         cls.insert(cls.end(), actor.classes.begin(), actor.classes.end());
         n.cssClasses = joinClassList(cls);
@@ -2250,7 +2250,7 @@ inline UsecaseGraph buildUsecaseGraph(const UsecaseModel& model) {
         n.shape = !ellipse ? "rect" : (uc.business ? "usecaseBusiness" : "usecaseEllipse");
         n.isGroup = false;
         n.padding = ellipse ? 20.0 : 10.0;
-        std::vector<std::string> cls = {"default", "usecase-element", "usecase-" + uc.shape};
+        std::vector<std::string> cls = {"default",  "usecase-element", Pele::cat({"usecase-", uc.shape})};
         if (uc.business) cls.push_back("usecase-business");
         cls.insert(cls.end(), uc.classes.begin(), uc.classes.end());
         n.cssClasses = joinClassList(cls);
@@ -2305,7 +2305,7 @@ inline UsecaseGraph buildUsecaseGraph(const UsecaseModel& model) {
         n.shape = "usecaseSystemBoundary";
         n.isGroup = true;
         n.padding = 20.0;
-        std::vector<std::string> cls = {"default", "system-boundary", "system-boundary-" + boundary.type};
+        std::vector<std::string> cls = {"default",  "system-boundary", Pele::cat({"system-boundary-", boundary.type})};
         cls.insert(cls.end(), boundary.classes.begin(), boundary.classes.end());
         n.cssClasses = joinClassList(cls);
         n.cssStyles = boundary.styles;
@@ -2326,9 +2326,9 @@ inline UsecaseGraph buildUsecaseGraph(const UsecaseModel& model) {
         e.pattern = semantic ? "dotted" : "solid";
         e.arrowTypeStart = startM;
         e.arrowTypeEnd = endM;
-        std::vector<std::string> cls = {"default", "relationship", "relationship-" + rel.type};
+        std::vector<std::string> cls = {"default",  "relationship", Pele::cat({"relationship-", rel.type})};
         cls.insert(cls.end(), rel.classes.begin(), rel.classes.end());
-        if (animated) cls.push_back("edge-animation-" + (!rel.animation.empty() ? rel.animation : "fast"));
+        if (animated) cls.push_back(Pele::cat({"edge-animation-", (!rel.animation.empty() ? rel.animation : "fast")}));
         e.classes = joinClassList(cls);
         e.style = rel.styles;
         e.cssCompiledStyles = compiled(rel.classes);
@@ -2356,7 +2356,7 @@ inline UsecaseGraph buildUsecaseGraph(const UsecaseModel& model) {
     for (const auto& id : model.noteOrder) {
         const auto& note = model.notes.at(id);
         UsecaseGraphEdge e;
-        e.id = note.id + "-edge";
+        e.id = Pele::cat({note.id, "-edge"});
         e.start = note.id;
         e.end = note.target;
         e.relationshipType = "note";
@@ -2417,7 +2417,7 @@ struct View {
     int loops = 0;
 };
 
-inline double ucNumberOption(const Config& config, const std::string& key, double fallback) {
+inline double ucNumberOption(const Config& config, const std::string& key, double fallback) noexcept {
     if (const auto* uc = config.get("usecase"); uc && uc->isMap()) {
         if (const auto* v = uc->get(key); v && v->isNumber() && v->nVal > 0) {
             return std::min(v->nVal, 2000.0);
@@ -2426,7 +2426,7 @@ inline double ucNumberOption(const Config& config, const std::string& key, doubl
     return fallback;
 }
 
-inline std::string ucLiteral(const std::string& text) {
+inline std::string ucLiteral(const std::string& text) noexcept {
     std::string out;
     out.reserve(text.size() + 8);
     for (unsigned char c : text) {
@@ -2439,11 +2439,11 @@ inline std::string ucLiteral(const std::string& text) {
     return out;
 }
 
-inline Label ucText(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double wrap, int base = 0) {
+inline Label ucText(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double wrap, int base = 0) noexcept {
     return layoutLabel((!raw.empty() && !markdown) ? ucLiteral(raw) : raw, markdown, measurer, size, wrap, base);
 }
 
-inline std::pair<double, double> ucAnchor(const View& view, const Flowchart::CNode& c, int side, double along) {
+inline std::pair<double, double> ucAnchor(const View& view, const Flowchart::CNode& c, int side, double along) noexcept {
     double sign = (side == 1 || side == 2) ? 1.0 : -1.0;
     bool upright = (side == 1 || side == 3);
     double reach = (upright ? view.w : view.h) / 2.0;
@@ -2464,7 +2464,7 @@ inline std::pair<double, double> ucAnchor(const View& view, const Flowchart::CNo
                    : std::make_pair(c.x + along, c.y + sign * reach);
 }
 
-inline double ucSideLength(const View& view, int side) {
+inline double ucSideLength(const View& view, int side) noexcept {
     bool upright = (side == 1 || side == 3);
     if (view.kind == ViewKind::Actor) return upright ? UC_FIGURE_H * 0.5 : UC_FIGURE_W * 0.6;
     double length = upright ? view.h : view.w;
@@ -2477,7 +2477,7 @@ struct UcEnd {
     double toward = 0.0;
 };
 
-inline void ucAttachEnds(std::vector<Flowchart::CEdge>& cedges, const std::vector<Flowchart::CNode>& cnodes, const std::vector<View>& views) {
+inline void ucAttachEnds(std::vector<Flowchart::CEdge>& cedges, const std::vector<Flowchart::CNode>& cnodes, const std::vector<View>& views) noexcept {
     std::vector<int> sideKeys;
     std::unordered_map<int, std::vector<UcEnd>> sides;
     auto add = [&](int index, std::vector<double>& route, size_t at, size_t next) {
@@ -2517,54 +2517,53 @@ inline void ucAttachEnds(std::vector<Flowchart::CEdge>& cedges, const std::vecto
     }
 }
 
-inline std::string ucNum(double value) {
+inline std::string ucNum(double value) noexcept {
     return num(Flowchart::jsRound(value * 100.0) / 100.0);
 }
 
-inline std::string ucExtension(double x, double y, double dx, double dy, const std::string& color) {
+inline std::string ucExtension(double x, double y, double dx, double dy, const std::string& color) noexcept {
     double bx = x - dx * UC_EXTENSION;
     double by = y - dy * UC_EXTENSION;
     double half = UC_EXTENSION * 0.5;
-    return "<path class=\"pele-marker\" d=\"M" + ucNum(x) + "," + ucNum(y) + "L" + ucNum(bx - dy * half) + "," + ucNum(by + dx * half) + "L" + ucNum(bx + dy * half) + "," + ucNum(by - dx * half) + "Z\" fill=\"var(--_bg)\" stroke=\"" + color + "\" stroke-linejoin=\"round\"/>";
+    return Pele::cat({"<path class=\"pele-marker\" d=\"M", ucNum(x), ",", ucNum(y), "L", ucNum(bx - dy * half), ",", ucNum(by + dx * half), "L", ucNum(bx + dy * half), ",", ucNum(by - dx * half), "Z\" fill=\"var(--_bg)\" stroke=\"", color, "\" stroke-linejoin=\"round\"/>"});
 }
 
-inline double ucTrim(const std::string& type) {
+inline double ucTrim(const std::string& type) noexcept {
     return type == "extension" ? UC_EXTENSION : markerTrim(type);
 }
 
-inline std::string ucMark(const std::string& type, double x, double y, double dx, double dy, const std::string& color, const std::string& stroke = "none") {
+inline std::string ucMark(const std::string& type, double x, double y, double dx, double dy, const std::string& color, const std::string& stroke = "none") noexcept {
     return type == "extension" ? ucExtension(x, y, dx, dy, color) : marker(type, x, y, dx, dy, color, stroke);
 }
 
-inline std::string ucFigure(const View& view, const IconResolver& icons) {
+inline std::string ucFigure(const View& view, const IconResolver& icons) noexcept {
     const auto& node = view.node;
     const auto& shape = view.style.shape;
-    std::string line = " fill=\"none\" stroke=\"var(--_b)\"" + view.style.line;
+    std::string line = Pele::cat({" fill=\"none\" stroke=\"var(--_b)\"", view.style.line});
     double head = -21.0;
     double radius = 9.0;
     std::string out;
     if (node.actorType == "hollow") {
         radius = 8.0;
-        out = "<circle cy=\"-21\" r=\"8\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"" + shape + "/>"
-              "<path d=\"M-20,-9H20V0H5.5L20,15.5L12,25.5L0,12L-12,25.5L-20,15.5L-5.5,0H-20Z\" fill=\"var(--_bg)\" stroke=\"var(--_b)\" stroke-linejoin=\"round\"" + shape + "/>";
+        out = Pele::cat({"<circle cy=\"-21\" r=\"8\" fill=\"var(--_bg)\" stroke=\"var(--_b)\"", shape, "/>"
+              "<path d=\"M-20,-9H20V0H5.5L20,15.5L12,25.5L0,12L-12,25.5L-20,15.5L-5.5,0H-20Z\" fill=\"var(--_bg)\" stroke=\"var(--_b)\" stroke-linejoin=\"round\"", shape, "/>"});
     } else if (node.actorType == "awesome") {
-        out = "<path d=\"M0,-30A11,11 0 1 1 0,-8A11,11 0 1 1 0,-30ZM-20,25C-20,9 -12,-3 0,-3C12,-3 20,9 20,25C20,28 18,30 15,30H-15C-18,30 -20,28 -20,25Z\" fill=\"var(--_b)\"" + shape + "/>";
+        out = Pele::cat({"<path d=\"M0,-30A11,11 0 1 1 0,-8A11,11 0 1 1 0,-30ZM-20,25C-20,9 -12,-3 0,-3C12,-3 20,9 20,25C20,28 18,30 15,30H-15C-18,30 -20,28 -20,25Z\" fill=\"var(--_b)\"", shape, "/>"});
     } else if (node.actorType == "icon") {
         head = -14.0;
         radius = 12.0;
-        out = "<rect x=\"-22\" y=\"-26\" width=\"44\" height=\"44\"" + rounded(UC_SHAPE_ATTRS + shape) + "/>"
-              "<svg class=\"pele-icon\" data-icon=\"" + escText(node.icon) + "\" x=\"-14\" y=\"-18\" width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">" +
-              (icons ? icons(node.icon) : "") + "</svg>";
+        out = Pele::cat({"<rect x=\"-22\" y=\"-26\" width=\"44\" height=\"44\"", rounded(UC_SHAPE_ATTRS + shape), "/>"
+              "<svg class=\"pele-icon\" data-icon=\"", escText(node.icon), "\" x=\"-14\" y=\"-18\" width=\"28\" height=\"28\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">", (icons ? icons(node.icon) : ""), "</svg>"});
     } else {
-        out = "<circle cy=\"-21\" r=\"9\"" + UC_SHAPE_ATTRS + shape + "/><path d=\"M0,-12V10M-14,-3H14M0,10L-12,30M0,10L12,30\"" + line + "/>";
+        out = Pele::cat({"<circle cy=\"-21\" r=\"9\"", UC_SHAPE_ATTRS, shape, "/><path d=\"M0,-12V10M-14,-3H14M0,10L-12,30M0,10L12,30\"", line, "/>"});
     }
     if (node.business) {
-        out += "<path class=\"pele-business\" d=\"M" + num(0.12 * radius) + "," + num(head + 0.99 * radius) + "L" + num(0.92 * radius) + "," + num(head - 0.39 * radius) + "\"" + line + "/>";
+        Pele::appendCat(out, {"<path class=\"pele-business\" d=\"M", num(0.12 * radius), ",", num(head + 0.99 * radius), "L", num(0.92 * radius), ",", num(head - 0.39 * radius), "\"", line, "/>"});
     }
     return out;
 }
 
-inline double ucTitleX(const Flowchart::CNode& c, double width, const Flowchart::Crossings& crossings) {
+inline double ucTitleX(const Flowchart::CNode& c, double width, const Flowchart::Crossings& crossings) noexcept {
     auto it = crossings.find(static_cast<int>(Flowchart::jsRound(c.y - c.h / 2.0)));
     if (width == 0.0 || it == crossings.end()) return c.x;
     double left = c.x - c.w / 2.0 + 6.0;
@@ -2596,7 +2595,7 @@ inline double ucTitleX(const Flowchart::CNode& c, double width, const Flowchart:
     return best;
 }
 
-inline std::string ucLeftLabel(const Label& label, double x, double cy, const std::string& attrs, const IconResolver& icons) {
+inline std::string ucLeftLabel(const Label& label, double x, double cy, const std::string& attrs, const IconResolver& icons) noexcept {
     if (label.lines.size() < 2) return labelSvg(label, x + label.width / 2.0, cy, attrs, icons);
     std::string out;
     for (size_t i = 0; i < label.lines.size(); i++) {
@@ -2605,7 +2604,7 @@ inline std::string ucLeftLabel(const Label& label, double x, double cy, const st
     return out;
 }
 
-inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, const RenderOptions& options, bool turned) {
+inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, const RenderOptions& options, bool turned) noexcept {
     UsecaseGraph graph = buildUsecaseGraph(model);
     double size = options.fontSize > 0 ? options.fontSize : 16.0;
     double small = std::round(size * 0.875);
@@ -2616,7 +2615,7 @@ inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, con
     std::string rootDir = turned ? "TB" : Flowchart::direction(model.direction);
     bool sideways = (rootDir == "LR" || rootDir == "RL");
 
-    std::unordered_map<std::string, int> index;
+    Pele::FlatMap<std::string, int> index;
     std::vector<View> views;
     std::vector<Flowchart::CNode> cnodes;
     for (size_t i = 0; i < graph.nodes.size(); i++) {
@@ -2632,7 +2631,7 @@ inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, con
         int base = (style.bold ? Style::Bold : 0) | (style.italic ? Style::Italic : 0);
         double fontSize = style.hasFontSize ? style.fontSize : size;
         bool markdown = (node.labelType == "markdown");
-        Label stereotype = ucText(!node.stereotype.empty() ? ("\xC2\xAB" + node.stereotype + "\xC2\xBB") : "", false, measurer, tiny, 200.0, base);
+        Label stereotype = ucText(!node.stereotype.empty() ? Pele::cat({"\xC2\xAB", node.stereotype, "\xC2\xBB"}) : "", false, measurer, tiny, 200.0, base);
         View view;
         view.node = node;
         view.kind = ViewKind::Box;
@@ -2713,7 +2712,7 @@ inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, con
         int src = sIt->second;
         int dst = dIt->second;
         bool semantic = (edge.relationshipType == "include" || edge.relationshipType == "extend");
-        std::string rawLbl = semantic ? ("\xC2\xAB" + edge.label + "\xC2\xBB") : (edge.hasLabel ? edge.label : "");
+        std::string rawLbl = semantic ? Pele::cat({"\xC2\xAB", edge.label, "\xC2\xBB"}) : (edge.hasLabel ? edge.label : "");
         Label label = ucText(rawLbl, edge.labelType == "markdown", measurer, small, 200.0);
         if (src == dst) {
             views[src].loops++;
@@ -2775,19 +2774,17 @@ inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, con
             double y = c.y - c.h / 2.0;
             if (paints(shape)) fills.push_back({{x, y, x + c.w, y + c.h}, shape});
             std::string box = " fill=\"var(--_a)\"" + std::string(setsFill(shape) ? "" : " fill-opacity=\"0.5\"") + " stroke=\"var(--_b)\"" + shape;
-            std::string titleAttrs = " class=\"pele-cluster-label\"" + muted + textAttrs;
+            std::string titleAttrs = Pele::cat({" class=\"pele-cluster-label\"", muted, textAttrs});
             std::string body;
             if (node.boundaryType == "package") {
                 double tabW = std::min(view.label.width + 2.0 * UC_TAB_PAD + 8.0, c.w);
                 double tabH = view.label.height + 2.0 * UC_TAB_PAD;
-                body = "<rect class=\"pele-boundary-tab\" x=\"" + num(x) + "\" y=\"" + num(y) + "\" width=\"" + num(tabW) + "\" height=\"" + num(tabH) + "\"" + box + "/>"
-                       "<rect x=\"" + num(x) + "\" y=\"" + num(y + tabH) + "\" width=\"" + num(c.w) + "\" height=\"" + num(c.h - tabH) + "\"" + box + "/>" +
-                       labelSvg(view.label, x + tabW / 2.0, y + tabH / 2.0, titleAttrs, icons);
+                body = Pele::cat({"<rect class=\"pele-boundary-tab\" x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(tabW), "\" height=\"", num(tabH), "\"", box, "/>"
+                       "<rect x=\"", num(x), "\" y=\"", num(y + tabH), "\" width=\"", num(c.w), "\" height=\"", num(c.h - tabH), "\"", box, "/>", labelSvg(view.label, x + tabW / 2.0, y + tabH / 2.0, titleAttrs, icons)});
             } else {
-                body = "<rect x=\"" + num(x) + "\" y=\"" + num(y) + "\" width=\"" + num(c.w) + "\" height=\"" + num(c.h) + "\"" + rounded(box) + "/>" +
-                       labelSvg(view.label, ucTitleX(c, view.label.width, crossings), y + 8.0 + view.label.height / 2.0, titleAttrs, icons);
+                body = Pele::cat({"<rect x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(c.w), "\" height=\"", num(c.h), "\"", rounded(box), "/>", labelSvg(view.label, ucTitleX(c, view.label.width, crossings), y + 8.0 + view.label.height / 2.0, titleAttrs, icons)});
             }
-            clusters += "<g class=\"pele-cluster pele-boundary" + classes + "\" data-id=\"" + id + "\">" + body + "</g>";
+            Pele::appendCat(clusters, {"<g class=\"pele-cluster pele-boundary", classes, "\" data-id=\"", id, "\">", body, "</g>"});
             continue;
         }
 
@@ -2797,32 +2794,28 @@ inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, con
             kindStr = "pele-actor";
             double top = -h / 2.0;
             double stereotypeY = top + UC_FIGURE_H + UC_FIGURE_GAP + view.stereotype.height / 2.0;
-            body = "<g class=\"pele-actor-figure\" transform=\"translate(0," + num(top + UC_FIGURE_H / 2.0) + ")\">" + ucFigure(view, icons) + "</g>" +
-                   labelSvg(view.stereotype, 0.0, stereotypeY, " class=\"pele-stereotype\" font-size=\"" + num(tiny) + "\" fill=\"var(--_m)\"", icons) +
-                   labelSvg(view.label, 0.0, h / 2.0 - view.label.height / 2.0, " class=\"pele-label\"" + textAttrs, icons);
+            body = Pele::cat({"<g class=\"pele-actor-figure\" transform=\"translate(0,", num(top + UC_FIGURE_H / 2.0), ")\">", ucFigure(view, icons), "</g>", labelSvg(view.stereotype,  0.0,  stereotypeY, Pele::cat({" class=\"pele-stereotype\" font-size=\"", num(tiny), "\" fill=\"var(--_m)\""}),  icons), labelSvg(view.label,  0.0,  h / 2.0 - view.label.height / 2.0, Pele::cat({" class=\"pele-label\"", textAttrs}),  icons)});
         } else if (view.kind == ViewKind::Json) {
             kindStr = "pele-json";
             double x0 = Flowchart::jsRound((-w / 2.0) * 100.0) / 100.0;
             double y = -h / 2.0 + view.headH;
             std::string cells;
-            std::string lines = "M" + ucNum(x0) + "," + ucNum(y) + "H" + ucNum(-w / 2.0 + w);
-            if (view.keyW > 0.0) lines += "M" + ucNum(-w / 2.0 + view.keyW) + "," + ucNum(y) + "V" + ucNum(h / 2.0);
+            std::string lines = Pele::cat({"M", ucNum(x0), ",", ucNum(y), "H", ucNum(-w / 2.0 + w)});
+            if (view.keyW > 0.0) Pele::appendCat(lines, {"M", ucNum(-w / 2.0 + view.keyW), ",", ucNum(y), "V", ucNum(h / 2.0)});
             for (const auto& [key, val] : view.rows) {
                 double rowH = std::max({key.height, val.height, std::round(small * 1.5)}) + UC_ROW_PAD;
-                cells += labelSvg(key, -w / 2.0 + UC_CELL_PAD + key.width / 2.0, y + rowH / 2.0, " class=\"pele-json-key\"" + muted, icons) +
-                         ucLeftLabel(val, -w / 2.0 + view.keyW + UC_CELL_PAD, y + rowH / 2.0, " class=\"pele-json-value\"" + color + textAttrs, icons);
+                cells += labelSvg(key,  -w / 2.0 + UC_CELL_PAD + key.width / 2.0,  y + rowH / 2.0, Pele::cat({" class=\"pele-json-key\"", muted}),  icons) +
+                         ucLeftLabel(val,  -w / 2.0 + view.keyW + UC_CELL_PAD,  y + rowH / 2.0, Pele::cat({" class=\"pele-json-value\"", color, textAttrs}),  icons);
                 y += rowH;
             }
-            body = "<rect x=\"" + ucNum(x0) + "\" y=\"" + ucNum(-h / 2.0) + "\" width=\"" + ucNum(w) + "\" height=\"" + ucNum(h) + "\"" + rounded(UC_SHAPE_ATTRS + shape) + "/>"
-                   "<path class=\"pele-json-lines\" d=\"" + lines + "\" fill=\"none\" stroke=\"var(--_b)\"" + view.style.line + "/>" +
-                   labelSvg(view.label, 0.0, -h / 2.0 + view.headH / 2.0, " class=\"pele-label\" font-weight=\"var(--_hw)\"" + color + textAttrs, icons) +
-                   "<g font-size=\"" + ucNum(small) + "\">" + cells + "</g>";
+            body = Pele::cat({"<rect x=\"", ucNum(x0), "\" y=\"", ucNum(-h / 2.0), "\" width=\"", ucNum(w), "\" height=\"", ucNum(h), "\"", rounded(UC_SHAPE_ATTRS + shape), "/>"
+                   "<path class=\"pele-json-lines\" d=\"", lines, "\" fill=\"none\" stroke=\"var(--_b)\"", view.style.line, "/>", labelSvg(view.label,  0.0,  -h / 2.0 + view.headH / 2.0, Pele::cat({" class=\"pele-label\" font-weight=\"var(--_hw)\"", color, textAttrs}),  icons), "<g font-size=\"", ucNum(small), "\">", cells, "</g>"});
         } else {
             double labelY = view.stereotype.height / 2.0;
             std::string outline;
             if (view.kind == ViewKind::Ellipse) {
                 kindStr = "pele-usecase";
-                outline = "<ellipse rx=\"" + ucNum(w / 2.0) + "\" ry=\"" + ucNum(h / 2.0) + "\"" + UC_SHAPE_ATTRS + shape + "/>";
+                outline = Pele::cat({"<ellipse rx=\"", ucNum(w / 2.0), "\" ry=\"", ucNum(h / 2.0), "\"", UC_SHAPE_ATTRS, shape, "/>"});
                 if (node.business) {
                     double from = w / 2.0 - 15.0;
                     double to = w / 2.0 - 5.0;
@@ -2830,29 +2823,29 @@ inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, con
                         double r = at / (w / 2.0);
                         return (h / 2.0) * std::sqrt(std::max(0.0, 1.0 - r * r));
                     };
-                    outline += "<path class=\"pele-business\" d=\"M" + ucNum(from) + "," + ucNum(arc(from)) + "L" + ucNum(to) + "," + ucNum(-arc(to)) + "\" fill=\"none\" stroke=\"var(--_b)\"" + view.style.line + "/>";
+                    Pele::appendCat(outline, {"<path class=\"pele-business\" d=\"M", ucNum(from), ",", ucNum(arc(from)), "L", ucNum(to), ",", ucNum(-arc(to)), "\" fill=\"none\" stroke=\"var(--_b)\"", view.style.line, "/>"});
                 }
             } else if (node.shape == "note") {
                 kindStr = "pele-note";
                 double r = w / 2.0;
                 double b = h / 2.0;
-                outline = "<path d=\"M" + ucNum(-r) + "," + ucNum(-b) + "H" + ucNum(r - UC_FOLD) + "L" + ucNum(r) + "," + ucNum(UC_FOLD - b) + "V" + ucNum(b) + "H" + ucNum(-r) + "Z\" fill=\"var(--_a)\" stroke=\"var(--_b)\" stroke-linejoin=\"round\"" + shape + "/>"
-                          "<path d=\"M" + ucNum(r - UC_FOLD) + "," + ucNum(-b) + "V" + ucNum(UC_FOLD - b) + "H" + ucNum(r) + "\" fill=\"none\" stroke=\"var(--_b)\" stroke-linejoin=\"round\"" + view.style.line + "/>";
+                outline = Pele::cat({"<path d=\"M", ucNum(-r), ",", ucNum(-b), "H", ucNum(r - UC_FOLD), "L", ucNum(r), ",", ucNum(UC_FOLD - b), "V", ucNum(b), "H", ucNum(-r), "Z\" fill=\"var(--_a)\" stroke=\"var(--_b)\" stroke-linejoin=\"round\"", shape, "/>"
+                          "<path d=\"M", ucNum(r - UC_FOLD), ",", ucNum(-b), "V", ucNum(UC_FOLD - b), "H", ucNum(r), "\" fill=\"none\" stroke=\"var(--_b)\" stroke-linejoin=\"round\"", view.style.line, "/>"});
             } else {
                 kindStr = "pele-usecase";
-                outline = "<rect x=\"" + ucNum(-w / 2.0) + "\" y=\"" + ucNum(-h / 2.0) + "\" width=\"" + ucNum(w) + "\" height=\"" + ucNum(h) + "\"" + rounded(UC_SHAPE_ATTRS + shape) + "/>";
+                outline = Pele::cat({"<rect x=\"", ucNum(-w / 2.0), "\" y=\"", ucNum(-h / 2.0), "\" width=\"", ucNum(w), "\" height=\"", ucNum(h), "\"", rounded(UC_SHAPE_ATTRS + shape), "/>"});
             }
             body = outline +
-                   labelSvg(view.stereotype, 0.0, -view.label.height / 2.0, " class=\"pele-stereotype\" font-size=\"" + num(tiny) + "\"" + muted, icons) +
-                   labelSvg(view.label, 0.0, labelY, " class=\"pele-label\"" + std::string(node.shape == "note" ? (" font-size=\"" + num(small) + "\"") : "") + color + textAttrs, icons);
+                   labelSvg(view.stereotype,  0.0,  -view.label.height / 2.0, Pele::cat({" class=\"pele-stereotype\" font-size=\"", num(tiny), "\"", muted}),  icons) +
+                   labelSvg(view.label, 0.0, labelY, " class=\"pele-label\"" + std::string(node.shape == "note" ? Pele::cat({" font-size=\"", num(small), "\""}) : "") + color + textAttrs, icons);
         }
-        nodesOut += "<g class=\"pele-node " + kindStr + classes + "\" data-id=\"" + id + "\" transform=\"translate(" + num(c.x) + "," + num(c.y) + ")\">" + body + "</g>";
+        Pele::appendCat(nodesOut, {"<g class=\"pele-node ", kindStr, classes, "\" data-id=\"", id, "\" transform=\"translate(", num(c.x), ",", num(c.y), ")\">", body, "</g>"});
     }
 
     std::string casings;
     std::string edgesOut;
     std::string labelsOut;
-    std::unordered_map<int, int> loopSeen;
+    Pele::FlatMap<int, int> loopSeen;
     for (size_t i = 0; i < cedges.size(); i++) {
         auto& ce = cedges[i];
         const auto& edge = drawn[i];
@@ -2884,14 +2877,14 @@ inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, con
             double et = ucTrim(endType);
             auto outPt = [&](double x, double y, double sign, double far) {
                 return sideways
-                    ? (num(x + sign * spread * (far != 0.0 ? 1.0 : 0.0)) + "," + num(y + far))
-                    : (num(x + far) + "," + num(y + sign * spread * (far != 0.0 ? 1.0 : 0.0)));
+                    ? Pele::cat({num(x + sign * spread * (far != 0.0 ? 1.0 : 0.0)), ",", num(y + far)})
+                    : Pele::cat({num(x + far), ",", num(y + sign * spread * (far != 0.0 ? 1.0 : 0.0))});
             };
             double sx = sideways ? (ax - ux * st) : (ax + ux * st);
             double sy = sideways ? (ay + uy * st) : (ay - uy * st);
             double ex = bx + ux * et;
             double ey = by + uy * et;
-            path.d = "M" + num(sx) + "," + num(sy) + "C" + outPt(ax, ay, -1.0, reach) + " " + outPt(bx, by, 1.0, reach) + " " + num(ex) + "," + num(ey);
+            path.d = Pele::cat({"M", num(sx), ",", num(sy), "C", outPt(ax, ay, -1.0, reach), " ", outPt(bx, by, 1.0, reach), " ", num(ex), ",", num(ey)});
             path.sx = ax;
             path.sy = ay;
             path.sdx = sideways ? ux : -ux;
@@ -2925,15 +2918,11 @@ inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, con
 
         // Strip /^default relationship relationship-\S+\s?/
         std::string edgeCls = edge.classes;
-        std::string prefix = "default relationship relationship-" + edge.relationshipType;
-        if (startsWith(edgeCls, prefix + " ")) edgeCls = edgeCls.substr(prefix.size() + 1);
+        std::string prefix = Pele::cat({"default relationship relationship-", edge.relationshipType});
+        if (startsWith(edgeCls, Pele::cat({prefix, " "}))) edgeCls = edgeCls.substr(prefix.size() + 1);
         else if (edgeCls == prefix) edgeCls.clear();
 
-        edgesOut += "<g class=\"pele-edge pele-" + edge.relationshipType + classNames(edgeCls) + "\" data-id=\"" + escText(edge.id) + "\"" +
-                    (!over.empty() ? (" stroke=\"" + over + "\"") : "") + (hasStyle ? style.line : "") + ">" +
-                    "<path d=\"" + path.d + "\"" + (!dashes.empty() ? (" stroke-dasharray=\"" + dashes + "\"") : "") + "/>" +
-                    ((under.state == FillLookup::Found && !over.empty()) ? hollowOn(marks, under.fill) : marks) +
-                    "</g>";
+        Pele::appendCat(edgesOut, {"<g class=\"pele-edge pele-", edge.relationshipType, classNames(edgeCls), "\" data-id=\"", escText(edge.id), "\"", (!over.empty() ? Pele::cat({" stroke=\"", over, "\""}) : ""), (hasStyle ? style.line : ""), ">", "<path d=\"", path.d, "\"", (!dashes.empty() ? Pele::cat({" stroke-dasharray=\"", dashes, "\""}) : ""), "/>", ((under.state == FillLookup::Found && !over.empty()) ? hollowOn(marks, under.fill) : marks), "</g>"});
         if (label.width > 0.0) {
             bool semantic = (edge.relationshipType == "include" || edge.relationshipType == "extend");
             labelsOut += edgeLabelSvg(edge.id, label, ce.labelX, ce.labelY, std::string(semantic ? " fill=\"var(--_m)\"" : "") + (hasStyle ? style.text : ""), icons);
@@ -2942,24 +2931,17 @@ inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, con
 
     DiagramMeta meta{model.title, model.accTitle, model.accDescr};
     std::string svg = svgDocument(
-        "usecase",
-        width,
-        height,
-        size,
-        options,
-        meta,
-        labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\"") +
-            (!clusters.empty() ? ("<g class=\"pele-clusters\">" + clusters + "</g>") : "") +
-            casingsSvg(casings) +
-            (!edgesOut.empty() ? ("<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">" + edgesOut + "</g>") : "") +
-            (!labelsOut.empty() ? ("<g class=\"pele-edge-labels\" font-size=\"" + num(small) + "\">" + labelsOut + "</g>") : "") +
-            "<g class=\"pele-nodes\">" + nodesOut + "</g>"
-    );
+        "usecase", 
+        width, 
+        height, 
+        size, 
+        options, 
+        meta, Pele::cat({labelSvg(title, width / 2.0, pad + title.height / 2.0, " class=\"pele-title\" font-weight=\"var(--_tw)\""), (!clusters.empty() ? Pele::cat({"<g class=\"pele-clusters\">", clusters, "</g>"}) : ""), casingsSvg(casings), (!edgesOut.empty() ? Pele::cat({"<g class=\"pele-edges\" fill=\"none\" stroke=\"var(--_l)\" stroke-linecap=\"round\">", edgesOut, "</g>"}) : ""), (!labelsOut.empty() ? Pele::cat({"<g class=\"pele-edge-labels\" font-size=\"", num(small), "\">", labelsOut, "</g>"}) : ""), "<g class=\"pele-nodes\">", nodesOut, "</g>"}));
 
     return {svg, width, height, {}};
 }
 
-inline Rendered renderUsecaseModel(const UsecaseModel& model, const Config& config, const RenderOptions& options) {
+inline Rendered renderUsecaseModel(const UsecaseModel& model, const Config& config, const RenderOptions& options) noexcept {
     if (!Flowchart::runsAcross(model.direction)) return drawUsecase(model, config, options, false);
     return Flowchart::turnToFit(options, [&](bool down) { return drawUsecase(model, config, options, down); });
 }
@@ -2995,7 +2977,7 @@ inline Rendered render(const std::string& source, const Config& config, const Re
 
 inline Rendered render(const std::string& source, const RenderOptions& options = {}) {
     auto pre = preprocess(source);
-    std::string parsed = encodeEntities(pre.text) + "\n";
+    std::string parsed = Pele::cat({encodeEntities(pre.text), "\n"});
     return render(parsed, pre.config, pre.title, options);
 }
 
