@@ -549,8 +549,9 @@ struct LatexParser {
     std::string s;
     size_t pos = 0;
     bool displayMode = true;
+    int recDepth = 0;
 
-    LatexParser(const std::string& src, bool disp) : s(src), pos(0), displayMode(disp) {}
+    LatexParser(const std::string& src, bool disp, int d = 0) : s(src), pos(0), displayMode(disp), recDepth(d) {}
 
     void skipSpaces() {
         while (pos < s.size() && (s[pos] == ' ' || s[pos] == '\t' || s[pos] == '\r' || s[pos] == '\n')) pos++;
@@ -686,12 +687,12 @@ struct LatexParser {
                 if (rStr[i] == '{') depth++;
                 else if (rStr[i] == '}') depth = std::max(0, depth - 1);
                 else if (depth == 0 && rStr[i] == '&') {
-                    LatexParser sub(rStr.substr(st, i - st), false);
+                    LatexParser sub(rStr.substr(st, i - st), false, recDepth + 1);
                     cols.push_back(sub.parseExpr());
                     st = i + 1;
                 }
             }
-            LatexParser sub(rStr.substr(st), false);
+            LatexParser sub(rStr.substr(st), false, recDepth + 1);
             cols.push_back(sub.parseExpr());
             maxCols = std::max(maxCols, cols.size());
             grid.push_back(std::move(cols));
@@ -741,7 +742,11 @@ struct LatexParser {
 
     MNode parseAtom() {
         skipSpaces();
-        if (pos >= s.size()) return {"", 0.0, 1.0, false};
+        if (pos >= s.size() || recDepth > 64) {
+            if (pos < s.size()) pos = s.size();
+            return {"", 0.0, 1.0, false};
+        }
+        struct DepthGuard { int& d; DepthGuard(int& r) : d(r) { ++d; } ~DepthGuard() { --d; } } dg(recDepth);
 
         char c = s[pos];
         if (c == '{') {
@@ -819,7 +824,7 @@ struct LatexParser {
                 std::string opt = readBracketOpt();
                 MNode arg = parseAtom();
                 if (!opt.empty()) {
-                    LatexParser sub(opt, false);
+                    LatexParser sub(opt, false, recDepth + 1);
                     MNode deg = sub.parseExpr();
                     double w = arg.w + std::max(0.85, deg.w * 0.65 + 0.45);
                     double h = arg.h + 0.32;
@@ -1466,6 +1471,24 @@ struct ResolvedStyle {
     bool italic = false;
 };
 
+inline std::string sanitizeCssValue(const std::string& raw) {
+    std::string out;
+    out.reserve(raw.size());
+    for (unsigned char c : raw) {
+        if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+            c == '#' || c == '(' || c == ')' || c == ',' || c == '.' || c == '%' ||
+            c == '-' || c == '_' || c == ' ') {
+            out.push_back(static_cast<char>(c));
+        }
+    }
+    std::string low = toLower(out);
+    if (low.find("url(") != std::string::npos || low.find("expression") != std::string::npos ||
+        low.find("javascript") != std::string::npos || low.find("import") != std::string::npos) {
+        return "";
+    }
+    return trim(out);
+}
+
 inline ResolvedStyle resolveStyle(const std::vector<std::string>& decls) {
     ResolvedStyle rs;
     std::string shapeCss;
@@ -1477,13 +1500,13 @@ inline ResolvedStyle resolveStyle(const std::vector<std::string>& decls) {
                 size_t colon = sub.find(':');
                 if (colon == std::string::npos) continue;
                 std::string k = toLower(trim(sub.substr(0, colon)));
-                std::string v = trim(sub.substr(colon + 1));
+                std::string v = sanitizeCssValue(trim(sub.substr(colon + 1)));
                 if (k.empty() || v.empty()) continue;
-                if (k == "fill") { rs.fill = v; shapeCss += "fill:" + esc(v) + ";"; }
-                else if (k == "stroke") { rs.stroke = v; shapeCss += "stroke:" + esc(v) + ";"; lineCss += "stroke:" + esc(v) + ";"; }
+                if (k == "fill") { rs.fill = esc(v); shapeCss += "fill:" + esc(v) + ";"; }
+                else if (k == "stroke") { rs.stroke = esc(v); shapeCss += "stroke:" + esc(v) + ";"; lineCss += "stroke:" + esc(v) + ";"; }
                 else if (k == "stroke-width") { shapeCss += "stroke-width:" + esc(v) + ";"; lineCss += "stroke-width:" + esc(v) + ";"; }
                 else if (k == "stroke-dasharray") { shapeCss += "stroke-dasharray:" + esc(v) + ";"; lineCss += "stroke-dasharray:" + esc(v) + ";"; }
-                else if (k == "color") { rs.color = v; rs.textColor = v; textCss += "fill:" + esc(v) + ";color:" + esc(v) + ";"; }
+                else if (k == "color") { rs.color = esc(v); rs.textColor = esc(v); textCss += "fill:" + esc(v) + ";color:" + esc(v) + ";"; }
                 else if (k == "font-weight" && (v == "bold" || v == "700" || v == "600")) { rs.bold = true; }
                 else if (k == "font-style" && v == "italic") { rs.italic = true; }
             }
@@ -1671,7 +1694,7 @@ inline std::string edgeLabelSvg(const std::string& id, const Label& label, doubl
 inline std::string labelSvg(double cx, double cy, const Label& label, double fontSize, const std::string& anchor = "middle", const std::string& fill = "") {
     std::string attrs;
     if (std::abs(fontSize - 16.0) > 0.1) attrs += " font-size=\"" + num(fontSize) + "\"";
-    if (!fill.empty()) attrs += " fill=\"" + fill + "\"";
+    if (!fill.empty()) attrs += " fill=\"" + esc(fill) + "\"";
     bool hasMath = false;
     for (const auto& line : label.lines) {
         for (const auto& sp : line) {
@@ -1931,8 +1954,8 @@ inline std::string drawShape(const std::string& shape, double w, double h, const
 }
 
 inline std::string drawShape(const std::string& shape, double cx, double cy, double w, double h, const ResolvedStyle& rs) {
-    std::string fill = rs.fill.empty() ? "var(--_s)" : rs.fill;
-    std::string stroke = rs.stroke.empty() ? "var(--_b)" : rs.stroke;
+    std::string fill = rs.fill.empty() ? "var(--_s)" : esc(rs.fill);
+    std::string stroke = rs.stroke.empty() ? "var(--_b)" : esc(rs.stroke);
     std::string shapeAttrs = " fill=\"" + fill + "\" stroke=\"" + stroke + "\" stroke-width=\"var(--_w)\"" + rs.extra + rs.shape;
     std::string lineAttrs = " stroke=\"" + stroke + "\" stroke-width=\"var(--_w)\"";
     return "<g transform=\"translate(" + num(cx) + "," + num(cy) + ")\">" + drawShape(shape, w, h, shapeAttrs, lineAttrs) + "</g>";
