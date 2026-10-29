@@ -1095,7 +1095,7 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
             ]
             print(f"Configured 7 screenshots for [{lang}]")
 
-        for base_lang in ("ja-jp", "en-us", "zh-hans", "ko"):
+    for base_lang in ("ja-jp", "en-us", "zh-hans", "ko"):
         if base_lang in listings and "baseListing" in listings[base_lang]:
             listings[base_lang]["baseListing"]["title"] = "miu"
 
