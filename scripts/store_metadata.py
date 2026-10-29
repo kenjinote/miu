@@ -34,15 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.42 更新日誌
-⚡ 搜尋與取代最高提速 605 倍、EXE 體積縮減 15.3% 及系統級安全加固
+        "releaseNotes": """miu v1.0.43 更新日誌
+🇯🇵 修復輸入法（IME）無法輸入中文/日文的問題 & 搜尋最高提速 605 倍、體積縮減 15.3%
 
+・修復 IME 輸入法無法打字與選字的問題（重要修復）：
+  修復了 v1.0.42 中因處理程序緩解原則攔截 Windows TSF / IMM32 掛鉤及第三方輸入法元件，導致無法使用中文/日文輸入法的問題，並最佳化 WebView2 預覽（Alt+P）的焦點控制，兼顧編輯器輸入與預覽內表單輸入。
 ・搜尋、全部取代與語法高亮極速最佳化：
-  採用 AVX2 首尾字元同步 SIMD 搜尋，32MB 文件正向搜尋提速 245 倍、反向搜尋提速 605 倍；引入 O(N+M) 線性全部取代（提速 323 倍）、零配置語法高亮掃描器（提速 22.7 倍）與 Pele 圖表引擎提速（1.34 倍）。
-・執行檔體積大幅縮減（減少 788.5 KB / -15.3%）：
-  透過冷熱程式碼分離、1,107 個函式 noexcept 標註、最小化重編 ced.lib 及 /OPT:ICF=5 連結壓縮，將體積精簡至 4.35 MB。
-・系統級安全風險降低：
-  啟用 Windows 處理序緩解原則（PreferSystem32Images 與 DisableExtensionPoints）、堆積損毀即時終止保護、正規表示式 ReDoS 防護及 vcpkg 自動連結隔離。""",
+  採用 AVX2 首尾字元同步 SIMD 搜尋（32MB 文件最高提速 605 倍）、O(N+M) 線性全部取代（提速 323 倍）與零配置語法高亮掃描器（提速 22.7 倍）。
+・執行檔體積大幅縮減（減少 788.5 KB / -15.3%）與安全加固：
+  將執行檔精簡至 4.35 MB，並配備 DLL 預載入防護、堆積損毀即時終止保護與正規表示式 ReDoS 預檢防護。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.42 Versionshinweise
-⚡ Bis zu 605× schnellere Suche/Ersetzung, 15,3 % kleinere EXE & OS-Prozesshärtung
+        "releaseNotes": """miu v1.0.43 Versionshinweise
+🇯🇵 IME-Eingabefehler (Japanisch/CJK) behoben + Bis zu 605x schnellere Suche & 15,3 % kleinere EXE
 
-• Massive Beschleunigung für Suche, Ersetzen & Syntaxhervorhebung:
-  AVX2-SIMD-Suche beschleunigt die Vorwärtssuche um das 245-Fache und die Rückwärtssuche um das 605-Fache; lineares O(N+M)-„Alle ersetzen“ (323× schneller), Zero-Allocation-Syntaxscanner (22,7× schneller) und 1,34× schnelleres Pele-Rendering.
-• 15,3 % kleinere ausführbare Datei (-788,5 KB):
-  Reduziert auf 4,35 MB durch Hot/Cold-Optimierung, 1.107 noexcept-Annotationen (-41,8 % .pdata), kompakte ced.lib und /OPT:ICF=5.
-• Reduzierte Sicherheitsrisiken:
-  OS-Prozessschutzrichtlinien (PreferSystem32Images & DisableExtensionPoints), HeapEnableTerminationOnCorruption, ReDoS-Regex-Schutz und vcpkg-Link-Isolierung.""",
+- Wichtige Korrektur für IME-Texteingabe (Japanisch/CJK):
+  Behebung eines Problems aus v1.0.42, bei dem Prozessminderungsrichtlinien Windows TSF / IMM32-Hooks und Drittanbieter-IMEs blockierten. Zudem wurde die Fokussteuerung der WebView2-Vorschau (Alt+P) verbessert, sodass sowohl die Editoreingabe als auch Formularfelder in der Vorschau reibungslos funktionieren.
+- Enorme Beschleunigung bei Suche, Ersetzen & Syntaxhervorhebung:
+  AVX2-SIMD-Suche (bis zu 605x schneller bei 32 MB), lineares O(N+M) „Alle ersetzen“ (323x schneller) und allokationsfreier Syntax-Scanner (22,7x schneller).
+- 15,3 % kleinere Programmdatei (-788,5 KB) & Sicherheits-Hardening:
+  Kompakte 4,35 MB EXE mit DLL-Hijacking-Schutz, Heap-Korruptionsschutz und Regex-ReDoS-Schutz.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.42
-⚡ Recherche/remplacement jusqu'à 605× plus rapide, EXE réduit de 15,3 % et sécurité OS renforcée
+        "releaseNotes": """Notes de version miu v1.0.43
+🇯🇵 Correction de la saisie IME (japonais/CJK) + Recherche/remplacement jusqu'à 605x plus rapide et EXE réduit de 15,3 %
 
-• Accélération majeure de la recherche, du remplacement et de la coloration syntaxique :
-  Recherche SIMD AVX2 (245× plus rapide en avant, 605× en arrière), remplacement global linéaire O(N+M) (323× plus rapide), coloration syntaxique sans allocation (22,7× plus rapide) et moteur Pele 1,34× plus rapide.
-• Exécutable réduit de 15,3 % (-788,5 Ko) :
-  Allégé à 4,35 Mo via séparation Hot/Cold, 1 107 fonctions noexcept (-41,8 % .pdata), ced.lib compactée et compression /OPT:ICF=5.
-• Réduction des risques de sécurité :
-  Politiques d'atténuation OS (PreferSystem32Images et DisableExtensionPoints), arrêt immédiat sur corruption du tas, garde anti-ReDoS regex et isolation vcpkg.""",
+- Correction critique de la saisie IME (japonais/chinois/coréen) :
+  Correction d'un problème introduit dans la v1.0.42 où les stratégies d'atténuation de processus bloquaient les hooks Windows TSF / IMM32 et les modules IME tiers. Amélioration de la gestion du focus de l'aperçu WebView2 (Alt+P) pour permettre à la fois la saisie dans l'éditeur et dans les formulaires de l'aperçu.
+- Accélération massive de la recherche, du remplacement et de la coloration syntaxique :
+  Recherche SIMD AVX2 jusqu'à 605x plus rapide sur 32 Mo, remplacer tout linéaire O(N+M) (323x plus rapide) et coloration syntaxique sans allocation (22,7x plus rapide).
+- Exécutable réduit de 15,3 % (-788,5 Ko) et sécurité renforcée :
+  Binaire compact de 4,35 Mo avec protection contre le détournement de DLL, arrêt sur corruption du tas et protection ReDoS.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.42
-⚡ Búsqueda y reemplazo hasta 605× más rápidos, EXE un 15,3 % menor y protección de procesos del SO
+        "releaseNotes": """Notas de la versión miu v1.0.43
+🇯🇵 Corrección de entrada IME (japonés/CJK) + Búsqueda/reemplazo hasta 605x más rápido y EXE un 15,3 % menor
 
-• Gran aceleración en búsqueda, reemplazo y resaltado de sintaxis:
-  Búsqueda SIMD AVX2 (245× más rápida hacia adelante, 605× hacia atrás), Reemplazar todo lineal O(N+M) (323× más rápido), escáner de sintaxis sin asignaciones (22,7× más rápido) y motor Pele 1,34× más rápido.
-• Ejecutable un 15,3 % más pequeño (-788,5 KB):
-  Reducido a 4,35 MB mediante optimización Hot/Cold, 1.107 funciones noexcept (-41,8 % .pdata), ced.lib compactada y /OPT:ICF=5.
-• Reducción de riesgos de seguridad:
-  Políticas de mitigación del SO (PreferSystem32Images y DisableExtensionPoints), terminación ante corrupción de montón, protección anti-ReDoS en regex y aislamiento de vcpkg.""",
+- Corrección crítica de entrada de texto IME (japonés/CJK):
+  Se resolvió un problema de la v1.0.42 donde las políticas de mitigación de procesos bloqueaban los hooks TSF / IMM32 de Windows y los módulos IME de terceros. También se mejoró el enfoque de la vista previa WebView2 (Alt+P) para permitir escribir tanto en el editor como en formularios dentro de la vista previa.
+- Aceleración masiva en búsqueda, reemplazo y resaltado de sintaxis:
+  Búsqueda SIMD AVX2 hasta 605x más rápida en 32 MB, reemplazar todo lineal O(N+M) (323x más rápido) y escáner de sintaxis sin asignaciones (22,7x más rápido).
+- Ejecutable un 15,3 % más pequeño (-788,5 KB) y seguridad reforzada:
+  Ejecutable compacto de 4,35 MB con protección contra secuestro de DLL, protección de montón y filtro anti-ReDoS.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.42
-⚡ Busca e substituição até 605× mais rápidas, EXE 15,3% menor e proteção de processos do SO
+        "releaseNotes": """Notas de lançamento do miu v1.0.43
+🇯🇵 Correção de entrada IME (japonês/CJK) + Busca/substituição até 605x mais rápida e EXE 15,3% menor
 
-• Grande aceleração em busca, substituição e realce de sintaxe:
-  Busca SIMD AVX2 (245× mais rápida para frente, 605× para trás), Substituir tudo linear O(N+M) (323× mais rápido), scanner de sintaxe sem alocações (22,7× mais rápido) e motor Pele 1,34× mais rápido.
-• Executável 15,3% menor (-788,5 KB):
-  Reduzido para 4,35 MB com otimização Hot/Cold, 1.107 anotações noexcept (-41,8% .pdata), ced.lib compactada e /OPT:ICF=5.
-• Redução de riscos de segurança:
-  Políticas de mitigação do SO (PreferSystem32Images e DisableExtensionPoints), encerramento em corrupção de heap, proteção anti-ReDoS para regex e isolamento do vcpkg.""",
+- Correção crítica de digitação via IME (japonês/CJK):
+  Corrigido um problema introduzido na v1.0.42 em que as políticas de mitigação de processo bloqueavam hooks Windows TSF / IMM32 e módulos IME de terceiros. Também aprimoramos o controle de foco da visualização WebView2 (Alt+P) para permitir digitar tanto no editor quanto em formulários da pré-visualização.
+- Aceleração massiva de busca, substituição e realce de sintaxe:
+  Busca SIMD AVX2 até 605x mais rápida em 32 MB, substituir tudo linear O(N+M) (323x mais rápido) e scanner de sintaxe sem alocação (22,7x mais rápido).
+- Executável 15,3% menor (-788,5 KB) e reforço de segurança:
+  Binário compacto de 4,35 MB com proteção contra sequestro de DLL, proteção contra corrupção de heap e guarda anti-ReDoS.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.42
-⚡ Ускорение поиска и замены до 605 раз, уменьшение EXE на 15,3% и защита процессов ОС
+        "releaseNotes": """Примечания к выпуску miu v1.0.43
+🇯🇵 Исправлен ввод через IME (японский/CJK) + Ускорение поиска до 605 раз и уменьшение EXE на 15,3%
 
-• Кардинальное ускорение поиска, замены и подсветки синтаксиса:
-  SIMD-поиск AVX2 ускоряет прямой поиск в 245 раз и обратный в 605 раз; линейная замена всех совпадений O(N+M) (в 323 раза быстрее), сканер синтаксиса без аллокаций (в 22,7 раза быстрее) и ускорение движка Pele в 1,34 раза.
-• Сокращение размера EXE на 15,3% (-788,5 КБ):
-  Размер уменьшен до 4,35 МБ благодаря разделению Hot/Cold, 1 107 функциям noexcept (-41,8% .pdata), пересборке ced.lib и /OPT:ICF=5.
-• Снижение рисков безопасности:
-  Политики защиты процессов ОС (PreferSystem32Images и DisableExtensionPoints), защита от повреждения кучи, защита регулярных выражений от ReDoS и изоляция автолинковки vcpkg.""",
+- Критическое исправление ввода текста через IME (японский/CJK):
+  Устранена проблема версии 1.0.42, из-за которой политики снижения рисков процесса блокировали хуки Windows TSF / IMM32 и сторонние модули IME. Также улучшено управление фокусом предпросмотра WebView2 (Alt+P) для удобного ввода как в редакторе, так и в формах предпросмотра.
+- Многократное ускорение поиска, замены и подсветки синтаксиса:
+  SIMD-поиск AVX2 (до 605 раз быстрее на 32 МБ), линейная замена всего O(N+M) (в 323 раза быстрее) и сканер подсветки синтаксиса без аллокаций (в 22,7 раза быстрее).
+- Уменьшение размера EXE на 15,3% (-788,5 КБ) и усиление безопасности:
+  Компактный исполняемый файл 4,35 МБ с защитой от подмены DLL, защитой кучи и проверкой регулярных выражений на ReDoS.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.42
-⚡ Ricerca e sostituzione fino a 605× più veloci, EXE ridotto del 15,3% e protezione processi OS
+        "releaseNotes": """Note di rilascio di miu v1.0.43
+🇯🇵 Correzione input IME (giapponese/CJK) + Ricerca/sostituzione fino a 605x più veloce ed EXE ridotto del 15,3%
 
-• Accelerazione estrema per ricerca, sostituzione ed evidenziazione sintassi:
-  Ricerca SIMD AVX2 (245× più veloce in avanti, 605× indietro), Sostituisci tutto lineare O(N+M) (323× più veloce), scanner sintattico zero-allocation (22,7× più veloce) e motore Pele 1,34× più rapido.
-• Eseguibile ridotto del 15,3% (-788,5 KB):
-  Compattato a 4,35 MB tramite ottimizzazione Hot/Cold, 1.107 funzioni noexcept (-41,8% .pdata), ced.lib ricompilata e /OPT:ICF=5.
-• Riduzione dei rischi di sicurezza:
-  Criteri di mitigazione processi OS (PreferSystem32Images e DisableExtensionPoints), arresto su corruzione heap, guardia anti-ReDoS regex e isolamento vcpkg.""",
+- Correzione critica dell'input IME (giapponese/CJK):
+  Risolto un problema introdotto nella v1.0.42 in cui i criteri di mitigazione del processo bloccavano gli hook Windows TSF / IMM32 e gli IME di terze parti. Migliorata inoltre la gestione del focus dell'anteprima WebView2 (Alt+P) per consentire la digitazione sia nell'editor sia nei moduli dell'anteprima.
+- Velocità estrema per ricerca, sostituzione ed evidenziazione sintassi:
+  Ricerca SIMD AVX2 fino a 605x più veloce su 32 MB, sostituisci tutto lineare O(N+M) (323x più veloce) e scanner sintattico a zero allocazioni (22,7x più veloce).
+- Eseguibile ridotto del 15,3% (-788,5 KB) e sicurezza avanzata:
+  Binario compatto da 4,35 MB con protezione da DLL hijacking, arresto su corruzione dell'heap e filtro anti-ReDoS.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.42
-⚡ Wyszukiwanie i zamiana do 605× szybsze, EXE mniejszy o 15,3% oraz wzmocnienie ochrony procesów
+        "releaseNotes": """Informacje o wersji miu v1.0.43
+🇯🇵 Naprawiono wprowadzanie IME (japoński/CJK) + Do 605x szybsze wyszukiwanie i plik EXE mniejszy o 15,3%
 
-• Ogromne przyspieszenie wyszukiwania, zamiany i kolorowania składni:
-  Wyszukiwanie SIMD AVX2 (245× szybciej w przód, 605× w tył), liniowa funkcja Zamień wszystko O(N+M) (323× szybciej), skaner składni bez alokacji (22,7× szybciej) oraz silnik Pele szybszy o 1,34×.
-• Plik wykonywalny mniejszy o 15,3% (-788,5 KB):
-  Zmniejszony do 4,35 MB dzięki optymalizacji Hot/Cold, 1107 adnotacjom noexcept (-41,8% .pdata), przebudowie ced.lib i kompresji /OPT:ICF=5.
-• Redukcja ryzyka bezpieczeństwa:
-  Zasady ochrony procesów systemu (PreferSystem32Images i DisableExtensionPoints), natychmiastowe zakończenie przy uszkodzeniu sterty, ochrona przed ReDoS w regex oraz izolacja vcpkg.""",
+- Krytyczna poprawka wprowadzania tekstu IME (japoński/CJK):
+  Rozwiązano problem z wersji 1.0.42, w której zasady ograniczania ryzyka procesu blokowały haki Windows TSF / IMM32 oraz zewnętrzne moduły IME. Ulepszono również obsługę fokusu podglądu WebView2 (Alt+P), umożliwiając pisanie zarówno w edytorze, jak i w formularzach podglądu.
+- Ogromne przyspieszenie wyszukiwania, zamiany i kolorowania składni:
+  Wyszukiwanie SIMD AVX2 (do 605x szybciej w pliku 32 MB), liniowa zamiana wszystkiego O(N+M) (323x szybciej) oraz bezalokacyjny skaner składni (22,7x szybciej).
+- Plik wykonywalny mniejszy o 15,3% (-788,5 KB) i wzmocnione bezpieczeństwo:
+  Kompaktowy plik 4,35 MB z ochroną przed przechwytywaniem DLL, ochroną sterty i blokadą ReDoS.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.42
-⚡ Tot 605× sneller zoeken/vervangen, 15,3% kleinere EXE & OS-procesbeveiliging
+        "releaseNotes": """Releaseopmerkingen miu v1.0.43
+🇯🇵 IME-invoer (Japans/CJK) hersteld + Tot 605x sneller zoeken/vervangen & 15,3% kleinere EXE
 
-• Enorme versnelling voor zoeken, vervangen & syntaxisaccentuering:
-  AVX2 SIMD-zoeken versnelt voorwaarts zoeken 245× en achterwaarts zoeken 605×; lineair O(N+M) Alles vervangen (323× sneller), zero-allocation syntaxisscanner (22,7× sneller) en 1,34× snellere Pele-rendering.
-• 15,3% kleiner uitvoerbaar bestand (-788,5 KB):
-  Verkleind naar 4,35 MB via Hot/Cold-optimalisatie, 1.107 noexcept-functies (-41,8% .pdata), compacte ced.lib en /OPT:ICF=5.
-• Verlaagde beveiligingsrisico's:
-  OS-procesbeveiligingsbeleid (PreferSystem32Images & DisableExtensionPoints), beëindiging bij heap-corruptie, regex ReDoS-bescherming en vcpkg-isolatie.""",
+- Kritieke oplossing voor IME-tekstinvoer (Japans/CJK):
+  Er is een probleem uit v1.0.42 opgelost waarbij procesbeperkingsbeleid Windows TSF / IMM32-hooks en externe IME-modules blokkeerde. Ook is de focusregeling van het WebView2-voorbeeld (Alt+P) verbeterd, zodat typen in zowel de editor als formulieren in het voorbeeld probleemloos werkt.
+- Enorme versnelling van zoeken, vervangen en syntaxisaccentuering:
+  AVX2 SIMD-zoeken (tot 605x sneller bij 32 MB), lineair alles vervangen in O(N+M) (323x sneller) en een syntaxisscanner zonder heap-allocaties (22,7x sneller).
+- 15,3% kleiner uitvoerbaar bestand (-788,5 KB) & verbeterde beveiliging:
+  Compact bestand van 4,35 MB met bescherming tegen DLL-hijacking, heap-corruptiebeveiliging en ReDoS-bescherming.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.42 Sürüm Notları
-⚡ 605 Kata Kadar Daha Hızlı Arama/Değiştirme, %15,3 Daha Küçük EXE ve İşletim Sistemi Süreç Koruması
+        "releaseNotes": """miu v1.0.43 Sürüm Notları
+🇯🇵 IME Giriş Sorunu (Japonca/CJK) Düzeltildi + 605 Kata Kadar Daha Hızlı Arama ve %15,3 Daha Küçük EXE
 
-• Arama, Değiştirme ve Sözdizimi Vurgulamada Dev Hızlandırma:
-  AVX2 SIMD arama ile ileri arama 245×, geri arama 605× hızlandı; O(N+M) doğrusal Tümünü Değiştir (323× daha hızlı), sıfır tahsisli sözdizimi tarayıcısı (22,7× daha hızlı) ve 1,34× daha hızlı Pele motoru eklendi.
-• %15,3 Daha Küçük Çalıştırılabilir Dosya (-788,5 KB):
-  Hot/Cold optimizasyonu, 1.107 noexcept işlevi (-%41,8 .pdata), kompakt ced.lib ve /OPT:ICF=5 ile 4,35 MB'a düşürüldü.
-• Güvenlik Risklerinin Azaltılması:
-  İşletim sistemi süreç azaltma ilkeleri (PreferSystem32Images ve DisableExtensionPoints), yığın bozulmasında anında sonlandırma, regex ReDoS koruması ve vcpkg yalıtımı etkinleştirildi.""",
+- IME Metin Girişi Düzeltmesi (Kritik Düzeltme):
+  v1.0.42'de işlem azaltma ilkelerinin Windows TSF / IMM32 kancalarını ve üçüncü taraf IME modüllerini engelleyerek Japonca/CJK girişini durdurmasına neden olan sorun giderildi. Ayrıca WebView2 önizleme (Alt+P) odak yönetimi iyileştirilerek hem düzenleyicide hem de önizleme formlarında sorunsuz yazma sağlandı.
+- Arama, Değiştirme ve Sözdizimi Vurgulamada Devasa Hızlanma:
+  AVX2 SIMD arama (32 MB belgede 605 kata kadar daha hızlı), O(N+M) doğrusal Tümünü Değiştir (323 kat daha hızlı) ve sıfır tahsisli sözdizimi tarayıcısı (22,7 kat daha hızlı).
+- %15,3 Daha Küçük Çalıştırılabilir Dosya (-788,5 KB) ve Güvenlik Güçlendirmesi:
+  DLL ele geçirme koruması, yığın bozulması koruması ve ReDoS korumasına sahip 4,35 MB kompakt ikili dosya.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.42
-⚡ Tìm kiếm & Thay thế nhanh hơn tới 605 lần, giảm 15,3% dung lượng EXE & tăng cường bảo mật tiến trình
+        "releaseNotes": """Ghi chú phát hành miu v1.0.43
+🇯🇵 Khắc phục lỗi bộ gõ IME (tiếng Nhật/CJK) + Tìm kiếm/thay thế nhanh hơn tới 605 lần & giảm 15,3% dung lượng EXE
 
-• Tăng tốc vượt trội cho Tìm kiếm, Thay thế & Tô sáng cú pháp:
-  Tìm kiếm SIMD AVX2 giúp tìm tiến nhanh hơn 245 lần và tìm lùi nhanh hơn 605 lần; Thay thế tất cả tuyến tính O(N+M) (nhanh hơn 323 lần), bộ quét cú pháp không cấp phát bộ nhớ (nhanh hơn 22,7 lần) và nhân Pele nhanh hơn 1,34 lần.
-• Giảm 15,3% dung lượng tệp thực thi (-788,5 KB):
-  Thu gọn xuống 4,35 MB nhờ tối ưu hóa Hot/Cold, 1.107 hàm noexcept (-41,8% .pdata), biên dịch lại ced.lib gọn nhẹ và nén /OPT:ICF=5.
-• Giảm thiểu rủi ro bảo mật:
-  Bật chính sách bảo vệ tiến trình của HĐH (PreferSystem32Images & DisableExtensionPoints), dừng ngay khi hỏng heap, chống ReDoS biểu thức chính quy và cô lập vcpkg.""",
+- Khắc phục triệt để lỗi nhập liệu IME (tiếng Nhật/CJK):
+  Đã sửa lỗi trong v1.0.42 khi chính sách giảm thiểu rủi ro tiến trình chặn hook Windows TSF / IMM32 và các bộ gõ IME bên thứ ba. Đồng thời cải thiện quản lý tiêu điểm của khung xem trước WebView2 (Alt+P), giúp nhập liệu mượt mà trong cả trình soạn thảo lẫn các ô biểu mẫu trong khung xem trước.
+- Tăng tốc vượt trội tìm kiếm, thay thế và tô sáng cú pháp:
+  Tìm kiếm SIMD AVX2 nhanh hơn tới 605 lần trên tài liệu 32MB, thay thế tất cả tuyến tính O(N+M) (nhanh hơn 323 lần) và bộ quét cú pháp không cấp phát bộ nhớ (nhanh hơn 22,7 lần).
+- Giảm 15,3% kích thước tệp EXE (-788,5 KB) & tăng cường bảo mật:
+  Tệp thực thi gọn nhẹ 4,35 MB với cơ chế chống chiếm quyền DLL, bảo vệ hỏng heap và chống ReDoS.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.42
-⚡ Прискорення пошуку й заміни до 605 разів, зменшення EXE на 15,3% і захист процесів ОС
+        "releaseNotes": """Примітки до випуску miu v1.0.43
+🇯🇵 Виправлено введення IME (японська/CJK) + Прискорення пошуку до 605 разів і зменшення EXE на 15,3%
 
-• Кардинальне прискорення пошуку, заміни та підсвічування синтаксису:
-  SIMD-пошук AVX2 прискорює прямий пошук у 245 разів і зворотний у 605 разів; лінійна заміна O(N+M) (у 323 рази швидше), сканер синтаксису без алокацій (у 22,7 раза швидше) і прискорення рушія Pele в 1,34 раза.
-• Зменшення розміру EXE на 15,3% (-788,5 КБ):
-  Розмір скорочено до 4,35 МБ завдяки розділенню Hot/Cold, 1 107 функціям noexcept (-41,8% .pdata), перезбиранню ced.lib і /OPT:ICF=5.
-• Зниження ризиків безпеки:
-  Політики захисту процесів ОС (PreferSystem32Images і DisableExtensionPoints), захист від пошкодження купи, захист регулярних виразів від ReDoS та ізоляція vcpkg.""",
+- Критичне виправлення введення тексту через IME (японська/CJK):
+  Виправлено проблему версії 1.0.42, через яку політики пом'якшення процесів блокували хуки Windows TSF / IMM32 та сторонні модулі IME. Також покращено керування фокусом перегляду WebView2 (Alt+P) для введення тексту як у редакторі, так і у формах перегляду.
+- Надзвичайне прискорення пошуку, заміни та підсвічування синтаксису:
+  SIMD-пошук AVX2 (до 605 разів швидше на 32 МБ), лінійна заміна всього O(N+M) (у 323 рази швидше) та сканер синтаксису без алокацій (у 22,7 раза швидше).
+- Зменшення розміру EXE на 15,3% (-788,5 КБ) і посилення безпеки:
+  Компактний файл 4,35 МБ із захистом від підміни DLL, захистом купи та захистом від ReDoS.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.42
-⚡ Pencarian & Penggantian Hingga 605× Lebih Cepat, Ukuran EXE 15,3% Lebih Kecil & Keamanan Proses OS
+        "releaseNotes": """Catatan Rilis miu v1.0.43
+🇯🇵 Perbaikan Input IME (Jepang/CJK) + Pencarian/Penggantian hingga 605x Lebih Cepat & Ukuran EXE 15,3% Lebih Kecil
 
-• Peningkatan Kecepatan Pencarian, Ganti Semua & Penyorotan Sintaks:
-  Pencarian SIMD AVX2 mempercepat pencarian maju 245× dan mundur 605×; Ganti Semua linear O(N+M) (323× lebih cepat), pemindai sintaks tanpa alokasi (22,7× lebih cepat), dan mesin Pele 1,34× lebih cepat.
-• Ukuran File Eksekusi 15,3% Lebih Kecil (-788,5 KB):
-  Diperkecil menjadi 4,35 MB melalui optimasi Hot/Cold, 1.107 fungsi noexcept (-41,8% .pdata), ced.lib ringkas, dan kompresi /OPT:ICF=5.
-• Pengurangan Risiko Keamanan:
-  Kebijakan mitigasi proses OS (PreferSystem32Images & DisableExtensionPoints), penghentian saat kerusakan heap, perlindungan anti-ReDoS regex, dan isolasi vcpkg.""",
+- Perbaikan Penting Input Teks IME (Jepang/CJK):
+  Memperbaiki masalah di v1.0.42 di mana kebijakan mitigasi proses memblokir hook Windows TSF / IMM32 dan modul IME pihak ketiga. Juga menyempurnakan penanganan fokus pratinjau WebView2 (Alt+P) sehingga pengetikan di editor maupun di formulir pratinjau berjalan lancar.
+- Akselerasi Besar pada Pencarian, Penggantian & Penyorotan Sintaks:
+  Pencarian SIMD AVX2 hingga 605x lebih cepat pada dokumen 32MB, Ganti Semua linier O(N+M) (323x lebih cepat), dan pemindai sintaks tanpa alokasi heap (22,7x lebih cepat).
+- Ukuran EXE 15,3% Lebih Kecil (-788,5 KB) & Penguatan Keamanan:
+  Binari 4,35 MB yang ringkas dengan perlindungan pembajakan DLL, penghentian korupsi heap, dan pelindung ReDoS.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.42
-⚡ Až 605× rychlejší hledání a nahrazování, o 15,3 % menší EXE a ochrana procesů OS
+        "releaseNotes": """Poznámky k verzi miu v1.0.43
+🇯🇵 Oprava vstupu IME (japonština/CJK) + Až 605× rychlejší vyhledávání a o 15,3 % menší EXE
 
-• Obrovské zrychlení hledání, nahrazování a zvýrazňování syntaxe:
-  AVX2 SIMD hledání zrychluje dopředné hledání 245× a zpětné 605×; lineární Nahradit vše O(N+M) (323× rychlejší), bezalokační skener syntaxe (22,7× rychlejší) a 1,34× rychlejší engine Pele.
-• O 15,3 % menší spustitelný soubor (-788,5 KB):
-  Zmenšeno na 4,35 MB díky optimalizaci Hot/Cold, 1 107 funkcím noexcept (-41,8 % .pdata), kompaktní ced.lib a /OPT:ICF=5.
-• Snížení bezpečnostních rizik:
-  Zásady ochrany procesů OS (PreferSystem32Images a DisableExtensionPoints), ukončení při poškození haldy, ochrana proti ReDoS u regulárních výrazů a izolace vcpkg.""",
+- Kritická oprava psaní přes IME (japonština/CJK):
+  Vyřešen problém z verze 1.0.42, kdy zásady zmírnění rizik procesů blokovaly háky Windows TSF / IMM32 a moduly IME třetích stran. Zároveň byla vylepšena správa fokusu náhledu WebView2 (Alt+P) pro plynulé psaní v editoru i ve formulářích náhledu.
+- Obrovské zrychlení vyhledávání, nahrazování a zvýrazňování syntaxe:
+  SIMD vyhledávání AVX2 (až 605× rychlejší u 32MB dokumentu), lineární hromadné nahrazení O(N+M) (323× rychlejší) a bezalokační skener syntaxe (22,7× rychlejší).
+- O 15,3 % menší spustitelný soubor (-788,5 KB) a vyšší zabezpečení:
+  Kompaktní 4,35MB soubor s ochranou proti podvržení DLL, ochranou haldy a ochranou proti ReDoS.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.42
-⚡ Upp till 605× snabbare sök/ersätt, 15,3 % mindre EXE & OS-processkydd
+        "releaseNotes": """Versionsinformation för miu v1.0.43
+🇯🇵 Åtgärdad IME-inmatning (japanska/CJK) + Upp till 605x snabbare sökning & 15,3 % mindre EXE
 
-• Massiv hastighetsökning för sökning, ersättning & syntaxmarkering:
-  AVX2 SIMD-sökning gör framåtsökning 245× snabbare och bakåtsökning 605× snabbare; linjär O(N+M) Ersätt alla (323× snabbare), syntaxskanner utan allokeringar (22,7× snabbare) och 1,34× snabbare Pele-motor.
-• 15,3 % mindre körbar fil (-788,5 KB):
-  Kryisen till 4,35 MB via Hot/Cold-optimering, 1 107 noexcept-funktioner (-41,8 % .pdata), kompakt ced.lib och /OPT:ICF=5.
-• Minskad säkerhetsrisk:
-  OS-processkyddspolicyer (PreferSystem32Images & DisableExtensionPoints), omedelbart avslut vid heap-korruption, ReDoS-skydd för regex och vcpkg-isolering.""",
+- Kritisk åtgärd för IME-textinmatning (japanska/CJK):
+  Löste ett problem i v1.0.42 där processbegränsningspolicyer blockerade Windows TSF / IMM32-hookar och tredjeparts IME-moduler. Även fokushanteringen för WebView2-förhandsgranskning (Alt+P) har förbättrats så att det går att skriva smidigt både i redigeraren och i formulär i förhandsgranskningen.
+- Massiv prestandaökning för sökning, ersättning och syntaxmarkering:
+  AVX2 SIMD-sökning (upp till 605x snabbare i 32 MB), linjär Ersätt alla i O(N+M) (323x snabbare) och allokeringsfri syntaxskanner (22,7x snabbare).
+- 15,3 % mindre körbar fil (-788,5 KB) & stärkt säkerhet:
+  Kompakt binärfil på 4,35 MB med skydd mot DLL-kapning, heap-skydd och ReDoS-skydd.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.42
-⚡ ค้นหาและแทนที่เร็วขึ้นสูงสุด 605 เท่า, ขนาด EXE เล็กลง 15.3% และเสริมความปลอดภัยระดับโปรเซส OS
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.43
+🇯🇵 แก้ไขการพิมพ์ IME (ภาษาญี่ปุ่น/CJK) + ค้นหาและแทนที่เร็วขึ้นสูงสุด 605 เท่า และขนาด EXE เล็กลง 15.3%
 
-• เร่งความเร็วการค้นหา แทนที่ทั้งหมด และการเน้นไวยากรณ์:
-  การค้นหา AVX2 SIMD ช่วยให้ค้นหาไปข้างหน้าเร็วขึ้น 245 เท่า และย้อนกลับเร็วขึ้น 605 เท่า; แทนที่ทั้งหมดแบบเชิงเส้น O(N+M) (เร็วขึ้น 323 เท่า), ตัวสแกนไวยากรณ์แบบไม่จองหน่วยความจำเพิ่ม (เร็วขึ้น 22.7 เท่า) และเอนจิน Pele เร็วขึ้น 1.34 เท่า
-• ลดขนาดไฟล์ EXE ลง 15.3% (-788.5 KB):
-  ลดขนาดเหลือ 4.35 MB ด้วยการแยกปรับแต่ง Hot/Cold, ระบุ noexcept 1,107 ฟังก์ชัน (-41.8% .pdata), คอมไพล์ ced.lib ใหม่ให้กะทัดรัด และบีบอัดด้วย /OPT:ICF=5
-• ลดความเสี่ยงด้านความปลอดภัย:
-  เปิดใช้นโยบายป้องกันโปรเซสของ OS (PreferSystem32Images และ DisableExtensionPoints), ยุติทันทีเมื่อฮีปเสียหาย, ป้องกัน ReDoS ของ Regex และแยกการลิงก์อัตโนมัติของ vcpkg""",
+- แก้ไขปัญหาการพิมพ์ด้วย IME (ภาษาญี่ปุ่น/CJK):
+  แก้ไขปัญหาใน v1.0.42 ที่นโยบายลดความเสี่ยงของโปรเซสไปบล็อกฮุก Windows TSF / IMM32 และโมดูล IME ของบริษัทอื่น พร้อมปรับปรุงการจัดการโฟกัสของหน้าต่างตัวอย่าง WebView2 (Alt+P) ให้พิมพ์ได้ทั้งในเอดิเตอร์และในแบบฟอร์มของหน้าตัวอย่าง
+- เร่งความเร็วการค้นหา แทนที่ และการเน้นไวยากรณ์อย่างก้าวกระโดด:
+  การค้นหาด้วย AVX2 SIMD เร็วขึ้นสูงสุด 605 เท่าในไฟล์ 32MB, การแทนที่ทั้งหมดแบบเชิงเส้น O(N+M) (เร็วขึ้น 323 เท่า) และตัวสแกนไวยากรณ์แบบไม่จองฮีป (เร็วขึ้น 22.7 เท่า)
+- ลดขนาดไฟล์ EXE ลง 15.3% (-788.5 KB) และยกระดับความปลอดภัย:
+  ไฟล์ขนาดกะทัดรัด 4.35 MB พร้อมการป้องกัน DLL hijacking, การป้องกันฮีปเสียหาย และการป้องกัน ReDoS""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.42 रिलीज़ नोट्स
-⚡ 605 गुना तक तेज़ खोज/बदलाव, 15.3% छोटा EXE आकार और OS प्रोसेस सुरक्षा सुदृढ़ीकरण
+        "releaseNotes": """miu v1.0.43 रिलीज़ नोट्स
+🇯🇵 IME इनपुट (जापानी/CJK) सुधार + 605 गुना तक तेज़ खोज/बदलाव और 15.3% छोटा EXE
 
-• खोज, सभी बदलें और सिंटैक्स हाइलाइटिंग में भारी गति वृद्धि:
-  AVX2 SIMD खोज से फॉरवर्ड सर्च 245× और बैकवर्ड सर्च 605× तेज़; O(N+M) लीनियर Replace All (323× तेज़), ज़ीरो-एलोकेशन सिंटैक्स स्कैनर (22.7× तेज़) और 1.34× तेज़ Pele इंजन।
-• EXE आकार में 15.3% की कमी (-788.5 KB):
-  Hot/Cold ऑप्टिमाइज़ेशन, 1,107 noexcept फ़ंक्शन (-41.8% .pdata), कॉम्पैक्ट ced.lib और /OPT:ICF=5 द्वारा आकार घटाकर 4.35 MB किया गया।
-• सुरक्षा जोखिम में कमी:
-  OS प्रोसेस मिटिगेशन नीतियां (PreferSystem32Images और DisableExtensionPoints), हीप करप्शन पर तुरंत समाप्ति, रेगेक्स ReDoS सुरक्षा गार्ड और vcpkg आइसोलेशन।""",
+- IME टेक्स्ट इनपुट में महत्वपूर्ण सुधार (जापानी/CJK):
+  v1.0.42 में प्रोसेस मिटिगेशन पॉलिसी द्वारा Windows TSF / IMM32 हुक और थर्ड-पार्टी IME मॉड्यूल ब्लॉक होने की समस्या को ठीक किया गया है। साथ ही WebView2 प्रीव्यू (Alt+P) फ़ोकस प्रबंधन को बेहतर बनाया गया है ताकि एडिटर और प्रीव्यू फ़ॉर्म दोनों में टाइपिंग सुचारू रूप से काम करे।
+- खोज, बदलाव और सिंटैक्स हाइलाइटिंग में भारी गति वृद्धि:
+  AVX2 SIMD खोज (32MB दस्तावेज़ में 605 गुना तक तेज़), O(N+M) रैखिक Replace All (323 गुना तेज़) और ज़ीरो-एलोकेशन सिंटैक्स स्कैनर (22.7 गुना तेज़)।
+- 15.3% छोटा EXE (-788.5 KB) और सुरक्षा सुदृढ़ीकरण:
+  DLL हाईजैकिंग सुरक्षा, हीप करप्शन सुरक्षा और ReDoS गार्ड के साथ 4.35 MB का कॉम्पैक्ट बाइनरी।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.42
-⚡ Căutare și înlocuire de până la 605× mai rapide, EXE mai mic cu 15,3% și protecție OS
+        "releaseNotes": """Note de lansare miu v1.0.43
+🇯🇵 Remediere introducere IME (japoneză/CJK) + Căutare/înlocuire de până la 605x mai rapidă și EXE mai mic cu 15,3%
 
-• Accelerare masivă pentru căutare, înlocuire și evidențierea sintaxei:
-  Căutare SIMD AVX2 (de 245× mai rapidă înainte, de 605× înapoi), Înlocuire totală liniară O(N+M) (de 323× mai rapidă), scaner de sintaxă fără alocări (de 22,7× mai rapid) și motor Pele de 1,34× mai rapid.
-• Executabil mai mic cu 15,3% (-788,5 KB):
-  Redus la 4,35 MB prin optimizare Hot/Cold, 1.107 funcții noexcept (-41,8% .pdata), ced.lib compactată și /OPT:ICF=5.
-• Reducerea riscurilor de securitate:
-  Politici de protecție a proceselor OS (PreferSystem32Images și DisableExtensionPoints), oprire imediată la coruperea heap-ului, protecție anti-ReDoS pentru regex și izolare vcpkg.""",
+- Remediere critică pentru introducerea textului prin IME (japoneză/CJK):
+  S-a rezolvat o problemă din v1.0.42 în care politicile de atenuare a proceselor blocau hook-urile Windows TSF / IMM32 și modulele IME terțe. De asemenea, s-a îmbunătățit gestionarea focalizării în previzualizarea WebView2 (Alt+P) pentru a permite tastarea atât în editor, cât și în formularele din previzualizare.
+- Accelerare masivă pentru căutare, înlocuire și evidențierea sintaxei:
+  Căutare SIMD AVX2 de până la 605x mai rapidă pe 32 MB, înlocuire totală liniară O(N+M) (de 323x mai rapidă) și scaner de sintaxă fără alocări (de 22,7x mai rapid).
+- Executabil mai mic cu 15,3% (-788,5 KB) și securitate consolidată:
+  Binar compact de 4,35 MB cu protecție împotriva deturnării DLL, protecție heap și filtru anti-ReDoS.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.42 kiadási megjegyzések
-⚡ Akár 605× gyorsabb keresés és csere, 15,3%-kal kisebb EXE és OS folyamatszintű védelem
+        "releaseNotes": """miu v1.0.43 kiadási megjegyzések
+🇯🇵 IME-beviteli hiba (japán/CJK) javítása + Akár 605-ször gyorsabb keresés és 15,3%-kal kisebb EXE
 
-• Hatalmas gyorsulás a keresésben, cserében és szintaxiskiemelésben:
-  AVX2 SIMD keresés (245× gyorsabb előre, 605× hátra), O(N+M) lineáris Összes cseréje (323× gyorsabb), allokációmentes szintaxisszkenner (22,7× gyorsabb) és 1,34× gyorsabb Pele motor.
-• 15,3%-kal kisebb futtatható fájl (-788,5 KB):
-  4,35 MB-ra csökkentve Hot/Cold optimalizálással, 1107 noexcept függvénnyel (-41,8% .pdata), kompakt ced.lib-bel és /OPT:ICF=5 tömörítéssel.
-• Csökkentett biztonsági kockázatok:
-  OS folyamatvédelmi házirendek (PreferSystem32Images és DisableExtensionPoints), azonnali leállás heap-sérüléskor, regex ReDoS elleni védelem és vcpkg izoláció.""",
+- Kritikus IME szövegbeviteli javítás (japán/CJK):
+  Javítottuk az 1.0.42-es verzióban jelentkezett hibát, amelynél a folyamatvédelmi házirendek blokkolták a Windows TSF / IMM32 hookokat és a külső IME-modulokat. Emellett finomítottuk a WebView2 előnézet (Alt+P) fókuszkezelését, így a szerkesztőben és az előnézeti űrlapokon is zavartalan a gépelés.
+- Hatalmas gyorsulás a keresésben, cserében és szintaxiskiemelésben:
+  AVX2 SIMD keresés (akár 605-ször gyorsabb 32 MB-os fájlnál), O(N+M) lineáris Összes cseréje (323-szor gyorsabb) és allokációmentes szintaxisszkenner (22,7-szer gyorsabb).
+- 15,3%-kal kisebb futtatható fájl (-788,5 KB) és megerősített biztonság:
+  Kompakt, 4,35 MB-os bináris DLL-eltérítés elleni védelemmel, heap-sérülésvédelemmel és ReDoS-szűrővel.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.42
-⚡ Έως 605× ταχύτερη αναζήτηση/αντικατάσταση, 15,3% μικρότερο EXE & ενίσχυση ασφάλειας διεργασιών
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.43
+🇯🇵 Διόρθωση εισαγωγής IME (Ιαπωνικά/CJK) + Έως 605x ταχύτερη αναζήτηση και 15,3% μικρότερο EXE
 
-• Τεράστια επιτάχυνση σε αναζήτηση, αντικατάσταση και επισήμανση σύνταξης:
-  Αναζήτηση SIMD AVX2 (245× ταχύτερη προς τα εμπρός, 605× προς τα πίσω), γραμμική Αντικατάσταση όλων O(N+M) (323× ταχύτερη), σαρωτής σύνταξης μηδενικών δεσμεύσεων (22,7× ταχύτερος) και 1,34× ταχύτερη μηχανή Pele.
-• 15,3% μικρότερο εκτελέσιμο αρχείο (-788,5 KB):
-  Μειώθηκε σε 4,35 MB μέσω βελτιστοποίησης Hot/Cold, 1.107 συναρτήσεων noexcept (-41,8% .pdata), ανακατασκευής ced.lib και /OPT:ICF=5.
-• Μείωση κινδύνων ασφαλείας:
-  Πολιτικές προστασίας διεργασιών OS (PreferSystem32Images & DisableExtensionPoints), άμεσος τερματισμός σε καταστροφή σωρού, προστασία ReDoS για regex και απομόνωση vcpkg.""",
+- Κρίσιμη διόρθωση εισαγωγής κειμένου IME (Ιαπωνικά/CJK):
+  Επιλύθηκε ένα ζήτημα της έκδοσης v1.0.42 όπου οι πολιτικές μετριασμού διεργασιών απέκλειαν τα hooks Windows TSF / IMM32 και τις μονάδες IME τρίτων. Βελτιώθηκε επίσης η διαχείριση εστίασης της προεπισκόπησης WebView2 (Alt+P) ώστε η πληκτρολόγηση να λειτουργεί απρόσκοπτα τόσο στον επεξεργαστή όσο και στις φόρμες προεπισκόπησης.
+- Τεράστια επιτάχυνση σε αναζήτηση, αντικατάσταση και επισήμανση σύνταξης:
+  Αναζήτηση SIMD AVX2 (έως 605x ταχύτερη σε 32MB), γραμμική αντικατάσταση όλων O(N+M) (323x ταχύτερη) και σαρωτής σύνταξης μηδενικών εκχωρήσεων (22,7x ταχύτερος).
+- 15,3% μικρότερο εκτελέσιμο αρχείο (-788,5 KB) & ενίσχυση ασφάλειας:
+  Συμπαγές εκτελέσιμο 4,35 MB με προστασία από DLL hijacking, προστασία σωρού και προστασία ReDoS.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.42
-⚡ Op til 605× hurtigere søg/erstat, 15,3 % mindre EXE & OS-procesbeskyttelse
+        "releaseNotes": """Udgivelsesnoter for miu v1.0.43
+🇯🇵 Rettet IME-indtastning (japansk/CJK) + Op til 605x hurtigere søgning & 15,3 % mindre EXE
 
-• Massiv hastighedsforøgelse i søgning, erstatning og syntaksfremhævning:
-  AVX2 SIMD-søgning gør fremadrettet søgning 245× hurtigere og bagudrettet søgning 605× hurtigere; lineær O(N+M) Erstat alle (323× hurtigere), syntaksscanner uden allokeringer (22,7× hurtigere) og 1,34× hurtigere Pele-motor.
-• 15,3 % mindre eksekverbar fil (-788,5 KB):
-  Reduceret til 4,35 MB via Hot/Cold-optimering, 1.107 noexcept-funktioner (-41,8 % .pdata), kompakt ced.lib og /OPT:ICF=5.
-• Reduceret sikkerhedsrisiko:
-  OS-procesbeskyttelsespolitikker (PreferSystem32Images & DisableExtensionPoints), øjeblikkelig afslutning ved heap-korruption, regex ReDoS-beskyttelse og vcpkg-isolering.""",
+- Kritisk rettelse af IME-tekstindtastning (japansk/CJK):
+  Løste et problem fra v1.0.42, hvor procesbegrænsningspolitikker blokerede Windows TSF / IMM32-hooks og tredjeparts IME-moduler. Fokushåndteringen i WebView2-forhåndsvisning (Alt+P) er også forbedret, så du kan skrive problemfrit både i editoren og i formularfelter i forhåndsvisningen.
+- Massiv hastighedsforøgelse ved søgning, erstatning og syntaksfremhævning:
+  AVX2 SIMD-søgning (op til 605x hurtigere i 32 MB), lineær Erstat alle i O(N+M) (323x hurtigere) og allokeringsfri syntaksscanner (22,7x hurtigere).
+- 15,3 % mindre eksekverbar fil (-788,5 KB) & styrket sikkerhed:
+  Kompakt 4,35 MB binær fil med beskyttelse mod DLL-kapring, heap-beskyttelse og ReDoS-beskyttelse.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.42 julkaisutiedot
-⚡ Jopa 605× nopeampi haku ja korvaus, 15,3 % pienempi EXE ja käyttöjärjestelmätason prosessisuojaus
+        "releaseNotes": """miu v1.0.43 -julkaisutiedot
+🇯🇵 Korjattu IME-syöttö (japani/CJK) + Jopa 605x nopeampi haku ja 15,3 % pienempi EXE
 
-• Huima nopeutus hakuun, korvaukseen ja syntaksikorostukseen:
-  AVX2 SIMD -haku nopeuttaa eteenpäin hakua 245× ja taaksepäin hakua 605×; lineaarinen O(N+M) Korvaa kaikki (323× nopeampi), muistivaraukseton syntaksiskanneri (22,7× nopeampi) ja 1,34× nopeampi Pele-moottori.
-• 15,3 % pienempi suoritettava tiedosto (-788,5 kt):
-  Pienennetty 4,35 megatavuun Hot/Cold-optimoinnilla, 1 107 noexcept-funktiolla (-41,8 % .pdata), tiiviillä ced.lib-kirjastolla ja /OPT:ICF=5-pakkauksella.
-• Pienemmät tietoturvariskit:
-  Käyttöjärjestelmän prosessisuojauskäytännöt (PreferSystem32Images & DisableExtensionPoints), välitön lopetus keon korruptoituessa, regex ReDoS -suojaus ja vcpkg-eristys.""",
+- Kriittinen korjaus IME-tekstinsyöttöön (japani/CJK):
+  Korjattiin versiossa 1.0.42 ilmennyt ongelma, jossa prosessin lieventämiskäytännöt estivät Windows TSF / IMM32 -koukut ja kolmansien osapuolten IME-moduulit. Lisäksi WebView2-esikatselun (Alt+P) kohdistuksen hallintaa parannettiin niin, että kirjoittaminen toimii sujuvasti sekä editorissa että esikatselun lomakkeissa.
+- Huima nopeutus hakuun, korvaamiseen ja syntaksin korostukseen:
+  AVX2 SIMD -haku (jopa 605x nopeampi 32 Mt:n tiedostossa), lineaarinen O(N+M) Korvaa kaikki (323x nopeampi) ja muistia varaamaton syntaksiskanneri (22,7x nopeampi).
+- 15,3 % pienempi suoritettava tiedosto (-788,5 kt) ja vahvistettu tietoturva:
+  Tiivis 4,35 Mt:n binääri, jossa on DLL-kaappaussuoja, keon korruptiosuoja ja ReDoS-suoja.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.42
-⚡ Opptil 605× raskere søk/erstatt, 15,3 % mindre EXE og OS-prosessbeskyttelse
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.43
+🇯🇵 Rettet IME-inndata (japansk/CJK) + Opptil 605x raskere søk og 15,3 % mindre EXE
 
-• Kraftig hastighetsøkning for søk, erstatning og syntaksutheving:
-  AVX2 SIMD-søk gjør fremoversøk 245× raskere og bakoversøk 605× raskere; lineær O(N+M) Erstatt alle (323× raskere), syntaksskanner uten allokeringer (22,7× raskere) og 1,34× raskere Pele-motor.
-• 15,3 % mindre kjørbar fil (-788,5 KB):
-  Redusert til 4,35 MB via Hot/Cold-optimering, 1 107 noexcept-funksjoner (-41,8 % .pdata), kompakt ced.lib og /OPT:ICF=5.
-• Redusert sikkerhetsrisiko:
-  OS-prosessbeskyttelsespolicyer (PreferSystem32Images og DisableExtensionPoints), umiddelbar avslutning ved heap-korrupsjon, regex ReDoS-beskyttelse og vcpkg-isolasjon.""",
+- Kritisk rettelse for IME-tekstinndata (japansk/CJK):
+  Løste et problem i v1.0.42 der prosessbegrensningspolicyer blokkerte Windows TSF / IMM32-hooks og tredjeparts IME-moduler. Fokushåndteringen i WebView2-forhåndsvisning (Alt+P) er også forbedret, slik at skriving fungerer sømløst både i redigeringsprogrammet og i skjemafelter i forhåndsvisningen.
+- Massiv hastighetsøkning for søk, erstatning og syntaksutheving:
+  AVX2 SIMD-søk (opptil 605x raskere på 32 MB), lineær Erstatt alle i O(N+M) (323x raskere) og allokeringsfri syntaksskanner (22,7x raskere).
+- 15,3 % mindre kjørbar fil (-788,5 KB) og styrket sikkerhet:
+  Kompakt 4,35 MB binærfil med beskyttelse mot DLL-kapring, heap-beskyttelse og ReDoS-beskyttelse.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.42
-⚡ Carian & Gantian Sehingga 605× Lebih Pantas, Saiz EXE 15.3% Lebih Kecil & Perlindungan Proses OS
+        "releaseNotes": """Nota Keluaran miu v1.0.43
+🇯🇵 Pembaikan Input IME (Jepun/CJK) + Carian/Gantian sehingga 605x Lebih Pantas & Saiz EXE 15.3% Lebih Kecil
 
-• Pecutan Hebat untuk Carian, Ganti Semua & Penyerlahan Sintaks:
-  Carian SIMD AVX2 mempercepatkan carian ke hadapan 245× dan ke belakang 605×; Ganti Semua linear O(N+M) (323× lebih pantas), pengimbas sintaks sifar-peruntukan (22.7× lebih pantas) dan enjin Pele 1.34× lebih pantas.
-• Fail Boleh Laku 15.3% Lebih Kecil (-788.5 KB):
-  Dikecilkan kepada 4.35 MB melalui pengoptimuman Hot/Cold, 1,107 fungsi noexcept (-41.8% .pdata), ced.lib padat dan pemampatan /OPT:ICF=5.
-• Pengurangan Risiko Keselamatan:
-  Dasar mitigasi proses OS (PreferSystem32Images & DisableExtensionPoints), penamatan serta-merta apabila heap rosak, perlindungan anti-ReDoS regex dan pengasingan vcpkg.""",
+- Pembaikan Penting Input Teks IME (Jepun/CJK):
+  Memperbaiki isu dalam v1.0.42 di mana dasar mitigasi proses menyekat cangkuk Windows TSF / IMM32 dan modul IME pihak ketiga. Pengurusan fokus pratonton WebView2 (Alt+P) turut diperhalusi supaya penaipan dalam editor dan borang pratonton berfungsi dengan lancar.
+- Pecutan Hebat dalam Carian, Gantian & Penyerlahan Sintaks:
+  Carian SIMD AVX2 sehingga 605x lebih pantas pada dokumen 32MB, Ganti Semua linear O(N+M) (323x lebih pantas) dan pengimbas sintaks sifar peruntukan (22.7x lebih pantas).
+- Saiz EXE 15.3% Lebih Kecil (-788.5 KB) & Pengukuhan Keselamatan:
+  Binari padat 4.35 MB dengan perlindungan rampasan DLL, perlindungan kerosakan timbunan dan pelindung ReDoS.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

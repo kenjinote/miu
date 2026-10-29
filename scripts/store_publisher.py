@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.43": {
+        "ja-jp": """miu v1.0.43 リリースノート
+🇯🇵 日本語 IME 入力不具合の修正 ＆ 検索・置換の超高速化（最大 605 倍）・EXE 15.3% 軽量化
+
+・日本語 IME 変換・入力の修正（重要）:
+  v1.0.42 のプロセス緩和策により Microsoft IME や Google 日本語入力・ATOK 等の TSF / IMM32 モジュールがブロックされ日本語入力ができなくなる問題を修正しました。また、WebView2 プレビュー（Alt+P）表示中のフォーカス制御を改善し、エディタでの日本語入力とプレビュー内フォーム入力の両立を実現しました。
+・検索・一括置換・シンタックスハイライトの超高速化:
+  AVX2 SIMD 検索による 32MB 文書検索の最大 605 倍高速化、O(N+M) 線形一括置換（323 倍高速化）、ヒープ確保ゼロの高速シンタックスハイライト（22.7 倍高速化）を搭載しています。
+・EXEサイズ 15.3% 削減（-788.5 KB）＆ セキュリティ強化:
+  実行ファイルを 4.35 MB へ圧縮し、DLL プリロード防止・ヒープ破損保護・正規表現 ReDoS 防止ガードを備えています。""",
+
+        "en-us": """miu v1.0.43 Release Notes
+🇯🇵 Fixed IME Input (Japanese/CJK) + Up to 605x Faster Search/Replace & 15.3% Smaller EXE
+
+- Fixed IME Text Input & Composition (Critical Fix):
+  Resolved an issue introduced in v1.0.42 where strict process mitigation policies blocked Windows TSF / IMM32 hooks and third-party IME modules (Microsoft IME, Google Japanese Input, ATOK, etc.), preventing Japanese/CJK input. Also refined WebView2 preview (Alt+P) focus handling so both editor typing and preview form inputs work seamlessly.
+- Massive Search, Replace & Syntax Highlighting Speedups:
+  AVX2 first+last-char SIMD search accelerates 32MB search by up to 605x, paired with O(N+M) linear Replace All (323x faster) and a zero-allocation syntax highlighting scanner (22.7x faster).
+- 15.3% Smaller Executable (-788.5 KB) & Security Hardening:
+  Compact 4.35 MB binary with CWD DLL hijacking protection, heap corruption termination, and regex ReDoS guards.""",
+
+        "zh-hans": """miu v1.0.43 更新日志
+🇯🇵 修复输入法（IME）无法输入中文/日文的问题 & 搜索最高提速 605 倍、体积缩减 15.3%
+
+- 修复 IME 输入法无法打字与候选转换的问题（重要修复）：
+  修复了 v1.0.42 中因进程缓解策略拦截 Windows TSF / IMM32 钩子及第三方输入法组件而导致无法使用中文/日文输入法的问题，并优化了 WebView2 预览（Alt+P）的焦点控制，兼顾编辑器输入与预览内表单输入。
+- 搜索、批量替换与语法高亮极速优化：
+  AVX2 首尾字符 SIMD 搜索最高提速 605 倍，配合 O(N+M) 线性批量替换（提速 323 倍）与零堆分配语法高亮扫描器（提速 22.7 倍）。
+- EXE 体积缩减 15.3%（减少 788.5 KB）及安全加固：
+  程序体积精简至 4.35 MB，内置 DLL 预加载防护、堆损坏即时终止保护与正则表达式 ReDoS 预检防护。""",
+
+        "ko": """miu v1.0.43 릴리스 노트
+🇯🇵 한국어/일본어 IME 입력 오류 수정 & 검색·치환 최대 605배 고속화 및 EXE 15.3% 경량화
+
+- IME 다국어(한국어/일본어/중국어) 입력 오류 수정 (중요):
+  v1.0.42의 프로세스 완화 정책으로 인해 Windows TSF / IMM32 후크 및 서드파티 IME 모듈이 차단되어 다국어 입력이 작동하지 않던 문제를 해결했습니다. 또한 WebView2 미리보기(Alt+P) 포커스 제어를 개선하여 편집기 입력과 미리보기 내 폼 입력이 모두 원활하게 작동합니다.
+- 검색, 일괄 치환 및 구문 강조 초고속화:
+  AVX2 SIMD 검색(최대 605배 고속화), O(N+M) 선형 모두 바꾸기(323배 고속화), 힙 할당 제로 구문 강조 스캐너(22.7배 고속화)를 제공합니다.
+- 실행 파일 15.3% 경량화(-788.5 KB) 및 보안 강화:
+  실행 파일을 4.35 MB로 압축하고 DLL 하이재킹 방지, 힙 손상 즉시 종료 보호 및 정규식 ReDoS 차단 가드를 적용했습니다."""
+    },
     "1.0.42": {
         "ja-jp": """miu v1.0.42 リリースノート
 ⚡ 検索・置換・ハイライトの超高速化（最大 605 倍）、EXEサイズ 15.3% 削減、OSプロセス保護強化
