@@ -984,22 +984,19 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
 
     # 3. Update applicationPackages
     existing_packages = submission_data.get("applicationPackages", [])
-    pkg_filenames = [p.get("fileName") for p in existing_packages]
-
-    if bundle_filename not in pkg_filenames:
-        new_packages = []
-        for pkg in existing_packages:
-            if pkg.get("id"):  # Only existing packages with an ID can be marked PendingDelete
-                pkg_copy = dict(pkg)
-                pkg_copy["fileStatus"] = "PendingDelete"
-                new_packages.append(pkg_copy)
-        new_packages.append({
-            "fileName": bundle_filename,
-            "fileStatus": "PendingUpload",
-            "minimumDirectXVersion": "None",
-            "minimumSystemRam": "None"
-        })
-        submission_data["applicationPackages"] = new_packages
+    new_packages = []
+    for pkg in existing_packages:
+        if pkg.get("id"):  # Only existing packages with an ID can be marked PendingDelete
+            pkg_copy = dict(pkg)
+            pkg_copy["fileStatus"] = "PendingDelete"
+            new_packages.append(pkg_copy)
+    new_packages.append({
+        "fileName": bundle_filename,
+        "fileStatus": "PendingUpload",
+        "minimumDirectXVersion": "None",
+        "minimumSystemRam": "None"
+    })
+    submission_data["applicationPackages"] = new_packages
 
     # 4. Multi-language listings and screenshots
     listings = submission_data.setdefault("listings", {})
@@ -1098,9 +1095,9 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
             ]
             print(f"Configured 7 screenshots for [{lang}]")
 
-    if "ko" in listings and "baseListing" in listings["ko"]:
-        if not listings["ko"]["baseListing"].get("title"):
-            listings["ko"]["baseListing"]["title"] = "miu"
+        for base_lang in ("ja-jp", "en-us", "zh-hans", "ko"):
+        if base_lang in listings and "baseListing" in listings[base_lang]:
+            listings[base_lang]["baseListing"]["title"] = "miu"
 
     # Multi-language release notes for existing default languages
     notes_dict = release_notes

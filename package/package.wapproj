@@ -62,6 +62,7 @@
     <AppxAutoIncrementPackageRevision>False</AppxAutoIncrementPackageRevision>
     <GenerateTestArtifacts>True</GenerateTestArtifacts>
     <AppxBundlePlatforms>x64</AppxBundlePlatforms>
+    <AppxBundleAutoResourcePackageQualifiers>Scale|DXFeatureLevel</AppxBundleAutoResourcePackageQualifiers>
     <HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
@@ -155,6 +156,30 @@
     <PRIResource Include="ja-JP\Resources.resw" />
     <PRIResource Include="ko\Resources.resw" />
     <PRIResource Include="zh-Hans\Resources.resw" />
+    <PRIResource Include="zh-TW\Resources.resw" />
+    <PRIResource Include="de-DE\Resources.resw" />
+    <PRIResource Include="fr-FR\Resources.resw" />
+    <PRIResource Include="es-ES\Resources.resw" />
+    <PRIResource Include="pt-BR\Resources.resw" />
+    <PRIResource Include="ru-RU\Resources.resw" />
+    <PRIResource Include="it-IT\Resources.resw" />
+    <PRIResource Include="pl-PL\Resources.resw" />
+    <PRIResource Include="nl-NL\Resources.resw" />
+    <PRIResource Include="tr-TR\Resources.resw" />
+    <PRIResource Include="vi-VN\Resources.resw" />
+    <PRIResource Include="uk-UA\Resources.resw" />
+    <PRIResource Include="id-ID\Resources.resw" />
+    <PRIResource Include="cs-CZ\Resources.resw" />
+    <PRIResource Include="sv-SE\Resources.resw" />
+    <PRIResource Include="th-TH\Resources.resw" />
+    <PRIResource Include="hi-IN\Resources.resw" />
+    <PRIResource Include="ro-RO\Resources.resw" />
+    <PRIResource Include="hu-HU\Resources.resw" />
+    <PRIResource Include="el-GR\Resources.resw" />
+    <PRIResource Include="da-DK\Resources.resw" />
+    <PRIResource Include="fi-FI\Resources.resw" />
+    <PRIResource Include="nb-NO\Resources.resw" />
+    <PRIResource Include="ms-MY\Resources.resw" />
   </ItemGroup>
   <Import Project="$(WapProjPath)\Microsoft.DesktopBridge.targets" />
   <ItemGroup>
