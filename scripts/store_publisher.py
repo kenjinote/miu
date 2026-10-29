@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.44": {
+        "ja-jp": """miu v1.0.44 リリースノート
+🎨 25言語のシンタックスハイライト新規追加（全49カテゴリ・120種以上の拡張子対応）＆ 全角文字の行番号位置ズレ修正・水平スクロールバー＆編集精度向上
+
+・25種類の言語・設定ファイルのシンタックスハイライト＆コメント切り替え（Ctrl+/）新規追加:
+  Dart、R、Zig、Scala、Perl、VB/VBA、F#、Julia、Haskell、Elixir、Dockerfile、Terraform/HCL、TOML/.env、GraphQL、Protobuf、CMake、Makefile、レジストリ（.reg）、シェーダー（HLSL/GLSL/WGSL）、アセンブリ、Verilog/SystemVerilog、VHDL、Diff/Patch、Logファイル等を追加し、全49カテゴリ・120種以上の拡張子に対応しました。
+・全角文字（日本語・CJK・絵文字）入力時の行番号位置ズレ修正:
+  DirectWrite の均一ラインスペーシング適用により、全角文字を含む行でも行番号と本文の高さ・ベースラインが 1px の狂いもなく一致するようになりました。
+・水平スクロールバーの表示精度改善 ＆ 編集エンジンの修正:
+  新規作成後の改行や全角入力で不要な水平スクロールバーが出る問題を修正し、長文削除時の即時非表示、最終行の行複製（Alt+Shift+Down）、Undo/Redo 整合性を強化しました。""",
+
+        "en-us": """miu v1.0.44 Release Notes
+🎨 Added 25 Syntax Highlighting Languages (49 Total Categories / 120+ Extensions) + CJK Line Number Alignment & Horizontal Scrollbar Fixes
+
+- 25 New Syntax Highlighting Languages & Ctrl+/ Comment Toggling:
+  Expanded from 24 to 49 categories (120+ file extensions & filenames), adding Dart, R, Zig, Scala, Perl, VB/VBA/VBScript, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protocol Buffers, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch, and Log files (.log).
+- Fixed Full-Width / CJK Line Number Gutter Alignment:
+  Applied uniform DirectWrite line spacing so lines containing Japanese/CJK characters or emoji fallback fonts align with line numbers with pixel-perfect accuracy and zero speed penalty.
+- Horizontal Scrollbar & Editing Engine Precision Fixes:
+  Fixed horizontal scrollbar appearing prematurely after pressing Enter on a new file or typing CJK characters, ensured immediate scrollbar hide when shortening long lines, and refined line duplication (Alt+Shift+Down) and Undo/Redo state consistency.""",
+
+        "zh-hans": """miu v1.0.44 更新日志
+🎨 新增 25 种语言语法高亮（共支持 49 大类、120+ 扩展名）& 修复全角字符行号对齐偏差与水平滚动条问题
+
+- 新增 25 种编程语言与配置文件语法高亮及 Ctrl+/ 注释切换：
+  新增 Dart、R、Zig、Scala、Perl、VB/VBA、F#、Julia、Haskell、Elixir、Dockerfile、Terraform/HCL、TOML/.env、GraphQL、Protobuf、CMake、Makefile、注册表（.reg）、着色器（HLSL/GLSL/WGSL）、汇编、Verilog/SystemVerilog、VHDL、Diff/Patch 与日志文件（.log），总计支持 49 大类、120 余种扩展名。
+- 修复输入中文/日文等全角字符时行号高度轻微偏移的问题：
+  采用 DirectWrite 统一行距与基线机制，确保包含中日韩全角字符或表情符号的行与行号像素级精准对齐，且零性能损耗。
+- 水平滚动条与编辑引擎精度优化：
+  修复新建文件回车换行或输入全角字符时意外出现水平滚动条的问题，支持删减长行后立即隐藏水平滚动条，并改进末行复制（Alt+Shift+Down）与撤销/重做状态一致性。""",
+
+        "ko": """miu v1.0.44 릴리스 노트
+🎨 25개 언어 구문 강조 신규 추가(총 49개 카테고리·120종 이상 확장자 지원) & 전각 문자 행 번호 위치 보정 및 가로 스크롤바 수정
+
+- 25종 프로그래밍 언어·설정 파일 구문 강조 및 주석 토글(Ctrl+/) 추가:
+  Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, 레지스트리(.reg), 셰이더(HLSL/GLSL/WGSL), 어셈블리, Verilog/SystemVerilog, VHDL, Diff/Patch, 로그 파일(.log) 등 총 49개 카테고리·120종 이상의 확장자를 지원합니다.
+- 한글/CJK 전각 문자 입력 시 행 번호 세로 정렬 오차 수정:
+  DirectWrite 균일 줄 간격(Uniform Line Spacing)을 적용하여 전각 문자나 이모지가 포함된 줄에서도 행 번호와 본문 높이가 1픽셀 오차 없이 완벽히 일치합니다.
+- 가로 스크롤바 표시 정확도 및 편집 엔진 개선:
+  새 파일에서 엔터 입력 시 가로 스크롤바가 나타나던 문제를 해결하고, 긴 줄 삭제 시 즉시 스크롤바가 숨겨지도록 개선했으며 마지막 줄 복제(Alt+Shift+Down) 및 실행 취소/다시 실행 안정성을 강화했습니다."""
+    },
     "1.0.43": {
         "ja-jp": """miu v1.0.43 リリースノート
 🇯🇵 日本語 IME 入力不具合の修正 ＆ 検索・置換の超高速化（最大 605 倍）・EXE 15.3% 軽量化

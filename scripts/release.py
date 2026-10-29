@@ -219,21 +219,28 @@ def main():
         notes = args.notes
         if not notes:
             # Default release notes template
-            notes = f"# miu {release_name} リリースノート\n\n" + r"""### 🇯🇵 日本語 IME（Microsoft IME / Google 日本語入力 / ATOK 等）の入力不具合修正 ＆ 高速化・軽量化・セキュリティ強化
+            notes = f"# miu {release_name} リリースノート\n\n" + r"""### 🎨 25言語のシンタックスハイライト新規追加（全49カテゴリ・120種以上の拡張子対応）＆ 全角文字の行番号位置ズレ修正・水平スクロールバー＆編集エンジンの精度向上
 
-1. **日本語 IME 変換・入力の不具合修正（重要）**
-   - **IME / TSF（Text Services Framework）との互換性修正**: `v1.0.42` で導入したプロセス緩和策ポリシー（`ProcessExtensionPointDisablePolicy` / `ProcessImageLoadPolicy`）および `SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_SYSTEM32)` により、Windows の IMM32 / TSF フックおよびサードパーティ製 IME（Google 日本語入力・ATOK 等）の COM インプロセス TIP モジュール読み込みがブロックされ、日本語入力ができなくなる問題を修正しました。
-   - **カレントディレクトリ DLL ハイジャック防止の維持**: IME 拡張ポイントや TSF モジュールのロードを阻害しない `SetDllDirectoryW(L"")` 方式へ切り替え、日本語 IME との完全な互換性と DLL プリロード攻撃防止を両立しました。
-   - **WebView2 プレビュー連携時の IME フォーカス制御改善**: 起動時の不要なバックグラウンド WebView2 初期化を廃止し、プレビュー（`Alt+P`）表示切り替え時のエディタフォーカス維持と、WebView2 内の `<input>` / `<textarea>` フォーム要素への直接入力・IME 変換の両立を実現しました。
+1. **25種類の言語・設定ファイルのシンタックスハイライト＆コメント切り替え（`Ctrl+/`）新規追加**
+   - 従来の24カテゴリから **全49カテゴリ（120種以上の拡張子・特殊ファイル名）** へ大幅拡充しました。ゼロアロケーション・高速決定性スキャナにより、超巨大ファイルでもフレーム落ちなく瞬時に色分け表示します。
+   - **モダン・統計・関数型・スクリプト言語（10種）**:
+     - **Dart / Flutter** (`.dart`)、**R** (`.r`)、**Zig** (`.zig`)、**Scala** (`.scala`, `.sc`)、**Perl** (`.pl`, `.pm`)、**Visual Basic / VBA / VBScript** (`.vb`, `.vbs`, `.bas`, `.vba`)、**F#** (`.fs`, `.fsi`, `.fsx`)、**Julia** (`.jl`)、**Haskell** (`.hs`, `.lhs`)、**Elixir** (`.ex`, `.exs`)
+   - **クラウド・コンテナ・ビルド・設定・スキーマ（8種）**:
+     - **Dockerfile** (`Dockerfile`, `Containerfile`, `Dockerfile.*`, `.dockerfile`)、**Terraform / HCL** (`.tf`, `.tfvars`, `.hcl`)、**TOML / `.env`** (`.toml`, `.env`, `.env.*`)、**GraphQL** (`.graphql`, `.gql`)、**Protocol Buffers** (`.proto`)、**CMake** (`.cmake`, `CMakeLists.txt`)、**Makefile** (`Makefile`, `GNUmakefile`, `.mk`, `.mak`)、**Windows レジストリ** (`.reg`)
+   - **シェーダー・低レイヤ・ハードウェア記述言語（4種）**:
+     - **Shaders HLSL / GLSL / WGSL** (`.hlsl`, `.fx`, `.glsl`, `.vert`, `.frag`, `.comp`, `.geom`, `.tesc`, `.tese`, `.wgsl`)、**Assembly (x86/x64/ARM/GAS)** (`.asm`, `.s`, `.inc`)、**Verilog / SystemVerilog** (`.v`, `.sv`, `.svh`, `.vh`)、**VHDL** (`.vhd`, `.vhdl`)
+   - **開発ツール・ログ・既存言語の派生拡張子（3種＋派生拡張子）**:
+     - **Diff / Patch** (`.diff`, `.patch`：追加行・削除行・ハンクヘッダの色分け)、**Log ファイル** (`.log`：タイムスタンプ・`ERROR`/`WARN`/`INFO`/`DEBUG` 重要度・IPv4・文字列の色分け)、および C/C++ (`.rc`, `.ino`, `.cu`, `.cuh`, `.ipp`, `.tpp`, `.hh`, `.inl`)、XML/MSBuild (`.vcxproj`, `.csproj`, `.fsproj`, `.vbproj`, `.props`, `.targets`, `.wapproj`, `.appxmanifest`, `.resw`, `.resx`, `.plist`, `.xaml`, `.nuspec`, `.config`, `.manifest`)、Python (`.pyw`, `.pyi`)、PowerShell (`.psm1`, `.psd1`) に対応しました。
 
-2. **全文検索・一括置換・シンタックスハイライト・描画の超高速化（最大 605 倍）**
-   - **AVX2 先頭・末尾文字同時照合 SIMD 全文検索（最大 605.1 倍高速化）**: `PieceTable` のピース内連続メモリ走査と AVX2（32バイト単位）による先頭・末尾文字同時ベクトル照合により、32 MB 文書の前方検索を **245.3 倍**（`705.66 ms` → `2.88 ms`）、後方検索を **605.1 倍**（`2,708.09 ms` → `4.48 ms`）へ高速化しました。
-   - **$O(N + M)$ 線形一括置換（323.3 倍高速化）**: 単一パスでピース配列を再構築するアルゴリズムにより、5,000箇所の一括置換を `169.53 ms` → **`0.52 ms`（323.3 倍高速化）** に短縮しました。
-   - **シンタックスハイライト高速スキャナ（22.7 倍高速化）＆ 描画スクラッチバッファ永続化**: フレーム毎のヒープ確保をゼロ化し、Pele 図表エンジンのアロケーションも 1 パスあたり 58,576 回削減（**1.34 倍高速化**）しました。
+2. **全角文字（日本語・CJK・絵文字）入力時の行番号と本文の縦位置ズレ修正**
+   - DirectWrite のフォントフォールバック（Consolas → Yu Gothic UI / Meiryo 等）発生時に行のアセント・ディセントが微小変動していた問題を特定し、本文レイアウトと行番号ガターの両方に均一ラインスペーシング（`DWRITE_LINE_SPACING_METHOD_UNIFORM`: `lineHeight` / `baseline = lineHeight * 0.8f`）を適用しました。
+   - 半角のみの行と全角を含む行でベースラインと行高が 1 ピクセルの狂いもなく完全一致し、描画パフォーマンスの低下も一切ありません。
 
-3. **EXEサイズの大幅最小化（-788.50 KB / -15.32% 削減：`5,148.00 KB` → `4,359.50 KB`）＆ セキュリティ保護**
-   - **Hot / Cold 最適化プラグマ分離 ＆ 1,107 関数の `noexcept` 化**: `.text`（-13.82%）・`.pdata`（-41.77%）・`ced.lib`（-28.94%）を圧縮し、単一実行ファイルを **4.35 MB** に最小化しました。
-   - **セキュリティ強化**: ヒープ破損時即時終了保護（`HeapEnableTerminationOnCorruption`）、正規表現検索の ReDoS（壊滅的バックトラッキング）事前検証ガード（`isSafeUserRegex`）、および `<VcpkgEnabled>false</VcpkgEnabled>` によるサプライチェーン保護を備えています。
+3. **水平スクロールバーの表示精度改善 ＆ 編集エンジンの堅牢性強化**
+   - **新規作成直後の改行で水平スクロールバーが表示される不具合を修正**: `ensureCaretVisible()` で負の `hScrollPos`（左マージンオフセット）がクランプ前に加算されていた計算順序の不整合を修正し、実際にテキスト幅が表示領域を超えた時のみ水平スクロールバーが表示されるようになりました。
+   - **単一行編集時の行幅再計測の統一**: 全角文字入力時の UTF-8 バイト数と表示幅の乖離による不要な水平スクロールバー表示を解消し、長文行を Backspace / Delete で短くした際にも即座に水平スクロールバーが消えるようになりました。
+   - **最終行（改行なし）での下方向行複製（`Alt+Shift+Down`）の修正**: 末尾に改行がない最終行を複製した際に余分な空行が1行多く挿入されていた問題を修正しました。
+   - **Undo / Redo およびファイル切り替え時の状態整合性強化**: Undo / Redo 時の矩形選択パディングのロールバック漏れ修正、および新規作成・ファイルオープン時の矩形選択モード状態リセットを追加しました。
 """
         elif os.path.exists(notes):
             with open(notes, "r", encoding="utf-8") as f:

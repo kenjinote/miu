@@ -11,7 +11,7 @@
   <Identity
     Name="18872KENJI.8904025CBD33"
     Publisher="CN=035A9AAC-915B-4CE1-AE39-1A101BED42F5"
-    Version="1.0.43.0" />
+    Version="1.0.44.0" />
 
   <Properties>
     <DisplayName>miu</DisplayName>
@@ -118,6 +118,80 @@
 						<uap:FileType>.lua</uap:FileType>
 						<uap:FileType>.tex</uap:FileType>
 						<uap:FileType>.latex</uap:FileType>
+						<uap:FileType>.dart</uap:FileType>
+						<uap:FileType>.r</uap:FileType>
+						<uap:FileType>.zig</uap:FileType>
+						<uap:FileType>.scala</uap:FileType>
+						<uap:FileType>.sc</uap:FileType>
+						<uap:FileType>.pl</uap:FileType>
+						<uap:FileType>.pm</uap:FileType>
+						<uap:FileType>.vb</uap:FileType>
+						<uap:FileType>.fs</uap:FileType>
+						<uap:FileType>.fsi</uap:FileType>
+						<uap:FileType>.fsx</uap:FileType>
+						<uap:FileType>.jl</uap:FileType>
+						<uap:FileType>.hs</uap:FileType>
+						<uap:FileType>.lhs</uap:FileType>
+						<uap:FileType>.ex</uap:FileType>
+						<uap:FileType>.exs</uap:FileType>
+						<uap:FileType>.dockerfile</uap:FileType>
+						<uap:FileType>.tf</uap:FileType>
+						<uap:FileType>.tfvars</uap:FileType>
+						<uap:FileType>.hcl</uap:FileType>
+						<uap:FileType>.graphql</uap:FileType>
+						<uap:FileType>.gql</uap:FileType>
+						<uap:FileType>.proto</uap:FileType>
+						<uap:FileType>.cmake</uap:FileType>
+						<uap:FileType>.mk</uap:FileType>
+						<uap:FileType>.mak</uap:FileType>
+						<uap:FileType>.hlsl</uap:FileType>
+						<uap:FileType>.fx</uap:FileType>
+						<uap:FileType>.glsl</uap:FileType>
+						<uap:FileType>.vert</uap:FileType>
+						<uap:FileType>.frag</uap:FileType>
+						<uap:FileType>.comp</uap:FileType>
+						<uap:FileType>.geom</uap:FileType>
+						<uap:FileType>.tesc</uap:FileType>
+						<uap:FileType>.tese</uap:FileType>
+						<uap:FileType>.wgsl</uap:FileType>
+						<uap:FileType>.asm</uap:FileType>
+						<uap:FileType>.s</uap:FileType>
+						<uap:FileType>.inc</uap:FileType>
+						<uap:FileType>.v</uap:FileType>
+						<uap:FileType>.sv</uap:FileType>
+						<uap:FileType>.svh</uap:FileType>
+						<uap:FileType>.vh</uap:FileType>
+						<uap:FileType>.vhd</uap:FileType>
+						<uap:FileType>.vhdl</uap:FileType>
+						<uap:FileType>.hh</uap:FileType>
+						<uap:FileType>.inl</uap:FileType>
+						<uap:FileType>.ipp</uap:FileType>
+						<uap:FileType>.tpp</uap:FileType>
+						<uap:FileType>.rc</uap:FileType>
+						<uap:FileType>.ino</uap:FileType>
+						<uap:FileType>.cu</uap:FileType>
+						<uap:FileType>.cuh</uap:FileType>
+						<uap:FileType>.vcxproj</uap:FileType>
+						<uap:FileType>.csproj</uap:FileType>
+						<uap:FileType>.fsproj</uap:FileType>
+						<uap:FileType>.vbproj</uap:FileType>
+						<uap:FileType>.props</uap:FileType>
+						<uap:FileType>.targets</uap:FileType>
+						<uap:FileType>.wapproj</uap:FileType>
+						<uap:FileType>.appxmanifest</uap:FileType>
+						<uap:FileType>.resw</uap:FileType>
+						<uap:FileType>.resx</uap:FileType>
+						<uap:FileType>.plist</uap:FileType>
+						<uap:FileType>.xaml</uap:FileType>
+						<uap:FileType>.nuspec</uap:FileType>
+						<uap:FileType>.config</uap:FileType>
+						<uap:FileType>.manifest</uap:FileType>
+						<uap:FileType>.pyw</uap:FileType>
+						<uap:FileType>.pyi</uap:FileType>
+						<uap:FileType>.psm1</uap:FileType>
+						<uap:FileType>.psd1</uap:FileType>
+						<uap:FileType>.diff</uap:FileType>
+						<uap:FileType>.patch</uap:FileType>
 					</uap:SupportedFileTypes>
 				</uap:FileTypeAssociation>
 			</uap:Extension>

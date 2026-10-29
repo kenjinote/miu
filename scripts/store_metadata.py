@@ -34,15 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.43 更新日誌
-🇯🇵 修復輸入法（IME）無法輸入中文/日文的問題 & 搜尋最高提速 605 倍、體積縮減 15.3%
+        "releaseNotes": """miu v1.0.44 更新日誌
+🎨 新增 25 種語言語法高亮（共支援 49 大類、120+ 副檔名）& 修復全形字元行號對齊偏差與水平捲軸問題
 
-・修復 IME 輸入法無法打字與選字的問題（重要修復）：
-  修復了 v1.0.42 中因處理程序緩解原則攔截 Windows TSF / IMM32 掛鉤及第三方輸入法元件，導致無法使用中文/日文輸入法的問題，並最佳化 WebView2 預覽（Alt+P）的焦點控制，兼顧編輯器輸入與預覽內表單輸入。
-・搜尋、全部取代與語法高亮極速最佳化：
-  採用 AVX2 首尾字元同步 SIMD 搜尋（32MB 文件最高提速 605 倍）、O(N+M) 線性全部取代（提速 323 倍）與零配置語法高亮掃描器（提速 22.7 倍）。
-・執行檔體積大幅縮減（減少 788.5 KB / -15.3%）與安全加固：
-  將執行檔精簡至 4.35 MB，並配備 DLL 預載入防護、堆積損毀即時終止保護與正規表示式 ReDoS 預檢防護。""",
+・新增 25 種程式語言與設定檔語法高亮及 Ctrl+/ 註解切換：
+  新增 Dart、R、Zig、Scala、Perl、VB/VBA、F#、Julia、Haskell、Elixir、Dockerfile、Terraform/HCL、TOML/.env、GraphQL、Protobuf、CMake、Makefile、登錄檔（.reg）、著色器（HLSL/GLSL/WGSL）、組合語言、Verilog/SystemVerilog、VHDL、Diff/Patch 與紀錄檔（.log），總計支援 49 大類、120 餘種副檔名。
+・修復輸入繁體中文/日文等全形字元時行號高度輕微偏移的問題：
+  採用 DirectWrite 統一行距與基線機制，確保包含全形字元或表情符號的行與行號像素級精準對齊，且零效能損耗。
+・水平捲軸與編輯引擎精度最佳化：
+  修復新建檔案按 Enter 換行或輸入全形字元時意外出現水平捲軸的問題，支援刪減長行後立即隱藏水平捲軸，並改進末行複製（Alt+Shift+Down）與復原/重做狀態一致性。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.43 Versionshinweise
-🇯🇵 IME-Eingabefehler (Japanisch/CJK) behoben + Bis zu 605x schnellere Suche & 15,3 % kleinere EXE
+        "releaseNotes": """miu v1.0.44 Versionshinweise
+🎨 25 neue Sprachen für Syntaxhervorhebung (49 Kategorien / 120+ Dateiendungen) + CJK-Zeilennummernausrichtung & Korrekturen der horizontalen Bildlaufleiste
 
-- Wichtige Korrektur für IME-Texteingabe (Japanisch/CJK):
-  Behebung eines Problems aus v1.0.42, bei dem Prozessminderungsrichtlinien Windows TSF / IMM32-Hooks und Drittanbieter-IMEs blockierten. Zudem wurde die Fokussteuerung der WebView2-Vorschau (Alt+P) verbessert, sodass sowohl die Editoreingabe als auch Formularfelder in der Vorschau reibungslos funktionieren.
-- Enorme Beschleunigung bei Suche, Ersetzen & Syntaxhervorhebung:
-  AVX2-SIMD-Suche (bis zu 605x schneller bei 32 MB), lineares O(N+M) „Alle ersetzen“ (323x schneller) und allokationsfreier Syntax-Scanner (22,7x schneller).
-- 15,3 % kleinere Programmdatei (-788,5 KB) & Sicherheits-Hardening:
-  Kompakte 4,35 MB EXE mit DLL-Hijacking-Schutz, Heap-Korruptionsschutz und Regex-ReDoS-Schutz.""",
+- 25 neue Sprachen für Syntaxhervorhebung & Kommentar-Umschaltung (Strg+/):
+  Erweitert auf 49 Kategorien (über 120 Dateiendungen), darunter Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registry (.reg), Shader (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch und Log-Dateien (.log).
+- Pixelgenaue Zeilennummernausrichtung bei CJK-/Vollbreitenzeichen:
+  Einheitlicher DirectWrite-Zeilenabstand sorgt dafür, dass Zeilen mit Vollbreitenzeichen oder Emojis exakt mit den Zeilennummern übereinstimmen.
+- Präzise horizontale Bildlaufleiste & Editor-Verbesserungen:
+  Behebung einer unerwünschten horizontalen Bildlaufleiste nach Zeilenumbruch in neuen Dateien, sofortiges Ausblenden beim Kürzen langer Zeilen sowie Verbesserungen beim Zeilenduplizieren (Alt+Umschalt+Ab) und Rückgängig/Wiederholen.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.43
-🇯🇵 Correction de la saisie IME (japonais/CJK) + Recherche/remplacement jusqu'à 605x plus rapide et EXE réduit de 15,3 %
+        "releaseNotes": """Notes de version miu v1.0.44
+🎨 Ajout de 25 langages de coloration syntaxique (49 catégories / 120+ extensions) + Alignement des numéros de ligne CJK et correctifs de la barre de défilement horizontale
 
-- Correction critique de la saisie IME (japonais/chinois/coréen) :
-  Correction d'un problème introduit dans la v1.0.42 où les stratégies d'atténuation de processus bloquaient les hooks Windows TSF / IMM32 et les modules IME tiers. Amélioration de la gestion du focus de l'aperçu WebView2 (Alt+P) pour permettre à la fois la saisie dans l'éditeur et dans les formulaires de l'aperçu.
-- Accélération massive de la recherche, du remplacement et de la coloration syntaxique :
-  Recherche SIMD AVX2 jusqu'à 605x plus rapide sur 32 Mo, remplacer tout linéaire O(N+M) (323x plus rapide) et coloration syntaxique sans allocation (22,7x plus rapide).
-- Exécutable réduit de 15,3 % (-788,5 Ko) et sécurité renforcée :
-  Binaire compact de 4,35 Mo avec protection contre le détournement de DLL, arrêt sur corruption du tas et protection ReDoS.""",
+- 25 nouveaux langages de coloration syntaxique et bascule de commentaires (Ctrl+/) :
+  Extension à 49 catégories (plus de 120 extensions), incluant Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registre Windows (.reg), Shaders (HLSL/GLSL/WGSL), Assembleur, Verilog/SystemVerilog, VHDL, Diff/Patch et fichiers journaux (.log).
+- Alignement parfait des numéros de ligne pour les caractères pleine chasse / CJK :
+  Espacement de ligne DirectWrite uniforme garantissant un alignement au pixel près sans perte de performance.
+- Précision de la barre de défilement horizontale et du moteur d'édition :
+  Correction de l'apparition inopinée de la barre horizontale après un saut de ligne sur un nouveau fichier, masquage immédiat lors du raccourcissement des lignes longues et amélioration de la duplication de ligne (Alt+Maj+Bas) et d'Annuler/Rétablir.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.43
-🇯🇵 Corrección de entrada IME (japonés/CJK) + Búsqueda/reemplazo hasta 605x más rápido y EXE un 15,3 % menor
+        "releaseNotes": """Notas de la versión miu v1.0.44
+🎨 25 nuevos lenguajes de resaltado de sintaxis (49 categorías / 120+ extensiones) + Alineación de números de línea CJK y mejoras en la barra de desplazamiento horizontal
 
-- Corrección crítica de entrada de texto IME (japonés/CJK):
-  Se resolvió un problema de la v1.0.42 donde las políticas de mitigación de procesos bloqueaban los hooks TSF / IMM32 de Windows y los módulos IME de terceros. También se mejoró el enfoque de la vista previa WebView2 (Alt+P) para permitir escribir tanto en el editor como en formularios dentro de la vista previa.
-- Aceleración masiva en búsqueda, reemplazo y resaltado de sintaxis:
-  Búsqueda SIMD AVX2 hasta 605x más rápida en 32 MB, reemplazar todo lineal O(N+M) (323x más rápido) y escáner de sintaxis sin asignaciones (22,7x más rápido).
-- Ejecutable un 15,3 % más pequeño (-788,5 KB) y seguridad reforzada:
-  Ejecutable compacto de 4,35 MB con protección contra secuestro de DLL, protección de montón y filtro anti-ReDoS.""",
+- 25 nuevos lenguajes de resaltado de sintaxis y alternancia de comentarios (Ctrl+/):
+  Ampliado a 49 categorías (más de 120 extensiones), incluyendo Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registro de Windows (.reg), Shaders (HLSL/GLSL/WGSL), Ensamblador, Verilog/SystemVerilog, VHDL, Diff/Patch y archivos de registro (.log).
+- Alineación precisa de números de línea con caracteres de ancho completo / CJK:
+  Interlineado uniforme en DirectWrite para mantener una alineación perfecta al píxel sin impacto en el rendimiento.
+- Precisión de la barra de desplazamiento horizontal y motor de edición:
+  Corregida la aparición prematura de la barra horizontal al pulsar Enter en un archivo nuevo, ocultación inmediata al acortar líneas largas y mejoras en duplicación de líneas (Alt+Mayús+Abajo) y Deshacer/Rehacer.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.43
-🇯🇵 Correção de entrada IME (japonês/CJK) + Busca/substituição até 605x mais rápida e EXE 15,3% menor
+        "releaseNotes": """Notas de lançamento do miu v1.0.44
+🎨 25 novas linguagens com realce de sintaxe (49 categorias / 120+ extensões) + Alinhamento de números de linha CJK e correções na barra de rolagem horizontal
 
-- Correção crítica de digitação via IME (japonês/CJK):
-  Corrigido um problema introduzido na v1.0.42 em que as políticas de mitigação de processo bloqueavam hooks Windows TSF / IMM32 e módulos IME de terceiros. Também aprimoramos o controle de foco da visualização WebView2 (Alt+P) para permitir digitar tanto no editor quanto em formulários da pré-visualização.
-- Aceleração massiva de busca, substituição e realce de sintaxe:
-  Busca SIMD AVX2 até 605x mais rápida em 32 MB, substituir tudo linear O(N+M) (323x mais rápido) e scanner de sintaxe sem alocação (22,7x mais rápido).
-- Executável 15,3% menor (-788,5 KB) e reforço de segurança:
-  Binário compacto de 4,35 MB com proteção contra sequestro de DLL, proteção contra corrupção de heap e guarda anti-ReDoS.""",
+- 25 novas linguagens com realce de sintaxe e alternância de comentários (Ctrl+/):
+  Expandido para 49 categorias (mais de 120 extensões), incluindo Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registro do Windows (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch e arquivos de log (.log).
+- Alinhamento perfeito dos números de linha para caracteres de largura total / CJK:
+  Espaçamento de linha DirectWrite uniforme garantindo alinhamento preciso sem perda de desempenho.
+- Precisão da barra de rolagem horizontal e melhorias de edição:
+  Corrigida a exibição indevida da barra de rolagem horizontal ao pressionar Enter em um novo arquivo, ocultação imediata ao encurtar linhas longas e melhorias na duplicação de linhas (Alt+Shift+Baixo) e Desfazer/Refazer.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.43
-🇯🇵 Исправлен ввод через IME (японский/CJK) + Ускорение поиска до 605 раз и уменьшение EXE на 15,3%
+        "releaseNotes": """Примечания к выпуску miu v1.0.44
+🎨 Добавлено 25 языков подсветки синтаксиса (всего 49 категорий / 120+ расширений) + выравнивание номеров строк CJK и исправления горизонтальной прокрутки
 
-- Критическое исправление ввода текста через IME (японский/CJK):
-  Устранена проблема версии 1.0.42, из-за которой политики снижения рисков процесса блокировали хуки Windows TSF / IMM32 и сторонние модули IME. Также улучшено управление фокусом предпросмотра WebView2 (Alt+P) для удобного ввода как в редакторе, так и в формах предпросмотра.
-- Многократное ускорение поиска, замены и подсветки синтаксиса:
-  SIMD-поиск AVX2 (до 605 раз быстрее на 32 МБ), линейная замена всего O(N+M) (в 323 раза быстрее) и сканер подсветки синтаксиса без аллокаций (в 22,7 раза быстрее).
-- Уменьшение размера EXE на 15,3% (-788,5 КБ) и усиление безопасности:
-  Компактный исполняемый файл 4,35 МБ с защитой от подмены DLL, защитой кучи и проверкой регулярных выражений на ReDoS.""",
+- 25 новых языков подсветки синтаксиса и переключение комментариев (Ctrl+/):
+  Расширено до 49 категорий (более 120 расширений), включая Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, файлы реестра (.reg), шейдеры (HLSL/GLSL/WGSL), ассемблер, Verilog/SystemVerilog, VHDL, Diff/Patch и лог-файлы (.log).
+- Идеальное выравнивание номеров строк для полноширинных символов и эмодзи:
+  Равномерный межстрочный интервал DirectWrite обеспечивает попиксельное совпадение высоты строк и номеров без потери скорости.
+- Точность горизонтальной полосы прокрутки и улучшения редактора:
+  Исправлено ложное появление горизонтальной прокрутки после нажатия Enter в новом файле, мгновенное скрытие полосы при сокращении длинной строки, а также улучшено дублирование строк (Alt+Shift+Down) и отмена/повтор.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.43
-🇯🇵 Correzione input IME (giapponese/CJK) + Ricerca/sostituzione fino a 605x più veloce ed EXE ridotto del 15,3%
+        "releaseNotes": """Note di rilascio di miu v1.0.44
+🎨 Aggiunti 25 linguaggi di evidenziazione sintassi (49 categorie / 120+ estensioni) + Allineamento numeri di riga CJK e correzioni barra di scorrimento orizzontale
 
-- Correzione critica dell'input IME (giapponese/CJK):
-  Risolto un problema introdotto nella v1.0.42 in cui i criteri di mitigazione del processo bloccavano gli hook Windows TSF / IMM32 e gli IME di terze parti. Migliorata inoltre la gestione del focus dell'anteprima WebView2 (Alt+P) per consentire la digitazione sia nell'editor sia nei moduli dell'anteprima.
-- Velocità estrema per ricerca, sostituzione ed evidenziazione sintassi:
-  Ricerca SIMD AVX2 fino a 605x più veloce su 32 MB, sostituisci tutto lineare O(N+M) (323x più veloce) e scanner sintattico a zero allocazioni (22,7x più veloce).
-- Eseguibile ridotto del 15,3% (-788,5 KB) e sicurezza avanzata:
-  Binario compatto da 4,35 MB con protezione da DLL hijacking, arresto su corruzione dell'heap e filtro anti-ReDoS.""",
+- 25 nuovi linguaggi con evidenziazione della sintassi e commenti rapidi (Ctrl+/):
+  Esteso a 49 categorie (oltre 120 estensioni), tra cui Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registro di Windows (.reg), Shader (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch e file di log (.log).
+- Allineamento perfetto dei numeri di riga con caratteri a larghezza intera / CJK:
+  Interlinea uniforme DirectWrite per un allineamento preciso al pixel senza penalità sulle prestazioni.
+- Precisione della barra di scorrimento orizzontale e miglioramenti di modifica:
+  Risolta la comparsa prematura della barra orizzontale premendo Invio in un nuovo file, nascondimento immediato quando si accorciano righe lunghe e perfezionamenti a duplicazione riga (Alt+Maiusc+Giù) e Annulla/Ripeti.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.43
-🇯🇵 Naprawiono wprowadzanie IME (japoński/CJK) + Do 605x szybsze wyszukiwanie i plik EXE mniejszy o 15,3%
+        "releaseNotes": """Informacje o wersji miu v1.0.44
+🎨 Dodano 25 języków kolorowania składni (49 kategorii / 120+ rozszerzeń) + Wyrównanie numerów wierszy CJK i poprawki poziomego paska przewijania
 
-- Krytyczna poprawka wprowadzania tekstu IME (japoński/CJK):
-  Rozwiązano problem z wersji 1.0.42, w której zasady ograniczania ryzyka procesu blokowały haki Windows TSF / IMM32 oraz zewnętrzne moduły IME. Ulepszono również obsługę fokusu podglądu WebView2 (Alt+P), umożliwiając pisanie zarówno w edytorze, jak i w formularzach podglądu.
-- Ogromne przyspieszenie wyszukiwania, zamiany i kolorowania składni:
-  Wyszukiwanie SIMD AVX2 (do 605x szybciej w pliku 32 MB), liniowa zamiana wszystkiego O(N+M) (323x szybciej) oraz bezalokacyjny skaner składni (22,7x szybciej).
-- Plik wykonywalny mniejszy o 15,3% (-788,5 KB) i wzmocnione bezpieczeństwo:
-  Kompaktowy plik 4,35 MB z ochroną przed przechwytywaniem DLL, ochroną sterty i blokadą ReDoS.""",
+- 25 nowych języków kolorowania składni i przełączania komentarzy (Ctrl+/):
+  Rozszerzono do 49 kategorii (ponad 120 rozszerzeń), w tym Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, pliki rejestru (.reg), shadery (HLSL/GLSL/WGSL), Assembler, Verilog/SystemVerilog, VHDL, Diff/Patch oraz pliki dziennika (.log).
+- Idealne wyrównanie numerów wierszy dla znaków pełnej szerokości / CJK:
+  Jednolity odstęp między wierszami DirectWrite zapewnia dokładność co do piksela bez utraty wydajności.
+- Precyzja poziomego paska przewijania i silnika edycji:
+  Naprawiono przedwczesne pojawianie się poziomego paska przewijania po naciśnięciu Enter w nowym pliku, natychmiastowe ukrywanie po skróceniu długiego wiersza oraz ulepszono duplikowanie wierszy (Alt+Shift+Dół) i Cofnij/Ponów.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.43
-🇯🇵 IME-invoer (Japans/CJK) hersteld + Tot 605x sneller zoeken/vervangen & 15,3% kleinere EXE
+        "releaseNotes": """Releaseopmerkingen miu v1.0.44
+🎨 25 nieuwe talen voor syntaxismarkering (49 categorieën / 120+ extensies) + CJK-regelnummeruitlijning & verbeteringen aan de horizontale schuifbalk
 
-- Kritieke oplossing voor IME-tekstinvoer (Japans/CJK):
-  Er is een probleem uit v1.0.42 opgelost waarbij procesbeperkingsbeleid Windows TSF / IMM32-hooks en externe IME-modules blokkeerde. Ook is de focusregeling van het WebView2-voorbeeld (Alt+P) verbeterd, zodat typen in zowel de editor als formulieren in het voorbeeld probleemloos werkt.
-- Enorme versnelling van zoeken, vervangen en syntaxisaccentuering:
-  AVX2 SIMD-zoeken (tot 605x sneller bij 32 MB), lineair alles vervangen in O(N+M) (323x sneller) en een syntaxisscanner zonder heap-allocaties (22,7x sneller).
-- 15,3% kleiner uitvoerbaar bestand (-788,5 KB) & verbeterde beveiliging:
-  Compact bestand van 4,35 MB met bescherming tegen DLL-hijacking, heap-corruptiebeveiliging en ReDoS-bescherming.""",
+- 25 nieuwe talen voor syntaxismarkering en commentaar wisselen (Ctrl+/):
+  Uitgebreid naar 49 categorieën (meer dan 120 extensies), waaronder Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows-register (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch en logbestanden (.log).
+- Pixelperfecte uitlijning van regelnummers bij CJK- en volledige-breedtetekens:
+  Uniforme DirectWrite-regelafstand zorgt voor exacte uitlijning zonder snelheidsverlies.
+- Nauwkeurigheid van horizontale schuifbalk & tekstbewerking:
+  Onterecht verschijnen van de horizontale schuifbalk na Enter in een nieuw bestand verholpen, direct verbergen bij het inkorten van lange regels en verbeteringen in regels dupliceren (Alt+Shift+Omlaag) en Ongedaan maken/Opnieuw.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.43 Sürüm Notları
-🇯🇵 IME Giriş Sorunu (Japonca/CJK) Düzeltildi + 605 Kata Kadar Daha Hızlı Arama ve %15,3 Daha Küçük EXE
+        "releaseNotes": """miu v1.0.44 Sürüm Notları
+🎨 25 Yeni Sözdizimi Vurgulama Dili (49 Kategori / 120+ Uzantı) + CJK Satır Numarası Hizalama ve Yatay Kaydırma Çubuğu Düzeltmeleri
 
-- IME Metin Girişi Düzeltmesi (Kritik Düzeltme):
-  v1.0.42'de işlem azaltma ilkelerinin Windows TSF / IMM32 kancalarını ve üçüncü taraf IME modüllerini engelleyerek Japonca/CJK girişini durdurmasına neden olan sorun giderildi. Ayrıca WebView2 önizleme (Alt+P) odak yönetimi iyileştirilerek hem düzenleyicide hem de önizleme formlarında sorunsuz yazma sağlandı.
-- Arama, Değiştirme ve Sözdizimi Vurgulamada Devasa Hızlanma:
-  AVX2 SIMD arama (32 MB belgede 605 kata kadar daha hızlı), O(N+M) doğrusal Tümünü Değiştir (323 kat daha hızlı) ve sıfır tahsisli sözdizimi tarayıcısı (22,7 kat daha hızlı).
-- %15,3 Daha Küçük Çalıştırılabilir Dosya (-788,5 KB) ve Güvenlik Güçlendirmesi:
-  DLL ele geçirme koruması, yığın bozulması koruması ve ReDoS korumasına sahip 4,35 MB kompakt ikili dosya.""",
+- 25 Yeni Sözdizimi Vurgulama Dili ve Ctrl+/ Yorum Satırı Geçişi:
+  Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Kayıt Defteri (.reg), Shader (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch ve günlük dosyaları (.log) dahil olmak üzere 49 kategoriye (120'den fazla uzantı) genişletildi.
+- Tam Genişlikli / CJK Karakterlerde Kusursuz Satır Numarası Hizalaması:
+  Tekdüze DirectWrite satır aralığı sayesinde tam genişlikli karakterler veya emojiler içeren satırlar, satır numaralarıyla piksel hassasiyetinde hizalanır.
+- Yatay Kaydırma Çubuğu ve Düzenleme Motoru İyileştirmeleri:
+  Yeni dosyada Enter'a basıldığında yatay kaydırma çubuğunun erken görünmesi sorunu giderildi, uzun satırlar kısaltıldığında anında gizlenmesi sağlandı ve satır çoğaltma (Alt+Shift+Aşağı) ile Geri Al/Yinele kararlılığı artırıldı.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.43
-🇯🇵 Khắc phục lỗi bộ gõ IME (tiếng Nhật/CJK) + Tìm kiếm/thay thế nhanh hơn tới 605 lần & giảm 15,3% dung lượng EXE
+        "releaseNotes": """Ghi chú phát hành miu v1.0.44
+🎨 Thêm 25 ngôn ngữ tô sáng cú pháp (49 danh mục / 120+ phần mở rộng) + Căn chỉnh số dòng CJK & sửa lỗi thanh cuộn ngang
 
-- Khắc phục triệt để lỗi nhập liệu IME (tiếng Nhật/CJK):
-  Đã sửa lỗi trong v1.0.42 khi chính sách giảm thiểu rủi ro tiến trình chặn hook Windows TSF / IMM32 và các bộ gõ IME bên thứ ba. Đồng thời cải thiện quản lý tiêu điểm của khung xem trước WebView2 (Alt+P), giúp nhập liệu mượt mà trong cả trình soạn thảo lẫn các ô biểu mẫu trong khung xem trước.
-- Tăng tốc vượt trội tìm kiếm, thay thế và tô sáng cú pháp:
-  Tìm kiếm SIMD AVX2 nhanh hơn tới 605 lần trên tài liệu 32MB, thay thế tất cả tuyến tính O(N+M) (nhanh hơn 323 lần) và bộ quét cú pháp không cấp phát bộ nhớ (nhanh hơn 22,7 lần).
-- Giảm 15,3% kích thước tệp EXE (-788,5 KB) & tăng cường bảo mật:
-  Tệp thực thi gọn nhẹ 4,35 MB với cơ chế chống chiếm quyền DLL, bảo vệ hỏng heap và chống ReDoS.""",
+- Thêm 25 ngôn ngữ tô sáng cú pháp và bật/tắt ghi chú (Ctrl+/):
+  Mở rộng lên 49 danh mục (hơn 120 phần mở rộng tệp), bao gồm Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch và tệp nhật ký (.log).
+- Căn chỉnh hoàn hảo số dòng khi nhập ký tự全角 / CJK:
+  Áp dụng khoảng cách dòng đồng nhất của DirectWrite giúp số dòng và văn bản khớp chính xác từng pixel mà không giảm hiệu năng.
+- Tối ưu thanh cuộn ngang & bộ máy soạn thảo:
+  Khắc phục lỗi hiện thanh cuộn ngang ngay sau khi nhấn Enter ở tệp mới, tự động ẩn ngay khi xóa ngắn dòng dài, đồng thời cải thiện nhân bản dòng (Alt+Shift+Down) và Hoàn tác/Làm lại.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.43
-🇯🇵 Виправлено введення IME (японська/CJK) + Прискорення пошуку до 605 разів і зменшення EXE на 15,3%
+        "releaseNotes": """Примітки до випуску miu v1.0.44
+🎨 Додано 25 мов підсвічування синтаксису (49 категорій / 120+ розширень) + вирівнювання номерів рядків CJK і виправлення горизонтальної прокрутки
 
-- Критичне виправлення введення тексту через IME (японська/CJK):
-  Виправлено проблему версії 1.0.42, через яку політики пом'якшення процесів блокували хуки Windows TSF / IMM32 та сторонні модулі IME. Також покращено керування фокусом перегляду WebView2 (Alt+P) для введення тексту як у редакторі, так і у формах перегляду.
-- Надзвичайне прискорення пошуку, заміни та підсвічування синтаксису:
-  SIMD-пошук AVX2 (до 605 разів швидше на 32 МБ), лінійна заміна всього O(N+M) (у 323 рази швидше) та сканер синтаксису без алокацій (у 22,7 раза швидше).
-- Зменшення розміру EXE на 15,3% (-788,5 КБ) і посилення безпеки:
-  Компактний файл 4,35 МБ із захистом від підміни DLL, захистом купи та захистом від ReDoS.""",
+- 25 нових мов підсвічування синтаксису та перемикання коментарів (Ctrl+/):
+  Розширено до 49 категорій (понад 120 розширень), включаючи Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, файли реєстру (.reg), шейдери (HLSL/GLSL/WGSL), асемблер, Verilog/SystemVerilog, VHDL, Diff/Patch і лог-файли (.log).
+- Ідеальне вирівнювання номерів рядків для повноширинних символів і емодзі:
+  Рівномірний міжрядковий інтервал DirectWrite забезпечує попіксельний збіг висоти рядків і номерів без втрати швидкодії.
+- Точність горизонтальної смуги прокрутки та покращення редактора:
+  Виправлено передчасну появу горизонтальної прокрутки після натискання Enter у новому файлі, миттєве приховування смуги під час скорочення довгого рядка, а також покращено дублювання рядків (Alt+Shift+Down) і скасування/повтор.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.43
-🇯🇵 Perbaikan Input IME (Jepang/CJK) + Pencarian/Penggantian hingga 605x Lebih Cepat & Ukuran EXE 15,3% Lebih Kecil
+        "releaseNotes": """Catatan Rilis miu v1.0.44
+🎨 Tambahan 25 Bahasa Sorotan Sintaks (49 Kategori / 120+ Ekstensi) + Perataan Nomor Baris CJK & Perbaikan Bilah Gulir Horizontal
 
-- Perbaikan Penting Input Teks IME (Jepang/CJK):
-  Memperbaiki masalah di v1.0.42 di mana kebijakan mitigasi proses memblokir hook Windows TSF / IMM32 dan modul IME pihak ketiga. Juga menyempurnakan penanganan fokus pratinjau WebView2 (Alt+P) sehingga pengetikan di editor maupun di formulir pratinjau berjalan lancar.
-- Akselerasi Besar pada Pencarian, Penggantian & Penyorotan Sintaks:
-  Pencarian SIMD AVX2 hingga 605x lebih cepat pada dokumen 32MB, Ganti Semua linier O(N+M) (323x lebih cepat), dan pemindai sintaks tanpa alokasi heap (22,7x lebih cepat).
-- Ukuran EXE 15,3% Lebih Kecil (-788,5 KB) & Penguatan Keamanan:
-  Binari 4,35 MB yang ringkas dengan perlindungan pembajakan DLL, penghentian korupsi heap, dan pelindung ReDoS.""",
+- 25 Bahasa Baru untuk Sorotan Sintaks & Komentar Cepat (Ctrl+/):
+  Diperluas menjadi 49 kategori (120+ ekstensi file), termasuk Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch, dan file log (.log).
+- Perataan Nomor Baris Presisi untuk Karakter Lebar Penuh / CJK:
+  Spasi baris DirectWrite yang seragam memastikan baris dengan karakter CJK atau emoji sejajar sempurna dengan nomor baris tanpa penalti performa.
+- Akurasi Bilah Gulir Horizontal & Mesin Pengeditan:
+  Memperbaiki munculnya bilah gulir horizontal setelah menekan Enter pada file baru, menyembunyikan bilah gulir secara instan saat baris panjang dipendekkan, serta menyempurnakan duplikasi baris (Alt+Shift+Down) dan Undo/Redo.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.43
-🇯🇵 Oprava vstupu IME (japonština/CJK) + Až 605× rychlejší vyhledávání a o 15,3 % menší EXE
+        "releaseNotes": """Poznámky k verzi miu v1.0.44
+🎨 Přidáno 25 jazyků zvýrazňování syntaxe (49 kategorií / 120+ přípon) + Zarovnání čísel řádků CJK a opravy vodorovného posuvníku
 
-- Kritická oprava psaní přes IME (japonština/CJK):
-  Vyřešen problém z verze 1.0.42, kdy zásady zmírnění rizik procesů blokovaly háky Windows TSF / IMM32 a moduly IME třetích stran. Zároveň byla vylepšena správa fokusu náhledu WebView2 (Alt+P) pro plynulé psaní v editoru i ve formulářích náhledu.
-- Obrovské zrychlení vyhledávání, nahrazování a zvýrazňování syntaxe:
-  SIMD vyhledávání AVX2 (až 605× rychlejší u 32MB dokumentu), lineární hromadné nahrazení O(N+M) (323× rychlejší) a bezalokační skener syntaxe (22,7× rychlejší).
-- O 15,3 % menší spustitelný soubor (-788,5 KB) a vyšší zabezpečení:
-  Kompaktní 4,35MB soubor s ochranou proti podvržení DLL, ochranou haldy a ochranou proti ReDoS.""",
+- 25 nových jazyků zvýrazňování syntaxe a přepínání komentářů (Ctrl+/):
+  Rozšířeno na 49 kategorií (přes 120 přípon), včetně Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, souborů registru (.reg), shaderů (HLSL/GLSL/WGSL), Assembleru, Verilog/SystemVerilog, VHDL, Diff/Patch a log souborů (.log).
+- Přesné zarovnání čísel řádků pro znaky plné šířky / CJK:
+  Jednotné řádkování DirectWrite zajišťuje na pixel přesné zarovnání čísel řádků bez ztráty výkonu.
+- Přesnost vodorovného posuvníku a vylepšení editoru:
+  Opraveno předčasné zobrazení vodorovného posuvníku po stisku Enter v novém souboru, okamžité skrytí při zkrácení dlouhého řádku a vylepšeno duplikování řádků (Alt+Shift+Dolů) i Zpět/Znovu.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.43
-🇯🇵 Åtgärdad IME-inmatning (japanska/CJK) + Upp till 605x snabbare sökning & 15,3 % mindre EXE
+        "releaseNotes": """Versionsinformation för miu v1.0.44
+🎨 25 nya språk för syntaxmarkering (49 kategorier / 120+ filändelser) + CJK-radnummerjustering och korrigeringar av horisontell rullningslist
 
-- Kritisk åtgärd för IME-textinmatning (japanska/CJK):
-  Löste ett problem i v1.0.42 där processbegränsningspolicyer blockerade Windows TSF / IMM32-hookar och tredjeparts IME-moduler. Även fokushanteringen för WebView2-förhandsgranskning (Alt+P) har förbättrats så att det går att skriva smidigt både i redigeraren och i formulär i förhandsgranskningen.
-- Massiv prestandaökning för sökning, ersättning och syntaxmarkering:
-  AVX2 SIMD-sökning (upp till 605x snabbare i 32 MB), linjär Ersätt alla i O(N+M) (323x snabbare) och allokeringsfri syntaxskanner (22,7x snabbare).
-- 15,3 % mindre körbar fil (-788,5 KB) & stärkt säkerhet:
-  Kompakt binärfil på 4,35 MB med skydd mot DLL-kapning, heap-skydd och ReDoS-skydd.""",
+- 25 nya språk för syntaxmarkering och kommentarsväxling (Ctrl+/):
+  Utökat till 49 kategorier (över 120 filändelser), inklusive Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows-register (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch och loggfiler (.log).
+- Exakt radnummerjustering för helbreddstecken / CJK:
+  Enhetligt DirectWrite-radavstånd ger exakt justering på pixelnivå utan prestandaförlust.
+- Förbättrad horisontell rullningslist och redigeringsmotor:
+  Åtgärdade att den horisontella rullningslisten visades i förtid efter Enter i en ny fil, omedelbar döljning när långa rader kortas ned samt förbättrad radduplicering (Alt+Skift+Pil ned) och Ångra/Gör om.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.43
-🇯🇵 แก้ไขการพิมพ์ IME (ภาษาญี่ปุ่น/CJK) + ค้นหาและแทนที่เร็วขึ้นสูงสุด 605 เท่า และขนาด EXE เล็กลง 15.3%
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.44
+🎨 เพิ่มการเน้นไวยากรณ์ 25 ภาษาใหม่ (รวม 49 หมวดหมู่ / 120+ นามสกุลไฟล์) + แก้ไขการจัดแนวเลขบรรทัด CJK และแถบเลื่อนแนวนอน
 
-- แก้ไขปัญหาการพิมพ์ด้วย IME (ภาษาญี่ปุ่น/CJK):
-  แก้ไขปัญหาใน v1.0.42 ที่นโยบายลดความเสี่ยงของโปรเซสไปบล็อกฮุก Windows TSF / IMM32 และโมดูล IME ของบริษัทอื่น พร้อมปรับปรุงการจัดการโฟกัสของหน้าต่างตัวอย่าง WebView2 (Alt+P) ให้พิมพ์ได้ทั้งในเอดิเตอร์และในแบบฟอร์มของหน้าตัวอย่าง
-- เร่งความเร็วการค้นหา แทนที่ และการเน้นไวยากรณ์อย่างก้าวกระโดด:
-  การค้นหาด้วย AVX2 SIMD เร็วขึ้นสูงสุด 605 เท่าในไฟล์ 32MB, การแทนที่ทั้งหมดแบบเชิงเส้น O(N+M) (เร็วขึ้น 323 เท่า) และตัวสแกนไวยากรณ์แบบไม่จองฮีป (เร็วขึ้น 22.7 เท่า)
-- ลดขนาดไฟล์ EXE ลง 15.3% (-788.5 KB) และยกระดับความปลอดภัย:
-  ไฟล์ขนาดกะทัดรัด 4.35 MB พร้อมการป้องกัน DLL hijacking, การป้องกันฮีปเสียหาย และการป้องกัน ReDoS""",
+- เพิ่มการเน้นไวยากรณ์ 25 ภาษาใหม่และสลับคอมเมนต์ (Ctrl+/):
+  ขยายเป็น 49 หมวดหมู่ (มากกว่า 120 นามสกุลไฟล์) รวมถึง Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch และไฟล์บันทึก (.log)
+- แก้ไขตำแหน่งเลขบรรทัดให้ตรงกันทุกพิกเซลเมื่อพิมพ์อักษรเต็มความกว้าง / CJK:
+  ใช้ระยะห่างบรรทัดแบบสม่ำเสมอของ DirectWrite ทำให้เลขบรรทัดและเนื้อหาตรงกันอย่างแม่นยำโดยไม่ลดความเร็ว
+- ปรับปรุงความแม่นยำของแถบเลื่อนแนวนอนและระบบแก้ไขข้อความ:
+  แก้ไขปัญหาแถบเลื่อนแนวนอนแสดงขึ้นทันทีหลังกด Enter ในไฟล์ใหม่ ซ่อนแถบเลื่อนทันทีเมื่อลบข้อความบรรทัดยาวให้สั้นลง และปรับปรุงการทำซ้ำบรรทัด (Alt+Shift+Down) รวมถึง Undo/Redo""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.43 रिलीज़ नोट्स
-🇯🇵 IME इनपुट (जापानी/CJK) सुधार + 605 गुना तक तेज़ खोज/बदलाव और 15.3% छोटा EXE
+        "releaseNotes": """miu v1.0.44 रिलीज़ नोट्स
+🎨 25 नई सिंटैक्स हाइलाइटिंग भाषाएँ (कुल 49 श्रेणियाँ / 120+ एक्सटेंशन) + CJK लाइन नंबर संरेखण और क्षैतिज स्क्रॉलबार सुधार
 
-- IME टेक्स्ट इनपुट में महत्वपूर्ण सुधार (जापानी/CJK):
-  v1.0.42 में प्रोसेस मिटिगेशन पॉलिसी द्वारा Windows TSF / IMM32 हुक और थर्ड-पार्टी IME मॉड्यूल ब्लॉक होने की समस्या को ठीक किया गया है। साथ ही WebView2 प्रीव्यू (Alt+P) फ़ोकस प्रबंधन को बेहतर बनाया गया है ताकि एडिटर और प्रीव्यू फ़ॉर्म दोनों में टाइपिंग सुचारू रूप से काम करे।
-- खोज, बदलाव और सिंटैक्स हाइलाइटिंग में भारी गति वृद्धि:
-  AVX2 SIMD खोज (32MB दस्तावेज़ में 605 गुना तक तेज़), O(N+M) रैखिक Replace All (323 गुना तेज़) और ज़ीरो-एलोकेशन सिंटैक्स स्कैनर (22.7 गुना तेज़)।
-- 15.3% छोटा EXE (-788.5 KB) और सुरक्षा सुदृढ़ीकरण:
-  DLL हाईजैकिंग सुरक्षा, हीप करप्शन सुरक्षा और ReDoS गार्ड के साथ 4.35 MB का कॉम्पैक्ट बाइनरी।""",
+- 25 नई सिंटैक्स हाइलाइटिंग भाषाएँ और Ctrl+/ कमेंट टॉगल:
+  Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch और लॉग फ़ाइलों (.log) सहित 49 श्रेणियों (120+ फ़ाइल एक्सटेंशन) तक विस्तार।
+- पूर्ण-चौड़ाई / CJK वर्णों के लिए सटीक लाइन नंबर संरेखण:
+  DirectWrite यूनिफ़ॉर्म लाइन स्पेसिंग से पूर्ण-चौड़ाई वाले वर्णों या इमोजी वाली पंक्तियाँ बिना किसी गति हानि के लाइन नंबरों के साथ पिक्सेल-सटीक संरेखित रहती हैं।
+- क्षैतिज स्क्रॉलबार और संपादन इंजन सुधार:
+  नई फ़ाइल में Enter दबाने पर क्षैतिज स्क्रॉलबार दिखने की समस्या हल की गई, लंबी पंक्तियों को छोटा करने पर स्क्रॉलबार तुरंत छिपता है, और पंक्ति डुप्लिकेशन (Alt+Shift+Down) व Undo/Redo को और सटीक बनाया गया।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.43
-🇯🇵 Remediere introducere IME (japoneză/CJK) + Căutare/înlocuire de până la 605x mai rapidă și EXE mai mic cu 15,3%
+        "releaseNotes": """Note de lansare miu v1.0.44
+🎨 25 de limbaje noi pentru evidențierea sintaxei (49 de categorii / 120+ extensii) + Alinierea numerelor de rând CJK și corecții pentru bara de derulare orizontală
 
-- Remediere critică pentru introducerea textului prin IME (japoneză/CJK):
-  S-a rezolvat o problemă din v1.0.42 în care politicile de atenuare a proceselor blocau hook-urile Windows TSF / IMM32 și modulele IME terțe. De asemenea, s-a îmbunătățit gestionarea focalizării în previzualizarea WebView2 (Alt+P) pentru a permite tastarea atât în editor, cât și în formularele din previzualizare.
-- Accelerare masivă pentru căutare, înlocuire și evidențierea sintaxei:
-  Căutare SIMD AVX2 de până la 605x mai rapidă pe 32 MB, înlocuire totală liniară O(N+M) (de 323x mai rapidă) și scaner de sintaxă fără alocări (de 22,7x mai rapid).
-- Executabil mai mic cu 15,3% (-788,5 KB) și securitate consolidată:
-  Binar compact de 4,35 MB cu protecție împotriva deturnării DLL, protecție heap și filtru anti-ReDoS.""",
+- 25 de limbaje noi cu evidențierea sintaxei și comutare comentarii (Ctrl+/):
+  Extins la 49 de categorii (peste 120 de extensii), incluzând Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch și fișiere jurnal (.log).
+- Aliniere precisă a numerelor de rând pentru caractere cu lățime completă / CJK:
+  Spațierea uniformă a rândurilor DirectWrite asigură alinierea la nivel de pixel fără pierderi de performanță.
+- Precizia barei de derulare orizontale și îmbunătățiri de editare:
+  S-a corectat apariția prematură a barei orizontale după apăsarea tastei Enter într-un fișier nou, ascunderea imediată la scurtarea rândurilor lungi și s-au îmbunătățit duplicarea rândurilor (Alt+Shift+Jos) și Anulare/Refacere.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.43 kiadási megjegyzések
-🇯🇵 IME-beviteli hiba (japán/CJK) javítása + Akár 605-ször gyorsabb keresés és 15,3%-kal kisebb EXE
+        "releaseNotes": """miu v1.0.44 kiadási megjegyzések
+🎨 25 új szintaxiskiemelési nyelv (49 kategória / 120+ kiterjesztés) + CJK sorszám-igazítás és vízszintes görgetősáv javítások
 
-- Kritikus IME szövegbeviteli javítás (japán/CJK):
-  Javítottuk az 1.0.42-es verzióban jelentkezett hibát, amelynél a folyamatvédelmi házirendek blokkolták a Windows TSF / IMM32 hookokat és a külső IME-modulokat. Emellett finomítottuk a WebView2 előnézet (Alt+P) fókuszkezelését, így a szerkesztőben és az előnézeti űrlapokon is zavartalan a gépelés.
-- Hatalmas gyorsulás a keresésben, cserében és szintaxiskiemelésben:
-  AVX2 SIMD keresés (akár 605-ször gyorsabb 32 MB-os fájlnál), O(N+M) lineáris Összes cseréje (323-szor gyorsabb) és allokációmentes szintaxisszkenner (22,7-szer gyorsabb).
-- 15,3%-kal kisebb futtatható fájl (-788,5 KB) és megerősített biztonság:
-  Kompakt, 4,35 MB-os bináris DLL-eltérítés elleni védelemmel, heap-sérülésvédelemmel és ReDoS-szűrővel.""",
+- 25 új szintaxiskiemelési nyelv és megjegyzésváltás (Ctrl+/):
+  49 kategóriára (több mint 120 fájlkiterjesztésre) bővítve, beleértve: Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaderek (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch és naplófájlok (.log).
+- Pixelpontos sorszám-igazítás teljes szélességű / CJK karaktereknél:
+  Az egységes DirectWrite sorköz biztosítja a sorszámok és a szöveg pontos illeszkedését teljesítményveszteség nélkül.
+- Vízszintes görgetősáv és szerkesztőmotor fejlesztések:
+  Javítva a vízszintes görgetősáv idő előtti megjelenése új fájlban történő Enter leütése után, azonnali elrejtés hosszú sorok rövidítésekor, valamint pontosabb sorduplikálás (Alt+Shift+Le) és Visszavonás/Újra.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.43
-🇯🇵 Διόρθωση εισαγωγής IME (Ιαπωνικά/CJK) + Έως 605x ταχύτερη αναζήτηση και 15,3% μικρότερο EXE
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.44
+🎨 Προσθήκη 25 γλωσσών επισήμανσης σύνταξης (49 κατηγορίες / 120+ επεκτάσεις) + Ευθυγράμμιση αριθμών γραμμής CJK & διορθώσεις οριζόντιας γραμμής κύλισης
 
-- Κρίσιμη διόρθωση εισαγωγής κειμένου IME (Ιαπωνικά/CJK):
-  Επιλύθηκε ένα ζήτημα της έκδοσης v1.0.42 όπου οι πολιτικές μετριασμού διεργασιών απέκλειαν τα hooks Windows TSF / IMM32 και τις μονάδες IME τρίτων. Βελτιώθηκε επίσης η διαχείριση εστίασης της προεπισκόπησης WebView2 (Alt+P) ώστε η πληκτρολόγηση να λειτουργεί απρόσκοπτα τόσο στον επεξεργαστή όσο και στις φόρμες προεπισκόπησης.
-- Τεράστια επιτάχυνση σε αναζήτηση, αντικατάσταση και επισήμανση σύνταξης:
-  Αναζήτηση SIMD AVX2 (έως 605x ταχύτερη σε 32MB), γραμμική αντικατάσταση όλων O(N+M) (323x ταχύτερη) και σαρωτής σύνταξης μηδενικών εκχωρήσεων (22,7x ταχύτερος).
-- 15,3% μικρότερο εκτελέσιμο αρχείο (-788,5 KB) & ενίσχυση ασφάλειας:
-  Συμπαγές εκτελέσιμο 4,35 MB με προστασία από DLL hijacking, προστασία σωρού και προστασία ReDoS.""",
+- 25 νέες γλώσσες επισήμανσης σύνταξης και εναλλαγή σχολίων (Ctrl+/):
+  Επέκταση σε 49 κατηγορίες (πάνω από 120 επεκτάσεις αρχείων), όπως Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Μητρώο Windows (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch και αρχεία καταγραφής (.log).
+- Ακριβής ευθυγράμμιση αριθμών γραμμής για χαρακτήρες πλήρους πλάτους / CJK:
+  Ομοιόμορφο διάστιχο DirectWrite για ευθυγράμμιση ακριβείας pixel χωρίς απώλεια απόδοσης.
+- Ακρίβεια οριζόντιας γραμμής κύλισης & βελτιώσεις επεξεργασίας:
+  Διορθώθηκε η πρόωρη εμφάνιση της οριζόντιας γραμμής κύλισης μετά το πάτημα Enter σε νέο αρχείο, η άμεση απόκρυψη κατά τη συντόμευση μεγάλων γραμμών και βελτιώθηκαν ο διπλασιασμός γραμμής (Alt+Shift+Κάτω) και η Αναίρεση/Επανάληψη.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.43
-🇯🇵 Rettet IME-indtastning (japansk/CJK) + Op til 605x hurtigere søgning & 15,3 % mindre EXE
+        "releaseNotes": """Udgivelsesnoter til miu v1.0.44
+🎨 25 nye sprog til syntaksfremhævning (49 kategorier / 120+ filendelser) + CJK-linjenummerjustering og rettelser til vandret rullepanel
 
-- Kritisk rettelse af IME-tekstindtastning (japansk/CJK):
-  Løste et problem fra v1.0.42, hvor procesbegrænsningspolitikker blokerede Windows TSF / IMM32-hooks og tredjeparts IME-moduler. Fokushåndteringen i WebView2-forhåndsvisning (Alt+P) er også forbedret, så du kan skrive problemfrit både i editoren og i formularfelter i forhåndsvisningen.
-- Massiv hastighedsforøgelse ved søgning, erstatning og syntaksfremhævning:
-  AVX2 SIMD-søgning (op til 605x hurtigere i 32 MB), lineær Erstat alle i O(N+M) (323x hurtigere) og allokeringsfri syntaksscanner (22,7x hurtigere).
-- 15,3 % mindre eksekverbar fil (-788,5 KB) & styrket sikkerhed:
-  Kompakt 4,35 MB binær fil med beskyttelse mod DLL-kapring, heap-beskyttelse og ReDoS-beskyttelse.""",
+- 25 nye sprog til syntaksfremhævning og kommentarskift (Ctrl+/):
+  Udvidet til 49 kategorier (over 120 filendelser), herunder Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows-registreringsdatabase (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch og logfiler (.log).
+- Præcis linjenummerjustering ved fuldbreddetegn / CJK:
+  Ensartet DirectWrite-linjeafstand sikrer pixelpræcis justering uden tab af ydeevne.
+- Præcision af vandret rullepanel og redigeringsmotor:
+  Rettet at det vandrette rullepanel blev vist for tidligt efter Enter i en ny fil, øjeblikkelig skjulning ved afkortning af lange linjer samt forbedret linjeduplikering (Alt+Skift+Ned) og Fortryd/Annuller fortryd.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.43 -julkaisutiedot
-🇯🇵 Korjattu IME-syöttö (japani/CJK) + Jopa 605x nopeampi haku ja 15,3 % pienempi EXE
+        "releaseNotes": """miu v1.0.44 -julkaisutiedot
+🎨 25 uutta syntaksinkorotuskieltä (49 kategoriaa / 120+ tiedostopäätettä) + CJK-rivinumeroiden kohdistus ja vaakavierityspalkin korjaukset
 
-- Kriittinen korjaus IME-tekstinsyöttöön (japani/CJK):
-  Korjattiin versiossa 1.0.42 ilmennyt ongelma, jossa prosessin lieventämiskäytännöt estivät Windows TSF / IMM32 -koukut ja kolmansien osapuolten IME-moduulit. Lisäksi WebView2-esikatselun (Alt+P) kohdistuksen hallintaa parannettiin niin, että kirjoittaminen toimii sujuvasti sekä editorissa että esikatselun lomakkeissa.
-- Huima nopeutus hakuun, korvaamiseen ja syntaksin korostukseen:
-  AVX2 SIMD -haku (jopa 605x nopeampi 32 Mt:n tiedostossa), lineaarinen O(N+M) Korvaa kaikki (323x nopeampi) ja muistia varaamaton syntaksiskanneri (22,7x nopeampi).
-- 15,3 % pienempi suoritettava tiedosto (-788,5 kt) ja vahvistettu tietoturva:
-  Tiivis 4,35 Mt:n binääri, jossa on DLL-kaappaussuoja, keon korruptiosuoja ja ReDoS-suoja.""",
+- 25 uutta syntaksinkorotuskieltä ja kommenttien vaihto (Ctrl+/):
+  Laajennettu 49 kategoriaan (yli 120 tiedostopäätettä), mukaan lukien Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows-rekisteri (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch ja lokitiedostot (.log).
+- Pikselintarkka rivinumeroiden kohdistus täysleveiden / CJK-merkkien kanssa:
+  Yhtenäinen DirectWrite-riviväli varmistaa tarkan kohdistuksen ilman suorituskykyhäviötä.
+- Vaakavierityspalkin tarkkuus ja muokkausmoottorin parannukset:
+  Korjattu vaakavierityspalkin ennenaikainen näkyminen Enterin painamisen jälkeen uudessa tiedostossa, välitön piilotus pitkiä rivejä lyhennettäessä sekä parannettu rivien monistusta (Alt+Vaihto+Alas) ja Kumoa/Tee uudelleen -toimintoja.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.43
-🇯🇵 Rettet IME-inndata (japansk/CJK) + Opptil 605x raskere søk og 15,3 % mindre EXE
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.44
+🎨 25 nye språk for syntaksutheving (49 kategorier / 120+ filtyper) + CJK-linjenummerjustering og rettelser for horisontalt rullefelt
 
-- Kritisk rettelse for IME-tekstinndata (japansk/CJK):
-  Løste et problem i v1.0.42 der prosessbegrensningspolicyer blokkerte Windows TSF / IMM32-hooks og tredjeparts IME-moduler. Fokushåndteringen i WebView2-forhåndsvisning (Alt+P) er også forbedret, slik at skriving fungerer sømløst både i redigeringsprogrammet og i skjemafelter i forhåndsvisningen.
-- Massiv hastighetsøkning for søk, erstatning og syntaksutheving:
-  AVX2 SIMD-søk (opptil 605x raskere på 32 MB), lineær Erstatt alle i O(N+M) (323x raskere) og allokeringsfri syntaksskanner (22,7x raskere).
-- 15,3 % mindre kjørbar fil (-788,5 KB) og styrket sikkerhet:
-  Kompakt 4,35 MB binærfil med beskyttelse mot DLL-kapring, heap-beskyttelse og ReDoS-beskyttelse.""",
+- 25 nye språk for syntaksutheving og kommentarbehandling (Ctrl+/):
+  Utvidet til 49 kategorier (over 120 filtyper), inkludert Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows-register (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch og loggfiler (.log).
+- Pikselpresis linjenummerjustering for fullbreddetegn / CJK:
+  Ensartet DirectWrite-linjeavstand sikrer nøyaktig justering uten ytelsestap.
+- Presisjon for horisontalt rullefelt og redigeringsmotor:
+  Rettet feil der horisontalt rullefelt dukket opp etter Enter i en ny fil, umiddelbar skjuling når lange linjer forkortes, samt forbedret linjeduplisering (Alt+Shift+Ned) og Angre/Gjør om.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.43
-🇯🇵 Pembaikan Input IME (Jepun/CJK) + Carian/Gantian sehingga 605x Lebih Pantas & Saiz EXE 15.3% Lebih Kecil
+        "releaseNotes": """Nota Keluaran miu v1.0.44
+🎨 Tambahan 25 Bahasa Serlahan Sintaks (49 Kategori / 120+ Sambungan) + Penjajaran Nombor Baris CJK & Pembaikan Bar Skrol Mendatar
 
-- Pembaikan Penting Input Teks IME (Jepun/CJK):
-  Memperbaiki isu dalam v1.0.42 di mana dasar mitigasi proses menyekat cangkuk Windows TSF / IMM32 dan modul IME pihak ketiga. Pengurusan fokus pratonton WebView2 (Alt+P) turut diperhalusi supaya penaipan dalam editor dan borang pratonton berfungsi dengan lancar.
-- Pecutan Hebat dalam Carian, Gantian & Penyerlahan Sintaks:
-  Carian SIMD AVX2 sehingga 605x lebih pantas pada dokumen 32MB, Ganti Semua linear O(N+M) (323x lebih pantas) dan pengimbas sintaks sifar peruntukan (22.7x lebih pantas).
-- Saiz EXE 15.3% Lebih Kecil (-788.5 KB) & Pengukuhan Keselamatan:
-  Binari padat 4.35 MB dengan perlindungan rampasan DLL, perlindungan kerosakan timbunan dan pelindung ReDoS.""",
+- 25 Bahasa Baharu untuk Serlahan Sintaks & Togol Komen (Ctrl+/):
+  Diperluas kepada 49 kategori (lebih 120 sambungan fail), termasuk Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch dan fail log (.log).
+- Penjajaran Nombor Baris Tepat untuk Aksara Lebar Penuh / CJK:
+  Jarak baris DirectWrite yang seragam memastikan baris dengan aksara CJK atau emoji sejajar tepat dengan nombor baris tanpa kehilangan prestasi.
+- Ketepatan Bar Skrol Mendatar & Enjin Penyuntingan:
+  Membaiki bar skrol mendatar yang muncul terlalu awal selepas menekan Enter pada fail baharu, menyembunyikan bar skrol serta-merta apabila baris panjang dipendekkan, serta menambah baik penduaan baris (Alt+Shift+Bawah) dan Buat Asal/Buat Semula.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",
