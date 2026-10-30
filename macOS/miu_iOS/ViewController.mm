@@ -129,8 +129,12 @@
 @property (nonatomic, copy) void (^onOpenRecentAction)(UIView *sourceView);
 @property (nonatomic, copy) BOOL (^onDismissOpenRecentIfVisible)(void);
 @property (nonatomic, copy) void (^onDismissOpenRecentThenPerform)(void (^block)(void));
+@property (nonatomic, copy) void (^onSyncKeyboardLayout)(void);
 @property (nonatomic, strong) UIEditMenuInteraction *editMenuInteraction API_AVAILABLE(ios(16.0));
 @property (nonatomic, assign) CGFloat topRenderMargin;
+- (UIView *)activeAccessoryView;
+- (CGFloat)unobstructedBottomY;
+- (CGFloat)effectiveViewportHeight;
 - (void)jumpToLine:(NSInteger)lineNumber;
 - (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd;
 - (void)showMenuForCurrentSelection;
@@ -681,6 +685,34 @@
         }
     }
 }
+- (UIView *)activeAccessoryView {
+    return _customAccessoryView;
+}
+- (CGFloat)unobstructedBottomY {
+    CGFloat bottomY = self.bounds.size.height;
+    if (_customAccessoryView && _customAccessoryView.window && !_customAccessoryView.hidden && _customAccessoryView.alpha > 0.01) {
+        UIScreen *accScreen = _customAccessoryView.window.windowScene.screen ?: [UIScreen mainScreen];
+        if (accScreen) {
+            CGRect accInScreen = [_customAccessoryView convertRect:_customAccessoryView.bounds toCoordinateSpace:accScreen.coordinateSpace];
+            CGRect accInSelf = [self convertRect:accInScreen fromCoordinateSpace:accScreen.coordinateSpace];
+            if (!CGRectIsEmpty(accInSelf) && !CGRectIsNull(accInSelf) && accInSelf.origin.y > self.topRenderMargin && accInSelf.origin.y < bottomY) {
+                bottomY = accInSelf.origin.y;
+            }
+        }
+    }
+    return bottomY;
+}
+- (CGFloat)effectiveViewportHeight {
+    CGFloat bottomY = [self unobstructedBottomY];
+    CGFloat availH = MAX(1.0, bottomY - self.topRenderMargin);
+    if (self.isFirstResponder && self.editor && self.editor->lineHeight > 0.0f) {
+        CGFloat lineH = (CGFloat)self.editor->lineHeight;
+        if (availH > lineH * 2.0) {
+            availH -= lineH;
+        }
+    }
+    return availH;
+}
 - (void)applyNewFontSize:(CGFloat)newFontSize {
     if (!self.editor) return;
     newFontSize = std::clamp((float)newFontSize, 6.0f, 200.0f);
@@ -689,7 +721,7 @@
     }
     self.editor->updateFont((float)newFontSize);
     float vw = self.bounds.size.width;
-    float vh = MAX(1.0f, self.bounds.size.height - self.topRenderMargin);
+    float vh = (float)[self effectiveViewportHeight];
     ScrollBarLayout L = self.editor->getScrollBarLayout(vw, vh);
     int maxH = L.needH ? std::max(0, (int)std::ceil(self.editor->maxLineWidth - L.textAreaW)) : 0;
     self.editor->hScrollPos = std::clamp(self.editor->hScrollPos, 0, maxH);
@@ -764,7 +796,7 @@
 - (void)applyScrollDeltaX:(CGFloat)dx deltaY:(CGFloat)dy {
     _vScrollAccumulator -= dy;
     float vw = self.bounds.size.width;
-    float vh = MAX(1.0f, self.bounds.size.height - self.topRenderMargin);
+    float vh = (float)[self effectiveViewportHeight];
     if (self.editor->wordWrapEnabled) {
         self.editor->hScrollPos = 0;
         _scrollVelocity.x = 0;
@@ -843,17 +875,25 @@
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange {
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
+    if (self.onSyncKeyboardLayout) {
+        self.onSyncKeyboardLayout();
+    }
     [self.inputDelegate textWillChange:self];
     self.editor->imeComp = markedText ? [markedText UTF8String] : "";
+    self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
     [self setNeedsDisplay];
 }
 - (void)unmarkText {
     if (!self.editor) return;
+    if (self.onSyncKeyboardLayout) {
+        self.onSyncKeyboardLayout();
+    }
     [self.inputDelegate textWillChange:self];
     if (!self.editor->imeComp.empty()) {
         self.editor->insertAtCursors(self.editor->imeComp);
         self.editor->imeComp = "";
+        self.editor->ensureCaretVisible();
     }
     [self.inputDelegate textDidChange:self];
     [self setNeedsDisplay];
@@ -862,6 +902,12 @@
     [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
+    if (self.onSyncKeyboardLayout) {
+        self.onSyncKeyboardLayout();
+    }
+    int prevVScroll = self.editor->vScrollPos;
+    int prevVSubLine = self.editor->vScrollSubLine;
+    int prevHScroll = self.editor->hScrollPos;
     [self.inputDelegate textWillChange:self];
     if ([text isEqualToString:@"\n"] || [text isEqualToString:@"\r"]) {
         if (!self.editor->imeComp.empty()) {
@@ -896,16 +942,27 @@
             self.editor->insertAtCursors([text UTF8String]);
         }
     }
+    self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
+    if (self.editor->vScrollPos != prevVScroll ||
+        self.editor->vScrollSubLine != prevVSubLine ||
+        self.editor->hScrollPos != prevHScroll) {
+        [self.inputDelegate selectionWillChange:self];
+        [self.inputDelegate selectionDidChange:self];
+    }
     [self setNeedsDisplay];
 }
 - (void)deleteBackward {
     [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
+    if (self.onSyncKeyboardLayout) {
+        self.onSyncKeyboardLayout();
+    }
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     self.editor->backspaceAtCursors();
+    self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
     [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
@@ -1336,6 +1393,9 @@
     [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
+    if (self.onSyncKeyboardLayout) {
+        self.onSyncKeyboardLayout();
+    }
     if (!self.editor->imeComp.empty()) {
         [self unmarkText];
     }
@@ -1348,6 +1408,7 @@
             self.editor->indentLines(false);
         }
     }
+    self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
     [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
@@ -1356,6 +1417,9 @@
     [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
+    if (self.onSyncKeyboardLayout) {
+        self.onSyncKeyboardLayout();
+    }
     if (!self.editor->imeComp.empty()) {
         [self unmarkText];
     }
@@ -1364,6 +1428,7 @@
     if (!self.editor->jumpEmmetTabstop(false)) {
         self.editor->unindentLines();
     }
+    self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
     [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
@@ -1630,7 +1695,7 @@
     if (!self.editor || self.editor->cursors.empty()) return;
     [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
-    float viewHeight = MAX(1.0f, (float)self.bounds.size.height - (float)self.topRenderMargin);
+    float viewHeight = (float)[self effectiveViewportHeight];
     int pageLines = std::max(1, (int)(viewHeight / self.editor->lineHeight) - 1);
     if (self.editor->wordWrapEnabled) {
         for (int i = 0; i < pageLines; ++i) {
@@ -2110,7 +2175,8 @@
     if (!self.editor || self.editor->cursors.empty()) return;
     Cursor c = self.editor->cursors.back();
     CGRect caretRect = [self visualCaretRectForPos:c.head affinity:c.affinity];
-    CGRect visibleRect = CGRectMake(0, self.topRenderMargin, self.bounds.size.width, self.bounds.size.height - self.topRenderMargin);
+    CGFloat visHeight = MAX(1.0, [self unobstructedBottomY] - self.topRenderMargin);
+    CGRect visibleRect = CGRectMake(0, self.topRenderMargin, self.bounds.size.width, visHeight);
     if (!CGRectIntersectsRect(visibleRect, caretRect)) {
         [self dismissKeyboard];
     }
@@ -2217,6 +2283,65 @@ static NSString *s_iosClipboardSnapshot = nil;
     NSLayoutConstraint *_editorBottomConstraint;
     BOOL _isExportingDocument;
     CGFloat _lastTopFillWidth;
+    CGRect _lastKeyboardScreenFrame;
+    BOOL _isKeyboardVisible;
+}
+- (CGFloat)computeCurrentKeyboardShrinkAmount {
+    if (!self.isViewLoaded || self.view.bounds.size.height <= 0) return 0.0;
+    CGFloat shrinkAmount = 0.0;
+    UIScreen *screen = self.view.window.windowScene.screen ?: [UIScreen mainScreen];
+    if (_isKeyboardVisible && !CGRectIsEmpty(_lastKeyboardScreenFrame) && !CGRectIsNull(_lastKeyboardScreenFrame) && screen) {
+        CGRect convertedFrame = [self.view convertRect:_lastKeyboardScreenFrame fromCoordinateSpace:screen.coordinateSpace];
+        CGFloat fromNotif = self.view.bounds.size.height - convertedFrame.origin.y;
+        if (fromNotif > shrinkAmount) {
+            shrinkAmount = fromNotif;
+        }
+    }
+    if (@available(iOS 15.0, *)) {
+        CGRect guideFrame = self.view.keyboardLayoutGuide.layoutFrame;
+        if (!CGRectIsEmpty(guideFrame) && !CGRectIsNull(guideFrame) && guideFrame.origin.y < self.view.bounds.size.height) {
+            CGFloat fromGuide = self.view.bounds.size.height - guideFrame.origin.y;
+            if (fromGuide > shrinkAmount) {
+                shrinkAmount = fromGuide;
+            }
+        }
+    }
+    UIView *accView = [self.editorView activeAccessoryView];
+    if (accView && accView.window && !accView.hidden && accView.alpha > 0.01) {
+        UIScreen *accScreen = accView.window.windowScene.screen ?: screen;
+        if (accScreen) {
+            CGRect accInScreen = [accView convertRect:accView.bounds toCoordinateSpace:accScreen.coordinateSpace];
+            CGRect accInView = [self.view convertRect:accInScreen fromCoordinateSpace:accScreen.coordinateSpace];
+            if (!CGRectIsEmpty(accInView) && !CGRectIsNull(accInView) && accInView.origin.y > 0.0 && accInView.origin.y < self.view.bounds.size.height) {
+                CGFloat fromAcc = self.view.bounds.size.height - accInView.origin.y;
+                if (fromAcc > shrinkAmount) {
+                    shrinkAmount = fromAcc;
+                }
+            }
+        }
+    }
+    return MAX(0.0, shrinkAmount);
+}
+- (void)syncKeyboardAvoidanceAndEnsureCaret:(BOOL)ensureCaret {
+    if (!self.isViewLoaded) return;
+    CGFloat shrinkAmount = [self computeCurrentKeyboardShrinkAmount];
+    BOOL changed = (fabs(self.footerBottomConstraint.constant - (-shrinkAmount)) > 0.5);
+    if (changed) {
+        [UIView performWithoutAnimation:^{
+            self.footerBottomConstraint.constant = -shrinkAmount;
+            [self.view layoutIfNeeded];
+            [self layoutSplitViews];
+        }];
+    }
+    if (ensureCaret && _editorEngine) {
+        _editorEngine->ensureCaretVisible();
+        [self.editorView setNeedsDisplay];
+        _editorEngine->updateScrollBars();
+    }
+}
+- (CGFloat)effectiveEditorViewportHeight {
+    if (!self.editorView) return 0.0;
+    return [self.editorView effectiveViewportHeight];
 }
 - (void)ensurePreviewViewsCreated {
     if (self.previewWebView || !self.workspaceContainer || !_editorEngine) return;
@@ -2292,7 +2417,7 @@ static NSString *s_iosClipboardSnapshot = nil;
     }
     if (_editorEngine && !CGRectEqualToRect(oldEditorFrame, self.editorView.frame)) {
         float vw = self.editorView.bounds.size.width;
-        float vh = MAX(1.0f, self.editorView.bounds.size.height - self.editorView.topRenderMargin);
+        float vh = MAX(1.0f, (float)[self effectiveEditorViewportHeight]);
         ScrollBarLayout L = _editorEngine->getScrollBarLayout(vw, vh);
         int totalLines = (_editorEngine->wordWrapEnabled && L.totalVisualLines > L.totalLines)
             ? L.totalVisualLines
@@ -2303,6 +2428,9 @@ static NSString *s_iosClipboardSnapshot = nil;
             ? 0
             : std::max(0, (int)std::ceil(_editorEngine->maxLineWidth - L.textAreaW));
         _editorEngine->hScrollPos = std::clamp(_editorEngine->hScrollPos, 0, maxH);
+        if (self.editorView.isFirstResponder) {
+            _editorEngine->ensureCaretVisible();
+        }
         _editorEngine->updateScrollBars();
         [self.editorView setNeedsDisplay];
     }
@@ -2557,6 +2685,8 @@ static NSString *s_iosClipboardSnapshot = nil;
 }
 - (void)viewDidLoad {
     [super viewDidLoad];
+    _lastKeyboardScreenFrame = CGRectNull;
+    _isKeyboardVisible = NO;
     self.view.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
         return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor systemBackgroundColor];
     }];
@@ -2714,7 +2844,7 @@ static NSString *s_iosClipboardSnapshot = nil;
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf) {
             w = strongSelf.editorView.bounds.size.width;
-            h = MAX(0.0f, strongSelf.editorView.bounds.size.height - strongSelf.editorView.topRenderMargin);
+            h = MAX(0.0f, (float)[strongSelf effectiveEditorViewportHeight]);
         }
     };
     _editorEngine->cbUpdateScrollers = [weakSelf]() {
@@ -2722,7 +2852,7 @@ static NSString *s_iosClipboardSnapshot = nil;
             __strong typeof(self) strongSelf = weakSelf;
             if (strongSelf && strongSelf->_editorEngine) {
                 float vw = strongSelf.editorView.bounds.size.width;
-                float vh = MAX(0.0f, strongSelf.editorView.bounds.size.height - strongSelf.editorView.topRenderMargin);
+                float vh = MAX(0.0f, (float)[strongSelf effectiveEditorViewportHeight]);
                 float topMargin = strongSelf.editorView.topRenderMargin;
                 ScrollBarLayout L = strongSelf->_editorEngine->getScrollBarLayout(vw, vh);
                 int totalLines = (strongSelf->_editorEngine->wordWrapEnabled && L.totalVisualLines > L.totalLines)
@@ -2831,6 +2961,11 @@ static NSString *s_iosClipboardSnapshot = nil;
     _editorEngine->isDarkMode = isDark;
     _editorEngine->initGraphics();
     self.editorView.editor = _editorEngine.get();
+    self.editorView.onSyncKeyboardLayout = ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf syncKeyboardAvoidanceAndEnsureCaret:NO];
+    };
     self.editorView.onNewDocumentAction = ^{
         [weakSelf confirmSaveIfNeededWithAction:^{
             [weakSelf performNewDocument];
@@ -2870,7 +3005,11 @@ static NSString *s_iosClipboardSnapshot = nil;
         } completion:nil];
     };
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillShow:) name:UIKeyboardWillShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidShow:) name:UIKeyboardDidShowNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillChangeFrame:) name:UIKeyboardWillChangeFrameNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidChangeFrame:) name:UIKeyboardDidChangeFrameNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidHide:) name:UIKeyboardDidHideNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showSearchNotif) name:@"miuShowSearch" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showReplaceNotif) name:@"miuShowReplace" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(closeSearch) name:@"miuCloseSearch" object:nil];
@@ -3003,7 +3142,7 @@ static NSString *s_iosClipboardSnapshot = nil;
             if (!CGSizeEqualToSize(self.editorView.bounds.size, self.lastLayoutSize)) {
                 _editorEngine->updateMaxLineWidth();
                 float vw = self.editorView.bounds.size.width;
-                float vh = MAX(1.0f, self.editorView.bounds.size.height - self.editorView.topRenderMargin);
+                float vh = MAX(1.0f, (float)[self effectiveEditorViewportHeight]);
                 ScrollBarLayout L = _editorEngine->getScrollBarLayout(vw, vh);
                 int totalLines = (_editorEngine->wordWrapEnabled && L.totalVisualLines > L.totalLines)
                     ? L.totalVisualLines
@@ -3091,11 +3230,19 @@ static NSString *s_iosClipboardSnapshot = nil;
     }
     [self disableOtherScrollsToTop:self.view];
 }
-- (void)keyboardWillShow:(NSNotification *)notification {
-    NSDictionary *userInfo = notification.userInfo;
-    CGRect keyboardFrame = [userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
-    CGRect convertedFrame = [self.view convertRect:keyboardFrame fromView:nil];
-    CGFloat shrinkAmount = MAX(0, self.view.bounds.size.height - convertedFrame.origin.y);
+- (void)handleKeyboardNotification:(NSNotification *)notification isHiding:(BOOL)isHiding {
+    if (isHiding) {
+        _isKeyboardVisible = NO;
+        _lastKeyboardScreenFrame = CGRectNull;
+    } else {
+        _isKeyboardVisible = YES;
+        NSDictionary *userInfo = notification.userInfo;
+        NSValue *endFrameVal = userInfo[UIKeyboardFrameEndUserInfoKey];
+        if (endFrameVal) {
+            _lastKeyboardScreenFrame = [endFrameVal CGRectValue];
+        }
+    }
+    CGFloat shrinkAmount = isHiding ? 0.0 : [self computeCurrentKeyboardShrinkAmount];
     [UIView performWithoutAnimation:^{
         self.footerBottomConstraint.constant = -shrinkAmount;
         [self.view layoutIfNeeded];
@@ -3103,19 +3250,36 @@ static NSString *s_iosClipboardSnapshot = nil;
         if (_editorEngine) {
             _editorEngine->ensureCaretVisible();
             [self.editorView setNeedsDisplay];
+            _editorEngine->updateScrollBars();
         }
     }];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self syncKeyboardAvoidanceAndEnsureCaret:YES];
+    });
+}
+- (void)keyboardWillShow:(NSNotification *)notification {
+    [self handleKeyboardNotification:notification isHiding:NO];
+}
+- (void)keyboardDidShow:(NSNotification *)notification {
+    [self handleKeyboardNotification:notification isHiding:NO];
+}
+- (void)keyboardWillChangeFrame:(NSNotification *)notification {
+    if (!_isKeyboardVisible && !self.editorView.isFirstResponder && !self.searchField.isFirstResponder && !self.replaceField.isFirstResponder && !self.goToLineField.isFirstResponder) {
+        return;
+    }
+    [self handleKeyboardNotification:notification isHiding:NO];
+}
+- (void)keyboardDidChangeFrame:(NSNotification *)notification {
+    if (!_isKeyboardVisible && !self.editorView.isFirstResponder && !self.searchField.isFirstResponder && !self.replaceField.isFirstResponder && !self.goToLineField.isFirstResponder) {
+        return;
+    }
+    [self handleKeyboardNotification:notification isHiding:NO];
 }
 - (void)keyboardWillHide:(NSNotification *)notification {
-    [UIView performWithoutAnimation:^{
-        self.footerBottomConstraint.constant = 0;
-        [self.view layoutIfNeeded];
-        [self layoutSplitViews];
-        if (_editorEngine) {
-            _editorEngine->ensureCaretVisible();
-            [self.editorView setNeedsDisplay];
-        }
-    }];
+    [self handleKeyboardNotification:notification isHiding:YES];
+}
+- (void)keyboardDidHide:(NSNotification *)notification {
+    [self handleKeyboardNotification:notification isHiding:YES];
 }
 - (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
     [super traitCollectionDidChange:previousTraitCollection];
