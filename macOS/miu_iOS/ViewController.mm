@@ -127,6 +127,7 @@
 @property (nonatomic, copy) void (^onNewDocumentAction)(void);
 @property (nonatomic, copy) void (^onGoToLineAction)(void);
 @property (nonatomic, copy) void (^onOpenRecentAction)(UIView *sourceView);
+@property (nonatomic, copy) BOOL (^onDismissOpenRecentIfVisible)(void);
 @property (nonatomic, strong) UIEditMenuInteraction *editMenuInteraction API_AVAILABLE(ios(16.0));
 @property (nonatomic, assign) CGFloat topRenderMargin;
 - (void)jumpToLine:(NSInteger)lineNumber;
@@ -160,6 +161,7 @@
     UITapGestureRecognizer *_singleTapGR;
     UITapGestureRecognizer *_doubleTapGR;
     UITapGestureRecognizer *_tripleTapGR;
+    UITapGestureRecognizer *_accessoryTapGR;
 }
 @synthesize inputDelegate = _inputDelegate;
 @synthesize markedTextStyle = _markedTextStyle;
@@ -659,7 +661,23 @@
     [self setNeedsDisplay];
 }
 - (BOOL)gestureRecognizer:(UIGestureRecognizer *)gestureRecognizer shouldReceiveTouch:(UITouch *)touch {
+    if (gestureRecognizer == _accessoryTapGR) {
+        UIView *v = touch.view;
+        while (v && v != _customAccessoryView) {
+            if ([v isKindOfClass:[UIControl class]]) {
+                return NO;
+            }
+            v = v.superview;
+        }
+    }
     return YES;
+}
+- (void)onAccessoryBackgroundTap:(UITapGestureRecognizer *)sender {
+    if (sender.state == UIGestureRecognizerStateEnded) {
+        if (self.onDismissOpenRecentIfVisible) {
+            self.onDismissOpenRecentIfVisible();
+        }
+    }
 }
 - (void)applyNewFontSize:(CGFloat)newFontSize {
     if (!self.editor) return;
@@ -1972,6 +1990,11 @@
         [stackView.trailingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.trailingAnchor],
         [stackView.heightAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.heightAnchor]
     ]];
+    _accessoryTapGR = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(onAccessoryBackgroundTap:)];
+    _accessoryTapGR.cancelsTouchesInView = NO;
+    _accessoryTapGR.delegate = self;
+    [_customAccessoryView addGestureRecognizer:_accessoryTapGR];
+    __weak typeof(self) weakSelf = self;
     auto createBtn = ^UIButton*(NSString *title, SEL action) {
         UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
         [btn setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
@@ -2009,7 +2032,17 @@
             btn.showsTouchWhenHighlighted = YES;
 #pragma clang diagnostic pop
         }
-        [btn addTarget:self action:action forControlEvents:UIControlEventTouchUpInside];
+        [btn addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull uiAction) {
+            __strong typeof(weakSelf) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            if (strongSelf.onDismissOpenRecentIfVisible && strongSelf.onDismissOpenRecentIfVisible()) {
+                return;
+            }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            [strongSelf performSelector:action withObject:uiAction.sender];
+#pragma clang diagnostic pop
+        }] forControlEvents:UIControlEventTouchUpInside];
         return btn;
     };
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"New", nil), @selector(newDocument:))];
@@ -2143,6 +2176,7 @@ static NSString *s_iosClipboardSnapshot = nil;
 @property (nonatomic, strong) UIView *horizontalScrollBar;
 @property (nonatomic, strong) UIStackView *footerStack;
 @property (nonatomic, strong) NSLayoutConstraint *footerBottomConstraint;
+@property (nonatomic, weak) UIAlertController *openRecentAlert;
 @end
 @implementation ViewController {
     std::shared_ptr<Editor> _editorEngine;
@@ -2295,7 +2329,26 @@ static NSString *s_iosClipboardSnapshot = nil;
     [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
+- (BOOL)dismissOpenRecentIfVisible {
+    if (self.openRecentAlert) {
+        if (self.openRecentAlert.isBeingDismissed) {
+            return YES;
+        }
+        if (self.presentedViewController == self.openRecentAlert || self.openRecentAlert.presentingViewController != nil) {
+            __weak typeof(self) weakSelf = self;
+            [self.openRecentAlert dismissViewControllerAnimated:YES completion:^{
+                weakSelf.openRecentAlert = nil;
+            }];
+            return YES;
+        }
+        self.openRecentAlert = nil;
+    }
+    return NO;
+}
 - (void)presentOpenRecentMenuFromView:(UIView *)sourceView {
+    if ([self dismissOpenRecentIfVisible]) {
+        return;
+    }
     if (!_editorEngine) return;
     _editorEngine->loadRecentFiles();
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Open Recent", nil)
@@ -2355,6 +2408,7 @@ static NSString *s_iosClipboardSnapshot = nil;
             pop.sourceRect = CGRectMake(self.view.bounds.size.width * 0.5, 40, 1, 1);
         }
     }
+    self.openRecentAlert = sheet;
     [self presentViewController:sheet animated:YES completion:nil];
 }
 - (void)performNewDocument {
@@ -2700,6 +2754,11 @@ static NSString *s_iosClipboardSnapshot = nil;
     };
     self.editorView.onOpenRecentAction = ^(UIView *sourceView) {
         [weakSelf presentOpenRecentMenuFromView:sourceView];
+    };
+    self.editorView.onDismissOpenRecentIfVisible = ^BOOL{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return NO;
+        return [strongSelf dismissOpenRecentIfVisible];
     };
     self.editorView.onGoToLineAction = ^{
         __strong typeof(self) strongSelf = weakSelf;
