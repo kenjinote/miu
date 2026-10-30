@@ -2215,6 +2215,7 @@ static NSString *s_iosClipboardSnapshot = nil;
     BOOL _isFirstLayoutDone;
     NSLayoutConstraint *_editorBottomConstraint;
     BOOL _isExportingDocument;
+    CGFloat _lastTopFillWidth;
 }
 - (void)ensurePreviewViewsCreated {
     if (self.previewWebView || !self.workspaceContainer || !_editorEngine) return;
@@ -2931,10 +2932,13 @@ static NSString *s_iosClipboardSnapshot = nil;
 }
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
-    BOOL isLandscape = self.view.bounds.size.width > self.view.bounds.size.height;
+    if (self.scrollToTopHelper) {
+        self.scrollToTopHelper.contentSize = CGSizeMake(self.view.bounds.size.width, 2000);
+    }
+    BOOL hideTitleBar = (self.traitCollection.verticalSizeClass == UIUserInterfaceSizeClassCompact) || (self.view.bounds.size.height < 480.0);
     for (NSLayoutConstraint *c in self.titleBarView.constraints) {
         if (c.firstAttribute == NSLayoutAttributeHeight && c.relation == NSLayoutRelationEqual) {
-            c.constant = isLandscape ? 0 : 17;
+            c.constant = hideTitleBar ? 0 : 17;
             break;
         }
     }
@@ -2955,7 +2959,8 @@ static NSString *s_iosClipboardSnapshot = nil;
         self.editorView.topRenderMargin = safeTop + 15;
         [self layoutSplitViews];
         if (self.topFillView.bounds.size.height > 0) {
-            if (self.topFillView.subviews.count == 0 || self.topFillView.bounds.size.width != self.lastLayoutSize.width) {
+            if (self.topFillView.subviews.count == 0 || fabs(self.topFillView.bounds.size.width - _lastTopFillWidth) > 0.5) {
+                _lastTopFillWidth = self.topFillView.bounds.size.width;
                 [self buildProgressiveBlur];
             }
         }
@@ -2963,9 +2968,22 @@ static NSString *s_iosClipboardSnapshot = nil;
             _isFirstLayoutDone = YES;
             _editorEngine->vScrollPos = 0;
             _editorEngine->hScrollPos = 0;
+            self.lastLayoutSize = self.editorView.bounds.size;
         } else {
             if (!CGSizeEqualToSize(self.editorView.bounds.size, self.lastLayoutSize)) {
                 _editorEngine->updateMaxLineWidth();
+                float vw = self.editorView.bounds.size.width;
+                float vh = MAX(1.0f, self.editorView.bounds.size.height - self.editorView.topRenderMargin);
+                ScrollBarLayout L = _editorEngine->getScrollBarLayout(vw, vh);
+                int totalLines = (_editorEngine->wordWrapEnabled && L.totalVisualLines > L.totalLines)
+                    ? L.totalVisualLines
+                    : L.totalLines;
+                int maxV = std::max(0, totalLines - L.visibleLines);
+                _editorEngine->vScrollPos = std::clamp(_editorEngine->vScrollPos, 0, maxV);
+                int maxH = (_editorEngine->wordWrapEnabled || !L.needH)
+                    ? 0
+                    : std::max(0, (int)std::ceil(_editorEngine->maxLineWidth - L.textAreaW));
+                _editorEngine->hScrollPos = std::clamp(_editorEngine->hScrollPos, 0, maxH);
                 _editorEngine->ensureCaretVisible();
                 self.lastLayoutSize = self.editorView.bounds.size;
             }
