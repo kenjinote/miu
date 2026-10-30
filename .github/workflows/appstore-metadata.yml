@@ -5,13 +5,15 @@ on:
     branches: [ master, main ]
     paths:
       - 'scripts/appstore_metadata_sync.py'
+      - 'scripts/appstore_screenshots_sync.py'
+      - 'macOS/store_assets/**'
       - 'macOS/APPSTORE_METADATA.md'
       - '.github/workflows/appstore-metadata.yml'
   workflow_dispatch:
 
 jobs:
   sync-metadata:
-    name: Sync App Store Connect Localizations (iOS & macOS)
+    name: Sync App Store Connect Localizations & Screenshots (iOS & macOS)
     runs-on: xcode-27
     env:
       APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
@@ -21,8 +23,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Python dependencies & Sync App Store Metadata
+      - name: Install Python dependencies & Sync App Store Metadata + Screenshots
         if: env.APPSTORE_ISSUER_ID != '' && env.APPSTORE_KEY_ID != '' && env.APPSTORE_PRIVATE_KEY != ''
         run: |
-          pip3 install --quiet --break-system-packages pyjwt cryptography requests || pip3 install --quiet pyjwt cryptography requests
+          pip3 install --quiet --break-system-packages pyjwt cryptography requests pillow numpy || pip3 install --quiet pyjwt cryptography requests pillow numpy
           python3 scripts/appstore_metadata_sync.py
+          python3 scripts/appstore_screenshots_sync.py --out-dir /tmp/asc_screenshots
