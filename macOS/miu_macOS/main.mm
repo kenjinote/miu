@@ -481,7 +481,15 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 }
 
 - (void)drawRect:(NSRect)r {
-    editor->render([[NSGraphicsContext currentContext] CGContext], (float)self.bounds.size.width, (float)self.bounds.size.height);
+    if (editor) {
+        BOOL isDark = [[self.effectiveAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]] isEqualToString:NSAppearanceNameDarkAqua];
+        if (editor->isDarkMode != (bool)isDark) {
+            editor->isDarkMode = isDark;
+            editor->updateThemeColors();
+            [self applySystemHighlightColor];
+        }
+        editor->render([[NSGraphicsContext currentContext] CGContext], (float)self.bounds.size.width, (float)self.bounds.size.height);
+    }
 }
 
 - (NSMenu *)menuForEvent:(NSEvent *)event {

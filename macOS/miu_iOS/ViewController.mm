@@ -296,6 +296,11 @@
 }
 - (void)drawRect:(CGRect)rect {
     if (!self.editor) return;
+    BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
+    if (self.editor->isDarkMode != (bool)isDark) {
+        self.editor->isDarkMode = isDark;
+        self.editor->updateThemeColors();
+    }
     CGContextRef ctx = UIGraphicsGetCurrentContext();
     CGContextTranslateCTM(ctx, 0, self.topRenderMargin);
     self.editor->render(ctx, self.bounds.size.width, self.bounds.size.height - self.topRenderMargin);
@@ -2941,6 +2946,12 @@ static NSString *s_iosClipboardSnapshot = nil;
             [self.editorView setNeedsDisplay];
         }
     }];
+}
+- (void)traitCollectionDidChange:(UITraitCollection *)previousTraitCollection {
+    [super traitCollectionDidChange:previousTraitCollection];
+    if ([self.traitCollection hasDifferentColorAppearanceComparedToTraitCollection:previousTraitCollection]) {
+        [self updateThemeIfNeeded];
+    }
 }
 - (void)updateThemeIfNeeded {
     if (_editorEngine) {

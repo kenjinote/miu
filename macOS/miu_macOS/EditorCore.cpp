@@ -5131,7 +5131,9 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     if (now < zoomPopupEndTime) {
         float zw = 180.0f, zh = 72.0f;
         CGRect zpr = CGRectMake((w - zw) / 2.0f, (h - zh) / 2.0f, zw, zh);
-        CGColorRef bgCol = CGColorCreateGenericRGB(0.15, 0.15, 0.18, 0.78);
+        CGColorRef bgCol = isDarkMode
+            ? CGColorCreateGenericRGB(0.20, 0.20, 0.20, 0.70)
+            : CGColorCreateGenericRGB(0.93, 0.93, 0.93, 0.85);
         CGContextSetFillColorWithColor(ctx, bgCol);
         CGPathRef path = CGPathCreateWithRoundedRect(zpr, 10.0f, 10.0f, NULL);
         CGContextAddPath(ctx, path);
@@ -5142,9 +5144,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         CFStringRef zcf = CFStringCreateWithCString(NULL, zoomPopupText.c_str(), kCFStringEncodingUTF8);
         if (zcf) {
             CTFontRef zf = CTFontCreateWithName(CFSTR("Helvetica-Bold"), 22.0f, NULL);
-            CGColorRef white = CGColorCreateGenericRGB(1, 1, 1, 1);
+            CGColorRef zTextCol = isDarkMode
+                ? CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0)
+                : CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
             const void* zKeys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName };
-            const void* zVals[] = { zf, white };
+            const void* zVals[] = { zf, zTextCol };
             CFDictionaryRef za = CFDictionaryCreate(NULL, zKeys, zVals, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
             CFAttributedStringRef zas = CFAttributedStringCreate(NULL, zcf, za);
             CTLineRef zl = CTLineCreateWithAttributedString(zas);
@@ -5159,7 +5163,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             CFRelease(za);
             CFRelease(zf);
             CFRelease(zcf);
-            CGColorRelease(white);
+            CGColorRelease(zTextCol);
         }
         if (cbNeedsDisplay) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
@@ -5180,9 +5184,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                 { kCTParagraphStyleSpecifierMaximumLineHeight, sizeof(CGFloat), &helpLineHeight }
             };
             CTParagraphStyleRef ps = CTParagraphStyleCreate(settings, 2);
-            CGColorRef helpWhite = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
+            CGColorRef helpTextCol = isDarkMode
+                ? CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0)
+                : CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
             const void* hKeys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName, kCTParagraphStyleAttributeName };
-            const void* hVals[] = { hf, helpWhite, ps };
+            const void* hVals[] = { hf, helpTextCol, ps };
             CFDictionaryRef ha = CFDictionaryCreate(NULL, hKeys, hVals, 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
             CFAttributedStringRef has = CFAttributedStringCreate(NULL, hcf, ha);
             CTFramesetterRef fs = CTFramesetterCreateWithAttributedString(has);
@@ -5192,11 +5198,21 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             float hw = suggestedSize.width + (padding * 2.0f);
             float hh = suggestedSize.height + (padding * 2.0f);
             CGRect hr = CGRectMake((w - hw) / 2.0f, (h - hh) / 2.0f, hw, hh);
-            CGColorRef hBg = CGColorCreateGenericRGB(0.15, 0.15, 0.18, 0.88);
+            CGColorRef hBg = isDarkMode
+                ? CGColorCreateGenericRGB(0.20, 0.20, 0.20, 0.70)
+                : CGColorCreateGenericRGB(0.93, 0.93, 0.93, 0.85);
             CGContextSetFillColorWithColor(ctx, hBg);
             CGPathRef hpath = CGPathCreateWithRoundedRect(hr, 10.0f, 10.0f, NULL);
             CGContextAddPath(ctx, hpath);
             CGContextFillPath(ctx);
+            if (!isDarkMode) {
+                CGColorRef hBorder = CGColorCreateGenericRGB(0.80, 0.80, 0.80, 1.0);
+                CGContextSetStrokeColorWithColor(ctx, hBorder);
+                CGContextSetLineWidth(ctx, 1.0f);
+                CGContextAddPath(ctx, hpath);
+                CGContextStrokePath(ctx);
+                CGColorRelease(hBorder);
+            }
             CGPathRelease(hpath);
             CGColorRelease(hBg);
             CGContextSaveGState(ctx);
@@ -5216,7 +5232,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             CFRelease(hf);
             CFRelease(hcf);
             CFRelease(ps);
-            CGColorRelease(helpWhite);
+            CGColorRelease(helpTextCol);
         }
     }
 }
