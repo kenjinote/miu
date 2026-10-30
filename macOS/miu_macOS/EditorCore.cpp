@@ -1629,9 +1629,9 @@ bool Editor::tryExpandEmmet() {
         expansions.push_back({ (int)i, erasePos, res.abbrLen, std::move(res) });
     }
 
-    commitPadding();
     EditBatch batch;
     batch.beforeCursors = cursors;
+    commitPadding(batch);
 
     std::sort(expansions.begin(), expansions.end(), [](const CursorExpansion& a, const CursorExpansion& b) {
         return a.erasePos > b.erasePos;
