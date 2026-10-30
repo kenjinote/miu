@@ -5028,14 +5028,36 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         auto subs = getVisualSubLines(i, vw);
         int startSub = (i == start && wordWrapEnabled) ? std::clamp(vScrollSubLine, 0, (int)subs.size() - 1) : 0;
 
+        int imeOwnerSub = -1;
+        if (imIdx != std::string::npos && !subs.empty()) {
+            bool caretAffinity = cursors.back().affinity;
+            imeOwnerSub = (int)subs.size() - 1;
+            for (int sIdx = 0; sIdx < (int)subs.size(); ++sIdx) {
+                size_t se = subs[sIdx].byteStart + subs[sIdx].byteLen;
+                if (imIdx < se || (imIdx == se && (caretAffinity || sIdx == (int)subs.size() - 1))) {
+                    imeOwnerSub = sIdx;
+                    break;
+                }
+            }
+        }
+
         for (int subIdx = startSub; subIdx < (int)subs.size(); ++subIdx) {
             float drawY = wordWrapEnabled ? curVisualY : ((float)(i - start) * lineHeight);
             if (subIdx == 0) {
                 gutterEntries.push_back({ i + 1, drawY });
             }
             const auto& sub = subs[subIdx];
-            if (sub.byteLen > 0 && sub.byteStart + sub.byteLen <= ls.size()) {
-                std::string subStr = ls.substr(sub.byteStart, sub.byteLen);
+            size_t lsSubStart = sub.byteStart;
+            size_t lsSubLen = sub.byteLen;
+            if (imIdx != std::string::npos) {
+                if (subIdx == imeOwnerSub) {
+                    lsSubLen += imeComp.size();
+                } else if (subIdx > imeOwnerSub) {
+                    lsSubStart += imeComp.size();
+                }
+            }
+            if (lsSubLen > 0 && lsSubStart + lsSubLen <= ls.size()) {
+                std::string subStr = ls.substr(lsSubStart, lsSubLen);
                 CFStringRef cf = CFStringCreateWithBytes(NULL, (const UInt8*)subStr.data(), subStr.size(), kCFStringEncodingUTF8, false);
                 if (cf) {
                     CFIndex cfLen = CFStringGetLength(cf);
@@ -5048,10 +5070,10 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                     // Apply syntax highlight runs
                     if (!lineSyntaxColors.empty()) {
                         size_t runStart = 0;
-                        while (runStart < sub.byteLen) {
-                            SyntaxColor sc = lineSyntaxColors[sub.byteStart + runStart];
+                        while (runStart < lsSubLen && lsSubStart + runStart < lineSyntaxColors.size()) {
+                            SyntaxColor sc = lineSyntaxColors[lsSubStart + runStart];
                             size_t runEnd = runStart + 1;
-                            while (runEnd < sub.byteLen && lineSyntaxColors[sub.byteStart + runEnd] == sc) {
+                            while (runEnd < lsSubLen && lsSubStart + runEnd < lineSyntaxColors.size() && lineSyntaxColors[lsSubStart + runEnd] == sc) {
                                 runEnd++;
                             }
                             if (sc.a > 0.0f) {
@@ -5071,8 +5093,8 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                         }
                     }
 
-                    if (imIdx != std::string::npos && imIdx >= sub.byteStart && imIdx < sub.byteStart + sub.byteLen) {
-                        size_t localIm = imIdx - sub.byteStart;
+                    if (imIdx != std::string::npos && subIdx == imeOwnerSub && imIdx >= lsSubStart && imIdx <= lsSubStart + lsSubLen) {
+                        size_t localIm = imIdx - lsSubStart;
                         CFStringRef prefix = CFStringCreateWithBytes(NULL, (const UInt8*)subStr.data(), localIm, kCFStringEncodingUTF8, false);
                         CFIndex prefixLen = prefix ? CFStringGetLength(prefix) : 0;
                         CFStringRef icf = CFStringCreateWithBytes(NULL, (const UInt8*)imeComp.data(), imeComp.size(), kCFStringEncodingUTF8, false);

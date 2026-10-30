@@ -871,18 +871,24 @@
     [self applyScrollDeltaX:dx deltaY:dy];
 }
 - (BOOL)canBecomeFirstResponder { return YES; }
-- (BOOL)hasText { return self.editor && self.editor->pt.length() > 0; }
+- (BOOL)hasText { return self.editor && (self.editor->pt.length() > 0 || !self.editor->imeComp.empty()); }
 - (void)setMarkedText:(NSString *)markedText selectedRange:(NSRange)selectedRange {
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
     if (self.onSyncKeyboardLayout) {
         self.onSyncKeyboardLayout();
     }
+    NSString *str = [markedText isKindOfClass:[NSAttributedString class]]
+        ? [(NSAttributedString *)markedText string]
+        : (NSString *)markedText;
     [self.inputDelegate textWillChange:self];
-    self.editor->imeComp = markedText ? [markedText UTF8String] : "";
+    self.editor->imeComp = (str && str.length > 0) ? [str UTF8String] : "";
     self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
     [self setNeedsDisplay];
+}
+- (void)setAttributedMarkedText:(NSAttributedString *)markedText selectedRange:(NSRange)selectedRange {
+    [self setMarkedText:markedText.string selectedRange:selectedRange];
 }
 - (void)unmarkText {
     if (!self.editor) return;
@@ -1021,6 +1027,16 @@
     size_t start = ((iOSTextPosition*)range.start).index;
     size_t end = ((iOSTextPosition*)range.end).index;
     if (start > end) std::swap(start, end);
+    if (!self.editor->imeComp.empty() && !self.editor->cursors.empty()) {
+        size_t head = self.editor->cursors.back().head;
+        if (start == head && (end - start) == self.editor->imeComp.size()) {
+            self.editor->imeComp = "";
+            end = start;
+        }
+    }
+    size_t ptLen = self.editor->pt.length();
+    start = MIN(start, ptLen);
+    end = MIN(end, ptLen);
     self.editor->cursors.clear();
     Cursor c; c.head = end; c.anchor = start;
     self.editor->cursors.push_back(c);
@@ -1029,7 +1045,7 @@
     [self setNeedsDisplay];
 }
 - (UITextPosition *)beginningOfDocument { return [iOSTextPosition positionWithIndex:0]; }
-- (UITextPosition *)endOfDocument { return [iOSTextPosition positionWithIndex:(self.editor ? self.editor->pt.length() : 0)]; }
+- (UITextPosition *)endOfDocument { return [iOSTextPosition positionWithIndex:(self.editor ? (self.editor->pt.length() + self.editor->imeComp.size()) : 0)]; }
 - (UITextRange *)textRangeFromPosition:(UITextPosition *)f toPosition:(UITextPosition *)t { return [iOSTextRange rangeWithStart:((iOSTextPosition*)f).index end:((iOSTextPosition*)t).index]; }
 - (UITextPosition *)positionFromPosition:(UITextPosition *)position offset:(NSInteger)offset {
     if (!self.editor) return position;
@@ -1052,6 +1068,14 @@
     if (fromIdx == toIdx) return 0;
     size_t start = MIN(fromIdx, toIdx);
     size_t end = MAX(fromIdx, toIdx);
+    if (!self.editor->imeComp.empty() && !self.editor->cursors.empty()) {
+        size_t head = self.editor->cursors.back().head;
+        if (start == head && (end - start) == self.editor->imeComp.size()) {
+            NSString *imeStr = [NSString stringWithUTF8String:self.editor->imeComp.c_str()];
+            NSInteger imeCount = (NSInteger)(imeStr ? imeStr.length : 0);
+            return (fromIdx <= toIdx) ? imeCount : -imeCount;
+        }
+    }
     size_t charCount = self.editor->countUTF16Length(start, end - start);
     return (fromIdx <= toIdx) ? (NSInteger)charCount : -(NSInteger)charCount;
 }

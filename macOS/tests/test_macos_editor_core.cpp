@@ -590,6 +590,44 @@ static void testParityEdgeCases() {
     ed.cursors = { { longSingle.size(), longSingle.size(), 0.0f, 0.0f, false, false } };
     ed.ensureCaretVisible();
     CHECK(ed.vScrollSubLine > 0, "ensureCaretVisible scrolls vScrollSubLine when caret is at end of wrapped single line");
+
+    // 6. Japanese IME uncommitted composition (imeComp) rendering on empty and non-empty lines
+    ed.initGraphics();
+    ed.newFile();
+    ed.wordWrapEnabled = false;
+    ed.imeComp = "にほんご変換テスト";
+    {
+        int bmpW = 300, bmpH = 80;
+        std::vector<uint8_t> pixels(bmpW * bmpH * 4, 0);
+        CGColorSpaceRef cs = CGColorSpaceCreateDeviceRGB();
+        CGContextRef ctx = CGBitmapContextCreate(pixels.data(), bmpW, bmpH, 8, bmpW * 4, cs, kCGImageAlphaPremultipliedLast);
+        CGContextTranslateCTM(ctx, 0, bmpH);
+        CGContextScaleCTM(ctx, 1.0, -1.0);
+        ed.render(ctx, (float)bmpW, (float)bmpH);
+        CGContextRelease(ctx);
+        CGColorSpaceRelease(cs);
+
+        // Count non-background pixels inside the text area between gutterWidth+4 and caret X
+        int startX = (int)ed.gutterWidth + 4;
+        int endX = std::min(bmpW - 10, startX + 80);
+        int maxY = std::min(bmpH, (int)ed.lineHeight);
+        // Sample background pixel at (bmpW - 20, maxY - 2)
+        int bgIdx = ((maxY - 2) * bmpW + (bmpW - 20)) * 4;
+        uint8_t bgR = pixels[bgIdx], bgG = pixels[bgIdx + 1], bgB = pixels[bgIdx + 2];
+        int drawnPixels = 0;
+        for (int y = 0; y < maxY; ++y) {
+            for (int x = startX; x < endX; ++x) {
+                int idx = (y * bmpW + x) * 4;
+                if (std::abs((int)pixels[idx] - (int)bgR) > 10 ||
+                    std::abs((int)pixels[idx + 1] - (int)bgG) > 10 ||
+                    std::abs((int)pixels[idx + 2] - (int)bgB) > 10) {
+                    drawnPixels++;
+                }
+            }
+        }
+        CHECK(drawnPixels > 20, "Uncommitted Japanese IME composition text (imeComp) is rendered on an empty line");
+    }
+    ed.imeComp = "";
 }
 
 int main() {
