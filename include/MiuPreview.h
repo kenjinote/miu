@@ -1594,8 +1594,8 @@ inline PreviewRenderResult renderPreview(
     std::string& html = res.fullHtml;
     html.reserve(rawInput.size() + 1024);
     const char* webDefStyle = isDarkMode
-        ? "<style>:where(:root){color-scheme:dark}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}html,body{scrollbar-width:none}</style>"
-        : "<style>html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}html,body{scrollbar-width:none}</style>";
+        ? "<style>:where(:root){color-scheme:dark;background:#1e1e1e;color:#e6edf3}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}html,body{scrollbar-width:none}</style>"
+        : "<style>:where(:root){color-scheme:light;background:#ffffff;color:#1f2328}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}html,body{scrollbar-width:none}</style>";
     std::string lower = Emmet::toLowerStr(rawInput.substr(0, std::min(rawInput.size(), (size_t)1024)));
     bool hasFullHtml = (lower.find("<html") != std::string::npos || lower.find("<!doctype") != std::string::npos);
     if (hasFullHtml) {

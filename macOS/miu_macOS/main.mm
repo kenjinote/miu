@@ -354,6 +354,8 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         [previewWebView setHidden:NO];
         [splitterView setNeedsDisplay:YES];
     }
+    [self updateScrollers];
+    [self setNeedsDisplay:YES];
 }
 
 - (void)updatePreviewPane {

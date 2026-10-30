@@ -4770,9 +4770,15 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     visibleVScrollWidth = sbLayout.vBarW;
     visibleHScrollHeight = sbLayout.hBarH;
 
+#if TARGET_OS_IOS
+    CGContextClearRect(ctx, CGRectMake(0, -200.0f, gutterWidth, h + 200.0f));
+    CGContextSetFillColorWithColor(ctx, colBackground);
+    CGContextFillRect(ctx, CGRectMake(gutterWidth, -200.0f, w - gutterWidth, h + 200.0f));
+#else
     CGContextClearRect(ctx, CGRectMake(0, 0, gutterWidth, h));
     CGContextSetFillColorWithColor(ctx, colBackground);
     CGContextFillRect(ctx, CGRectMake(gutterWidth, 0, w - gutterWidth, h));
+#endif
     CGContextSetTextMatrix(ctx, CGAffineTransformMakeScale(1.0, -1.0));
     float vw = std::max(0.0f, w - gutterWidth - visibleVScrollWidth);
     float vh = std::max(0.0f, h - visibleHScrollHeight);
@@ -5208,7 +5214,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
 
     // 7. Gutter line numbers (aligned to the exact same baselineOffset as body text)
     CGContextSetFillColorWithColor(ctx, colGutterBg);
+#if TARGET_OS_IOS
+    CGContextFillRect(ctx, CGRectMake(0, -200.0f, gutterWidth, h + 200.0f));
+#else
     CGContextFillRect(ctx, CGRectMake(0, 0, gutterWidth, h));
+#endif
     for (const auto& ge : gutterEntries) {
         CFStringRef n = CFStringCreateWithCString(NULL, std::to_string(ge.lineNumber).c_str(), kCFStringEncodingUTF8);
         if (n) {

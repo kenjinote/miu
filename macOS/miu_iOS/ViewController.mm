@@ -169,7 +169,8 @@
 @synthesize selectedTextRange = _selectedTextRange;
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
-        self.contentMode = UIViewContentModeTopLeft;
+        self.contentMode = UIViewContentModeRedraw;
+        self.clipsToBounds = YES;
         self.multipleTouchEnabled = YES;
         if (@available(iOS 9.0, *)) {
             self.inputAssistantItem.leadingBarButtonGroups = @[];
@@ -2229,9 +2230,15 @@ static NSString *s_iosClipboardSnapshot = nil;
 
     self.previewWebView = [[WKWebView alloc] initWithFrame:CGRectZero configuration:cfg];
     self.previewWebView.navigationDelegate = self.previewMsgHandler;
-    self.previewWebView.opaque = NO;
-    self.previewWebView.backgroundColor = [UIColor clearColor];
-    self.previewWebView.scrollView.backgroundColor = [UIColor clearColor];
+    self.previewWebView.clipsToBounds = YES;
+    self.previewWebView.opaque = YES;
+    UIColor *previewBg = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [UIColor colorWithRed:0.118 green:0.118 blue:0.118 alpha:1.0]
+            : [UIColor whiteColor];
+    }];
+    self.previewWebView.backgroundColor = previewBg;
+    self.previewWebView.scrollView.backgroundColor = previewBg;
     self.previewWebView.scrollView.scrollsToTop = NO;
     self.previewWebView.hidden = YES;
     [self.workspaceContainer addSubview:self.previewWebView];
@@ -2252,36 +2259,53 @@ static NSString *s_iosClipboardSnapshot = nil;
 - (void)layoutSplitViews {
     if (!self.workspaceContainer || !self.editorView) return;
     CGRect cb = self.workspaceContainer.bounds;
+    CGRect oldEditorFrame = self.editorView.frame;
     if (!_editorEngine || !_editorEngine->showPreview) {
         self.editorView.frame = cb;
         if (self.splitterView) self.splitterView.hidden = YES;
         if (self.previewWebView) self.previewWebView.hidden = YES;
-        return;
-    }
-    [self ensurePreviewViewsCreated];
-    BOOL verticalSplit = (cb.size.width < 600.0 && cb.size.height > cb.size.width);
-    self.splitterView.isVerticalSplit = verticalSplit;
-    if (!verticalSplit) {
-        CGFloat splitW = 8.0;
-        CGFloat availW = MAX(20.0, cb.size.width - splitW);
-        CGFloat leftW = floor(availW * _editorEngine->previewSplitRatio);
-        CGFloat rightW = MAX(10.0, availW - leftW);
-        CGFloat topMargin = self.editorView.topRenderMargin;
-        self.editorView.frame = CGRectMake(0, 0, leftW, cb.size.height);
-        self.splitterView.frame = CGRectMake(leftW, topMargin, splitW, MAX(0.0, cb.size.height - topMargin));
-        self.previewWebView.frame = CGRectMake(leftW + splitW, topMargin, rightW, MAX(0.0, cb.size.height - topMargin));
     } else {
-        CGFloat splitH = 8.0;
-        CGFloat availH = MAX(20.0, cb.size.height - splitH);
-        CGFloat topH = floor(availH * _editorEngine->previewSplitRatio);
-        CGFloat bottomH = MAX(10.0, availH - topH);
-        self.editorView.frame = CGRectMake(0, 0, cb.size.width, topH);
-        self.splitterView.frame = CGRectMake(0, topH, cb.size.width, splitH);
-        self.previewWebView.frame = CGRectMake(0, topH + splitH, cb.size.width, bottomH);
+        [self ensurePreviewViewsCreated];
+        BOOL verticalSplit = (cb.size.width < 600.0 && cb.size.height > cb.size.width);
+        self.splitterView.isVerticalSplit = verticalSplit;
+        if (!verticalSplit) {
+            CGFloat splitW = 8.0;
+            CGFloat availW = MAX(20.0, cb.size.width - splitW);
+            CGFloat leftW = floor(availW * _editorEngine->previewSplitRatio);
+            CGFloat rightW = MAX(10.0, availW - leftW);
+            CGFloat topMargin = self.editorView.topRenderMargin;
+            self.editorView.frame = CGRectMake(0, 0, leftW, cb.size.height);
+            self.splitterView.frame = CGRectMake(leftW, topMargin, splitW, MAX(0.0, cb.size.height - topMargin));
+            self.previewWebView.frame = CGRectMake(leftW + splitW, topMargin, rightW, MAX(0.0, cb.size.height - topMargin));
+        } else {
+            CGFloat splitH = 8.0;
+            CGFloat availH = MAX(20.0, cb.size.height - splitH);
+            CGFloat topH = floor(availH * _editorEngine->previewSplitRatio);
+            CGFloat bottomH = MAX(10.0, availH - topH);
+            self.editorView.frame = CGRectMake(0, 0, cb.size.width, topH);
+            self.splitterView.frame = CGRectMake(0, topH, cb.size.width, splitH);
+            self.previewWebView.frame = CGRectMake(0, topH + splitH, cb.size.width, bottomH);
+        }
+        self.splitterView.hidden = NO;
+        self.previewWebView.hidden = NO;
+        [self.splitterView setNeedsDisplay];
     }
-    self.splitterView.hidden = NO;
-    self.previewWebView.hidden = NO;
-    [self.splitterView setNeedsDisplay];
+    if (_editorEngine && !CGRectEqualToRect(oldEditorFrame, self.editorView.frame)) {
+        float vw = self.editorView.bounds.size.width;
+        float vh = MAX(1.0f, self.editorView.bounds.size.height - self.editorView.topRenderMargin);
+        ScrollBarLayout L = _editorEngine->getScrollBarLayout(vw, vh);
+        int totalLines = (_editorEngine->wordWrapEnabled && L.totalVisualLines > L.totalLines)
+            ? L.totalVisualLines
+            : L.totalLines;
+        int maxV = std::max(0, totalLines - L.visibleLines);
+        _editorEngine->vScrollPos = std::clamp(_editorEngine->vScrollPos, 0, maxV);
+        int maxH = (_editorEngine->wordWrapEnabled || !L.needH)
+            ? 0
+            : std::max(0, (int)std::ceil(_editorEngine->maxLineWidth - L.textAreaW));
+        _editorEngine->hScrollPos = std::clamp(_editorEngine->hScrollPos, 0, maxH);
+        _editorEngine->updateScrollBars();
+        [self.editorView setNeedsDisplay];
+    }
 }
 - (void)updatePreviewPane {
     if (!_editorEngine || !_editorEngine->showPreview) return;
@@ -2672,13 +2696,19 @@ static NSString *s_iosClipboardSnapshot = nil;
         }
     };
     _editorEngine->cbUpdatePreview = [weakSelf]() {
-        dispatch_async(dispatch_get_main_queue(), ^{
+        void (^work)(void) = ^{
             __strong typeof(self) strongSelf = weakSelf;
             if (strongSelf) {
                 [strongSelf layoutSplitViews];
                 [strongSelf updatePreviewPane];
+                [strongSelf.editorView setNeedsDisplay];
             }
-        });
+        };
+        if ([NSThread isMainThread]) {
+            work();
+        } else {
+            dispatch_async(dispatch_get_main_queue(), work);
+        }
     };
     _editorEngine->cbGetViewSize = [weakSelf](float& w, float& h) {
         __strong typeof(self) strongSelf = weakSelf;
@@ -3100,6 +3130,10 @@ static NSString *s_iosClipboardSnapshot = nil;
         _editorEngine->updateThemeColors();
         [self.editorView setNeedsDisplay];
         if (self.splitterView) [self.splitterView setNeedsDisplay];
+        if (_editorEngine->showPreview) {
+            _editorEngine->previewInitialLoaded = false;
+            [self updatePreviewPane];
+        }
     }
     [self rebuildBlur];
 }
