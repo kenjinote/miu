@@ -1088,10 +1088,10 @@ def get_app_id(headers):
     app_id = data[0]["id"]
     app_name = data[0].get("attributes", {}).get("name", BUNDLE_ID)
     print(f"Found App: {app_name} (ID: {app_id}, Bundle ID: {BUNDLE_ID})")
-    return app_id
+    return app_id, app_name
 
 
-def sync_app_info_localizations(app_id, headers):
+def sync_app_info_localizations(app_id, app_name, headers):
     """Ensure App Info level localizations exist for all target locales if editable."""
     r = requests.get(f"{BASE_URL}/apps/{app_id}/appInfos", headers=headers)
     if r.status_code != 200:
@@ -1162,17 +1162,23 @@ def sync_app_info_localizations(app_id, headers):
         res = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
         if res.status_code in (200, 201):
             created_count += 1
-            print(f"  [+] Created AppInfo localization for {locale}")
+            print(f"  [+] Created AppInfo localization for {locale} (name: 'miu')")
         else:
-            # Non-fatal if app name is taken in a specific storefront or cannot be added
-            err_detail = ""
-            try:
-                errs = res.json().get("errors", [])
-                if errs:
-                    err_detail = errs[0].get("detail", "")
-            except Exception:
-                pass
-            print(f"  [!] Skipped AppInfo localization for {locale} (HTTP {res.status_code}: {err_detail})")
+            # Fallback to the primary App Store name (e.g. 'miu – Minimal Text Editor') if 'miu' is taken
+            payload["data"]["attributes"]["name"] = app_name
+            res2 = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
+            if res2.status_code in (200, 201):
+                created_count += 1
+                print(f"  [+] Created AppInfo localization for {locale} (name: '{app_name}')")
+            else:
+                err_detail = ""
+                try:
+                    errs = res2.json().get("errors", [])
+                    if errs:
+                        err_detail = errs[0].get("detail", "")
+                except Exception:
+                    pass
+                print(f"  [!] Skipped AppInfo localization for {locale} (HTTP {res2.status_code}: {err_detail})")
 
 
 def get_or_create_editable_versions(app_id, headers):
@@ -1423,9 +1429,9 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
 def main():
     print("=== App Store Connect Metadata Synchronizer for miu ===")
     headers = get_headers()
-    app_id = get_app_id(headers)
+    app_id, app_name = get_app_id(headers)
 
-    sync_app_info_localizations(app_id, headers)
+    sync_app_info_localizations(app_id, app_name, headers)
     targets = get_or_create_editable_versions(app_id, headers)
 
     total_ok = 0
