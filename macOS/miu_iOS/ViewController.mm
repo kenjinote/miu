@@ -167,6 +167,7 @@
     UITapGestureRecognizer *_doubleTapGR;
     UITapGestureRecognizer *_tripleTapGR;
     UITapGestureRecognizer *_accessoryTapGR;
+    CGSize _lastRenderedBoundsSize;
 }
 @synthesize inputDelegate = _inputDelegate;
 @synthesize markedTextStyle = _markedTextStyle;
@@ -297,8 +298,26 @@
         [self handleTripleTapAtPoint:p];
     }
 }
+- (void)setFrame:(CGRect)frame {
+    CGSize oldSize = self.bounds.size;
+    [super setFrame:frame];
+    if (!CGSizeEqualToSize(oldSize, self.bounds.size)) {
+        [self setNeedsDisplay];
+    }
+}
+- (void)setBounds:(CGRect)bounds {
+    CGSize oldSize = self.bounds.size;
+    [super setBounds:bounds];
+    if (!CGSizeEqualToSize(oldSize, self.bounds.size)) {
+        [self setNeedsDisplay];
+    }
+}
 - (void)layoutSubviews {
     [super layoutSubviews];
+    if (!CGSizeEqualToSize(_lastRenderedBoundsSize, self.bounds.size)) {
+        _lastRenderedBoundsSize = self.bounds.size;
+        [self setNeedsDisplay];
+    }
 }
 - (UIView *)textInputView {
     return self;
@@ -689,18 +708,7 @@
     return _customAccessoryView;
 }
 - (CGFloat)unobstructedBottomY {
-    CGFloat bottomY = self.bounds.size.height;
-    if (_customAccessoryView && _customAccessoryView.window && !_customAccessoryView.hidden && _customAccessoryView.alpha > 0.01) {
-        UIScreen *accScreen = _customAccessoryView.window.windowScene.screen ?: [UIScreen mainScreen];
-        if (accScreen) {
-            CGRect accInScreen = [_customAccessoryView convertRect:_customAccessoryView.bounds toCoordinateSpace:accScreen.coordinateSpace];
-            CGRect accInSelf = [self convertRect:accInScreen fromCoordinateSpace:accScreen.coordinateSpace];
-            if (!CGRectIsEmpty(accInSelf) && !CGRectIsNull(accInSelf) && accInSelf.origin.y > self.topRenderMargin && accInSelf.origin.y < bottomY) {
-                bottomY = accInSelf.origin.y;
-            }
-        }
-    }
-    return bottomY;
+    return self.bounds.size.height;
 }
 - (CGFloat)effectiveViewportHeight {
     CGFloat bottomY = [self unobstructedBottomY];
@@ -2270,8 +2278,21 @@ static BOOL s_iosClipboardIsRect = NO;
 static BOOL s_iosClipboardIsLine = NO;
 static NSString *s_iosClipboardSnapshot = nil;
 
+@interface MiuWorkspaceContainerView : UIView
+@property (nonatomic, copy) void (^onLayoutSubviews)(void);
+@end
+
+@implementation MiuWorkspaceContainerView
+- (void)layoutSubviews {
+    [super layoutSubviews];
+    if (self.onLayoutSubviews) {
+        self.onLayoutSubviews();
+    }
+}
+@end
+
 @interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate, UIScrollViewDelegate>
-@property (nonatomic, strong) UIView *workspaceContainer;
+@property (nonatomic, strong) MiuWorkspaceContainerView *workspaceContainer;
 @property (nonatomic, strong) iOSEditorView *editorView;
 @property (nonatomic, strong) WKWebView *previewWebView;
 @property (nonatomic, strong) MiuIOSPreviewSplitterView *splitterView;
@@ -2306,45 +2327,67 @@ static NSString *s_iosClipboardSnapshot = nil;
     BOOL _isFirstLayoutDone;
     NSLayoutConstraint *_editorBottomConstraint;
     BOOL _isExportingDocument;
-    CGFloat _lastTopFillWidth;
+    CGSize _lastTopFillSize;
     CGRect _lastKeyboardScreenFrame;
+    CGRect _lastKeyboardScreenBounds;
     BOOL _isKeyboardVisible;
+    BOOL _isTransitioningSize;
 }
 - (CGFloat)computeCurrentKeyboardShrinkAmount {
-    if (!self.isViewLoaded || self.view.bounds.size.height <= 0) return 0.0;
+    if (!self.isViewLoaded || self.view.bounds.size.height <= 0 || !_isKeyboardVisible) return 0.0;
     CGFloat shrinkAmount = 0.0;
     UIScreen *screen = self.view.window.windowScene.screen ?: [UIScreen mainScreen];
-    if (_isKeyboardVisible && !CGRectIsEmpty(_lastKeyboardScreenFrame) && !CGRectIsNull(_lastKeyboardScreenFrame) && screen) {
-        CGRect convertedFrame = [self.view convertRect:_lastKeyboardScreenFrame fromCoordinateSpace:screen.coordinateSpace];
-        CGFloat fromNotif = self.view.bounds.size.height - convertedFrame.origin.y;
-        if (fromNotif > shrinkAmount) {
-            shrinkAmount = fromNotif;
-        }
-    }
-    if (@available(iOS 15.0, *)) {
-        CGRect guideFrame = self.view.keyboardLayoutGuide.layoutFrame;
-        if (!CGRectIsEmpty(guideFrame) && !CGRectIsNull(guideFrame) && guideFrame.origin.y < self.view.bounds.size.height) {
-            CGFloat fromGuide = self.view.bounds.size.height - guideFrame.origin.y;
-            if (fromGuide > shrinkAmount) {
-                shrinkAmount = fromGuide;
+    CGRect screenBounds = screen ? screen.bounds : self.view.bounds;
+    if (!CGRectIsEmpty(_lastKeyboardScreenFrame) && !CGRectIsNull(_lastKeyboardScreenFrame) &&
+        !CGRectIsEmpty(_lastKeyboardScreenBounds) && !CGRectIsNull(_lastKeyboardScreenBounds) &&
+        CGSizeEqualToSize(_lastKeyboardScreenBounds.size, screenBounds.size) && screen) {
+        CGRect screenIntersection = CGRectIntersection(screenBounds, _lastKeyboardScreenFrame);
+        if (!CGRectIsNull(screenIntersection) && !CGRectIsEmpty(screenIntersection) && screenIntersection.size.height > 0.0) {
+            CGFloat kbHeightOnScreen = screenIntersection.size.height;
+            BOOL viewOrientationMatchesScreen = ((self.view.bounds.size.width >= self.view.bounds.size.height) ==
+                                                 (screenBounds.size.width >= screenBounds.size.height));
+            if (viewOrientationMatchesScreen && !_isTransitioningSize) {
+                CGRect convertedFrame = [self.view convertRect:screenIntersection fromCoordinateSpace:screen.coordinateSpace];
+                CGRect viewIntersection = CGRectIntersection(self.view.bounds, convertedFrame);
+                if (!CGRectIsNull(viewIntersection) && !CGRectIsEmpty(viewIntersection)) {
+                    CGFloat fromNotif = self.view.bounds.size.height - viewIntersection.origin.y;
+                    shrinkAmount = MIN(kbHeightOnScreen, MAX(0.0, fromNotif));
+                }
+            } else {
+                shrinkAmount = kbHeightOnScreen;
             }
         }
-    }
-    UIView *accView = [self.editorView activeAccessoryView];
-    if (accView && accView.window && !accView.hidden && accView.alpha > 0.01) {
-        UIScreen *accScreen = accView.window.windowScene.screen ?: screen;
-        if (accScreen) {
-            CGRect accInScreen = [accView convertRect:accView.bounds toCoordinateSpace:accScreen.coordinateSpace];
-            CGRect accInView = [self.view convertRect:accInScreen fromCoordinateSpace:accScreen.coordinateSpace];
-            if (!CGRectIsEmpty(accInView) && !CGRectIsNull(accInView) && accInView.origin.y > 0.0 && accInView.origin.y < self.view.bounds.size.height) {
-                CGFloat fromAcc = self.view.bounds.size.height - accInView.origin.y;
-                if (fromAcc > shrinkAmount) {
-                    shrinkAmount = fromAcc;
+    } else if (!_isTransitioningSize) {
+        if (@available(iOS 15.0, *)) {
+            CGRect guideFrame = self.view.keyboardLayoutGuide.layoutFrame;
+            if (!CGRectIsEmpty(guideFrame) && !CGRectIsNull(guideFrame) &&
+                guideFrame.origin.y > 0.0 && guideFrame.origin.y < self.view.bounds.size.height) {
+                CGFloat fromGuide = self.view.bounds.size.height - guideFrame.origin.y;
+                if (fromGuide > 0.0 && fromGuide <= self.view.bounds.size.height * 0.65) {
+                    shrinkAmount = MAX(shrinkAmount, fromGuide);
                 }
             }
         }
     }
-    return MAX(0.0, shrinkAmount);
+    if (!_isTransitioningSize && shrinkAmount > 0.0 && self.editorView.isFirstResponder) {
+        UIView *accView = [self.editorView activeAccessoryView];
+        if (accView && accView.window && !accView.hidden && accView.alpha > 0.01) {
+            UIScreen *accScreen = accView.window.windowScene.screen ?: screen;
+            if (accScreen && CGSizeEqualToSize(accScreen.bounds.size, screenBounds.size)) {
+                CGRect accInScreen = [accView convertRect:accView.bounds toCoordinateSpace:accScreen.coordinateSpace];
+                CGRect accInView = [self.view convertRect:accInScreen fromCoordinateSpace:accScreen.coordinateSpace];
+                if (!CGRectIsEmpty(accInView) && !CGRectIsNull(accInView) &&
+                    accInView.origin.y > 0.0 && accInView.origin.y < self.view.bounds.size.height) {
+                    CGFloat fromAcc = self.view.bounds.size.height - accInView.origin.y;
+                    if (fromAcc > shrinkAmount && fromAcc <= shrinkAmount + 44.0) {
+                        shrinkAmount = fromAcc;
+                    }
+                }
+            }
+        }
+    }
+    CGFloat maxAllowedShrink = MAX(0.0, self.view.bounds.size.height - 120.0);
+    return MAX(0.0, MIN(shrinkAmount, maxAllowedShrink));
 }
 - (void)syncKeyboardAvoidanceAndEnsureCaret:(BOOL)ensureCaret {
     if (!self.isViewLoaded) return;
@@ -2710,7 +2753,9 @@ static NSString *s_iosClipboardSnapshot = nil;
 - (void)viewDidLoad {
     [super viewDidLoad];
     _lastKeyboardScreenFrame = CGRectNull;
+    _lastKeyboardScreenBounds = CGRectNull;
     _isKeyboardVisible = NO;
+    _isTransitioningSize = NO;
     self.view.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
         return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor systemBackgroundColor];
     }];
@@ -2757,9 +2802,16 @@ static NSString *s_iosClipboardSnapshot = nil;
     [self setupSearchUI];
     [self setupGoToLineUI];
 
-    self.workspaceContainer = [[UIView alloc] initWithFrame:CGRectZero];
+    self.workspaceContainer = [[MiuWorkspaceContainerView alloc] initWithFrame:CGRectZero];
     self.workspaceContainer.translatesAutoresizingMaskIntoConstraints = NO;
     self.workspaceContainer.backgroundColor = [UIColor clearColor];
+    __weak typeof(self) weakContainerSelf = self;
+    self.workspaceContainer.onLayoutSubviews = ^{
+        __strong typeof(weakContainerSelf) strongContainerSelf = weakContainerSelf;
+        if (strongContainerSelf) {
+            [strongContainerSelf layoutSplitViews];
+        }
+    };
     [self.view addSubview:self.workspaceContainer];
     [self.view sendSubviewToBack:self.workspaceContainer];
 
@@ -2799,8 +2851,8 @@ static NSString *s_iosClipboardSnapshot = nil;
         [self.titleIconView.heightAnchor constraintEqualToConstant:16],
         [self.workspaceContainer.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         _editorBottomConstraint,
-        [self.workspaceContainer.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
-        [self.workspaceContainer.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor],
+        [self.workspaceContainer.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.workspaceContainer.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.footerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.footerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         self.footerBottomConstraint
@@ -3123,6 +3175,29 @@ static NSString *s_iosClipboardSnapshot = nil;
     }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
+- (void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id<UIViewControllerTransitionCoordinator>)coordinator {
+    [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+    _isTransitioningSize = YES;
+    _lastKeyboardScreenFrame = CGRectNull;
+    _lastKeyboardScreenBounds = CGRectNull;
+    if (!_isKeyboardVisible && self.footerBottomConstraint) {
+        self.footerBottomConstraint.constant = 0.0;
+    }
+    [coordinator animateAlongsideTransition:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+        CGFloat shrinkAmount = [self computeCurrentKeyboardShrinkAmount];
+        self.footerBottomConstraint.constant = -shrinkAmount;
+        [self.view layoutIfNeeded];
+        [self layoutSplitViews];
+        [self rebuildBlur];
+        [self.editorView setNeedsDisplay];
+    } completion:^(id<UIViewControllerTransitionCoordinatorContext>  _Nonnull context) {
+        self->_isTransitioningSize = NO;
+        [self syncKeyboardAvoidanceAndEnsureCaret:YES];
+        [self layoutSplitViews];
+        [self rebuildBlur];
+        [self.editorView setNeedsDisplay];
+    }];
+}
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     if (self.scrollToTopHelper) {
@@ -3134,6 +3209,11 @@ static NSString *s_iosClipboardSnapshot = nil;
             c.constant = hideTitleBar ? 0 : 17;
             break;
         }
+    }
+    CGFloat desiredShrink = [self computeCurrentKeyboardShrinkAmount];
+    if (fabs(self.footerBottomConstraint.constant - (-desiredShrink)) > 0.5) {
+        self.footerBottomConstraint.constant = -desiredShrink;
+        [self.workspaceContainer layoutIfNeeded];
     }
     if (_editorEngine) {
         CGFloat safeTop = self.view.safeAreaInsets.top;
@@ -3152,8 +3232,11 @@ static NSString *s_iosClipboardSnapshot = nil;
         self.editorView.topRenderMargin = safeTop + 15;
         [self layoutSplitViews];
         if (self.topFillView.bounds.size.height > 0) {
-            if (self.topFillView.subviews.count == 0 || fabs(self.topFillView.bounds.size.width - _lastTopFillWidth) > 0.5) {
-                _lastTopFillWidth = self.topFillView.bounds.size.width;
+            CGSize curFillSize = self.topFillView.bounds.size;
+            if (self.topFillView.subviews.count == 0 ||
+                fabs(curFillSize.width - _lastTopFillSize.width) > 0.5 ||
+                fabs(curFillSize.height - _lastTopFillSize.height) > 0.5) {
+                _lastTopFillSize = curFillSize;
                 [self buildProgressiveBlur];
             }
         }
@@ -3255,18 +3338,36 @@ static NSString *s_iosClipboardSnapshot = nil;
     [self disableOtherScrollsToTop:self.view];
 }
 - (void)handleKeyboardNotification:(NSNotification *)notification isHiding:(BOOL)isHiding {
+    UIScreen *screen = self.view.window.windowScene.screen ?: [UIScreen mainScreen];
+    CGRect screenBounds = screen ? screen.bounds : self.view.bounds;
     if (isHiding) {
         _isKeyboardVisible = NO;
         _lastKeyboardScreenFrame = CGRectNull;
+        _lastKeyboardScreenBounds = CGRectNull;
     } else {
-        _isKeyboardVisible = YES;
         NSDictionary *userInfo = notification.userInfo;
         NSValue *endFrameVal = userInfo[UIKeyboardFrameEndUserInfoKey];
         if (endFrameVal) {
-            _lastKeyboardScreenFrame = [endFrameVal CGRectValue];
+            CGRect endFrame = [endFrameVal CGRectValue];
+            CGRect screenIntersection = CGRectIntersection(screenBounds, endFrame);
+            BOOL isDockedAtBottom = !CGRectIsNull(screenIntersection) &&
+                                    !CGRectIsEmpty(screenIntersection) &&
+                                    screenIntersection.size.height > 1.0 &&
+                                    endFrame.origin.y < screenBounds.size.height - 1.0 &&
+                                    CGRectGetMaxY(screenIntersection) >= screenBounds.size.height - 10.0 &&
+                                    screenIntersection.size.width >= screenBounds.size.width * 0.5;
+            if (isDockedAtBottom) {
+                _isKeyboardVisible = YES;
+                _lastKeyboardScreenFrame = endFrame;
+                _lastKeyboardScreenBounds = screenBounds;
+            } else {
+                _isKeyboardVisible = NO;
+                _lastKeyboardScreenFrame = CGRectNull;
+                _lastKeyboardScreenBounds = CGRectNull;
+            }
         }
     }
-    CGFloat shrinkAmount = isHiding ? 0.0 : [self computeCurrentKeyboardShrinkAmount];
+    CGFloat shrinkAmount = [self computeCurrentKeyboardShrinkAmount];
     [UIView performWithoutAnimation:^{
         self.footerBottomConstraint.constant = -shrinkAmount;
         [self.view layoutIfNeeded];
@@ -3277,9 +3378,13 @@ static NSString *s_iosClipboardSnapshot = nil;
             _editorEngine->updateScrollBars();
         }
     }];
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self syncKeyboardAvoidanceAndEnsureCaret:YES];
-    });
+    if (!_isTransitioningSize) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (!self->_isTransitioningSize) {
+                [self syncKeyboardAvoidanceAndEnsureCaret:YES];
+            }
+        });
+    }
 }
 - (void)keyboardWillShow:(NSNotification *)notification {
     [self handleKeyboardNotification:notification isHiding:NO];
