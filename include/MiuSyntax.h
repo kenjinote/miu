@@ -262,29 +262,29 @@ regex_color: 0.8 0.4 0.2 1.0
 )";
         static constexpr const char* kSyntax5 = R"([html]
 comment_block: <!-- -->
-regex: </?[a-zA-Z0-9\-:]+>?
+regex: </?[a-zA-Z0-9:-]+>?
 regex_color: 0.3 0.6 0.8 1.0
-regex: \b[a-zA-Z0-9\-:]+(?=\s*=)
+regex: \b[a-zA-Z0-9:-]+(?=\s*=)
 regex_color: 0.8 0.5 0.3 1.0
 regex: &[#a-zA-Z0-9]+;
 regex_color: 0.6 0.4 0.7 1.0
 )";
         static constexpr const char* kSyntax6 = R"([css]
 comment_block: /* */
-regex: \b[a-zA-Z\-]+(?=\s*:)
+regex: \b[a-zA-Z-]+(?=\s*:)
 regex_color: 0.3 0.6 0.8 1.0
 regex: \B#[0-9a-fA-F]{3,6}\b
 regex_color: 0.6 0.4 0.7 1.0
 regex: \b(px|em|rem|vh|vw|%)\b
 regex_color: 0.8 0.5 0.3 1.0
-regex: (\.|#|:)[a-zA-Z_\-]+
+regex: (\.|#|:)[a-zA-Z_-]+
 regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax7 = R"([markdown]
 comment_block: <!-- -->
 regex: (?:^|\n)[ \t]*#{1,6}[ \t]+[^\r\n]*
 regex_color: 0.3 0.7 0.9 1.0
-regex: (\*\*\*|___)[^\*\_\r\n\\]+(\*\*\*|___)|(\*\*|__)(?:[^\*\_\r\n\\]|\\.|[*][^*\r\n]|_[^_\r\n])+(\*\*|__)
+regex: (\*\*\*|___)[^*_\r\n\\]+(\*\*\*|___)|(\*\*|__)(?:[^*_\r\n\\]|\\.|[*][^*\r\n]|_[^_\r\n])+(\*\*|__)
 regex_color: 0.9 0.5 0.3 1.0
 regex: (?:^|\n)[ \t]*`{3,}[^\r\n]*\r?\n(?:[^\r\n]*\r?\n){0,120}?[ \t]*`{3,}[ \t]*(?=\r|\n|$)|(?:^|\n)[ \t]*~{3,}[^\r\n]*\r?\n(?:[^\r\n]*\r?\n){0,120}?[ \t]*~{3,}[ \t]*(?=\r|\n|$)|(?:^|\n)[ \t]*(?:`{3,}|~{3,})[^\r\n]*|``+(?:[^`\r\n]|`[^`\r\n])+``+|`[^`\r\n\\]*(?:\\.[^`\r\n\\]*)*`
 regex_color: 0.5 0.7 0.5 1.0
@@ -351,7 +351,7 @@ regex: \b([0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
 regex_color: 0.4 0.7 0.6 1.0
 regex: \$[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.8 0.5 0.3 1.0
-regex: \$\{[^\}]+\}
+regex: \$\{[^}]+\}
 regex_color: 0.8 0.5 0.3 1.0
 )";
         static constexpr const char* kSyntax14 = R"([sql]
@@ -371,7 +371,7 @@ comment_line: //
 comment_block: /* */
 regex: \b([0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
 regex_color: 0.4 0.7 0.6 1.0
-regex: \$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*
+regex: \$[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.8 0.5 0.3 1.0
 )";
         static constexpr const char* kSyntax16 = R"([ruby]
@@ -409,12 +409,12 @@ regex_color: 0.4 0.7 0.6 1.0
 comment_line: ;
 regex: (?:^|\n)[ \t]*\[[^\r\n\]]+\]
 regex_color: 0.3 0.65 0.9 1.0
-regex: (?:^|\n)[ \t]*[a-zA-Z0-9_.\-]+(?=[ \t]*=)
+regex: (?:^|\n)[ \t]*[a-zA-Z0-9_.-]+(?=[ \t]*=)
 regex_color: 0.8 0.5 0.3 1.0
 )";
         static constexpr const char* kSyntax21 = R"([yaml]
 comment_line: #
-regex: (?:^|\n)[ \t]*[a-zA-Z0-9_.\-]+:
+regex: (?:^|\n)[ \t]*[a-zA-Z0-9_.-]+:
 regex_color: 0.3 0.6 0.8 1.0
 regex: \b(true|false|null|yes|no|on|off)\b
 regex_color: 0.8 0.4 0.2 1.0
@@ -551,7 +551,7 @@ regex_color: 0.4 0.7 0.6 1.0
 keyword: FROM AS RUN CMD LABEL MAINTAINER EXPOSE ENV ADD COPY ENTRYPOINT VOLUME USER WORKDIR ARG ONBUILD STOPSIGNAL HEALTHCHECK SHELL from as run cmd label maintainer expose env add copy entrypoint volume user workdir arg onbuild stopsignal healthcheck shell
 literal: true false NONE
 comment_line: #
-regex: --[a-zA-Z0-9_\-]+(?:=[^\s]+)?
+regex: --[a-zA-Z0-9_-]+(?:=[^\s]+)?
 regex_color: 0.6 0.4 0.7 1.0
 regex: \$\{?[a-zA-Z_][a-zA-Z0-9_]*\}?
 regex_color: 0.8 0.5 0.3 1.0
@@ -563,9 +563,9 @@ keyword: resource data variable output locals module provider terraform moved im
 literal: true false null
 comment_line: #
 comment_block: /* */
-regex: (?:^|\n)[ \t]*[a-zA-Z0-9_\-]+(?=[ \t]*=)
+regex: (?:^|\n)[ \t]*[a-zA-Z0-9_-]+(?=[ \t]*=)
 regex_color: 0.3 0.65 0.9 1.0
-regex: \$\{[^\}]+\}
+regex: \$\{[^}]+\}
 regex_color: 0.8 0.5 0.3 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
 regex_color: 0.4 0.7 0.6 1.0
@@ -575,7 +575,7 @@ literal: true false TRUE FALSE inf nan
 comment_line: #
 regex: (?:^|\n)[ \t]*\[\[(?:[^\r\n\]]+)\]\]|(?:^|\n)[ \t]*\[(?:[^\r\n\]]+)\]
 regex_color: 0.3 0.65 0.9 1.0
-regex: (?:^|\n)[ \t]*[a-zA-Z0-9_.\-]+(?=[ \t]*=)
+regex: (?:^|\n)[ \t]*[a-zA-Z0-9_.-]+(?=[ \t]*=)
 regex_color: 0.8 0.5 0.3 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([a-zA-Z0-9_]*))\b
 regex_color: 0.4 0.7 0.6 1.0
@@ -604,7 +604,7 @@ keyword: cmake_minimum_required project add_executable add_library target_link_l
 literal: TRUE FALSE ON OFF YES NO NOT AND OR EQUAL LESS GREATER STRLESS STRGREATER STREQUAL MATCHES EXISTS IS_DIRECTORY DEFINED TARGET COMMAND POLICY VERSION_LESS VERSION_GREATER VERSION_EQUAL
 comment_line: #
 comment_block: #[[ ]]
-regex: \$\{[^\}]+\}
+regex: \$\{[^}]+\}
 regex_color: 0.8 0.5 0.3 1.0
 regex: \$<[^>]+>
 regex_color: 0.6 0.4 0.7 1.0
@@ -614,9 +614,9 @@ regex_color: 0.4 0.7 0.6 1.0
         static constexpr const char* kSyntax41 = R"([makefile]
 keyword: include sinclude ifeq ifneq ifdef ifndef else endif define endef export unexport override private vpath subst patsubst strip findstring filter filter-out sort word wordlist words firstword lastword dir notdir suffix basename addprefix addsuffix join wildcard realpath abspath error warning info shell origin flavor foreach if or and call eval file value PHONY DEFAULT PRECIOUS INTERMEDIATE SECONDARY SECONDEXPANSION DELETE_ON_ERROR IGNORE LOW_RESOLUTION_TIME SILENT EXPORT_ALL_VARIABLES NOTPARALLEL ONESHELL POSIX
 comment_line: #
-regex: (?:^|\n)[a-zA-Z0-9_.\-/]+(?=[ \t]*:(?!=))
+regex: (?:^|\n)[a-zA-Z0-9_./-]+(?=[ \t]*:(?!=))
 regex_color: 0.3 0.65 0.9 1.0
-regex: \$(?:\([^\)]+\)|\{[^\}]+\}|[@%<?^+|*])
+regex: \$(?:\([^)]+\)|\{[^}]+\}|[@%<?^+|*])
 regex_color: 0.8 0.5 0.3 1.0
 )";
         static constexpr const char* kSyntax42 = R"([reg]
@@ -826,8 +826,10 @@ regex_color: 0.4 0.7 0.6 1.0
                 size_t p = 13;
                 float r, g, b, a;
                 if (nextFloat(line, p, r) && nextFloat(line, p, g) && nextFloat(line, p, b) && nextFloat(line, p, a)) {
-                    parsed.regexes.push_back({ std::regex(lastRegex, std::regex_constants::optimize), SyntaxColor{r, g, b, a} });
-                    parsed.ruleMetas.push_back(classifySyntaxRegex(lastRegex));
+                    try {
+                        parsed.regexes.push_back({ std::regex(lastRegex, std::regex_constants::optimize), SyntaxColor{r, g, b, a} });
+                        parsed.ruleMetas.push_back(classifySyntaxRegex(lastRegex));
+                    } catch (const std::regex_error&) {}
                 }
                 lastRegex = "";
             }

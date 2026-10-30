@@ -269,6 +269,7 @@ static void testPhase2SyntaxAll49CategoriesCommentAndEmmet() {
     for (const auto& f : sampleFiles) {
         ed.loadSyntaxForExtension(f);
         CHECK(ed.currentSyntax.active, "Syntax active for " + f);
+        CHECK(!ed.currentSyntax.regexes.empty(), "Syntax regexes compiled for " + f);
         std::vector<SyntaxColor> cols;
         scanSyntaxHighlighting("// comment\n# hash\n/* block */ \"string\" 12345 true if return", ed.currentSyntax, false, cols);
         CHECK(cols.size() > 0, "Syntax scanner ran cleanly for " + f);

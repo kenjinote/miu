@@ -537,7 +537,7 @@ void Editor::mergeCursors() {
         Cursor& prev = merged.back();
         bool overlap = false;
         if (!prev.hasSelection() && !c.hasSelection()) {
-            overlap = (prev.head == c.head && (!prev.isVirtual && !c.isVirtual || std::abs(prev.desiredX - c.desiredX) < 0.5f));
+            overlap = (prev.head == c.head && ((!prev.isVirtual && !c.isVirtual) || std::abs(prev.desiredX - c.desiredX) < 0.5f));
         } else if (prev.hasSelection() && c.hasSelection()) {
             overlap = (c.start() < prev.end());
         } else {
