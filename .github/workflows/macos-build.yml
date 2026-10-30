@@ -112,6 +112,41 @@ jobs:
           </plist>
           EOF
 
+          pip3 install --quiet --break-system-packages pyjwt cryptography requests || pip3 install --quiet pyjwt cryptography requests
+          python3 - << 'PYEOF'
+          import os, time, jwt, requests
+
+          key_id = os.environ["APPSTORE_KEY_ID"]
+          issuer_id = os.environ["APPSTORE_ISSUER_ID"]
+          key_path = os.path.expanduser(f"~/.appstoreconnect/private_keys/AuthKey_{key_id}.p8")
+          with open(key_path, "r") as f:
+              private_key = f.read()
+
+          token = jwt.encode(
+              {"iss": issuer_id, "iat": int(time.time()), "exp": int(time.time()) + 600, "aud": "appstoreconnect-v1"},
+              private_key,
+              algorithm="ES256",
+              headers={"kid": key_id, "typ": "JWT"},
+          )
+          headers = {"Authorization": f"Bearer {token}"}
+          r = requests.get("https://api.appstoreconnect.apple.com/v1/certificates?limit=200", headers=headers)
+          if r.status_code == 200:
+              certs = r.json().get("data", [])
+              dev_types = {"DEVELOPMENT", "IOS_DEVELOPMENT", "MAC_APP_DEVELOPMENT"}
+              dev_certs = [c for c in certs if c.get("attributes", {}).get("certificateType") in dev_types]
+              print(f"Found {len(dev_certs)} development certificate(s) on App Store Connect.")
+              api_dev_certs = [c for c in dev_certs if "API" in (c.get("attributes", {}).get("name", "") + c.get("attributes", {}).get("displayName", ""))]
+              targets = api_dev_certs if api_dev_certs else dev_certs[:1]
+              for c in targets:
+                  cid = c["id"]
+                  cname = c.get("attributes", {}).get("name", cid)
+                  ctype = c.get("attributes", {}).get("certificateType", "")
+                  del_r = requests.delete(f"https://api.appstoreconnect.apple.com/v1/certificates/{cid}", headers=headers)
+                  print(f"Revoked dev certificate {cid} ({ctype} - {cname}): HTTP {del_r.status_code}")
+          else:
+              print(f"Failed to list certificates: HTTP {r.status_code} {r.text}")
+          PYEOF
+
           echo "=== Archiving & Uploading miu_iOS ==="
           xcodebuild -project macOS/miu.xcodeproj \
             -scheme miu_iOS \
