@@ -1135,13 +1135,16 @@ def get_app_id(headers):
 
 
 def sync_app_info_localizations(app_id, app_name, headers):
-    """Ensure App Info level localizations exist for all target locales if editable."""
+    """Ensure App Info level localizations exist and sync privacyPolicyUrl from en-US to all target locales."""
     r = requests.get(f"{BASE_URL}/apps/{app_id}/appInfos", headers=headers)
     if r.status_code != 200:
         print(f"[Warn] Could not fetch appInfos: HTTP {r.status_code}")
         return
 
     app_infos = r.json().get("data", [])
+    if not app_infos:
+        return
+
     editable_states = {
         "PREPARE_FOR_SUBMISSION",
         "READY_FOR_SUBMISSION",
@@ -1151,77 +1154,109 @@ def sync_app_info_localizations(app_id, app_name, headers):
         "REJECTED",
         "METADATA_REJECTED",
     }
-    target_info = None
+
+    # First, discover the English (en-US) privacyPolicyUrl across all appInfos
+    en_privacy_url = None
+    fallback_privacy_url = None
+    info_locs_map = {}
+
     for info in app_infos:
-        state = info.get("attributes", {}).get("appStoreState") or info.get("attributes", {}).get("state", "")
-        if state in editable_states:
-            target_info = info
-            break
-    if not target_info and app_infos:
-        target_info = app_infos[0]
-    if not target_info:
-        return
+        iid = info["id"]
+        r_locs = requests.get(f"{BASE_URL}/appInfos/{iid}/appInfoLocalizations?limit=200", headers=headers)
+        if r_locs.status_code == 200:
+            locs_data = r_locs.json().get("data", [])
+            info_locs_map[iid] = locs_data
+            for loc in locs_data:
+                attrs = loc.get("attributes", {})
+                loc_code = attrs.get("locale")
+                p_url = (attrs.get("privacyPolicyUrl") or "").strip()
+                if p_url:
+                    if loc_code == "en-US":
+                        en_privacy_url = p_url
+                    elif not fallback_privacy_url:
+                        fallback_privacy_url = p_url
 
-    info_id = target_info["id"]
-    info_state = target_info.get("attributes", {}).get("appStoreState") or target_info.get("attributes", {}).get("state", "")
-    print(f"\nChecking AppInfo (ID: {info_id}, State: {info_state})...")
+    privacy_url = en_privacy_url or fallback_privacy_url or SUPPORT_URL
+    print(f"\nDiscovered English privacyPolicyUrl: {privacy_url}")
 
-    r_locs = requests.get(f"{BASE_URL}/appInfos/{info_id}/appInfoLocalizations?limit=200", headers=headers)
-    if r_locs.status_code != 200:
-        print(f"[Warn] Could not fetch appInfoLocalizations: HTTP {r_locs.status_code}")
-        return
+    # Update all editable appInfos (or all appInfos if none match editable_states)
+    target_infos = [
+        info for info in app_infos
+        if (info.get("attributes", {}).get("appStoreState") or info.get("attributes", {}).get("state", "")) in editable_states
+    ]
+    if not target_infos:
+        target_infos = app_infos
 
-    existing_locales = {
-        loc.get("attributes", {}).get("locale"): loc["id"]
-        for loc in r_locs.json().get("data", [])
-    }
-    print(f"Existing AppInfo locales ({len(existing_locales)}): {', '.join(sorted(existing_locales.keys()))}")
+    for target_info in target_infos:
+        info_id = target_info["id"]
+        info_state = target_info.get("attributes", {}).get("appStoreState") or target_info.get("attributes", {}).get("state", "")
+        print(f"\nSyncing AppInfo (ID: {info_id}, State: {info_state})...")
 
-    if info_state not in editable_states:
-        print(f"AppInfo state '{info_state}' is not editable; skipping new AppInfo locale creation.")
-        return
-
-    created_count = 0
-    for locale in ASC_LOCALIZATIONS.keys():
-        if locale in existing_locales:
-            continue
-        payload = {
-            "data": {
-                "type": "appInfoLocalizations",
-                "attributes": {
-                    "locale": locale,
-                    "name": "miu",
-                },
-                "relationships": {
-                    "appInfo": {
-                        "data": {
-                            "type": "appInfos",
-                            "id": info_id,
-                        }
-                    }
-                },
-            }
+        locs_data = info_locs_map.get(info_id, [])
+        existing_locales = {
+            loc.get("attributes", {}).get("locale"): loc
+            for loc in locs_data
         }
-        res = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
-        if res.status_code in (200, 201):
-            created_count += 1
-            print(f"  [+] Created AppInfo localization for {locale} (name: 'miu')")
-        else:
-            # Fallback to the primary App Store name (e.g. 'miu – Minimal Text Editor') if 'miu' is taken
-            payload["data"]["attributes"]["name"] = app_name
-            res2 = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
-            if res2.status_code in (200, 201):
-                created_count += 1
-                print(f"  [+] Created AppInfo localization for {locale} (name: '{app_name}')")
+        print(f"Existing AppInfo locales ({len(existing_locales)}): {', '.join(sorted(existing_locales.keys()))}")
+
+        updated_count = 0
+        created_count = 0
+        for locale in ASC_LOCALIZATIONS.keys():
+            if locale in existing_locales:
+                loc_obj = existing_locales[locale]
+                loc_id = loc_obj["id"]
+                cur_url = (loc_obj.get("attributes", {}).get("privacyPolicyUrl") or "").strip()
+                if cur_url == privacy_url:
+                    updated_count += 1
+                    print(f"  [OK] AppInfo {locale} privacyPolicyUrl already set ({privacy_url})")
+                    continue
+                patch_payload = {
+                    "data": {
+                        "type": "appInfoLocalizations",
+                        "id": loc_id,
+                        "attributes": {
+                            "privacyPolicyUrl": privacy_url,
+                        },
+                    }
+                }
+                res_p = requests.patch(f"{BASE_URL}/appInfoLocalizations/{loc_id}", headers=headers, json=patch_payload)
+                if res_p.status_code == 200:
+                    updated_count += 1
+                    print(f"  [OK] Updated AppInfo {locale} privacyPolicyUrl -> {privacy_url}")
+                else:
+                    print(f"  [ERR] Failed to update AppInfo {locale} (HTTP {res_p.status_code}: {res_p.text[:200]})")
             else:
-                err_detail = ""
-                try:
-                    errs = res2.json().get("errors", [])
-                    if errs:
-                        err_detail = errs[0].get("detail", "")
-                except Exception:
-                    pass
-                print(f"  [!] Skipped AppInfo localization for {locale} (HTTP {res2.status_code}: {err_detail})")
+                payload = {
+                    "data": {
+                        "type": "appInfoLocalizations",
+                        "attributes": {
+                            "locale": locale,
+                            "name": "miu",
+                            "privacyPolicyUrl": privacy_url,
+                        },
+                        "relationships": {
+                            "appInfo": {
+                                "data": {
+                                    "type": "appInfos",
+                                    "id": info_id,
+                                }
+                            }
+                        },
+                    }
+                }
+                res = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
+                if res.status_code in (200, 201):
+                    created_count += 1
+                    print(f"  [+] Created AppInfo {locale} (name: 'miu', privacyPolicyUrl: {privacy_url})")
+                else:
+                    payload["data"]["attributes"]["name"] = app_name
+                    res2 = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
+                    if res2.status_code in (200, 201):
+                        created_count += 1
+                        print(f"  [+] Created AppInfo {locale} (name: '{app_name}', privacyPolicyUrl: {privacy_url})")
+                    else:
+                        print(f"  [!] Skipped AppInfo {locale} (HTTP {res2.status_code}: {res2.text[:200]})")
+        print(f"AppInfo Summary (ID: {info_id}): {updated_count} updated/verified, {created_count} created.")
 
 
 def get_or_create_editable_versions(app_id, headers):
