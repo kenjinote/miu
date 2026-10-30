@@ -75,6 +75,13 @@
 			);
 			target = BA4A72FB2F4C1DC90045F2FD /* miu_iOS */;
 		};
+		BA4A731D2F4C22720045F2FD /* Exceptions for "miu_macOS" folder in "miu_macOS" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				info.plist,
+			);
+			target = BABDDE552F49D3BC00B3E84A /* miu_macOS */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -90,6 +97,7 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				BA4A731C2F4C22720045F2FD /* Exceptions for "miu_macOS" folder in "miu_iOS" target */,
+				BA4A731D2F4C22720045F2FD /* Exceptions for "miu_macOS" folder in "miu_macOS" target */,
 			);
 			path = miu_macOS;
 			sourceTree = "<group>";

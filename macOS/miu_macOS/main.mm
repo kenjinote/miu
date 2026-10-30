@@ -352,11 +352,11 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     NSString *fullHtmlNS = [NSString stringWithUTF8String:res.fullHtml.c_str()];
     if (!fullHtmlNS) return;
 
-    if (!editor->previewInitialLoaded) {
-        editor->previewInitialLoaded = true;
+    if (!editor->previewInitialLoaded || !res.isMdOrMermaidShell) {
+        editor->previewInitialLoaded = res.isMdOrMermaidShell;
         [previewWebView loadHTMLString:fullHtmlNS baseURL:nil];
     } else {
-        std::string js = MiuPreview::buildDomUpdateJs(res);
+        std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, editor->isDarkMode);
         NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
         if (jsNS) {
             WKWebView *wv = previewWebView;
@@ -501,7 +501,6 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
     bool needsV = L.needV;
     bool needsH = L.needH;
-    float visibleHeight = L.textAreaH;
     float visibleWidth = L.textAreaW;
     int totalLines = L.totalLines;
     float maxLineWidth = editor->maxLineWidth;
