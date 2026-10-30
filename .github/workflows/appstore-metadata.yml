@@ -1,0 +1,28 @@
+name: App Store Metadata Sync
+
+on:
+  push:
+    branches: [ master, main ]
+    paths:
+      - 'scripts/appstore_metadata_sync.py'
+      - 'macOS/APPSTORE_METADATA.md'
+      - '.github/workflows/appstore-metadata.yml'
+  workflow_dispatch:
+
+jobs:
+  sync-metadata:
+    name: Sync App Store Connect Localizations (iOS & macOS)
+    runs-on: xcode-27
+    env:
+      APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+      APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Python dependencies & Sync App Store Metadata
+        if: env.APPSTORE_ISSUER_ID != '' && env.APPSTORE_KEY_ID != '' && env.APPSTORE_PRIVATE_KEY != ''
+        run: |
+          pip3 install --quiet --break-system-packages pyjwt cryptography requests || pip3 install --quiet pyjwt cryptography requests
+          python3 scripts/appstore_metadata_sync.py
