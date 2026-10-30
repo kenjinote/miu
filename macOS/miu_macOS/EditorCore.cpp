@@ -40,12 +40,12 @@ static std::string CFStringToStdString(CFStringRef cfStr) {
 static std::wstring CFStringToStdWString(CFStringRef cfStr) {
     if (!cfStr) return L"";
     CFIndex len = CFStringGetLength(cfStr);
-    std::vector<UniChar> buf(len);
-    CFStringGetCharacters(cfStr, CFRangeMake(0, len), buf.data());
-    std::wstring wstr;
-    wstr.reserve(len);
-    for (CFIndex i = 0; i < len; ++i) wstr.push_back((wchar_t)buf[i]);
-    return wstr;
+    if (len <= 0) return L"";
+    CFIndex maxBytes = CFStringGetMaximumSizeForEncoding(len, kCFStringEncodingUTF32LE);
+    std::vector<wchar_t> buf((maxBytes / sizeof(wchar_t)) + 1, 0);
+    CFIndex usedBytes = 0;
+    CFStringGetBytes(cfStr, CFRangeMake(0, len), kCFStringEncodingUTF32LE, 0, false, (UInt8*)buf.data(), buf.size() * sizeof(wchar_t), &usedBytes);
+    return std::wstring(buf.data(), usedBytes / sizeof(wchar_t));
 }
 
 std::string WToUTF8(const std::wstring& w) {
@@ -268,6 +268,62 @@ static std::string Utf8ToLocal(const std::string& utf8, uint32_t codePage) {
     return res;
 }
 #endif
+
+static std::string Utf8ToUtf16Bytes(const std::string& utf8, bool isBigEndian) {
+    std::string out;
+    out.reserve(2 + utf8.size() * 2);
+    if (isBigEndian) {
+        out.push_back((char)0xFE);
+        out.push_back((char)0xFF);
+    } else {
+        out.push_back((char)0xFF);
+        out.push_back((char)0xFE);
+    }
+    auto appendU16 = [&](uint16_t u16) {
+        if (isBigEndian) {
+            out.push_back((char)((u16 >> 8) & 0xFF));
+            out.push_back((char)(u16 & 0xFF));
+        } else {
+            out.push_back((char)(u16 & 0xFF));
+            out.push_back((char)((u16 >> 8) & 0xFF));
+        }
+    };
+    size_t i = 0;
+    size_t n = utf8.size();
+    while (i < n) {
+        unsigned char b0 = (unsigned char)utf8[i];
+        uint32_t cp = 0;
+        if (b0 < 0x80) {
+            cp = b0;
+            i += 1;
+        } else if ((b0 & 0xE0) == 0xC0 && i + 1 < n) {
+            cp = ((uint32_t)(b0 & 0x1F) << 6) | ((uint32_t)((unsigned char)utf8[i + 1] & 0x3F));
+            i += 2;
+        } else if ((b0 & 0xF0) == 0xE0 && i + 2 < n) {
+            cp = ((uint32_t)(b0 & 0x0F) << 12) |
+                 ((uint32_t)((unsigned char)utf8[i + 1] & 0x3F) << 6) |
+                 ((uint32_t)((unsigned char)utf8[i + 2] & 0x3F));
+            i += 3;
+        } else if ((b0 & 0xF8) == 0xF0 && i + 3 < n) {
+            cp = ((uint32_t)(b0 & 0x07) << 18) |
+                 ((uint32_t)((unsigned char)utf8[i + 1] & 0x3F) << 12) |
+                 ((uint32_t)((unsigned char)utf8[i + 2] & 0x3F) << 6) |
+                 ((uint32_t)((unsigned char)utf8[i + 3] & 0x3F));
+            i += 4;
+        } else {
+            cp = 0xFFFD;
+            i += 1;
+        }
+        if (cp <= 0xFFFF) {
+            appendU16((uint16_t)cp);
+        } else if (cp <= 0x10FFFF) {
+            uint32_t v = cp - 0x10000;
+            appendU16((uint16_t)(0xD800 + (v >> 10)));
+            appendU16((uint16_t)(0xDC00 + (v & 0x3FF)));
+        }
+    }
+    return out;
+}
 
 bool MappedFile::open(const char* path) {
 #if defined(__APPLE__)
@@ -915,10 +971,30 @@ void Editor::deleteLine() {
     if (lines.empty()) return;
     EditBatch batch;
     batch.beforeCursors = cursors;
-    for (int i = (int)lines.size() - 1; i >= 0; --i) {
-        int li = lines[i];
-        size_t start = lineStarts[li];
-        size_t end = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
+    std::vector<std::pair<int, int>> groups;
+    int gStart0 = lines[0], prev0 = lines[0];
+    for (size_t i = 1; i < lines.size(); ++i) {
+        if (lines[i] != prev0 + 1) {
+            groups.push_back({ gStart0, prev0 });
+            gStart0 = lines[i];
+        }
+        prev0 = lines[i];
+    }
+    groups.push_back({ gStart0, prev0 });
+
+    for (int i = (int)groups.size() - 1; i >= 0; --i) {
+        int gStart = groups[i].first, gEnd = groups[i].second;
+        size_t start = lineStarts[gStart];
+        size_t end = (gEnd + 1 < (int)lineStarts.size()) ? lineStarts[gEnd + 1] : pt.length();
+        if (end == pt.length() && start > 0) {
+            char prev = pt.charAt(start - 1);
+            if (prev == '\n') {
+                start--;
+                if (start > 0 && pt.charAt(start - 1) == '\r') start--;
+            } else if (prev == '\r') {
+                start--;
+            }
+        }
         size_t len = end - start;
         if (len > 0) {
             batch.ops.push_back({ EditOp::Erase, start, pt.getRange(start, len) });
@@ -926,19 +1002,6 @@ void Editor::deleteLine() {
             for (auto& c : cursors) {
                 if (c.head > start) c.head = (c.head >= start + len) ? c.head - len : start;
                 if (c.anchor > start) c.anchor = (c.anchor >= start + len) ? c.anchor - len : start;
-            }
-        } else if (len == 0 && li > 0) {
-            size_t delStart = lineStarts[li];
-            size_t delLen = 0;
-            if (delStart > 0 && pt.charAt(delStart - 1) == '\n') { delStart--; delLen++; }
-            if (delStart > 0 && pt.charAt(delStart - 1) == '\r') { delStart--; delLen++; }
-            if (delLen > 0) {
-                batch.ops.push_back({ EditOp::Erase, delStart, pt.getRange(delStart, delLen) });
-                pt.erase(delStart, delLen);
-                for (auto& c : cursors) {
-                    if (c.head > delStart) c.head -= delLen;
-                    if (c.anchor > delStart) c.anchor -= delLen;
-                }
             }
         }
     }
@@ -1846,7 +1909,23 @@ ScrollBarLayout Editor::getScrollBarLayout(float clientW, float clientH) {
         L.needH = false;
         L.hBarH = 0.0f;
         L.visibleLines = std::max(1, (int)(clientH / lineHeight));
-        L.needV = (L.totalLines > L.visibleLines);
+        L.needV = (L.totalLines > L.visibleLines) || (vScrollPos > 0) || (vScrollSubLine > 0);
+        float prelimWrapW = std::max(1.0f, clientW - gutterWidth - (L.needV ? barSize : 0.0f));
+        if (L.totalLines == 1) {
+            int count = getLineVisualCount(0, prelimWrapW);
+            L.totalVisualLines = std::max(1, count);
+            if (L.totalVisualLines > L.visibleLines) L.needV = true;
+        } else if (!L.needV) {
+            int visSum = 0;
+            for (int i = 0; i < L.totalLines; ++i) {
+                visSum += getLineVisualCount(i, prelimWrapW);
+                if (visSum > L.visibleLines) {
+                    L.needV = true;
+                    break;
+                }
+            }
+            L.totalVisualLines = std::max(L.totalLines, visSum);
+        }
         L.vBarW = L.needV ? barSize : 0.0f;
         L.textAreaW = std::max(1.0f, clientW - gutterWidth - L.vBarW);
         L.textAreaH = std::max(1.0f, clientH);
@@ -1880,12 +1959,14 @@ ScrollMetrics Editor::getVScrollMetrics(float clientW, float clientH) {
     M.trackStart = 2.0f;
     M.trackEnd = std::max(M.trackStart + 1.0f, L.textAreaH - 2.0f);
     M.trackLen = M.trackEnd - M.trackStart;
-    M.maxScroll = std::max(0, L.totalLines - L.visibleLines);
-    float ratio = (L.totalLines > 0) ? std::clamp((float)L.visibleLines / (float)L.totalLines, 0.05f, 1.0f) : 1.0f;
+    int totalForScroll = (wordWrapEnabled && L.totalVisualLines > L.totalLines) ? L.totalVisualLines : L.totalLines;
+    int currentPos = (wordWrapEnabled && L.totalLines == 1 && L.totalVisualLines > 1) ? vScrollSubLine : vScrollPos;
+    M.maxScroll = std::max(0, totalForScroll - L.visibleLines);
+    float ratio = (totalForScroll > 0) ? std::clamp((float)L.visibleLines / (float)totalForScroll, 0.05f, 1.0f) : 1.0f;
     M.thumbSize = std::max(24.0f, M.trackLen * ratio);
     if (M.thumbSize > M.trackLen) M.thumbSize = M.trackLen;
     float scrollableTrack = std::max(0.0f, M.trackLen - M.thumbSize);
-    float posRatio = (M.maxScroll > 0) ? std::clamp((float)vScrollPos / (float)M.maxScroll, 0.0f, 1.0f) : 0.0f;
+    float posRatio = (M.maxScroll > 0) ? std::clamp((float)currentPos / (float)M.maxScroll, 0.0f, 1.0f) : 0.0f;
     M.thumbPos = M.trackStart + scrollableTrack * posRatio;
     return M;
 }
@@ -3312,14 +3393,52 @@ void Editor::ensureCaretVisible() {
 
     if (wordWrapEnabled) {
         hScrollPos = 0;
-        if (li < vScrollPos) {
+        float wrapW = getEffectiveTextWidth(viewWidth);
+        auto subs = getVisualSubLines(li, wrapW);
+        size_t relPos = (c.head >= lineStarts[li]) ? (c.head - lineStarts[li]) : 0;
+        int caretSub = 0;
+        for (int sIdx = 0; sIdx < (int)subs.size(); ++sIdx) {
+            size_t se = subs[sIdx].byteStart + subs[sIdx].byteLen;
+            if (relPos < se || (relPos == se && (c.affinity || sIdx == (int)subs.size() - 1))) {
+                caretSub = sIdx;
+                break;
+            }
+        }
+        if (li < vScrollPos || (li == vScrollPos && caretSub < vScrollSubLine)) {
             vScrollPos = li;
-            vScrollSubLine = 0;
-        } else if (li >= vScrollPos + vis) {
-            vScrollPos = li - vis + 1;
-            vScrollSubLine = 0;
+            vScrollSubLine = caretSub;
+        } else {
+            if (li > vScrollPos + vis) {
+                vScrollPos = li - vis;
+                vScrollSubLine = 0;
+            }
+            int visDist = 0;
+            for (int i = vScrollPos; i < li; ++i) {
+                int sc = getLineVisualCount(i, wrapW);
+                visDist += (i == vScrollPos) ? std::max(0, sc - vScrollSubLine) : sc;
+            }
+            visDist += (li == vScrollPos) ? (caretSub - vScrollSubLine) : caretSub;
+            if (visDist >= vis) {
+                int excess = visDist - vis + 1;
+                while (excess > 0) {
+                    int sc = getLineVisualCount(vScrollPos, wrapW);
+                    if (vScrollSubLine + 1 < sc) {
+                        vScrollSubLine++;
+                    } else if (vScrollPos + 1 < (int)lineStarts.size()) {
+                        vScrollPos++;
+                        vScrollSubLine = 0;
+                    } else {
+                        break;
+                    }
+                    excess--;
+                }
+            }
         }
         vScrollPos = std::max(0, vScrollPos);
+        vScrollSubLine = std::max(0, vScrollSubLine);
+        ScrollBarLayout layout = getScrollBarLayout(viewWidth, viewHeight);
+        visibleVScrollWidth = layout.vBarW;
+        visibleHScrollHeight = layout.hBarH;
         updateScrollBars();
         return;
     }
@@ -3504,6 +3623,22 @@ void Editor::insertAtCursors(const std::string& t) {
             for (auto& o : cursors) {
                 if (o.head > st) o.head -= std::min(o.head - st, l);
                 if (o.anchor > st) o.anchor -= std::min(o.anchor - st, l);
+            }
+        } else if (isOverwriteMode && !t.empty() && t != "\n" && t != "\r" && t != "\r\n") {
+            char ch = (st < pt.length()) ? pt.charAt(st) : 0;
+            if (ch != 0 && ch != '\n' && ch != '\r') {
+                size_t nextPos = moveCaretVisual(st, true);
+                size_t charLen = (nextPos > st) ? (nextPos - st) : 0;
+                if (charLen > 0) {
+                    canFastSingle = false;
+                    std::string del = pt.getRange(st, charLen);
+                    b.ops.push_back({ EditOp::Erase, st, del });
+                    pt.erase(st, charLen);
+                    for (auto& o : cursors) {
+                        if (o.head > st) o.head -= std::min(o.head - st, charLen);
+                        if (o.anchor > st) o.anchor -= std::min(o.anchor - st, charLen);
+                    }
+                }
             }
         }
         if (!t.empty()) {
@@ -3793,17 +3928,24 @@ void Editor::copyToClipboard() {
         for (int li : lines) {
             size_t start = lineStarts[li], end = (li + 1 < (int)lineStarts.size()) ? lineStarts[li + 1] : pt.length();
             t += pt.getRange(start, end - start);
-            if (t.empty() || t.back() != '\n') t += "\n";
+            if (t.empty() || (t.back() != '\n' && t.back() != '\r')) t += newlineStr;
         }
+        lastCopyWasLine = true;
+        lastLineCopyText = t;
     } else {
         auto sorted = cursors;
         std::sort(sorted.begin(), sorted.end(), [](const Cursor& a, const Cursor& b) { return a.start() < b.start(); });
         for (size_t i = 0; i < sorted.size(); ++i) {
             if (sorted[i].hasSelection()) {
-                t += pt.getRange(sorted[i].start(), sorted[i].end() - sorted[i].start());
-                if (isRect && i < sorted.size() - 1) t += "\n";
+                std::string part = pt.getRange(sorted[i].start(), sorted[i].end() - sorted[i].start());
+                t += part;
+                if (i < sorted.size() - 1 && (isRect || (!part.empty() && part.back() != '\n' && part.back() != '\r'))) {
+                    t += newlineStr;
+                }
             }
         }
+        lastCopyWasLine = false;
+        lastLineCopyText.clear();
     }
     if (!t.empty() && cbSetClipboard) {
         cbSetClipboard(t, hasSelection && isRect);
@@ -3840,6 +3982,41 @@ void Editor::pasteFromClipboard() {
             }
         }
         insertRectangularBlock(utf8);
+    } else if (lastCopyWasLine && (lastLineCopyText.empty() || utf8 == lastLineCopyText)) {
+        bool hasAnySelection = false;
+        for (const auto& c : cursors) if (c.hasSelection()) { hasAnySelection = true; break; }
+        if (hasAnySelection) {
+            insertAtCursors(utf8);
+        } else {
+            rollbackPadding();
+            rebuildLineStarts();
+            std::vector<Cursor> originalCursors = cursors;
+            std::vector<size_t> relativeOffsets;
+            for (auto& c : cursors) {
+                int lineIdx = getLineIdx(c.head);
+                size_t lineStart = lineStarts[lineIdx];
+                relativeOffsets.push_back((c.head > lineStart) ? (c.head - lineStart) : 0);
+                c.head = lineStart;
+                c.anchor = lineStart;
+            }
+            insertAtCursors(utf8);
+            for (size_t i = 0; i < cursors.size() && i < relativeOffsets.size(); ++i) {
+                int lineIdx = getLineIdx(cursors[i].head);
+                size_t lineStart = lineStarts[lineIdx];
+                size_t lineEnd = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
+                if (lineEnd > lineStart && pt.charAt(lineEnd - 1) == '\n') lineEnd--;
+                if (lineEnd > lineStart && pt.charAt(lineEnd - 1) == '\r') lineEnd--;
+                cursors[i].head = std::min(lineStart + relativeOffsets[i], lineEnd);
+                cursors[i].anchor = cursors[i].head;
+                cursors[i].desiredX = getXFromPos(cursors[i].head);
+            }
+            if (!undo.undoStack.empty()) {
+                undo.undoStack.back().beforeCursors = originalCursors;
+                undo.undoStack.back().afterCursors = cursors;
+            }
+            ensureCaretVisible();
+            updateDirtyFlag();
+        }
     } else {
         insertAtCursors(utf8);
     }
@@ -3936,7 +4113,9 @@ bool Editor::saveFile(const std::wstring& p) {
     std::string contentUtf8 = pt.getRange(0, pt.length());
     std::string outBytes;
 
-    if (currentEncoding == ENC_LOCAL) {
+    if (currentEncoding == ENC_UTF16LE || currentEncoding == ENC_UTF16BE) {
+        outBytes = Utf8ToUtf16Bytes(contentUtf8, currentEncoding == ENC_UTF16BE);
+    } else if (currentEncoding == ENC_LOCAL) {
         std::string localStr = Utf8ToLocal(contentUtf8, currentCodePage);
         outBytes = !localStr.empty() ? localStr : contentUtf8;
     } else if (currentEncoding == ENC_UTF8_BOM) {
@@ -3993,16 +4172,20 @@ bool Editor::openFileFromPath(const std::string& p) {
         const char* ptr = fileMap->ptr;
         size_t sz = fileMap->size;
         this->currentFileBuffer = "";
+        bool usedDecodedBuffer = false;
         if (currentEncoding == ENC_UTF16LE) {
             this->currentFileBuffer = Utf16ToUtf8(ptr, sz, false);
+            usedDecodedBuffer = true;
         } else if (currentEncoding == ENC_UTF16BE) {
             this->currentFileBuffer = Utf16ToUtf8(ptr, sz, true);
+            usedDecodedBuffer = true;
         } else if (currentEncoding == ENC_UTF8_BOM) {
             if (sz >= 3) { ptr += 3; sz -= 3; }
         } else if (currentEncoding == ENC_LOCAL) {
             this->currentFileBuffer = LocalToUtf8(ptr, sz, currentCodePage);
+            if (!this->currentFileBuffer.empty() || sz == 0) usedDecodedBuffer = true;
         }
-        if (!this->currentFileBuffer.empty()) {
+        if (usedDecodedBuffer) {
             pt.initFromFile(this->currentFileBuffer.data(), this->currentFileBuffer.size());
             detectNewlineStyle(this->currentFileBuffer.data(), this->currentFileBuffer.size());
         } else {
@@ -4049,6 +4232,8 @@ void Editor::newFile() {
         pt.initEmpty();
         currentFilePath.clear();
         currentFileExt.clear();
+        currentEncoding = ENC_UTF8_NOBOM;
+        currentCodePage = 0;
         currentSyntax = SyntaxDef();
         commentStateCache.clear();
         this->currentFileBuffer.clear();
@@ -4503,6 +4688,52 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     CGContextClipToRect(ctx, CGRectMake(gutterWidth, 0, vw, vh));
 #endif
 
+    // Precompute visual Y offset of each logical line in [renderStart, end)
+    std::vector<float> lineBaseVisualY(std::max(1, end - renderStart), 0.0f);
+    if (wordWrapEnabled) {
+        float accY = 0.0f;
+        for (int li = renderStart; li < end; ++li) {
+            lineBaseVisualY[li - renderStart] = accY;
+            int sc = getLineVisualCount(li, vw);
+            int startSub = (li == start) ? std::clamp(vScrollSubLine, 0, std::max(0, sc - 1)) : 0;
+            accY += (float)std::max(0, sc - startSub) * lineHeight;
+        }
+    } else {
+        for (int li = renderStart; li < end; ++li) {
+            lineBaseVisualY[li - renderStart] = (float)(li - start) * lineHeight;
+        }
+    }
+
+    auto forEachVisualSpanRect = [&](int li, size_t spanStart, size_t spanEnd, float extraEndW, auto&& rectFn) {
+        if (li < renderStart || li >= end) return;
+        if (!wordWrapEnabled) {
+            float y = lineBaseVisualY[li - renderStart];
+            float x1 = getXInLine(li, spanStart);
+            float x2 = getXInLine(li, spanEnd) + extraEndW;
+            if (x2 <= x1) x2 = x1 + charWidth;
+            rectFn(CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+            return;
+        }
+        size_t lineBegin = lineStarts[li];
+        auto subs = getVisualSubLines(li, vw);
+        int startSub = (li == start) ? std::clamp(vScrollSubLine, 0, std::max(0, (int)subs.size() - 1)) : 0;
+        for (int subIdx = startSub; subIdx < (int)subs.size(); ++subIdx) {
+            size_t subDocS = lineBegin + subs[subIdx].byteStart;
+            size_t subDocE = subDocS + subs[subIdx].byteLen;
+            size_t ovS = std::max(spanStart, subDocS);
+            size_t ovE = std::min(spanEnd, subDocE);
+            if (ovS < ovE || (spanStart == spanEnd && spanStart == ovS && subIdx == (int)subs.size() - 1)) {
+                float subOriginX = getXInLine(li, subDocS);
+                float x1 = getXInLine(li, ovS) - subOriginX;
+                float x2 = getXInLine(li, ovE) - subOriginX;
+                if (subIdx == (int)subs.size() - 1 && ovE == subDocE) x2 += extraEndW;
+                if (x2 <= x1) x2 = x1 + charWidth;
+                float y = lineBaseVisualY[li - renderStart] + (float)(subIdx - startSub) * lineHeight;
+                rectFn(CGRectMake(gutterWidth + x1, y, x2 - x1, lineHeight));
+            }
+        }
+    };
+
     // 1. Auto-highlight occurrences of current word / selection
     auto [autoStr, isWholeWord] = getHighlightTarget();
     if (!autoStr.empty() && autoStr != searchQuery) {
@@ -4516,15 +4747,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                 if (docPos > 0 && isWordChar(pt.charAt(docPos - 1))) shouldHighlight = false;
                 if (shouldHighlight && (docPos + autoStr.length() < pt.length()) && isWordChar(pt.charAt(docPos + autoStr.length()))) shouldHighlight = false;
             }
-            if (shouldHighlight && !wordWrapEnabled) {
+            if (shouldHighlight) {
                 int li = getLineIdx(docPos);
-                if (li >= renderStart && li < end) {
-                    float y = (float)(li - start) * lineHeight;
-                    float x1 = getXInLine(li, docPos);
-                    float x2 = getXInLine(li, docPos + autoStr.length());
-                    if (x2 <= x1) x2 = x1 + charWidth;
-                    CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
-                }
+                forEachVisualSpanRect(li, docPos, docPos + autoStr.length(), 0.0f, [&](CGRect r) {
+                    CGContextFillRect(ctx, r);
+                });
             }
             searchPos += 1;
         }
@@ -4532,7 +4759,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     }
 
     // 2. Search query highlight
-    if (!searchQuery.empty() && !wordWrapEnabled) {
+    if (!searchQuery.empty()) {
         CGColorRef hlColor = isDarkMode ? CGColorCreateGenericRGB(0.4, 0.4, 0.0, 0.6) : CGColorCreateGenericRGB(1.0, 1.0, 0.0, 0.4);
         CGContextSetFillColorWithColor(ctx, hlColor);
         if (searchRegex && isSafeUserRegex(searchQuery)) {
@@ -4555,13 +4782,9 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                         if (contentLen > 0) {
                             size_t currentDrawPos = visByteStart + contentPos;
                             int li = getLineIdx(currentDrawPos);
-                            if (li >= renderStart && li < end) {
-                                float y = (float)(li - start) * lineHeight;
-                                float x1 = getXInLine(li, currentDrawPos);
-                                float x2 = getXInLine(li, currentDrawPos + contentLen);
-                                if (x2 <= x1) x2 = x1 + charWidth;
-                                CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
-                            }
+                            forEachVisualSpanRect(li, currentDrawPos, currentDrawPos + contentLen, 0.0f, [&](CGRect r) {
+                                CGContextFillRect(ctx, r);
+                            });
                         }
                         size_t step = std::max((size_t)1, matchLen);
                         size_t advance = m.position() + step;
@@ -4588,12 +4811,9 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                 if (match) {
                     size_t currentDrawPos = visByteStart + offset;
                     int li = getLineIdx(currentDrawPos);
-                    if (li >= renderStart && li < end) {
-                        float y = (float)(li - start) * lineHeight;
-                        float x1 = getXInLine(li, currentDrawPos);
-                        float x2 = getXInLine(li, currentDrawPos + q.length());
-                        CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
-                    }
+                    forEachVisualSpanRect(li, currentDrawPos, currentDrawPos + q.length(), 0.0f, [&](CGRect r) {
+                        CGContextFillRect(ctx, r);
+                    });
                 }
                 offset += 1;
             }
@@ -4602,18 +4822,14 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     }
 
     // 3. Bracket matching highlight
-    if (!cursors.empty() && !wordWrapEnabled) {
+    if (!cursors.empty()) {
         size_t b1 = 0, b2 = 0;
         if (getAdjacentBrackets(cursors.back().head, b1, b2)) {
             size_t brs[2] = { b1, b2 };
             for (size_t bp : brs) {
                 int li = getLineIdx(bp);
-                if (li >= renderStart && li < end) {
-                    float y = (float)(li - start) * lineHeight;
-                    float x1 = getXInLine(li, bp);
-                    float x2 = getXInLine(li, bp + 1);
-                    if (x2 <= x1) x2 = x1 + charWidth;
-                    CGRect brRect = CGRectMake(gutterWidth - (float)hScrollPos + x1, y + 1.0f, x2 - x1, lineHeight - 2.0f);
+                forEachVisualSpanRect(li, bp, bp + 1, 0.0f, [&](CGRect r) {
+                    CGRect brRect = CGRectMake(r.origin.x, r.origin.y + 1.0f, r.size.width, lineHeight - 2.0f);
                     if (colBracketBg) {
                         CGContextSetFillColorWithColor(ctx, colBracketBg);
                         CGContextFillRect(ctx, brRect);
@@ -4623,7 +4839,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                         CGContextSetLineWidth(ctx, 1.0f);
                         CGContextStrokeRect(ctx, brRect);
                     }
-                }
+                });
             }
         }
     }
@@ -4636,18 +4852,21 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         size_t pStart = c.start(), pEnd = c.end();
         int lStart = getLineIdx(pStart), lEnd = getLineIdx(pEnd);
         for (int l = std::max(lStart, renderStart); l <= std::min(lEnd, end - 1); ++l) {
-            float y = (float)(l - start) * lineHeight;
             size_t lineBegin = lineStarts[l], lineEnd = (l + 1 < (int)lineStarts.size()) ? lineStarts[l + 1] : pt.length();
             if (lineEnd > lineBegin && pt.charAt(lineEnd - 1) == '\n') lineEnd--;
             if (lineEnd > lineBegin && pt.charAt(lineEnd - 1) == '\r') lineEnd--;
-            if (isRectMode) {
+            if (isRectMode && !wordWrapEnabled) {
+                float y = lineBaseVisualY[l - renderStart];
                 float rx1 = std::min(c.originalAnchorX, c.desiredX), rx2 = std::max(c.originalAnchorX, c.desiredX);
                 if (rx2 > rx1) CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + rx1, y, rx2 - rx1, lineHeight));
             } else {
                 size_t selS = std::max(pStart, lineBegin), selE = std::min(pEnd, lineEnd);
-                float x1 = getXInLine(l, selS), x2 = getXInLine(l, selE);
-                if (selE == lineEnd && pEnd > lineEnd) x2 += charWidth;
-                if (x2 > x1) CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + x1, y, x2 - x1, lineHeight));
+                float extraW = (selE == lineEnd && pEnd > lineEnd) ? charWidth : 0.0f;
+                if (selS < selE || extraW > 0.0f) {
+                    forEachVisualSpanRect(l, selS, selE, extraW, [&](CGRect r) {
+                        CGContextFillRect(ctx, r);
+                    });
+                }
             }
         }
     }
@@ -4817,13 +5036,19 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     }
 
     // 6. Carets & Drag-drop target caret
-    CGContextSetFillColorWithColor(ctx, colCaret);
+    CGColorRef caretColorToUse = colCaret;
+    CGColorRef overwriteColor = nullptr;
+    if (isOverwriteMode) {
+        overwriteColor = isDarkMode ? CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.45) : CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.45);
+        caretColorToUse = overwriteColor;
+    }
+    CGContextSetFillColorWithColor(ctx, caretColorToUse);
     for (const auto& c : cursors) {
         int l = getLineIdx(c.head);
         if (l >= start && l < end) {
             float physX = getXInLine(l, c.head);
             float drawX = c.isVirtual ? std::max(physX, c.desiredX) : physX;
-            float drawY = (float)(l - start) * lineHeight;
+            float drawY = lineBaseVisualY[l - renderStart];
             if (wordWrapEnabled) {
                 auto subs = getVisualSubLines(l, vw);
                 size_t rel = (c.head >= lineStarts[l]) ? (c.head - lineStarts[l]) : 0;
@@ -4835,24 +5060,31 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                         break;
                     }
                 }
+                int startSub = (l == start) ? std::clamp(vScrollSubLine, 0, std::max(0, (int)subs.size() - 1)) : 0;
                 drawX = physX - getXInLine(l, lineStarts[l] + subs[subIdx].byteStart);
-                // Compute visual Y of (l, subIdx)
-                float vy = 0.0f;
-                for (int li = start; li < l; ++li) {
-                    int sc = getLineVisualCount(li, vw);
-                    vy += (float)((li == start) ? (sc - vScrollSubLine) : sc) * lineHeight;
-                }
-                vy += (float)((l == start) ? (subIdx - vScrollSubLine) : subIdx) * lineHeight;
-                drawY = vy;
+                drawY = lineBaseVisualY[l - renderStart] + (float)(subIdx - startSub) * lineHeight;
             }
-            CGContextFillRect(ctx, CGRectMake(gutterWidth - (wordWrapEnabled ? 0.0f : (float)hScrollPos) + drawX, drawY, 2.0f, lineHeight));
+            float caretW = 2.0f;
+            if (isOverwriteMode && !c.hasSelection()) {
+                char ch = (c.head < pt.length()) ? pt.charAt(c.head) : 0;
+                if (ch != 0 && ch != '\n' && ch != '\r') {
+                    size_t nextPos = moveCaretVisual(c.head, true);
+                    caretW = std::max(charWidth, getXInLine(l, nextPos) - physX);
+                } else {
+                    caretW = charWidth;
+                }
+            }
+            CGContextFillRect(ctx, CGRectMake(gutterWidth - (wordWrapEnabled ? 0.0f : (float)hScrollPos) + drawX, drawY, caretW, lineHeight));
         }
     }
+    if (overwriteColor) CGColorRelease(overwriteColor);
     if (isDraggingSelection) {
+        CGContextSetFillColorWithColor(ctx, colCaret);
         int dl = getLineIdx(dragDropTargetPos);
         if (dl >= start && dl < end) {
-            float dx = getXInLine(dl, dragDropTargetPos);
-            CGContextFillRect(ctx, CGRectMake(gutterWidth - (float)hScrollPos + dx, (float)(dl - start) * lineHeight, 2.5f, lineHeight));
+            forEachVisualSpanRect(dl, dragDropTargetPos, dragDropTargetPos, 0.0f, [&](CGRect r) {
+                CGContextFillRect(ctx, CGRectMake(r.origin.x, r.origin.y, 2.5f, lineHeight));
+            });
         }
     }
     CGContextRestoreGState(ctx);

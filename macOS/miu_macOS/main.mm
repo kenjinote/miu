@@ -3,6 +3,7 @@
 #import "EditorCore.h"
 
 static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular";
+static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 
 @class EditorView;
 
@@ -225,16 +226,24 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
             return ([a runModal] == NSAlertFirstButtonReturn);
         };
-        editor->cbSetClipboard = [](const std::string& text, bool isRect) {
+        editor->cbSetClipboard = [weakSelf](const std::string& text, bool isRect) {
             NSPasteboard *pb = [NSPasteboard generalPasteboard];
             [pb clearContents];
             [pb setString:[NSString stringWithUTF8String:text.c_str()] forType:NSPasteboardTypeString];
             if (isRect) [pb setData:[NSData data] forType:kMiuRectangularSelectionType];
+            __strong EditorView *strongSelf = weakSelf;
+            if (strongSelf && strongSelf->editor && strongSelf->editor->lastCopyWasLine) {
+                [pb setData:[NSData data] forType:kMiuLineSelectionType];
+            }
         };
-        editor->cbGetClipboard = [](bool& isRect) -> std::string {
+        editor->cbGetClipboard = [weakSelf](bool& isRect) -> std::string {
             NSPasteboard *pb = [NSPasteboard generalPasteboard];
             NSString *s = [pb stringForType:NSPasteboardTypeString];
             isRect = ([pb dataForType:kMiuRectangularSelectionType] != nil);
+            __strong EditorView *strongSelf = weakSelf;
+            if (strongSelf && strongSelf->editor) {
+                strongSelf->editor->lastCopyWasLine = ([pb dataForType:kMiuLineSelectionType] != nil);
+            }
             return s ? [s UTF8String] : "";
         };
         editor->cbShowReplaceAlert = [](int count) {
@@ -352,9 +361,15 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     NSString *fullHtmlNS = [NSString stringWithUTF8String:res.fullHtml.c_str()];
     if (!fullHtmlNS) return;
 
+    NSURL *baseURL = nil;
+    if (!editor->currentFilePath.empty()) {
+        NSString *pathNS = [NSString stringWithUTF8String:WToUTF8(editor->currentFilePath).c_str()];
+        if (pathNS) baseURL = [[NSURL fileURLWithPath:pathNS] URLByDeletingLastPathComponent];
+    }
+
     if (!editor->previewInitialLoaded || !res.isMdOrMermaidShell) {
         editor->previewInitialLoaded = res.isMdOrMermaidShell;
-        [previewWebView loadHTMLString:fullHtmlNS baseURL:nil];
+        [previewWebView loadHTMLString:fullHtmlNS baseURL:baseURL];
     } else {
         std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, editor->isDarkMode);
         NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
@@ -362,7 +377,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             WKWebView *wv = previewWebView;
             [wv evaluateJavaScript:jsNS completionHandler:^(id result, NSError *error) {
                 if (error) {
-                    [wv loadHTMLString:fullHtmlNS baseURL:nil];
+                    [wv loadHTMLString:fullHtmlNS baseURL:baseURL];
                 }
             }];
         }
@@ -470,6 +485,22 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 }
 
 - (NSMenu *)menuForEvent:(NSEvent *)event {
+    if (editor && event) {
+        NSPoint p = [self convertPoint:[event locationInWindow] fromView:nil];
+        if (p.x >= editor->gutterWidth && p.x <= self.bounds.size.width - editor->visibleVScrollWidth &&
+            p.y >= 0 && p.y <= self.bounds.size.height - editor->visibleHScrollHeight) {
+            bool hasSel = false;
+            for (const auto& c : editor->cursors) if (c.hasSelection()) { hasSel = true; break; }
+            if (!hasSel && editor->cursors.size() <= 1 && !editor->isRectSelecting) {
+                size_t pos = editor->getDocPosFromPoint((float)p.x, (float)p.y);
+                int li = editor->getLineIdx(pos);
+                float physX = editor->getXInLine(li, pos);
+                editor->cursors.clear();
+                editor->cursors.push_back({ pos, pos, physX, physX, false, false });
+                [self setNeedsDisplay:YES];
+            }
+        }
+    }
     NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Context"];
     [menu addItemWithTitle:NSLocalizedString(@"Undo", @"元に戻す") action:@selector(undo:) keyEquivalent:@"z"];
     NSMenuItem *redoItem = [menu addItemWithTitle:NSLocalizedString(@"Redo", @"やり直し") action:@selector(redo:) keyEquivalent:@"Z"];
@@ -481,6 +512,21 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     [menu addItem:[NSMenuItem separatorItem]];
     [menu addItemWithTitle:NSLocalizedString(@"Select All", @"すべて選択") action:@selector(selectAll:) keyEquivalent:@"a"];
     return menu;
+}
+
+- (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
+    if (!editor) return NO;
+    SEL action = [menuItem action];
+    if (action == @selector(undo:)) return !editor->undo.undoStack.empty();
+    if (action == @selector(redo:)) return !editor->undo.redoStack.empty();
+    if (action == @selector(paste:)) {
+        NSString *s = [[NSPasteboard generalPasteboard] stringForType:NSPasteboardTypeString];
+        return (s != nil && [s length] > 0);
+    }
+    if (action == @selector(selectAll:) || action == @selector(cut:) || action == @selector(copy:)) {
+        return editor->pt.length() > 0;
+    }
+    return YES;
 }
 
 - (void)cut:(id)sender { if (editor) { editor->cutToClipboard(); [self setNeedsDisplay:YES]; } }
@@ -502,7 +548,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     bool needsV = L.needV;
     bool needsH = L.needH;
     float visibleWidth = L.textAreaW;
-    int totalLines = L.totalLines;
+    int totalLines = (editor->wordWrapEnabled && L.totalVisualLines > L.totalLines) ? L.totalVisualLines : L.totalLines;
     float maxLineWidth = editor->maxLineWidth;
 
     if (needsV) {
@@ -521,13 +567,17 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     int visibleLines = L.visibleLines;
     [vScroller setKnobProportion:std::min(1.0, (double)visibleLines / std::max(1, totalLines))];
     int maxV = std::max(0, totalLines - visibleLines);
+    int currentV = (editor->wordWrapEnabled && L.totalLines == 1 && L.totalVisualLines > 1) ? editor->vScrollSubLine : editor->vScrollPos;
     if (needsV && maxV > 0) {
-        [vScroller setDoubleValue:std::clamp((double)editor->vScrollPos / maxV, 0.0, 1.0)];
+        [vScroller setDoubleValue:std::clamp((double)currentV / maxV, 0.0, 1.0)];
         [vScroller setEnabled:YES];
     } else {
         [vScroller setDoubleValue:0.0];
         [vScroller setEnabled:NO];
-        if (!needsV) editor->vScrollPos = 0;
+        if (!needsV) {
+            editor->vScrollPos = 0;
+            editor->vScrollSubLine = 0;
+        }
     }
 
     if (visibleWidth < 1.0f) visibleWidth = 1.0f;
@@ -548,8 +598,13 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     NSRect b = [self bounds];
     ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
     if (s == vScroller) {
-        int maxV = std::max(0, L.totalLines - L.visibleLines);
-        editor->vScrollPos = std::clamp((int)std::round([s doubleValue] * maxV), 0, maxV);
+        int totalLines = (editor->wordWrapEnabled && L.totalVisualLines > L.totalLines) ? L.totalVisualLines : L.totalLines;
+        int maxV = std::max(0, totalLines - L.visibleLines);
+        if (editor->wordWrapEnabled && L.totalLines == 1 && L.totalVisualLines > 1) {
+            editor->vScrollSubLine = std::clamp((int)std::round([s doubleValue] * maxV), 0, maxV);
+        } else {
+            editor->vScrollPos = std::clamp((int)std::round([s doubleValue] * maxV), 0, maxV);
+        }
     } else {
         float maxH = std::max(0.0f, editor->maxLineWidth - L.textAreaW);
         editor->hScrollPos = std::max(0, (int)([s doubleValue] * maxH));
@@ -578,6 +633,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     isPotentialDragMove = NO;
     editor->isDraggingSelection = false;
     editor->isGutterDragging = false;
+    editor->activeEmmetSession.active = false;
     editor->rollbackPadding();
     editor->isRectSelecting = false;
 
@@ -735,6 +791,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         editor->cursors.push_back({ pos, pos, physX, physX, false, false });
     }
     editor->isGutterDragging = false;
+    editor->mergeCursors();
     [self setNeedsDisplay:YES];
 }
 
@@ -965,6 +1022,16 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         }
     }
 
+    if (code == 114 && !cmd && !ctrl && !opt && !shift) { // Insert (Overwrite Mode)
+        editor->isOverwriteMode = !editor->isOverwriteMode;
+        [self setNeedsDisplay:YES];
+        return;
+    }
+    if (code == 103 && !cmd && !ctrl && !opt && !shift) { // F11 FullScreen
+        [[self window] toggleFullScreen:nil];
+        return;
+    }
+
     // Option+Z (Word Wrap), Option+P (Live Preview), Option+T (Always on Top)
     if (opt && !cmd && !ctrl && !shift) {
         if (code == 6) { editor->toggleWordWrap(); [self setNeedsDisplay:YES]; return; } // Z
@@ -972,13 +1039,13 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         if (code == 17) { editor->toggleAlwaysOnTop(); [self setNeedsDisplay:YES]; return; } // T
     }
 
-    // Tab / Shift+Tab (Emmet tabstops & expansion, or indent/unindent)
+    // Tab / Shift+Tab (Emmet expansion & tabstops, or indent/unindent)
     if (code == 48 && !cmd && !ctrl && !opt) {
-        if (editor->jumpEmmetTabstop(!shift)) {
+        if (!shift && editor->tryExpandEmmet()) {
             [self setNeedsDisplay:YES];
             return;
         }
-        if (!shift && editor->tryExpandEmmet()) {
+        if (editor->jumpEmmetTabstop(!shift)) {
             [self setNeedsDisplay:YES];
             return;
         }
@@ -1030,6 +1097,13 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     if (code == 116 || code == 121) { // PageUp / PageDown
         float viewHeight = [self bounds].size.height - editor->visibleHScrollHeight;
         int pageLines = std::max(1, (int)(viewHeight / editor->lineHeight) - 1);
+        if (editor->wordWrapEnabled) {
+            for (int i = 0; i < pageLines; ++i) {
+                editor->moveVisualUpDown(code == 116, shift);
+            }
+            [self setNeedsDisplay:YES];
+            return;
+        }
         int totalLines = (int)editor->lineStarts.size();
         for (auto& c : editor->cursors) {
             int currentLine = editor->getLineIdx(c.head);
@@ -1059,7 +1133,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         if ([lowerChar isEqualToString:@"/"] || code == 44) { editor->toggleComment(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"b"] || code == 11) { editor->jumpToMatchingBracket(shift); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"u"]) { editor->convertSelectedText(!shift); return; }
-        if (shift && [lowerChar isEqualToString:@"k"]) { editor->deleteLine(); [self setNeedsDisplay:YES]; return; }
+        if (shift && ([lowerChar isEqualToString:@"k"] || [lowerChar isEqualToString:@"l"])) { editor->deleteLine(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"d"]) { editor->selectNextOccurrence(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"a"]) { editor->selectAll(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"s"]) { shift ? editor->saveFileAs() : (editor->currentFilePath.empty() ? editor->saveFileAs() : editor->saveFile(editor->currentFilePath)); [self setNeedsDisplay:YES]; return; }
@@ -1067,6 +1141,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         if ([lowerChar isEqualToString:@"x"]) { editor->cutToClipboard(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"v"]) { editor->pasteFromClipboard(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"z"]) { shift ? editor->performRedo() : editor->performUndo(); [self setNeedsDisplay:YES]; return; }
+        if ([lowerChar isEqualToString:@"y"]) { editor->performRedo(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"o"]) { [NSApp sendAction:@selector(openDocument:) to:nil from:self]; return; }
         if ([lowerChar isEqualToString:@"n"]) { [NSApp sendAction:@selector(newDocument:) to:nil from:self]; return; }
         if ([lowerChar isEqualToString:@"0"]) { [self applyZoom:14.0f relative:false]; return; }
@@ -1106,56 +1181,77 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             [self setNeedsDisplay:YES];
             return;
         }
-        // Visual Up/Down when soft wrap is active
+        // Visual Up/Down and Visual Home/End when soft wrap is active
         if ((code == 126 || code == 125) && editor->wordWrapEnabled && !opt && !cmd && !ctrl) {
             editor->moveVisualUpDown(code == 126, shift);
+            return;
+        }
+        if ((code == 123 || code == 124) && editor->wordWrapEnabled && cmd && !opt && !ctrl) {
+            if (code == 123) editor->moveVisualHome(shift);
+            else editor->moveVisualEnd(shift);
             return;
         }
 
         editor->rollbackPadding();
         editor->isRectSelecting = false;
+        float wrapW = editor->getEffectiveTextWidth((float)[self bounds].size.width);
         for (auto& c : editor->cursors) {
             if (code == 123) {
-                size_t p = c.head;
-                int li = editor->getLineIdx(p);
-                size_t lineStart = editor->lineStarts[li];
-                if (cmd) {
-                    c.head = lineStart;
-                } else if (opt) {
-                    if (p == lineStart && p > 0) p--;
-                    else {
-                        while (p > lineStart && !editor->isWordChar(editor->pt.charAt(p - 1))) p--;
-                        while (p > lineStart && editor->isWordChar(editor->pt.charAt(p - 1))) p--;
-                    }
-                    c.head = p;
+                if (c.hasSelection() && !shift && !opt && !cmd) {
+                    c.head = c.start();
+                    c.anchor = c.head;
                 } else {
-                    c.head = editor->moveCaretVisual(c.head, false);
+                    size_t p = c.head;
+                    int li = editor->getLineIdx(p);
+                    size_t lineStart = editor->lineStarts[li];
+                    if (cmd) {
+                        c.head = lineStart;
+                    } else if (opt) {
+                        if (p == lineStart && p > 0) p--;
+                        else {
+                            while (p > lineStart && !editor->isWordChar(editor->pt.charAt(p - 1))) p--;
+                            while (p > lineStart && editor->isWordChar(editor->pt.charAt(p - 1))) p--;
+                        }
+                        c.head = p;
+                    } else {
+                        c.head = editor->moveCaretVisual(c.head, false);
+                    }
                 }
                 c.isVirtual = false;
                 c.affinity = false;
             } else if (code == 124) {
-                size_t p = c.head;
-                size_t len = editor->pt.length();
-                int li = editor->getLineIdx(p);
-                size_t lineStart = editor->lineStarts[li];
-                size_t lineEnd = (li + 1 < (int)editor->lineStarts.size()) ? editor->lineStarts[li + 1] : len;
-                size_t physEnd = lineEnd;
-                if (physEnd > lineStart && editor->pt.charAt(physEnd - 1) == '\n') physEnd--;
-                if (physEnd > lineStart && editor->pt.charAt(physEnd - 1) == '\r') physEnd--;
-                if (cmd) {
-                    c.head = physEnd;
-                } else if (opt) {
-                    if (p == physEnd && p < len) p = lineEnd;
-                    else {
-                        while (p < physEnd && editor->isWordChar(editor->pt.charAt(p))) p++;
-                        while (p < physEnd && !editor->isWordChar(editor->pt.charAt(p))) p++;
-                    }
-                    c.head = p;
+                if (c.hasSelection() && !shift && !opt && !cmd) {
+                    c.head = c.end();
+                    c.anchor = c.head;
+                    c.affinity = false;
                 } else {
-                    c.head = editor->moveCaretVisual(c.head, true);
+                    size_t p = c.head;
+                    size_t len = editor->pt.length();
+                    int li = editor->getLineIdx(p);
+                    size_t lineStart = editor->lineStarts[li];
+                    size_t lineEnd = (li + 1 < (int)editor->lineStarts.size()) ? editor->lineStarts[li + 1] : len;
+                    size_t physEnd = lineEnd;
+                    if (physEnd > lineStart && editor->pt.charAt(physEnd - 1) == '\n') physEnd--;
+                    if (physEnd > lineStart && editor->pt.charAt(physEnd - 1) == '\r') physEnd--;
+                    if (cmd) {
+                        c.head = physEnd;
+                        c.affinity = false;
+                    } else if (opt) {
+                        if (p == physEnd && p < len) p = lineEnd;
+                        else {
+                            while (p < physEnd && editor->isWordChar(editor->pt.charAt(p))) p++;
+                            while (p < physEnd && !editor->isWordChar(editor->pt.charAt(p))) p++;
+                        }
+                        c.head = p;
+                        c.affinity = false;
+                    } else {
+                        size_t nextPos = editor->moveCaretVisual(c.head, true);
+                        int nextLi = editor->getLineIdx(nextPos);
+                        c.affinity = (nextPos > p) && editor->isVisualLineWrapBoundary(nextLi, nextPos, wrapW);
+                        c.head = nextPos;
+                    }
                 }
                 c.isVirtual = false;
-                c.affinity = false;
             } else if (code == 126) {
                 int l = editor->getLineIdx(c.head);
                 if (l > 0) {
@@ -1182,6 +1278,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             if (code == 123 || code == 124) c.desiredX = editor->getXFromPos(c.head);
             if (!shift) { c.anchor = c.head; c.originalAnchorX = c.desiredX; }
         }
+        editor->mergeCursors();
         editor->ensureCaretVisible();
         [self setNeedsDisplay:YES];
         return;

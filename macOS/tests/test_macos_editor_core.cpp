@@ -501,6 +501,91 @@ static void testPhase5RandomStressTest600Steps() {
     CHECK(ed.pt.getRange(0, ed.pt.length()) == finalDoc, "Full Redo across all 600 random steps reproduced exact final document");
 }
 
+static void testParityEdgeCases() {
+    std::cout << "--- Running Parity Edge Cases: UTF-16LE/BE Save, Whole-Line Copy/Paste, Overwrite Mode & Soft-Wrap SubLine Scroll ---" << std::endl;
+    Editor ed;
+    std::string tempDir = (std::filesystem::temp_directory_path() / "miu_macos_test_appdata").string();
+    std::filesystem::create_directories(tempDir);
+    ed.customAppSupportDir = tempDir;
+    float viewW = 240.0f, viewH = 120.0f;
+    ed.cbGetViewSize = [&](float& w, float& h) { w = viewW; h = viewH; };
+
+    std::string clipBuf;
+    bool clipRect = false;
+    ed.cbSetClipboard = [&](const std::string& s, bool isR) { clipBuf = s; clipRect = isR; };
+    ed.cbGetClipboard = [&](bool& isR) -> std::string { isR = clipRect; return clipBuf; };
+
+    // 1. UTF-16LE & UTF-16BE saveFile + openFileFromPath round-trip + newFile encoding reset
+    std::string u16Sample = "Hello UTF-16 日本語 🚀\nLine 2";
+    ed.pt.initFromFile(u16Sample.data(), u16Sample.size());
+    ed.rebuildLineStarts();
+    ed.currentEncoding = ENC_UTF16LE;
+    std::string u16LePath = tempDir + "/test_utf16le.txt";
+    CHECK(ed.saveFile(UTF8ToW(u16LePath)), "saveFile succeeded for ENC_UTF16LE");
+    CHECK(ed.openFileFromPath(u16LePath), "openFileFromPath succeeded for ENC_UTF16LE");
+    CHECK(ed.currentEncoding == ENC_UTF16LE, "Opened UTF-16LE file detected as ENC_UTF16LE");
+    CHECK(ed.pt.getRange(0, ed.pt.length()) == u16Sample, "UTF-16LE round-trip preserved CJK and emoji content");
+
+    ed.currentEncoding = ENC_UTF16BE;
+    std::string u16BePath = tempDir + "/test_utf16be.txt";
+    CHECK(ed.saveFile(UTF8ToW(u16BePath)), "saveFile succeeded for ENC_UTF16BE");
+    CHECK(ed.openFileFromPath(u16BePath), "openFileFromPath succeeded for ENC_UTF16BE");
+    CHECK(ed.currentEncoding == ENC_UTF16BE, "Opened UTF-16BE file detected as ENC_UTF16BE");
+    CHECK(ed.pt.getRange(0, ed.pt.length()) == u16Sample, "UTF-16BE round-trip preserved CJK and emoji content");
+
+    ed.isDirty = false;
+    ed.newFile();
+    CHECK(ed.currentEncoding == ENC_UTF8_NOBOM && ed.currentCodePage == 0, "newFile resets encoding to ENC_UTF8_NOBOM");
+
+    // 2. Whole-line copy & paste above current line preserving cursor column
+    std::string linesDoc = "first line\nsecond line";
+    ed.pt.initFromFile(linesDoc.data(), linesDoc.size());
+    ed.rebuildLineStarts();
+    // Place cursor at column 3 of line 0 ("fir|st line") with no selection
+    ed.cursors = { { 3, 3, ed.getXFromPos(3), ed.getXFromPos(3), false, false } };
+    ed.copyToClipboard();
+    CHECK(ed.lastCopyWasLine, "copyToClipboard without selection sets lastCopyWasLine");
+    // Move cursor to column 4 of line 1 ("seco|nd line", pos = 11 + 4 = 15)
+    ed.cursors = { { 15, 15, ed.getXFromPos(15), ed.getXFromPos(15), false, false } };
+    ed.pasteFromClipboard();
+    CHECK(ed.pt.getRange(0, ed.pt.length()) == "first line\nfirst line\nsecond line", "Whole-line paste inserted above current line");
+    CHECK(ed.cursors[0].head == 26, "Whole-line paste preserved cursor column offset on original line");
+    ed.performUndo();
+    CHECK(ed.pt.getRange(0, ed.pt.length()) == linesDoc && ed.cursors[0].head == 15, "Undo of whole-line paste restored text and cursor column");
+
+    // 3. deleteLine at EOF removes preceding newline
+    ed.cursors = { { 15, 15, ed.getXFromPos(15), ed.getXFromPos(15), false, false } };
+    ed.deleteLine();
+    CHECK(ed.pt.getRange(0, ed.pt.length()) == "first line", "deleteLine on last line removes preceding newline");
+
+    // 4. Overwrite mode (isOverwriteMode)
+    std::string ovDoc = "abc\ndef";
+    ed.pt.initFromFile(ovDoc.data(), ovDoc.size());
+    ed.rebuildLineStarts();
+    ed.isOverwriteMode = true;
+    ed.cursors = { { 1, 1, ed.getXFromPos(1), ed.getXFromPos(1), false, false } };
+    ed.insertAtCursors("Z");
+    CHECK(ed.pt.getRange(0, ed.pt.length()) == "aZc\ndef", "isOverwriteMode replaced character 'b' with 'Z'");
+    // At end of line (before '\n'), overwrite mode should insert without eating '\n'
+    ed.cursors = { { 3, 3, ed.getXFromPos(3), ed.getXFromPos(3), false, false } };
+    ed.insertAtCursors("!");
+    CHECK(ed.pt.getRange(0, ed.pt.length()) == "aZc!\ndef", "isOverwriteMode at EOL did not overwrite newline");
+    ed.isOverwriteMode = false;
+
+    // 5. Soft-wrap singleLineWrap getScrollBarLayout & ensureCaretVisible vScrollSubLine
+    std::string longSingle(600, 'm');
+    ed.pt.initFromFile(longSingle.data(), longSingle.size());
+    ed.rebuildLineStarts();
+    ed.wordWrapEnabled = true;
+    ed.vScrollPos = 0;
+    ed.vScrollSubLine = 0;
+    ScrollBarLayout wrapLayout = ed.getScrollBarLayout(viewW, viewH);
+    CHECK(wrapLayout.needV && wrapLayout.totalVisualLines > wrapLayout.visibleLines, "Single long wrapped line triggers vertical scrollbar in soft-wrap mode");
+    ed.cursors = { { longSingle.size(), longSingle.size(), 0.0f, 0.0f, false, false } };
+    ed.ensureCaretVisible();
+    CHECK(ed.vScrollSubLine > 0, "ensureCaretVisible scrolls vScrollSubLine when caret is at end of wrapped single line");
+}
+
 int main() {
     testPhase1PieceTableAndFastLineStarts();
     testPhase1FastSearchReplaceAndReDoS();
@@ -510,6 +595,7 @@ int main() {
     testPhase3PreviewPeleAndLatex();
     testPhase4ViewStateRecentFilesAndEncodings();
     testPhase5RandomStressTest600Steps();
+    testParityEdgeCases();
 
     std::cout << "\n==========================================" << std::endl;
     std::cout << "Total Assertions Passed: " << g_passCount << std::endl;

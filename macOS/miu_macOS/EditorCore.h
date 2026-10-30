@@ -342,9 +342,12 @@ struct Editor {
     uint32_t currentCodePage = 0;
     bool isDirty = false;
     bool isDarkMode = false;
+    bool isOverwriteMode = false;
     bool showHelpPopup = false;
     bool isAlwaysOnTop = false;
     bool wordWrapEnabled = false;
+    bool lastCopyWasLine = false;
+    std::string lastLineCopyText;
 
     std::string searchQuery;
     std::string replaceQuery;
