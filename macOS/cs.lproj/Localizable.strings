@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Otevřít...";
 "Open Recent" = "Nedávné";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Vyčistit nabídku";
+"Close" = "Zavřít";
 "Save As" = "Save As";
 "Undo" = "Zpět";
 "Redo" = "Znovu";
@@ -37,10 +37,10 @@
 "Cut" = "Vyjmout";
 "Copy" = "Kopírovat";
 "Paste" = "Vložit";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Přepnout komentář";
+"Word Wrap" = "Zalamování řádků";
+"Live Preview" = "Náhled";
+"Always on Top" = "Vždy navrchu";
 "File modified externally. Reload?" = "Soubor byl externě změněn.\nChcete jej znovu načíst?";
 "Done" = "Done";
 "Search..." = "Najít...";
@@ -58,3 +58,4 @@
 "File" = "Soubor";
 "Edit" = "Úpravy";
 "View" = "Zobrazení";
+"Tab" = "Tabulátor";

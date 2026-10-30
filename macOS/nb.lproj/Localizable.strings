@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Åpne...";
 "Open Recent" = "Nylige";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Tøm meny";
+"Close" = "Lukk";
 "Save As" = "Save As";
 "Undo" = "Angre";
 "Redo" = "Gjør om";
@@ -37,10 +37,10 @@
 "Cut" = "Klipp ut";
 "Copy" = "Kopier";
 "Paste" = "Lim inn";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Veksle kommentar";
+"Word Wrap" = "Tekstbryting";
+"Live Preview" = "Forhåndsvisning";
+"Always on Top" = "Alltid øverst";
 "File modified externally. Reload?" = "Filen har blitt endret eksternt.\nVil du laste den inn på nytt?";
 "Done" = "Done";
 "Search..." = "Søk...";
@@ -58,3 +58,4 @@
 "File" = "Arkiv";
 "Edit" = "Rediger";
 "View" = "Vis";
+"Tab" = "Tabulator";

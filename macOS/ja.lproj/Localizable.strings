@@ -26,10 +26,10 @@
 "Quit" = "%@ を終了";
 "New" = "新規";
 "Open" = "開く";
-"Open..." = "Open...";
+"Open..." = "開く...";
 "Open Recent" = "最近使った項目";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "履歴を消去";
+"Close" = "閉じる";
 "Save As" = "別名保存";
 "Undo" = "元に戻す";
 "Redo" = "やり直し";
@@ -37,10 +37,10 @@
 "Cut" = "切り取り";
 "Copy" = "コピー";
 "Paste" = "貼り付け";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "コメント切替";
+"Word Wrap" = "折り返し";
+"Live Preview" = "プレビュー";
+"Always on Top" = "常に最前面に表示";
 "File modified externally. Reload?" = "ファイルが外部で変更されました。\n再読み込みしますか？";
 "Done" = "完了";
 "Search..." = "検索...";
@@ -58,3 +58,4 @@
 "File" = "ファイル";
 "Edit" = "編集";
 "View" = "表示";
+"Tab" = "タブ";

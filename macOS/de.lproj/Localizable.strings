@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Öffnen...";
 "Open Recent" = "Zuletzt verwendet";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Menü löschen";
+"Close" = "Schließen";
 "Save As" = "Save As";
 "Undo" = "Rückgängig";
 "Redo" = "Wiederholen";
@@ -37,10 +37,10 @@
 "Cut" = "Ausschneiden";
 "Copy" = "Kopieren";
 "Paste" = "Einfügen";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Kommentar umschalten";
+"Word Wrap" = "Zeilenumbruch";
+"Live Preview" = "Vorschau";
+"Always on Top" = "Immer im Vordergrund";
 "File modified externally. Reload?" = "Die Datei wurde extern geändert.\nMöchten Sie sie neu laden?";
 "Done" = "Done";
 "Search..." = "Suchen...";
@@ -58,3 +58,4 @@
 "File" = "Ablage";
 "Edit" = "Bearbeiten";
 "View" = "Darstellung";
+"Tab" = "Tabulator";

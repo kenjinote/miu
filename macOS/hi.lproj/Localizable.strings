@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "खोलें...";
 "Open Recent" = "हाल ही के";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "मेनू साफ़ करें";
+"Close" = "बंद करें";
 "Save As" = "Save As";
 "Undo" = "पूर्ववत करें";
 "Redo" = "फिर से करें";
@@ -37,10 +37,10 @@
 "Cut" = "काटें";
 "Copy" = "कॉपी करें";
 "Paste" = "पेस्ट करें";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "टिप्पणी टॉगल करें";
+"Word Wrap" = "वर्ड रैप";
+"Live Preview" = "पूर्वावलोकन";
+"Always on Top" = "हमेशा सबसे ऊपर";
 "File modified externally. Reload?" = "फ़ाइल बाहरी रूप से संशोधित की गई है।\nक्या आप इसे फिर से लोड करना चाहते हैं?";
 "Done" = "Done";
 "Search..." = "खोजें...";
@@ -58,3 +58,4 @@
 "File" = "फ़ाइल";
 "Edit" = "संपादन";
 "View" = "दृश्य";
+"Tab" = "टैब";

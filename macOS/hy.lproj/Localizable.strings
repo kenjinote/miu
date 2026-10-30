@@ -26,10 +26,10 @@
 "Quit" = "Ավարտել %@-ը";
 "New" = "Նոր";
 "Open" = "Բացել";
-"Open..." = "Open...";
+"Open..." = "Բացել...";
 "Open Recent" = "Recent";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Մաքրել ընտրացանկը";
+"Close" = "Փակել";
 "Save As" = "Պահպանել որպես";
 "Undo" = "Undo";
 "Redo" = "Redo";
@@ -37,10 +37,10 @@
 "Cut" = "Cut";
 "Copy" = "Copy";
 "Paste" = "Paste";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Մեկնաբանություն";
+"Word Wrap" = "Տողադարձ";
+"Live Preview" = "Նախադիտում";
+"Always on Top" = "Միշտ վերևում";
 "File modified externally. Reload?" = "The file has been modified externally.\nDo you want to reload it?";
 "Done" = "Պատրաստ է";
 "Search..." = "Որոնում...";
@@ -58,3 +58,4 @@
 "File" = "Ֆայլ";
 "Edit" = "Խմբագրել";
 "View" = "Տեսք";
+"Tab" = "ներդիր";

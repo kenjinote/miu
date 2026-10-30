@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Открыть...";
 "Open Recent" = "Последние";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Очистить меню";
+"Close" = "Закрыть";
 "Save As" = "Save As";
 "Undo" = "Отменить";
 "Redo" = "Повторить";
@@ -37,10 +37,10 @@
 "Cut" = "Вырезать";
 "Copy" = "Копировать";
 "Paste" = "Вставить";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Комментарий";
+"Word Wrap" = "Перенос строк";
+"Live Preview" = "Предпросмотр";
+"Always on Top" = "Поверх всех окон";
 "File modified externally. Reload?" = "Файл был изменен извне.\nХотите перезагрузить его?";
 "Done" = "Done";
 "Search..." = "Найти...";
@@ -58,3 +58,4 @@
 "File" = "Файл";
 "Edit" = "Правка";
 "View" = "Вид";
+"Tab" = "Табуляция";

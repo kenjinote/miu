@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Aç...";
 "Open Recent" = "Son";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Menüyü Temizle";
+"Close" = "Kapat";
 "Save As" = "Save As";
 "Undo" = "Geri Al";
 "Redo" = "Yinele";
@@ -37,10 +37,10 @@
 "Cut" = "Kes";
 "Copy" = "Kopyala";
 "Paste" = "Yapıştır";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Yorumu Aç/Kapat";
+"Word Wrap" = "Sözcük Kaydırma";
+"Live Preview" = "Önizleme";
+"Always on Top" = "Her Zaman Üstte";
 "File modified externally. Reload?" = "Dosya dışarıdan değiştirilmiş.\nYeniden yüklemek istiyor musunuz?";
 "Done" = "Done";
 "Search..." = "Bul...";
@@ -58,3 +58,4 @@
 "File" = "Dosya";
 "Edit" = "Düzen";
 "View" = "Görünüm";
+"Tab" = "Sekme";

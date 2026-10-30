@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Άνοιγμα...";
 "Open Recent" = "Πρόσφατα";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Εκκαθάριση μενού";
+"Close" = "Κλείσιμο";
 "Save As" = "Save As";
 "Undo" = "Αναίρεση";
 "Redo" = "Επανάληψη";
@@ -37,10 +37,10 @@
 "Cut" = "Αποκοπή";
 "Copy" = "Αντιγραφή";
 "Paste" = "Επικόλληση";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Εναλλαγή σχολίου";
+"Word Wrap" = "Αναδίπλωση λέξεων";
+"Live Preview" = "Προεπισκόπηση";
+"Always on Top" = "Πάντα σε πρώτο πλάνο";
 "File modified externally. Reload?" = "Το αρχείο τροποποιήθηκε εξωτερικά.\nΘέλετε να το επαναφορτώσετε;";
 "Done" = "Done";
 "Search..." = "Εύρεση...";
@@ -58,3 +58,4 @@
 "File" = "Αρχείο";
 "Edit" = "Επεξεργασία";
 "View" = "Προβολή";
+"Tab" = "Στηλοθέτης";

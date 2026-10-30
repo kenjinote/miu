@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Avaa...";
 "Open Recent" = "Viimeisimmät";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Tyhjennä valikko";
+"Close" = "Sulje";
 "Save As" = "Save As";
 "Undo" = "Kumoa";
 "Redo" = "Tee uudelleen";
@@ -37,10 +37,10 @@
 "Cut" = "Leikkaa";
 "Copy" = "Kopioi";
 "Paste" = "Liitä";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Kommentti päälle/pois";
+"Word Wrap" = "Rivitys";
+"Live Preview" = "Esikatselu";
+"Always on Top" = "Aina päällimmäisenä";
 "File modified externally. Reload?" = "Tiedostoa on muokattu ulkoisesti.\nHaluatko ladata sen uudelleen?";
 "Done" = "Done";
 "Search..." = "Etsi...";
@@ -58,3 +58,4 @@
 "File" = "Arkisto";
 "Edit" = "Muokkaa";
 "View" = "Näytä";
+"Tab" = "Sarkain";

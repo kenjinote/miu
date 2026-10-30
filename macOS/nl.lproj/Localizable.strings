@@ -28,8 +28,8 @@
 "Open" = "Open";
 "Open..." = "Open...";
 "Open Recent" = "Recent";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Menu wissen";
+"Close" = "Sluiten";
 "Save As" = "Save As";
 "Undo" = "Ongedaan maken";
 "Redo" = "Opnieuw";
@@ -37,10 +37,10 @@
 "Cut" = "Knippen";
 "Copy" = "Kopiëren";
 "Paste" = "Plakken";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Opmerking wisselen";
+"Word Wrap" = "Regelterugloop";
+"Live Preview" = "Voorbeeld";
+"Always on Top" = "Altijd op voorgrond";
 "File modified externally. Reload?" = "Het bestand is extern gewijzigd.\nWilt u het opnieuw laden?";
 "Done" = "Done";
 "Search..." = "Zoeken...";
@@ -58,3 +58,4 @@
 "File" = "Archief";
 "Edit" = "Wijzig";
 "View" = "Weergave";
+"Tab" = "Tab";

@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Mở...";
 "Open Recent" = "Gần đây";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Xóa menu";
+"Close" = "Đóng";
 "Save As" = "Save As";
 "Undo" = "Hoàn tác";
 "Redo" = "Làm lại";
@@ -37,10 +37,10 @@
 "Cut" = "Cắt";
 "Copy" = "Sao chép";
 "Paste" = "Dán";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Bật/tắt ghi chú";
+"Word Wrap" = "Tự động xuống dòng";
+"Live Preview" = "Xem trước";
+"Always on Top" = "Luôn ở trên cùng";
 "File modified externally. Reload?" = "Tệp đã bị sửa đổi từ bên ngoài.\nBạn có muốn tải lại không?";
 "Done" = "Done";
 "Search..." = "Tìm kiếm...";
@@ -58,3 +58,4 @@
 "File" = "Tệp";
 "Edit" = "Chỉnh sửa";
 "View" = "Xem";
+"Tab" = "Tab";

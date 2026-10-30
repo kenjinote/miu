@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Buka...";
 "Open Recent" = "Terkini";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Kosongkan Menu";
+"Close" = "Tutup";
 "Save As" = "Save As";
 "Undo" = "Buat Asal";
 "Redo" = "Buat Semula";
@@ -37,10 +37,10 @@
 "Cut" = "Potong";
 "Copy" = "Salin";
 "Paste" = "Tampal";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Togol Komen";
+"Word Wrap" = "Balut Perkataan";
+"Live Preview" = "Pratonton";
+"Always on Top" = "Sentiasa di Atas";
 "File modified externally. Reload?" = "Fail telah diubah suai dari luar.\nAdakah anda mahu memuatkannya semula?";
 "Done" = "Done";
 "Search..." = "Cari...";
@@ -58,3 +58,4 @@
 "File" = "Fail";
 "Edit" = "Edit";
 "View" = "Paparan";
+"Tab" = "Tab";

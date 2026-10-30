@@ -2011,7 +2011,7 @@
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Live Preview", nil), @selector(togglePreviewAction:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Word Wrap", nil), @selector(toggleWordWrapAction:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Toggle Comment", nil), @selector(toggleCommentAction:))];
-    [stackView addArrangedSubview:createBtn(@"Tab", @selector(handleTabKey:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Tab", nil), @selector(handleTabKey:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Top", nil), @selector(moveToDocStart:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Bottom", nil), @selector(moveToDocEnd:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Go To", nil), @selector(cmdGoToLine:))];

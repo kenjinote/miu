@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Öppna...";
 "Open Recent" = "Senaste";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Rensa meny";
+"Close" = "Stäng";
 "Save As" = "Save As";
 "Undo" = "Ångra";
 "Redo" = "Gör om";
@@ -37,10 +37,10 @@
 "Cut" = "Klipp ut";
 "Copy" = "Kopiera";
 "Paste" = "Klistra in";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Växla kommentar";
+"Word Wrap" = "Radbrytning";
+"Live Preview" = "Förhandsvisning";
+"Always on Top" = "Alltid överst";
 "File modified externally. Reload?" = "Filen har ändrats externt.\nVill du läsa in den igen?";
 "Done" = "Done";
 "Search..." = "Sök...";
@@ -58,3 +58,4 @@
 "File" = "Arkiv";
 "Edit" = "Redigera";
 "View" = "Innehåll";
+"Tab" = "Tabb";

@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Megnyitás...";
 "Open Recent" = "Legutóbbi";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Menü törlése";
+"Close" = "Bezárás";
 "Save As" = "Save As";
 "Undo" = "Visszavonás";
 "Redo" = "Újra";
@@ -37,10 +37,10 @@
 "Cut" = "Kivágás";
 "Copy" = "Másolás";
 "Paste" = "Beillesztés";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Megjegyzés váltása";
+"Word Wrap" = "Sortörés";
+"Live Preview" = "Előnézet";
+"Always on Top" = "Mindig felül";
 "File modified externally. Reload?" = "A fájlt kívülről módosították.\nSzeretné újratölteni?";
 "Done" = "Done";
 "Search..." = "Keresés...";
@@ -58,3 +58,4 @@
 "File" = "Fájl";
 "Edit" = "Szerkesztés";
 "View" = "Nézet";
+"Tab" = "Tabulátor";

@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "開啟...";
 "Open Recent" = "最近";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "清除選單";
+"Close" = "關閉";
 "Save As" = "Save As";
 "Undo" = "復原";
 "Redo" = "取消復原";
@@ -37,10 +37,10 @@
 "Cut" = "剪下";
 "Copy" = "複製";
 "Paste" = "貼上";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "切換註解";
+"Word Wrap" = "自動換行";
+"Live Preview" = "即時預覽";
+"Always on Top" = "最上層顯示";
 "File modified externally. Reload?" = "檔案已被外部程式修改。\n是否重新載入？";
 "Done" = "Done";
 "Search..." = "尋找...";
@@ -58,3 +58,4 @@
 "File" = "檔案";
 "Edit" = "編輯";
 "View" = "檢視";
+"Tab" = "定位鍵";

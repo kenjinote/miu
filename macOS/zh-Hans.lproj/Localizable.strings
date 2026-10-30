@@ -26,10 +26,10 @@
 "Quit" = "退出 %@";
 "New" = "新建";
 "Open" = "打开";
-"Open..." = "Open...";
+"Open..." = "打开...";
 "Open Recent" = "最近";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "清除菜单";
+"Close" = "关闭";
 "Save As" = "另存为";
 "Undo" = "撤销";
 "Redo" = "重做";
@@ -37,10 +37,10 @@
 "Cut" = "剪切";
 "Copy" = "复制";
 "Paste" = "粘贴";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "切换注释";
+"Word Wrap" = "自动换行";
+"Live Preview" = "实时预览";
+"Always on Top" = "总在最前";
 "File modified externally. Reload?" = "文件已被外部修改。\n是否重新加载？";
 "Done" = "完成";
 "Search..." = "搜索...";
@@ -58,3 +58,4 @@
 "File" = "文件";
 "Edit" = "编辑";
 "View" = "视图";
+"Tab" = "制表符";

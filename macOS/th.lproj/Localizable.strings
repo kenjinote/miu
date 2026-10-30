@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "เปิด...";
 "Open Recent" = "ไฟล์ล่าสุด";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "ล้างเมนู";
+"Close" = "ปิด";
 "Save As" = "Save As";
 "Undo" = "เลิกทำ";
 "Redo" = "ทำซ้ำ";
@@ -37,10 +37,10 @@
 "Cut" = "ตัด";
 "Copy" = "คัดลอก";
 "Paste" = "วาง";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "สลับความคิดเห็น";
+"Word Wrap" = "ตัดคำอัตโนมัติ";
+"Live Preview" = "ดูตัวอย่าง";
+"Always on Top" = "อยู่ด้านบนเสมอ";
 "File modified externally. Reload?" = "ไฟล์ถูกแก้ไขจากภายนอก\nคุณต้องการโหลดใหม่หรือไม่?";
 "Done" = "Done";
 "Search..." = "ค้นหา...";
@@ -58,3 +58,4 @@
 "File" = "ไฟล์";
 "Edit" = "แก้ไข";
 "View" = "มุมมอง";
+"Tab" = "แท็บ";

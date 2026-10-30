@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Apri...";
 "Open Recent" = "Recenti";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Cancella menu";
+"Close" = "Chiudi";
 "Save As" = "Save As";
 "Undo" = "Annulla";
 "Redo" = "Ripristina";
@@ -37,10 +37,10 @@
 "Cut" = "Taglia";
 "Copy" = "Copia";
 "Paste" = "Incolla";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Attiva/disattiva commento";
+"Word Wrap" = "A capo automatico";
+"Live Preview" = "Anteprima";
+"Always on Top" = "Sempre in primo piano";
 "File modified externally. Reload?" = "Il file è stato modificato esternamente.\nVuoi ricaricarlo?";
 "Done" = "Done";
 "Search..." = "Trova...";
@@ -58,3 +58,4 @@
 "File" = "File";
 "Edit" = "Modifica";
 "View" = "Vista";
+"Tab" = "Tabulazione";

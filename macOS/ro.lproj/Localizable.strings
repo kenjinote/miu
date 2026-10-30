@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Deschide...";
 "Open Recent" = "Recente";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Golire meniu";
+"Close" = "Închide";
 "Save As" = "Save As";
 "Undo" = "Anulare";
 "Redo" = "Refacere";
@@ -37,10 +37,10 @@
 "Cut" = "Decupare";
 "Copy" = "Copiere";
 "Paste" = "Lipire";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Comutare comentariu";
+"Word Wrap" = "Încadrare linie";
+"Live Preview" = "Previzualizare";
+"Always on Top" = "Mereu deasupra";
 "File modified externally. Reload?" = "Fișierul a fost modificat extern.\nDoriți să îl reîncărcați?";
 "Done" = "Done";
 "Search..." = "Căutare...";
@@ -58,3 +58,4 @@
 "File" = "Fișier";
 "Edit" = "Editare";
 "View" = "Vizualizare";
+"Tab" = "Tabulator";

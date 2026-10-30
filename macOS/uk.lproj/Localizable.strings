@@ -26,10 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
-"Open..." = "Open...";
+"Open..." = "Відкрити...";
 "Open Recent" = "Нещодавні";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Очистити меню";
+"Close" = "Закрити";
 "Save As" = "Save As";
 "Undo" = "Скасувати";
 "Redo" = "Повторити";
@@ -37,10 +37,10 @@
 "Cut" = "Вирізати";
 "Copy" = "Копіювати";
 "Paste" = "Вставити";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Коментар";
+"Word Wrap" = "Перенесення рядків";
+"Live Preview" = "Перегляд";
+"Always on Top" = "Поверх усіх вікон";
 "File modified externally. Reload?" = "Файл змінено зовнішньою програмою.\nПерезавантажити його?";
 "Done" = "Done";
 "Search..." = "Знайти...";
@@ -58,3 +58,4 @@
 "File" = "Файл";
 "Edit" = "Правка";
 "View" = "Вигляд";
+"Tab" = "Табуляція";

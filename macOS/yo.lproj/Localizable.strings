@@ -26,10 +26,10 @@
 "Quit" = "Jáde ní %@";
 "New" = "Titun";
 "Open" = "Ṣii";
-"Open..." = "Open...";
+"Open..." = "Ṣí...";
 "Open Recent" = "Recent";
-"Clear Menu" = "Clear Menu";
-"Close" = "Close";
+"Clear Menu" = "Pa Àkójọ Rẹ́";
+"Close" = "Pa dé";
 "Save As" = "Fi Pamọ Bi";
 "Undo" = "Undo";
 "Redo" = "Redo";
@@ -37,10 +37,10 @@
 "Cut" = "Cut";
 "Copy" = "Copy";
 "Paste" = "Paste";
-"Toggle Comment" = "Toggle Comment";
-"Word Wrap" = "Word Wrap";
-"Live Preview" = "Live Preview";
-"Always on Top" = "Always on Top";
+"Toggle Comment" = "Yí Àlàyé Padà";
+"Word Wrap" = "Kíkọ́ Ọ̀rọ̀";
+"Live Preview" = "Àyẹ̀wò";
+"Always on Top" = "Máa Wà Lókè";
 "File modified externally. Reload?" = "The file has been modified externally.\nDo you want to reload it?";
 "Done" = "Ṣetan";
 "Search..." = "Wa...";
@@ -58,3 +58,4 @@
 "File" = "Fáìlì";
 "Edit" = "Ṣàtúnṣe";
 "View" = "Ìwò";
+"Tab" = "Taabu";
