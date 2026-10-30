@@ -28,4 +28,8 @@ jobs:
         run: |
           pip3 install --quiet --break-system-packages pyjwt cryptography requests pillow numpy || pip3 install --quiet pyjwt cryptography requests pillow numpy
           python3 scripts/appstore_metadata_sync.py
-          python3 scripts/appstore_screenshots_sync.py --out-dir /tmp/asc_screenshots
+          if git diff-tree --no-commit-id --name-only -r HEAD | grep -E '^(scripts/appstore_screenshots_sync\.py|macOS/store_assets/)'; then
+            python3 scripts/appstore_screenshots_sync.py --out-dir /tmp/asc_screenshots
+          else
+            echo "Screenshots unchanged in this commit; skipping screenshot re-upload."
+          fi

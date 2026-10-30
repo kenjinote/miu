@@ -1002,6 +1002,49 @@ HI_WHATS_NEW = """miu का उपयोग करने के लिए ध�
 • स्क्रीन लेआउट अनुकूलन: iPad को पोर्ट्रेट और लैंडस्केप में घुमाने पर एडिटर क्षेत्र अब स्क्रीन के किनारों तक पूरी तरह फ़िट रहता है।
 • फ़ाइल सहेजने में सुधार: "इस रूप में सहेजें" (Save As) में अब आपके द्वारा दिया गया कस्टम एक्सटेंशन सुरक्षित रहता है और अपने आप .txt नहीं जुड़ता।"""
 
+SUPPORT_URL = "https://github.com/kenjinote/miu"
+
+# Localized keywords per App Store Connect locale (strictly <= 100 characters each)
+ASC_KEYWORDS = {
+    "ja": "テキストエディタ,メモ帳,コードエディタ,Markdown,マークダウン,プレビュー,プログラミング,正規表現,Mermaid,LaTeX,文字コード,軽量",
+    "en-US": "text editor,code editor,markdown,notepad,notes,syntax,mermaid,latex,regex,html,json,swift,python",
+    "en-GB": "text editor,code editor,markdown,notepad,notes,syntax,mermaid,latex,regex,html,json,swift,python",
+    "en-AU": "text editor,code editor,markdown,notepad,notes,syntax,mermaid,latex,regex,html,json,swift,python",
+    "en-CA": "text editor,code editor,markdown,notepad,notes,syntax,mermaid,latex,regex,html,json,swift,python",
+    "zh-Hans": "文本编辑器,代码编辑器,记事本,笔记,Markdown,实时预览,语法高亮,编程,正则表达式,Mermaid,LaTeX,轻量",
+    "zh-Hant": "文字編輯器,程式碼編輯器,記事本,筆記,Markdown,即時預覽,語法突顯,正規表示式,Mermaid,LaTeX,輕量",
+    "ko": "텍스트 에디터,코드 에디터,메모장,노트,마크다운,Markdown,실시간 미리보기,구문 강조,정규식,프로그래밍,Mermaid,LaTeX",
+    "de-DE": "Texteditor,Code-Editor,Notizen,Markdown,Vorschau,Syntax,Programmieren,Regex,LaTeX,Mermaid,HTML",
+    "fr-FR": "éditeur de texte,code,bloc-notes,notes,markdown,aperçu,syntaxe,programmation,regex,latex,mermaid",
+    "fr-CA": "éditeur de texte,code,bloc-notes,notes,markdown,aperçu,syntaxe,programmation,regex,latex,mermaid",
+    "es-ES": "editor de texto,código,bloc de notas,notas,markdown,vista previa,sintaxis,regex,latex,mermaid",
+    "es-MX": "editor de texto,código,bloc de notas,notas,markdown,vista previa,sintaxis,regex,latex,mermaid",
+    "it": "editor di testo,codice,blocco note,note,markdown,anteprima,sintassi,programmazione,regex,latex",
+    "pt-BR": "editor de texto,código,bloco de notas,notas,markdown,prévia,sintaxe,programação,regex,latex",
+    "pt-PT": "editor de texto,código,bloco de notas,notas,markdown,prévia,sintaxe,programação,regex,latex",
+    "ru": "текстовый редактор,редактор кода,блокнот,заметки,markdown,предпросмотр,синтаксис,код,regex,latex",
+    "nl-NL": "teksteditor,code-editor,kladblok,notities,markdown,voorbeeld,syntaxis,code,regex,latex,mermaid",
+    "sv": "textredigerare,kodredigerare,anteckningar,markdown,förhandsgranskning,syntax,programmering,regex",
+    "da": "teksteditor,kodeeditor,notesblok,noter,markdown,forhåndsvisning,syntaks,programmering,regex,latex",
+    "no": "tekstredigerer,koderedigerer,notatblokk,notater,markdown,forhåndsvisning,syntaks,kode,regex,latex",
+    "fi": "tekstieditori,koodieditori,muistio,muistiinpanot,markdown,esikatselu,syntaksi,ohjelmointi,regex",
+    "pl": "edytor tekstu,edytor kodu,notatnik,notatki,markdown,podgląd,składnia,kod,regex,latex,mermaid",
+    "cs": "textový editor,editor kódu,poznámky,markdown,náhled,syntaxe,programování,regex,latex,mermaid",
+    "hu": "szövegszerkesztő,kódszerkesztő,jegyzetek,markdown,előnézet,szintaxis,programozás,regex,latex",
+    "ro": "editor de text,editor cod,notițe,markdown,previzualizare,sintaxă,programare,regex,latex,mermaid",
+    "el": "επεξεργαστής κειμένου,κώδικας,σημειώσεις,markdown,προεπισκόπηση,σύνταξη,regex,latex,mermaid",
+    "tr": "metin düzenleyici,kod düzenleyici,not defteri,notlar,markdown,önizleme,sözdizimi,regex,latex",
+    "uk": "текстовий редактор,редактор коду,блокнот,нотатки,markdown,перегляд,синтаксис,код,regex,latex",
+    "vi": "trình soạn thảo,code,ghi chú,sổ tay,markdown,xem trước,cú pháp,lập trình,regex,latex,mermaid",
+    "th": "แก้ไขข้อความ,แก้ไขโค้ด,สมุดบันทึก,โน้ต,Markdown,พรีวิว,เขียนโปรแกรม,Regex,LaTeX,Mermaid",
+    "id": "editor teks,editor kode,catatan,notepad,markdown,pratinjau,sintaks,kode,regex,latex,mermaid",
+    "ms": "penyunting teks,penyunting kod,nota,notepad,markdown,pratonton,sintaks,kod,regex,latex,mermaid",
+    "hi": "टेक्स्ट एडिटर,कोड एडिटर,नोटपैड,नोट्स,Markdown,प्रीव्यू,प्रोग्रामिंग,Regex,LaTeX,Mermaid",
+}
+
+for _loc, _kw in ASC_KEYWORDS.items():
+    assert len(_kw) <= 100, f"Keywords for {_loc} exceed 100 chars ({len(_kw)}): {_kw}"
+
 # Map of App Store Connect locale codes -> (description, whatsNew)
 ASC_LOCALIZATIONS = {
     "ja": (JA_DESC, JA_WHATS_NEW),
@@ -1322,9 +1365,15 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
     failed_count = 0
 
     for locale, (desc, whats_new) in ASC_LOCALIZATIONS.items():
+        kw = ASC_KEYWORDS[locale]
         if locale in existing_locs:
             loc_id = existing_locs[locale]
-            attrs = {"description": desc, "whatsNew": whats_new}
+            attrs = {
+                "description": desc,
+                "whatsNew": whats_new,
+                "keywords": kw,
+                "supportUrl": SUPPORT_URL,
+            }
             payload = {
                 "data": {
                     "type": "appStoreVersionLocalizations",
@@ -1335,33 +1384,40 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
             res = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload)
             if res.status_code == 200:
                 updated_count += 1
-                print(f"  [OK] Updated {locale} (description + whatsNew)")
+                print(f"  [OK] Updated {locale} (description + whatsNew + keywords + supportUrl)")
             elif res.status_code == 409:
-                # Initial v1.0 submissions do not allow whatsNew; retry with description only
+                # Initial v1.0 submissions do not allow whatsNew; retry with description + keywords + supportUrl
                 payload_desc_only = {
                     "data": {
                         "type": "appStoreVersionLocalizations",
                         "id": loc_id,
-                        "attributes": {"description": desc},
+                        "attributes": {
+                            "description": desc,
+                            "keywords": kw,
+                            "supportUrl": SUPPORT_URL,
+                        },
                     }
                 }
                 res2 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_desc_only)
                 if res2.status_code == 200:
                     updated_count += 1
-                    print(f"  [OK] Updated {locale} (description; whatsNew skipped for initial release)")
+                    print(f"  [OK] Updated {locale} (description + keywords + supportUrl; whatsNew skipped)")
                 else:
-                    # Or if version is READY_FOR_SALE and only whatsNew is editable
+                    # Or if version is READY_FOR_SALE and only whatsNew/supportUrl is editable
                     payload_wn_only = {
                         "data": {
                             "type": "appStoreVersionLocalizations",
                             "id": loc_id,
-                            "attributes": {"whatsNew": whats_new},
+                            "attributes": {
+                                "whatsNew": whats_new,
+                                "supportUrl": SUPPORT_URL,
+                            },
                         }
                     }
                     res3 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_wn_only)
                     if res3.status_code == 200:
                         updated_count += 1
-                        print(f"  [OK] Updated {locale} (whatsNew only)")
+                        print(f"  [OK] Updated {locale} (whatsNew + supportUrl)")
                     else:
                         failed_count += 1
                         print(f"  [ERR] Failed to update {locale}: HTTP {res2.status_code} {res2.text}")
@@ -1377,6 +1433,8 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                         "locale": locale,
                         "description": desc,
                         "whatsNew": whats_new,
+                        "keywords": kw,
+                        "supportUrl": SUPPORT_URL,
                     },
                     "relationships": {
                         "appStoreVersion": {
@@ -1391,7 +1449,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
             res = requests.post(f"{BASE_URL}/appStoreVersionLocalizations", headers=headers, json=payload)
             if res.status_code in (200, 201):
                 created_count += 1
-                print(f"  [NEW] Created {locale} (description + whatsNew)")
+                print(f"  [NEW] Created {locale} (description + whatsNew + keywords + supportUrl)")
             elif res.status_code == 409:
                 # Retry without whatsNew (for initial release where whatsNew is not allowed)
                 payload_desc_only = {
@@ -1400,6 +1458,8 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                         "attributes": {
                             "locale": locale,
                             "description": desc,
+                            "keywords": kw,
+                            "supportUrl": SUPPORT_URL,
                         },
                         "relationships": {
                             "appStoreVersion": {
@@ -1414,7 +1474,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                 res2 = requests.post(f"{BASE_URL}/appStoreVersionLocalizations", headers=headers, json=payload_desc_only)
                 if res2.status_code in (200, 201):
                     created_count += 1
-                    print(f"  [NEW] Created {locale} (description; whatsNew skipped for initial release)")
+                    print(f"  [NEW] Created {locale} (description + keywords + supportUrl; whatsNew skipped)")
                 else:
                     failed_count += 1
                     print(f"  [ERR] Failed to create {locale}: HTTP {res2.status_code} {res2.text}")
