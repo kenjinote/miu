@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Atalhos]\nF1                  Ajuda\nCmd+N               Novo\nCmd+O / Arrastar   Abrir\nCmd+S/Shift+S      Salvar / Salvar Como\nCmd+W / Cmd+Q        Fechar\nCmd+F/H            Localizar/Substituir\nF3 / Shift+F3       Localizar Próximo/Anterior\nCmd+G              Ir Para a Linha\nCmd+B              Ir para o parêntese correspondente\nCmd+Z/Shift+Z       Desfazer/Refazer\nCmd+X/C/V          Recortar/Copiar/Colar\nCmd+Shift+K        Excluir Linha\nCmd+U/Shift+U      Maiúsculas / Minúsculas\nCmd+/              Alternar Comentário\nAlt+Cima/Baixo      Mover Linha\nAlt+Shift+Cima/Baixo Copiar Linha\nCmd+Alt+Cima/Baixo  Multicursor\nCmd+D              Selecionar Palavra / Próxima\nCmd+A              Selecionar Tudo\nAlt+Arrastar / Ctrl+Opt+Shift+Setas  Seleção Retangular\nOpt+Z / Opt+P       Quebra de Linha / Prévia\nCmd+Roda/+/-/0     Zoom / Redefinir\nOption+T            Sempre no Topo\nCtrl+Cmd+F          Tela Cheia\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Localizar";
+"Replace" = "Substituir";
+"Find:" = "Localizar:";
+"Replace:" = "Substituir por:";
+"Match Case" = "Diferenciar maiúsculas";
+"Whole Word" = "Coincidir palavra inteira";
+"Regex" = "Expressão regular";
+"Find Next" = "Localizar Próximo";
+"Replace All" = "Substituir Tudo";
+"%lu occurrence(s) replaced." = "%lu itens substituídos.";
+"Untitled" = "Sem título";
+"Save changes?" = "Salvar as alterações?";
+"Save" = "Save";
+"Cancel" = "Cancelar";
+"Discard" = "Discard";
+"Find Next (F3)" = "Localizar Próximo (F3)";
+"Replace (⌘R)" = "Substituir (⌘R)";
+"Replace All (⌥⌘R)" = "Substituir Tudo (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Recente";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Desfazer";
+"Redo" = "Refazer";
+"Select All" = "Selecionar tudo";
+"Cut" = "Recortar";
+"Copy" = "Copiar";
+"Paste" = "Colar";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "O arquivo foi modificado externamente.\nDeseja recarregá-lo?";
+"Done" = "Done";
+"Search..." = "Localizar...";
+"Replace..." = "Substituir...";
+"All" = "All";
+"Unsaved Changes" = "Salvar as alterações?";
+"Don't Save" = "Discard";
+"Go to Line" = "Ir Para a Linha";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Ir Para a Linha:";
+"Go To" = "Ir Para a Linha";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Arquivo";
+"Edit" = "Editar";
+"View" = "Visualizar";

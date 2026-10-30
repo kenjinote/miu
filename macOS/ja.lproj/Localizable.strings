@@ -1,25 +1,22 @@
 /* 
   Localizable.strings
   miu
-
-  Created by kenji on 2026/02/22.
-  
 */
 
-"HelpText" = "F1                    ヘルプ\nCmd+N                 新規作成\nCmd+O / Drag&Drop     開く\nCmd+S                 保存\nCmd+Shift+S           名前を付けて保存\nCmd+F                 検索\nCmd+H                 置換\nF3 / Shift+F3         次/前を検索\nCmd+G                 指定行へ移動\nCmd+Z/Shift+Z         元に戻す/やり直し\nCmd+X/C/V             カット/コピー/ペースト\nCmd+Shift+K           行を削除\nCmd+U                 大文字に変換\nCmd+Shift+U           小文字に変換\nOption+Up/Down        行を移動\nOption+Shift+Up/Down  行をコピー\nCmd+D                 単語を選択 / 次へ\nCmd+A                 すべて選択\nOption+Drag           矩形選択\nCmd+Wheel/+/-         ズーム\nCmd+0                 ズームをリセット\nCtrl+Cmd+F            フルスクリーン\n";
+"HelpText" = "[ショートカット]\nF1                  ヘルプ\nCmd+N               新規作成\nCmd+O / Drag&Drop  開く\nCmd+S/Shift+S      保存/名前を付けて保存\nCmd+W / Cmd+Q        閉じる\nCmd+F/H            検索/置換\nF3 / Shift+F3       次/前を検索\nCmd+G              指定行へ移動\nCmd+B              対応するカッコにジャンプ\nCmd+Z/Shift+Z       元に戻す/やり直し\nCmd+X/C/V          切り取り/コピー/貼り付け\nCmd+Shift+K        行削除\nCmd+U/Shift+U      大文字/小文字へ変換\nCmd+/              コメント切替\nOption+Up/Down         行移動\nOpt+Shift+Up/Down   行コピー\nCtrl+Opt+Up/Down    マルチカーソル\nCmd+D              単語選択 / 次を選択\nCmd+A              すべて選択\nOption+Drag / Ctrl+Opt+Shift+矢印  矩形選択\nOpt+Z / Opt+P       折り返し / プレビュー\nCmd+Wheel/+/-/0    ズーム / リセット\nOption+T            常に最前面に表示\nCtrl+Cmd+F          全画面表示\n";
 "HelpText_iOS" = "[ キーボードショートカット (iPad) ]\n\nCmd + N         : 新規作成\nCmd + O         : ファイルを開く\nCmd + S         : 保存\nShift + Cmd + S : 名前を付けて保存\nCmd + F         : 検索\nCmd + R         : 置換\nCmd + G / J     : 行へジャンプ\nCmd + D         : 次の出現箇所を選択\nCmd + [+ / - / 0]: 拡大 / 縮小 / リセット\nF1              : ヘルプの表示/非表示\nEsc             : ダイアログを閉じる / 選択解除";
 "Find" = "検索";
 "Replace" = "置換";
 "Find:" = "検索:";
 "Replace:" = "置換:";
 "Match Case" = "大文字/小文字を区別";
-"Whole Word" = "単語単位";
+"Whole Word" = "単語単位で検索";
 "Regex" = "正規表現";
 "Find Next" = "次を検索";
 "Replace All" = "すべて置換";
 "%lu occurrence(s) replaced." = "%lu 件置換しました。";
 "Untitled" = "無題";
-"Save changes?" = "変更を保存しますか？";
+"Save changes?" = "変更を保存しますか?";
 "Save" = "保存";
 "Cancel" = "キャンセル";
 "Discard" = "破棄";
@@ -29,13 +26,22 @@
 "Quit" = "%@ を終了";
 "New" = "新規";
 "Open" = "開く";
+"Open..." = "Open...";
+"Open Recent" = "最近使った項目";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
 "Save As" = "別名保存";
-"Undo" = "取り消す";
-"Redo" = "やり直す";
-"Select All" = "全選択";
-"Cut" = "カット";
+"Undo" = "元に戻す";
+"Redo" = "やり直し";
+"Select All" = "すべて選択";
+"Cut" = "切り取り";
 "Copy" = "コピー";
-"Paste" = "ペースト";
+"Paste" = "貼り付け";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "ファイルが外部で変更されました。\n再読み込みしますか？";
 "Done" = "完了";
 "Search..." = "検索...";
 "Replace..." = "置換...";
@@ -46,6 +52,9 @@
 "Go" = "移動";
 "Line:" = "行:";
 "Line Number:" = "行番号:";
-"Go To" = "指定行";
+"Go To" = "指定行へ移動";
 "Top" = "先頭";
 "Bottom" = "末尾";
+"File" = "ファイル";
+"Edit" = "編集";
+"View" = "表示";

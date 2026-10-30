@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Snarveier]\nF1                  Hjelp\nCmd+N               Ny\nCmd+O / Drag&Drop  Åpne\nCmd+S/Shift+S      Lagre / Lagre som\nCmd+W / Cmd+Q        Lukk\nCmd+F/H            Søk / Erstatt\nF3 / Shift+F3       Søk neste / forrige\nCmd+G              Gå til linje\nCmd+B              Hopp til matchende parentes\nCmd+Z/Shift+Z       Angre / Gjør om\nCmd+X/C/V          Klipp ut / Kopier / Lim inn\nCmd+Shift+K        Slett linje\nCmd+U/Shift+U      STORE / små bokstaver\nCmd+/              Slå av/på kommentar\nOption+Up/Down         Flytt linje\nOpt+Shift+Up/Down   Dupliser linje\nCtrl+Opt+Up/Down    Multimarkør\nCmd+D              Velg ord / neste\nCmd+A              Velg alt\nAlt+Dra / Ctrl+Opt+Shift+Piler  Kolonnevalg\nOpt+Z / Opt+P       Tekstbryting / Forhåndsvisning\nCmd+Hjul/+/-/0     Zoom / Tilbakestill\nOption+T            Alltid øverst\nCtrl+Cmd+F          Fullskjerm\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Søk";
+"Replace" = "Erstatt";
+"Find:" = "Søk:";
+"Replace:" = "Erstatt med:";
+"Match Case" = "Skill mellom store og små bokstaver";
+"Whole Word" = "Kun hele ord";
+"Regex" = "Regulære uttrykk";
+"Find Next" = "Søk neste";
+"Replace All" = "Erstatt alle";
+"%lu occurrence(s) replaced." = "%lu elementer ble erstattet.";
+"Untitled" = "Uten navn";
+"Save changes?" = "Vil du lagre endringene?";
+"Save" = "Save";
+"Cancel" = "Avbryt";
+"Discard" = "Discard";
+"Find Next (F3)" = "Søk neste (F3)";
+"Replace (⌘R)" = "Erstatt (⌘R)";
+"Replace All (⌥⌘R)" = "Erstatt alle (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Nylige";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Angre";
+"Redo" = "Gjør om";
+"Select All" = "Velg alt";
+"Cut" = "Klipp ut";
+"Copy" = "Kopier";
+"Paste" = "Lim inn";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Filen har blitt endret eksternt.\nVil du laste den inn på nytt?";
+"Done" = "Done";
+"Search..." = "Søk...";
+"Replace..." = "Erstatt...";
+"All" = "All";
+"Unsaved Changes" = "Vil du lagre endringene?";
+"Don't Save" = "Discard";
+"Go to Line" = "Gå til linje";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Gå til linje:";
+"Go To" = "Gå til linje";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Arkiv";
+"Edit" = "Rediger";
+"View" = "Vis";

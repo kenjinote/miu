@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Συντομεύσεις]\nF1                  Βοήθεια\nCmd+N               Νέο\nCmd+O / Drag&Drop  Άνοιγμα\nCmd+S/Shift+S      Αποθήκευση / Αποθήκευση ως\nCmd+W / Cmd+Q        Κλείσιμο\nCmd+F/H            Εύρεση / Αντικατάσταση\nF3 / Shift+F3       Εύρεση επόμενου / προηγούμενου\nCmd+G              Μετάβαση σε γραμμή\nCmd+B              Μετάβαση σε παρένθεση\nCmd+Z/Shift+Z       Αναίρεση / Επανάληψη\nCmd+X/C/V          Αποκοπή / Αντιγραφή / Επικόλληση\nCmd+Shift+K        Διαγραφή γραμμής\nCmd+U/Shift+U      ΚΕΦΑΛΑΙΑ / πεζά\nCmd+/              Εναλλαγή σχολίου\nOption+Up/Down         Μετακίνηση γραμμής\nOpt+Shift+Up/Down   Διπλασιασμός γραμμής\nCtrl+Opt+Up/Down    Πολλαπλοί δρομείς\nCmd+D              Επιλογή λέξης / επόμενου\nCmd+A              Επιλογή όλων\nOption+Drag / Ctrl+Opt+Shift+Arrows  Επιλογή στήλης\nOpt+Z / Opt+P       Αναδίπλωση / Προεπισκόπηση\nCmd+Wheel/+/-/0    Ζουμ / Επαναφορά\nOption+T            Πάντα σε πρώτο πλάνο\nCtrl+Cmd+F          Πλήρης οθόνη\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Εύρεση";
+"Replace" = "Αντικατάσταση";
+"Find:" = "Εύρεση:";
+"Replace:" = "Αντικατάσταση:";
+"Match Case" = "Ταίριασμα πεζών/κεφαλαίων";
+"Whole Word" = "Μόνο ολόκληρες λέξεις";
+"Regex" = "Κανονικές εκφράσεις";
+"Find Next" = "Εύρεση επόμενου";
+"Replace All" = "Αντικατάσταση όλων";
+"%lu occurrence(s) replaced." = "%lu στοιχεία αντικαταστάθηκαν.";
+"Untitled" = "Χωρίς τίτλο";
+"Save changes?" = "Θέλετε να αποθηκεύσετε τις αλλαγές;";
+"Save" = "Save";
+"Cancel" = "Ακύρωση";
+"Discard" = "Discard";
+"Find Next (F3)" = "Εύρεση επόμενου (F3)";
+"Replace (⌘R)" = "Αντικατάσταση (⌘R)";
+"Replace All (⌥⌘R)" = "Αντικατάσταση όλων (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Πρόσφατα";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Αναίρεση";
+"Redo" = "Επανάληψη";
+"Select All" = "Επιλογή όλων";
+"Cut" = "Αποκοπή";
+"Copy" = "Αντιγραφή";
+"Paste" = "Επικόλληση";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Το αρχείο τροποποιήθηκε εξωτερικά.\nΘέλετε να το επαναφορτώσετε;";
+"Done" = "Done";
+"Search..." = "Εύρεση...";
+"Replace..." = "Αντικατάσταση...";
+"All" = "All";
+"Unsaved Changes" = "Θέλετε να αποθηκεύσετε τις αλλαγές;";
+"Don't Save" = "Discard";
+"Go to Line" = "Μετάβαση σε γραμμή";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Μετάβαση σε γραμμή:";
+"Go To" = "Μετάβαση σε γραμμή";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Αρχείο";
+"Edit" = "Επεξεργασία";
+"View" = "Προβολή";

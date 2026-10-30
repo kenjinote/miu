@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[快速鍵]\nF1                  說明\nCmd+N               新增\nCmd+O / 拖放       開啟\nCmd+S/Shift+S      儲存/另存新檔\nCmd+W / Cmd+Q        關閉\nCmd+F/H            尋找/取代\nF3 / Shift+F3       尋找下一個/上一個\nCmd+G              移至行\nCmd+B              跳轉到匹配的括號\nCmd+Z/Shift+Z       復原/重做\nCmd+X/C/V          剪下/複製/貼上\nCmd+Shift+K        刪除整行\nCmd+U/Shift+U      轉換為大寫/小寫\nCmd+/              切換註解\nOption+Up/Down         上移/下移行\nOpt+Shift+Up/Down   向上/向下複製行\nCtrl+Opt+Up/Down    多重游標\nCmd+D              選取單字 / 下一個相符項\nCmd+A              全選\nAlt+拖曳 / Ctrl+Opt+Shift+方向鍵  矩形選取\nOpt+Z / Opt+P       自動換行 / 預覽\nCmd+滾輪/+/-/0     縮放 / 重設\nOption+T            視窗置頂\nCtrl+Cmd+F          全螢幕\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "尋找";
+"Replace" = "取代";
+"Find:" = "尋找目標:";
+"Replace:" = "取代為:";
+"Match Case" = "大小寫視為相異";
+"Whole Word" = "全字拼寫須相符";
+"Regex" = "使用正規表示式";
+"Find Next" = "找下一個";
+"Replace All" = "全部取代";
+"%lu occurrence(s) replaced." = "%lu 個項目已取代。";
+"Untitled" = "未命名";
+"Save changes?" = "是否儲存變更？";
+"Save" = "Save";
+"Cancel" = "取消";
+"Discard" = "Discard";
+"Find Next (F3)" = "找下一個 (F3)";
+"Replace (⌘R)" = "取代 (⌘R)";
+"Replace All (⌥⌘R)" = "全部取代 (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "最近";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "復原";
+"Redo" = "取消復原";
+"Select All" = "全選";
+"Cut" = "剪下";
+"Copy" = "複製";
+"Paste" = "貼上";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "檔案已被外部程式修改。\n是否重新載入？";
+"Done" = "Done";
+"Search..." = "尋找...";
+"Replace..." = "取代...";
+"All" = "All";
+"Unsaved Changes" = "是否儲存變更？";
+"Don't Save" = "Discard";
+"Go to Line" = "移至行";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "移至行:";
+"Go To" = "移至行";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "檔案";
+"Edit" = "編輯";
+"View" = "檢視";

@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Pintasan]\nF1                  Bantuan\nCmd+N               Baru\nCmd+O / Drag&Drop  Buka\nCmd+S/Shift+S      Simpan / Simpan Sebagai\nCmd+W / Cmd+Q        Tutup\nCmd+F/H            Cari/Ganti\nF3 / Shift+F3       Cari Berikutnya/Sebelumnya\nCmd+G              Buka Baris\nCmd+B              Lompat ke tanda kurung pasangannya\nCmd+Z/Shift+Z       Urungkan/Ulangi\nCmd+X/C/V          Potong/Salin/Tempel\nCmd+Shift+K        Hapus Baris\nCmd+U/Shift+U      HURUF BESAR / huruf kecil\nCmd+/              Alihkan Komentar\nOption+Up/Down         Pindahkan Baris\nOpt+Shift+Up/Down   Duplikasi Baris\nCtrl+Opt+Up/Down    Multi-Kursor\nCmd+D              Pilih Kata / Berikutnya\nCmd+A              Pilih Semua\nOption+Tarik / Ctrl+Opt+Shift+Panah  Pilihan Kolom\nOpt+Z / Opt+P       Bungkus Teks / Pratinjau\nCmd+Roda/+/-/0     Zoom / Atur Ulang\nOption+T            Selalu di Atas\nCtrl+Cmd+F          Layar Penuh\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Cari";
+"Replace" = "Ganti";
+"Find:" = "Cari:";
+"Replace:" = "Ganti dengan:";
+"Match Case" = "Cocokkan huruf besar/kecil";
+"Whole Word" = "Cocokkan seluruh kata";
+"Regex" = "Ekspresi reguler";
+"Find Next" = "Cari Berikutnya";
+"Replace All" = "Ganti Semua";
+"%lu occurrence(s) replaced." = "%lu item telah diganti.";
+"Untitled" = "Tanpa Judul";
+"Save changes?" = "Apakah Anda ingin menyimpan perubahan?";
+"Save" = "Save";
+"Cancel" = "Batal";
+"Discard" = "Discard";
+"Find Next (F3)" = "Cari Berikutnya (F3)";
+"Replace (⌘R)" = "Ganti (⌘R)";
+"Replace All (⌥⌘R)" = "Ganti Semua (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Terbaru";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Urungkan";
+"Redo" = "Ulangi";
+"Select All" = "Pilih Semua";
+"Cut" = "Potong";
+"Copy" = "Salin";
+"Paste" = "Tempel";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Berkas telah diubah dari luar.\nApakah Anda ingin memuat ulang?";
+"Done" = "Done";
+"Search..." = "Cari...";
+"Replace..." = "Ganti...";
+"All" = "All";
+"Unsaved Changes" = "Apakah Anda ingin menyimpan perubahan?";
+"Don't Save" = "Discard";
+"Go to Line" = "Buka Baris";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Buka Baris:";
+"Go To" = "Buka Baris";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "File";
+"Edit" = "Edit";
+"View" = "Tampilan";

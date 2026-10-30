@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[คีย์ลัด]\nF1                  วิธีใช้\nCmd+N               สร้างใหม่\nCmd+O / Drag&Drop  เปิดไฟล์\nCmd+S/Shift+S      บันทึก / บันทึกเป็น\nCmd+W / Cmd+Q        ปิด\nCmd+F/H            ค้นหา / แทนที่\nF3 / Shift+F3       ค้นหาถัดไป / ก่อนหน้า\nCmd+G              ไปยังบรรทัด\nCmd+B              ไปยังวงเล็บคู่กัน\nCmd+Z/Shift+Z       เลิกทำ / ทำซ้ำ\nCmd+X/C/V          ตัด / คัดลอก / วาง\nCmd+Shift+K        ลบบรรทัด\nCmd+U/Shift+U      ตัวพิมพ์ใหญ่ / เล็ก\nCmd+/              สลับคอมเมนต์\nOption+Up/Down         ย้ายบรรทัด\nOpt+Shift+Up/Down   ทำซ้ำบรรทัด\nCtrl+Opt+Up/Down    หลายเคอร์เซอร์\nCmd+D              เลือกคำ / รายการถัดไป\nCmd+A              เลือกทั้งหมด\nOption+Drag / Ctrl+Opt+Shift+Arrows  เลือกแบบคอลัมน์\nOpt+Z / Opt+P       ตัดคำ / ดูตัวอย่าง\nCmd+Wheel/+/-/0    ซูม / รีเซ็ตการซูม\nOption+T            แสดงบนสุดเสมอ\nCtrl+Cmd+F          เต็มหน้าจอ\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "ค้นหา";
+"Replace" = "แทนที่";
+"Find:" = "ค้นหา:";
+"Replace:" = "แทนที่ด้วย:";
+"Match Case" = "ตรงตามตัวพิมพ์ใหญ่-เล็ก";
+"Whole Word" = "ตรงกับทั้งคำเท่านั้น";
+"Regex" = "นิพจน์ทั่วไป (Regex)";
+"Find Next" = "ค้นหาถัดไป";
+"Replace All" = "แทนที่ทั้งหมด";
+"%lu occurrence(s) replaced." = "%lu รายการถูกแทนที่แล้ว";
+"Untitled" = "ไม่มีชื่อ";
+"Save changes?" = "คุณต้องการบันทึกการเปลี่ยนแปลงหรือไม่?";
+"Save" = "Save";
+"Cancel" = "ยกเลิก";
+"Discard" = "Discard";
+"Find Next (F3)" = "ค้นหาถัดไป (F3)";
+"Replace (⌘R)" = "แทนที่ (⌘R)";
+"Replace All (⌥⌘R)" = "แทนที่ทั้งหมด (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "ไฟล์ล่าสุด";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "เลิกทำ";
+"Redo" = "ทำซ้ำ";
+"Select All" = "เลือกทั้งหมด";
+"Cut" = "ตัด";
+"Copy" = "คัดลอก";
+"Paste" = "วาง";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "ไฟล์ถูกแก้ไขจากภายนอก\nคุณต้องการโหลดใหม่หรือไม่?";
+"Done" = "Done";
+"Search..." = "ค้นหา...";
+"Replace..." = "แทนที่...";
+"All" = "All";
+"Unsaved Changes" = "คุณต้องการบันทึกการเปลี่ยนแปลงหรือไม่?";
+"Don't Save" = "Discard";
+"Go to Line" = "ไปยังบรรทัด";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "ไปยังบรรทัด:";
+"Go To" = "ไปยังบรรทัด";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "ไฟล์";
+"Edit" = "แก้ไข";
+"View" = "มุมมอง";

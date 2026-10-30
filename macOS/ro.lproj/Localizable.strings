@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Scurtături]\nF1                  Ajutor\nCmd+N               Nou\nCmd+O / Drag&Drop  Deschidere\nCmd+S/Shift+S      Salvare / Salvare ca\nCmd+W / Cmd+Q        Închidere\nCmd+F/H            Căutare / Înlocuire\nF3 / Shift+F3       Caută următorul / anteriorul\nCmd+G              Salt la linie\nCmd+B              Salt la paranteza pereche\nCmd+Z/Shift+Z       Anulare / Refacere\nCmd+X/C/V          Decupare / Copiere / Lipire\nCmd+Shift+K        Ștergere linie\nCmd+U/Shift+U      MAJUSCULE / minuscule\nCmd+/              Comutare comentariu\nOption+Up/Down         Mutare linie\nOpt+Shift+Up/Down   Duplicare linie\nCtrl+Opt+Up/Down    Cursoare multiple\nCmd+D              Selectare cuvânt / următorul\nCmd+A              Selectare totală\nOption+Drag / Ctrl+Opt+Shift+Săgeți  Selecție coloană\nOpt+Z / Opt+P       Încadrare text / Previzualizare\nCmd+Rotiță/+/-/0   Zoom / Resetare\nOption+T            Mereu deasupra\nCtrl+Cmd+F          Ecran complet\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Căutare";
+"Replace" = "Înlocuire";
+"Find:" = "Caută:";
+"Replace:" = "Înlocuiește cu:";
+"Match Case" = "Potrivire litere mari/mici";
+"Whole Word" = "Doar cuvinte întregi";
+"Regex" = "Expresii regulate";
+"Find Next" = "Caută următorul";
+"Replace All" = "Înlocuiește tot";
+"%lu occurrence(s) replaced." = "%lu elemente au fost înlocuite.";
+"Untitled" = "Fără titlu";
+"Save changes?" = "Doriți să salvați modificările?";
+"Save" = "Save";
+"Cancel" = "Anulare";
+"Discard" = "Discard";
+"Find Next (F3)" = "Caută următorul (F3)";
+"Replace (⌘R)" = "Înlocuiește (⌘R)";
+"Replace All (⌥⌘R)" = "Înlocuiește tot (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Recente";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Anulare";
+"Redo" = "Refacere";
+"Select All" = "Selectare totală";
+"Cut" = "Decupare";
+"Copy" = "Copiere";
+"Paste" = "Lipire";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Fișierul a fost modificat extern.\nDoriți să îl reîncărcați?";
+"Done" = "Done";
+"Search..." = "Căutare...";
+"Replace..." = "Înlocuire...";
+"All" = "All";
+"Unsaved Changes" = "Doriți să salvați modificările?";
+"Don't Save" = "Discard";
+"Go to Line" = "Salt la linie";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Salt la linie:";
+"Go To" = "Salt la linie";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Fișier";
+"Edit" = "Editare";
+"View" = "Vizualizare";

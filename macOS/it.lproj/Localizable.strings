@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Scorciatoie]\nF1                  Guida\nCmd+N               Nuovo\nCmd+O / Drag&Drop  Apri\nCmd+S/Shift+S      Salva / Salva con nome\nCmd+W / Cmd+Q        Chiudi\nCmd+F/H            Trova/Sostituisci\nF3 / Shift+F3       Trova succ./prec.\nCmd+G              Vai alla riga\nCmd+B              Vai alla parentesi corrispondente\nCmd+Z/Shift+Z       Annulla/Ripeti\nCmd+X/C/V          Taglia/Copia/Incolla\nCmd+Shift+K        Elimina riga\nCmd+U/Shift+U      Maiuscolo / Minuscolo\nCmd+/              Attiva/Disattiva commento\nAlt+Su/Giù          Sposta riga\nAlt+Shift+Su/Giù    Copia riga\nCmd+Alt+Su/Giù     Multicursore\nCmd+D              Sel. parola / Succ.\nCmd+A              Seleziona tutto\nOption+Drag / Ctrl+Opt+Shift+Frecce  Sel. rettangolare\nOpt+Z / Opt+P       A capo / Anteprima\nCmd+Wheel/+/-/0    Zoom / Reimposta\nOption+T            Sempre in primo piano\nCtrl+Cmd+F          Schermo intero\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Trova";
+"Replace" = "Sostituisci";
+"Find:" = "Trova:";
+"Replace:" = "Sostituisci con:";
+"Match Case" = "Maiuscole/minuscole";
+"Whole Word" = "Parola intera";
+"Regex" = "Espressione regolare";
+"Find Next" = "Trova succ.";
+"Replace All" = "Sostituisci tutto";
+"%lu occurrence(s) replaced." = "%lu elementi sostituiti.";
+"Untitled" = "Senza nome";
+"Save changes?" = "Salvare le modifiche?";
+"Save" = "Save";
+"Cancel" = "Annulla";
+"Discard" = "Discard";
+"Find Next (F3)" = "Trova succ. (F3)";
+"Replace (⌘R)" = "Sostituisci (⌘R)";
+"Replace All (⌥⌘R)" = "Sostituisci tutto (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Recenti";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Annulla";
+"Redo" = "Ripristina";
+"Select All" = "Seleziona tutto";
+"Cut" = "Taglia";
+"Copy" = "Copia";
+"Paste" = "Incolla";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Il file è stato modificato esternamente.\nVuoi ricaricarlo?";
+"Done" = "Done";
+"Search..." = "Trova...";
+"Replace..." = "Sostituisci...";
+"All" = "All";
+"Unsaved Changes" = "Salvare le modifiche?";
+"Don't Save" = "Discard";
+"Go to Line" = "Vai alla riga";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Vai alla riga:";
+"Go To" = "Vai alla riga";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "File";
+"Edit" = "Modifica";
+"View" = "Vista";

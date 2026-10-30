@@ -1,0 +1,66 @@
+name: macOS Xcode Build & Test
+
+on:
+  push:
+    branches: [ master, main, "macos-**" ]
+  pull_request:
+    branches: [ master, main ]
+  workflow_dispatch:
+
+jobs:
+  macos-xcodebuild:
+    name: Build miu_macOS & Run Core Tests
+    runs-on: macos-15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show Xcode & macOS version
+        run: |
+          sw_vers
+          xcodebuild -version
+
+      - name: Validate all 30 Localizable.strings with plutil
+        run: |
+          plutil -lint macOS/*.lproj/Localizable.strings
+
+      - name: Build universal libced.a (arm64 + x86_64)
+        run: |
+          clang++ -std=c++17 -O2 -arch arm64 -arch x86_64 -Iinclude \
+            -c include/compact_enc_det/compact_enc_det.cc \
+               include/compact_enc_det/compact_enc_det_hint_code.cc \
+               include/util/encodings/encodings.cc \
+               include/util/languages/languages.cc
+          libtool -static -o macOS/libced.a \
+            compact_enc_det.o compact_enc_det_hint_code.o encodings.o languages.o
+          rm -f compact_enc_det.o compact_enc_det_hint_code.o encodings.o languages.o
+          lipo -info macOS/libced.a
+
+      - name: Build miu_macOS with xcodebuild (Release)
+        run: |
+          xcodebuild -project macOS/miu.xcodeproj \
+            -target miu_macOS \
+            -configuration Release \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Verify built miu.app bundle & linked frameworks
+        run: |
+          APP_BIN="macOS/build/Release/miu.app/Contents/MacOS/miu"
+          test -f "$APP_BIN"
+          file "$APP_BIN"
+          lipo -info "$APP_BIN"
+          otool -L "$APP_BIN"
+
+      - name: Compile & Run EditorCore Automated Test Suite on macOS
+        run: |
+          clang++ -std=c++20 -O2 \
+            -Iinclude -ImacOS/miu_macOS \
+            macOS/tests/test_macos_editor_core.cpp \
+            macOS/miu_macOS/EditorCore.cpp \
+            macOS/libced.a \
+            -framework CoreText -framework CoreFoundation -framework CoreGraphics \
+            -o test_macos_editor_core
+          ./test_macos_editor_core

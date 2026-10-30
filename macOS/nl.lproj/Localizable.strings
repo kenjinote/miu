@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Sneltoetsen]\nF1                  Help\nCmd+N               Nieuw\nCmd+O / Drag&Drop  Openen\nCmd+S/Shift+S      Opslaan / Opslaan als\nCmd+W / Cmd+Q        Sluiten\nCmd+F/H            Zoeken/Vervangen\nF3 / Shift+F3       Volgende/vorige zoeken\nCmd+G              Ga naar regel\nCmd+B              Ga naar bijbehorend haakje\nCmd+Z/Shift+Z       Ongedaan maken/Opnieuw\nCmd+X/C/V          Knippen/Kopiëren/Plakken\nCmd+Shift+K        Regel verwijderen\nCmd+U/Shift+U      Hoofdletters / Kleine letters\nCmd+/              Opmerking in-/uitschakelen\nOption+Up/Down         Regel verplaatsen\nOpt+Shift+Up/Down   Regel kopiëren\nCtrl+Opt+Up/Down    Multicursor\nCmd+D              Woord selecteren / Volgende\nCmd+A              Alles selecteren\nOption+Drag / Ctrl+Opt+Shift+Pijlen  Rechthoekige selectie\nOpt+Z / Opt+P       Tekstterugloop / Voorbeeld\nCmd+Wheel/+/-/0    Zoomen / Herstellen\nOption+T            Altijd bovenop\nCtrl+Cmd+F          Volledig scherm\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Zoeken";
+"Replace" = "Vervangen";
+"Find:" = "Zoeken naar:";
+"Replace:" = "Vervangen door:";
+"Match Case" = "Identieke hoofdletters";
+"Whole Word" = "Heel woord";
+"Regex" = "Reguliere expressie";
+"Find Next" = "Volgende";
+"Replace All" = "Alles vervangen";
+"%lu occurrence(s) replaced." = "%lu items vervangen.";
+"Untitled" = "Naamloos";
+"Save changes?" = "Wijzigingen opslaan?";
+"Save" = "Save";
+"Cancel" = "Annuleren";
+"Discard" = "Discard";
+"Find Next (F3)" = "Volgende (F3)";
+"Replace (⌘R)" = "Vervangen (⌘R)";
+"Replace All (⌥⌘R)" = "Alles vervangen (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Recent";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Ongedaan maken";
+"Redo" = "Opnieuw";
+"Select All" = "Alles selecteren";
+"Cut" = "Knippen";
+"Copy" = "Kopiëren";
+"Paste" = "Plakken";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Het bestand is extern gewijzigd.\nWilt u het opnieuw laden?";
+"Done" = "Done";
+"Search..." = "Zoeken...";
+"Replace..." = "Vervangen...";
+"All" = "All";
+"Unsaved Changes" = "Wijzigingen opslaan?";
+"Don't Save" = "Discard";
+"Go to Line" = "Ga naar regel";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Ga naar regel:";
+"Go To" = "Ga naar regel";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Archief";
+"Edit" = "Wijzig";
+"View" = "Weergave";

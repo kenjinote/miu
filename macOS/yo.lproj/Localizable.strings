@@ -1,51 +1,60 @@
 /* 
   Localizable.strings
   miu
-
-  Created by kenji on 2026/02/22.
-  
 */
 
-"HelpText" = "F1                    Ìrànwọ́\nCmd+N                 Tuntun\nCmd+O / Drag&Drop     Ṣí i\nCmd+S                 Fipamọ́\nCmd+Shift+S           Fipamọ́ Gẹ́gẹ́ Bí\nCmd+F                 Wá a\nCmd+H                 Rọ́pò\nF3 / Shift+F3         Wá Tókàn/Tẹ́lẹ̀\nCmd+G                 Lọ Sí Láyìnì\nCmd+Z/Shift+Z         Dápadà/Túnṣe\nCmd+X/C/V             Gé/Ṣẹ́dà/Lẹ̀mọ́\nCmd+Shift+K           Pa Láyìnì Rẹ́\nCmd+U                 Lẹ́tà Ńlá\nCmd+Shift+U           Lẹ́tà Kékeré\nOption+Up/Down        Gbé Láyìnì\nOption+Shift+Up/Down  Ṣẹ́dà Láyìnì\nCmd+D                 Yan Ọ̀rọ̀ / Tókàn\nCmd+A                 Yan Gbogbo Rẹ̀\nOption+Drag           Ìyàn Rẹkítáńgùlù\nCmd+Wheel/+/-         Súùmu\nCmd+0                 Súùmu Bóṣewà\nCtrl+Cmd+F            Ìbòjú Kíkún\n";
+"HelpText" = "[Shortcuts]\nF1                  Help\nCmd+N               New\nCmd+O / Drag&Drop  Open\nCmd+S/Shift+S      Save / Save As\nCmd+W / Cmd+Q        Close\nCmd+F/H            Find/Replace\nF3 / Shift+F3       Find Next/Prev\nCmd+G              Go To Line\nCmd+B              Jump to matching bracket\nCmd+Z/Shift+Z       Undo/Redo\nCmd+X/C/V          Cut/Copy/Paste\nCmd+Shift+K        Delete Line\nCmd+U/Shift+U      Upper / Lower Case\nCmd+/              Toggle Comment\nOption+Up/Down         Move Line\nOpt+Shift+Up/Down   Copy Line\nCtrl+Opt+Up/Down    Multi-Cursor\nCmd+D              Select Word / Next\nCmd+A              Select All\nOption+Drag / Ctrl+Opt+Shift+Arrow  Rect Select\nOpt+Z / Opt+P       Word Wrap / Preview\nCmd+Wheel/+/-/0    Zoom / Reset\nOption+T            Always on Top\nCtrl+Cmd+F          Full Screen\n";
 "HelpText_iOS" = "[ Àwọn Ọna Abujá Kíìbọ́ọ̀dù (iPad) ]\n\nCmd + N         : Fáìlì Tuntun\nCmd + O         : Ṣí Fáìlì\nCmd + S         : Fi pamọ́\nShift + Cmd + S : Fi pamọ́ gẹ́gẹ́ bí\nCmd + F         : Wá a\nCmd + R         : Rọ́pò rẹ̀\nCmd + G / J     : Lọ sí Laini\nCmd + D         : Yan Èyí tó tẹ̀lé e\nCmd + [+ / - / 0]: Sun-un / Ṣe ìdápadà rẹ̀\nF1              : Ṣí/Pa Ìrànwọ́\nEsc             : Pa Àpótí Ọ̀rọ̀ / Pa Ìyàn rẹ";
-"Find" = "Wá a";
-"Replace" = "Rọ́pò";
-"Find:" = "Wá a:";
-"Replace:" = "Rọ́pò:";
-"Match Case" = "Pàtó ńlá/kékeré";
-"Whole Word" = "Ọ̀rọ̀ Odidi";
-"Regex" = "Àkàwé Déédé";
-"Find Next" = "Wá Tókàn";
-"Replace All" = "Rọ́pò Gbogbo Rẹ̀";
+"Find" = "Find";
+"Replace" = "Replace";
+"Find:" = "Find what:";
+"Replace:" = "Replace with:";
+"Match Case" = "Match case";
+"Whole Word" = "Match whole word";
+"Regex" = "Regular expression";
+"Find Next" = "Find Next";
+"Replace All" = "Replace All";
 "%lu occurrence(s) replaced." = "A ti rọ́pò %lu.";
-"Untitled" = "Kò ní àkọlé";
-"Save changes?" = "Ṣé o fẹ́ fi àwọn àyípadà pamọ́?";
+"Untitled" = "Untitled";
+"Save changes?" = "Save changes?";
 "Save" = "Fipamọ́";
-"Cancel" = "Fagilé";
+"Cancel" = "Cancel";
 "Discard" = "Nù ún sọnù";
-"Find Next (F3)" = "Wa Itele (F3)";
-"Replace (⌘R)" = "Rọ́pò (⌘R)";
-"Replace All (⌥⌘R)" = "Rọ́pò Gbogbo (⌥⌘R)";
+"Find Next (F3)" = "Find Next (F3)";
+"Replace (⌘R)" = "Replace (⌘R)";
+"Replace All (⌥⌘R)" = "Replace All (⌥⌘R)";
 "Quit" = "Jáde ní %@";
 "New" = "Titun";
 "Open" = "Ṣii";
+"Open..." = "Open...";
+"Open Recent" = "Recent";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
 "Save As" = "Fi Pamọ Bi";
-"Undo" = "Mu Pada";
-"Redo" = "Tunṣe";
-"Select All" = "Yan Gbogbo Rẹ";
-"Cut" = "Ge";
-"Copy" = "Daakọ";
-"Paste" = "Lẹ";
+"Undo" = "Undo";
+"Redo" = "Redo";
+"Select All" = "Select All";
+"Cut" = "Cut";
+"Copy" = "Copy";
+"Paste" = "Paste";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "The file has been modified externally.\nDo you want to reload it?";
 "Done" = "Ṣetan";
 "Search..." = "Wa...";
 "Replace..." = "Pààrọ̀...";
 "All" = "Gbogbo";
 "Unsaved Changes" = "Awọn Ayipada Ti Ko Pamọ";
 "Don't Save" = "Maṣe Fi Pamọ";
-"Go to Line" = "Lọ sí Ìlà";
+"Go to Line" = "Go To Line";
 "Go" = "Lọ";
 "Line:" = "Ìlà:";
 "Line Number:" = "Nọ́mbà Ìlà:";
-"Go To" = "Lọ sí";
+"Go To" = "Go To Line";
 "Top" = "Òkè";
 "Bottom" = "Ìsàlẹ̀";
+"File" = "Fáìlì";
+"Edit" = "Ṣàtúnṣe";
+"View" = "Ìwò";

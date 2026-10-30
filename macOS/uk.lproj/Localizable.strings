@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Гарячі клавіші]\nF1                  Довідка\nCmd+N               Створити\nCmd+O / Drag&Drop  Відкрити\nCmd+S/Shift+S      Зберегти / Зберегти як\nCmd+W / Cmd+Q        Закрити\nCmd+F/H            Знайти/Замінити\nF3 / Shift+F3       Знайти далі/назад\nCmd+G              Перейти до рядка\nCmd+B              Перейти до парної дужки\nCmd+Z/Shift+Z       Скасувати/Повторити\nCmd+X/C/V          Вирізати/Копіювати/Вставити\nCmd+Shift+K        Видалити рядок\nCmd+U/Shift+U      ВЕЛИКІ / малі літери\nCmd+/              Перемкнути коментар\nOption+Up/Down         Перемістити рядок\nOpt+Shift+Up/Down   Копіювати рядок\nCtrl+Opt+Up/Down    Мультикурсор\nCmd+D              Виділити слово / далі\nCmd+A              Виділити все\nOption+Drag / Ctrl+Opt+Shift+Стрілки  Блокове виділення\nOpt+Z / Opt+P       Перенесення / Перегляд\nCmd+Колесо/+/-/0   Масштаб / Скинути\nOption+T            Поверх усіх вікон\nCtrl+Cmd+F          Повноекранний режим\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Знайти";
+"Replace" = "Замінити";
+"Find:" = "Знайти:";
+"Replace:" = "Замінити на:";
+"Match Case" = "Враховувати регістр";
+"Whole Word" = "Лише цілі слова";
+"Regex" = "Регулярний вираз";
+"Find Next" = "Знайти далі";
+"Replace All" = "Замінити все";
+"%lu occurrence(s) replaced." = "%lu входжень замінено.";
+"Untitled" = "Без назви";
+"Save changes?" = "Зберегти зміни?";
+"Save" = "Save";
+"Cancel" = "Скасувати";
+"Discard" = "Discard";
+"Find Next (F3)" = "Знайти далі (F3)";
+"Replace (⌘R)" = "Замінити (⌘R)";
+"Replace All (⌥⌘R)" = "Замінити все (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Нещодавні";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Скасувати";
+"Redo" = "Повторити";
+"Select All" = "Виділити все";
+"Cut" = "Вирізати";
+"Copy" = "Копіювати";
+"Paste" = "Вставити";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Файл змінено зовнішньою програмою.\nПерезавантажити його?";
+"Done" = "Done";
+"Search..." = "Знайти...";
+"Replace..." = "Замінити...";
+"All" = "All";
+"Unsaved Changes" = "Зберегти зміни?";
+"Don't Save" = "Discard";
+"Go to Line" = "Перейти до рядка";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Перейти до рядка:";
+"Go To" = "Перейти до рядка";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Файл";
+"Edit" = "Правка";
+"View" = "Вигляд";

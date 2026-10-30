@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Gyorsbillentyűk]\nF1                  Súgó\nCmd+N               Új\nCmd+O / Drag&Drop  Megnyitás\nCmd+S/Shift+S      Mentés / Mentés másként\nCmd+W / Cmd+Q        Bezárás\nCmd+F/H            Keresés / Csere\nF3 / Shift+F3       Következő / Előző keresése\nCmd+G              Ugrás sorra\nCmd+B              Ugrás a zárójel párjára\nCmd+Z/Shift+Z       Visszavonás / Újra\nCmd+X/C/V          Kivágás / Másolás / Beillesztés\nCmd+Shift+K        Sor törlése\nCmd+U/Shift+U      NAGYBETŰS / kisbetűs\nCmd+/              Megjegyzés ki-/bekapcsolása\nOption+Up/Down         Sor mozgatása\nOpt+Shift+Up/Down   Sor megkettőzése\nCtrl+Opt+Up/Down    Több kurzor\nCmd+D              Szó / Következő kijelölése\nCmd+A              Összes kijelölése\nOption+Drag / Ctrl+Opt+Shift+Nyilak  Oszlopkijelölés\nOpt+Z / Opt+P       Sortörés / Előnézet\nCmd+Görgő/+/-/0    Nagyítás / Visszaállítás\nOption+T            Mindig felül\nCtrl+Cmd+F          Teljes képernyő\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Keresés";
+"Replace" = "Csere";
+"Find:" = "Keresés:";
+"Replace:" = "Csere erre:";
+"Match Case" = "Kis- és nagybetűk megkülönböztetése";
+"Whole Word" = "Csak teljes szavak";
+"Regex" = "Reguláris kifejezések";
+"Find Next" = "Következő";
+"Replace All" = "Összes cseréje";
+"%lu occurrence(s) replaced." = "%lu elem lecserélve.";
+"Untitled" = "Névtelen";
+"Save changes?" = "Szeretné menteni a módosításokat?";
+"Save" = "Save";
+"Cancel" = "Mégse";
+"Discard" = "Discard";
+"Find Next (F3)" = "Következő (F3)";
+"Replace (⌘R)" = "Csere (⌘R)";
+"Replace All (⌥⌘R)" = "Összes cseréje (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Legutóbbi";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Visszavonás";
+"Redo" = "Újra";
+"Select All" = "Összes kijelölése";
+"Cut" = "Kivágás";
+"Copy" = "Másolás";
+"Paste" = "Beillesztés";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "A fájlt kívülről módosították.\nSzeretné újratölteni?";
+"Done" = "Done";
+"Search..." = "Keresés...";
+"Replace..." = "Csere...";
+"All" = "All";
+"Unsaved Changes" = "Szeretné menteni a módosításokat?";
+"Don't Save" = "Discard";
+"Go to Line" = "Ugrás sorra";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Ugrás sorra:";
+"Go To" = "Ugrás sorra";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Fájl";
+"Edit" = "Szerkesztés";
+"View" = "Nézet";

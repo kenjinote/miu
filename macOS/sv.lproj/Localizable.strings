@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Kortkommandon]\nF1                  Hjälp\nCmd+N               Ny\nCmd+O / Drag&Drop  Öppna\nCmd+S/Shift+S      Spara / Spara som\nCmd+W / Cmd+Q        Stäng\nCmd+F/H            Sök / Ersätt\nF3 / Shift+F3       Sök nästa / föregående\nCmd+G              Gå till rad\nCmd+B              Hoppa till matchande parentes\nCmd+Z/Shift+Z       Ångra / Gör om\nCmd+X/C/V          Klipp ut / Kopiera / Klistra in\nCmd+Shift+K        Ta bort rad\nCmd+U/Shift+U      VERSALER / gemener\nCmd+/              Växla kommentar\nOption+Up/Down         Flytta rad\nOpt+Shift+Up/Down   Duplicera rad\nCtrl+Opt+Up/Down    Multimarkör\nCmd+D              Markera ord / nästa\nCmd+A              Markera allt\nAlt+Dra / Ctrl+Opt+Shift+Pilar  Kolumnmarkering\nOpt+Z / Opt+P       Radbrytning / Förhandsgranska\nCmd+Hjul/+/-/0     Zooma / Återställ\nOption+T            Alltid överst\nCtrl+Cmd+F          Helskärm\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Sök";
+"Replace" = "Ersätt";
+"Find:" = "Sök:";
+"Replace:" = "Ersätt med:";
+"Match Case" = "Matcha gemener/versaler";
+"Whole Word" = "Matcha hela ord";
+"Regex" = "Reguljära uttryck";
+"Find Next" = "Sök nästa";
+"Replace All" = "Ersätt alla";
+"%lu occurrence(s) replaced." = "%lu poster har ersatts.";
+"Untitled" = "Namnlös";
+"Save changes?" = "Vill du spara ändringarna?";
+"Save" = "Save";
+"Cancel" = "Avbryt";
+"Discard" = "Discard";
+"Find Next (F3)" = "Sök nästa (F3)";
+"Replace (⌘R)" = "Ersätt (⌘R)";
+"Replace All (⌥⌘R)" = "Ersätt alla (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Senaste";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Ångra";
+"Redo" = "Gör om";
+"Select All" = "Markera allt";
+"Cut" = "Klipp ut";
+"Copy" = "Kopiera";
+"Paste" = "Klistra in";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Filen har ändrats externt.\nVill du läsa in den igen?";
+"Done" = "Done";
+"Search..." = "Sök...";
+"Replace..." = "Ersätt...";
+"All" = "All";
+"Unsaved Changes" = "Vill du spara ändringarna?";
+"Don't Save" = "Discard";
+"Go to Line" = "Gå till rad";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Gå till rad:";
+"Go To" = "Gå till rad";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Arkiv";
+"Edit" = "Redigera";
+"View" = "Innehåll";

@@ -15,6 +15,7 @@
 		BABDDE6D2F49E1C000B3E84A /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */; };
 		BABDDE6F2F49E1CC00B3E84A /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */; };
 		BAF7CE7F2F535F4B00447839 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */; };
+		BABDDE712F49E1D000B3E84A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE702F49E1D000B3E84A /* WebKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +33,31 @@
 		BABDDE562F49D3BC00B3E84A /* miu.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = miu.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreText.framework; path = System/Library/Frameworks/CoreText.framework; sourceTree = SDKROOT; };
+		BABDDE702F49E1D000B3E84A /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		BAA1E1E12F4AE80000BA3D2C /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		BAA1E1E22F4AE80000BA3D2C /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1E32F4AE80000BA3D2C /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1E42F4AE80000BA3D2C /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1E52F4AE80000BA3D2C /* it */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = it; path = it.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1E62F4AE80000BA3D2C /* nl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nl; path = nl.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1E72F4AE80000BA3D2C /* pt */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pt; path = pt.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1E82F4AE80000BA3D2C /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1E92F4AE80000BA3D2C /* pl */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = pl; path = pl.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1EA2F4AE80000BA3D2C /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1EB2F4AE80000BA3D2C /* vi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = vi; path = vi.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1EC2F4AE80000BA3D2C /* uk */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = uk; path = uk.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1ED2F4AE80000BA3D2C /* id */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = id; path = id.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1EE2F4AE80000BA3D2C /* cs */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = cs; path = cs.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1EF2F4AE80000BA3D2C /* sv */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = sv; path = sv.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1F02F4AE80000BA3D2C /* th */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = th; path = th.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1F12F4AE80000BA3D2C /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1F22F4AE80000BA3D2C /* ro */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ro; path = ro.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1F32F4AE80000BA3D2C /* hu */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hu; path = hu.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1F42F4AE80000BA3D2C /* el */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = el; path = el.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1F52F4AE80000BA3D2C /* da */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = da; path = da.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1F62F4AE80000BA3D2C /* fi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fi; path = fi.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1F72F4AE80000BA3D2C /* nb */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nb; path = nb.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1F82F4AE80000BA3D2C /* ms */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ms; path = ms.lproj/Localizable.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -87,6 +113,7 @@
 			files = (
 				BABDDE6F2F49E1CC00B3E84A /* CoreText.framework in Frameworks */,
 				BABDDE6D2F49E1C000B3E84A /* Cocoa.framework in Frameworks */,
+				BABDDE712F49E1D000B3E84A /* WebKit.framework in Frameworks */,
 				BAAFAEB42F5DB6740078A075 /* libced.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -123,6 +150,7 @@
 				BA5C5F9F2F4CA6370029DB67 /* UniformTypeIdentifiers.framework */,
 				BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */,
 				BABDDE6C2F49E1C000B3E84A /* Cocoa.framework */,
+				BABDDE702F49E1D000B3E84A /* WebKit.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -195,13 +223,37 @@
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
 				ja,
 				ko,
 				"zh-Hans",
-				yo,
+				"zh-Hant",
+				de,
+				fr,
+				es,
+				it,
+				nl,
+				pt,
+				ru,
+				pl,
+				tr,
+				vi,
+				uk,
+				id,
+				cs,
+				sv,
+				th,
+				hi,
+				ro,
+				hu,
+				el,
+				da,
+				fi,
+				nb,
+				ms,
 				hy,
+				yo,
 			);
 			mainGroup = BABDDE4D2F49D3BC00B3E84A;
 			minimizedProjectReferenceProxies = 1;
@@ -260,8 +312,32 @@
 				BAA1E1DC2F4AE1FC00BA3D2C /* ja */,
 				BAA1E1DD2F4AE6CF00BA3D2C /* ko */,
 				BAA1E1DE2F4AE6FF00BA3D2C /* zh-Hans */,
-				BAA1E1DF2F4AE79500BA3D2C /* yo */,
+				BAA1E1E12F4AE80000BA3D2C /* zh-Hant */,
+				BAA1E1E22F4AE80000BA3D2C /* de */,
+				BAA1E1E32F4AE80000BA3D2C /* fr */,
+				BAA1E1E42F4AE80000BA3D2C /* es */,
+				BAA1E1E52F4AE80000BA3D2C /* it */,
+				BAA1E1E62F4AE80000BA3D2C /* nl */,
+				BAA1E1E72F4AE80000BA3D2C /* pt */,
+				BAA1E1E82F4AE80000BA3D2C /* ru */,
+				BAA1E1E92F4AE80000BA3D2C /* pl */,
+				BAA1E1EA2F4AE80000BA3D2C /* tr */,
+				BAA1E1EB2F4AE80000BA3D2C /* vi */,
+				BAA1E1EC2F4AE80000BA3D2C /* uk */,
+				BAA1E1ED2F4AE80000BA3D2C /* id */,
+				BAA1E1EE2F4AE80000BA3D2C /* cs */,
+				BAA1E1EF2F4AE80000BA3D2C /* sv */,
+				BAA1E1F02F4AE80000BA3D2C /* th */,
+				BAA1E1F12F4AE80000BA3D2C /* hi */,
+				BAA1E1F22F4AE80000BA3D2C /* ro */,
+				BAA1E1F32F4AE80000BA3D2C /* hu */,
+				BAA1E1F42F4AE80000BA3D2C /* el */,
+				BAA1E1F52F4AE80000BA3D2C /* da */,
+				BAA1E1F62F4AE80000BA3D2C /* fi */,
+				BAA1E1F72F4AE80000BA3D2C /* nb */,
+				BAA1E1F82F4AE80000BA3D2C /* ms */,
 				BAA1E1E02F4AE7CA00BA3D2C /* hy */,
+				BAA1E1DF2F4AE79500BA3D2C /* yo */,
 			);
 			name = Localizable.strings;
 			sourceTree = "<group>";
@@ -278,7 +354,12 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = J8HRH6XC73;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = /Users/kenji/Desktop/git/miu/include;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../include",
+					"$(PROJECT_DIR)/third_party/ced",
+					/Users/kenji/Desktop/git/miu/include,
+				);
 				INFOPLIST_FILE = miu_iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = miu;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -297,7 +378,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.18;
+				MARKETING_VERSION = 1.0.44;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				SDKROOT = iphoneos;
@@ -316,7 +397,12 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = J8HRH6XC73;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = /Users/kenji/Desktop/git/miu/include;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../include",
+					"$(PROJECT_DIR)/third_party/ced",
+					/Users/kenji/Desktop/git/miu/include,
+				);
 				INFOPLIST_FILE = miu_iOS/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = miu;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
@@ -335,7 +421,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.18;
+				MARKETING_VERSION = 1.0.44;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				SDKROOT = iphoneos;
@@ -400,7 +486,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.7;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -456,7 +542,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.7;
+				MACOSX_DEPLOYMENT_TARGET = 13.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -486,8 +572,13 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = /Users/kenji/Desktop/git/miu/include;
-				INFOPLIST_FILE = miu_macOS/Info.plist;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../include",
+					"$(PROJECT_DIR)/third_party/ced",
+					/Users/kenji/Desktop/git/miu/include,
+				);
+				INFOPLIST_FILE = miu_macOS/info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = miu;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -501,7 +592,7 @@
 					/Users/kenji/Desktop/git/miu/include,
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.19;
+				MARKETING_VERSION = 1.0.44;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				REGISTER_APP_GROUPS = YES;
@@ -533,8 +624,13 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
-				HEADER_SEARCH_PATHS = /Users/kenji/Desktop/git/miu/include;
-				INFOPLIST_FILE = miu_macOS/Info.plist;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../include",
+					"$(PROJECT_DIR)/third_party/ced",
+					/Users/kenji/Desktop/git/miu/include,
+				);
+				INFOPLIST_FILE = miu_macOS/info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = miu;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -548,7 +644,7 @@
 					/Users/kenji/Desktop/git/miu/include,
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.19;
+				MARKETING_VERSION = 1.0.44;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				REGISTER_APP_GROUPS = YES;

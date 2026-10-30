@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Phím tắt]\nF1                  Trợ giúp\nCmd+N               Mới\nCmd+O / Kéo&Thả    Mở\nCmd+S/Shift+S      Lưu / Lưu dưới dạng\nCmd+W / Cmd+Q        Đóng\nCmd+F/H            Tìm/Thay thế\nF3 / Shift+F3       Tìm tiếp/Trước\nCmd+G              Đi đến dòng\nCmd+B              Đến dấu ngoặc khớp\nCmd+Z/Shift+Z       Hoàn tác/Làm lại\nCmd+X/C/V          Cắt/Sao chép/Dán\nCmd+Shift+K        Xóa dòng\nCmd+U/Shift+U      Chữ hoa / Chữ thường\nCmd+/              Bật/Tắt ghi chú\nAlt+Lên/Xuống       Di chuyển dòng\nAlt+Shift+Lên/Xuống Sao chép dòng\nCmd+Alt+Lên/Xuống  Nhiều con trỏ\nCmd+D              Chọn từ / Tiếp theo\nCmd+A              Chọn tất cả\nAlt+Kéo / Ctrl+Opt+Shift+Mũi tên  Chọn vùng khối\nOpt+Z / Opt+P       Tự xuống dòng / Xem trước\nCmd+Cuộn/+/-/0     Thu phóng / Đặt lại\nOption+T            Luôn ở trên cùng\nCtrl+Cmd+F          Toàn màn hình\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Tìm kiếm";
+"Replace" = "Thay thế";
+"Find:" = "Tìm kiếm:";
+"Replace:" = "Thay thế bằng:";
+"Match Case" = "Khớp chữ hoa/thường";
+"Whole Word" = "Toàn bộ từ";
+"Regex" = "Biểu thức chính quy";
+"Find Next" = "Tìm tiếp";
+"Replace All" = "Thay tất cả";
+"%lu occurrence(s) replaced." = "%lu mục đã được thay thế.";
+"Untitled" = "Chưa có tiêu đề";
+"Save changes?" = "Bạn có muốn lưu các thay đổi không?";
+"Save" = "Save";
+"Cancel" = "Hủy";
+"Discard" = "Discard";
+"Find Next (F3)" = "Tìm tiếp (F3)";
+"Replace (⌘R)" = "Thay thế (⌘R)";
+"Replace All (⌥⌘R)" = "Thay tất cả (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Gần đây";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Hoàn tác";
+"Redo" = "Làm lại";
+"Select All" = "Chọn tất cả";
+"Cut" = "Cắt";
+"Copy" = "Sao chép";
+"Paste" = "Dán";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Tệp đã bị sửa đổi từ bên ngoài.\nBạn có muốn tải lại không?";
+"Done" = "Done";
+"Search..." = "Tìm kiếm...";
+"Replace..." = "Thay thế...";
+"All" = "All";
+"Unsaved Changes" = "Bạn có muốn lưu các thay đổi không?";
+"Don't Save" = "Discard";
+"Go to Line" = "Đi đến dòng";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Đi đến dòng:";
+"Go To" = "Đi đến dòng";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Tệp";
+"Edit" = "Chỉnh sửa";
+"View" = "Xem";

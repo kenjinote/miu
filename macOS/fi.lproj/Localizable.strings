@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Pikanäppäimet]\nF1                  Ohje\nCmd+N               Uusi\nCmd+O / Drag&Drop  Avaa\nCmd+S/Shift+S      Tallenna / Tallenna nimellä\nCmd+W / Cmd+Q        Sulje\nCmd+F/H            Etsi / Korvaa\nF3 / Shift+F3       Etsi seuraava / edellinen\nCmd+G              Siirry riville\nCmd+B              Siirry vastaavaan sulkeeseen\nCmd+Z/Shift+Z       Kumoa / Tee uudelleen\nCmd+X/C/V          Leikkaa / Kopioi / Liitä\nCmd+Shift+K        Poista rivi\nCmd+U/Shift+U      ISOT / pienet kirjaimet\nCmd+/              Kommentti päälle/pois\nOption+Up/Down         Siirrä riviä\nOpt+Shift+Up/Down   Monista rivi\nCtrl+Opt+Up/Down    Useita kohdistimia\nCmd+D              Valitse sana / seuraava\nCmd+A              Valitse kaikki\nAlt+Vedä / Ctrl+Opt+Shift+Nuolet  Sarakevalinta\nOpt+Z / Opt+P       Rivitys / Esikatselu\nCmd+Rulla/+/-/0    Zoomaus / Palauta\nOption+T            Aina päällimmäisenä\nCtrl+Cmd+F          Koko näyttö\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Etsi";
+"Replace" = "Korvaa";
+"Find:" = "Etsi:";
+"Replace:" = "Korvaa:";
+"Match Case" = "Sama kirjainkoko";
+"Whole Word" = "Koko sana";
+"Regex" = "Säännölliset lausekkeet";
+"Find Next" = "Etsi seuraava";
+"Replace All" = "Korvaa kaikki";
+"%lu occurrence(s) replaced." = "%lu kohdetta korvattiin.";
+"Untitled" = "Nimetön";
+"Save changes?" = "Haluatko tallentaa muutokset?";
+"Save" = "Save";
+"Cancel" = "Peruuta";
+"Discard" = "Discard";
+"Find Next (F3)" = "Etsi seuraava (F3)";
+"Replace (⌘R)" = "Korvaa (⌘R)";
+"Replace All (⌥⌘R)" = "Korvaa kaikki (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Viimeisimmät";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Kumoa";
+"Redo" = "Tee uudelleen";
+"Select All" = "Valitse kaikki";
+"Cut" = "Leikkaa";
+"Copy" = "Kopioi";
+"Paste" = "Liitä";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Tiedostoa on muokattu ulkoisesti.\nHaluatko ladata sen uudelleen?";
+"Done" = "Done";
+"Search..." = "Etsi...";
+"Replace..." = "Korvaa...";
+"All" = "All";
+"Unsaved Changes" = "Haluatko tallentaa muutokset?";
+"Don't Save" = "Discard";
+"Go to Line" = "Siirry riville";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Siirry riville:";
+"Go To" = "Siirry riville";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Arkisto";
+"Edit" = "Muokkaa";
+"View" = "Näytä";

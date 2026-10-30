@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[Skróty klawiszowe]\nF1                  Pomoc\nCmd+N               Nowy\nCmd+O / Drag&Drop  Otwórz\nCmd+S/Shift+S      Zapisz / Zapisz jako\nCmd+W / Cmd+Q        Zamknij\nCmd+F/H            Znajdź/Zamień\nF3 / Shift+F3       Znajdź następny/poprzedni\nCmd+G              Przejdź do linii\nCmd+B              Przejdź do pasującego nawiasu\nCmd+Z/Shift+Z       Cofnij/Ponów\nCmd+X/C/V          Wytnij/Kopiuj/Wklej\nCmd+Shift+K        Usuń linię\nCmd+U/Shift+U      Wielkie / Małe litery\nCmd+/              Przełącz komentarz\nAlt+Góra/Dół        Przenieś linię\nAlt+Shift+Góra/Dół  Kopiuj linię\nCmd+Alt+Góra/Dół   Wielokrotny kursor\nCmd+D              Zaznacz słowo / Następne\nCmd+A              Zaznacz wszystko\nOption+Drag / Ctrl+Opt+Shift+Strzałki  Zaznaczanie prostokątne\nOpt+Z / Opt+P       Zawijanie / Podgląd\nCmd+Kółko/+/-/0    Powiększenie / Resetuj\nOption+T            Zawsze na wierzchu\nCtrl+Cmd+F          Pełny ekran\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "Znajdź";
+"Replace" = "Zamień";
+"Find:" = "Znajdź:";
+"Replace:" = "Zamień na:";
+"Match Case" = "Uwzględnij wielkość liter";
+"Whole Word" = "Uwzględnij całe wyrazy";
+"Regex" = "Wyrażenia regularne";
+"Find Next" = "Znajdź następny";
+"Replace All" = "Zamień wszystko";
+"%lu occurrence(s) replaced." = "%lu zamienionych wystąpień.";
+"Untitled" = "Bez tytułu";
+"Save changes?" = "Zapisać zmiany?";
+"Save" = "Save";
+"Cancel" = "Anuluj";
+"Discard" = "Discard";
+"Find Next (F3)" = "Znajdź następny (F3)";
+"Replace (⌘R)" = "Zamień (⌘R)";
+"Replace All (⌥⌘R)" = "Zamień wszystko (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Ostatnie";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "Cofnij";
+"Redo" = "Ponów";
+"Select All" = "Zaznacz wszystko";
+"Cut" = "Wytnij";
+"Copy" = "Kopiuj";
+"Paste" = "Wklej";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "Plik został zmodyfikowany przez inny program.\nCzy chcesz go przeładować?";
+"Done" = "Done";
+"Search..." = "Znajdź...";
+"Replace..." = "Zamień...";
+"All" = "All";
+"Unsaved Changes" = "Zapisać zmiany?";
+"Don't Save" = "Discard";
+"Go to Line" = "Przejdź do linii";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "Przejdź do linii:";
+"Go To" = "Przejdź do linii";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "Plik";
+"Edit" = "Edycja";
+"View" = "Widok";

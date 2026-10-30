@@ -1,51 +1,60 @@
 /* 
   Localizable.strings
   miu
-
-  Created by kenji on 2026/02/22.
-  
 */
 
-"HelpText" = "F1                    Օգնություն\nCmd+N                 Նոր\nCmd+O / Drag&Drop     Բացել\nCmd+S                 Պահպանել\nCmd+Shift+S           Պահպանել որպես\nCmd+F                 Գտնել\nCmd+H                 Փոխարինել\nF3 / Shift+F3         Գտնել հաջորդը/նախորդը\nCmd+G                 Անցնել տողին\nCmd+Z/Shift+Z         Հետարկել/Կրկնել\nCmd+X/C/V             Կտրել/Պատճենել/Տեղադրել\nCmd+Shift+K           Ջնջել տողը\nCmd+U                 Մեծատառ\nCmd+Shift+U           Փոքրատառ\nOption+Up/Down        Տեղափոխել տողը\nOption+Shift+Up/Down  Պատճենել տողը\nCmd+D                 Ընտրել բառը / հաջորդը\nCmd+A                 Ընտրել բոլորը\nOption+Drag           Ուղղանկյուն ընտրություն\nCmd+Wheel/+/-         Խոշորացնել\nCmd+0                 Վերականգնել չափը\nCtrl+Cmd+F            Լիաէկրան\n";
+"HelpText" = "[Shortcuts]\nF1                  Help\nCmd+N               New\nCmd+O / Drag&Drop  Open\nCmd+S/Shift+S      Save / Save As\nCmd+W / Cmd+Q        Close\nCmd+F/H            Find/Replace\nF3 / Shift+F3       Find Next/Prev\nCmd+G              Go To Line\nCmd+B              Jump to matching bracket\nCmd+Z/Shift+Z       Undo/Redo\nCmd+X/C/V          Cut/Copy/Paste\nCmd+Shift+K        Delete Line\nCmd+U/Shift+U      Upper / Lower Case\nCmd+/              Toggle Comment\nOption+Up/Down         Move Line\nOpt+Shift+Up/Down   Copy Line\nCtrl+Opt+Up/Down    Multi-Cursor\nCmd+D              Select Word / Next\nCmd+A              Select All\nOption+Drag / Ctrl+Opt+Shift+Arrow  Rect Select\nOpt+Z / Opt+P       Word Wrap / Preview\nCmd+Wheel/+/-/0    Zoom / Reset\nOption+T            Always on Top\nCtrl+Cmd+F          Full Screen\n";
 "HelpText_iOS" = "[ Ստեղնաշարի դյուրանցումներ (iPad) ]\n\nCmd + N         : Նոր ֆայլ\nCmd + O         : Բացել ֆայլը\nCmd + S         : Պահպանել\nShift + Cmd + S : Պահպանել որպես\nCmd + F         : Գտնել\nCmd + R         : Փոխարինել\nCmd + G / J     : Անցնել տողին\nCmd + D         : Ընտրել հաջորդ հանդիպումը\nCmd + [+ / - / 0]: Խոշորացնել / Փոքրացնել / Վերակայել\nF1              : Միացնել/Անջատել օգնությունը\nEsc             : Փակել պատուհանները / Մաքրել ընտրությունը";
-"Find" = "Գտնել";
-"Replace" = "Փոխարինել";
-"Find:" = "Գտնել՝";
-"Replace:" = "Փոխարինել՝";
-"Match Case" = "Հաշվի առնել մեծատառ/փոքրատառ";
-"Whole Word" = "Ամբողջ բառով";
-"Regex" = "Կանոնավոր արտահայտություն";
-"Find Next" = "Գտնել հաջորդը";
-"Replace All" = "Փոխարինել բոլորը";
+"Find" = "Find";
+"Replace" = "Replace";
+"Find:" = "Find what:";
+"Replace:" = "Replace with:";
+"Match Case" = "Match case";
+"Whole Word" = "Match whole word";
+"Regex" = "Regular expression";
+"Find Next" = "Find Next";
+"Replace All" = "Replace All";
 "%lu occurrence(s) replaced." = "Փոխարինվեց %lu համընկնում:";
-"Untitled" = "Անանուն";
-"Save changes?" = "Պահպանե՞լ փոփոխությունները:";
+"Untitled" = "Untitled";
+"Save changes?" = "Save changes?";
 "Save" = "Պահպանել";
-"Cancel" = "Չեղարկել";
+"Cancel" = "Cancel";
 "Discard" = "Մերժել";
-"Find Next (F3)" = "Գտնել հաջորդը (F3)";
-"Replace (⌘R)" = "Փոխարինել (⌘R)";
-"Replace All (⌥⌘R)" = "Փոխարինել բոլորը (⌥⌘R)";
+"Find Next (F3)" = "Find Next (F3)";
+"Replace (⌘R)" = "Replace (⌘R)";
+"Replace All (⌥⌘R)" = "Replace All (⌥⌘R)";
 "Quit" = "Ավարտել %@-ը";
 "New" = "Նոր";
 "Open" = "Բացել";
+"Open..." = "Open...";
+"Open Recent" = "Recent";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
 "Save As" = "Պահպանել որպես";
-"Undo" = "Հետարկել";
-"Redo" = "Վերականգնել";
-"Select All" = "Նշել բոլորը";
-"Cut" = "Կտրել";
-"Copy" = "Պատճենել";
-"Paste" = "Փակցնել";
+"Undo" = "Undo";
+"Redo" = "Redo";
+"Select All" = "Select All";
+"Cut" = "Cut";
+"Copy" = "Copy";
+"Paste" = "Paste";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "The file has been modified externally.\nDo you want to reload it?";
 "Done" = "Պատրաստ է";
 "Search..." = "Որոնում...";
 "Replace..." = "Փոխարինել...";
 "All" = "Բոլորը";
 "Unsaved Changes" = "Չպահպանված փոփոխություններ";
 "Don't Save" = "Չպահպանել";
-"Go to Line" = "Անցնել տողին";
+"Go to Line" = "Go To Line";
 "Go" = "Անցնել";
 "Line:" = "Տող․";
 "Line Number:" = "Տողի համարը․";
-"Go To" = "Անցնել";
+"Go To" = "Go To Line";
 "Top" = "Սկիզբ";
 "Bottom" = "Վերջ";
+"File" = "Ֆայլ";
+"Edit" = "Խմբագրել";
+"View" = "Տեսք";

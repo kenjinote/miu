@@ -1,25 +1,22 @@
 /* 
   Localizable.strings
   miu
-
-  Created by kenji on 2026/02/22.
-  
 */
 
-"HelpText" = "F1                    도움말\nCmd+N                 새로 만들기\nCmd+O / Drag&Drop     열기\nCmd+S                 저장\nCmd+Shift+S           다른 이름으로 저장\nCmd+F                 찾기\nCmd+H                 바꾸기\nF3 / Shift+F3         다음/이전 찾기\nCmd+G                 줄로 이동\nCmd+Z/Shift+Z         실행 취소/다시 실행\nCmd+X/C/V             잘라내기/복사/붙여넣기\nCmd+Shift+K           줄 삭제\nCmd+U                 대문자로 변환\nCmd+Shift+U           소문자로 변환\nOption+Up/Down        줄 이동\nOption+Shift+Up/Down  줄 복사\nCmd+D                 단어 선택 / 다음\nCmd+A                 모두 선택\nOption+Drag           사각형 선택\nCmd+Wheel/+/-         확대/축소\nCmd+0                 확대/축소 재설정\nCtrl+Cmd+F            전체 화면\n";
+"HelpText" = "[단축키]\nF1                  도움말\nCmd+N               새로 만들기\nCmd+O / Drag&Drop  열기\nCmd+S/Shift+S      저장/다른 이름으로 저장\nCmd+W / Cmd+Q        닫기\nCmd+F/H            찾기/바꾸기\nF3 / Shift+F3       다음/이전 찾기\nCmd+G              줄 이동\nCmd+B              일치하는 괄호로 이동\nCmd+Z/Shift+Z       실행 취소/다시 실행\nCmd+X/C/V          잘라내기/복사/붙여넣기\nCmd+Shift+K        줄 삭제\nCmd+U/Shift+U      대문자/소문자로 변환\nCmd+/              주석 토글\nOption+Up/Down         줄 이동\nOpt+Shift+Up/Down   줄 복사\nCtrl+Opt+Up/Down    멀티 커서\nCmd+D              단어 선택 / 다음\nCmd+A              모두 선택\nOption+Drag / Ctrl+Opt+Shift+방향키  사각형 선택\nOpt+Z / Opt+P       자동 줄바꿈 / 미리보기\nCmd+Wheel/+/-/0    확대/축소 / 초기화\nOption+T            항상 위에 표시\nCtrl+Cmd+F          전체 화면\n";
 "HelpText_iOS" = "[ 키보드 단축키 (iPad) ]\n\nCmd + N         : 새 파일\nCmd + O         : 파일 열기\nCmd + S         : 저장\nShift + Cmd + S : 다른 이름으로 저장\nCmd + F         : 찾기\nCmd + R         : 바꾸기\nCmd + G / J     : 줄로 이동\nCmd + D         : 다음 항목 선택\nCmd + [+ / - / 0]: 확대 / 축소 / 초기화\nF1              : 도움말 표시/숨기기\nEsc             : 대화 상자 닫기 / 선택 해제";
 "Find" = "찾기";
 "Replace" = "바꾸기";
-"Find:" = "찾기:";
-"Replace:" = "바꾸기:";
-"Match Case" = "대소문자 구분";
+"Find:" = "찾을 내용:";
+"Replace:" = "바꿀 내용:";
+"Match Case" = "대/소문자 구분";
 "Whole Word" = "단어 단위로";
-"Regex" = "정규식";
+"Regex" = "정규 표현식";
 "Find Next" = "다음 찾기";
 "Replace All" = "모두 바꾸기";
 "%lu occurrence(s) replaced." = "%lu개 항목이 바뀌었습니다.";
 "Untitled" = "제목 없음";
-"Save changes?" = "변경 사항을 저장하시겠습니까?";
+"Save changes?" = "변경 내용을 저장하시겠습니까?";
 "Save" = "저장";
 "Cancel" = "취소";
 "Discard" = "저장 안 함";
@@ -29,23 +26,35 @@
 "Quit" = "%@ 종료";
 "New" = "새로 만들기";
 "Open" = "열기";
+"Open..." = "Open...";
+"Open Recent" = "최근 항목";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
 "Save As" = "별도 저장";
 "Undo" = "실행 취소";
 "Redo" = "다시 실행";
-"Select All" = "전체 선택";
-"Cut" = "오려두기";
+"Select All" = "모두 선택";
+"Cut" = "잘라내기";
 "Copy" = "복사";
 "Paste" = "붙여넣기";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "파일이 외부에서 수정되었습니다.\n다시 불러오시겠습니까?";
 "Done" = "완료";
 "Search..." = "검색...";
 "Replace..." = "대치...";
 "All" = "모두";
 "Unsaved Changes" = "저장하지 않은 변경 사항";
 "Don't Save" = "저장 안 함";
-"Go to Line" = "줄로 이동";
+"Go to Line" = "줄 이동";
 "Go" = "이동";
 "Line:" = "줄:";
 "Line Number:" = "줄 번호:";
-"Go To" = "이동";
+"Go To" = "줄 이동";
 "Top" = "처음";
 "Bottom" = "끝";
+"File" = "파일";
+"Edit" = "편집";
+"View" = "보기";

@@ -1,20 +1,17 @@
 /* 
   Localizable.strings
   miu
-
-  Created by kenji on 2026/02/22.
-  
 */
 
-"HelpText" = "F1                    Help\nCmd+N                 New\nCmd+O / Drag&Drop     Open\nCmd+S                 Save\nCmd+Shift+S           Save As\nCmd+F                 Find\nCmd+H                 Replace\nF3 / Shift+F3         Find Next/Prev\nCmd+G                 Go To Line\nCmd+Z/Shift+Z         Undo/Redo\nCmd+X/C/V             Cut/Copy/Paste\nCmd+Shift+K           Delete Line\nCmd+U                 Upper Case\nCmd+Shift+U           Lower Case\nOption+Up/Down        Move Line\nOption+Shift+Up/Down  Copy Line\nCmd+D                 Select Word / Next\nCmd+A                 Select All\nOption+Drag           Rect Select\nCmd+Wheel/+/-         Zoom\nCmd+0                 Reset Zoom\nCtrl+Cmd+F            Full Screen\n";
+"HelpText" = "[Shortcuts]\nF1                  Help\nCmd+N               New\nCmd+O / Drag&Drop  Open\nCmd+S/Shift+S      Save / Save As\nCmd+W / Cmd+Q        Close\nCmd+F/H            Find/Replace\nF3 / Shift+F3       Find Next/Prev\nCmd+G              Go To Line\nCmd+B              Jump to matching bracket\nCmd+Z/Shift+Z       Undo/Redo\nCmd+X/C/V          Cut/Copy/Paste\nCmd+Shift+K        Delete Line\nCmd+U/Shift+U      Upper / Lower Case\nCmd+/              Toggle Comment\nOption+Up/Down         Move Line\nOpt+Shift+Up/Down   Copy Line\nCtrl+Opt+Up/Down    Multi-Cursor\nCmd+D              Select Word / Next\nCmd+A              Select All\nOption+Drag / Ctrl+Opt+Shift+Arrow  Rect Select\nOpt+Z / Opt+P       Word Wrap / Preview\nCmd+Wheel/+/-/0    Zoom / Reset\nOption+T            Always on Top\nCtrl+Cmd+F          Full Screen\n";
 "HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New File\nCmd + O         : Open File\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom In / Out / Reset\nF1              : Toggle Help\nEsc             : Close Dialogs / Clear Selection";
 "Find" = "Find";
 "Replace" = "Replace";
-"Find:" = "Find:";
-"Replace:" = "Replace:";
-"Match Case" = "Match Case";
-"Whole Word" = "Whole Word";
-"Regex" = "Regex";
+"Find:" = "Find what:";
+"Replace:" = "Replace with:";
+"Match Case" = "Match case";
+"Whole Word" = "Match whole word";
+"Regex" = "Regular expression";
 "Find Next" = "Find Next";
 "Replace All" = "Replace All";
 "%lu occurrence(s) replaced." = "%lu occurrence(s) replaced.";
@@ -29,6 +26,10 @@
 "Quit" = "Quit %@";
 "New" = "New";
 "Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "Recent";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
 "Save As" = "Save As";
 "Undo" = "Undo";
 "Redo" = "Redo";
@@ -36,16 +37,24 @@
 "Cut" = "Cut";
 "Copy" = "Copy";
 "Paste" = "Paste";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "The file has been modified externally.\nDo you want to reload it?";
 "Done" = "Done";
 "Search..." = "Search...";
 "Replace..." = "Replace...";
 "All" = "All";
 "Unsaved Changes" = "Unsaved Changes";
 "Don't Save" = "Don't Save";
-"Go to Line" = "Go to Line";
+"Go to Line" = "Go To Line";
 "Go" = "Go";
 "Line:" = "Line:";
 "Line Number:" = "Line Number:";
-"Go To" = "Go To";
+"Go To" = "Go To Line";
 "Top" = "Top";
 "Bottom" = "Bottom";
+"File" = "File";
+"Edit" = "Edit";
+"View" = "View";

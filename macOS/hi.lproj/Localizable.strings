@@ -1,0 +1,60 @@
+/* 
+  Localizable.strings
+  miu
+*/
+
+"HelpText" = "[शॉर्टकट]\nF1                  सहायता\nCmd+N               नया\nCmd+O / Drag&Drop  खोलें\nCmd+S/Shift+S      सहेजें / इस रूप में सहेजें\nCmd+W / Cmd+Q        बंद करें\nCmd+F/H            खोजें / बदलें\nF3 / Shift+F3       अगला / पिछला खोजें\nCmd+G              पंक्ति पर जाएँ\nCmd+B              मिलान वाले ब्रैकेट पर जाएँ\nCmd+Z/Shift+Z       पूर्ववत करें / फिर से करें\nCmd+X/C/V          काटें / कॉपी करें / पेस्ट करें\nCmd+Shift+K        पंक्ति हटाएँ\nCmd+U/Shift+U      बड़े / छोटे अक्षर\nCmd+/              टिप्पणी टॉगल करें\nOption+Up/Down         पंक्ति स्थानांतरित करें\nOpt+Shift+Up/Down   पंक्ति की प्रतिलिपि बनाएँ\nCtrl+Opt+Up/Down    मल्टी-कर्सर\nCmd+D              शब्द चुनें / अगला चुनें\nCmd+A              सभी चुनें\nOption+Drag / Ctrl+Opt+Shift+Arrows  कॉलम चयन\nOpt+Z / Opt+P       वर्ड रैप / पूर्वावलोकन\nCmd+Wheel/+/-/0    ज़ूम / रीसेट करें\nOption+T            हमेशा सबसे ऊपर\nCtrl+Cmd+F          पूर्ण स्क्रीन\n";
+"HelpText_iOS" = "[ Keyboard Shortcuts (iPad) ]\n\nCmd + N         : New\nCmd + O         : Open\nCmd + S         : Save\nShift + Cmd + S : Save As\nCmd + F         : Find\nCmd + R         : Replace\nCmd + G / J     : Go to Line\nCmd + B         : Matching Bracket\nCmd + /         : Toggle Comment\nCmd + D         : Select Next Occurrence\nCmd + [+ / - / 0]: Zoom / Reset\nF1              : Toggle Help\nEsc             : Close / Deselect";
+"Find" = "खोजें";
+"Replace" = "बदलें";
+"Find:" = "खोजें:";
+"Replace:" = "इससे बदलें:";
+"Match Case" = "अक्षर के आकार का मिलान करें";
+"Whole Word" = "पूरे शब्द का मिलान करें";
+"Regex" = "रेगुलर एक्सप्रेशन";
+"Find Next" = "अगला खोजें";
+"Replace All" = "सभी बदलें";
+"%lu occurrence(s) replaced." = "%lu आइटम बदले गए।";
+"Untitled" = "शीर्षकहीन";
+"Save changes?" = "क्या आप परिवर्तन सहेजना चाहते हैं?";
+"Save" = "Save";
+"Cancel" = "रद्द करें";
+"Discard" = "Discard";
+"Find Next (F3)" = "अगला खोजें (F3)";
+"Replace (⌘R)" = "बदलें (⌘R)";
+"Replace All (⌥⌘R)" = "सभी बदलें (⌥⌘R)";
+"Quit" = "Quit %@";
+"New" = "New";
+"Open" = "Open";
+"Open..." = "Open...";
+"Open Recent" = "हाल ही के";
+"Clear Menu" = "Clear Menu";
+"Close" = "Close";
+"Save As" = "Save As";
+"Undo" = "पूर्ववत करें";
+"Redo" = "फिर से करें";
+"Select All" = "सभी चुनें";
+"Cut" = "काटें";
+"Copy" = "कॉपी करें";
+"Paste" = "पेस्ट करें";
+"Toggle Comment" = "Toggle Comment";
+"Word Wrap" = "Word Wrap";
+"Live Preview" = "Live Preview";
+"Always on Top" = "Always on Top";
+"File modified externally. Reload?" = "फ़ाइल बाहरी रूप से संशोधित की गई है।\nक्या आप इसे फिर से लोड करना चाहते हैं?";
+"Done" = "Done";
+"Search..." = "खोजें...";
+"Replace..." = "बदलें...";
+"All" = "All";
+"Unsaved Changes" = "क्या आप परिवर्तन सहेजना चाहते हैं?";
+"Don't Save" = "Discard";
+"Go to Line" = "पंक्ति पर जाएँ";
+"Go" = "Go";
+"Line:" = "Line:";
+"Line Number:" = "पंक्ति पर जाएँ:";
+"Go To" = "पंक्ति पर जाएँ";
+"Top" = "Top";
+"Bottom" = "Bottom";
+"File" = "फ़ाइल";
+"Edit" = "संपादन";
+"View" = "दृश्य";

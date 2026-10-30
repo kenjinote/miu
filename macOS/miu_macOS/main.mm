@@ -1,6 +1,19 @@
 #import <Cocoa/Cocoa.h>
+#import <WebKit/WebKit.h>
 #import "EditorCore.h"
+
 static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular";
+
+@class EditorView;
+
+@interface MiuPreviewMessageHandler : NSObject <WKScriptMessageHandler, WKNavigationDelegate>
+@property (weak) EditorView *editorView;
+@end
+
+@interface MiuSplitterView : NSView
+@property (weak) EditorView *editorView;
+@end
+
 @interface EditorView : NSView <NSTextInputClient, NSTextFieldDelegate>
 {
 @public
@@ -16,7 +29,12 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     NSButton *matchCaseBtn;
     NSButton *wholeWordBtn;
     NSButton *regexBtn;
+    WKWebView *previewWebView;
+    MiuSplitterView *splitterView;
+    MiuPreviewMessageHandler *previewMsgHandler;
 }
+- (void)layoutSplitViews;
+- (void)updatePreviewPane;
 - (void)updateScrollers;
 - (void)applyZoom:(float)val relative:(bool)rel;
 - (void)showFindPanel:(BOOL)replaceMode;
@@ -28,10 +46,72 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
 - (void)replaceAllAction:(id)sender;
 - (void)showGoToLinePanel;
 - (void)jumpToLine:(NSInteger)line;
+- (void)cut:(id)sender;
+- (void)copy:(id)sender;
+- (void)paste:(id)sender;
+- (void)selectAll:(id)sender;
+- (void)undo:(id)sender;
+- (void)redo:(id)sender;
+- (void)toggleCommentAction:(id)sender;
+- (void)toggleWordWrapAction:(id)sender;
+- (void)togglePreviewAction:(id)sender;
+- (void)toggleAlwaysOnTopAction:(id)sender;
+- (void)showHelpAction:(id)sender;
 @end
+
+@implementation MiuPreviewMessageHandler
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
+    EditorView *ev = self.editorView;
+    if (!ev || !ev->editor) return;
+    if ([message.name isEqualToString:@"miuPreview"] && [message.body isKindOfClass:[NSString class]]) {
+        NSString *body = (NSString *)message.body;
+        if ([body hasPrefix:@"toggle_task:"]) {
+            int lineIdx = [[body substringFromIndex:12] intValue];
+            ev->editor->handlePreviewTaskToggle(lineIdx);
+        }
+    }
+}
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
+    if (navigationAction.navigationType == WKNavigationTypeOther) {
+        decisionHandler(WKNavigationActionPolicyAllow);
+    } else {
+        decisionHandler(WKNavigationActionPolicyCancel);
+    }
+}
+@end
+
+@implementation MiuSplitterView
+- (void)resetCursorRects {
+    [super resetCursorRects];
+    [self addCursorRect:[self bounds] cursor:[NSCursor resizeLeftRightCursor]];
+}
+- (void)drawRect:(NSRect)dirtyRect {
+    EditorView *ev = self.editorView;
+    BOOL dark = (ev && ev->editor) ? ev->editor->isDarkMode : NO;
+    NSColor *col = dark ? [NSColor colorWithCalibratedWhite:0.25 alpha:0.9] : [NSColor colorWithCalibratedWhite:0.82 alpha:0.9];
+    [col setFill];
+    NSRectFill(dirtyRect);
+}
+- (void)mouseDragged:(NSEvent *)event {
+    EditorView *ev = self.editorView;
+    if (!ev || !ev->editor || ![self superview]) return;
+    NSView *container = [self superview];
+    NSPoint pt = [container convertPoint:[event locationInWindow] fromView:nil];
+    CGFloat totalW = container.bounds.size.width;
+    if (totalW > 100.0) {
+        float ratio = std::clamp((float)(pt.x / totalW), 0.15f, 0.85f);
+        ev->editor->previewSplitRatio = ratio;
+        [ev layoutSplitViews];
+        [ev updateScrollers];
+        [ev setNeedsDisplay:YES];
+    }
+}
+@end
+
 @interface FindPanel : NSPanel
 @property (weak) EditorView *editorView;
 @end
+
 @implementation FindPanel
 - (BOOL)performKeyEquivalent:(NSEvent *)event {
     if ([event keyCode] == 99) {
@@ -49,12 +129,10 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         if ([ch isEqualToString:@"h"] || [ch isEqualToString:@"r"]) {
             if ([event modifierFlags] & NSEventModifierFlagOption) {
                 [self.editorView replaceAllAction:nil];
-            }
-            else {
+            } else {
                 if ([self.editorView isReplaceMode]) {
                     [self.editorView replaceAction:nil];
-                }
-                else {
+                } else {
                     [self.editorView showFindPanel:YES];
                 }
             }
@@ -75,13 +153,17 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     return [super performKeyEquivalent:event];
 }
 @end
+
 @implementation EditorView {
     NSScroller *vScroller, *hScroller;
     NSPoint boxSelectStartPoint;
+    NSPoint dragStartPoint;
+    BOOL isPotentialDragMove;
     size_t cursorsSnapshotCount;
     NSWindow *goToLineWindow;
     NSTextField *goToLineTextField;
 }
+
 - (instancetype)initWithFrame:(NSRect)fr {
     if (self = [super initWithFrame:fr]) {
         editor = std::make_shared<Editor>();
@@ -99,17 +181,20 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             __strong EditorView *strongSelf = weakSelf;
             if (strongSelf) {
                 NSRect b = [strongSelf bounds];
-                w = b.size.width; h = b.size.height;
+                w = (float)b.size.width;
+                h = (float)b.size.height;
             }
         };
         editor->cbUpdateTitleBar = [weakSelf]() {
             __strong EditorView *strongSelf = weakSelf;
             if (!strongSelf || !strongSelf->editor) return;
             NSWindow *window = [strongSelf window];
+            if (!window) return;
             std::wstring currentPathW = strongSelf->editor->currentFilePath;
             std::wstring untitledStr = UTF8ToW([NSLocalizedString(@"Untitled", @"新規ファイル名") UTF8String]);
             std::wstring fileName = currentPathW.empty() ? untitledStr : currentPathW.substr(currentPathW.find_last_of(L"/") + 1);
-            std::wstring titleText = (strongSelf->editor->isDirty ? L"*" : L"") + fileName;
+            std::wstring pinPrefix = strongSelf->editor->isAlwaysOnTop ? L"📌 " : L"";
+            std::wstring titleText = pinPrefix + (strongSelf->editor->isDirty ? L"*" : L"") + fileName;
             [window setTitle:[NSString stringWithUTF8String:WToUTF8(titleText).c_str()]];
             [window setDocumentEdited:strongSelf->editor->isDirty];
             if (!currentPathW.empty()) {
@@ -119,11 +204,32 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
                 [window setRepresentedURL:[[NSBundle mainBundle] bundleURL]];
             }
         };
+        editor->cbSetAlwaysOnTop = [weakSelf](bool onTop) {
+            __strong EditorView *strongSelf = weakSelf;
+            if (!strongSelf || ![strongSelf window]) return;
+            [[strongSelf window] setLevel:onTop ? NSFloatingWindowLevel : NSNormalWindowLevel];
+        };
+        editor->cbUpdatePreview = [weakSelf]() {
+            __strong EditorView *strongSelf = weakSelf;
+            if (strongSelf) {
+                [strongSelf layoutSplitViews];
+                [strongSelf updatePreviewPane];
+            }
+        };
+        editor->cbShowExternalModifyAlert = [weakSelf]() -> bool {
+            __strong EditorView *strongSelf = weakSelf;
+            if (!strongSelf) return false;
+            NSAlert *a = [NSAlert new];
+            [a setMessageText:NSLocalizedString(@"File modified externally. Reload?", @"外部変更の確認")];
+            [a addButtonWithTitle:NSLocalizedString(@"Save", @"OK/Reload")];
+            [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
+            return ([a runModal] == NSAlertFirstButtonReturn);
+        };
         editor->cbSetClipboard = [](const std::string& text, bool isRect) {
             NSPasteboard *pb = [NSPasteboard generalPasteboard];
             [pb clearContents];
             [pb setString:[NSString stringWithUTF8String:text.c_str()] forType:NSPasteboardTypeString];
-            if(isRect) [pb setData:[NSData data] forType:kMiuRectangularSelectionType];
+            if (isRect) [pb setData:[NSData data] forType:kMiuRectangularSelectionType];
         };
         editor->cbGetClipboard = [](bool& isRect) -> std::string {
             NSPasteboard *pb = [NSPasteboard generalPasteboard];
@@ -140,46 +246,129 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         };
         editor->cbShowUnsavedAlert = [weakSelf]() -> bool {
             __strong EditorView *strongSelf = weakSelf;
-            if(!strongSelf) return true;
+            if (!strongSelf) return true;
             NSAlert *a = [NSAlert new];
             [a setMessageText:NSLocalizedString(@"Save changes?", @"変更を保存しますか？")];
             [a addButtonWithTitle:NSLocalizedString(@"Save", @"保存")];
             [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
             [a addButtonWithTitle:NSLocalizedString(@"Discard", @"破棄")];
             NSModalResponse r = [a runModal];
-            if(r==NSAlertFirstButtonReturn) return strongSelf->editor->currentFilePath.empty() ? strongSelf->editor->saveFileAs() : strongSelf->editor->saveFile(strongSelf->editor->currentFilePath);
-            if(r==NSAlertThirdButtonReturn){ strongSelf->editor->isDirty=false; strongSelf->editor->updateTitleBar(); return true; }
+            if (r == NSAlertFirstButtonReturn) return strongSelf->editor->currentFilePath.empty() ? strongSelf->editor->saveFileAs() : strongSelf->editor->saveFile(strongSelf->editor->currentFilePath);
+            if (r == NSAlertThirdButtonReturn) { strongSelf->editor->isDirty = false; strongSelf->editor->updateTitleBar(); return true; }
             return false;
         };
         editor->cbSaveFileAs = [weakSelf]() -> bool {
             __strong EditorView *strongSelf = weakSelf;
             if (!strongSelf) return false;
             NSSavePanel *p = [NSSavePanel savePanel];
-            if([p runModal]==NSModalResponseOK) return strongSelf->editor->saveFile(UTF8ToW([p.URL.path UTF8String]));
+            if ([p runModal] == NSModalResponseOK) return strongSelf->editor->saveFile(UTF8ToW([p.URL.path UTF8String]));
             return false;
         };
         editor->cbOpenFile = [weakSelf]() -> bool {
             __strong EditorView *strongSelf = weakSelf;
             if (!strongSelf) return false;
             NSOpenPanel *p = [NSOpenPanel openPanel];
-            if([p runModal]==NSModalResponseOK) return strongSelf->editor->openFileFromPath([[[p URLs] objectAtIndex:0].path UTF8String]);
+            if ([p runModal] == NSModalResponseOK) return strongSelf->editor->openFileFromPath([[[p URLs] objectAtIndex:0].path UTF8String]);
             return false;
         };
         CGFloat sw = [NSScroller scrollerWidthForControlSize:NSControlSizeRegular scrollerStyle:NSScrollerStyleLegacy];
-        vScroller = [[NSScroller alloc] initWithFrame:NSMakeRect(fr.size.width-sw, 0, sw, fr.size.height-sw)];
-        [vScroller setAutoresizingMask:NSViewMinXMargin|NSViewHeightSizable];
-        [vScroller setTarget:self]; [vScroller setAction:@selector(scrollAction:)]; [self addSubview:vScroller];
-        hScroller = [[NSScroller alloc] initWithFrame:NSMakeRect(0, fr.size.height-sw, fr.size.width-sw, sw)];
-        [hScroller setAutoresizingMask:NSViewWidthSizable|NSViewMinYMargin];
-        [hScroller setTarget:self]; [hScroller setAction:@selector(scrollAction:)]; [self addSubview:hScroller];
+        vScroller = [[NSScroller alloc] initWithFrame:NSMakeRect(fr.size.width - sw, 0, sw, fr.size.height - sw)];
+        [vScroller setAutoresizingMask:NSViewMinXMargin | NSViewHeightSizable];
+        [vScroller setTarget:self];
+        [vScroller setAction:@selector(scrollAction:)];
+        [self addSubview:vScroller];
+        hScroller = [[NSScroller alloc] initWithFrame:NSMakeRect(0, fr.size.height - sw, fr.size.width - sw, sw)];
+        [hScroller setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
+        [hScroller setTarget:self];
+        [hScroller setAction:@selector(scrollAction:)];
+        [self addSubview:hScroller];
         [self registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
         [[NSNotificationCenter defaultCenter] addObserver:self
-                                                         selector:@selector(systemColorsDidChange:)
-                                                             name:NSSystemColorsDidChangeNotification
-                                                           object:nil];
+                                                 selector:@selector(systemColorsDidChange:)
+                                                     name:NSSystemColorsDidChangeNotification
+                                                   object:nil];
     }
     return self;
 }
+
+- (void)ensurePreviewViewsCreated {
+    if (previewWebView || ![self superview]) return;
+    NSView *container = [self superview];
+    previewMsgHandler = [[MiuPreviewMessageHandler alloc] init];
+    previewMsgHandler.editorView = self;
+
+    WKWebViewConfiguration *cfg = [[WKWebViewConfiguration alloc] init];
+    WKUserContentController *ucc = [[WKUserContentController alloc] init];
+    [ucc addScriptMessageHandler:previewMsgHandler name:@"miuPreview"];
+    cfg.userContentController = ucc;
+
+    previewWebView = [[WKWebView alloc] initWithFrame:NSZeroRect configuration:cfg];
+    previewWebView.navigationDelegate = previewMsgHandler;
+    if ([previewWebView respondsToSelector:@selector(setValue:forKey:)]) {
+        [previewWebView setValue:@(NO) forKey:@"drawsBackground"];
+    }
+    [previewWebView setHidden:YES];
+    [container addSubview:previewWebView];
+
+    splitterView = [[MiuSplitterView alloc] initWithFrame:NSZeroRect];
+    splitterView.editorView = self;
+    [splitterView setHidden:YES];
+    [container addSubview:splitterView];
+}
+
+- (void)layoutSplitViews {
+    NSView *container = [self superview];
+    if (!container || !editor) return;
+    [self ensurePreviewViewsCreated];
+    NSRect cb = container.bounds;
+    CGFloat topInset = 28.0;
+    if (@available(macOS 11.0, *)) {
+        topInset = container.safeAreaInsets.top;
+        if (topInset < 28.0) topInset = 28.0;
+    }
+    CGFloat availH = std::max((CGFloat)1.0, cb.size.height - topInset);
+    if (!editor->showPreview) {
+        [self setFrame:NSMakeRect(0, 0, cb.size.width, availH)];
+        [splitterView setHidden:YES];
+        [previewWebView setHidden:YES];
+    } else {
+        CGFloat splitW = 5.0;
+        CGFloat leftW = std::floor(cb.size.width * editor->previewSplitRatio);
+        CGFloat rightW = std::max((CGFloat)10.0, cb.size.width - leftW - splitW);
+        [self setFrame:NSMakeRect(0, 0, leftW, availH)];
+        [splitterView setFrame:NSMakeRect(leftW, 0, splitW, availH)];
+        [previewWebView setFrame:NSMakeRect(leftW + splitW, 0, rightW, availH)];
+        [splitterView setHidden:NO];
+        [previewWebView setHidden:NO];
+        [splitterView setNeedsDisplay:YES];
+    }
+}
+
+- (void)updatePreviewPane {
+    if (!editor || !editor->showPreview) return;
+    [self ensurePreviewViewsCreated];
+    if (!previewWebView) return;
+    MiuPreview::PreviewRenderResult res = editor->getPreviewRenderResult();
+    NSString *fullHtmlNS = [NSString stringWithUTF8String:res.fullHtml.c_str()];
+    if (!fullHtmlNS) return;
+
+    if (!editor->previewInitialLoaded) {
+        editor->previewInitialLoaded = true;
+        [previewWebView loadHTMLString:fullHtmlNS baseURL:nil];
+    } else {
+        std::string js = MiuPreview::buildDomUpdateJs(res);
+        NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
+        if (jsNS) {
+            WKWebView *wv = previewWebView;
+            [wv evaluateJavaScript:jsNS completionHandler:^(id result, NSError *error) {
+                if (error) {
+                    [wv loadHTMLString:fullHtmlNS baseURL:nil];
+                }
+            }];
+        }
+    }
+}
+
 - (void)applySystemHighlightColor {
     if (!editor) return;
     if (@available(macOS 10.14, *)) {
@@ -193,12 +382,17 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         }];
     }
 }
+
 - (void)resetCursorRects {
     [super resetCursorRects];
     [self addCursorRect:[self bounds] cursor:[NSCursor IBeamCursor]];
 }
+
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    if (previewWebView) {
+        [previewWebView.configuration.userContentController removeScriptMessageHandlerForName:@"miuPreview"];
+    }
     if (findTextField) {
         [findTextField setDelegate:nil];
         [findTextField setTarget:nil];
@@ -208,15 +402,18 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         [replaceTextField setTarget:nil];
     }
 }
+
 - (void)systemColorsDidChange:(NSNotification *)notification {
     [self applySystemHighlightColor];
     [self setNeedsDisplay:YES];
 }
+
 - (NSDragOperation)draggingEntered:(id<NSDraggingInfo>)sender {
     NSPasteboard *pboard = [sender draggingPasteboard];
     if ([[pboard types] containsObject:NSPasteboardTypeFileURL]) return NSDragOperationCopy;
     return NSDragOperationNone;
 }
+
 - (BOOL)performDragOperation:(id<NSDraggingInfo>)sender {
     NSPasteboard *pboard = [sender draggingPasteboard];
     if ([[pboard types] containsObject:NSPasteboardTypeFileURL]) {
@@ -231,14 +428,16 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     }
     return NO;
 }
+
 - (BOOL)acceptsFirstResponder { return YES; }
 - (BOOL)becomeFirstResponder { return YES; }
 - (BOOL)isFlipped { return YES; }
+
 - (void)viewDidMoveToWindow {
     if (![self window]) return;
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
     NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
-    if (!appVersion) appVersion = @"0.0.0";
+    if (!appVersion) appVersion = @"1.0.44";
     NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
     editor->appVersionStr = UTF8ToW([versionString UTF8String]);
     NSString *localizedHelp = NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧");
@@ -248,9 +447,11 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     editor->isDarkMode = isDark;
     editor->updateThemeColors();
     [self applySystemHighlightColor];
+    [self layoutSplitViews];
     [self updateScrollers];
     [[self window] makeFirstResponder:self];
 }
+
 - (void)viewDidChangeEffectiveAppearance {
     [super viewDidChangeEffectiveAppearance];
     if (editor) {
@@ -263,32 +464,48 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         }
     }
 }
+
 - (void)drawRect:(NSRect)r {
     editor->render([[NSGraphicsContext currentContext] CGContext], (float)self.bounds.size.width, (float)self.bounds.size.height);
 }
-- (void)undo:(id)sender {
-    if (editor) {
-        editor->performUndo();
-        [self setNeedsDisplay:YES];
-    }
+
+- (NSMenu *)menuForEvent:(NSEvent *)event {
+    NSMenu *menu = [[NSMenu alloc] initWithTitle:@"Context"];
+    [menu addItemWithTitle:NSLocalizedString(@"Undo", @"元に戻す") action:@selector(undo:) keyEquivalent:@"z"];
+    NSMenuItem *redoItem = [menu addItemWithTitle:NSLocalizedString(@"Redo", @"やり直し") action:@selector(redo:) keyEquivalent:@"Z"];
+    [redoItem setKeyEquivalentModifierMask:NSEventModifierFlagCommand | NSEventModifierFlagShift];
+    [menu addItem:[NSMenuItem separatorItem]];
+    [menu addItemWithTitle:NSLocalizedString(@"Cut", @"切り取り") action:@selector(cut:) keyEquivalent:@"x"];
+    [menu addItemWithTitle:NSLocalizedString(@"Copy", @"コピー") action:@selector(copy:) keyEquivalent:@"c"];
+    [menu addItemWithTitle:NSLocalizedString(@"Paste", @"貼り付け") action:@selector(paste:) keyEquivalent:@"v"];
+    [menu addItem:[NSMenuItem separatorItem]];
+    [menu addItemWithTitle:NSLocalizedString(@"Select All", @"すべて選択") action:@selector(selectAll:) keyEquivalent:@"a"];
+    return menu;
 }
-- (void)redo:(id)sender {
-    if (editor) {
-        editor->performRedo();
-        [self setNeedsDisplay:YES];
-    }
-}
+
+- (void)cut:(id)sender { if (editor) { editor->cutToClipboard(); [self setNeedsDisplay:YES]; } }
+- (void)copy:(id)sender { if (editor) { editor->copyToClipboard(); } }
+- (void)paste:(id)sender { if (editor) { editor->pasteFromClipboard(); [self setNeedsDisplay:YES]; } }
+- (void)selectAll:(id)sender { if (editor) { editor->selectAll(); [self setNeedsDisplay:YES]; } }
+- (void)undo:(id)sender { if (editor) { editor->performUndo(); [self setNeedsDisplay:YES]; } }
+- (void)redo:(id)sender { if (editor) { editor->performRedo(); [self setNeedsDisplay:YES]; } }
+- (void)toggleCommentAction:(id)sender { if (editor) { editor->toggleComment(); [self setNeedsDisplay:YES]; } }
+- (void)toggleWordWrapAction:(id)sender { if (editor) { editor->toggleWordWrap(); [self setNeedsDisplay:YES]; } }
+- (void)togglePreviewAction:(id)sender { if (editor) { editor->togglePreview(); [self setNeedsDisplay:YES]; } }
+- (void)toggleAlwaysOnTopAction:(id)sender { if (editor) { editor->toggleAlwaysOnTop(); [self setNeedsDisplay:YES]; } }
+- (void)showHelpAction:(id)sender { if (editor) { editor->showHelpPopup = !editor->showHelpPopup; [self setNeedsDisplay:YES]; } }
+
 - (void)updateScrollers {
     NSRect b = [self bounds];
     CGFloat sw = [NSScroller scrollerWidthForControlSize:NSControlSizeRegular scrollerStyle:NSScrollerStyleLegacy];
-    float visibleHeight = b.size.height;
-    float visibleWidth = b.size.width - editor->gutterWidth;
-    int totalLines = (int)editor->lineStarts.size();
+    ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
+    bool needsV = L.needV;
+    bool needsH = L.needH;
+    float visibleHeight = L.textAreaH;
+    float visibleWidth = L.textAreaW;
+    int totalLines = L.totalLines;
     float maxLineWidth = editor->maxLineWidth;
-    bool needsV = totalLines > 1;
-    if (needsV) visibleWidth -= sw;
-    bool needsH = maxLineWidth > visibleWidth;
-    if (needsH) visibleHeight -= sw;
+
     if (needsV) {
         CGFloat vHeight = needsH ? b.size.height - sw : b.size.height;
         [vScroller setFrame:NSMakeRect(b.size.width - sw, 0, sw, vHeight)];
@@ -299,94 +516,229 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     }
     [vScroller setHidden:!needsV];
     [hScroller setHidden:!needsH];
-    editor->visibleVScrollWidth = needsV ? sw : 0.0f;
-    editor->visibleHScrollHeight = needsH ? sw : 0.0f;
-    int visibleLines = (int)std::floor(visibleHeight / editor->lineHeight); if (visibleLines < 1) visibleLines = 1;
-    [vScroller setKnobProportion:std::min(1.0, (double)visibleLines / (totalLines + visibleLines - 1))];
-    int maxV = std::max(0, totalLines - 1);
-    if (needsV && maxV > 0) { [vScroller setDoubleValue:(double)editor->vScrollPos / maxV]; [vScroller setEnabled:YES]; } else { [vScroller setDoubleValue:0.0]; [vScroller setEnabled:NO]; editor->vScrollPos = 0; }
-    if (visibleWidth < 1) visibleWidth = 1;
-    [hScroller setKnobProportion:std::min(1.0, (double)visibleWidth / maxLineWidth)];
+    editor->visibleVScrollWidth = needsV ? (float)sw : 0.0f;
+    editor->visibleHScrollHeight = needsH ? (float)sw : 0.0f;
+
+    int visibleLines = L.visibleLines;
+    [vScroller setKnobProportion:std::min(1.0, (double)visibleLines / std::max(1, totalLines))];
+    int maxV = std::max(0, totalLines - visibleLines);
+    if (needsV && maxV > 0) {
+        [vScroller setDoubleValue:std::clamp((double)editor->vScrollPos / maxV, 0.0, 1.0)];
+        [vScroller setEnabled:YES];
+    } else {
+        [vScroller setDoubleValue:0.0];
+        [vScroller setEnabled:NO];
+        if (!needsV) editor->vScrollPos = 0;
+    }
+
+    if (visibleWidth < 1.0f) visibleWidth = 1.0f;
+    [hScroller setKnobProportion:std::min(1.0, (double)visibleWidth / std::max(1.0f, maxLineWidth))];
     float maxH = maxLineWidth - visibleWidth;
-    if (needsH && maxH > 0) { [hScroller setDoubleValue:(double)editor->hScrollPos / maxH]; [hScroller setEnabled:YES]; } else { [hScroller setDoubleValue:0.0]; [hScroller setEnabled:NO]; editor->hScrollPos = 0; }
+    if (needsH && maxH > 0) {
+        [hScroller setDoubleValue:std::clamp((double)editor->hScrollPos / maxH, 0.0, 1.0)];
+        [hScroller setEnabled:YES];
+    } else {
+        [hScroller setDoubleValue:0.0];
+        [hScroller setEnabled:NO];
+        editor->hScrollPos = 0;
+    }
     [self setNeedsDisplay:YES];
 }
+
 - (void)scrollAction:(NSScroller*)s {
-    NSRect b = [self bounds]; CGFloat sw = [NSScroller scrollerWidthForControlSize:NSControlSizeRegular scrollerStyle:NSScrollerStyleLegacy];
+    NSRect b = [self bounds];
+    ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
     if (s == vScroller) {
-        int maxV = std::max(0, (int)editor->lineStarts.size() - 1);
-        editor->vScrollPos = std::max(0, (int)std::round([s doubleValue] * maxV));
+        int maxV = std::max(0, L.totalLines - L.visibleLines);
+        editor->vScrollPos = std::clamp((int)std::round([s doubleValue] * maxV), 0, maxV);
     } else {
-        float visibleWidth = b.size.width - editor->gutterWidth - sw; float maxH = editor->maxLineWidth - visibleWidth;
+        float maxH = std::max(0.0f, editor->maxLineWidth - L.textAreaW);
         editor->hScrollPos = std::max(0, (int)([s doubleValue] * maxH));
     }
     [self setNeedsDisplay:YES];
 }
+
 - (void)applyZoom:(float)val relative:(bool)rel {
     editor->updateFont(rel ? editor->currentFontSize * val : val);
     editor->zoomPopupEndTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000);
     editor->zoomPopupText = std::to_string((int)std::round(editor->currentFontSize)) + "px";
     [self setNeedsDisplay:YES];
 }
+
 - (void)mouseDown:(NSEvent *)e {
     if (editor->showHelpPopup) { editor->showHelpPopup = false; [self setNeedsDisplay:YES]; }
     [[self window] makeFirstResponder:self];
     NSPoint p = [self convertPoint:[e locationInWindow] fromView:nil];
     if (p.x > self.bounds.size.width - editor->visibleVScrollWidth || p.y > self.bounds.size.height - editor->visibleHScrollHeight) return;
+
     NSInteger clicks = [e clickCount];
-    bool isOption = ([e modifierFlags] & NSEventModifierFlagOption);
-    bool isShift = ([e modifierFlags] & NSEventModifierFlagShift);
-    if (!isOption && !isShift) editor->cursors.clear();
+    bool isOption = ([e modifierFlags] & NSEventModifierFlagOption) != 0;
+    bool isShift = ([e modifierFlags] & NSEventModifierFlagShift) != 0;
+    bool isCommand = ([e modifierFlags] & NSEventModifierFlagCommand) != 0;
+
+    isPotentialDragMove = NO;
+    editor->isDraggingSelection = false;
+    editor->isGutterDragging = false;
+    editor->rollbackPadding();
+    editor->isRectSelecting = false;
+
+    size_t pos = editor->getDocPosFromPoint((float)p.x, (float)p.y);
+    int li = editor->getLineIdx(pos);
+
+    // Gutter click -> line selection
+    if (p.x < editor->gutterWidth) {
+        editor->isGutterDragging = true;
+        editor->gutterAnchorLine = li;
+        editor->selectLinesRange(li, li, isCommand);
+        return;
+    }
+
+    if (clicks == 2) {
+        editor->selectWordAt(pos, isCommand);
+        return;
+    } else if (clicks >= 3) {
+        editor->selectLineAt(pos, isCommand);
+        return;
+    }
+
+    if (isShift && !isOption && !editor->cursors.empty()) {
+        Cursor& c = editor->cursors.back();
+        c.head = pos;
+        c.desiredX = editor->getXInLine(li, pos);
+        c.isVirtual = false;
+        [self setNeedsDisplay:YES];
+        return;
+    }
+
+    // Check if clicking inside an existing selection to initiate drag-and-drop move
+    if (!isOption && !isShift && !isCommand && editor->isPointInSelection(pos)) {
+        isPotentialDragMove = YES;
+        dragStartPoint = p;
+        [self setNeedsDisplay:YES];
+        return;
+    }
+
+    if (!isOption && !isShift && !isCommand) {
+        editor->cursors.clear();
+    }
     boxSelectStartPoint = p;
     cursorsSnapshotCount = editor->cursors.size();
     float docX = (float)p.x - editor->gutterWidth + (float)editor->hScrollPos;
     float snappedX = docX;
-    if (editor->charWidth > 0) { int cols = (int)std::round(docX / editor->charWidth); if (cols < 0) cols = 0; snappedX = (float)cols * editor->charWidth; }
-    size_t pos = editor->getDocPosFromPoint((float)p.x, (float)p.y);
-    int li = editor->getLineIdx(pos);
+    if (editor->charWidth > 0) {
+        int cols = (int)std::round(docX / editor->charWidth);
+        if (cols < 0) cols = 0;
+        snappedX = (float)cols * editor->charWidth;
+    }
     float physX = editor->getXInLine(li, pos);
-    Cursor newCursor; newCursor.head = pos; newCursor.anchor = pos; newCursor.isVirtual = false;
-    if (isOption && (snappedX > physX + (editor->charWidth * 0.5f))) { newCursor.desiredX = snappedX; newCursor.isVirtual = true; }
-    else { newCursor.desiredX = physX; newCursor.isVirtual = false; }
+    Cursor newCursor;
+    newCursor.head = pos;
+    newCursor.anchor = pos;
+    newCursor.isVirtual = false;
+    if (isOption && (snappedX > physX + (editor->charWidth * 0.5f))) {
+        newCursor.desiredX = snappedX;
+        newCursor.isVirtual = true;
+    } else {
+        newCursor.desiredX = physX;
+        newCursor.isVirtual = false;
+    }
     newCursor.originalAnchorX = newCursor.desiredX;
-    if (clicks == 2) {
-        size_t s, end; editor->getWordBoundaries(pos, s, end);
-        newCursor.head = end; newCursor.anchor = s; newCursor.desiredX = editor->getXInLine(editor->getLineIdx(end), end); newCursor.originalAnchorX = newCursor.desiredX; newCursor.isVirtual = false;
-        editor->cursors.push_back(newCursor);
-    } else if (clicks >= 3) {
-        size_t s = editor->lineStarts[li], end = (li + 1 < (int)editor->lineStarts.size()) ? editor->lineStarts[li+1] : editor->pt.length();
-        newCursor.head = end; newCursor.anchor = s; newCursor.desiredX = editor->getXInLine(editor->getLineIdx(end), end); newCursor.originalAnchorX = newCursor.desiredX; newCursor.isVirtual = false;
-        editor->cursors.push_back(newCursor);
-    } else { editor->cursors.push_back(newCursor); }
+    editor->cursors.push_back(newCursor);
+    if (isCommand) editor->mergeCursors();
     [self setNeedsDisplay:YES];
 }
+
 - (void)mouseDragged:(NSEvent *)e {
     NSPoint p = [self convertPoint:[e locationInWindow] fromView:nil];
-    bool isOption = ([e modifierFlags] & NSEventModifierFlagOption);
+    bool isOption = ([e modifierFlags] & NSEventModifierFlagOption) != 0;
+
+    // Auto-scroll when dragging near/outside view edges
+    NSRect b = [self bounds];
+    if (p.y < 0) {
+        editor->scrollVisualLines(-1);
+    } else if (p.y > b.size.height - editor->visibleHScrollHeight) {
+        editor->scrollVisualLines(1);
+    }
+
+    size_t pos = editor->getDocPosFromPoint((float)p.x, (float)p.y);
+
+    if (editor->isGutterDragging) {
+        int headLine = editor->getLineIdx(pos);
+        editor->selectLinesRange(editor->gutterAnchorLine, headLine, false);
+        return;
+    }
+
+    if (isPotentialDragMove) {
+        double dx = p.x - dragStartPoint.x;
+        double dy = p.y - dragStartPoint.y;
+        if (std::hypot(dx, dy) > 3.0) {
+            editor->isDraggingSelection = true;
+        }
+        if (editor->isDraggingSelection) {
+            editor->dragDropTargetPos = pos;
+            editor->ensureCaretVisible();
+            [self setNeedsDisplay:YES];
+        }
+        return;
+    }
+
     auto snapToGrid = [&](float rawX) -> float {
-        if (editor->charWidth <= 0) return rawX; int cols = (int)std::round(rawX / editor->charWidth); if (cols < 0) cols = 0; return (float)cols * editor->charWidth;
+        if (editor->charWidth <= 0) return rawX;
+        int cols = (int)std::round(rawX / editor->charWidth);
+        if (cols < 0) cols = 0;
+        return (float)cols * editor->charWidth;
     };
     if (isOption) {
         editor->cursors.clear();
-        float startY = std::min((float)boxSelectStartPoint.y, (float)p.y), endY = std::max((float)boxSelectStartPoint.y, (float)p.y);
+        float startY = std::min((float)boxSelectStartPoint.y, (float)p.y);
+        float endY = std::max((float)boxSelectStartPoint.y, (float)p.y);
         int startLine = (int)std::floor((startY + (float)editor->vScrollPos * editor->lineHeight) / editor->lineHeight);
         int endLine = (int)std::floor((endY + (float)editor->vScrollPos * editor->lineHeight) / editor->lineHeight);
-        startLine = std::clamp(startLine, 0, (int)editor->lineStarts.size() - 1); endLine = std::clamp(endLine, 0, (int)editor->lineStarts.size() - 1);
+        startLine = std::clamp(startLine, 0, (int)editor->lineStarts.size() - 1);
+        endLine = std::clamp(endLine, 0, (int)editor->lineStarts.size() - 1);
         float rawStartX = (float)boxSelectStartPoint.x - editor->gutterWidth + (float)editor->hScrollPos;
         float rawEndX = (float)p.x - editor->gutterWidth + (float)editor->hScrollPos;
         float gridStartX = snapToGrid(rawStartX), gridEndX = snapToGrid(rawEndX);
-        for (int i = startLine; i <= endLine; ++i) {
-            size_t pHead = editor->getPosFromLineAndX(i, gridEndX), pAnchor = editor->getPosFromLineAndX(i, gridStartX);
-            Cursor c; c.head = pHead; c.anchor = pAnchor; c.desiredX = gridEndX; c.originalAnchorX = gridStartX; c.isVirtual = true;
-            editor->cursors.push_back(c);
-        }
+        editor->isRectSelecting = true;
+        editor->rectAnchorLine = startLine;
+        editor->rectHeadLine = endLine;
+        editor->rectAnchorX = gridStartX;
+        editor->rectHeadX = gridEndX;
+        editor->updateRectSelection();
     } else {
-        size_t pos = editor->getDocPosFromPoint((float)p.x, (float)p.y);
-        if (!editor->cursors.empty()) { Cursor& c = editor->cursors.back(); c.head = pos; int li = editor->getLineIdx(pos); c.desiredX = editor->getXInLine(li, pos); c.isVirtual = false; }
+        if (!editor->cursors.empty()) {
+            Cursor& c = editor->cursors.back();
+            c.head = pos;
+            int li = editor->getLineIdx(pos);
+            c.desiredX = editor->getXInLine(li, pos);
+            c.isVirtual = false;
+        }
     }
-    editor->ensureCaretVisible(); [self setNeedsDisplay:YES];
+    editor->ensureCaretVisible();
+    [self setNeedsDisplay:YES];
 }
-- (void)mouseUp:(NSEvent *)e { [self setNeedsDisplay:YES]; }
+
+- (void)mouseUp:(NSEvent *)e {
+    NSPoint p = [self convertPoint:[e locationInWindow] fromView:nil];
+    if (editor->isDraggingSelection) {
+        size_t targetPos = editor->getDocPosFromPoint((float)p.x, (float)p.y);
+        editor->isDraggingSelection = false;
+        isPotentialDragMove = NO;
+        editor->performDragMove(targetPos);
+        return;
+    }
+    if (isPotentialDragMove) {
+        isPotentialDragMove = NO;
+        size_t pos = editor->getDocPosFromPoint((float)p.x, (float)p.y);
+        int li = editor->getLineIdx(pos);
+        float physX = editor->getXInLine(li, pos);
+        editor->cursors.clear();
+        editor->cursors.push_back({ pos, pos, physX, physX, false, false });
+    }
+    editor->isGutterDragging = false;
+    [self setNeedsDisplay:YES];
+}
+
 - (void)showFindPanel:(BOOL)replaceMode {
     editor->isReplaceMode = replaceMode;
     auto [candidate, _] = editor->getHighlightTarget();
@@ -394,7 +746,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     if (hasSelection && !candidate.empty()) editor->searchQuery = candidate;
     else if (editor->searchQuery.empty() && !candidate.empty()) editor->searchQuery = candidate;
     if (!findPanel) {
-        findPanel = [[FindPanel alloc] initWithContentRect:NSMakeRect(0, 0, 360, 160)
+        findPanel = [[FindPanel alloc] initWithContentRect:NSMakeRect(0, 0, 360, 185)
                                                  styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskUtilityWindow | NSWindowStyleMaskNonactivatingPanel
                                                    backing:NSBackingStoreBuffered defer:NO];
         [(FindPanel*)findPanel setEditorView:self];
@@ -450,15 +802,15 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     [replaceAllBtn setHidden:!replaceMode];
     CGFloat panelHeight = 185;
     [findPanel setContentSize:NSMakeSize(360, panelHeight)];
-    [findLabel setFrame:NSMakeRect(10, 150, 60, 20)];
+    [findLabel setFrame:NSMakeRect(10, 150, 65, 20)];
     [findTextField setFrame:NSMakeRect(80, 150, 260, 22)];
-    [replaceLabel setFrame:NSMakeRect(10, 120, 60, 20)];
+    [replaceLabel setFrame:NSMakeRect(10, 120, 65, 20)];
     [replaceTextField setFrame:NSMakeRect(80, 120, 260, 22)];
     [matchCaseBtn setFrame:NSMakeRect(80, 95, 260, 20)];
     [wholeWordBtn setFrame:NSMakeRect(80, 75, 260, 20)];
     [regexBtn setFrame:NSMakeRect(80, 55, 260, 20)];
-    [replaceAllBtn setFrame:NSMakeRect(80, 10, 100, 32)];
-    [replaceBtn setFrame:NSMakeRect(180, 10, 80, 32)];
+    [replaceAllBtn setFrame:NSMakeRect(70, 10, 105, 32)];
+    [replaceBtn setFrame:NSMakeRect(175, 10, 85, 32)];
     [findBtn setFrame:NSMakeRect(260, 10, 90, 32)];
     if (!editor->searchQuery.empty()) [findTextField setStringValue:[NSString stringWithUTF8String:editor->searchQuery.c_str()]];
     if (!editor->replaceQuery.empty()) [replaceTextField setStringValue:[NSString stringWithUTF8String:editor->replaceQuery.c_str()]];
@@ -466,32 +818,43 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     [findPanel makeKeyAndOrderFront:nil];
     [findPanel makeFirstResponder:findTextField];
 }
+
 - (void)updateFindQueries {
     editor->searchQuery = [[findTextField stringValue] UTF8String];
     editor->replaceQuery = [[replaceTextField stringValue] UTF8String];
 }
+
 - (void)controlTextDidChange:(NSNotification *)obj {
     if ([obj object] == findTextField || [obj object] == replaceTextField) {
         [self updateFindQueries];
         [self setNeedsDisplay:YES];
     }
 }
+
 - (BOOL)control:(NSControl *)control textView:(NSTextView *)textView doCommandBySelector:(SEL)commandSelector {
     if (commandSelector == @selector(insertNewline:)) {
         if (control == findTextField) {
-            [self findNextAction:nil]; return YES;
+            [self findNextAction:nil];
+            return YES;
         } else if (control == replaceTextField) {
-            [self replaceAction:nil]; return YES;
+            [self replaceAction:nil];
+            return YES;
         }
+    } else if (commandSelector == @selector(cancelOperation:)) {
+        [findPanel orderOut:nil];
+        [[self window] makeFirstResponder:self];
+        return YES;
     }
     return NO;
 }
+
 - (void)findOptionsChanged:(NSButton *)sender {
     editor->searchMatchCase = ([matchCaseBtn state] == NSControlStateValueOn);
     editor->searchWholeWord = ([wholeWordBtn state] == NSControlStateValueOn);
     editor->searchRegex = ([regexBtn state] == NSControlStateValueOn);
     [self setNeedsDisplay:YES];
 }
+
 - (void)findNextWithDirection:(BOOL)forward {
     if (editor) {
         if (editor->searchQuery.empty()) {
@@ -501,15 +864,15 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         }
     }
 }
+
 - (BOOL)isReplaceMode {
-    if (editor) {
-        return editor->isReplaceMode;
-    }
-    return NO;
+    return editor ? editor->isReplaceMode : NO;
 }
+
 - (void)findNextAction:(id)sender { [self updateFindQueries]; editor->findNext(true); }
 - (void)replaceAction:(id)sender { [self updateFindQueries]; editor->replaceNext(); }
 - (void)replaceAllAction:(id)sender { [self updateFindQueries]; editor->replaceAll(); }
+
 - (void)jumpToLine:(NSInteger)line {
     if (!editor) return;
     if (line < 1) line = 1;
@@ -518,16 +881,11 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     int lineIdx = (int)line - 1;
     size_t newPos = editor->lineStarts[lineIdx];
     editor->cursors.clear();
-    Cursor c;
-    c.head = newPos;
-    c.anchor = newPos;
-    c.desiredX = 0;
-    c.originalAnchorX = 0;
-    c.isVirtual = false;
-    editor->cursors.push_back(c);
+    editor->cursors.push_back({ newPos, newPos, 0.0f, 0.0f, false, false });
     editor->ensureCaretVisible();
     [self setNeedsDisplay:YES];
 }
+
 - (void)showGoToLinePanel {
     if (goToLineWindow && [goToLineWindow isVisible]) return;
     NSRect rect = NSMakeRect(0, 0, 300, 120);
@@ -557,6 +915,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     [goToLineWindow setInitialFirstResponder:goToLineTextField];
     [self.window beginSheet:goToLineWindow completionHandler:nil];
 }
+
 - (void)performGoToLineAction:(id)sender {
     NSInteger line = [goToLineTextField integerValue];
     [self jumpToLine:line];
@@ -566,6 +925,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     goToLineTextField = nil;
     [self.window makeFirstResponder:self];
 }
+
 - (void)cancelGoToLineAction:(id)sender {
     [self.window endSheet:goToLineWindow];
     [goToLineWindow orderOut:nil];
@@ -573,31 +933,81 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     goToLineTextField = nil;
     [self.window makeFirstResponder:self];
 }
+
 - (void)keyDown:(NSEvent *)e {
-    unsigned short code = [e keyCode]; NSString *chars = [e charactersIgnoringModifiers];
-    bool cmd = ([e modifierFlags] & NSEventModifierFlagCommand);
-    bool shift = ([e modifierFlags] & NSEventModifierFlagShift);
-    bool ctrl = ([e modifierFlags] & NSEventModifierFlagControl);
-    if (editor->showHelpPopup) { editor->showHelpPopup = false; [self setNeedsDisplay:YES]; if (code == 122) return; }
-    if (code == 122) { editor->showHelpPopup = true; [self setNeedsDisplay:YES]; return; }
-    if (code == 53) { if (editor->cursors.size() > 1 || (editor->cursors.size() == 1 && editor->cursors[0].hasSelection())) { Cursor lastC = editor->cursors.back(); lastC.anchor = lastC.head; editor->cursors.clear(); editor->cursors.push_back(lastC); [self setNeedsDisplay:YES]; return; } }
-    if (code == 48) {
-        if (shift) { editor->unindentLines(); } else {
+    unsigned short code = [e keyCode];
+    NSString *chars = [e charactersIgnoringModifiers];
+    bool cmd = ([e modifierFlags] & NSEventModifierFlagCommand) != 0;
+    bool shift = ([e modifierFlags] & NSEventModifierFlagShift) != 0;
+    bool ctrl = ([e modifierFlags] & NSEventModifierFlagControl) != 0;
+    bool opt = ([e modifierFlags] & NSEventModifierFlagOption) != 0;
+
+    if (editor->showHelpPopup) {
+        editor->showHelpPopup = false;
+        [self setNeedsDisplay:YES];
+        if (code == 122) return;
+    }
+    if (code == 122) { // F1
+        editor->showHelpPopup = true;
+        [self setNeedsDisplay:YES];
+        return;
+    }
+    if (code == 53) { // Escape
+        editor->rollbackPadding();
+        editor->isRectSelecting = false;
+        editor->activeEmmetSession.active = false;
+        if (editor->cursors.size() > 1 || (editor->cursors.size() == 1 && editor->cursors[0].hasSelection())) {
+            Cursor lastC = editor->cursors.back();
+            lastC.anchor = lastC.head;
+            editor->cursors.clear();
+            editor->cursors.push_back(lastC);
+            [self setNeedsDisplay:YES];
+            return;
+        }
+    }
+
+    // Option+Z (Word Wrap), Option+P (Live Preview), Option+T (Always on Top)
+    if (opt && !cmd && !ctrl && !shift) {
+        if (code == 6) { editor->toggleWordWrap(); [self setNeedsDisplay:YES]; return; } // Z
+        if (code == 35) { editor->togglePreview(); [self setNeedsDisplay:YES]; return; } // P
+        if (code == 17) { editor->toggleAlwaysOnTop(); [self setNeedsDisplay:YES]; return; } // T
+    }
+
+    // Tab / Shift+Tab (Emmet tabstops & expansion, or indent/unindent)
+    if (code == 48 && !cmd && !ctrl && !opt) {
+        if (editor->jumpEmmetTabstop(!shift)) {
+            [self setNeedsDisplay:YES];
+            return;
+        }
+        if (!shift && editor->tryExpandEmmet()) {
+            [self setNeedsDisplay:YES];
+            return;
+        }
+        if (shift) {
+            editor->unindentLines();
+        } else {
             bool isRectMode = editor->cursors.size() > 1;
-            if (isRectMode) { editor->insertAtCursors("\t"); } else { editor->indentLines(false); }
+            if (isRectMode) editor->insertAtCursors("\t");
+            else editor->indentLines(false);
         }
         [self setNeedsDisplay:YES];
         return;
     }
-    if (cmd && (code == 126 || code == 115)) {
+
+    if (cmd && (code == 126 || code == 115) && !opt) {
         editor->jumpToFileEdge(true, shift);
         return;
     }
-    if (cmd && (code == 125 || code == 119)) {
+    if (cmd && (code == 125 || code == 119) && !opt) {
         editor->jumpToFileEdge(false, shift);
         return;
     }
-    if (code == 115 || code == 119) {
+    if (code == 115 || code == 119) { // Home / End
+        if (editor->wordWrapEnabled) {
+            if (code == 115) editor->moveVisualHome(shift);
+            else editor->moveVisualEnd(shift);
+            return;
+        }
         for (auto& c : editor->cursors) {
             if (code == 115) {
                 c.head = editor->lineStarts[editor->getLineIdx(c.head)];
@@ -614,32 +1024,41 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
             if (!shift) { c.anchor = c.head; c.originalAnchorX = c.desiredX; }
             c.isVirtual = false;
         }
-        editor->ensureCaretVisible(); [self setNeedsDisplay:YES]; return;
+        editor->ensureCaretVisible();
+        [self setNeedsDisplay:YES];
+        return;
     }
-    if (code == 116 || code == 121) {
+    if (code == 116 || code == 121) { // PageUp / PageDown
         float viewHeight = [self bounds].size.height - editor->visibleHScrollHeight;
         int pageLines = std::max(1, (int)(viewHeight / editor->lineHeight) - 1);
         int totalLines = (int)editor->lineStarts.size();
         for (auto& c : editor->cursors) {
-            int currentLine = editor->getLineIdx(c.head); int newLine = currentLine;
-            if (code == 116) { newLine = currentLine - pageLines; if (newLine < 0) newLine = 0; }
-            else { newLine = currentLine + pageLines; if (newLine >= totalLines) newLine = totalLines - 1; }
+            int currentLine = editor->getLineIdx(c.head);
+            int newLine = currentLine;
+            if (code == 116) { newLine = std::max(0, currentLine - pageLines); }
+            else { newLine = std::min(totalLines - 1, currentLine + pageLines); }
             if (code == 121 && newLine == totalLines - 1 && currentLine == totalLines - 1) c.head = editor->pt.length();
             else c.head = editor->getPosFromLineAndX(newLine, c.desiredX);
             if (!shift) { c.anchor = c.head; c.originalAnchorX = c.desiredX; }
             c.isVirtual = false;
         }
-        if (code == 116) editor->vScrollPos = std::max(0, editor->vScrollPos - pageLines); else editor->vScrollPos = std::min(totalLines - 1, editor->vScrollPos + pageLines);
-        editor->ensureCaretVisible(); [self setNeedsDisplay:YES]; return;
+        if (code == 116) editor->vScrollPos = std::max(0, editor->vScrollPos - pageLines);
+        else editor->vScrollPos = std::min(totalLines - 1, editor->vScrollPos + pageLines);
+        editor->ensureCaretVisible();
+        [self setNeedsDisplay:YES];
+        return;
     }
-    if (code == 99) {
+    if (code == 99) { // F3
         [self findNextWithDirection:!shift];
         return;
     }
-    if (cmd) {
+    if (cmd && !opt) {
         NSString *lowerChar = [chars lowercaseString];
         if (ctrl && [lowerChar isEqualToString:@"f"]) { [[self window] toggleFullScreen:nil]; return; }
         if ([lowerChar isEqualToString:@"q"]) { [NSApp terminate:nil]; return; }
+        if ([lowerChar isEqualToString:@"w"]) { [[self window] performClose:nil]; return; }
+        if ([lowerChar isEqualToString:@"/"] || code == 44) { editor->toggleComment(); [self setNeedsDisplay:YES]; return; }
+        if ([lowerChar isEqualToString:@"b"] || code == 11) { editor->jumpToMatchingBracket(shift); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"u"]) { editor->convertSelectedText(!shift); return; }
         if (shift && [lowerChar isEqualToString:@"k"]) { editor->deleteLine(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"d"]) { editor->selectNextOccurrence(); [self setNeedsDisplay:YES]; return; }
@@ -660,50 +1079,145 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         if ([lowerChar isEqualToString:@"h"] || [lowerChar isEqualToString:@"r"]) { [self showFindPanel:YES]; return; }
         if ([lowerChar isEqualToString:@"l"] || [lowerChar isEqualToString:@"g"]) { [self showGoToLinePanel]; return; }
     }
+
+    // Arrow keys (123: Left, 124: Right, 125: Down, 126: Up)
     if (code >= 123 && code <= 126) {
-        bool opt = ([e modifierFlags] & NSEventModifierFlagOption);
-        if (code == 126 && opt) { if (shift) editor->copyLines(true); else editor->moveLines(true); [self setNeedsDisplay:YES]; return; }
-        if (code == 125 && opt) { if (shift) editor->copyLines(false); else editor->moveLines(false); [self setNeedsDisplay:YES]; return; }
+        // Multi-cursor addition: Ctrl+Option+Up/Down or Cmd+Option+Up/Down
+        if (opt && (ctrl || cmd) && !shift && (code == 126 || code == 125)) {
+            editor->addCursor(code == 126);
+            return;
+        }
+        // Keyboard rectangular selection: Option+Shift+Left/Right or Ctrl+Option+Shift+Arrows
+        if (opt && shift && (code == 123 || code == 124 || ctrl)) {
+            int dLine = (code == 126) ? -1 : ((code == 125) ? 1 : 0);
+            int dCol = (code == 123) ? -1 : ((code == 124) ? 1 : 0);
+            editor->moveRectSelection(dLine, dCol);
+            return;
+        }
+        // Option+Up/Down: move lines; Option+Shift+Up/Down: duplicate lines
+        if (code == 126 && opt && !cmd && !ctrl) {
+            if (shift) editor->duplicateLines(true);
+            else editor->moveLines(true);
+            [self setNeedsDisplay:YES];
+            return;
+        }
+        if (code == 125 && opt && !cmd && !ctrl) {
+            if (shift) editor->duplicateLines(false);
+            else editor->moveLines(false);
+            [self setNeedsDisplay:YES];
+            return;
+        }
+        // Visual Up/Down when soft wrap is active
+        if ((code == 126 || code == 125) && editor->wordWrapEnabled && !opt && !cmd && !ctrl) {
+            editor->moveVisualUpDown(code == 126, shift);
+            return;
+        }
+
+        editor->rollbackPadding();
+        editor->isRectSelecting = false;
         for (auto& c : editor->cursors) {
             if (code == 123) {
-                size_t p = c.head; int li = editor->getLineIdx(p); size_t lineStart = editor->lineStarts[li];
-                if (cmd) { if (p == lineStart && p > 0) p--; else { while (p > lineStart && !editor->isWordChar(editor->pt.charAt(p - 1))) p--; while (p > lineStart && editor->isWordChar(editor->pt.charAt(p - 1))) p--; } c.head = p; }
-                else c.head = editor->moveCaretVisual(c.head, false);
+                size_t p = c.head;
+                int li = editor->getLineIdx(p);
+                size_t lineStart = editor->lineStarts[li];
+                if (cmd) {
+                    c.head = lineStart;
+                } else if (opt) {
+                    if (p == lineStart && p > 0) p--;
+                    else {
+                        while (p > lineStart && !editor->isWordChar(editor->pt.charAt(p - 1))) p--;
+                        while (p > lineStart && editor->isWordChar(editor->pt.charAt(p - 1))) p--;
+                    }
+                    c.head = p;
+                } else {
+                    c.head = editor->moveCaretVisual(c.head, false);
+                }
                 c.isVirtual = false;
+                c.affinity = false;
             } else if (code == 124) {
-                size_t p = c.head; size_t len = editor->pt.length(); int li = editor->getLineIdx(p);
-                size_t lineStart = editor->lineStarts[li], lineEnd = (li + 1 < (int)editor->lineStarts.size()) ? editor->lineStarts[li + 1] : len;
-                size_t physEnd = lineEnd; if (physEnd > lineStart && editor->pt.charAt(physEnd - 1) == '\n') physEnd--; if (physEnd > lineStart && editor->pt.charAt(physEnd - 1) == '\r') physEnd--;
-                if (cmd) { if (p == physEnd && p < len) p = lineEnd; else { while (p < physEnd && editor->isWordChar(editor->pt.charAt(p))) p++; while (p < physEnd && !editor->isWordChar(editor->pt.charAt(p))) p++; } c.head = p; }
-                else c.head = editor->moveCaretVisual(c.head, true);
+                size_t p = c.head;
+                size_t len = editor->pt.length();
+                int li = editor->getLineIdx(p);
+                size_t lineStart = editor->lineStarts[li];
+                size_t lineEnd = (li + 1 < (int)editor->lineStarts.size()) ? editor->lineStarts[li + 1] : len;
+                size_t physEnd = lineEnd;
+                if (physEnd > lineStart && editor->pt.charAt(physEnd - 1) == '\n') physEnd--;
+                if (physEnd > lineStart && editor->pt.charAt(physEnd - 1) == '\r') physEnd--;
+                if (cmd) {
+                    c.head = physEnd;
+                } else if (opt) {
+                    if (p == physEnd && p < len) p = lineEnd;
+                    else {
+                        while (p < physEnd && editor->isWordChar(editor->pt.charAt(p))) p++;
+                        while (p < physEnd && !editor->isWordChar(editor->pt.charAt(p))) p++;
+                    }
+                    c.head = p;
+                } else {
+                    c.head = editor->moveCaretVisual(c.head, true);
+                }
                 c.isVirtual = false;
+                c.affinity = false;
             } else if (code == 126) {
                 int l = editor->getLineIdx(c.head);
-                if (l > 0) { size_t nextPos = editor->getPosFromLineAndX(l - 1, c.desiredX); size_t prevLineStart = editor->lineStarts[l - 1]; size_t prevLineEnd = editor->lineStarts[l]; if (prevLineEnd > prevLineStart && editor->pt.charAt(prevLineEnd - 1) == '\n') prevLineEnd--; if (prevLineEnd > prevLineStart && editor->pt.charAt(prevLineEnd - 1) == '\r') prevLineEnd--; if (nextPos > prevLineEnd) c.head = prevLineEnd; else c.head = nextPos; }
+                if (l > 0) {
+                    size_t nextPos = editor->getPosFromLineAndX(l - 1, c.desiredX);
+                    size_t prevLineStart = editor->lineStarts[l - 1];
+                    size_t prevLineEnd = editor->lineStarts[l];
+                    if (prevLineEnd > prevLineStart && editor->pt.charAt(prevLineEnd - 1) == '\n') prevLineEnd--;
+                    if (prevLineEnd > prevLineStart && editor->pt.charAt(prevLineEnd - 1) == '\r') prevLineEnd--;
+                    c.head = std::min(nextPos, prevLineEnd);
+                }
                 c.isVirtual = false;
             } else if (code == 125) {
                 int l = editor->getLineIdx(c.head);
-                if (l + 1 < (int)editor->lineStarts.size()) { size_t nextPos = editor->getPosFromLineAndX(l + 1, c.desiredX); size_t nextLineStart = editor->lineStarts[l + 1]; size_t nextLineEnd = (l + 2 < (int)editor->lineStarts.size()) ? editor->lineStarts[l + 2] : editor->pt.length(); if (nextLineEnd > nextLineStart && editor->pt.charAt(nextLineEnd - 1) == '\n') nextLineEnd--; if (nextLineEnd > nextLineStart && editor->pt.charAt(nextLineEnd - 1) == '\r') nextLineEnd--; if (nextPos > nextLineEnd) c.head = nextLineEnd; else c.head = nextPos; }
+                if (l + 1 < (int)editor->lineStarts.size()) {
+                    size_t nextPos = editor->getPosFromLineAndX(l + 1, c.desiredX);
+                    size_t nextLineStart = editor->lineStarts[l + 1];
+                    size_t nextLineEnd = (l + 2 < (int)editor->lineStarts.size()) ? editor->lineStarts[l + 2] : editor->pt.length();
+                    if (nextLineEnd > nextLineStart && editor->pt.charAt(nextLineEnd - 1) == '\n') nextLineEnd--;
+                    if (nextLineEnd > nextLineStart && editor->pt.charAt(nextLineEnd - 1) == '\r') nextLineEnd--;
+                    c.head = std::min(nextPos, nextLineEnd);
+                }
                 c.isVirtual = false;
             }
             if (code == 123 || code == 124) c.desiredX = editor->getXFromPos(c.head);
             if (!shift) { c.anchor = c.head; c.originalAnchorX = c.desiredX; }
         }
-        editor->ensureCaretVisible(); [self setNeedsDisplay:YES]; return;
+        editor->ensureCaretVisible();
+        [self setNeedsDisplay:YES];
+        return;
     }
     if (![self.inputContext handleEvent:e]) [super keyDown:e];
 }
+
 - (void)scrollWheel:(NSEvent *)e {
-    if ([e modifierFlags] & NSEventModifierFlagCommand) { float dy = [e scrollingDeltaY]; if (dy == 0) dy = [e deltaY]; if (dy != 0) { float factor = (dy > 0) ? 1.1f : 0.9f; editor->updateFont(editor->currentFontSize * factor); editor->zoomPopupText = std::to_string((int)std::round(editor->currentFontSize)) + "px"; editor->zoomPopupEndTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000); [self setNeedsDisplay:YES]; } return; }
+    if ([e modifierFlags] & NSEventModifierFlagCommand) {
+        float dy = [e scrollingDeltaY];
+        if (dy == 0) dy = [e deltaY];
+        if (dy != 0) {
+            float factor = (dy > 0) ? 1.1f : 0.9f;
+            editor->updateFont(editor->currentFontSize * factor);
+            editor->zoomPopupText = std::to_string((int)std::round(editor->currentFontSize)) + "px";
+            editor->zoomPopupEndTime = std::chrono::steady_clock::now() + std::chrono::milliseconds(1000);
+            [self setNeedsDisplay:YES];
+        }
+        return;
+    }
+    int dy = (int)std::round([e deltaY]);
+    if (editor->wordWrapEnabled) {
+        if (dy != 0) editor->scrollVisualLines(-dy);
+        return;
+    }
     NSRect b = [self bounds];
-    int totalLines = (int)editor->lineStarts.size();
-    int maxV = std::max(0, totalLines - 1);
-    editor->vScrollPos = std::clamp(editor->vScrollPos - (int)std::round([e deltaY]), 0, maxV);
-    float visibleWidth = b.size.width - editor->gutterWidth - editor->visibleVScrollWidth;
-    int maxH = std::max(0, (int)(editor->maxLineWidth - visibleWidth + editor->charWidth * 4));
+    ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
+    int maxV = std::max(0, L.totalLines - L.visibleLines);
+    editor->vScrollPos = std::clamp(editor->vScrollPos - dy, 0, maxV);
+    int maxH = std::max(0, (int)std::ceil(editor->maxLineWidth - L.textAreaW));
     editor->hScrollPos = std::clamp(editor->hScrollPos - (int)[e deltaX], 0, maxH);
-    [self updateScrollers]; [self setNeedsDisplay:YES];
+    [self updateScrollers];
+    [self setNeedsDisplay:YES];
 }
+
 - (void)insertText:(id)s replacementRange:(NSRange)r {
     NSString* t = [s isKindOfClass:[NSAttributedString class]] ? [s string] : s;
     if ([t isEqualToString:@"\r"] || [t isEqualToString:@"\n"]) {
@@ -725,7 +1239,11 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     editor->imeComp = "";
     [self setNeedsDisplay:YES];
 }
-- (void)setMarkedText:(id)s selectedRange:(NSRange)sr replacementRange:(NSRange)rr { editor->imeComp = [([s isKindOfClass:[NSAttributedString class]] ? [s string] : s) UTF8String]; [self setNeedsDisplay:YES]; }
+
+- (void)setMarkedText:(id)s selectedRange:(NSRange)sr replacementRange:(NSRange)rr {
+    editor->imeComp = [([s isKindOfClass:[NSAttributedString class]] ? [s string] : s) UTF8String];
+    [self setNeedsDisplay:YES];
+}
 - (void)unmarkText { editor->imeComp = ""; [self setNeedsDisplay:YES]; }
 - (BOOL)hasMarkedText { return !editor->imeComp.empty(); }
 - (NSRange)markedRange { return [self hasMarkedText] ? NSMakeRange(0, editor->imeComp.length()) : NSMakeRange(NSNotFound, 0); }
@@ -734,25 +1252,92 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     if (s == @selector(deleteBackward:)) editor->backspaceAtCursors();
     else if (s == @selector(deleteForward:)) editor->deleteForwardAtCursors();
     else if (s == @selector(insertNewline:)) editor->insertNewlineWithAutoIndent();
-    [self setNeedsDisplay:YES]; }
+    [self setNeedsDisplay:YES];
+}
 - (nullable NSAttributedString *)attributedSubstringForProposedRange:(NSRange)r actualRange:(NSRangePointer)ar { return nil; }
 - (NSArray*)validAttributesForMarkedText { return @[]; }
-- (NSRect)firstRectForCharacterRange:(NSRange)r actualRange:(NSRangePointer)ar { if (editor->cursors.empty()) return NSZeroRect; float x = editor->getXFromPos(editor->cursors.back().head), y = (float)(editor->getLineIdx(editor->cursors.back().head) - editor->vScrollPos) * editor->lineHeight; return [[self window] convertRectToScreen:[self convertRect:NSMakeRect(editor->gutterWidth-(float)editor->hScrollPos+x, y, 2, editor->lineHeight) toView:nil]]; }
+- (NSRect)firstRectForCharacterRange:(NSRange)r actualRange:(NSRangePointer)ar {
+    if (editor->cursors.empty()) return NSZeroRect;
+    float x = editor->getXFromPos(editor->cursors.back().head);
+    float y = (float)(editor->getLineIdx(editor->cursors.back().head) - editor->vScrollPos) * editor->lineHeight;
+    return [[self window] convertRectToScreen:[self convertRect:NSMakeRect(editor->gutterWidth - (float)editor->hScrollPos + x, y, 2, editor->lineHeight) toView:nil]];
+}
 - (NSUInteger)characterIndexForPoint:(NSPoint)p { return 0; }
 @end
+
 @interface CustomWindow : NSWindow @end
 @implementation CustomWindow
 - (BOOL)canBecomeKeyWindow { return YES; }
 - (BOOL)canBecomeMainWindow { return YES; }
 @end
+
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
 @property (strong) NSMutableArray<CustomWindow *> *windows;
+@property (strong) NSMenu *recentFilesMenu;
 @end
+
 @implementation AppDelegate
-- (instancetype)init { if (self = [super init]) { self.windows = [NSMutableArray array]; } return self; }
+- (instancetype)init {
+    if (self = [super init]) {
+        self.windows = [NSMutableArray array];
+    }
+    return self;
+}
+
+- (void)rebuildRecentFilesMenu {
+    if (!self.recentFilesMenu) return;
+    [self.recentFilesMenu removeAllItems];
+    EditorView *v = [self findEditorViewInWindow:[NSApp keyWindow]];
+    if (!v && self.windows.count > 0) v = [self findEditorViewInWindow:self.windows.firstObject];
+    if (v && v->editor) {
+        if (v->editor->recentFiles.empty()) v->editor->loadRecentFiles();
+        for (const auto& pathStr : v->editor->recentFiles) {
+            NSString *nsPath = [NSString stringWithUTF8String:pathStr.c_str()];
+            if (nsPath.length > 0) {
+                NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:[nsPath lastPathComponent]
+                                                              action:@selector(openRecentFileItem:)
+                                                       keyEquivalent:@""];
+                [item setRepresentedObject:nsPath];
+                [item setToolTip:nsPath];
+                [item setTarget:self];
+                [self.recentFilesMenu addItem:item];
+            }
+        }
+    }
+    if (self.recentFilesMenu.numberOfItems > 0) {
+        [self.recentFilesMenu addItem:[NSMenuItem separatorItem]];
+    }
+    NSMenuItem *clearItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Clear Menu", @"履歴を消去")
+                                                       action:@selector(clearRecentFilesAction:)
+                                                keyEquivalent:@""];
+    [clearItem setTarget:self];
+    [self.recentFilesMenu addItem:clearItem];
+}
+
+- (void)openRecentFileItem:(NSMenuItem *)sender {
+    NSString *path = [sender representedObject];
+    if (!path) return;
+    EditorView *v = [self findEditorViewInWindow:[NSApp keyWindow]];
+    if (v && v->editor) {
+        if (v->editor->checkUnsavedChanges()) {
+            v->editor->openFileFromPath([path UTF8String]);
+        }
+    } else {
+        [self createWindowWithPath:[path UTF8String]];
+    }
+}
+
+- (void)clearRecentFilesAction:(id)sender {
+    EditorView *v = [self findEditorViewInWindow:[NSApp keyWindow]];
+    if (v && v->editor) {
+        v->editor->clearRecentFiles();
+    }
+    [self rebuildRecentFilesMenu];
+}
+
 - (void)createWindowWithPath:(const char*)path {
     NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskFullSizeContentView;
-    CustomWindow *win = [[CustomWindow alloc] initWithContentRect:NSMakeRect(0,0,800,600) styleMask:style backing:NSBackingStoreBuffered defer:NO];
+    CustomWindow *win = [[CustomWindow alloc] initWithContentRect:NSMakeRect(0, 0, 860, 620) styleMask:style backing:NSBackingStoreBuffered defer:NO];
     [win setTitlebarAppearsTransparent:YES];
     [win setTitleVisibility:NSWindowTitleVisible];
     [win setTitlebarSeparatorStyle:NSTitlebarSeparatorStyleNone];
@@ -762,15 +1347,22 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     visualEffectView.state = NSVisualEffectStateFollowsWindowActiveState;
     visualEffectView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [win setContentView:visualEffectView];
+
     CGFloat titleBarHeight = 28.0;
     NSRect contentRect = visualEffectView.bounds;
     contentRect.origin.y = 0;
     contentRect.size.height -= titleBarHeight;
     EditorView *v = [[EditorView alloc] initWithFrame:contentRect];
-    v.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
     [v setWantsLayer:YES];
     v.layer.backgroundColor = [NSColor clearColor].CGColor;
     v.layer.opaque = NO;
+
+    __weak AppDelegate *weakDelegate = self;
+    v->editor->cbUpdateRecentMenu = [weakDelegate]() {
+        __strong AppDelegate *strongDelegate = weakDelegate;
+        if (strongDelegate) [strongDelegate rebuildRecentFilesMenu];
+    };
+
     if (path) {
         v->editor->openFileFromPath(path);
     } else {
@@ -778,36 +1370,105 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         v->editor->showHelpPopup = true;
     }
     [visualEffectView addSubview:v];
-    v.translatesAutoresizingMaskIntoConstraints = NO;
-    [NSLayoutConstraint activateConstraints:@[
-        [v.topAnchor constraintEqualToAnchor:visualEffectView.safeAreaLayoutGuide.topAnchor],
-        [v.bottomAnchor constraintEqualToAnchor:visualEffectView.bottomAnchor],
-        [v.leftAnchor constraintEqualToAnchor:visualEffectView.leftAnchor],
-        [v.rightAnchor constraintEqualToAnchor:visualEffectView.rightAnchor]
-    ]];
-    [win center]; [win setDelegate:self];
+    [v layoutSplitViews];
+
+    [win center];
+    [win setDelegate:self];
     [win setBackgroundColor:[NSColor blackColor]];
-    [win makeKeyAndOrderFront:nil]; [win makeFirstResponder:v];
+    [win makeKeyAndOrderFront:nil];
+    [win makeFirstResponder:v];
     [self.windows addObject:win];
+    [self rebuildRecentFilesMenu];
 }
+
+- (void)windowDidResize:(NSNotification *)notification {
+    CustomWindow *win = (CustomWindow *)notification.object;
+    EditorView *v = [self findEditorViewInWindow:win];
+    if (v) {
+        [v layoutSplitViews];
+        [v updateScrollers];
+    }
+}
+
+- (void)windowDidBecomeKey:(NSNotification *)notification {
+    CustomWindow *win = (CustomWindow *)notification.object;
+    EditorView *v = [self findEditorViewInWindow:win];
+    if (v && v->editor) {
+        v->editor->checkFileModification();
+        [self rebuildRecentFilesMenu];
+    }
+}
+
 - (void)setupMenuBar {
     NSString *appTitleNS = [NSString stringWithUTF8String:WToUTF8(APP_TITLE).c_str()];
     NSMenu *mainMenu = [NSMenu new];
     [NSApp setMainMenu:mainMenu];
+
+    // App menu
     NSMenuItem *appMenuItem = [NSMenuItem new];
     [mainMenu addItem:appMenuItem];
     NSMenu *appMenu = [NSMenu new];
     [appMenuItem setSubmenu:appMenu];
     NSString *quitTitle = [NSString stringWithFormat:NSLocalizedString(@"Quit", nil), appTitleNS];
     [appMenu addItemWithTitle:quitTitle action:@selector(terminate:) keyEquivalent:@"q"];
+
+    // File menu
+    NSMenuItem *fileMenuItem = [NSMenuItem new];
+    [mainMenu addItem:fileMenuItem];
+    NSMenu *fileMenu = [[NSMenu alloc] initWithTitle:NSLocalizedString(@"File", @"ファイル")];
+    [fileMenuItem setSubmenu:fileMenu];
+    [fileMenu addItemWithTitle:NSLocalizedString(@"New", @"新規") action:@selector(newDocument:) keyEquivalent:@"n"];
+    [fileMenu addItemWithTitle:NSLocalizedString(@"Open...", @"開く...") action:@selector(openDocument:) keyEquivalent:@"o"];
+    NSMenuItem *recentItem = [[NSMenuItem alloc] initWithTitle:NSLocalizedString(@"Open Recent", @"最近使った項目を開く") action:nil keyEquivalent:@""];
+    self.recentFilesMenu = [[NSMenu alloc] initWithTitle:NSLocalizedString(@"Open Recent", @"最近使った項目を開く")];
+    [recentItem setSubmenu:self.recentFilesMenu];
+    [fileMenu addItem:recentItem];
+    [fileMenu addItem:[NSMenuItem separatorItem]];
+    [fileMenu addItemWithTitle:NSLocalizedString(@"Close", @"閉じる") action:@selector(performClose:) keyEquivalent:@"w"];
+
+    // Edit menu
+    NSMenuItem *editMenuItem = [NSMenuItem new];
+    [mainMenu addItem:editMenuItem];
+    NSMenu *editMenu = [[NSMenu alloc] initWithTitle:NSLocalizedString(@"Edit", @"編集")];
+    [editMenuItem setSubmenu:editMenu];
+    [editMenu addItemWithTitle:NSLocalizedString(@"Undo", @"元に戻す") action:@selector(undo:) keyEquivalent:@"z"];
+    NSMenuItem *redoMenuItem = [editMenu addItemWithTitle:NSLocalizedString(@"Redo", @"やり直し") action:@selector(redo:) keyEquivalent:@"Z"];
+    [redoMenuItem setKeyEquivalentModifierMask:NSEventModifierFlagCommand | NSEventModifierFlagShift];
+    [editMenu addItem:[NSMenuItem separatorItem]];
+    [editMenu addItemWithTitle:NSLocalizedString(@"Cut", @"切り取り") action:@selector(cut:) keyEquivalent:@"x"];
+    [editMenu addItemWithTitle:NSLocalizedString(@"Copy", @"コピー") action:@selector(copy:) keyEquivalent:@"c"];
+    [editMenu addItemWithTitle:NSLocalizedString(@"Paste", @"貼り付け") action:@selector(paste:) keyEquivalent:@"v"];
+    [editMenu addItemWithTitle:NSLocalizedString(@"Select All", @"すべて選択") action:@selector(selectAll:) keyEquivalent:@"a"];
+    [editMenu addItem:[NSMenuItem separatorItem]];
+    [editMenu addItemWithTitle:NSLocalizedString(@"Toggle Comment", @"コメント切替") action:@selector(toggleCommentAction:) keyEquivalent:@"/"];
+
+    // View menu
+    NSMenuItem *viewMenuItem = [NSMenuItem new];
+    [mainMenu addItem:viewMenuItem];
+    NSMenu *viewMenu = [[NSMenu alloc] initWithTitle:NSLocalizedString(@"View", @"表示")];
+    [viewMenuItem setSubmenu:viewMenu];
+    NSMenuItem *wrapItem = [viewMenu addItemWithTitle:NSLocalizedString(@"Word Wrap", @"折り返し") action:@selector(toggleWordWrapAction:) keyEquivalent:@"z"];
+    [wrapItem setKeyEquivalentModifierMask:NSEventModifierFlagOption];
+    NSMenuItem *prevItem = [viewMenu addItemWithTitle:NSLocalizedString(@"Live Preview", @"プレビュー") action:@selector(togglePreviewAction:) keyEquivalent:@"p"];
+    [prevItem setKeyEquivalentModifierMask:NSEventModifierFlagOption];
+    NSMenuItem *topItem = [viewMenu addItemWithTitle:NSLocalizedString(@"Always on Top", @"最前面表示") action:@selector(toggleAlwaysOnTopAction:) keyEquivalent:@"t"];
+    [topItem setKeyEquivalentModifierMask:NSEventModifierFlagOption];
 }
+
 - (void)applicationDidFinishLaunching:(NSNotification *)n {
     [self setupMenuBar];
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular]; [NSApp activateIgnoringOtherApps:YES];
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    [NSApp activateIgnoringOtherApps:YES];
     NSArray *args = [[NSProcessInfo processInfo] arguments];
-    if (args.count > 1) [self createWindowWithPath:[args[1] UTF8String]]; else if (self.windows.count == 0) [self createWindowWithPath:nullptr];
+    if (args.count > 1) [self createWindowWithPath:[args[1] UTF8String]];
+    else if (self.windows.count == 0) [self createWindowWithPath:nullptr];
 }
-- (void)application:(NSApplication *)sender openFiles:(NSArray<NSString *> *)filenames { for (NSString *path in filenames) [self createWindowWithPath:[path UTF8String]]; [sender replyToOpenOrPrint:NSApplicationDelegateReplySuccess]; }
+
+- (void)application:(NSApplication *)sender openFiles:(NSArray<NSString *> *)filenames {
+    for (NSString *path in filenames) [self createWindowWithPath:[path UTF8String]];
+    [sender replyToOpenOrPrint:NSApplicationDelegateReplySuccess];
+}
+
 - (void)newDocument:(id)sender {
     NSWindow *win = [NSApp keyWindow];
     EditorView *v = [self findEditorViewInWindow:win];
@@ -817,6 +1478,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         [self createWindowWithPath:nullptr];
     }
 }
+
 - (void)openDocument:(id)sender {
     NSWindow *win = [NSApp keyWindow];
     EditorView *v = [self findEditorViewInWindow:win];
@@ -829,30 +1491,37 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
         if (newV) newV->editor->openFile();
     }
 }
+
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender { return YES; }
+
 - (BOOL)windowShouldClose:(NSWindow *)sender {
     EditorView *v = [self findEditorViewInWindow:sender];
     if (v && v->editor) {
+        v->editor->saveCurrentViewState();
         if (!v->editor->checkUnsavedChanges()) return NO;
     }
     return YES;
 }
+
 - (void)windowWillClose:(NSNotification *)notification {
     CustomWindow *win = (CustomWindow *)notification.object;
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.windows removeObject:win];
     });
 }
+
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
     NSArray *windowsToClose = [self.windows copy];
     for (CustomWindow *win in windowsToClose) {
         EditorView *v = [self findEditorViewInWindow:win];
         if (v && v->editor) {
+            v->editor->saveCurrentViewState();
             if (!v->editor->checkUnsavedChanges()) return NSTerminateCancel;
         }
     }
     return NSTerminateNow;
 }
+
 - (EditorView *)findEditorViewInWindow:(NSWindow *)window {
     if (!window) return nil;
     NSView *contentView = window.contentView;
@@ -867,6 +1536,7 @@ static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular"
     return nil;
 }
 @end
+
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
         NSApplication *a = [NSApplication sharedApplication];
