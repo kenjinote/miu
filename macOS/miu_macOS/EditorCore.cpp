@@ -4068,7 +4068,7 @@ bool Editor::checkUnsavedChanges() {
 }
 
 bool Editor::saveFileElevated(const std::string& utf8Path, const std::string& rawBytes) {
-#if defined(__APPLE__)
+#if defined(__APPLE__) && (!defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE)
     char tmpTemplate[] = "/tmp/miu_elevated_XXXXXX";
     int tmpFd = mkstemp(tmpTemplate);
     if (tmpFd == -1) return false;
