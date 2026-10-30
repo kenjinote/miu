@@ -126,7 +126,7 @@
 @property (nonatomic) Editor *editor;
 @property (nonatomic, copy) void (^onNewDocumentAction)(void);
 @property (nonatomic, copy) void (^onGoToLineAction)(void);
-@property (nonatomic, copy) void (^onOpenRecentAction)(void);
+@property (nonatomic, copy) void (^onOpenRecentAction)(UIView *sourceView);
 @property (nonatomic, strong) UIEditMenuInteraction *editMenuInteraction API_AVAILABLE(ios(16.0));
 @property (nonatomic, assign) CGFloat topRenderMargin;
 - (void)jumpToLine:(NSInteger)lineNumber;
@@ -1286,7 +1286,8 @@
     [self hideHelpIfNeeded];
     [self hideEditMenuIfNeeded];
     if (self.onOpenRecentAction) {
-        self.onOpenRecentAction();
+        UIView *sourceView = [sender isKindOfClass:[UIView class]] ? (UIView *)sender : nil;
+        self.onOpenRecentAction(sourceView);
     }
 }
 - (void)selectAll:(id)sender {
@@ -2235,44 +2236,114 @@ static NSString *s_iosClipboardSnapshot = nil;
         }
     }
 }
-- (void)presentOpenRecentMenu {
+- (void)saveBookmarkForURL:(NSURL *)url {
+    if (!url || !url.path) return;
+    NSData *bm = [url bookmarkDataWithOptions:0 includingResourceValuesForKeys:nil relativeToURL:nil error:nil];
+    if (!bm) return;
+    NSDictionary *existing = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"MiuRecentBookmarks"];
+    NSMutableDictionary *dict = existing ? [existing mutableCopy] : [NSMutableDictionary dictionary];
+    dict[url.path] = bm;
+    [[NSUserDefaults standardUserDefaults] setObject:dict forKey:@"MiuRecentBookmarks"];
+}
+- (void)openRecentFileAtPath:(const std::string &)path {
+    if (!_editorEngine) return;
+    if (self.currentDocumentURL) {
+        [self.currentDocumentURL stopAccessingSecurityScopedResource];
+        self.currentDocumentURL = nil;
+    }
+    NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
+    NSURL *targetURL = nsPath ? [NSURL fileURLWithPath:nsPath] : nil;
+    BOOL accessGranted = NO;
+    if (nsPath) {
+        NSDictionary *dict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"MiuRecentBookmarks"];
+        NSData *bm = dict[nsPath];
+        if (bm) {
+            BOOL isStale = NO;
+            NSURL *resolved = [NSURL URLByResolvingBookmarkData:bm options:0 relativeToURL:nil bookmarkDataIsStale:&isStale error:nil];
+            if (resolved) {
+                targetURL = resolved;
+                accessGranted = [targetURL startAccessingSecurityScopedResource];
+                if (isStale) {
+                    [self saveBookmarkForURL:targetURL];
+                }
+            }
+        }
+    }
+    if (!accessGranted && targetURL) {
+        accessGranted = [targetURL startAccessingSecurityScopedResource];
+    }
+    self.currentDocumentURL = accessGranted ? targetURL : nil;
+    std::string actualPath = (targetURL && targetURL.path) ? std::string(targetURL.path.UTF8String) : path;
+    [self.editorView unmarkText];
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
+    bool success = _editorEngine->openFileFromPath(actualPath);
+    if (success && self.searchField.text.length > 0) {
+        _editorEngine->searchQuery = self.searchField.text.UTF8String;
+    }
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
+    [self.editorView setNeedsDisplay];
+}
+- (void)presentOpenRecentMenuFromView:(UIView *)sourceView {
     if (!_editorEngine) return;
     _editorEngine->loadRecentFiles();
     UIAlertController *sheet = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Open Recent", nil)
                                                                    message:nil
                                                             preferredStyle:UIAlertControllerStyleActionSheet];
     __weak typeof(self) weakSelf = self;
-    for (const auto& path : _editorEngine->recentFiles) {
-        NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
-        if (!nsPath || nsPath.length == 0) continue;
-        NSString *displayTitle = [nsPath lastPathComponent];
-        [sheet addAction:[UIAlertAction actionWithTitle:displayTitle style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
-            __strong typeof(self) strongSelf = weakSelf;
-            if (!strongSelf || !strongSelf->_editorEngine) return;
-            [strongSelf confirmSaveIfNeededWithAction:^{
-                [strongSelf.editorView unmarkText];
-                [strongSelf.editorView.inputDelegate selectionWillChange:strongSelf.editorView];
-                [strongSelf.editorView.inputDelegate textWillChange:strongSelf.editorView];
-                strongSelf->_editorEngine->openFileFromPath(path);
-                [strongSelf.editorView.inputDelegate textDidChange:strongSelf.editorView];
-                [strongSelf.editorView.inputDelegate selectionDidChange:strongSelf.editorView];
-                [strongSelf.editorView setNeedsDisplay];
-            }];
-        }]];
-    }
-    if (!_editorEngine->recentFiles.empty()) {
+    if (_editorEngine->recentFiles.empty()) {
+        UIAlertAction *emptyAction = [UIAlertAction actionWithTitle:NSLocalizedString(@"No Recent Files", nil)
+                                                              style:UIAlertActionStyleDefault
+                                                            handler:nil];
+        emptyAction.enabled = NO;
+        [sheet addAction:emptyAction];
+    } else {
+        for (const auto& path : _editorEngine->recentFiles) {
+            NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
+            if (!nsPath || nsPath.length == 0) continue;
+            NSString *displayTitle = [nsPath lastPathComponent];
+            [sheet addAction:[UIAlertAction actionWithTitle:displayTitle style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                __strong typeof(self) strongSelf = weakSelf;
+                if (!strongSelf || !strongSelf->_editorEngine) return;
+                [strongSelf confirmSaveIfNeededWithAction:^{
+                    [strongSelf openRecentFileAtPath:path];
+                }];
+            }]];
+        }
         [sheet addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Clear Menu", nil) style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
             __strong typeof(self) strongSelf = weakSelf;
             if (strongSelf && strongSelf->_editorEngine) {
                 strongSelf->_editorEngine->clearRecentFiles();
+                [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"MiuRecentBookmarks"];
             }
         }]];
     }
     [sheet addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil]];
     UIPopoverPresentationController *pop = sheet.popoverPresentationController;
     if (pop) {
-        pop.sourceView = self.titleBarView ? self.titleBarView : self.view;
-        pop.sourceRect = self.titleBarView ? self.titleBarView.bounds : CGRectMake(self.view.bounds.size.width * 0.5, 40, 1, 1);
+        if (sourceView && sourceView.window && self.view.window) {
+            if (sourceView.window == self.view.window) {
+                pop.sourceView = sourceView;
+                pop.sourceRect = sourceView.bounds;
+            } else {
+                CGRect rectInView = [sourceView convertRect:sourceView.bounds toCoordinateSpace:self.view];
+                rectInView = CGRectIntersection(rectInView, self.view.bounds);
+                if (!CGRectIsNull(rectInView) && rectInView.size.width > 0 && rectInView.size.height > 0) {
+                    pop.sourceView = self.view;
+                    pop.sourceRect = rectInView;
+                } else {
+                    pop.sourceView = self.view;
+                    pop.sourceRect = CGRectMake(self.view.bounds.size.width * 0.5, 40, 1, 1);
+                }
+            }
+        } else if (self.titleBarView && self.titleBarView.bounds.size.height > 0) {
+            pop.sourceView = self.titleBarView;
+            pop.sourceRect = self.titleBarView.bounds;
+        } else {
+            pop.sourceView = self.view;
+            pop.sourceRect = CGRectMake(self.view.bounds.size.width * 0.5, 40, 1, 1);
+        }
     }
     [self presentViewController:sheet animated:YES completion:nil];
 }
@@ -2617,8 +2688,8 @@ static NSString *s_iosClipboardSnapshot = nil;
             [weakSelf performNewDocument];
         }];
     };
-    self.editorView.onOpenRecentAction = ^{
-        [weakSelf presentOpenRecentMenu];
+    self.editorView.onOpenRecentAction = ^(UIView *sourceView) {
+        [weakSelf presentOpenRecentMenuFromView:sourceView];
     };
     self.editorView.onGoToLineAction = ^{
         __strong typeof(self) strongSelf = weakSelf;
@@ -2912,8 +2983,10 @@ static NSString *s_iosClipboardSnapshot = nil;
     if (!url || !_editorEngine) return;
     if (self.currentDocumentURL) {
         [self.currentDocumentURL stopAccessingSecurityScopedResource];
+        self.currentDocumentURL = nil;
     }
     BOOL accessGranted = [url startAccessingSecurityScopedResource];
+    [self saveBookmarkForURL:url];
     self.currentDocumentURL = accessGranted ? url : nil;
     if (!_isExportingDocument) {
         std::string path = url.path.UTF8String;
@@ -2932,7 +3005,16 @@ static NSString *s_iosClipboardSnapshot = nil;
     } else {
         std::string path = url.path.UTF8String;
         std::wstring wpath = UTF8ToW(path);
-        _editorEngine->saveFile(wpath);
+        if (!_editorEngine->saveFile(wpath)) {
+            _editorEngine->currentFilePath = wpath;
+            _editorEngine->loadSyntaxForExtension(path);
+            _editorEngine->recordFileMtime(path);
+            _editorEngine->addToRecentFiles(path);
+            _editorEngine->saveCurrentViewState();
+            _editorEngine->undo.markSaved();
+            _editorEngine->isDirty = false;
+            _editorEngine->updateTitleBar();
+        }
     }
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [self.editorView becomeFirstResponder];

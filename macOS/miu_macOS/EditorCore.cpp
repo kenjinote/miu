@@ -4467,7 +4467,11 @@ std::string Editor::getAppSupportDir() const {
         if (pw) home = pw->pw_dir;
     }
     if (!home) return "/tmp";
-    std::string dir = std::string(home) + "/Library/Application Support/miu";
+    std::string libDir = std::string(home) + "/Library";
+    mkdir(libDir.c_str(), 0755);
+    std::string appSupDir = libDir + "/Application Support";
+    mkdir(appSupDir.c_str(), 0755);
+    std::string dir = appSupDir + "/miu";
     mkdir(dir.c_str(), 0755);
     return dir;
 #else
