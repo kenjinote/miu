@@ -128,6 +128,7 @@
 @property (nonatomic, copy) void (^onGoToLineAction)(void);
 @property (nonatomic, copy) void (^onOpenRecentAction)(UIView *sourceView);
 @property (nonatomic, copy) BOOL (^onDismissOpenRecentIfVisible)(void);
+@property (nonatomic, copy) void (^onDismissOpenRecentThenPerform)(void (^block)(void));
 @property (nonatomic, strong) UIEditMenuInteraction *editMenuInteraction API_AVAILABLE(ios(16.0));
 @property (nonatomic, assign) CGFloat topRenderMargin;
 - (void)jumpToLine:(NSInteger)lineNumber;
@@ -2035,13 +2036,30 @@
         [btn addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull uiAction) {
             __strong typeof(weakSelf) strongSelf = weakSelf;
             if (!strongSelf) return;
-            if (strongSelf.onDismissOpenRecentIfVisible && strongSelf.onDismissOpenRecentIfVisible()) {
-                return;
-            }
+            if (action == @selector(openRecentDocument:)) {
+                if (strongSelf.onDismissOpenRecentIfVisible && strongSelf.onDismissOpenRecentIfVisible()) {
+                    return;
+                }
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-            [strongSelf performSelector:action withObject:uiAction.sender];
+                [strongSelf performSelector:action withObject:uiAction.sender];
 #pragma clang diagnostic pop
+                return;
+            }
+            id senderObj = uiAction.sender;
+            void (^fireAction)(void) = ^{
+                __strong typeof(weakSelf) innerSelf = weakSelf;
+                if (!innerSelf) return;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+                [innerSelf performSelector:action withObject:senderObj];
+#pragma clang diagnostic pop
+            };
+            if (strongSelf.onDismissOpenRecentThenPerform) {
+                strongSelf.onDismissOpenRecentThenPerform(fireAction);
+            } else {
+                fireAction();
+            }
         }] forControlEvents:UIControlEventTouchUpInside];
         return btn;
     };
@@ -2344,6 +2362,27 @@ static NSString *s_iosClipboardSnapshot = nil;
         self.openRecentAlert = nil;
     }
     return NO;
+}
+- (void)dismissOpenRecentThenPerform:(void (^)(void))block {
+    if (self.openRecentAlert) {
+        if (self.openRecentAlert.isBeingDismissed) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                self.openRecentAlert = nil;
+                if (block) block();
+            });
+            return;
+        }
+        if (self.presentedViewController == self.openRecentAlert || self.openRecentAlert.presentingViewController != nil) {
+            __weak typeof(self) weakSelf = self;
+            [self.openRecentAlert dismissViewControllerAnimated:NO completion:^{
+                weakSelf.openRecentAlert = nil;
+                if (block) block();
+            }];
+            return;
+        }
+        self.openRecentAlert = nil;
+    }
+    if (block) block();
 }
 - (void)presentOpenRecentMenuFromView:(UIView *)sourceView {
     if ([self dismissOpenRecentIfVisible]) {
@@ -2760,6 +2799,11 @@ static NSString *s_iosClipboardSnapshot = nil;
         if (!strongSelf) return NO;
         return [strongSelf dismissOpenRecentIfVisible];
     };
+    self.editorView.onDismissOpenRecentThenPerform = ^(void (^block)(void)) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf dismissOpenRecentThenPerform:block];
+    };
     self.editorView.onGoToLineAction = ^{
         __strong typeof(self) strongSelf = weakSelf;
         if (!strongSelf) return;
@@ -3041,15 +3085,23 @@ static NSString *s_iosClipboardSnapshot = nil;
     std::string content = _editorEngine->pt.getRange(0, _editorEngine->pt.length());
     NSData *data = [NSData dataWithBytes:content.c_str() length:content.length()];
     std::string utf8Name = WToUTF8(_editorEngine->currentFilePath);
+    NSString *fileName = nil;
     if (utf8Name.empty()) {
-        NSString *defaultName = NSLocalizedString(@"Untitled", @"新規ファイル名");
-        utf8Name = [defaultName stringByAppendingString:@".txt"].UTF8String;
+        fileName = NSLocalizedString(@"Untitled", @"新規ファイル名");
+    } else {
+        fileName = [[[NSString stringWithUTF8String:utf8Name.c_str()] lastPathComponent] stringByDeletingPathExtension];
+        if (fileName.length == 0) {
+            fileName = NSLocalizedString(@"Untitled", @"新規ファイル名");
+        }
     }
-    NSString *fileName = [[NSString stringWithUTF8String:utf8Name.c_str()] lastPathComponent];
     NSString *tempFilePath = [NSTemporaryDirectory() stringByAppendingPathComponent:fileName];
     [data writeToFile:tempFilePath atomically:YES];
     NSURL *tempURL = [NSURL fileURLWithPath:tempFilePath];
     UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForExportingURLs:@[tempURL] asCopy:YES];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    picker.shouldShowFileExtensions = YES;
+#pragma clang diagnostic pop
     picker.delegate = self;
     [self presentViewController:picker animated:YES completion:nil];
 }

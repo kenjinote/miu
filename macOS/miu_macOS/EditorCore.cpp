@@ -4335,7 +4335,7 @@ void Editor::updateThemeColors() {
         colGutterText = CGColorCreateGenericRGB(0.45, 0.45, 0.48, 1.0);
         colSel = CGColorCreateGenericRGB(0.2, 0.3, 0.5, 1.0);
         colCaret = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
-        colNewlineMark = CGColorCreateGenericRGB(0.55, 0.78, 1.0, 0.72);
+        colNewlineMark = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.18);
         colBracketBg = CGColorCreateGenericRGB(0.35, 0.55, 0.85, 0.35);
         colBracketBorder = CGColorCreateGenericRGB(0.50, 0.75, 1.0, 0.85);
     } else {
@@ -4350,7 +4350,7 @@ void Editor::updateThemeColors() {
         colGutterText = CGColorCreateGenericRGB(0.55, 0.55, 0.58, 1.0);
         colSel = CGColorCreateGenericRGB(0.70, 0.80, 1.0, 1.0);
         colCaret = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
-        colNewlineMark = CGColorCreateGenericRGB(0.25, 0.48, 0.75, 0.65);
+        colNewlineMark = CGColorCreateGenericRGB(0.50, 0.50, 0.50, 0.20);
         colBracketBg = CGColorCreateGenericRGB(0.20, 0.50, 0.90, 0.22);
         colBracketBorder = CGColorCreateGenericRGB(0.15, 0.45, 0.85, 0.80);
     }
@@ -5001,8 +5001,8 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                     float cx = gutterWidth - (wordWrapEnabled ? 0.0f : (float)hScrollPos) + px + charWidth * 0.5f;
                     float cy = drawY + lineHeight * 0.5f;
                     if (colNewlineMark) CGContextSetStrokeColorWithColor(ctx, colNewlineMark);
-                    else CGContextSetRGBStrokeColor(ctx, 0.5f, 0.5f, 0.5f, 0.5f);
-                    float strokeWidth = std::max(1.5f, currentFontSize * 0.06f);
+                    else CGContextSetRGBStrokeColor(ctx, isDarkMode ? 1.0f : 0.50f, isDarkMode ? 1.0f : 0.50f, isDarkMode ? 1.0f : 0.50f, isDarkMode ? 0.18f : 0.20f);
+                    float strokeWidth = std::max(1.5f, currentFontSize * 0.05f);
                     CGContextSetLineWidth(ctx, strokeWidth);
                     CGContextSetLineCap(ctx, kCGLineCapRound);
                     CGContextSetLineJoin(ctx, kCGLineJoinRound);
