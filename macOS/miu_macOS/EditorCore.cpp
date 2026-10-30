@@ -5175,65 +5175,141 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     // 9. F1 Help Popup
     if (showHelpPopup) {
         std::wstring fullHelp = appVersionStr + L"\n\n" + helpTextStr;
-        CFStringRef hcf = CFStringCreateWithBytes(NULL, (const UInt8*)fullHelp.data(), fullHelp.size() * sizeof(wchar_t), kCFStringEncodingUTF32LE, false);
-        if (hcf) {
-            CTFontRef hf = CTFontCreateWithName(CFSTR("Menlo"), 13.0f, NULL);
-            CGFloat helpLineHeight = 16.0f;
-            CTParagraphStyleSetting settings[] = {
-                { kCTParagraphStyleSpecifierMinimumLineHeight, sizeof(CGFloat), &helpLineHeight },
-                { kCTParagraphStyleSpecifierMaximumLineHeight, sizeof(CGFloat), &helpLineHeight }
-            };
-            CTParagraphStyleRef ps = CTParagraphStyleCreate(settings, 2);
-            CGColorRef helpTextCol = isDarkMode
-                ? CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0)
-                : CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
-            const void* hKeys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName, kCTParagraphStyleAttributeName };
-            const void* hVals[] = { hf, helpTextCol, ps };
-            CFDictionaryRef ha = CFDictionaryCreate(NULL, hKeys, hVals, 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-            CFAttributedStringRef has = CFAttributedStringCreate(NULL, hcf, ha);
-            CTFramesetterRef fs = CTFramesetterCreateWithAttributedString(has);
-            CGSize maxConstraints = CGSizeMake(w * 0.92f, h * 0.92f);
-            CGSize suggestedSize = CTFramesetterSuggestFrameSizeWithConstraints(fs, CFRangeMake(0, 0), NULL, maxConstraints, NULL);
-            float padding = 20.0f;
-            float hw = suggestedSize.width + (padding * 2.0f);
-            float hh = suggestedSize.height + (padding * 2.0f);
-            CGRect hr = CGRectMake((w - hw) / 2.0f, (h - hh) / 2.0f, hw, hh);
-            CGColorRef hBg = isDarkMode
-                ? CGColorCreateGenericRGB(0.20, 0.20, 0.20, 0.70)
-                : CGColorCreateGenericRGB(0.93, 0.93, 0.93, 0.85);
-            CGContextSetFillColorWithColor(ctx, hBg);
-            CGPathRef hpath = CGPathCreateWithRoundedRect(hr, 10.0f, 10.0f, NULL);
-            CGContextAddPath(ctx, hpath);
-            CGContextFillPath(ctx);
-            if (!isDarkMode) {
-                CGColorRef hBorder = CGColorCreateGenericRGB(0.80, 0.80, 0.80, 1.0);
-                CGContextSetStrokeColorWithColor(ctx, hBorder);
-                CGContextSetLineWidth(ctx, 1.0f);
-                CGContextAddPath(ctx, hpath);
-                CGContextStrokePath(ctx);
-                CGColorRelease(hBorder);
-            }
-            CGPathRelease(hpath);
-            CGColorRelease(hBg);
-            CGContextSaveGState(ctx);
-            CGContextSetTextMatrix(ctx, CGAffineTransformIdentity);
-            CGContextTranslateCTM(ctx, hr.origin.x, hr.origin.y + hr.size.height);
-            CGContextScaleCTM(ctx, 1.0f, -1.0f);
-            CGMutablePathRef pth = CGPathCreateMutable();
-            CGPathAddRect(pth, NULL, CGRectMake(padding, padding, suggestedSize.width, suggestedSize.height));
-            CTFrameRef frame = CTFramesetterCreateFrame(fs, CFRangeMake(0, 0), pth, NULL);
-            CTFrameDraw(frame, ctx);
-            CGContextRestoreGState(ctx);
-            CFRelease(frame);
-            CFRelease(pth);
-            CFRelease(fs);
-            CFRelease(has);
-            CFRelease(ha);
-            CFRelease(hf);
-            CFRelease(hcf);
-            CFRelease(ps);
-            CGColorRelease(helpTextCol);
+        while (!fullHelp.empty() && (fullHelp.back() == L'\n' || fullHelp.back() == L'\r')) {
+            fullHelp.pop_back();
         }
+        CTFontRef hf = CTFontCreateWithName(CFSTR("Menlo"), 13.0f, NULL);
+        CGFloat helpLineHeight = 16.0f;
+        CGFloat helpAscent = CTFontGetAscent(hf);
+        CGColorRef helpTextCol = isDarkMode
+            ? CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0)
+            : CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
+        const void* hKeys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName };
+        const void* hVals[] = { hf, helpTextCol };
+        CFDictionaryRef ha = CFDictionaryCreate(NULL, hKeys, hVals, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+
+        float helpCharW = 7.83f;
+        {
+            CFAttributedStringRef zeroAs = CFAttributedStringCreate(NULL, CFSTR("0"), ha);
+            if (zeroAs) {
+                CTLineRef zeroLine = CTLineCreateWithAttributedString(zeroAs);
+                if (zeroLine) {
+                    helpCharW = (float)CTLineGetTypographicBounds(zeroLine, NULL, NULL, NULL);
+                    CFRelease(zeroLine);
+                }
+                CFRelease(zeroAs);
+            }
+        }
+        float col2Offset = 20.0f * helpCharW;
+
+        struct HelpRenderLine {
+            CTLineRef leftLine = nullptr;
+            CTLineRef rightLine = nullptr;
+            float rightX = 0.0f;
+        };
+        std::vector<HelpRenderLine> renderLines;
+        float maxLineW = 0.0f;
+
+        auto makeCTLine = [&](const std::wstring& wstr) -> CTLineRef {
+            if (wstr.empty()) return nullptr;
+            CFStringRef cfs = CFStringCreateWithBytes(NULL, (const UInt8*)wstr.data(), wstr.size() * sizeof(wchar_t), kCFStringEncodingUTF32LE, false);
+            if (!cfs) return nullptr;
+            CFAttributedStringRef as = CFAttributedStringCreate(NULL, cfs, ha);
+            CFRelease(cfs);
+            if (!as) return nullptr;
+            CTLineRef tl = CTLineCreateWithAttributedString(as);
+            CFRelease(as);
+            return tl;
+        };
+
+        size_t pos = 0;
+        while (pos <= fullHelp.size()) {
+            size_t nextPos = fullHelp.find(L'\n', pos);
+            std::wstring line = (nextPos == std::wstring::npos) ? fullHelp.substr(pos) : fullHelp.substr(pos, nextPos - pos);
+            if (!line.empty() && line.back() == L'\r') line.pop_back();
+
+            HelpRenderLine rl;
+            size_t sepStart = line.find(L"  ");
+            if (sepStart != std::wstring::npos && sepStart > 0) {
+                size_t sepEnd = sepStart;
+                while (sepEnd < line.size() && line[sepEnd] == L' ') sepEnd++;
+                std::wstring leftWStr = line.substr(0, sepStart);
+                std::wstring rightWStr = (sepEnd < line.size()) ? line.substr(sepEnd) : L"";
+                CTLineRef lLine = makeCTLine(leftWStr);
+                double lW = lLine ? CTLineGetTypographicBounds(lLine, NULL, NULL, NULL) : 0.0;
+                if (lLine && !rightWStr.empty() && (float)lW <= 18.8f * helpCharW) {
+                    rl.leftLine = lLine;
+                    rl.rightLine = makeCTLine(rightWStr);
+                    rl.rightX = col2Offset;
+                    double rW = rl.rightLine ? CTLineGetTypographicBounds(rl.rightLine, NULL, NULL, NULL) : 0.0;
+                    maxLineW = std::max(maxLineW, col2Offset + (float)rW);
+                } else {
+                    if (lLine) CFRelease(lLine);
+                    rl.leftLine = makeCTLine(line);
+                    double fullW = rl.leftLine ? CTLineGetTypographicBounds(rl.leftLine, NULL, NULL, NULL) : 0.0;
+                    maxLineW = std::max(maxLineW, (float)fullW);
+                }
+            } else {
+                rl.leftLine = makeCTLine(line);
+                double fullW = rl.leftLine ? CTLineGetTypographicBounds(rl.leftLine, NULL, NULL, NULL) : 0.0;
+                maxLineW = std::max(maxLineW, (float)fullW);
+            }
+            renderLines.push_back(rl);
+            if (nextPos == std::wstring::npos) break;
+            pos = nextPos + 1;
+        }
+
+        float padding = 20.0f;
+        float contentW = maxLineW;
+        float contentH = (float)renderLines.size() * helpLineHeight;
+        float hw = contentW + (padding * 2.0f);
+        float hh = contentH + (padding * 2.0f);
+        float scale = 1.0f;
+        if (hw > w * 0.94f && hw > 1.0f) scale = std::min(scale, (w * 0.94f) / hw);
+        if (hh > h * 0.94f && hh > 1.0f) scale = std::min(scale, (h * 0.94f) / hh);
+        float boxW = hw * scale;
+        float boxH = hh * scale;
+        CGRect hr = CGRectMake((w - boxW) / 2.0f, (h - boxH) / 2.0f, boxW, boxH);
+
+        CGColorRef hBg = isDarkMode
+            ? CGColorCreateGenericRGB(0.20, 0.20, 0.20, 0.70)
+            : CGColorCreateGenericRGB(0.93, 0.93, 0.93, 0.85);
+        CGContextSetFillColorWithColor(ctx, hBg);
+        CGPathRef hpath = CGPathCreateWithRoundedRect(hr, 10.0f, 10.0f, NULL);
+        CGContextAddPath(ctx, hpath);
+        CGContextFillPath(ctx);
+        if (!isDarkMode) {
+            CGColorRef hBorder = CGColorCreateGenericRGB(0.80, 0.80, 0.80, 1.0);
+            CGContextSetStrokeColorWithColor(ctx, hBorder);
+            CGContextSetLineWidth(ctx, 1.0f);
+            CGContextAddPath(ctx, hpath);
+            CGContextStrokePath(ctx);
+            CGColorRelease(hBorder);
+        }
+        CGPathRelease(hpath);
+        CGColorRelease(hBg);
+
+        CGContextSaveGState(ctx);
+        CGContextTranslateCTM(ctx, hr.origin.x, hr.origin.y);
+        CGContextScaleCTM(ctx, scale, scale);
+        CGContextSetTextMatrix(ctx, CGAffineTransformMakeScale(1.0f, -1.0f));
+        for (size_t i = 0; i < renderLines.size(); ++i) {
+            float y = padding + (float)i * helpLineHeight + helpAscent;
+            if (renderLines[i].leftLine) {
+                CGContextSetTextPosition(ctx, padding, y);
+                CTLineDraw(renderLines[i].leftLine, ctx);
+                CFRelease(renderLines[i].leftLine);
+            }
+            if (renderLines[i].rightLine) {
+                CGContextSetTextPosition(ctx, padding + renderLines[i].rightX, y);
+                CTLineDraw(renderLines[i].rightLine, ctx);
+                CFRelease(renderLines[i].rightLine);
+            }
+        }
+        CGContextRestoreGState(ctx);
+        CFRelease(ha);
+        CFRelease(hf);
+        CGColorRelease(helpTextCol);
     }
 }
 #endif

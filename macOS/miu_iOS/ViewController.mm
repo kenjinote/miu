@@ -137,6 +137,7 @@
 - (void)toggleCommentAction:(id)sender;
 - (void)toggleWordWrapAction:(id)sender;
 - (void)togglePreviewAction:(id)sender;
+- (void)toggleHelp:(id)sender;
 @end
 @implementation iOSEditorView {
     CGPoint _lastPanTranslation;
@@ -1930,6 +1931,10 @@
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
     self.editor->showHelpPopup = !self.editor->showHelpPopup;
+    if (self.editor->showHelpPopup) {
+        [self dismissKeyboard];
+        [self.window endEditing:YES];
+    }
     [self setNeedsDisplay];
 }
 - (UIView *)inputAccessoryView {
@@ -3297,8 +3302,14 @@ static NSString *s_iosClipboardSnapshot = nil;
 }
 - (NSArray<UIKeyCommand *> *)keyCommands {
     return @[
-        [UIKeyCommand keyCommandWithInput:UIKeyInputEscape modifierFlags:0 action:@selector(handleEscape:)]
+        [UIKeyCommand keyCommandWithInput:UIKeyInputEscape modifierFlags:0 action:@selector(handleEscape:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputF1 modifierFlags:0 action:@selector(handleF1Key:)]
     ];
+}
+- (void)handleF1Key:(id)sender {
+    if (self.editorView) {
+        [self.editorView toggleHelp:sender];
+    }
 }
 - (void)closeSearch {
     if (_editorEngine) {
