@@ -1,4 +1,4 @@
-name: macOS Xcode Build & Test
+name: macOS & iOS Xcode Build, Test & TestFlight
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
 
 jobs:
   macos-xcodebuild:
-    name: Build miu_macOS & Run Core Tests
+    name: Build miu_macOS & miu_iOS + Run Core Tests
     runs-on: macos-15
     steps:
       - name: Checkout repository
@@ -24,17 +24,11 @@ jobs:
         run: |
           plutil -lint macOS/*.lproj/Localizable.strings
 
-      - name: Build universal libced.a (arm64 + x86_64)
+      - name: Build universal libced.a (macOS) & libced_iOS.a (iOS)
         run: |
-          clang++ -std=c++17 -O2 -mmacosx-version-min=13.0 -arch arm64 -arch x86_64 -Iinclude \
-            -c include/compact_enc_det/compact_enc_det.cc \
-               include/compact_enc_det/compact_enc_det_hint_code.cc \
-               include/util/encodings/encodings.cc \
-               include/util/languages/languages.cc
-          libtool -static -o macOS/libced.a \
-            compact_enc_det.o compact_enc_det_hint_code.o encodings.o languages.o
-          rm -f compact_enc_det.o compact_enc_det_hint_code.o encodings.o languages.o
+          sh macOS/ci_scripts/ci_post_clone.sh
           lipo -info macOS/libced.a
+          lipo -info macOS/libced_iOS.a
 
       - name: Build miu_macOS with xcodebuild (Release)
         run: |
@@ -46,7 +40,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
-      - name: Verify built miu.app bundle & linked frameworks
+      - name: Verify built macOS miu.app bundle & linked frameworks
         run: |
           APP_BIN="macOS/build/Release/miu.app/Contents/MacOS/miu"
           test -f "$APP_BIN"
@@ -66,3 +60,76 @@ jobs:
             -framework CoreText -framework CoreFoundation -framework CoreGraphics \
             -o test_macos_editor_core
           ./test_macos_editor_core
+
+      - name: Build miu_iOS with xcodebuild (Release - iphoneos)
+        run: |
+          xcodebuild -project macOS/miu.xcodeproj \
+            -target miu_iOS \
+            -sdk iphoneos \
+            -configuration Release \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Upload TestFlight if App Store Connect Secrets are configured
+        if: env.APPSTORE_ISSUER_ID != '' && env.APPSTORE_KEY_ID != '' && env.APPSTORE_PRIVATE_KEY != ''
+        env:
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8"
+          echo "$APPSTORE_PRIVATE_KEY" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+
+          if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
+            KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+            KEYCHAIN_PASS="temp_keychain_pass"
+            echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+            security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+            security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+            security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+            security import "$RUNNER_TEMP/certificate.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+            security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain
+          fi
+
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>destination</key>
+              <string>upload</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+              <key>teamID</key>
+              <string>J8HRH6XC73</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -project macOS/miu.xcodeproj \
+            -scheme miu_macOS \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
+            archive
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export_macOS" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
