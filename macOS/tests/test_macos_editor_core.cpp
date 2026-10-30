@@ -624,6 +624,31 @@ static void testParityEdgeCases() {
         CHECK(drawnPixels > 20, "Uncommitted Japanese IME composition text (imeComp) is rendered on an empty line");
     }
     ed.imeComp = "";
+
+    // 7. Live Preview toggle & theme background CSS verification (macOS gray window regression guard)
+    {
+        ed.newFile();
+        ed.isDarkMode = false;
+        int previewCbCount = 0;
+        ed.cbUpdatePreview = [&]() { previewCbCount++; };
+        ed.togglePreview();
+        CHECK(ed.showPreview == true && previewCbCount == 1, "togglePreview enables showPreview and fires cbUpdatePreview");
+        MiuPreview::PreviewRenderResult emptyLightRes = ed.getPreviewRenderResult();
+        CHECK(emptyLightRes.isMdOrMermaidShell == true, "Empty untitled document uses Markdown/Mermaid shell in preview");
+        CHECK(emptyLightRes.fullHtml.find("html{background:var(--pele-bg);color:var(--md-fg);min-height:100%}") != std::string::npos,
+              "Preview shell sets explicit background on root html element so empty documents are not transparent");
+        CHECK(emptyLightRes.fullHtml.find("<html data-theme=\"light\">") != std::string::npos,
+              "Light mode preview sets data-theme=light on html element");
+
+        ed.isDarkMode = true;
+        ed.updateThemeColors();
+        CHECK(previewCbCount == 2 && ed.previewInitialLoaded == false, "updateThemeColors invalidates previewInitialLoaded and updates preview");
+        MiuPreview::PreviewRenderResult emptyDarkRes = ed.getPreviewRenderResult();
+        CHECK(emptyDarkRes.fullHtml.find("<html data-theme=\"dark\">") != std::string::npos,
+              "Dark mode preview sets data-theme=dark on html element");
+        ed.togglePreview();
+        CHECK(ed.showPreview == false && previewCbCount == 3, "togglePreview disables showPreview and fires cbUpdatePreview");
+    }
 }
 
 int main() {

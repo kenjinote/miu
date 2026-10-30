@@ -6,6 +6,8 @@
 
 @interface MiuIOSPreviewMessageHandler : NSObject <WKScriptMessageHandler, WKNavigationDelegate>
 @property (nonatomic, assign) Editor *editor;
+@property (nonatomic, assign) BOOL previewPageLoaded;
+@property (nonatomic, copy) NSString *pendingHtml;
 @end
 
 @implementation MiuIOSPreviewMessageHandler
@@ -24,6 +26,44 @@
         decisionHandler(WKNavigationActionPolicyAllow);
     } else {
         decisionHandler(WKNavigationActionPolicyCancel);
+    }
+}
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
+    self.previewPageLoaded = YES;
+    if (self.editor && self.editor->showPreview && self.editor->previewInitialLoaded) {
+        MiuPreview::PreviewRenderResult res = self.editor->getPreviewRenderResult();
+        if (res.isMdOrMermaidShell) {
+            std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, self.editor->isDarkMode);
+            NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
+            if (jsNS) {
+                [webView evaluateJavaScript:jsNS completionHandler:nil];
+            }
+        }
+    }
+}
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error {
+    self.previewPageLoaded = NO;
+    if (error.code == NSURLErrorCancelled) return;
+    NSString *html = self.pendingHtml;
+    if (html) {
+        self.pendingHtml = nil;
+        [webView loadHTMLString:html baseURL:nil];
+    }
+}
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error {
+    self.previewPageLoaded = NO;
+    if (error.code == NSURLErrorCancelled) return;
+    NSString *html = self.pendingHtml;
+    if (html) {
+        self.pendingHtml = nil;
+        [webView loadHTMLString:html baseURL:nil];
+    }
+}
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView {
+    self.previewPageLoaded = NO;
+    if (self.editor && self.editor->showPreview) {
+        self.editor->previewInitialLoaded = false;
+        if (self.editor->cbUpdatePreview) self.editor->cbUpdatePreview();
     }
 }
 @end
@@ -2510,23 +2550,22 @@ static NSString *s_iosClipboardSnapshot = nil;
     NSString *fullHtmlNS = [NSString stringWithUTF8String:res.fullHtml.c_str()];
     if (!fullHtmlNS) return;
 
-    NSURL *baseURL = nil;
-    if (!_editorEngine->currentFilePath.empty()) {
-        NSString *pathNS = [NSString stringWithUTF8String:WToUTF8(_editorEngine->currentFilePath).c_str()];
-        if (pathNS) baseURL = [[NSURL fileURLWithPath:pathNS] URLByDeletingLastPathComponent];
-    }
+    self.previewMsgHandler.pendingHtml = fullHtmlNS;
 
-    if (!_editorEngine->previewInitialLoaded || !res.isMdOrMermaidShell) {
+    if (!_editorEngine->previewInitialLoaded || !res.isMdOrMermaidShell || !self.previewMsgHandler.previewPageLoaded) {
+        self.previewMsgHandler.previewPageLoaded = NO;
         _editorEngine->previewInitialLoaded = res.isMdOrMermaidShell;
-        [self.previewWebView loadHTMLString:fullHtmlNS baseURL:baseURL];
+        [self.previewWebView loadHTMLString:fullHtmlNS baseURL:nil];
     } else {
         std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, _editorEngine->isDarkMode);
         NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
         if (jsNS) {
             WKWebView *wv = self.previewWebView;
+            MiuIOSPreviewMessageHandler *mh = self.previewMsgHandler;
             [wv evaluateJavaScript:jsNS completionHandler:^(id result, NSError *error) {
                 if (error) {
-                    [wv loadHTMLString:fullHtmlNS baseURL:baseURL];
+                    mh.previewPageLoaded = NO;
+                    [wv loadHTMLString:fullHtmlNS baseURL:nil];
                 }
             }];
         }

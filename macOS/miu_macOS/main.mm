@@ -9,6 +9,8 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 
 @interface MiuPreviewMessageHandler : NSObject <WKScriptMessageHandler, WKNavigationDelegate>
 @property (weak) EditorView *editorView;
+@property (nonatomic, assign) BOOL previewPageLoaded;
+@property (nonatomic, copy) NSString *pendingHtml;
 @end
 
 @interface MiuSplitterView : NSView
@@ -36,6 +38,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 }
 - (void)layoutSplitViews;
 - (void)updatePreviewPane;
+- (void)updatePreviewBackground;
 - (void)updateScrollers;
 - (void)applyZoom:(float)val relative:(bool)rel;
 - (void)showFindPanel:(BOOL)replaceMode;
@@ -77,6 +80,46 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         decisionHandler(WKNavigationActionPolicyAllow);
     } else {
         decisionHandler(WKNavigationActionPolicyCancel);
+    }
+}
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
+    self.previewPageLoaded = YES;
+    EditorView *ev = self.editorView;
+    if (ev && ev->editor && ev->editor->showPreview && ev->editor->previewInitialLoaded) {
+        MiuPreview::PreviewRenderResult res = ev->editor->getPreviewRenderResult();
+        if (res.isMdOrMermaidShell) {
+            std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, ev->editor->isDarkMode);
+            NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
+            if (jsNS) {
+                [webView evaluateJavaScript:jsNS completionHandler:nil];
+            }
+        }
+    }
+}
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error {
+    self.previewPageLoaded = NO;
+    if (error.code == NSURLErrorCancelled) return;
+    NSString *html = self.pendingHtml;
+    if (html) {
+        self.pendingHtml = nil;
+        [webView loadHTMLString:html baseURL:nil];
+    }
+}
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error {
+    self.previewPageLoaded = NO;
+    if (error.code == NSURLErrorCancelled) return;
+    NSString *html = self.pendingHtml;
+    if (html) {
+        self.pendingHtml = nil;
+        [webView loadHTMLString:html baseURL:nil];
+    }
+}
+- (void)webViewWebContentProcessDidTerminate:(WKWebView *)webView {
+    self.previewPageLoaded = NO;
+    EditorView *ev = self.editorView;
+    if (ev && ev->editor && ev->editor->showPreview) {
+        ev->editor->previewInitialLoaded = false;
+        [ev updatePreviewPane];
     }
 }
 @end
@@ -303,6 +346,22 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     return self;
 }
 
+- (void)updatePreviewBackground {
+    if (!previewWebView) return;
+    BOOL dark = editor ? editor->isDarkMode : NO;
+    NSColor *bgColor = dark
+        ? [NSColor colorWithSRGBRed:0.118 green:0.118 blue:0.118 alpha:1.0]
+        : [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:1.0];
+    [previewWebView setWantsLayer:YES];
+    if (previewWebView.layer) {
+        previewWebView.layer.backgroundColor = bgColor.CGColor;
+        previewWebView.layer.opaque = YES;
+    }
+    if (@available(macOS 12.0, *)) {
+        previewWebView.underPageBackgroundColor = bgColor;
+    }
+}
+
 - (void)ensurePreviewViewsCreated {
     if (previewWebView || ![self superview]) return;
     NSView *container = [self superview];
@@ -314,15 +373,20 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     [ucc addScriptMessageHandler:previewMsgHandler name:@"miuPreview"];
     cfg.userContentController = ucc;
 
-    previewWebView = [[WKWebView alloc] initWithFrame:NSZeroRect configuration:cfg];
+    NSRect cb = container.bounds;
+    CGFloat initW = std::max((CGFloat)200.0, std::floor(cb.size.width * 0.5));
+    CGFloat initH = std::max((CGFloat)200.0, cb.size.height - 28.0);
+    previewWebView = [[WKWebView alloc] initWithFrame:NSMakeRect(initW, 0, initW, initH) configuration:cfg];
     previewWebView.navigationDelegate = previewMsgHandler;
     if ([previewWebView respondsToSelector:@selector(setValue:forKey:)]) {
-        [previewWebView setValue:@(NO) forKey:@"drawsBackground"];
+        [previewWebView setValue:@(YES) forKey:@"drawsBackground"];
     }
+    [self updatePreviewBackground];
     [previewWebView setHidden:YES];
     [container addSubview:previewWebView];
 
-    splitterView = [[MiuSplitterView alloc] initWithFrame:NSZeroRect];
+    splitterView = [[MiuSplitterView alloc] initWithFrame:NSMakeRect(initW - 5.0, 0, 5.0, initH)];
+    [splitterView setWantsLayer:YES];
     splitterView.editorView = self;
     [splitterView setHidden:YES];
     [container addSubview:splitterView];
@@ -331,7 +395,6 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 - (void)layoutSplitViews {
     NSView *container = [self superview];
     if (!container || !editor) return;
-    [self ensurePreviewViewsCreated];
     NSRect cb = container.bounds;
     CGFloat topInset = 28.0;
     if (@available(macOS 11.0, *)) {
@@ -341,9 +404,11 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     CGFloat availH = std::max((CGFloat)1.0, cb.size.height - topInset);
     if (!editor->showPreview) {
         [self setFrame:NSMakeRect(0, 0, cb.size.width, availH)];
-        [splitterView setHidden:YES];
-        [previewWebView setHidden:YES];
+        if (splitterView) [splitterView setHidden:YES];
+        if (previewWebView) [previewWebView setHidden:YES];
     } else {
+        [self ensurePreviewViewsCreated];
+        [self updatePreviewBackground];
         CGFloat splitW = 5.0;
         CGFloat leftW = std::floor(cb.size.width * editor->previewSplitRatio);
         CGFloat rightW = std::max((CGFloat)10.0, cb.size.width - leftW - splitW);
@@ -362,27 +427,27 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     if (!editor || !editor->showPreview) return;
     [self ensurePreviewViewsCreated];
     if (!previewWebView) return;
+    [self updatePreviewBackground];
     MiuPreview::PreviewRenderResult res = editor->getPreviewRenderResult();
     NSString *fullHtmlNS = [NSString stringWithUTF8String:res.fullHtml.c_str()];
     if (!fullHtmlNS) return;
 
-    NSURL *baseURL = nil;
-    if (!editor->currentFilePath.empty()) {
-        NSString *pathNS = [NSString stringWithUTF8String:WToUTF8(editor->currentFilePath).c_str()];
-        if (pathNS) baseURL = [[NSURL fileURLWithPath:pathNS] URLByDeletingLastPathComponent];
-    }
+    previewMsgHandler.pendingHtml = fullHtmlNS;
 
-    if (!editor->previewInitialLoaded || !res.isMdOrMermaidShell) {
+    if (!editor->previewInitialLoaded || !res.isMdOrMermaidShell || !previewMsgHandler.previewPageLoaded) {
+        previewMsgHandler.previewPageLoaded = NO;
         editor->previewInitialLoaded = res.isMdOrMermaidShell;
-        [previewWebView loadHTMLString:fullHtmlNS baseURL:baseURL];
+        [previewWebView loadHTMLString:fullHtmlNS baseURL:nil];
     } else {
         std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, editor->isDarkMode);
         NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
         if (jsNS) {
             WKWebView *wv = previewWebView;
+            MiuPreviewMessageHandler *mh = previewMsgHandler;
             [wv evaluateJavaScript:jsNS completionHandler:^(id result, NSError *error) {
                 if (error) {
-                    [wv loadHTMLString:fullHtmlNS baseURL:baseURL];
+                    mh.previewPageLoaded = NO;
+                    [wv loadHTMLString:fullHtmlNS baseURL:nil];
                 }
             }];
         }
@@ -480,6 +545,8 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             editor->isDarkMode = isDark;
             editor->updateThemeColors();
             [self applySystemHighlightColor];
+            [self updatePreviewBackground];
+            if (splitterView) [splitterView setNeedsDisplay:YES];
             [self setNeedsDisplay:YES];
         }
     }
@@ -492,6 +559,8 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             editor->isDarkMode = isDark;
             editor->updateThemeColors();
             [self applySystemHighlightColor];
+            [self updatePreviewBackground];
+            if (splitterView) [splitterView setNeedsDisplay:YES];
         }
         editor->render([[NSGraphicsContext currentContext] CGContext], (float)self.bounds.size.width, (float)self.bounds.size.height);
     }
@@ -550,7 +619,13 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 - (void)redo:(id)sender { if (editor) { editor->performRedo(); [self setNeedsDisplay:YES]; } }
 - (void)toggleCommentAction:(id)sender { if (editor) { editor->toggleComment(); [self setNeedsDisplay:YES]; } }
 - (void)toggleWordWrapAction:(id)sender { if (editor) { editor->toggleWordWrap(); [self setNeedsDisplay:YES]; } }
-- (void)togglePreviewAction:(id)sender { if (editor) { editor->togglePreview(); [self setNeedsDisplay:YES]; } }
+- (void)togglePreviewAction:(id)sender {
+    if (editor) {
+        editor->showHelpPopup = false;
+        editor->togglePreview();
+        [self setNeedsDisplay:YES];
+    }
+}
 - (void)toggleAlwaysOnTopAction:(id)sender { if (editor) { editor->toggleAlwaysOnTop(); [self setNeedsDisplay:YES]; } }
 - (void)showHelpAction:(id)sender { if (editor) { editor->showHelpPopup = !editor->showHelpPopup; [self setNeedsDisplay:YES]; } }
 
@@ -1646,6 +1721,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 }
 @end
 
+#ifndef MIU_MACOS_TESTING
 int main(int argc, const char * argv[]) {
     @autoreleasepool {
         NSApplication *a = [NSApplication sharedApplication];
@@ -1656,3 +1732,4 @@ int main(int argc, const char * argv[]) {
     }
     return 0;
 }
+#endif

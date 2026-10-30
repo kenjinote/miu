@@ -1421,8 +1421,9 @@ inline bool looksLikeMermaid(const std::string& s)  noexcept{
         "--al-warn-bd:#d29922;--al-warn-bg:rgba(210,153,34,.1);--al-warn-fg:#e3b341;"
         "--al-caut-bd:#f85149;--al-caut-bg:rgba(248,81,73,.1);--al-caut-fg:#ff7b72"
         "}"
+        "html{background:var(--pele-bg);color:var(--md-fg);min-height:100%}"
         "html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}html,body{scrollbar-width:none}"
-        "body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--pele-bg);color:var(--md-fg);margin:16px 20px;line-height:1.6;word-wrap:break-word}"
+        "body{font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--pele-bg);color:var(--md-fg);margin:16px 20px;min-height:calc(100vh - 32px);box-sizing:border-box;line-height:1.6;word-wrap:break-word}"
         "h1,h2,h3,h4,h5,h6{margin-top:20px;margin-bottom:10px;font-weight:600;line-height:1.25}"
         "h1{font-size:1.85em;padding-bottom:.28em;border-bottom:1px solid var(--md-hr)}"
         "h2{font-size:1.45em;padding-bottom:.25em;border-bottom:1px solid var(--md-hr)}"
@@ -1594,8 +1595,8 @@ inline PreviewRenderResult renderPreview(
     std::string& html = res.fullHtml;
     html.reserve(rawInput.size() + 1024);
     const char* webDefStyle = isDarkMode
-        ? "<style>:where(:root){color-scheme:dark;background:#1e1e1e;color:#e6edf3}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}html,body{scrollbar-width:none}</style>"
-        : "<style>:where(:root){color-scheme:light;background:#ffffff;color:#1f2328}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}html,body{scrollbar-width:none}</style>";
+        ? "<style>:where(:root,body){color-scheme:dark;background:#1e1e1e;color:#e6edf3}html,body{min-height:100%;scrollbar-width:none}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}</style>"
+        : "<style>:where(:root,body){color-scheme:light;background:#ffffff;color:#1f2328}html,body{min-height:100%;scrollbar-width:none}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}</style>";
     std::string lower = Emmet::toLowerStr(rawInput.substr(0, std::min(rawInput.size(), (size_t)1024)));
     bool hasFullHtml = (lower.find("<html") != std::string::npos || lower.find("<!doctype") != std::string::npos);
     if (hasFullHtml) {

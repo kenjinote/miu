@@ -4775,7 +4775,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     CGContextSetFillColorWithColor(ctx, colBackground);
     CGContextFillRect(ctx, CGRectMake(gutterWidth, -200.0f, w - gutterWidth, h + 200.0f));
 #else
-    CGContextClearRect(ctx, CGRectMake(0, 0, gutterWidth, h));
+    CGContextClearRect(ctx, CGRectMake(0, 0, w, h));
     CGContextSetFillColorWithColor(ctx, colBackground);
     CGContextFillRect(ctx, CGRectMake(gutterWidth, 0, w - gutterWidth, h));
 #endif

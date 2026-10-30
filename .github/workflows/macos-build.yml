@@ -61,6 +61,15 @@ jobs:
             -o test_macos_editor_core
           ./test_macos_editor_core
 
+          clang++ -std=c++20 -fobjc-arc -O1 -mmacosx-version-min=13.0 \
+            -Iinclude -ImacOS/miu_macOS \
+            macOS/tests/test_macos_preview_window.mm \
+            macOS/miu_macOS/EditorCore.cpp \
+            macOS/libced.a \
+            -framework Cocoa -framework WebKit -framework CoreText -framework CoreFoundation -framework CoreGraphics \
+            -o test_macos_preview_window
+          ./test_macos_preview_window
+
       - name: Unsigned Build Verification (PR / No Secrets)
         if: env.APPSTORE_ISSUER_ID == ''
         run: |
