@@ -592,6 +592,7 @@ static void testParityEdgeCases() {
     CHECK(ed.vScrollSubLine > 0, "ensureCaretVisible scrolls vScrollSubLine when caret is at end of wrapped single line");
 
     // 6. Japanese IME uncommitted composition (imeComp) rendering on empty and non-empty lines
+    ed.isDirty = false;
     ed.initGraphics();
     ed.newFile();
     ed.wordWrapEnabled = false;
@@ -607,20 +608,15 @@ static void testParityEdgeCases() {
         CGContextRelease(ctx);
         CGColorSpaceRelease(cs);
 
-        // Count non-background pixels inside the text area between gutterWidth+4 and caret X
+        // Count drawn (non-zero alpha) pixels inside the text area between gutterWidth+4 and caret X
         int startX = (int)ed.gutterWidth + 4;
         int endX = std::min(bmpW - 10, startX + 80);
         int maxY = std::min(bmpH, (int)ed.lineHeight);
-        // Sample background pixel at (bmpW - 20, maxY - 2)
-        int bgIdx = ((maxY - 2) * bmpW + (bmpW - 20)) * 4;
-        uint8_t bgR = pixels[bgIdx], bgG = pixels[bgIdx + 1], bgB = pixels[bgIdx + 2];
         int drawnPixels = 0;
         for (int y = 0; y < maxY; ++y) {
             for (int x = startX; x < endX; ++x) {
                 int idx = (y * bmpW + x) * 4;
-                if (std::abs((int)pixels[idx] - (int)bgR) > 10 ||
-                    std::abs((int)pixels[idx + 1] - (int)bgG) > 10 ||
-                    std::abs((int)pixels[idx + 2] - (int)bgB) > 10) {
+                if (pixels[idx + 3] > 10) {
                     drawnPixels++;
                 }
             }
