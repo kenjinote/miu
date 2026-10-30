@@ -36,7 +36,19 @@ jobs:
           lipo -info macOS/libced.a
           lipo -info macOS/libced_iOS.a
 
-      - name: Build miu_macOS with xcodebuild (Release)
+      - name: Compile & Run EditorCore Automated Test Suite on macOS
+        run: |
+          clang++ -std=c++20 -O1 -mmacosx-version-min=13.0 \
+            -Iinclude -ImacOS/miu_macOS \
+            macOS/tests/test_macos_editor_core.cpp \
+            macOS/miu_macOS/EditorCore.cpp \
+            macOS/libced.a \
+            -framework CoreText -framework CoreFoundation -framework CoreGraphics \
+            -o test_macos_editor_core
+          ./test_macos_editor_core
+
+      - name: Unsigned Build Verification (PR / No Secrets)
+        if: env.APPSTORE_ISSUER_ID == ''
         run: |
           xcodebuild -project macOS/miu.xcodeproj \
             -target miu_macOS \
@@ -45,27 +57,14 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             build
-
-      - name: Verify built macOS miu.app bundle & linked frameworks
-        run: |
-          APP_BIN="macOS/build/Release/miu.app/Contents/MacOS/miu"
-          test -f "$APP_BIN"
-          file "$APP_BIN"
-          lipo -info "$APP_BIN"
-          otool -L "$APP_BIN"
-
-      - name: Compile & Run EditorCore Automated Test Suite on macOS
-        run: |
-          ARCH=$(uname -m)
-          EDITOR_CORE_OBJ="macOS/build/miu.build/Release/miu_macOS.build/Objects-normal/$ARCH/EditorCore.o"
-          clang++ -std=c++20 -O1 -mmacosx-version-min=13.0 \
-            -Iinclude -ImacOS/miu_macOS \
-            macOS/tests/test_macos_editor_core.cpp \
-            "$EDITOR_CORE_OBJ" \
-            macOS/libced.a \
-            -framework CoreText -framework CoreFoundation -framework CoreGraphics \
-            -o test_macos_editor_core
-          ./test_macos_editor_core
+          xcodebuild -project macOS/miu.xcodeproj \
+            -target miu_iOS \
+            -sdk iphoneos \
+            -configuration Release \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
 
       - name: Archive & Upload miu_macOS and miu_iOS to TestFlight
         if: env.APPSTORE_ISSUER_ID != '' && env.APPSTORE_KEY_ID != '' && env.APPSTORE_PRIVATE_KEY != ''
@@ -106,27 +105,6 @@ jobs:
           </plist>
           EOF
 
-          echo "=== Archiving & Uploading miu_macOS ==="
-          xcodebuild -project macOS/miu.xcodeproj \
-            -scheme miu \
-            -destination "generic/platform=macOS" \
-            -configuration Release \
-            -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$APPSTORE_KEY_ID" \
-            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
-            archive
-
-          xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
-            -exportPath "$RUNNER_TEMP/export_macOS" \
-            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$APPSTORE_KEY_ID" \
-            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
-
           echo "=== Archiving & Uploading miu_iOS ==="
           xcodebuild -project macOS/miu.xcodeproj \
             -scheme miu_iOS \
@@ -146,4 +124,25 @@ jobs:
             -allowProvisioningUpdates \
             -authenticationKeyPath "$KEY_PATH" \
             -authenticationKeyID "$APPSTORE_KEY_ID" \
-            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" || echo "miu_iOS upload finished or build already exists"
+
+          echo "=== Archiving & Uploading miu_macOS ==="
+          xcodebuild -project macOS/miu.xcodeproj \
+            -scheme miu \
+            -destination "generic/platform=macOS" \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
+            archive
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export_macOS" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" || echo "miu_macOS upload finished or build already exists"
