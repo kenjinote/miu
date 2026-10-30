@@ -9,8 +9,14 @@ on:
 
 jobs:
   macos-xcodebuild:
-    name: Build miu_macOS & miu_iOS + Run Core Tests
+    name: Build miu_macOS & miu_iOS + TestFlight Upload
     runs-on: macos-15
+    env:
+      APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+      APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+      APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+      P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -61,29 +67,13 @@ jobs:
             -o test_macos_editor_core
           ./test_macos_editor_core
 
-      - name: Build miu_iOS with xcodebuild (Release - iphoneos)
-        run: |
-          xcodebuild -project macOS/miu.xcodeproj \
-            -target miu_iOS \
-            -sdk iphoneos \
-            -configuration Release \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            build
-
-      - name: Upload TestFlight if App Store Connect Secrets are configured
+      - name: Archive & Upload miu_macOS and miu_iOS to TestFlight
         if: env.APPSTORE_ISSUER_ID != '' && env.APPSTORE_KEY_ID != '' && env.APPSTORE_PRIVATE_KEY != ''
-        env:
-          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
-          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
-          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
-          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
-          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
         run: |
+          set -e
           mkdir -p ~/.appstoreconnect/private_keys
           KEY_PATH="$HOME/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8"
-          echo "$APPSTORE_PRIVATE_KEY" > "$KEY_PATH"
+          printf "%s\n" "$APPSTORE_PRIVATE_KEY" > "$KEY_PATH"
           chmod 600 "$KEY_PATH"
 
           if [ -n "$BUILD_CERTIFICATE_BASE64" ]; then
@@ -94,8 +84,9 @@ jobs:
             security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
             security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
             security import "$RUNNER_TEMP/certificate.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-            security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
-            security list-keychain -d user -s "$KEYCHAIN_PATH" login.keychain
+            security set-key-partition-list -S apple-tool:,apple:,codesign:,productsign: -s -k "$KEYCHAIN_PASS" "$KEYCHAIN_PATH"
+            security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+            security find-identity -v "$KEYCHAIN_PATH"
           fi
 
           cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
@@ -115,8 +106,10 @@ jobs:
           </plist>
           EOF
 
+          echo "=== Archiving & Uploading miu_macOS ==="
           xcodebuild -project macOS/miu.xcodeproj \
-            -scheme miu_macOS \
+            -scheme miu \
+            -destination "generic/platform=macOS" \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
             -allowProvisioningUpdates \
@@ -128,6 +121,27 @@ jobs:
           xcodebuild -exportArchive \
             -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
             -exportPath "$RUNNER_TEMP/export_macOS" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
+
+          echo "=== Archiving & Uploading miu_iOS ==="
+          xcodebuild -project macOS/miu.xcodeproj \
+            -scheme miu_iOS \
+            -destination "generic/platform=iOS" \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/miu_iOS.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$APPSTORE_KEY_ID" \
+            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
+            archive
+
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/miu_iOS.xcarchive" \
+            -exportPath "$RUNNER_TEMP/export_iOS" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$KEY_PATH" \
