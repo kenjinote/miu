@@ -1045,6 +1045,47 @@ ASC_KEYWORDS = {
 for _loc, _kw in ASC_KEYWORDS.items():
     assert len(_kw) <= 100, f"Keywords for {_loc} exceed 100 chars ({len(_kw)}): {_kw}"
 
+# Localized Promotional Text per App Store Connect locale (strictly <= 170 characters each)
+ASC_PROMOTIONAL_TEXT = {
+    "ja": "毎日のちょっとしたメモから、Markdownでの文章作成、プログラミングまで。49言語のコードハイライトや、オフラインで使える数式・図表のリアルタイムプレビューを備えた、軽快で目に優しいテキストエディタです。",
+    "en-US": "A fast, clean text & code editor for daily notes, Markdown, and coding—with 49 syntax languages and offline live preview for Mermaid diagrams & LaTeX math.",
+    "en-GB": "A fast, clean text & code editor for daily notes, Markdown, and coding—with 49 syntax languages and offline live preview for Mermaid diagrams & LaTeX math.",
+    "en-AU": "A fast, clean text & code editor for daily notes, Markdown, and coding—with 49 syntax languages and offline live preview for Mermaid diagrams & LaTeX math.",
+    "en-CA": "A fast, clean text & code editor for daily notes, Markdown, and coding—with 49 syntax languages and offline live preview for Mermaid diagrams & LaTeX math.",
+    "zh-Hans": "从日常随笔、Markdown 写作到程序开发，miu 为您带来轻快护眼的书写体验。支持 49 种语法高亮，并内置完全离线的 Mermaid 图表与 LaTeX 数学公式实时预览。",
+    "zh-Hant": "從日常隨手筆記、Markdown 寫作到程式開發，miu 為您帶來輕快護眼的書寫體驗。支援 49 種語法突顯，並內建完全離線的 Mermaid 圖表與 LaTeX 數學公式即時預覽。",
+    "ko": "일상의 가벼운 메모부터 Markdown 글쓰기, 코딩까지. 49개 언어 구문 강조와 오프라인 Mermaid 다이어그램·LaTeX 수식 실시간 미리보기를 갖춘 가볍고 편안한 텍스트 에디터입니다.",
+    "de-DE": "Der schnelle, übersichtliche Text- & Code-Editor für Notizen, Markdown und Code – mit 49 Sprachen sowie Offline-Live-Vorschau für Mermaid und LaTeX.",
+    "fr-FR": "Un éditeur de texte et de code léger et épuré pour vos notes, Markdown et code : 49 langages et aperçu hors ligne en direct pour Mermaid et LaTeX.",
+    "fr-CA": "Un éditeur de texte et de code léger et épuré pour vos notes, Markdown et code : 49 langages et aperçu hors ligne en direct pour Mermaid et LaTeX.",
+    "es-ES": "Un editor de texto y código rápido y limpio para notas, Markdown y programación, con 49 lenguajes y vista previa en vivo sin conexión para Mermaid y LaTeX.",
+    "es-MX": "Un editor de texto y código rápido y limpio para notas, Markdown y programación, con 49 lenguajes y vista previa en vivo sin conexión para Mermaid y LaTeX.",
+    "it": "Un editor di testo e codice leggero e pulito per note, Markdown e programmazione, con 49 linguaggi e anteprima live offline per diagrammi Mermaid e LaTeX.",
+    "pt-BR": "Um editor de texto e código leve e limpo para notas, Markdown e programação, com 49 linguagens e pré-visualização offline ao vivo para Mermaid e LaTeX.",
+    "pt-PT": "Um editor de texto e código leve e limpo para notas, Markdown e programação, com 49 linguagens e pré-visualização offline ao vivo para Mermaid e LaTeX.",
+    "ru": "Лёгкий и удобный редактор текста и кода для заметок, Markdown и программирования: 49 языков подсветки и офлайн-предпросмотр диаграмм Mermaid и формул LaTeX.",
+    "nl-NL": "Een snelle, overzichtelijke tekst- en code-editor voor notities, Markdown en code, met 49 talen en offline live-weergave voor Mermaid-diagrammen en LaTeX.",
+    "sv": "En snabb och stilren text- och kodredigerare för anteckningar, Markdown och kod – med 49 språk samt live-förhandsgranskning offline för Mermaid och LaTeX.",
+    "da": "En hurtig og enkel tekst- og kodeeditor til noter, Markdown og kodning – med 49 sprog og offline live-visning af Mermaid-diagrammer og LaTeX-formler.",
+    "no": "En rask og oversiktlig tekst- og koderedigerer for notater, Markdown og koding – med 49 språk og offline live-forhåndsvisning av Mermaid og LaTeX.",
+    "fi": "Nopea ja selkeä teksti- ja koodieditori muistiinpanoihin, Markdowniin ja ohjelmointiin – 49 kieltä sekä offline-reaaliaikainen Mermaid- ja LaTeX-esikatselu.",
+    "pl": "Lekki i przejrzysty edytor tekstu i kodu do notatek, Markdown i programowania — 49 języków składni oraz podgląd na żywo offline dla Mermaid i LaTeX.",
+    "cs": "Rychlý a přehledný textový a kódový editor pro poznámky, Markdown i programování – 49 jazyků a živý offline náhled pro diagramy Mermaid a vzorce LaTeX.",
+    "hu": "Gyors, letisztult szöveg- és kódszerkesztő jegyzetekhez, Markdownhoz és kódoláshoz – 49 nyelv támogatásával, valamint offline Mermaid és LaTeX előnézettel.",
+    "ro": "Un editor de text și cod rapid și curat pentru notițe, Markdown și programare — 49 de limbaje și previzualizare live offline pentru Mermaid și LaTeX.",
+    "el": "Γρήγορος και καθαρός επεξεργαστής κειμένου και κώδικα για σημειώσεις, Markdown και κώδικα, με 49 γλώσσες και ζωντανή προεπισκόπηση εκτός σύνδεσης.",
+    "tr": "Günlük notlar, Markdown ve kodlama için hızlı ve sade metin/kod düzenleyici; 49 dil desteği ve Mermaid şemaları ile LaTeX için çevrimdışı canlı önizleme.",
+    "uk": "Швидкий і зручний редактор тексту та коду для нотаток, Markdown і програмування: 49 мов підсвічування та живий офлайн-перегляд Mermaid і формул LaTeX.",
+    "vi": "Trình soạn thảo văn bản & code nhẹ, thoáng mắt cho ghi chú, Markdown và lập trình — hỗ trợ 49 ngôn ngữ cùng xem trước trực tiếp ngoại tuyến Mermaid & LaTeX.",
+    "th": "ตัวแก้ไขข้อความและโค้ดที่รวดเร็วสบายตา สำหรับจดบันทึก เขียน Markdown และเขียนโปรแกรม รองรับไฮไลต์ 49 ภาษา พร้อมพรีวิวกราฟ Mermaid และสมการ LaTeX แบบออฟไลน์",
+    "id": "Editor teks & kode yang cepat dan nyaman untuk catatan harian, Markdown, dan pemrograman—mendukung 49 bahasa serta pratinjau langsung offline Mermaid & LaTeX.",
+    "ms": "Penyunting teks & kod yang pantas dan kemas untuk nota harian, Markdown dan pengaturcaraan—49 bahasa serta pratonton langsung luar talian Mermaid & LaTeX.",
+    "hi": "दैनिक नोट्स, Markdown और कोडिंग के लिए तेज़ और सरल टेक्स्ट व कोड एडिटर—49 भाषाओं के सिंटैक्स हाइलाइट और ऑफ़लाइन Mermaid व LaTeX लाइव प्रीव्यू के साथ।",
+}
+
+for _loc, _pt in ASC_PROMOTIONAL_TEXT.items():
+    assert len(_pt) <= 170, f"Promotional text for {_loc} exceeds 170 chars ({len(_pt)}): {_pt}"
+
 # Map of App Store Connect locale codes -> (description, whatsNew)
 ASC_LOCALIZATIONS = {
     "ja": (JA_DESC, JA_WHATS_NEW),
@@ -1401,11 +1442,13 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
 
     for locale, (desc, whats_new) in ASC_LOCALIZATIONS.items():
         kw = ASC_KEYWORDS[locale]
+        promo = ASC_PROMOTIONAL_TEXT[locale]
         if locale in existing_locs:
             loc_id = existing_locs[locale]
             attrs = {
                 "description": desc,
                 "whatsNew": whats_new,
+                "promotionalText": promo,
                 "keywords": kw,
                 "supportUrl": SUPPORT_URL,
             }
@@ -1419,15 +1462,16 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
             res = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload)
             if res.status_code == 200:
                 updated_count += 1
-                print(f"  [OK] Updated {locale} (description + whatsNew + keywords + supportUrl)")
+                print(f"  [OK] Updated {locale} (description + whatsNew + promotionalText + keywords + supportUrl)")
             elif res.status_code == 409:
-                # Initial v1.0 submissions do not allow whatsNew; retry with description + keywords + supportUrl
+                # Initial v1.0 submissions do not allow whatsNew; retry with description + promotionalText + keywords + supportUrl
                 payload_desc_only = {
                     "data": {
                         "type": "appStoreVersionLocalizations",
                         "id": loc_id,
                         "attributes": {
                             "description": desc,
+                            "promotionalText": promo,
                             "keywords": kw,
                             "supportUrl": SUPPORT_URL,
                         },
@@ -1436,15 +1480,16 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                 res2 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_desc_only)
                 if res2.status_code == 200:
                     updated_count += 1
-                    print(f"  [OK] Updated {locale} (description + keywords + supportUrl; whatsNew skipped)")
+                    print(f"  [OK] Updated {locale} (description + promotionalText + keywords + supportUrl; whatsNew skipped)")
                 else:
-                    # Or if version is READY_FOR_SALE and only whatsNew/supportUrl is editable
+                    # Or if version is READY_FOR_SALE and only whatsNew/promotionalText/supportUrl is editable
                     payload_wn_only = {
                         "data": {
                             "type": "appStoreVersionLocalizations",
                             "id": loc_id,
                             "attributes": {
                                 "whatsNew": whats_new,
+                                "promotionalText": promo,
                                 "supportUrl": SUPPORT_URL,
                             },
                         }
@@ -1452,7 +1497,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                     res3 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_wn_only)
                     if res3.status_code == 200:
                         updated_count += 1
-                        print(f"  [OK] Updated {locale} (whatsNew + supportUrl)")
+                        print(f"  [OK] Updated {locale} (whatsNew + promotionalText + supportUrl)")
                     else:
                         failed_count += 1
                         print(f"  [ERR] Failed to update {locale}: HTTP {res2.status_code} {res2.text}")
@@ -1468,6 +1513,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                         "locale": locale,
                         "description": desc,
                         "whatsNew": whats_new,
+                        "promotionalText": promo,
                         "keywords": kw,
                         "supportUrl": SUPPORT_URL,
                     },
@@ -1484,7 +1530,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
             res = requests.post(f"{BASE_URL}/appStoreVersionLocalizations", headers=headers, json=payload)
             if res.status_code in (200, 201):
                 created_count += 1
-                print(f"  [NEW] Created {locale} (description + whatsNew + keywords + supportUrl)")
+                print(f"  [NEW] Created {locale} (description + whatsNew + promotionalText + keywords + supportUrl)")
             elif res.status_code == 409:
                 # Retry without whatsNew (for initial release where whatsNew is not allowed)
                 payload_desc_only = {
@@ -1493,6 +1539,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                         "attributes": {
                             "locale": locale,
                             "description": desc,
+                            "promotionalText": promo,
                             "keywords": kw,
                             "supportUrl": SUPPORT_URL,
                         },
@@ -1509,7 +1556,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                 res2 = requests.post(f"{BASE_URL}/appStoreVersionLocalizations", headers=headers, json=payload_desc_only)
                 if res2.status_code in (200, 201):
                     created_count += 1
-                    print(f"  [NEW] Created {locale} (description + keywords + supportUrl; whatsNew skipped)")
+                    print(f"  [NEW] Created {locale} (description + promotionalText + keywords + supportUrl; whatsNew skipped)")
                 else:
                     failed_count += 1
                     print(f"  [ERR] Failed to create {locale}: HTTP {res2.status_code} {res2.text}")
