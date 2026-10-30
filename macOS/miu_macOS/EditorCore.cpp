@@ -1903,7 +1903,11 @@ ScrollBarLayout Editor::getScrollBarLayout(float clientW, float clientH) {
     ScrollBarLayout L;
     L.totalLines = std::max(1, (int)lineStarts.size());
     L.totalVisualLines = L.totalLines;
+#if defined(TARGET_OS_IOS) && TARGET_OS_IOS
+    float barSize = 0.0f;
+#else
     float barSize = 14.0f;
+#endif
 
     if (wordWrapEnabled) {
         L.needH = false;
@@ -4692,11 +4696,17 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     std::vector<float> lineBaseVisualY(std::max(1, end - renderStart), 0.0f);
     if (wordWrapEnabled) {
         float accY = 0.0f;
-        for (int li = renderStart; li < end; ++li) {
+        for (int li = start; li < end; ++li) {
             lineBaseVisualY[li - renderStart] = accY;
             int sc = getLineVisualCount(li, vw);
             int startSub = (li == start) ? std::clamp(vScrollSubLine, 0, std::max(0, sc - 1)) : 0;
             accY += (float)std::max(0, sc - startSub) * lineHeight;
+        }
+        float negY = 0.0f;
+        for (int li = start - 1; li >= renderStart; --li) {
+            int sc = getLineVisualCount(li, vw);
+            negY -= (float)std::max(1, sc) * lineHeight;
+            lineBaseVisualY[li - renderStart] = negY;
         }
     } else {
         for (int li = renderStart; li < end; ++li) {
@@ -4877,7 +4887,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     gutterEntries.reserve(vis + 4);
     std::vector<SyntaxColor> lineSyntaxColors;
 
-    float curVisualY = 0.0f;
+    float curVisualY = lineBaseVisualY[0];
     for (int i = renderStart; i < (int)lineStarts.size() && curVisualY < vh + lineHeight; ++i) {
         size_t s = lineStarts[i];
         size_t e = (i + 1 < (int)lineStarts.size()) ? lineStarts[i + 1] : pt.length();

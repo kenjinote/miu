@@ -2,6 +2,82 @@
 #import "EditorCore.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <GameController/GameController.h>
+#import <WebKit/WebKit.h>
+
+@interface MiuIOSPreviewMessageHandler : NSObject <WKScriptMessageHandler, WKNavigationDelegate>
+@property (nonatomic, assign) Editor *editor;
+@end
+
+@implementation MiuIOSPreviewMessageHandler
+- (void)userContentController:(WKUserContentController *)userContentController didReceiveScriptMessage:(WKScriptMessage *)message {
+    if (!self.editor) return;
+    if ([message.name isEqualToString:@"miuPreview"] && [message.body isKindOfClass:[NSString class]]) {
+        NSString *body = (NSString *)message.body;
+        if ([body hasPrefix:@"toggle_task:"]) {
+            int lineIdx = [[body substringFromIndex:12] intValue];
+            self.editor->handlePreviewTaskToggle(lineIdx);
+        }
+    }
+}
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
+    if (navigationAction.navigationType == WKNavigationTypeOther) {
+        decisionHandler(WKNavigationActionPolicyAllow);
+    } else {
+        decisionHandler(WKNavigationActionPolicyCancel);
+    }
+}
+@end
+
+@interface MiuIOSPreviewSplitterView : UIView
+@property (nonatomic, assign) Editor *editor;
+@property (nonatomic, assign) BOOL isVerticalSplit;
+@property (nonatomic, copy) void (^onRatioChanged)(void);
+@end
+
+@implementation MiuIOSPreviewSplitterView
+- (instancetype)initWithFrame:(CGRect)frame {
+    if (self = [super initWithFrame:frame]) {
+        UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleSplitterPan:)];
+        [self addGestureRecognizer:pan];
+    }
+    return self;
+}
+- (void)drawRect:(CGRect)rect {
+    BOOL dark = self.editor ? self.editor->isDarkMode : NO;
+    UIColor *bgCol = dark ? [UIColor colorWithWhite:0.20 alpha:0.95] : [UIColor colorWithWhite:0.85 alpha:0.95];
+    [bgCol setFill];
+    UIRectFill(rect);
+    UIColor *pillCol = dark ? [UIColor colorWithWhite:0.55 alpha:0.9] : [UIColor colorWithWhite:0.50 alpha:0.9];
+    [pillCol setFill];
+    CGRect pillRect;
+    if (self.bounds.size.width < self.bounds.size.height) {
+        pillRect = CGRectMake((self.bounds.size.width - 2.0) * 0.5, (self.bounds.size.height - 32.0) * 0.5, 2.0, 32.0);
+    } else {
+        pillRect = CGRectMake((self.bounds.size.width - 32.0) * 0.5, (self.bounds.size.height - 2.0) * 0.5, 32.0, 2.0);
+    }
+    UIBezierPath *bp = [UIBezierPath bezierPathWithRoundedRect:pillRect cornerRadius:1.0];
+    [bp fill];
+}
+- (void)handleSplitterPan:(UIPanGestureRecognizer *)pan {
+    if (!self.editor || !self.superview) return;
+    UIView *container = self.superview;
+    CGPoint pt = [pan locationInView:container];
+    if (self.isVerticalSplit) {
+        CGFloat totalH = container.bounds.size.height;
+        if (totalH > 100.0) {
+            self.editor->previewSplitRatio = std::clamp((float)(pt.y / totalH), 0.15f, 0.85f);
+            if (self.onRatioChanged) self.onRatioChanged();
+        }
+    } else {
+        CGFloat totalW = container.bounds.size.width;
+        if (totalW > 100.0) {
+            self.editor->previewSplitRatio = std::clamp((float)(pt.x / totalW), 0.15f, 0.85f);
+            if (self.onRatioChanged) self.onRatioChanged();
+        }
+    }
+}
+@end
+
 @interface iOSTextPosition : UITextPosition <NSCopying>
 @property (nonatomic, assign) size_t index;
 + (instancetype)positionWithIndex:(size_t)index;
@@ -50,11 +126,17 @@
 @property (nonatomic) Editor *editor;
 @property (nonatomic, copy) void (^onNewDocumentAction)(void);
 @property (nonatomic, copy) void (^onGoToLineAction)(void);
+@property (nonatomic, copy) void (^onOpenRecentAction)(void);
 @property (nonatomic, strong) UIEditMenuInteraction *editMenuInteraction API_AVAILABLE(ios(16.0));
 @property (nonatomic, assign) CGFloat topRenderMargin;
 - (void)jumpToLine:(NSInteger)lineNumber;
 - (void)getSmartWordRangeAtPos:(size_t)pos outStart:(size_t*)outStart outEnd:(size_t*)outEnd;
 - (void)showMenuForCurrentSelection;
+- (void)handleTabKey:(id)sender;
+- (void)handleShiftTabKey:(id)sender;
+- (void)toggleCommentAction:(id)sender;
+- (void)toggleWordWrapAction:(id)sender;
+- (void)togglePreviewAction:(id)sender;
 @end
 @implementation iOSEditorView {
     CGPoint _lastPanTranslation;
@@ -66,6 +148,10 @@
     CGFloat _initialFontSize;
     UIView *_customAccessoryView;
     BOOL _isMouseSelecting;
+    BOOL _isPotentialDragMove;
+    CGPoint _dragStartPoint;
+    CGPoint _boxSelectStartPoint;
+    UIKeyModifierFlags _activeTouchModifiers;
     UIPanGestureRecognizer *_panRecognizer;
     NSInteger _selectionGranularity;
     NSMutableArray<id<UIInteraction>> *_textInteractions;
@@ -221,21 +307,103 @@
     }
     [self stopMomentumScroll];
     UITouch *touch = [touches anyObject];
+    _activeTouchModifiers = 0;
+    if (@available(iOS 13.4, *)) {
+        _activeTouchModifiers = event.modifierFlags;
+    }
     if (touch.type == UITouchTypeIndirectPointer || touch.type == UITouchTypePencil) {
         _isMouseSelecting = YES;
-        CGPoint p = [touch locationInView:self];
+        _isPotentialDragMove = NO;
+        if (!self.editor) return;
+        self.editor->isDraggingSelection = false;
+        self.editor->isGutterDragging = false;
+        self.editor->activeEmmetSession.active = false;
+        self.editor->rollbackPadding();
+        self.editor->isRectSelecting = false;
+
+        CGPoint rawPt = [touch locationInView:self];
+        CGPoint p = rawPt;
+        p.y -= self.topRenderMargin;
+        bool isOption = (_activeTouchModifiers & UIKeyModifierAlternate) != 0;
+        bool isShift = (_activeTouchModifiers & UIKeyModifierShift) != 0;
+        bool isCommand = (_activeTouchModifiers & UIKeyModifierCommand) != 0;
+
+        size_t pos = self.editor->getDocPosFromPoint((float)p.x, (float)p.y);
+        int li = self.editor->getLineIdx(pos);
+
+        if (p.x < self.editor->gutterWidth) {
+            [self.inputDelegate selectionWillChange:self];
+            self.editor->isGutterDragging = true;
+            self.editor->gutterAnchorLine = li;
+            self.editor->selectLinesRange(li, li, isCommand);
+            [self.inputDelegate selectionDidChange:self];
+            [self setNeedsDisplay];
+            return;
+        }
         if (touch.tapCount == 2) {
             _selectionGranularity = 1;
-            [self handleDoubleTapAtPoint:p];
+            [self.inputDelegate selectionWillChange:self];
+            self.editor->selectWordAt(pos, isCommand);
+            [self.inputDelegate selectionDidChange:self];
+            [self setNeedsDisplay];
+            return;
         } else if (touch.tapCount >= 3) {
             _selectionGranularity = 2;
-            [self handleTripleTapAtPoint:p];
-        } else {
-            _selectionGranularity = 0;
-            [self handleSingleTapAtPoint:p];
+            [self.inputDelegate selectionWillChange:self];
+            self.editor->selectLineAt(pos, isCommand);
+            [self.inputDelegate selectionDidChange:self];
+            [self setNeedsDisplay];
+            return;
         }
+        _selectionGranularity = 0;
+        if (isShift && !isOption && !self.editor->cursors.empty()) {
+            [self.inputDelegate selectionWillChange:self];
+            Cursor& c = self.editor->cursors.back();
+            c.head = pos;
+            c.desiredX = self.editor->getXInLine(li, pos);
+            c.isVirtual = false;
+            [self.inputDelegate selectionDidChange:self];
+            [self setNeedsDisplay];
+            return;
+        }
+        if (!isOption && !isShift && !isCommand && self.editor->isPointInSelection(pos)) {
+            _isPotentialDragMove = YES;
+            _dragStartPoint = p;
+            [self setNeedsDisplay];
+            return;
+        }
+        [self.inputDelegate selectionWillChange:self];
+        if (!isOption && !isShift && !isCommand) {
+            self.editor->cursors.clear();
+        }
+        _boxSelectStartPoint = p;
+        float docX = (float)p.x - self.editor->gutterWidth + (float)self.editor->hScrollPos;
+        float snappedX = docX;
+        if (self.editor->charWidth > 0) {
+            int cols = (int)std::round(docX / self.editor->charWidth);
+            if (cols < 0) cols = 0;
+            snappedX = (float)cols * self.editor->charWidth;
+        }
+        float physX = self.editor->getXInLine(li, pos);
+        Cursor newCursor;
+        newCursor.head = pos;
+        newCursor.anchor = pos;
+        if (isOption && (snappedX > physX + (self.editor->charWidth * 0.5f))) {
+            newCursor.desiredX = snappedX;
+            newCursor.isVirtual = true;
+        } else {
+            newCursor.desiredX = physX;
+            newCursor.isVirtual = false;
+        }
+        newCursor.originalAnchorX = newCursor.desiredX;
+        self.editor->cursors.push_back(newCursor);
+        if (isCommand) self.editor->mergeCursors();
+        [self.inputDelegate selectionDidChange:self];
+        [self setNeedsDisplay];
+        [self becomeFirstResponder];
     } else {
         _isMouseSelecting = NO;
+        _isPotentialDragMove = NO;
         _selectionGranularity = 0;
     }
 }
@@ -245,7 +413,63 @@
     UITouch *touch = [touches anyObject];
     CGPoint p = [touch locationInView:self];
     p.y -= self.topRenderMargin;
+    CGFloat availH = MAX(1.0, self.bounds.size.height - self.topRenderMargin);
+    if (p.y < 0) {
+        self.editor->scrollVisualLines(-1);
+    } else if (p.y > availH) {
+        self.editor->scrollVisualLines(1);
+    }
     size_t rawPos = self.editor->getDocPosFromPoint(p.x, p.y);
+    if (self.editor->isGutterDragging) {
+        [self.inputDelegate selectionWillChange:self];
+        int headLine = self.editor->getLineIdx(rawPos);
+        self.editor->selectLinesRange(self.editor->gutterAnchorLine, headLine, false);
+        [self.inputDelegate selectionDidChange:self];
+        [self setNeedsDisplay];
+        return;
+    }
+    if (_isPotentialDragMove) {
+        double dx = p.x - _dragStartPoint.x;
+        double dy = p.y - _dragStartPoint.y;
+        if (std::hypot(dx, dy) > 3.0) {
+            self.editor->isDraggingSelection = true;
+        }
+        if (self.editor->isDraggingSelection) {
+            self.editor->dragDropTargetPos = rawPos;
+            self.editor->ensureCaretVisible();
+            [self setNeedsDisplay];
+        }
+        return;
+    }
+    bool isOption = (_activeTouchModifiers & UIKeyModifierAlternate) != 0;
+    if (isOption) {
+        [self.inputDelegate selectionWillChange:self];
+        auto snapToGrid = [&](float rawX) -> float {
+            if (self.editor->charWidth <= 0) return rawX;
+            int cols = (int)std::round(rawX / self.editor->charWidth);
+            if (cols < 0) cols = 0;
+            return (float)cols * self.editor->charWidth;
+        };
+        self.editor->cursors.clear();
+        float startY = std::min((float)_boxSelectStartPoint.y, (float)p.y);
+        float endY = std::max((float)_boxSelectStartPoint.y, (float)p.y);
+        int startLine = (int)std::floor((startY + (float)self.editor->vScrollPos * self.editor->lineHeight) / self.editor->lineHeight);
+        int endLine = (int)std::floor((endY + (float)self.editor->vScrollPos * self.editor->lineHeight) / self.editor->lineHeight);
+        startLine = std::clamp(startLine, 0, (int)self.editor->lineStarts.size() - 1);
+        endLine = std::clamp(endLine, 0, (int)self.editor->lineStarts.size() - 1);
+        float rawStartX = (float)_boxSelectStartPoint.x - self.editor->gutterWidth + (float)self.editor->hScrollPos;
+        float rawEndX = (float)p.x - self.editor->gutterWidth + (float)self.editor->hScrollPos;
+        self.editor->isRectSelecting = true;
+        self.editor->rectAnchorLine = startLine;
+        self.editor->rectHeadLine = endLine;
+        self.editor->rectAnchorX = snapToGrid(rawStartX);
+        self.editor->rectHeadX = snapToGrid(rawEndX);
+        self.editor->updateRectSelection();
+        self.editor->ensureCaretVisible();
+        [self.inputDelegate selectionDidChange:self];
+        [self setNeedsDisplay];
+        return;
+    }
     if (self.editor->cursors.empty()) return;
     Cursor &c = self.editor->cursors.back();
     size_t anchor = c.anchor;
@@ -253,34 +477,59 @@
     if (_selectionGranularity == 1) {
         size_t wStart, wEnd;
         [self getSmartWordRangeAtPos:rawPos outStart:&wStart outEnd:&wEnd];
-        if (rawPos >= anchor) {
-            newHead = wEnd;
-        } else {
-            newHead = wStart;
-        }
+        newHead = (rawPos >= anchor) ? wEnd : wStart;
     } else if (_selectionGranularity == 2) {
         int lineIdx = self.editor->getLineIdx(rawPos);
         size_t lStart = self.editor->lineStarts[lineIdx];
         size_t lEnd = (lineIdx + 1 < (int)self.editor->lineStarts.size()) ? self.editor->lineStarts[lineIdx + 1] : self.editor->pt.length();
-        if (rawPos >= anchor) {
-            newHead = lEnd;
-        } else {
-            newHead = lStart;
-        }
+        newHead = (rawPos >= anchor) ? lEnd : lStart;
     }
     if (c.head != newHead) {
         [self.inputDelegate selectionWillChange:self];
         c.head = newHead;
         int li = self.editor->getLineIdx(newHead);
         c.desiredX = self.editor->getXInLine(li, newHead);
+        c.isVirtual = false;
         [self.inputDelegate selectionDidChange:self];
+        self.editor->ensureCaretVisible();
         [self setNeedsDisplay];
     }
 }
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event {
     if (_isMouseSelecting) {
+        UITouch *touch = [touches anyObject];
+        CGPoint p = [touch locationInView:self];
+        p.y -= self.topRenderMargin;
+        if (self.editor && self.editor->isDraggingSelection) {
+            size_t targetPos = self.editor->getDocPosFromPoint((float)p.x, (float)p.y);
+            self.editor->isDraggingSelection = false;
+            _isPotentialDragMove = NO;
+            _isMouseSelecting = NO;
+            [self.inputDelegate selectionWillChange:self];
+            [self.inputDelegate textWillChange:self];
+            self.editor->performDragMove(targetPos);
+            [self.inputDelegate textDidChange:self];
+            [self.inputDelegate selectionDidChange:self];
+            [self setNeedsDisplay];
+            return;
+        }
+        if (self.editor && _isPotentialDragMove) {
+            _isPotentialDragMove = NO;
+            size_t pos = self.editor->getDocPosFromPoint((float)p.x, (float)p.y);
+            int li = self.editor->getLineIdx(pos);
+            float physX = self.editor->getXInLine(li, pos);
+            [self.inputDelegate selectionWillChange:self];
+            self.editor->cursors.clear();
+            self.editor->cursors.push_back({ pos, pos, physX, physX, false, false });
+            [self.inputDelegate selectionDidChange:self];
+        }
+        if (self.editor) {
+            self.editor->isGutterDragging = false;
+            self.editor->mergeCursors();
+        }
         _isMouseSelecting = NO;
         _selectionGranularity = 0;
+        [self setNeedsDisplay];
         [self showMenuForCurrentSelection];
         return;
     }
@@ -288,15 +537,24 @@
 }
 - (void)handleSingleTapAtPoint:(CGPoint)p {
     if (!self.editor) return;
+    self.editor->activeEmmetSession.active = false;
+    self.editor->rollbackPadding();
+    self.editor->isRectSelecting = false;
+    self.editor->isDraggingSelection = false;
+    self.editor->isGutterDragging = false;
     p.y -= self.topRenderMargin;
     size_t pos = self.editor->getDocPosFromPoint(p.x, p.y);
-    [self.inputDelegate selectionWillChange:self];
-    self.editor->cursors.clear();
-    Cursor c; c.head = pos; c.anchor = pos;
     int li = self.editor->getLineIdx(pos);
-    c.desiredX = self.editor->getXInLine(li, pos);
-    c.originalAnchorX = c.desiredX; c.isVirtual = false;
-    self.editor->cursors.push_back(c);
+    [self.inputDelegate selectionWillChange:self];
+    if (p.x < self.editor->gutterWidth) {
+        self.editor->selectLinesRange(li, li, false);
+    } else {
+        self.editor->cursors.clear();
+        Cursor c; c.head = pos; c.anchor = pos;
+        c.desiredX = self.editor->getXInLine(li, pos);
+        c.originalAnchorX = c.desiredX; c.isVirtual = false;
+        self.editor->cursors.push_back(c);
+    }
     [self.inputDelegate selectionDidChange:self];
     self.editor->ensureCaretVisible();
     [self setNeedsDisplay];
@@ -363,6 +621,9 @@
 }
 - (void)handleDoubleTapAtPoint:(CGPoint)p {
     if (!self.editor) return;
+    self.editor->activeEmmetSession.active = false;
+    self.editor->rollbackPadding();
+    self.editor->isRectSelecting = false;
     p.y -= self.topRenderMargin;
     size_t pos = self.editor->getDocPosFromPoint(p.x, p.y);
     size_t start, end;
@@ -380,17 +641,13 @@
 }
 - (void)handleTripleTapAtPoint:(CGPoint)p {
     if (!self.editor) return;
+    self.editor->activeEmmetSession.active = false;
+    self.editor->rollbackPadding();
+    self.editor->isRectSelecting = false;
     p.y -= self.topRenderMargin;
     size_t pos = self.editor->getDocPosFromPoint(p.x, p.y);
-    int lineIdx = self.editor->getLineIdx(pos);
-    size_t start = self.editor->lineStarts[lineIdx];
-    size_t end = (lineIdx + 1 < (int)self.editor->lineStarts.size()) ? self.editor->lineStarts[lineIdx + 1] : self.editor->pt.length();
     [self.inputDelegate selectionWillChange:self];
-    self.editor->cursors.clear();
-    Cursor c; c.anchor = start; c.head = end;
-    c.desiredX = self.editor->getXInLine(lineIdx, end);
-    c.originalAnchorX = c.desiredX; c.isVirtual = false;
-    self.editor->cursors.push_back(c);
+    self.editor->selectLineAt(pos, false);
     [self.inputDelegate selectionDidChange:self];
     self.editor->ensureCaretVisible();
     [self setNeedsDisplay];
@@ -404,38 +661,14 @@
     if (fabs(newFontSize - self.editor->currentFontSize) < 0.5f) {
         return;
     }
-    self.editor->currentFontSize = newFontSize;
-    if (self.editor->fontRef) {
-        CFRelease(self.editor->fontRef);
-        self.editor->fontRef = NULL;
-    }
-    self.editor->fontRef = CTFontCreateWithName(CFSTR("Menlo"), newFontSize, NULL);
-    if (self.editor->fontRef) {
-        CGFloat ascent = CTFontGetAscent(self.editor->fontRef);
-        CGFloat descent = CTFontGetDescent(self.editor->fontRef);
-        CGFloat leading = CTFontGetLeading(self.editor->fontRef);
-        self.editor->lineHeight = std::ceil(ascent + descent + leading);
-        if (self.editor->lineHeight < 1.0f) self.editor->lineHeight = 1.0f;
-        UniChar ch = 'A';
-        CGGlyph glyph;
-        if (CTFontGetGlyphsForCharacters(self.editor->fontRef, &ch, &glyph, 1)) {
-            CGSize advance;
-            CTFontGetAdvancesForGlyphs(self.editor->fontRef, kCTFontOrientationHorizontal, &glyph, &advance, 1);
-            self.editor->charWidth = advance.width;
-        }
-    }
-    self.editor->updateGutterWidth();
-    self.editor->updateMaxLineWidth();
-    float vw = self.bounds.size.width - self.editor->gutterWidth - self.editor->visibleVScrollWidth;
-    int maxH = std::max(0, (int)(self.editor->maxLineWidth - vw + self.editor->charWidth * 4));
-    if (self.editor->hScrollPos > maxH) {
-        self.editor->hScrollPos = maxH;
-    }
-    if (maxH <= 0) {
-        self.editor->hScrollPos = 0;
-    }
+    self.editor->updateFont((float)newFontSize);
+    float vw = self.bounds.size.width;
+    float vh = MAX(1.0f, self.bounds.size.height - self.topRenderMargin);
+    ScrollBarLayout L = self.editor->getScrollBarLayout(vw, vh);
+    int maxH = L.needH ? std::max(0, (int)std::ceil(self.editor->maxLineWidth - L.textAreaW)) : 0;
+    self.editor->hScrollPos = std::clamp(self.editor->hScrollPos, 0, maxH);
     self.editor->ensureCaretVisible();
-    self.editor->zoomPopupText = std::to_string((int)newFontSize) + " px";
+    self.editor->zoomPopupText = std::to_string((int)std::round(newFontSize)) + "px";
     self.editor->zoomPopupEndTime = std::chrono::steady_clock::now() + std::chrono::seconds(1);
     [self setNeedsDisplay];
     [self setNeedsLayout];
@@ -504,22 +737,37 @@
 }
 - (void)applyScrollDeltaX:(CGFloat)dx deltaY:(CGFloat)dy {
     _vScrollAccumulator -= dy;
-    if (fabs(_vScrollAccumulator) >= self.editor->lineHeight) {
-        int linesToScroll = (int)(_vScrollAccumulator / self.editor->lineHeight);
-        self.editor->vScrollPos += linesToScroll;
-        _vScrollAccumulator -= linesToScroll * self.editor->lineHeight;
-    }
-    self.editor->hScrollPos -= dx;
-    int totalLines = (int)self.editor->lineStarts.size();
-    self.editor->vScrollPos = std::clamp(self.editor->vScrollPos, 0, std::max(0, totalLines - 1));
-    float vw = self.bounds.size.width - self.editor->gutterWidth - self.editor->visibleVScrollWidth;
-    int maxH = std::max(0, (int)(self.editor->maxLineWidth - vw + self.editor->charWidth * 4));
-    self.editor->hScrollPos = std::clamp(self.editor->hScrollPos, 0, maxH);
-    if (self.editor->vScrollPos == 0 || self.editor->vScrollPos == std::max(0, totalLines - 1)) {
-        _scrollVelocity.y = 0;
-    }
-    if (self.editor->hScrollPos == 0 || self.editor->hScrollPos == maxH) {
+    float vw = self.bounds.size.width;
+    float vh = MAX(1.0f, self.bounds.size.height - self.topRenderMargin);
+    if (self.editor->wordWrapEnabled) {
+        self.editor->hScrollPos = 0;
         _scrollVelocity.x = 0;
+        if (fabs(_vScrollAccumulator) >= self.editor->lineHeight) {
+            int linesToScroll = (int)(_vScrollAccumulator / self.editor->lineHeight);
+            self.editor->scrollVisualLines(linesToScroll);
+            _vScrollAccumulator -= linesToScroll * self.editor->lineHeight;
+        }
+        if (self.editor->vScrollPos == 0 && self.editor->vScrollSubLine == 0 && _scrollVelocity.y > 0) {
+            _scrollVelocity.y = 0;
+        }
+    } else {
+        ScrollBarLayout L = self.editor->getScrollBarLayout(vw, vh);
+        if (fabs(_vScrollAccumulator) >= self.editor->lineHeight) {
+            int linesToScroll = (int)(_vScrollAccumulator / self.editor->lineHeight);
+            self.editor->vScrollPos += linesToScroll;
+            _vScrollAccumulator -= linesToScroll * self.editor->lineHeight;
+        }
+        self.editor->hScrollPos -= dx;
+        int maxV = std::max(0, L.totalLines - L.visibleLines);
+        self.editor->vScrollPos = std::clamp(self.editor->vScrollPos, 0, maxV);
+        int maxH = L.needH ? std::max(0, (int)std::ceil(self.editor->maxLineWidth - L.textAreaW)) : 0;
+        self.editor->hScrollPos = std::clamp(self.editor->hScrollPos, 0, maxH);
+        if (self.editor->vScrollPos == 0 || self.editor->vScrollPos == maxV) {
+            _scrollVelocity.y = 0;
+        }
+        if (self.editor->hScrollPos == 0 || self.editor->hScrollPos == maxH) {
+            _scrollVelocity.x = 0;
+        }
     }
     [self setNeedsDisplay];
     [self.inputDelegate selectionDidChange:self];
@@ -590,10 +838,29 @@
     [self hideEditMenuIfNeeded];
     [self.inputDelegate textWillChange:self];
     self.editor->imeComp = "";
-    if ([text isEqualToString:@"\n"]) {
+    if ([text isEqualToString:@"\n"] || [text isEqualToString:@"\r"]) {
         self.editor->insertNewlineWithAutoIndent();
+    } else if ([text isEqualToString:@"\t"]) {
+        if (!self.editor->tryExpandEmmet() && !self.editor->jumpEmmetTabstop(true)) {
+            if (self.editor->cursors.size() > 1) {
+                self.editor->insertAtCursors("\t");
+            } else {
+                self.editor->indentLines(false);
+            }
+        }
     } else {
-        self.editor->insertAtCursors([text UTF8String]);
+        bool usePadding = false;
+        for (const auto& c : self.editor->cursors) {
+            if (c.isVirtual) {
+                usePadding = true;
+                break;
+            }
+        }
+        if (usePadding) {
+            self.editor->insertAtCursorsWithPadding([text UTF8String]);
+        } else {
+            self.editor->insertAtCursors([text UTF8String]);
+        }
     }
     [self.inputDelegate textDidChange:self];
     [self setNeedsDisplay];
@@ -702,14 +969,54 @@
 - (UITextRange *)characterRangeByExtendingPosition:(UITextPosition *)p inDirection:(UITextLayoutDirection)d { return nil; }
 - (NSWritingDirection)baseWritingDirectionForPosition:(UITextPosition *)p inDirection:(UITextStorageDirection)d { return NSWritingDirectionNatural; }
 - (void)setBaseWritingDirection:(NSWritingDirection)w forRange:(UITextRange *)r {}
+- (CGFloat)visualBaseYForLine:(int)targetLine wrapWidth:(float)vw {
+    if (!self.editor || self.editor->lineStarts.empty()) return self.topRenderMargin;
+    int start = std::clamp(self.editor->vScrollPos, 0, std::max(0, (int)self.editor->lineStarts.size() - 1));
+    if (!self.editor->wordWrapEnabled) {
+        return (CGFloat)(targetLine - start) * self.editor->lineHeight + self.topRenderMargin;
+    }
+    int startSub = std::clamp(self.editor->vScrollSubLine, 0, std::max(0, self.editor->getLineVisualCount(start, vw) - 1));
+    int visualRows = -startSub;
+    if (targetLine >= start) {
+        for (int l = start; l < targetLine; ++l) {
+            visualRows += self.editor->getLineVisualCount(l, vw);
+        }
+    } else {
+        for (int l = start - 1; l >= targetLine; --l) {
+            visualRows -= self.editor->getLineVisualCount(l, vw);
+        }
+    }
+    return (CGFloat)visualRows * self.editor->lineHeight + self.topRenderMargin;
+}
+- (CGRect)visualCaretRectForPos:(size_t)pos affinity:(BOOL)affinity {
+    if (!self.editor) return CGRectZero;
+    int li = self.editor->getLineIdx(pos);
+    float physX = self.editor->getXInLine(li, pos);
+    if (!self.editor->wordWrapEnabled) {
+        float drawX = self.editor->gutterWidth - self.editor->hScrollPos + physX;
+        float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
+        return CGRectMake(drawX, drawY, 2.0, self.editor->lineHeight);
+    }
+    float vw = std::max(1.0f, (float)self.bounds.size.width - self.editor->gutterWidth - self.editor->visibleVScrollWidth);
+    CGFloat lineBaseY = [self visualBaseYForLine:li wrapWidth:vw];
+    auto subs = self.editor->getVisualSubLines(li, vw);
+    size_t rel = (pos >= self.editor->lineStarts[li]) ? (pos - self.editor->lineStarts[li]) : 0;
+    int subIdx = 0;
+    for (int sIdx = 0; sIdx < (int)subs.size(); ++sIdx) {
+        size_t se = subs[sIdx].byteStart + subs[sIdx].byteLen;
+        if (rel < se || (rel == se && (affinity || sIdx == (int)subs.size() - 1))) {
+            subIdx = sIdx;
+            break;
+        }
+    }
+    float drawX = self.editor->gutterWidth + (physX - self.editor->getXInLine(li, self.editor->lineStarts[li] + subs[subIdx].byteStart));
+    float drawY = (float)lineBaseY + (float)subIdx * self.editor->lineHeight;
+    return CGRectMake(drawX, drawY, 2.0, self.editor->lineHeight);
+}
 - (CGRect)firstRectForRange:(UITextRange *)range {
     if (!self.editor || !range) return CGRectZero;
     size_t start = ((iOSTextPosition*)range.start).index;
-    int li = self.editor->getLineIdx(start);
-    float x = self.editor->getXInLine(li, start);
-    float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
-    float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
-    return CGRectMake(drawX, drawY, 2, self.editor->lineHeight);
+    return [self visualCaretRectForPos:start affinity:NO];
 }
 - (NSArray<UITextSelectionRect *> *)selectionRectsForRange:(UITextRange *)range {
     if (_isScrolling) {
@@ -722,31 +1029,56 @@
     if (start > end) std::swap(start, end);
     int startLine = self.editor->getLineIdx(start);
     int endLine = self.editor->getLineIdx(end);
+    float vw = std::max(1.0f, (float)self.bounds.size.width - self.editor->gutterWidth - self.editor->visibleVScrollWidth);
     for (int line = startLine; line <= endLine; line++) {
         size_t lineStartIdx = self.editor->lineStarts[line];
-        size_t nextLineStartIdx = (line + 1 < self.editor->lineStarts.size())
+        size_t nextLineStartIdx = (line + 1 < (int)self.editor->lineStarts.size())
                                   ? self.editor->lineStarts[line + 1]
                                   : self.editor->pt.length();
         size_t segStart = (line == startLine) ? start : lineStartIdx;
         size_t segEnd = (line == endLine) ? end : nextLineStartIdx;
-        float x1 = self.editor->getXInLine(line, segStart);
-        float x2 = self.editor->getXInLine(line, segEnd);
-        if (x2 < x1) x2 = x1;
-        float w = x2 - x1;
-        if (line != endLine && w == 0) w = self.editor->charWidth / 2;
-        if (w == 0) {
-            w = 2.0;
+        if (!self.editor->wordWrapEnabled) {
+            float x1 = self.editor->getXInLine(line, segStart);
+            float x2 = self.editor->getXInLine(line, segEnd);
+            if (x2 < x1) x2 = x1;
+            float w = x2 - x1;
+            if (line != endLine && w == 0) w = self.editor->charWidth / 2;
+            if (w == 0) w = 2.0;
+            float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x1;
+            float drawY = (line - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
+            CGRect r = CGRectMake(drawX, drawY, w, self.editor->lineHeight);
+            iOSSelectionRect *selRect = [[iOSSelectionRect alloc] init];
+            selRect.rectValue = r;
+            selRect.writingDirectionValue = NSWritingDirectionNatural;
+            selRect.containsStartValue = (line == startLine && segStart == start);
+            selRect.containsEndValue = (line == endLine && segEnd == end);
+            selRect.isVerticalValue = NO;
+            [rects addObject:selRect];
+        } else {
+            CGFloat lineBaseY = [self visualBaseYForLine:line wrapWidth:vw];
+            auto subs = self.editor->getVisualSubLines(line, vw);
+            for (int subIdx = 0; subIdx < (int)subs.size(); ++subIdx) {
+                size_t subDocS = lineStartIdx + subs[subIdx].byteStart;
+                size_t subDocE = subDocS + subs[subIdx].byteLen;
+                size_t ovS = std::max(segStart, subDocS);
+                size_t ovE = std::min(segEnd, subDocE);
+                if (ovS < ovE || (segStart == segEnd && segStart == ovS && subIdx == (int)subs.size() - 1)) {
+                    float subOriginX = self.editor->getXInLine(line, subDocS);
+                    float x1 = self.editor->getXInLine(line, ovS) - subOriginX;
+                    float x2 = self.editor->getXInLine(line, ovE) - subOriginX;
+                    float w = std::max(2.0f, x2 - x1);
+                    float drawX = self.editor->gutterWidth + x1;
+                    float drawY = (float)lineBaseY + (float)subIdx * self.editor->lineHeight;
+                    iOSSelectionRect *selRect = [[iOSSelectionRect alloc] init];
+                    selRect.rectValue = CGRectMake(drawX, drawY, w, self.editor->lineHeight);
+                    selRect.writingDirectionValue = NSWritingDirectionNatural;
+                    selRect.containsStartValue = (line == startLine && ovS == start);
+                    selRect.containsEndValue = (line == endLine && ovE == end);
+                    selRect.isVerticalValue = NO;
+                    [rects addObject:selRect];
+                }
+            }
         }
-        float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x1;
-        float drawY = (line - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
-        CGRect r = CGRectMake(drawX, drawY, w, self.editor->lineHeight);
-        iOSSelectionRect *selRect = [[iOSSelectionRect alloc] init];
-        selRect.rectValue = r;
-        selRect.writingDirectionValue = NSWritingDirectionNatural;
-        selRect.containsStartValue = (line == startLine && segStart == start);
-        selRect.containsEndValue = (line == endLine && segEnd == end);
-        selRect.isVerticalValue = NO;
-        [rects addObject:selRect];
     }
     return rects;
 }
@@ -765,11 +1097,9 @@
     }
     if (!self.editor) return CGRectZero;
     size_t p = ((iOSTextPosition*)position).index;
-    int l = self.editor->getLineIdx(p);
-    float x = self.editor->getXInLine(l, p);
-    float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
-    float drawY = (l - self.editor->vScrollPos) * self.editor->lineHeight + self.topRenderMargin;
-    return CGRectMake(drawX, drawY+self.editor->lineHeight / 2.0, 0, 0);
+    BOOL affinity = (!self.editor->cursors.empty() && self.editor->cursors.back().head == p) ? self.editor->cursors.back().affinity : NO;
+    CGRect cr = [self visualCaretRectForPos:p affinity:affinity];
+    return CGRectMake(cr.origin.x, cr.origin.y + self.editor->lineHeight / 2.0, 0, 0);
 }
 - (UITextAutocorrectionType)autocorrectionType { return UITextAutocorrectionTypeNo; }
 - (UITextSpellCheckingType)spellCheckingType {
@@ -809,13 +1139,14 @@
     [self.inputDelegate selectionDidChange:self];
 }
 - (NSArray<UIKeyCommand *> *)keyCommands {
-    NSArray<UIKeyCommand *> *commands = @[
+    NSMutableArray<UIKeyCommand *> *commands = [NSMutableArray arrayWithArray:@[
         [UIKeyCommand keyCommandWithInput:@"a" modifierFlags:UIKeyModifierCommand action:@selector(selectAll:)],
         [UIKeyCommand keyCommandWithInput:@"c" modifierFlags:UIKeyModifierCommand action:@selector(copy:)],
         [UIKeyCommand keyCommandWithInput:@"x" modifierFlags:UIKeyModifierCommand action:@selector(cut:)],
         [UIKeyCommand keyCommandWithInput:@"v" modifierFlags:UIKeyModifierCommand action:@selector(paste:)],
         [UIKeyCommand keyCommandWithInput:@"z" modifierFlags:UIKeyModifierCommand action:@selector(handleUndo:)],
         [UIKeyCommand keyCommandWithInput:@"z" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(handleRedo:)],
+        [UIKeyCommand keyCommandWithInput:@"y" modifierFlags:UIKeyModifierCommand action:@selector(handleRedo:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:0 action:@selector(moveLeft:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:0 action:@selector(moveRight:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:0 action:@selector(moveUp:)],
@@ -824,10 +1155,30 @@
         [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:UIKeyModifierShift action:@selector(moveRightAndSelect:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierShift action:@selector(moveUpAndSelect:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierShift action:@selector(moveDownAndSelect:)],
-        [UIKeyCommand keyCommandWithInput:UIKeyInputHome modifierFlags:0 action:@selector(moveToDocStart:)],
-        [UIKeyCommand keyCommandWithInput:UIKeyInputEnd modifierFlags:0 action:@selector(moveToDocEnd:)],
-        [UIKeyCommand keyCommandWithInput:UIKeyInputHome modifierFlags:UIKeyModifierShift action:@selector(moveToDocStartAndSelect:)],
-        [UIKeyCommand keyCommandWithInput:UIKeyInputEnd modifierFlags:UIKeyModifierShift action:@selector(moveToDocEndAndSelect:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:UIKeyModifierAlternate action:@selector(moveWordLeft:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:UIKeyModifierAlternate action:@selector(moveWordRight:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:UIKeyModifierAlternate | UIKeyModifierShift action:@selector(rectSelectLeft:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:UIKeyModifierAlternate | UIKeyModifierShift action:@selector(rectSelectRight:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:UIKeyModifierControl | UIKeyModifierAlternate | UIKeyModifierShift action:@selector(rectSelectLeft:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:UIKeyModifierControl | UIKeyModifierAlternate | UIKeyModifierShift action:@selector(rectSelectRight:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierControl | UIKeyModifierAlternate | UIKeyModifierShift action:@selector(rectSelectUp:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierControl | UIKeyModifierAlternate | UIKeyModifierShift action:@selector(rectSelectDown:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierAlternate action:@selector(moveLinesUp:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierAlternate action:@selector(moveLinesDown:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierAlternate | UIKeyModifierShift action:@selector(duplicateLinesUp:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierAlternate | UIKeyModifierShift action:@selector(duplicateLinesDown:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierControl | UIKeyModifierAlternate action:@selector(addCursorUp:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierControl | UIKeyModifierAlternate action:@selector(addCursorDown:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierCommand | UIKeyModifierAlternate action:@selector(addCursorUp:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierCommand | UIKeyModifierAlternate action:@selector(addCursorDown:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputHome modifierFlags:0 action:@selector(moveToHome:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputEnd modifierFlags:0 action:@selector(moveToEnd:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputHome modifierFlags:UIKeyModifierShift action:@selector(moveToHomeAndSelect:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputEnd modifierFlags:UIKeyModifierShift action:@selector(moveToEndAndSelect:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputPageUp modifierFlags:0 action:@selector(pageUp:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputPageDown modifierFlags:0 action:@selector(pageDown:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputPageUp modifierFlags:UIKeyModifierShift action:@selector(pageUpAndSelect:)],
+        [UIKeyCommand keyCommandWithInput:UIKeyInputPageDown modifierFlags:UIKeyModifierShift action:@selector(pageDownAndSelect:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:UIKeyModifierCommand action:@selector(moveToHome:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:UIKeyModifierCommand action:@selector(moveToEnd:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(moveToHomeAndSelect:)],
@@ -836,22 +1187,40 @@
         [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierCommand action:@selector(moveToDocEnd:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(moveToDocStartAndSelect:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(moveToDocEndAndSelect:)],
+        [UIKeyCommand keyCommandWithInput:@"\t" modifierFlags:0 action:@selector(handleTabKey:)],
+        [UIKeyCommand keyCommandWithInput:@"\t" modifierFlags:UIKeyModifierShift action:@selector(handleShiftTabKey:)],
+        [UIKeyCommand keyCommandWithInput:@"/" modifierFlags:UIKeyModifierCommand action:@selector(toggleCommentAction:)],
+        [UIKeyCommand keyCommandWithInput:@"z" modifierFlags:UIKeyModifierAlternate action:@selector(toggleWordWrapAction:)],
+        [UIKeyCommand keyCommandWithInput:@"p" modifierFlags:UIKeyModifierAlternate action:@selector(togglePreviewAction:)],
+        [UIKeyCommand keyCommandWithInput:@"b" modifierFlags:UIKeyModifierCommand action:@selector(jumpToBracket:)],
+        [UIKeyCommand keyCommandWithInput:@"b" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(selectToBracket:)],
+        [UIKeyCommand keyCommandWithInput:@"u" modifierFlags:UIKeyModifierCommand action:@selector(uppercaseSelection:)],
+        [UIKeyCommand keyCommandWithInput:@"u" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(lowercaseSelection:)],
+        [UIKeyCommand keyCommandWithInput:@"k" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(deleteLineAction:)],
+        [UIKeyCommand keyCommandWithInput:@"]" modifierFlags:UIKeyModifierCommand action:@selector(indentLinesAction:)],
+        [UIKeyCommand keyCommandWithInput:@"[" modifierFlags:UIKeyModifierCommand action:@selector(unindentLinesAction:)],
         [UIKeyCommand keyCommandWithInput:@"n" modifierFlags:UIKeyModifierCommand action:@selector(newDocument:)],
         [UIKeyCommand keyCommandWithInput:@"o" modifierFlags:UIKeyModifierCommand action:@selector(openDocument:)],
         [UIKeyCommand keyCommandWithInput:@"s" modifierFlags:UIKeyModifierCommand action:@selector(saveDocument:)],
         [UIKeyCommand keyCommandWithInput:@"s" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(saveDocumentAs:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand action:@selector(cmdFind:)],
         [UIKeyCommand keyCommandWithInput:@"r" modifierFlags:UIKeyModifierCommand action:@selector(cmdReplace:)],
+        [UIKeyCommand keyCommandWithInput:@"h" modifierFlags:UIKeyModifierCommand action:@selector(cmdReplace:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand | UIKeyModifierAlternate action:@selector(cmdReplace:)],
         [UIKeyCommand keyCommandWithInput:@"j" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
         [UIKeyCommand keyCommandWithInput:@"g" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
+        [UIKeyCommand keyCommandWithInput:@"l" modifierFlags:UIKeyModifierCommand action:@selector(cmdGoToLine:)],
         [UIKeyCommand keyCommandWithInput:@"d" modifierFlags:UIKeyModifierCommand action:@selector(selectWordOrNextOccurrence:)],
         [UIKeyCommand keyCommandWithInput:@"+" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
         [UIKeyCommand keyCommandWithInput:@"=" modifierFlags:UIKeyModifierCommand action:@selector(zoomIn:)],
         [UIKeyCommand keyCommandWithInput:@"-" modifierFlags:UIKeyModifierCommand action:@selector(zoomOut:)],
         [UIKeyCommand keyCommandWithInput:@"0" modifierFlags:UIKeyModifierCommand action:@selector(resetZoom:)],
         [UIKeyCommand keyCommandWithInput:UIKeyInputF1 modifierFlags:0 action:@selector(toggleHelp:)]
-    ];
+    ]];
+    if (@available(iOS 13.4, *)) {
+        [commands addObject:[UIKeyCommand keyCommandWithInput:UIKeyInputF3 modifierFlags:0 action:@selector(cmdFindNext:)]];
+        [commands addObject:[UIKeyCommand keyCommandWithInput:UIKeyInputF3 modifierFlags:UIKeyModifierShift action:@selector(cmdFindPrev:)]];
+    }
     if (@available(iOS 15.0, *)) {
         for (UIKeyCommand *cmd in commands) {
             cmd.wantsPriorityOverSystemBehavior = YES;
@@ -860,7 +1229,29 @@
     return commands;
 }
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender {
-    if (action == @selector(newDocument:)) {
+    if (action == @selector(newDocument:) || action == @selector(openDocument:) ||
+        action == @selector(openRecentDocument:) ||
+        action == @selector(saveDocument:) || action == @selector(saveDocumentAs:) ||
+        action == @selector(cmdFind:) || action == @selector(cmdReplace:) ||
+        action == @selector(cmdFindNext:) || action == @selector(cmdFindPrev:) ||
+        action == @selector(cmdGoToLine:) || action == @selector(selectWordOrNextOccurrence:) ||
+        action == @selector(handleUndo:) || action == @selector(handleRedo:) ||
+        action == @selector(handleTabKey:) || action == @selector(handleShiftTabKey:) ||
+        action == @selector(toggleCommentAction:) || action == @selector(toggleWordWrapAction:) ||
+        action == @selector(togglePreviewAction:) || action == @selector(jumpToBracket:) ||
+        action == @selector(selectToBracket:) || action == @selector(uppercaseSelection:) ||
+        action == @selector(lowercaseSelection:) || action == @selector(deleteLineAction:) ||
+        action == @selector(indentLinesAction:) || action == @selector(unindentLinesAction:) ||
+        action == @selector(moveLinesUp:) || action == @selector(moveLinesDown:) ||
+        action == @selector(duplicateLinesUp:) || action == @selector(duplicateLinesDown:) ||
+        action == @selector(addCursorUp:) || action == @selector(addCursorDown:) ||
+        action == @selector(rectSelectLeft:) || action == @selector(rectSelectRight:) ||
+        action == @selector(rectSelectUp:) || action == @selector(rectSelectDown:) ||
+        action == @selector(moveWordLeft:) || action == @selector(moveWordRight:) ||
+        action == @selector(pageUp:) || action == @selector(pageDown:) ||
+        action == @selector(pageUpAndSelect:) || action == @selector(pageDownAndSelect:) ||
+        action == @selector(zoomIn:) || action == @selector(zoomOut:) ||
+        action == @selector(resetZoom:) || action == @selector(toggleHelp:)) {
         return YES;
     }
     if (action == @selector(copy:) || action == @selector(cut:)) {
@@ -872,27 +1263,6 @@
     if (action == @selector(selectAll:)) {
         return self.editor && self.editor->pt.length() > 0;
     }
-    if (action == @selector(selectWordOrNextOccurrence:)) {
-        return YES;
-    }
-    if (action == @selector(handleUndo:) || action == @selector(handleRedo:)) {
-        return YES;
-    }
-    if (action == @selector(openDocument:) || action == @selector(saveDocument:) || action == @selector(saveDocumentAs:)) {
-        return YES;
-    }
-    if (action == @selector(cmdFind:) || action == @selector(cmdReplace:)) {
-        return YES;
-    }
-    if (action == @selector(cmdGoToLine:)) {
-        return YES;
-    }
-    if (action == @selector(zoomIn:) ||
-        action == @selector(zoomOut:) ||
-        action == @selector(resetZoom:) ||
-        action == @selector(toggleHelp:)) {
-        return YES;
-    }    
     if (action == @selector(moveLeft:) || action == @selector(moveRight:) ||
         action == @selector(moveUp:) || action == @selector(moveDown:) ||
         action == @selector(moveLeftAndSelect:) || action == @selector(moveRightAndSelect:) ||
@@ -912,97 +1282,562 @@
         self.onNewDocumentAction();
     }
 }
+- (void)openRecentDocument:(id)sender {
+    [self hideHelpIfNeeded];
+    [self hideEditMenuIfNeeded];
+    if (self.onOpenRecentAction) {
+        self.onOpenRecentAction();
+    }
+}
 - (void)selectAll:(id)sender {
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
-    self.editor->cursors.clear();
-    Cursor c;
-    c.anchor = 0;
-    c.head = self.editor->pt.length();
-    c.desiredX = 0;
-    c.originalAnchorX = 0;
-    c.isVirtual = false;
-    self.editor->cursors.push_back(c);
+    self.editor->selectAll();
     [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
 }
-- (void)moveCursorTo:(size_t)newPos keepSelection:(BOOL)keep updateX:(BOOL)updateX {
+- (void)handleTabKey:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    if (!self.editor->tryExpandEmmet() && !self.editor->jumpEmmetTabstop(true)) {
+        if (self.editor->cursors.size() > 1) {
+            self.editor->insertAtCursors("\t");
+        } else {
+            self.editor->indentLines(false);
+        }
+    }
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)handleShiftTabKey:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    if (!self.editor->jumpEmmetTabstop(false)) {
+        self.editor->unindentLines();
+    }
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)toggleCommentAction:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->toggleComment();
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)toggleWordWrapAction:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    self.editor->toggleWordWrap();
+    [self setNeedsDisplay];
+}
+- (void)togglePreviewAction:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    self.editor->togglePreview();
+    [self setNeedsDisplay];
+}
+- (void)jumpToBracket:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->jumpToMatchingBracket(false);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)selectToBracket:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->jumpToMatchingBracket(true);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)uppercaseSelection:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->convertSelectedText(true);
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)lowercaseSelection:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->convertSelectedText(false);
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)deleteLineAction:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->deleteLine();
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)indentLinesAction:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->indentLines(true);
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)unindentLinesAction:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->unindentLines();
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)moveLinesUp:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->moveLines(true);
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)moveLinesDown:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->moveLines(false);
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)duplicateLinesUp:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->duplicateLines(true);
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)duplicateLinesDown:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    [self.inputDelegate textWillChange:self];
+    self.editor->duplicateLines(false);
+    [self.inputDelegate textDidChange:self];
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)addCursorUp:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->addCursor(true);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)addCursorDown:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->addCursor(false);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)rectSelectLeft:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->moveRectSelection(0, -1);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)rectSelectRight:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->moveRectSelection(0, 1);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)rectSelectUp:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->moveRectSelection(-1, 0);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)rectSelectDown:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->moveRectSelection(1, 0);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)moveWordLeft:(id)sender {
     [self hideHelpIfNeeded];
     if (!self.editor || self.editor->cursors.empty()) return;
     [self hideEditMenuIfNeeded];
     [self.inputDelegate selectionWillChange:self];
-    Cursor c = self.editor->cursors.back();
-    c.head = newPos;
-    if (!keep) {
-        c.anchor = newPos;
-    }
-    if (updateX) {
-        int li = self.editor->getLineIdx(newPos);
-        c.desiredX = self.editor->getXInLine(li, newPos);
+    self.editor->rollbackPadding();
+    self.editor->isRectSelecting = false;
+    for (auto& c : self.editor->cursors) {
+        size_t p = c.head;
+        int li = self.editor->getLineIdx(p);
+        size_t lineStart = self.editor->lineStarts[li];
+        if (p == lineStart && p > 0) p--;
+        else {
+            while (p > lineStart && !self.editor->isWordChar(self.editor->pt.charAt(p - 1))) p--;
+            while (p > lineStart && self.editor->isWordChar(self.editor->pt.charAt(p - 1))) p--;
+        }
+        c.head = p;
+        c.anchor = p;
+        c.desiredX = self.editor->getXFromPos(p);
         c.originalAnchorX = c.desiredX;
+        c.isVirtual = false;
+        c.affinity = false;
     }
-    self.editor->cursors.clear();
-    self.editor->cursors.push_back(c);
-    [self.inputDelegate selectionDidChange:self];
+    self.editor->mergeCursors();
     self.editor->ensureCaretVisible();
+    [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
 }
+- (void)moveWordRight:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor || self.editor->cursors.empty()) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->rollbackPadding();
+    self.editor->isRectSelecting = false;
+    size_t len = self.editor->pt.length();
+    for (auto& c : self.editor->cursors) {
+        size_t p = c.head;
+        int li = self.editor->getLineIdx(p);
+        size_t lineStart = self.editor->lineStarts[li];
+        size_t lineEnd = (li + 1 < (int)self.editor->lineStarts.size()) ? self.editor->lineStarts[li + 1] : len;
+        size_t physEnd = lineEnd;
+        if (physEnd > lineStart && self.editor->pt.charAt(physEnd - 1) == '\n') physEnd--;
+        if (physEnd > lineStart && self.editor->pt.charAt(physEnd - 1) == '\r') physEnd--;
+        if (p == physEnd && p < len) p = lineEnd;
+        else {
+            while (p < physEnd && self.editor->isWordChar(self.editor->pt.charAt(p))) p++;
+            while (p < physEnd && !self.editor->isWordChar(self.editor->pt.charAt(p))) p++;
+        }
+        c.head = p;
+        c.anchor = p;
+        c.desiredX = self.editor->getXFromPos(p);
+        c.originalAnchorX = c.desiredX;
+        c.isVirtual = false;
+        c.affinity = false;
+    }
+    self.editor->mergeCursors();
+    self.editor->ensureCaretVisible();
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)doPageMove:(BOOL)up keepSelection:(BOOL)keep {
+    [self hideHelpIfNeeded];
+    if (!self.editor || self.editor->cursors.empty()) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    float viewHeight = MAX(1.0f, (float)self.bounds.size.height - (float)self.topRenderMargin);
+    int pageLines = std::max(1, (int)(viewHeight / self.editor->lineHeight) - 1);
+    if (self.editor->wordWrapEnabled) {
+        for (int i = 0; i < pageLines; ++i) {
+            self.editor->moveVisualUpDown(up, keep);
+        }
+    } else {
+        int totalLines = (int)self.editor->lineStarts.size();
+        for (auto& c : self.editor->cursors) {
+            int currentLine = self.editor->getLineIdx(c.head);
+            int newLine = up ? std::max(0, currentLine - pageLines) : std::min(totalLines - 1, currentLine + pageLines);
+            if (!up && newLine == totalLines - 1 && currentLine == totalLines - 1) c.head = self.editor->pt.length();
+            else c.head = self.editor->getPosFromLineAndX(newLine, c.desiredX);
+            if (!keep) { c.anchor = c.head; c.originalAnchorX = c.desiredX; }
+            c.isVirtual = false;
+        }
+        if (up) self.editor->vScrollPos = std::max(0, self.editor->vScrollPos - pageLines);
+        else self.editor->vScrollPos = std::min(totalLines - 1, self.editor->vScrollPos + pageLines);
+        self.editor->ensureCaretVisible();
+    }
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)pageUp:(id)sender { [self doPageMove:YES keepSelection:NO]; }
+- (void)pageDown:(id)sender { [self doPageMove:NO keepSelection:NO]; }
+- (void)pageUpAndSelect:(id)sender { [self doPageMove:YES keepSelection:YES]; }
+- (void)pageDownAndSelect:(id)sender { [self doPageMove:NO keepSelection:YES]; }
 - (void)moveLeft:(id)sender { [self doMoveLeft:NO]; }
 - (void)moveLeftAndSelect:(id)sender { [self doMoveLeft:YES]; }
 - (void)doMoveLeft:(BOOL)keep {
-    size_t head = self.editor->cursors.back().head;
-    size_t newPos = self.editor->moveCaretVisual(head, false);
-    [self moveCursorTo:newPos keepSelection:keep updateX:YES];
+    [self hideHelpIfNeeded];
+    if (!self.editor || self.editor->cursors.empty()) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->rollbackPadding();
+    self.editor->isRectSelecting = false;
+    for (auto& c : self.editor->cursors) {
+        if (c.hasSelection() && !keep) {
+            c.head = c.start();
+            c.anchor = c.head;
+        } else {
+            c.head = self.editor->moveCaretVisual(c.head, false);
+            if (!keep) c.anchor = c.head;
+        }
+        c.desiredX = self.editor->getXFromPos(c.head);
+        if (!keep) c.originalAnchorX = c.desiredX;
+        c.isVirtual = false;
+        c.affinity = false;
+    }
+    self.editor->mergeCursors();
+    self.editor->ensureCaretVisible();
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
 }
 - (void)moveRight:(id)sender { [self doMoveRight:NO]; }
 - (void)moveRightAndSelect:(id)sender { [self doMoveRight:YES]; }
 - (void)doMoveRight:(BOOL)keep {
-    size_t head = self.editor->cursors.back().head;
-    size_t newPos = self.editor->moveCaretVisual(head, true);
-    [self moveCursorTo:newPos keepSelection:keep updateX:YES];
+    [self hideHelpIfNeeded];
+    if (!self.editor || self.editor->cursors.empty()) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->rollbackPadding();
+    self.editor->isRectSelecting = false;
+    float wrapW = self.editor->getEffectiveTextWidth((float)self.bounds.size.width);
+    for (auto& c : self.editor->cursors) {
+        if (c.hasSelection() && !keep) {
+            c.head = c.end();
+            c.anchor = c.head;
+            c.affinity = false;
+        } else {
+            size_t prev = c.head;
+            size_t nextPos = self.editor->moveCaretVisual(prev, true);
+            int nextLi = self.editor->getLineIdx(nextPos);
+            c.affinity = (nextPos > prev) && self.editor->isVisualLineWrapBoundary(nextLi, nextPos, wrapW);
+            c.head = nextPos;
+            if (!keep) c.anchor = c.head;
+        }
+        c.desiredX = self.editor->getXFromPos(c.head);
+        if (!keep) c.originalAnchorX = c.desiredX;
+        c.isVirtual = false;
+    }
+    self.editor->mergeCursors();
+    self.editor->ensureCaretVisible();
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
 }
 - (void)moveUp:(id)sender { [self doMoveUp:NO]; }
 - (void)moveUpAndSelect:(id)sender { [self doMoveUp:YES]; }
 - (void)doMoveUp:(BOOL)keep {
-    Cursor c = self.editor->cursors.back();
-    int li = self.editor->getLineIdx(c.head);
-    size_t newPos = (li > 0) ? self.editor->getPosFromLineAndX(li - 1, c.desiredX) : 0;
-    [self moveCursorTo:newPos keepSelection:keep updateX:NO];
+    [self hideHelpIfNeeded];
+    if (!self.editor || self.editor->cursors.empty()) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    if (self.editor->wordWrapEnabled) {
+        self.editor->moveVisualUpDown(true, keep);
+    } else {
+        self.editor->rollbackPadding();
+        self.editor->isRectSelecting = false;
+        for (auto& c : self.editor->cursors) {
+            int l = self.editor->getLineIdx(c.head);
+            if (l > 0) {
+                size_t nextPos = self.editor->getPosFromLineAndX(l - 1, c.desiredX);
+                size_t prevLineStart = self.editor->lineStarts[l - 1];
+                size_t prevLineEnd = self.editor->lineStarts[l];
+                if (prevLineEnd > prevLineStart && self.editor->pt.charAt(prevLineEnd - 1) == '\n') prevLineEnd--;
+                if (prevLineEnd > prevLineStart && self.editor->pt.charAt(prevLineEnd - 1) == '\r') prevLineEnd--;
+                c.head = std::min(nextPos, prevLineEnd);
+            } else {
+                c.head = 0;
+            }
+            if (!keep) { c.anchor = c.head; c.originalAnchorX = c.desiredX; }
+            c.isVirtual = false;
+        }
+        self.editor->mergeCursors();
+        self.editor->ensureCaretVisible();
+    }
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
 }
 - (void)moveDown:(id)sender { [self doMoveDown:NO]; }
 - (void)moveDownAndSelect:(id)sender { [self doMoveDown:YES]; }
 - (void)doMoveDown:(BOOL)keep {
-    Cursor c = self.editor->cursors.back();
-    int li = self.editor->getLineIdx(c.head);
-    size_t newPos = (li + 1 < self.editor->lineStarts.size()) ? self.editor->getPosFromLineAndX(li + 1, c.desiredX) : self.editor->pt.length();
-    [self moveCursorTo:newPos keepSelection:keep updateX:NO];
+    [self hideHelpIfNeeded];
+    if (!self.editor || self.editor->cursors.empty()) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    if (self.editor->wordWrapEnabled) {
+        self.editor->moveVisualUpDown(false, keep);
+    } else {
+        self.editor->rollbackPadding();
+        self.editor->isRectSelecting = false;
+        for (auto& c : self.editor->cursors) {
+            int l = self.editor->getLineIdx(c.head);
+            if (l + 1 < (int)self.editor->lineStarts.size()) {
+                size_t nextPos = self.editor->getPosFromLineAndX(l + 1, c.desiredX);
+                size_t nextLineStart = self.editor->lineStarts[l + 1];
+                size_t nextLineEnd = (l + 2 < (int)self.editor->lineStarts.size()) ? self.editor->lineStarts[l + 2] : self.editor->pt.length();
+                if (nextLineEnd > nextLineStart && self.editor->pt.charAt(nextLineEnd - 1) == '\n') nextLineEnd--;
+                if (nextLineEnd > nextLineStart && self.editor->pt.charAt(nextLineEnd - 1) == '\r') nextLineEnd--;
+                c.head = std::min(nextPos, nextLineEnd);
+            } else {
+                c.head = self.editor->pt.length();
+            }
+            if (!keep) { c.anchor = c.head; c.originalAnchorX = c.desiredX; }
+            c.isVirtual = false;
+        }
+        self.editor->mergeCursors();
+        self.editor->ensureCaretVisible();
+    }
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
 }
 - (void)moveToHome:(id)sender { [self doMoveHome:NO]; }
 - (void)moveToHomeAndSelect:(id)sender { [self doMoveHome:YES]; }
 - (void)doMoveHome:(BOOL)keep {
-    size_t head = self.editor->cursors.back().head;
-    int li = self.editor->getLineIdx(head);
-    size_t newPos = self.editor->lineStarts[li];
-    [self moveCursorTo:newPos keepSelection:keep updateX:YES];
+    [self hideHelpIfNeeded];
+    if (!self.editor || self.editor->cursors.empty()) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    if (self.editor->wordWrapEnabled) {
+        self.editor->moveVisualHome(keep);
+    } else {
+        self.editor->rollbackPadding();
+        self.editor->isRectSelecting = false;
+        for (auto& c : self.editor->cursors) {
+            int li = self.editor->getLineIdx(c.head);
+            c.head = self.editor->lineStarts[li];
+            c.desiredX = 0.0f;
+            if (!keep) { c.anchor = c.head; c.originalAnchorX = 0.0f; }
+            c.isVirtual = false;
+            c.affinity = false;
+        }
+        self.editor->mergeCursors();
+        self.editor->ensureCaretVisible();
+    }
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
 }
 - (void)moveToEnd:(id)sender { [self doMoveEnd:NO]; }
 - (void)moveToEndAndSelect:(id)sender { [self doMoveEnd:YES]; }
 - (void)doMoveEnd:(BOOL)keep {
-    size_t head = self.editor->cursors.back().head;
-    int li = self.editor->getLineIdx(head);
-    size_t newPos = self.editor->getPosFromLineAndX(li, 999999.0f);
-    [self moveCursorTo:newPos keepSelection:keep updateX:YES];
+    [self hideHelpIfNeeded];
+    if (!self.editor || self.editor->cursors.empty()) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    if (self.editor->wordWrapEnabled) {
+        self.editor->moveVisualEnd(keep);
+    } else {
+        self.editor->rollbackPadding();
+        self.editor->isRectSelecting = false;
+        for (auto& c : self.editor->cursors) {
+            int li = self.editor->getLineIdx(c.head);
+            size_t lineStart = self.editor->lineStarts[li];
+            size_t nextLineStart = (li + 1 < (int)self.editor->lineStarts.size()) ? self.editor->lineStarts[li + 1] : self.editor->pt.length();
+            if (nextLineStart > lineStart && self.editor->pt.charAt(nextLineStart - 1) == '\n') nextLineStart--;
+            if (nextLineStart > lineStart && self.editor->pt.charAt(nextLineStart - 1) == '\r') nextLineStart--;
+            c.head = nextLineStart;
+            c.desiredX = self.editor->getXFromPos(c.head);
+            if (!keep) { c.anchor = c.head; c.originalAnchorX = c.desiredX; }
+            c.isVirtual = false;
+            c.affinity = false;
+        }
+        self.editor->mergeCursors();
+        self.editor->ensureCaretVisible();
+    }
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
 }
-- (void)moveToDocStart:(id)sender { [self moveCursorTo:0 keepSelection:NO updateX:YES]; }
-- (void)moveToDocStartAndSelect:(id)sender { [self moveCursorTo:0 keepSelection:YES updateX:YES]; }
-- (void)moveToDocEnd:(id)sender { [self moveCursorTo:self.editor->pt.length() keepSelection:NO updateX:YES]; }
-- (void)moveToDocEndAndSelect:(id)sender { [self moveCursorTo:self.editor->pt.length() keepSelection:YES updateX:YES]; }
+- (void)moveToDocStart:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->jumpToFileEdge(true, false);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)moveToDocStartAndSelect:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->jumpToFileEdge(true, true);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)moveToDocEnd:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->jumpToFileEdge(false, false);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
+- (void)moveToDocEndAndSelect:(id)sender {
+    [self hideHelpIfNeeded];
+    if (!self.editor) return;
+    [self hideEditMenuIfNeeded];
+    [self.inputDelegate selectionWillChange:self];
+    self.editor->jumpToFileEdge(false, true);
+    [self.inputDelegate selectionDidChange:self];
+    [self setNeedsDisplay];
+}
 - (void)selectWordOrNextOccurrence:(id)sender {
     [self hideHelpIfNeeded];
     if (!self.editor) return;
-    self.editor->selectNextOccurrence();
     [self.inputDelegate selectionWillChange:self];
+    self.editor->selectNextOccurrence();
     [self.inputDelegate selectionDidChange:self];
     [self setNeedsDisplay];
 }
@@ -1168,10 +2003,15 @@
     };
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"New", nil), @selector(newDocument:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Open", nil), @selector(openDocument:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Open Recent", nil), @selector(openRecentDocument:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Save", nil), @selector(saveDocument:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Save As", nil), @selector(saveDocumentAs:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Find", nil), @selector(cmdFind:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Replace", nil), @selector(cmdReplace:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Live Preview", nil), @selector(togglePreviewAction:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Word Wrap", nil), @selector(toggleWordWrapAction:))];
+    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Toggle Comment", nil), @selector(toggleCommentAction:))];
+    [stackView addArrangedSubview:createBtn(@"Tab", @selector(handleTabKey:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Top", nil), @selector(moveToDocStart:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Bottom", nil), @selector(moveToDocEnd:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Go To", nil), @selector(cmdGoToLine:))];
@@ -1181,6 +2021,7 @@
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Cut", nil), @selector(cut:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Copy", nil), @selector(copy:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Paste", nil), @selector(paste:))];
+    [stackView addArrangedSubview:createBtn(@"?", @selector(toggleHelp:))];
     [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Done", nil), @selector(dismissKeyboard))];
     return _customAccessoryView;
 }
@@ -1190,12 +2031,8 @@
 - (void)checkCaretVisibilityAndDismissKeyboardIfNeeded {
     if (!self.isFirstResponder) return;
     if (!self.editor || self.editor->cursors.empty()) return;
-    size_t head = self.editor->cursors.back().head;
-    int li = self.editor->getLineIdx(head);
-    float x = self.editor->getXInLine(li, head);
-    float drawX = self.editor->gutterWidth - self.editor->hScrollPos + x;
-    float drawY = (li - self.editor->vScrollPos) * self.editor->lineHeight;
-    CGRect caretRect = CGRectMake(drawX, drawY, 2.0, self.editor->lineHeight);
+    Cursor c = self.editor->cursors.back();
+    CGRect caretRect = [self visualCaretRectForPos:c.head affinity:c.affinity];
     CGRect visibleRect = CGRectMake(0, self.topRenderMargin, self.bounds.size.width, self.bounds.size.height - self.topRenderMargin);
     if (!CGRectIntersectsRect(visibleRect, caretRect)) {
         [self dismissKeyboard];
@@ -1210,6 +2047,14 @@
     [self hideHelpIfNeeded];
     [self hideEditMenuIfNeeded];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"miuShowReplace" object:nil];
+}
+- (void)cmdFindNext:(id)sender {
+    [self hideHelpIfNeeded];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"miuFindNext" object:nil];
+}
+- (void)cmdFindPrev:(id)sender {
+    [self hideHelpIfNeeded];
+    [[NSNotificationCenter defaultCenter] postNotificationName:@"miuFindPrev" object:nil];
 }
 - (void)cmdGoToLine:(id)sender {
     [self hideHelpIfNeeded];
@@ -1254,8 +2099,16 @@
     return rect;
 }
 @end
+static BOOL s_iosClipboardIsRect = NO;
+static BOOL s_iosClipboardIsLine = NO;
+static NSString *s_iosClipboardSnapshot = nil;
+
 @interface ViewController () <UIDocumentPickerDelegate, UITextFieldDelegate, UIScrollViewDelegate>
+@property (nonatomic, strong) UIView *workspaceContainer;
 @property (nonatomic, strong) iOSEditorView *editorView;
+@property (nonatomic, strong) WKWebView *previewWebView;
+@property (nonatomic, strong) MiuIOSPreviewSplitterView *splitterView;
+@property (nonatomic, strong) MiuIOSPreviewMessageHandler *previewMsgHandler;
 @property (nonatomic, strong) NSURL *currentDocumentURL;
 @property (nonatomic, strong) UIStackView *headerStack;
 @property (nonatomic, strong) UIView *titleBarView;
@@ -1286,15 +2139,149 @@
     NSLayoutConstraint *_editorBottomConstraint;
     BOOL _isExportingDocument;
 }
+- (void)ensurePreviewViewsCreated {
+    if (self.previewWebView || !self.workspaceContainer || !_editorEngine) return;
+    self.previewMsgHandler = [[MiuIOSPreviewMessageHandler alloc] init];
+    self.previewMsgHandler.editor = _editorEngine.get();
+
+    WKWebViewConfiguration *cfg = [[WKWebViewConfiguration alloc] init];
+    WKUserContentController *ucc = [[WKUserContentController alloc] init];
+    [ucc addScriptMessageHandler:self.previewMsgHandler name:@"miuPreview"];
+    cfg.userContentController = ucc;
+
+    self.previewWebView = [[WKWebView alloc] initWithFrame:CGRectZero configuration:cfg];
+    self.previewWebView.navigationDelegate = self.previewMsgHandler;
+    self.previewWebView.opaque = NO;
+    self.previewWebView.backgroundColor = [UIColor clearColor];
+    self.previewWebView.scrollView.backgroundColor = [UIColor clearColor];
+    self.previewWebView.scrollView.scrollsToTop = NO;
+    self.previewWebView.hidden = YES;
+    [self.workspaceContainer addSubview:self.previewWebView];
+
+    self.splitterView = [[MiuIOSPreviewSplitterView alloc] initWithFrame:CGRectZero];
+    self.splitterView.editor = _editorEngine.get();
+    self.splitterView.hidden = YES;
+    __weak typeof(self) weakSelf = self;
+    self.splitterView.onRatioChanged = ^{
+        __strong typeof(self) strongSelf = weakSelf;
+        if (!strongSelf || !strongSelf->_editorEngine) return;
+        [strongSelf layoutSplitViews];
+        strongSelf->_editorEngine->updateScrollBars();
+        [strongSelf.editorView setNeedsDisplay];
+    };
+    [self.workspaceContainer addSubview:self.splitterView];
+}
+- (void)layoutSplitViews {
+    if (!self.workspaceContainer || !self.editorView) return;
+    CGRect cb = self.workspaceContainer.bounds;
+    if (!_editorEngine || !_editorEngine->showPreview) {
+        self.editorView.frame = cb;
+        if (self.splitterView) self.splitterView.hidden = YES;
+        if (self.previewWebView) self.previewWebView.hidden = YES;
+        return;
+    }
+    [self ensurePreviewViewsCreated];
+    BOOL verticalSplit = (cb.size.width < 600.0 && cb.size.height > cb.size.width);
+    self.splitterView.isVerticalSplit = verticalSplit;
+    if (!verticalSplit) {
+        CGFloat splitW = 8.0;
+        CGFloat availW = MAX(20.0, cb.size.width - splitW);
+        CGFloat leftW = floor(availW * _editorEngine->previewSplitRatio);
+        CGFloat rightW = MAX(10.0, availW - leftW);
+        CGFloat topMargin = self.editorView.topRenderMargin;
+        self.editorView.frame = CGRectMake(0, 0, leftW, cb.size.height);
+        self.splitterView.frame = CGRectMake(leftW, topMargin, splitW, MAX(0.0, cb.size.height - topMargin));
+        self.previewWebView.frame = CGRectMake(leftW + splitW, topMargin, rightW, MAX(0.0, cb.size.height - topMargin));
+    } else {
+        CGFloat splitH = 8.0;
+        CGFloat availH = MAX(20.0, cb.size.height - splitH);
+        CGFloat topH = floor(availH * _editorEngine->previewSplitRatio);
+        CGFloat bottomH = MAX(10.0, availH - topH);
+        self.editorView.frame = CGRectMake(0, 0, cb.size.width, topH);
+        self.splitterView.frame = CGRectMake(0, topH, cb.size.width, splitH);
+        self.previewWebView.frame = CGRectMake(0, topH + splitH, cb.size.width, bottomH);
+    }
+    self.splitterView.hidden = NO;
+    self.previewWebView.hidden = NO;
+    [self.splitterView setNeedsDisplay];
+}
+- (void)updatePreviewPane {
+    if (!_editorEngine || !_editorEngine->showPreview) return;
+    [self ensurePreviewViewsCreated];
+    if (!self.previewWebView) return;
+    MiuPreview::PreviewRenderResult res = _editorEngine->getPreviewRenderResult();
+    NSString *fullHtmlNS = [NSString stringWithUTF8String:res.fullHtml.c_str()];
+    if (!fullHtmlNS) return;
+
+    NSURL *baseURL = nil;
+    if (!_editorEngine->currentFilePath.empty()) {
+        NSString *pathNS = [NSString stringWithUTF8String:WToUTF8(_editorEngine->currentFilePath).c_str()];
+        if (pathNS) baseURL = [[NSURL fileURLWithPath:pathNS] URLByDeletingLastPathComponent];
+    }
+
+    if (!_editorEngine->previewInitialLoaded || !res.isMdOrMermaidShell) {
+        _editorEngine->previewInitialLoaded = res.isMdOrMermaidShell;
+        [self.previewWebView loadHTMLString:fullHtmlNS baseURL:baseURL];
+    } else {
+        std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, _editorEngine->isDarkMode);
+        NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
+        if (jsNS) {
+            WKWebView *wv = self.previewWebView;
+            [wv evaluateJavaScript:jsNS completionHandler:^(id result, NSError *error) {
+                if (error) {
+                    [wv loadHTMLString:fullHtmlNS baseURL:baseURL];
+                }
+            }];
+        }
+    }
+}
+- (void)presentOpenRecentMenu {
+    if (!_editorEngine) return;
+    _editorEngine->loadRecentFiles();
+    UIAlertController *sheet = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Open Recent", nil)
+                                                                   message:nil
+                                                            preferredStyle:UIAlertControllerStyleActionSheet];
+    __weak typeof(self) weakSelf = self;
+    for (const auto& path : _editorEngine->recentFiles) {
+        NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
+        if (!nsPath || nsPath.length == 0) continue;
+        NSString *displayTitle = [nsPath lastPathComponent];
+        [sheet addAction:[UIAlertAction actionWithTitle:displayTitle style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            __strong typeof(self) strongSelf = weakSelf;
+            if (!strongSelf || !strongSelf->_editorEngine) return;
+            [strongSelf confirmSaveIfNeededWithAction:^{
+                [strongSelf.editorView unmarkText];
+                [strongSelf.editorView.inputDelegate selectionWillChange:strongSelf.editorView];
+                [strongSelf.editorView.inputDelegate textWillChange:strongSelf.editorView];
+                strongSelf->_editorEngine->openFileFromPath(path);
+                [strongSelf.editorView.inputDelegate textDidChange:strongSelf.editorView];
+                [strongSelf.editorView.inputDelegate selectionDidChange:strongSelf.editorView];
+                [strongSelf.editorView setNeedsDisplay];
+            }];
+        }]];
+    }
+    if (!_editorEngine->recentFiles.empty()) {
+        [sheet addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Clear Menu", nil) style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
+            __strong typeof(self) strongSelf = weakSelf;
+            if (strongSelf && strongSelf->_editorEngine) {
+                strongSelf->_editorEngine->clearRecentFiles();
+            }
+        }]];
+    }
+    [sheet addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil]];
+    UIPopoverPresentationController *pop = sheet.popoverPresentationController;
+    if (pop) {
+        pop.sourceView = self.titleBarView ? self.titleBarView : self.view;
+        pop.sourceRect = self.titleBarView ? self.titleBarView.bounds : CGRectMake(self.view.bounds.size.width * 0.5, 40, 1, 1);
+    }
+    [self presentViewController:sheet animated:YES completion:nil];
+}
 - (void)performNewDocument {
     if (!_editorEngine) return;
     [self.editorView unmarkText];
     [self.editorView.inputDelegate selectionWillChange:self.editorView];
     [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->newFile();
-    _editorEngine->vScrollPos = 0;
-    _editorEngine->hScrollPos = 0;
-    _editorEngine->updateMaxLineWidth();
     if (self.searchField.text.length > 0) {
         _editorEngine->searchQuery = self.searchField.text.UTF8String;
     }
@@ -1361,95 +2348,101 @@
         return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor systemBackgroundColor];
     }];
     self.headerStack = [[UIStackView alloc] init];
-        self.headerStack.axis = UILayoutConstraintAxisVertical;
-        self.headerStack.translatesAutoresizingMaskIntoConstraints = NO;
-        self.headerStack.layer.zPosition = 10;
-        [self.view addSubview:self.headerStack];
-        self.titleBarView = [[UIView alloc] init];
-        self.titleBarView.translatesAutoresizingMaskIntoConstraints = NO;
-        self.titleBarView.backgroundColor = [UIColor clearColor];
-        [self.headerStack addArrangedSubview:self.titleBarView];
-        UIStackView *titleStack = [[UIStackView alloc] init];
-        titleStack.axis = UILayoutConstraintAxisHorizontal;
-        titleStack.alignment = UIStackViewAlignmentCenter;
-        titleStack.spacing = 6.0;
-        titleStack.translatesAutoresizingMaskIntoConstraints = NO;
-        [self.titleBarView addSubview:titleStack];
-        self.titleIconView = [[UIImageView alloc] init];
-        self.titleIconView.contentMode = UIViewContentModeScaleAspectFit;
-        self.titleIconView.translatesAutoresizingMaskIntoConstraints = NO;
-        [titleStack addArrangedSubview:self.titleIconView];
-        self.titleLabel = [[UILabel alloc] init];
-        self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        self.titleLabel.textColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor colorWithWhite:0.7 alpha:1.0] : [UIColor secondaryLabelColor];
-        }];
-        self.titleLabel.font = [UIFont boldSystemFontOfSize:13];
-        self.titleLabel.textAlignment = NSTextAlignmentCenter;
-        self.titleLabel.text = NSLocalizedString(@"Untitled", @"新規ファイル名");
-        [titleStack addArrangedSubview:self.titleLabel];
-        self.topFillView = [[UIView alloc] init];
-        self.topFillView.translatesAutoresizingMaskIntoConstraints = NO;
-        self.topFillView.userInteractionEnabled = NO;
-        [self.view addSubview:self.topFillView];
-        [self.view insertSubview:self.topFillView belowSubview:self.headerStack];
-    
-        self.footerStack = [[UIStackView alloc] init];
-        self.footerStack.axis = UILayoutConstraintAxisVertical;
-        self.footerStack.translatesAutoresizingMaskIntoConstraints = NO;
-        self.footerStack.layer.zPosition = 10;
-        [self.view addSubview:self.footerStack];
-    
-    
-    
-        [self setupSearchUI];
-        [self setupGoToLineUI];
-        self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
-        self.editorView.translatesAutoresizingMaskIntoConstraints = NO;
-        self.editorView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-            return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor colorNamed:@"EditorBgColor"];
-        }];
-        [self.view addSubview:self.editorView];
-        [self.view sendSubviewToBack:self.editorView];
-        self.verticalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
-        self.verticalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
-        self.verticalScrollBar.layer.cornerRadius = 1.5;
-        self.verticalScrollBar.userInteractionEnabled = NO;
-        [self.editorView addSubview:self.verticalScrollBar];
-        
-        self.horizontalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
-        self.horizontalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
-        self.horizontalScrollBar.layer.cornerRadius = 1.5;
-        self.horizontalScrollBar.userInteractionEnabled = NO;
-        [self.editorView addSubview:self.horizontalScrollBar];
-        UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
-        _editorBottomConstraint = [self.editorView.bottomAnchor constraintEqualToAnchor:self.footerStack.topAnchor];
-        self.footerBottomConstraint = [self.footerStack.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
-        [NSLayoutConstraint activateConstraints:@[
-            [self.topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-            [self.topFillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-            [self.topFillView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-            [self.topFillView.bottomAnchor constraintEqualToAnchor:self.headerStack.bottomAnchor constant:10],
-            [self.headerStack.topAnchor constraintEqualToAnchor:safeArea.topAnchor constant:-12],
-            [self.headerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-            [self.headerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-            [self.titleBarView.heightAnchor constraintEqualToConstant:17],
-            [titleStack.centerXAnchor constraintEqualToAnchor:self.titleBarView.centerXAnchor],
-            [titleStack.centerYAnchor constraintEqualToAnchor:self.titleBarView.centerYAnchor],
-            [self.titleIconView.widthAnchor constraintEqualToConstant:16],
-            [self.titleIconView.heightAnchor constraintEqualToConstant:16],
-            [self.editorView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
-            _editorBottomConstraint,
-            [self.editorView.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
-            [self.editorView.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor],
-            [self.footerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
-            [self.footerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
-            self.footerBottomConstraint
-        ]];
+    self.headerStack.axis = UILayoutConstraintAxisVertical;
+    self.headerStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.headerStack.layer.zPosition = 10;
+    [self.view addSubview:self.headerStack];
+    self.titleBarView = [[UIView alloc] init];
+    self.titleBarView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleBarView.backgroundColor = [UIColor clearColor];
+    [self.headerStack addArrangedSubview:self.titleBarView];
+    UIStackView *titleStack = [[UIStackView alloc] init];
+    titleStack.axis = UILayoutConstraintAxisHorizontal;
+    titleStack.alignment = UIStackViewAlignmentCenter;
+    titleStack.spacing = 6.0;
+    titleStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.titleBarView addSubview:titleStack];
+    self.titleIconView = [[UIImageView alloc] init];
+    self.titleIconView.contentMode = UIViewContentModeScaleAspectFit;
+    self.titleIconView.translatesAutoresizingMaskIntoConstraints = NO;
+    [titleStack addArrangedSubview:self.titleIconView];
+    self.titleLabel = [[UILabel alloc] init];
+    self.titleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    self.titleLabel.textColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor colorWithWhite:0.7 alpha:1.0] : [UIColor secondaryLabelColor];
+    }];
+    self.titleLabel.font = [UIFont boldSystemFontOfSize:13];
+    self.titleLabel.textAlignment = NSTextAlignmentCenter;
+    self.titleLabel.text = NSLocalizedString(@"Untitled", @"新規ファイル名");
+    [titleStack addArrangedSubview:self.titleLabel];
+    self.topFillView = [[UIView alloc] init];
+    self.topFillView.translatesAutoresizingMaskIntoConstraints = NO;
+    self.topFillView.userInteractionEnabled = NO;
+    [self.view addSubview:self.topFillView];
+    [self.view insertSubview:self.topFillView belowSubview:self.headerStack];
+
+    self.footerStack = [[UIStackView alloc] init];
+    self.footerStack.axis = UILayoutConstraintAxisVertical;
+    self.footerStack.translatesAutoresizingMaskIntoConstraints = NO;
+    self.footerStack.layer.zPosition = 10;
+    [self.view addSubview:self.footerStack];
+
+    [self setupSearchUI];
+    [self setupGoToLineUI];
+
+    self.workspaceContainer = [[UIView alloc] initWithFrame:CGRectZero];
+    self.workspaceContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    self.workspaceContainer.backgroundColor = [UIColor clearColor];
+    [self.view addSubview:self.workspaceContainer];
+    [self.view sendSubviewToBack:self.workspaceContainer];
+
+    self.editorView = [[iOSEditorView alloc] initWithFrame:CGRectZero];
+    self.editorView.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor colorNamed:@"EditorBgColor"];
+    }];
+    [self.workspaceContainer addSubview:self.editorView];
+
+    self.verticalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
+    self.verticalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
+    self.verticalScrollBar.layer.cornerRadius = 1.5;
+    self.verticalScrollBar.userInteractionEnabled = NO;
+    [self.editorView addSubview:self.verticalScrollBar];
+
+    self.horizontalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
+    self.horizontalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
+    self.horizontalScrollBar.layer.cornerRadius = 1.5;
+    self.horizontalScrollBar.userInteractionEnabled = NO;
+    [self.editorView addSubview:self.horizontalScrollBar];
+
+    UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
+    _editorBottomConstraint = [self.workspaceContainer.bottomAnchor constraintEqualToAnchor:self.footerStack.topAnchor];
+    self.footerBottomConstraint = [self.footerStack.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
+    [NSLayoutConstraint activateConstraints:@[
+        [self.topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        [self.topFillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.topFillView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.topFillView.bottomAnchor constraintEqualToAnchor:self.headerStack.bottomAnchor constant:10],
+        [self.headerStack.topAnchor constraintEqualToAnchor:safeArea.topAnchor constant:-12],
+        [self.headerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.headerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        [self.titleBarView.heightAnchor constraintEqualToConstant:17],
+        [titleStack.centerXAnchor constraintEqualToAnchor:self.titleBarView.centerXAnchor],
+        [titleStack.centerYAnchor constraintEqualToAnchor:self.titleBarView.centerYAnchor],
+        [self.titleIconView.widthAnchor constraintEqualToConstant:16],
+        [self.titleIconView.heightAnchor constraintEqualToConstant:16],
+        [self.workspaceContainer.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+        _editorBottomConstraint,
+        [self.workspaceContainer.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
+        [self.workspaceContainer.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor],
+        [self.footerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
+        [self.footerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
+        self.footerBottomConstraint
+    ]];
+
     _editorEngine = std::make_shared<Editor>();
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
     NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
-    if (!appVersion) appVersion = @"0.0.0";
+    if (!appVersion) appVersion = @"1.0.44";
     NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
     _editorEngine->appVersionStr = UTF8ToW([versionString UTF8String]);
     NSString *localizedHelp = NSLocalizedString(@"HelpText_iOS", nil);
@@ -1489,6 +2482,15 @@
             }
         }
     };
+    _editorEngine->cbUpdatePreview = [weakSelf]() {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(self) strongSelf = weakSelf;
+            if (strongSelf) {
+                [strongSelf layoutSplitViews];
+                [strongSelf updatePreviewPane];
+            }
+        });
+    };
     _editorEngine->cbGetViewSize = [weakSelf](float& w, float& h) {
         __strong typeof(self) strongSelf = weakSelf;
         if (strongSelf) {
@@ -1503,29 +2505,35 @@
                 float vw = strongSelf.editorView.bounds.size.width;
                 float vh = MAX(0.0f, strongSelf.editorView.bounds.size.height - strongSelf.editorView.topRenderMargin);
                 float topMargin = strongSelf.editorView.topRenderMargin;
-                float maxOffsetY = MAX(1.0f, (strongSelf->_editorEngine->lineStarts.size() - 1) * strongSelf->_editorEngine->lineHeight);
-                float totalHeight = maxOffsetY + vh;
-                if (maxOffsetY <= 1.0f || totalHeight <= vh) {
+                ScrollBarLayout L = strongSelf->_editorEngine->getScrollBarLayout(vw, vh);
+                int totalLines = (strongSelf->_editorEngine->wordWrapEnabled && L.totalVisualLines > L.totalLines)
+                    ? L.totalVisualLines
+                    : L.totalLines;
+                int maxV = std::max(0, totalLines - L.visibleLines);
+                if (!L.needV || maxV <= 0) {
                     strongSelf.verticalScrollBar.hidden = YES;
                 } else {
                     strongSelf.verticalScrollBar.hidden = NO;
-                    float barHeight = MAX(20.0f, vh * (vh / totalHeight));
-                    float currentOffsetY = strongSelf->_editorEngine->vScrollPos * strongSelf->_editorEngine->lineHeight;
-                    float scrollRatio = MIN(1.0f, MAX(0.0f, currentOffsetY / maxOffsetY));
-                    float barY = topMargin + scrollRatio * (vh - barHeight);
+                    float proportion = std::min(1.0f, (float)L.visibleLines / (float)std::max(1, totalLines));
+                    float barHeight = MAX(20.0f, vh * proportion);
+                    int currentV = (strongSelf->_editorEngine->wordWrapEnabled && L.totalLines == 1 && L.totalVisualLines > 1)
+                        ? strongSelf->_editorEngine->vScrollSubLine
+                        : strongSelf->_editorEngine->vScrollPos;
+                    float scrollRatio = std::clamp((float)currentV / (float)maxV, 0.0f, 1.0f);
+                    float barY = topMargin + scrollRatio * MAX(0.0f, vh - barHeight);
                     strongSelf.verticalScrollBar.frame = CGRectMake(vw - 5.0f, barY, 3.0f, barHeight);
                 }
-                float editorVw = vw - strongSelf->_editorEngine->gutterWidth;
-                float maxOffsetX = MAX(1.0f, strongSelf->_editorEngine->maxLineWidth - editorVw + strongSelf->_editorEngine->charWidth * 4.0f);
-                float totalWidth = maxOffsetX + editorVw;
-                if (maxOffsetX <= 1.0f || totalWidth <= editorVw) {
+                float editorVw = L.textAreaW;
+                float maxOffsetX = std::max(0.0f, strongSelf->_editorEngine->maxLineWidth - editorVw);
+                if (!L.needH || maxOffsetX <= 0.5f || strongSelf->_editorEngine->wordWrapEnabled) {
                     strongSelf.horizontalScrollBar.hidden = YES;
                 } else {
                     strongSelf.horizontalScrollBar.hidden = NO;
-                    float barWidth = MAX(20.0f, editorVw * (editorVw / totalWidth));
-                    float currentOffsetX = strongSelf->_editorEngine->hScrollPos;
-                    float scrollRatio = MIN(1.0f, MAX(0.0f, currentOffsetX / maxOffsetX));
-                    float barX = strongSelf->_editorEngine->gutterWidth + scrollRatio * (editorVw - barWidth);
+                    float totalWidth = strongSelf->_editorEngine->maxLineWidth;
+                    float barWidth = MAX(20.0f, editorVw * std::min(1.0f, editorVw / std::max(1.0f, totalWidth)));
+                    float currentOffsetX = (float)strongSelf->_editorEngine->hScrollPos;
+                    float scrollRatio = std::clamp(currentOffsetX / maxOffsetX, 0.0f, 1.0f);
+                    float barX = strongSelf->_editorEngine->gutterWidth + scrollRatio * MAX(0.0f, editorVw - barWidth);
                     strongSelf.horizontalScrollBar.frame = CGRectMake(barX, strongSelf.editorView.bounds.size.height - 5.0f, barWidth, 3.0f);
                 }
             }
@@ -1544,21 +2552,61 @@
         if (strongSelf) [strongSelf presentDocumentPickerForSaving];
         return true;
     };
-    _editorEngine->cbSetClipboard = [](const std::string& text, bool isRect) {
+    _editorEngine->cbSetClipboard = [weakSelf](const std::string& text, bool isRect) {
         if (text.empty()) return;
         NSString *nsText = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
         if (nsText) {
             [UIPasteboard generalPasteboard].string = nsText;
+            s_iosClipboardSnapshot = [nsText copy];
+            s_iosClipboardIsRect = isRect ? YES : NO;
+            __strong typeof(self) strongSelf = weakSelf;
+            s_iosClipboardIsLine = (strongSelf && strongSelf->_editorEngine && strongSelf->_editorEngine->lastCopyWasLine) ? YES : NO;
         }
-    };    
-    _editorEngine->cbGetClipboard = [](bool& isRectMarker) -> std::string {
+    };
+    _editorEngine->cbGetClipboard = [weakSelf](bool& isRectMarker) -> std::string {
         isRectMarker = false;
         NSString *str = [UIPasteboard generalPasteboard].string;
         if (!str || str.length == 0) return "";
-        
+        BOOL sameAsInternal = (s_iosClipboardSnapshot && [str isEqualToString:s_iosClipboardSnapshot]);
+        isRectMarker = (sameAsInternal && s_iosClipboardIsRect) ? true : false;
+        __strong typeof(self) strongSelf = weakSelf;
+        if (strongSelf && strongSelf->_editorEngine) {
+            strongSelf->_editorEngine->lastCopyWasLine = (sameAsInternal && s_iosClipboardIsLine) ? true : false;
+        }
         const char *utf8Str = [str UTF8String];
         if (utf8Str) return std::string(utf8Str);
         return "";
+    };
+    _editorEngine->cbShowReplaceAlert = [weakSelf](int count) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(self) strongSelf = weakSelf;
+            if (!strongSelf) return;
+            NSString *title = NSLocalizedString(@"Replace All", nil);
+            NSString *infoFormat = NSLocalizedString(@"%lu occurrence(s) replaced.", nil);
+            NSString *msg = [NSString stringWithFormat:infoFormat, (unsigned long)count];
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:title message:msg preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+            [strongSelf presentViewController:alert animated:YES completion:nil];
+        });
+    };
+    _editorEngine->cbShowExternalModifyAlert = [weakSelf]() -> bool {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            __strong typeof(self) strongSelf = weakSelf;
+            if (!strongSelf || !strongSelf->_editorEngine) return;
+            UIAlertController *alert = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"File modified externally. Reload?", nil)
+                                                                           message:nil
+                                                                    preferredStyle:UIAlertControllerStyleAlert];
+            [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Save", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+                if (strongSelf->_editorEngine && !strongSelf->_editorEngine->currentFilePath.empty()) {
+                    strongSelf->_editorEngine->isDirty = false;
+                    strongSelf->_editorEngine->openFileFromPath(WToUTF8(strongSelf->_editorEngine->currentFilePath));
+                    [strongSelf.editorView setNeedsDisplay];
+                }
+            }]];
+            [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil]];
+            [strongSelf presentViewController:alert animated:YES completion:nil];
+        });
+        return false;
     };
     BOOL isDark = (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark);
     _editorEngine->isDarkMode = isDark;
@@ -1568,6 +2616,9 @@
         [weakSelf confirmSaveIfNeededWithAction:^{
             [weakSelf performNewDocument];
         }];
+    };
+    self.editorView.onOpenRecentAction = ^{
+        [weakSelf presentOpenRecentMenu];
     };
     self.editorView.onGoToLineAction = ^{
         __strong typeof(self) strongSelf = weakSelf;
@@ -1594,7 +2645,10 @@
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showSearchNotif) name:@"miuShowSearch" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(showReplaceNotif) name:@"miuShowReplace" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(closeSearch) name:@"miuCloseSearch" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(doFindNext) name:@"miuFindNext" object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(doFindPrev) name:@"miuFindPrev" object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appWillEnterForeground) name:UIApplicationWillEnterForegroundNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(appDidEnterBackground) name:UIApplicationDidEnterBackgroundNotification object:nil];
     if (@available(iOS 17.0, *)) {
         [self registerForTraitChanges:@[[UITraitUserInterfaceStyle class]] withAction:@selector(updateThemeIfNeeded)];
     }
@@ -1618,6 +2672,7 @@
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self.editorView.inputDelegate selectionWillChange:self.editorView];
                 self->_editorEngine->vScrollPos = 0;
+                self->_editorEngine->vScrollSubLine = 0;
                 self->_editorEngine->hScrollPos = 0;
                 [self.editorView.inputDelegate selectionDidChange:self.editorView];
                 [self.editorView setNeedsDisplay];
@@ -1663,11 +2718,17 @@
     [self presentViewController:alert animated:YES completion:nil];
 }
 - (void)dealloc {
+    if (_editorEngine) {
+        _editorEngine->saveCurrentViewState();
+    }
+    if (self.previewWebView) {
+        [self.previewWebView.configuration.userContentController removeScriptMessageHandlerForName:@"miuPreview"];
+    }
     if (_blurAnimators) {
-            for (UIViewPropertyAnimator *animator in _blurAnimators) {
-                [animator stopAnimation:YES];
-            }
+        for (UIViewPropertyAnimator *animator in _blurAnimators) {
+            [animator stopAnimation:YES];
         }
+    }
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 - (void)viewDidLayoutSubviews {
@@ -1694,6 +2755,7 @@
             }
         }
         self.editorView.topRenderMargin = safeTop + 15;
+        [self layoutSplitViews];
         if (self.topFillView.bounds.size.height > 0) {
             if (self.topFillView.subviews.count == 0 || self.topFillView.bounds.size.width != self.lastLayoutSize.width) {
                 [self buildProgressiveBlur];
@@ -1749,8 +2811,16 @@
         [self buildProgressiveBlur];
     }
 }
+- (void)appDidEnterBackground {
+    if (_editorEngine) {
+        _editorEngine->saveCurrentViewState();
+    }
+}
 - (void)appWillEnterForeground {
     [self rebuildBlur];
+    if (_editorEngine) {
+        _editorEngine->checkFileModification();
+    }
     if (!self.searchContainer.hidden) {
         return;
     }
@@ -1783,6 +2853,7 @@
     [UIView performWithoutAnimation:^{
         self.footerBottomConstraint.constant = -shrinkAmount;
         [self.view layoutIfNeeded];
+        [self layoutSplitViews];
         if (_editorEngine) {
             _editorEngine->ensureCaretVisible();
             [self.editorView setNeedsDisplay];
@@ -1793,6 +2864,7 @@
     [UIView performWithoutAnimation:^{
         self.footerBottomConstraint.constant = 0;
         [self.view layoutIfNeeded];
+        [self layoutSplitViews];
         if (_editorEngine) {
             _editorEngine->ensureCaretVisible();
             [self.editorView setNeedsDisplay];
@@ -1805,6 +2877,7 @@
         _editorEngine->isDarkMode = isDark;
         _editorEngine->updateThemeColors();
         [self.editorView setNeedsDisplay];
+        if (self.splitterView) [self.splitterView setNeedsDisplay];
     }
     [self rebuildBlur];
 }
@@ -1849,9 +2922,6 @@
         [self.editorView.inputDelegate textWillChange:self.editorView];
         bool success = _editorEngine->openFileFromPath(path);
         if (success) {
-            _editorEngine->vScrollPos = 0;
-            _editorEngine->hScrollPos = 0;
-            _editorEngine->initGraphics();
             if (self.searchField.text.length > 0) {
                 _editorEngine->searchQuery = self.searchField.text.UTF8String;
             }
@@ -2031,16 +3101,19 @@
     if (!_editorEngine) return;
     _editorEngine->searchMatchCase = !sender.selected;
     [self updateOptionButtonVisual:sender isSelected:_editorEngine->searchMatchCase];
+    [self.editorView setNeedsDisplay];
 }
 - (void)toggleWholeWord:(UIButton *)sender {
     if (!_editorEngine) return;
     _editorEngine->searchWholeWord = !sender.selected;
     [self updateOptionButtonVisual:sender isSelected:_editorEngine->searchWholeWord];
+    [self.editorView setNeedsDisplay];
 }
 - (void)toggleRegex:(UIButton *)sender {
     if (!_editorEngine) return;
     _editorEngine->searchRegex = !sender.selected;
     [self updateOptionButtonVisual:sender isSelected:_editorEngine->searchRegex];
+    [self.editorView setNeedsDisplay];
 }
 - (void)prepareSearchQuery {
     if (!_editorEngine || _editorEngine->cursors.empty()) return;
@@ -2160,17 +3233,25 @@
         [self closeGoToLine];
         return;
     }
-    if (_editorEngine && !_editorEngine->cursors.empty()) {
-        Cursor lastCursor = _editorEngine->cursors.back();
-        if (_editorEngine->cursors.size() > 1 || lastCursor.hasSelection()) {
-            _editorEngine->cursors.clear();
-            lastCursor.anchor = lastCursor.head;
-            lastCursor.originalAnchorX = lastCursor.desiredX;
-            _editorEngine->cursors.push_back(lastCursor);
-            _editorEngine->ensureCaretVisible();
-            [self.editorView setNeedsDisplay];
-            if (self.editorView.inputDelegate) {
-                [self.editorView.inputDelegate selectionDidChange:self.editorView];
+    if (_editorEngine) {
+        _editorEngine->rollbackPadding();
+        _editorEngine->isRectSelecting = false;
+        _editorEngine->activeEmmetSession.active = false;
+        if (!_editorEngine->cursors.empty()) {
+            Cursor lastCursor = _editorEngine->cursors.back();
+            if (_editorEngine->cursors.size() > 1 || lastCursor.hasSelection() || lastCursor.isVirtual) {
+                _editorEngine->cursors.clear();
+                lastCursor.anchor = lastCursor.head;
+                lastCursor.desiredX = _editorEngine->getXFromPos(lastCursor.head);
+                lastCursor.originalAnchorX = lastCursor.desiredX;
+                lastCursor.isVirtual = false;
+                lastCursor.affinity = false;
+                _editorEngine->cursors.push_back(lastCursor);
+                _editorEngine->ensureCaretVisible();
+                [self.editorView setNeedsDisplay];
+                if (self.editorView.inputDelegate) {
+                    [self.editorView.inputDelegate selectionDidChange:self.editorView];
+                }
             }
         }
     }
@@ -2212,17 +3293,31 @@
     [self.editorView setNeedsDisplay];
 }
 - (void)doFindNext {
-    if (!_editorEngine || self.searchField.text.length == 0) return;
+    if (!_editorEngine) return;
+    if (self.searchField.text.length == 0) {
+        if (_editorEngine->searchQuery.empty()) {
+            [self showSearchNotif];
+            return;
+        }
+    } else {
+        _editorEngine->searchQuery = self.searchField.text.UTF8String;
+    }
     [self.editorView.inputDelegate selectionWillChange:self.editorView];
-    _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->findNext(true);
     [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];
 }
 - (void)doFindPrev {
-    if (!_editorEngine || self.searchField.text.length == 0) return;
+    if (!_editorEngine) return;
+    if (self.searchField.text.length == 0) {
+        if (_editorEngine->searchQuery.empty()) {
+            [self showSearchNotif];
+            return;
+        }
+    } else {
+        _editorEngine->searchQuery = self.searchField.text.UTF8String;
+    }
     [self.editorView.inputDelegate selectionWillChange:self.editorView];
-    _editorEngine->searchQuery = self.searchField.text.UTF8String;
     _editorEngine->findNext(false);
     [self.editorView.inputDelegate selectionDidChange:self.editorView];
     [self.editorView setNeedsDisplay];

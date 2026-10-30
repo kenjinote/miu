@@ -4,7 +4,7 @@
 */
 
 "HelpText" = "[ショートカット]\nF1                  ヘルプ\nCmd+N               新規作成\nCmd+O / Drag&Drop  開く\nCmd+S/Shift+S      保存/名前を付けて保存\nCmd+W / Cmd+Q        閉じる\nCmd+F/H            検索/置換\nF3 / Shift+F3       次/前を検索\nCmd+G              指定行へ移動\nCmd+B              対応するカッコにジャンプ\nCmd+Z/Shift+Z       元に戻す/やり直し\nCmd+X/C/V          切り取り/コピー/貼り付け\nCmd+Shift+K        行削除\nCmd+U/Shift+U      大文字/小文字へ変換\nCmd+/              コメント切替\nOption+Up/Down         行移動\nOpt+Shift+Up/Down   行コピー\nCtrl+Opt+Up/Down    マルチカーソル\nCmd+D              単語選択 / 次を選択\nCmd+A              すべて選択\nOption+Drag / Ctrl+Opt+Shift+矢印  矩形選択\nOpt+Z / Opt+P       折り返し / プレビュー\nCmd+Wheel/+/-/0    ズーム / リセット\nOption+T            常に最前面に表示\nCtrl+Cmd+F          全画面表示\n";
-"HelpText_iOS" = "[ キーボードショートカット (iPad) ]\n\nCmd + N         : 新規作成\nCmd + O         : ファイルを開く\nCmd + S         : 保存\nShift + Cmd + S : 名前を付けて保存\nCmd + F         : 検索\nCmd + R         : 置換\nCmd + G / J     : 行へジャンプ\nCmd + D         : 次の出現箇所を選択\nCmd + [+ / - / 0]: 拡大 / 縮小 / リセット\nF1              : ヘルプの表示/非表示\nEsc             : ダイアログを閉じる / 選択解除";
+"HelpText_iOS" = "[ショートカット]\nF1                  ヘルプ\nCmd+N               新規作成\nCmd+O               開く\nCmd+S/Shift+S      保存/名前を付けて保存\nCmd+F/H            検索/置換\nF3 / Shift+F3       次/前を検索\nCmd+G              指定行へ移動\nCmd+B              対応するカッコにジャンプ\nCmd+Z/Shift+Z       元に戻す/やり直し\nCmd+X/C/V          切り取り/コピー/貼り付け\nCmd+Shift+K        行削除\nCmd+U/Shift+U      大文字/小文字へ変換\nCmd+/              コメント切替\nOption+Up/Down         行移動\nOpt+Shift+Up/Down   行コピー\nCtrl+Opt+Up/Down    マルチカーソル\nCmd+D              単語選択 / 次を選択\nCmd+A              すべて選択\nOption+Drag / Ctrl+Opt+Shift+矢印  矩形選択\nOpt+Z / Opt+P       折り返し / プレビュー\nCmd+ + / - / 0     ズーム / リセット\n";
 "Find" = "検索";
 "Replace" = "置換";
 "Find:" = "検索:";
