@@ -1475,117 +1475,220 @@ void Editor::toggleComment() {
 }
 
 bool Editor::tryExpandEmmet() {
-    if (cursors.size() != 1 || cursors[0].hasSelection()) return false;
-    static const std::unordered_set<std::string> emmetSupportedExts = {
-        ".html", ".htm", ".xhtml", ".vue", ".svelte", ".astro", ".php", ".erb", ".ejs", ".hbs", ".twig", ".blade.php", ".razor", ".cshtml", ".jsp",
-        ".jsx", ".tsx",
-        ".xml", ".svg", ".plist", ".csproj", ".vcxproj", ".props", ".targets", ".xaml",
-        ".xsl", ".xslt",
-        ".css", ".scss", ".sass", ".less", ".styl", ".pcss"
-    };
-    if (emmetSupportedExts.find(currentFileExt) == emmetSupportedExts.end()) return false;
-
-    size_t caret = cursors[0].head;
-    int li = getLineIdx(caret);
-    size_t lineStart = lineStarts[li];
-    if (caret <= lineStart) return false;
-
-    std::string linePrefix = pt.getRange(lineStart, caret - lineStart);
-    std::string currentIndent = "";
-    for (char ch : linePrefix) {
-        if (ch == ' ' || ch == '\t') currentIndent += ch;
-        else break;
+    if (cursors.empty() || isRectSelecting) return false;
+    for (const auto& c : cursors) {
+        if (c.hasSelection()) return false;
+    }
+    if (cursors.size() == 1 && activeEmmetSession.active &&
+        activeEmmetSession.currentGroupIndex >= 0 &&
+        activeEmmetSession.currentGroupIndex < (int)activeEmmetSession.groups.size() &&
+        !activeEmmetSession.groups[activeEmmetSession.currentGroupIndex].ranges.empty()) {
+        const auto& r = activeEmmetSession.groups[activeEmmetSession.currentGroupIndex].ranges[0];
+        size_t curStart = activeEmmetSession.baseOffset + r.first;
+        size_t curEnd = activeEmmetSession.baseOffset + r.second;
+        if (cursors[0].head < curStart || cursors[0].head > curEnd) {
+            activeEmmetSession.active = false;
+            activeEmmetSession.groups.clear();
+            activeEmmetSession.currentGroupIndex = -1;
+        } else if (curStart == curEnd) {
+            return false;
+        }
     }
 
-    // Extract abbreviation backward from end of linePrefix
-    size_t abbrStartInLine = linePrefix.size();
-    int braceDepth = 0, bracketDepth = 0, parenDepth = 0;
-    while (abbrStartInLine > 0) {
-        char ch = linePrefix[abbrStartInLine - 1];
-        if (ch == '}') braceDepth++;
-        else if (ch == '{') { if (braceDepth > 0) braceDepth--; else break; }
-        else if (ch == ']') bracketDepth++;
-        else if (ch == '[') { if (bracketDepth > 0) bracketDepth--; else break; }
-        else if (ch == ')') parenDepth++;
-        else if (ch == '(') { if (parenDepth > 0) parenDepth--; else break; }
-        else if (braceDepth == 0 && bracketDepth == 0 && parenDepth == 0) {
-            if (ch == ' ' || ch == '\t' || ch == ';' || ch == '"' || ch == '\'' || ch == '=') break;
-            if (ch == '>' && abbrStartInLine >= 2) {
-                // Check if this '>' is the end of an existing HTML tag like <div>abbr
-                size_t tagScan = abbrStartInLine - 1;
-                bool foundTagOpen = false;
-                while (tagScan > 0) {
-                    tagScan--;
-                    if (linePrefix[tagScan] == '>') break;
-                    if (linePrefix[tagScan] == '<') { foundTagOpen = true; break; }
+    auto getEmmetModeAndContext = [&](size_t cursorPos, size_t lineStartPos, bool& outInsideCssBlock) -> Emmet::Mode {
+        outInsideCssBlock = false;
+        std::string ext = currentFileExt;
+        if (!ext.empty() && ext[0] == '.') ext = ext.substr(1);
+        ext = Emmet::toLowerStr(ext);
+
+        if (ext == "css" || ext == "scss" || ext == "sass" || ext == "less" || ext == "styl" ||
+            ext == "stylus" || ext == "pcss" || ext == "postcss" || ext == "wxss") {
+            outInsideCssBlock = true;
+            return Emmet::Mode::Css;
+        }
+        if (ext == "jsx" || ext == "tsx") {
+            return Emmet::Mode::Jsx;
+        }
+        if (ext == "xml" || ext == "svg" || ext == "xhtml" || ext == "xht" || ext == "xsl" ||
+            ext == "xslt" || ext == "xsd" || ext == "rss" || ext == "atom" || ext == "mathml" ||
+            ext == "xaml" || ext == "plist" || ext == "wsdl" || ext == "csproj" || ext == "vcxproj" ||
+            ext == "props" || ext == "targets") {
+            return Emmet::Mode::Xml;
+        }
+        Emmet::Mode mode = Emmet::Mode::Auto;
+        if (ext == "html" || ext == "htm" || ext == "shtml" || ext == "vue" || ext == "svelte" ||
+            ext == "astro" || ext == "php" || ext == "phtml" || ext == "erb" || ext == "ejs" ||
+            ext == "hbs" || ext == "handlebars" || ext == "mustache" || ext == "twig" || ext == "njk" ||
+            ext == "liquid" || ext == "latte" || ext == "ftl" || ext == "vm" || ext == "jinja" ||
+            ext == "jinja2" || ext == "j2" || ext == "cfm" || ext == "cfml" || ext == "cshtml" ||
+            ext == "razor" || ext == "jsp" || ext == "asp" || ext == "aspx" || ext == "mdx") {
+            mode = Emmet::Mode::Html;
+        } else if (ext == "tsv" || ext == "csv" || ext == "c" || ext == "cpp" || ext == "cc" ||
+                   ext == "cxx" || ext == "h" || ext == "hpp" || ext == "hxx" || ext == "py" ||
+                   ext == "rb" || ext == "go" || ext == "rs" || ext == "java" || ext == "cs" ||
+                   ext == "swift" || ext == "kt" || ext == "scala" || ext == "lua" || ext == "pl" ||
+                   ext == "sh" || ext == "bash" || ext == "zsh" || ext == "bat" || ext == "cmd" ||
+                   ext == "ps1" || ext == "sql" || ext == "json" || ext == "yaml" || ext == "yml" ||
+                   ext == "toml" || ext == "ini" || ext == "cfg" || ext == "conf" || ext == "log") {
+            mode = Emmet::Mode::CodeStrict;
+        }
+        size_t searchLen = std::min(cursorPos, (size_t)32768);
+        if (searchLen > 0) {
+            std::string pre = pt.getRange(cursorPos - searchLen, searchLen);
+            std::string preLower = Emmet::toLowerStr(pre);
+            size_t lastStyleOpen = preLower.rfind("<style");
+            size_t lastStyleClose = preLower.rfind("</style");
+            if (lastStyleOpen != std::string::npos && (lastStyleClose == std::string::npos || lastStyleOpen > lastStyleClose)) {
+                size_t gt = preLower.find('>', lastStyleOpen);
+                if (gt != std::string::npos) {
+                    outInsideCssBlock = true;
                 }
-                if (foundTagOpen) break;
+            } else if (mode == Emmet::Mode::Auto) {
+                size_t checkEnd = (cursorPos >= lineStartPos && searchLen >= (cursorPos - lineStartPos))
+                    ? (searchLen - (cursorPos - lineStartPos))
+                    : searchLen;
+                int braceBalance = 0;
+                bool sawHtmlTagAfterOpenBrace = false;
+                bool openBraceLooksLikeCode = false;
+                for (size_t k = 0; k < checkEnd; ++k) {
+                    char ch = pre[k];
+                    if (ch == '{') {
+                        braceBalance++;
+                        sawHtmlTagAfterOpenBrace = false;
+                        size_t pNonWs = (k > 0) ? pre.find_last_not_of(" \t\r\n", k - 1) : std::string::npos;
+                        size_t lineBegin = (k > 0) ? pre.find_last_of("\r\n", k - 1) : std::string::npos;
+                        lineBegin = (lineBegin == std::string::npos) ? 0 : lineBegin + 1;
+                        std::string selLine = preLower.substr(lineBegin, k - lineBegin);
+                        if (pNonWs != std::string::npos && (pre[pNonWs] == '=' || (pre[pNonWs] == ')' && selLine.find('@') == std::string::npos && selLine.find(':') == std::string::npos))) {
+                            openBraceLooksLikeCode = true;
+                        } else {
+                            openBraceLooksLikeCode = false;
+                        }
+                    } else if (ch == '}') {
+                        if (braceBalance > 0) braceBalance--;
+                    } else if (ch == '<' && k + 1 < checkEnd && (Emmet::isAsciiAlpha(pre[k + 1]) || pre[k + 1] == '/')) {
+                        sawHtmlTagAfterOpenBrace = true;
+                    }
+                }
+                if (braceBalance > 0 && !sawHtmlTagAfterOpenBrace && !openBraceLooksLikeCode) {
+                    outInsideCssBlock = true;
+                }
             }
         }
-        abbrStartInLine--;
+        return mode;
+    };
+
+    struct CursorExpansion {
+        int cursorIdx;
+        size_t erasePos;
+        size_t eraseLen;
+        Emmet::ExpandResult result;
+    };
+    std::vector<CursorExpansion> expansions;
+    expansions.reserve(cursors.size());
+
+    for (size_t i = 0; i < cursors.size(); ++i) {
+        const Cursor& c = cursors[i];
+        int lineIdx = getLineIdx(c.head);
+        if (lineIdx < 0 || lineIdx >= (int)lineStarts.size()) return false;
+        size_t lineStart = lineStarts[lineIdx];
+        size_t lineEnd = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
+        if (c.head < lineStart || c.head > lineEnd) return false;
+        std::string lineText = pt.getRange(lineStart, lineEnd - lineStart);
+        while (!lineText.empty() && (lineText.back() == '\n' || lineText.back() == '\r')) {
+            lineText.pop_back();
+        }
+        size_t caretCol = c.head - lineStart;
+        if (caretCol == 0 || caretCol > lineText.size()) return false;
+
+        bool insideCssBlock = false;
+        Emmet::Mode mode = getEmmetModeAndContext(c.head, lineStart, insideCssBlock);
+        Emmet::ExpandResult res = Emmet::expandOnLine(lineText, caretCol, mode, insideCssBlock, newlineStr);
+        if (!res.matched) return false;
+
+        size_t erasePos = lineStart + res.abbrStartCol;
+        if (cursors.size() == 1 && activeEmmetSession.active &&
+            activeEmmetSession.currentGroupIndex >= 0 &&
+            activeEmmetSession.currentGroupIndex < (int)activeEmmetSession.groups.size() &&
+            !activeEmmetSession.groups[activeEmmetSession.currentGroupIndex].ranges.empty()) {
+            const auto& r = activeEmmetSession.groups[activeEmmetSession.currentGroupIndex].ranges[0];
+            size_t curStart = activeEmmetSession.baseOffset + r.first;
+            size_t curEnd = activeEmmetSession.baseOffset + r.second;
+            if (c.head >= curStart && c.head <= curEnd) {
+                if (erasePos != curStart) return false;
+                if (res.abbrStartCol > 0 && lineText[res.abbrStartCol - 1] != ' ' && lineText[res.abbrStartCol - 1] != '\t') {
+                    bool hasOp = false;
+                    for (size_t k = 0; k < res.abbrLen; ++k) {
+                        char ch = lineText[res.abbrStartCol + k];
+                        if (!Emmet::isAsciiAlpha(ch)) { hasOp = true; break; }
+                    }
+                    if (!hasOp) return false;
+                }
+            }
+        }
+        expansions.push_back({ (int)i, erasePos, res.abbrLen, std::move(res) });
     }
 
-    if (abbrStartInLine >= linePrefix.size()) return false;
-    std::string abbr = linePrefix.substr(abbrStartInLine);
+    commitPadding();
+    EditBatch batch;
+    batch.beforeCursors = cursors;
 
-    // Determine Emmet syntax mode
-    std::string syntaxMode = "html";
-    if (currentFileExt == ".css" || currentFileExt == ".scss" || currentFileExt == ".sass" || currentFileExt == ".less" || currentFileExt == ".styl") {
-        syntaxMode = "css";
-    } else if (currentFileExt == ".jsx" || currentFileExt == ".tsx") {
-        syntaxMode = "jsx";
-    } else if (currentFileExt == ".xsl" || currentFileExt == ".xslt") {
-        syntaxMode = "xsl";
-    } else if (currentFileExt == ".xml" || currentFileExt == ".svg" || currentFileExt == ".plist" || currentFileExt == ".xaml") {
-        syntaxMode = "xml";
-    } else {
-        // Check if inside <style>...</style> or style="..." in HTML
-        size_t scanBack = (caret > 4000) ? (caret - 4000) : 0;
-        std::string ctxText = pt.getRange(scanBack, caret - scanBack);
-        size_t lastStyleOpen = ctxText.rfind("<style");
-        size_t lastStyleClose = ctxText.rfind("</style");
-        if (lastStyleOpen != std::string::npos && (lastStyleClose == std::string::npos || lastStyleOpen > lastStyleClose)) {
-            size_t openCloseAngle = ctxText.find('>', lastStyleOpen);
-            if (openCloseAngle != std::string::npos) syntaxMode = "css";
+    std::sort(expansions.begin(), expansions.end(), [](const CursorExpansion& a, const CursorExpansion& b) {
+        return a.erasePos > b.erasePos;
+    });
+
+    for (size_t k = 0; k < expansions.size(); ++k) {
+        if (k > 0 && expansions[k].erasePos + expansions[k].eraseLen > expansions[k - 1].erasePos) {
+            return false;
         }
     }
 
-    Emmet::ExpandResult res = Emmet::expandAbbreviation(abbr, "    ", newlineStr, currentIndent, syntaxMode, true);
-    if (!res.success || res.text.empty()) return false;
+    for (const auto& exp : expansions) {
+        std::string deleted = pt.getRange(exp.erasePos, exp.eraseLen);
+        pt.erase(exp.erasePos, exp.eraseLen);
+        batch.ops.push_back({ EditOp::Erase, exp.erasePos, deleted });
+        pt.insert(exp.erasePos, exp.result.expanded);
+        batch.ops.push_back({ EditOp::Insert, exp.erasePos, exp.result.expanded });
 
-    size_t replaceStart = lineStart + abbrStartInLine;
-    size_t replaceLen = caret - replaceStart;
+        long long delta = (long long)exp.result.expanded.size() - (long long)exp.eraseLen;
+        for (size_t ci = 0; ci < cursors.size(); ++ci) {
+            if ((int)ci == exp.cursorIdx) continue;
+            Cursor& other = cursors[ci];
+            if (other.head >= exp.erasePos + exp.eraseLen) other.head = (size_t)((long long)other.head + delta);
+            if (other.anchor >= exp.erasePos + exp.eraseLen) other.anchor = (size_t)((long long)other.anchor + delta);
+        }
 
-    EditBatch batch;
-    batch.beforeCursors = cursors;
-    pt.erase(replaceStart, replaceLen);
-    batch.ops.push_back({ EditOp::Erase, replaceStart, abbr });
-    pt.insert(replaceStart, res.text);
-    batch.ops.push_back({ EditOp::Insert, replaceStart, res.text });
+        Cursor& cur = cursors[exp.cursorIdx];
+        if (!exp.result.tabstops.empty()) {
+            cur.anchor = exp.erasePos + exp.result.tabstops[0].startOffset;
+            cur.head = exp.erasePos + exp.result.tabstops[0].endOffset;
+        } else {
+            cur.anchor = cur.head = exp.erasePos + exp.result.expanded.size();
+        }
+    }
+
     rebuildLineStarts();
+    for (auto& c : cursors) {
+        c.desiredX = getXFromPos(c.head);
+        c.originalAnchorX = getXFromPos(c.anchor);
+        c.isVirtual = false;
+    }
 
     activeEmmetSession.groups.clear();
-    activeEmmetSession.baseOffset = replaceStart;
+    activeEmmetSession.baseOffset = 0;
     activeEmmetSession.currentGroupIndex = -1;
     activeEmmetSession.active = false;
 
-    if (!res.groups.empty()) {
-        activeEmmetSession.groups = res.groups;
-        activeEmmetSession.active = true;
+    if (expansions.size() == 1 && expansions[0].result.tabstops.size() > 1) {
+        activeEmmetSession.baseOffset = expansions[0].erasePos;
+        for (size_t i = 0; i < expansions[0].result.tabstops.size(); ++i) {
+            Emmet::TabstopGroup g;
+            g.id = (int)(i + 1);
+            g.ranges.push_back({ expansions[0].result.tabstops[i].startOffset, expansions[0].result.tabstops[i].endOffset });
+            activeEmmetSession.groups.push_back(std::move(g));
+        }
         activeEmmetSession.currentGroupIndex = 0;
-        cursors.clear();
-        for (const auto& r : activeEmmetSession.groups[0].ranges) {
-            size_t s = replaceStart + r.first;
-            size_t e = replaceStart + r.second;
-            cursors.push_back({ e, s, getXFromPos(e), getXFromPos(s), false, false });
-        }
-        if (activeEmmetSession.groups.size() == 1 && activeEmmetSession.groups[0].id == 0) {
-            activeEmmetSession.active = false;
-        }
-    } else {
-        size_t finalPos = replaceStart + res.cursorOffset;
-        cursors.clear();
-        cursors.push_back({ finalPos, finalPos, getXFromPos(finalPos), getXFromPos(finalPos), false, false });
+        activeEmmetSession.active = true;
     }
 
     batch.afterCursors = cursors;

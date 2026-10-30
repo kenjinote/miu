@@ -862,10 +862,17 @@
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
     [self.inputDelegate textWillChange:self];
-    self.editor->imeComp = "";
     if ([text isEqualToString:@"\n"] || [text isEqualToString:@"\r"]) {
+        if (!self.editor->imeComp.empty()) {
+            self.editor->insertAtCursors(self.editor->imeComp);
+            self.editor->imeComp = "";
+        }
         self.editor->insertNewlineWithAutoIndent();
     } else if ([text isEqualToString:@"\t"]) {
+        if (!self.editor->imeComp.empty()) {
+            self.editor->insertAtCursors(self.editor->imeComp);
+            self.editor->imeComp = "";
+        }
         if (!self.editor->tryExpandEmmet() && !self.editor->jumpEmmetTabstop(true)) {
             if (self.editor->cursors.size() > 1) {
                 self.editor->insertAtCursors("\t");
@@ -874,6 +881,7 @@
             }
         }
     } else {
+        self.editor->imeComp = "";
         bool usePadding = false;
         for (const auto& c : self.editor->cursors) {
             if (c.isVirtual) {
@@ -1327,6 +1335,9 @@
     [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
+    if (!self.editor->imeComp.empty()) {
+        [self unmarkText];
+    }
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     if (!self.editor->tryExpandEmmet() && !self.editor->jumpEmmetTabstop(true)) {
@@ -1344,6 +1355,9 @@
     [self hideHelpIfNeeded];
     if (!self.editor) return;
     [self hideEditMenuIfNeeded];
+    if (!self.editor->imeComp.empty()) {
+        [self unmarkText];
+    }
     [self.inputDelegate selectionWillChange:self];
     [self.inputDelegate textWillChange:self];
     if (!self.editor->jumpEmmetTabstop(false)) {

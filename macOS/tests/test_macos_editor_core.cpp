@@ -306,6 +306,12 @@ static void testPhase2SyntaxAll49CategoriesCommentAndEmmet() {
 
     // Native Emmet expansion & tabstop navigation
     ed.newFile();
+    ed.insertAtCursors("i");
+    CHECK(ed.tryExpandEmmet() == true, "Emmet expanded 'i' in unsaved file (Auto mode)");
+    CHECK(ed.pt.getRange(0, ed.pt.length()) == "<i></i>", "Emmet 'i' expanded to '<i></i>'");
+    CHECK(ed.cursors[0].head == 3 && ed.cursors[0].anchor == 3, "Emmet 'i' placed caret inside '<i>|</i>'");
+
+    ed.newFile();
     ed.loadSyntaxForExtension("index.html");
     ed.insertAtCursors("ul>li.item$*2>a");
     CHECK(ed.tryExpandEmmet() == true, "Emmet expanded ul>li.item$*2>a");
