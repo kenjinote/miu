@@ -1,14 +1,6 @@
 name: App Store Metadata Sync
 
 on:
-  push:
-    branches: [ master, main ]
-    paths:
-      - 'scripts/appstore_metadata_sync.py'
-      - 'scripts/appstore_screenshots_sync.py'
-      - 'macOS/store_assets/**'
-      - 'macOS/APPSTORE_METADATA.md'
-      - '.github/workflows/appstore-metadata.yml'
   workflow_dispatch:
 
 jobs:

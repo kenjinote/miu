@@ -1,17 +1,6 @@
 name: macOS & iOS Xcode Build, Test & TestFlight
 
 on:
-  push:
-    branches: [ master, main, "macos-**" ]
-    paths-ignore:
-      - 'scripts/appstore_metadata_sync.py'
-      - 'scripts/appstore_screenshots_sync.py'
-      - 'macOS/store_assets/**'
-      - 'macOS/APPSTORE_METADATA.md'
-      - '.github/workflows/appstore-metadata.yml'
-      - '.github/workflows/macos-build.yml'
-  pull_request:
-    branches: [ master, main ]
   workflow_dispatch:
 
 jobs:
