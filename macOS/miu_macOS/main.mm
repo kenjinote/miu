@@ -170,6 +170,17 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 - (BOOL)isOpaque {
     return YES;
 }
+- (void)drawRect:(NSRect)dirtyRect {
+    NSRect b = [self bounds];
+    NSRectClip(b);
+    EditorView *ev = self.editorView;
+    BOOL dark = (ev && ev->editor) ? ev->editor->isDarkMode : NO;
+    NSColor *bgColor = dark
+        ? [NSColor colorWithSRGBRed:0.0 green:0.0 blue:0.0 alpha:1.0]
+        : [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:1.0];
+    [bgColor setFill];
+    NSRectFill(NSIntersectionRect(dirtyRect, b));
+}
 - (void)layout {
     [super layout];
     if (self.editorView) {
@@ -396,6 +407,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             container.layer.backgroundColor = bgColor.CGColor;
             container.layer.opaque = YES;
         }
+        [container setNeedsDisplay:YES];
     }
     if (@available(macOS 14.0, *)) self.clipsToBounds = YES;
     [self setWantsLayer:YES];
@@ -615,6 +627,10 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             [self applySystemHighlightColor];
             [self updatePreviewBackground];
             if (splitterView) [splitterView setNeedsDisplay:YES];
+            if (editor->showPreview) {
+                editor->previewInitialLoaded = false;
+                [self updatePreviewPane];
+            }
             [self setNeedsDisplay:YES];
         }
     }

@@ -271,8 +271,14 @@ int main(int argc, const char * argv[]) {
         ev->editor->isDarkMode = false;
         ev->editor->updateThemeColors();
         [ev updatePreviewBackground];
+        ev->editor->previewInitialLoaded = false;
         [ev updatePreviewPane];
-        NSDate *lightWait = [NSDate dateWithTimeIntervalSinceNow:0.4];
+        NSDate *lightDeadline = [NSDate dateWithTimeIntervalSinceNow:5.0];
+        while ([lightDeadline timeIntervalSinceNow] > 0) {
+            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+            if (ev->previewMsgHandler && ev->previewMsgHandler.previewPageLoaded) break;
+        }
+        NSDate *lightWait = [NSDate dateWithTimeIntervalSinceNow:0.3];
         while ([lightWait timeIntervalSinceNow] > 0) {
             [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
         }
@@ -280,15 +286,27 @@ int main(int argc, const char * argv[]) {
         PixelRGBA lightCvPreview = sampleViewPixel(win.contentView, 650, 300);
         PixelRGBA lightCvTitleL = sampleViewPixel(win.contentView, 200, 605);
         PixelRGBA lightCvTitleR = sampleViewPixel(win.contentView, 650, 605);
+        PixelRGBA lightLyEditor = sampleLayerPixel(themeFrame.layer, 200, 300);
+        PixelRGBA lightLyPreview = sampleLayerPixel(themeFrame.layer, 650, 300);
+        PixelRGBA lightLyTitleL = sampleLayerPixel(themeFrame.layer, 200, 605);
+        PixelRGBA lightLyTitleR = sampleLayerPixel(themeFrame.layer, 650, 605);
         printPixel("LIGHT_CONTENT_VIEW_EDITOR", 200, 300, lightCvEditor);
         printPixel("LIGHT_CONTENT_VIEW_PREVIEW", 650, 300, lightCvPreview);
         printPixel("LIGHT_CONTENT_VIEW_TITLE_L", 200, 605, lightCvTitleL);
         printPixel("LIGHT_CONTENT_VIEW_TITLE_R", 650, 605, lightCvTitleR);
+        printPixel("LIGHT_LAYER_EDITOR", 200, 300, lightLyEditor);
+        printPixel("LIGHT_LAYER_PREVIEW", 650, 300, lightLyPreview);
+        printPixel("LIGHT_LAYER_TITLE_L", 200, 605, lightLyTitleL);
+        printPixel("LIGHT_LAYER_TITLE_R", 650, 605, lightLyTitleR);
         auto isPureWhite = [](const PixelRGBA &p) {
             return p.r == 255 && p.g == 255 && p.b == 255 && p.a == 255;
         };
         if (!isPureWhite(lightCvEditor) || !isPureWhite(lightCvPreview) || !isPureWhite(lightCvTitleL) || !isPureWhite(lightCvTitleR)) {
             std::cerr << "[FAIL] Light mode contentView pixels are not pure white (gray overlay detected)!" << std::endl;
+            return 1;
+        }
+        if (!isPureWhite(lightLyEditor) || !isPureWhite(lightLyPreview) || !isPureWhite(lightLyTitleL) || !isPureWhite(lightLyTitleR)) {
+            std::cerr << "[FAIL] Light mode themeFrame.layer pixels are not pure white (gray overlay detected)!" << std::endl;
             return 1;
         }
 
