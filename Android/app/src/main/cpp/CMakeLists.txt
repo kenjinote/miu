@@ -102,6 +102,7 @@ target_include_directories(miu PRIVATE
         ${freetype_SOURCE_DIR}/include
         ${harfbuzz_SOURCE_DIR}/src
         ${CED_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../include
 )
 
 target_link_options(miu PRIVATE "-Wl,-z,max-page-size=16384")

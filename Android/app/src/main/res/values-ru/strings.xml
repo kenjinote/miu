@@ -5,10 +5,17 @@
     <string name="open_fail">Не удалось открыть документ.</string>
     <string name="toolbar_new">Новый</string>
     <string name="toolbar_open">Открыть</string>
+    <string name="menu_open_recent">Последние</string>
+    <string name="menu_clear_recent">Очистить меню</string>
+    <string name="menu_no_recent">Нет недавних файлов</string>
     <string name="toolbar_save">Сохранить</string>
     <string name="toolbar_save_as">Сохранить как</string>
     <string name="toolbar_find">Найти</string>
     <string name="toolbar_replace">Заменить</string>
+    <string name="menu_live_preview">Предпросмотр</string>
+    <string name="menu_word_wrap">Перенос строк</string>
+    <string name="menu_toggle_comment">Комментарий</string>
+    <string name="menu_tab">Табуляция</string>
     <string name="toolbar_top">В начало</string>
     <string name="toolbar_bottom">В конец</string>
     <string name="toolbar_goto">Перейти к</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">Заменить на...</string>
     <string name="replace_btn">Заменить</string>
     <string name="replace_all_btn">Все</string>
+    <string name="replace_all_result">%1$d элементов заменено.</string>
+    <string name="reload_prompt">Файл был изменен извне.\nХотите перезагрузить его?</string>
     <string name="msg_copied">Скопировано в буфер обмена</string>
     <string name="msg_new_doc">Создан новый документ</string>
     <string name="msg_doc_opened">Документ открыт</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">Сохранить</string>
     <string name="dialog_btn_dont_save">Не сохранять</string>
     <string name="dialog_btn_done">Готово</string>
-    <string name="help_text">miu v%1$s\n\n[Горячие клавиши]\nCtrl+N : Новый файл\nCtrl+O : Открыть\nCtrl+S : Сохранить\nCtrl+Shift+S : Сохранить как\nCtrl+F : Найти\nCtrl+H / R : Заменить\nCtrl+G : Перейти к строке\nCtrl+Z : Отменить\nCtrl+Shift+Z : Вернуть\nCtrl+A : Выделить всё\nCtrl+X / C / V : Вырезать / Копировать / Вставить\nCtrl+D : Выбрать следующее совпадение (Мультикурсор)\nCtrl++ / - / 0 : Масштаб (Увеличить / Уменьшить / Сбросить)\nF3 / Shift+F3 : Найти следующее / предыдущее\nTab / Shift+Tab : Увеличить / Уменьшить отступ\nShift+Insert : Вставить\nESC : Отменить выделение/поиск/справку\nF1 : Показать справку</string>
+    <string name="help_text">miu v%1$s\n\n[Горячие клавиши]\nF1                  Справка\nCtrl+N               Создать\nCtrl+O               Открыть\nCtrl+S/Shift+S       Сохранить / Сохранить как\nCtrl+F/H             Найти/Заменить\nF3 / Shift+F3       Найти далее/назад\nCtrl+G               Перейти к строке\nCtrl+B               Перейти к парной скобке\nCtrl+Z/Shift+Z       Отменить/Повторить\nCtrl+X/C/V           Вырезать/Копировать/Вставить\nCtrl+Shift+K         Удалить строку\nCtrl+U/Shift+U       ВЕРХНИЙ / нижний регистр\nCtrl+/               Комментарий\nAlt+Up/Down      Переместить строку\nAlt+Shift+Up/Down   Копировать строку\nCtrl+Alt+Up/Down    Мультикурсор\nCtrl+D               Выделить слово / след.\nCtrl+A               Выделить все\nAlt+Drag / Ctrl+Alt+Shift+Стрелки  Прямоугольное выделение\nAlt+Z / Alt+P       Перенос слов / Просмотр\nCtrl+ + / - / 0      Масштаб / Сброс\n</string>
 </resources>

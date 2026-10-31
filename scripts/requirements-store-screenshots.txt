@@ -1,0 +1,5 @@
+Pillow>=11.3,<13
+numpy>=2,<3
+requests>=2.32,<3
+PyJWT[crypto]>=2.10,<3
+playwright>=1.50,<2

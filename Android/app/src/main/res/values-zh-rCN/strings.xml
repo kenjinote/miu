@@ -5,10 +5,17 @@
     <string name="open_fail">打开文档失败。</string>
     <string name="toolbar_new">新建</string>
     <string name="toolbar_open">打开</string>
+    <string name="menu_open_recent">最近</string>
+    <string name="menu_clear_recent">清除菜单</string>
+    <string name="menu_no_recent">无最近使用的文件</string>
     <string name="toolbar_save">保存</string>
     <string name="toolbar_save_as">另存为</string>
     <string name="toolbar_find">查找</string>
     <string name="toolbar_replace">替换</string>
+    <string name="menu_live_preview">实时预览</string>
+    <string name="menu_word_wrap">自动换行</string>
+    <string name="menu_toggle_comment">切换注释</string>
+    <string name="menu_tab">制表符</string>
     <string name="toolbar_top">顶部</string>
     <string name="toolbar_bottom">底部</string>
     <string name="toolbar_goto">跳转</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">替换为...</string>
     <string name="replace_btn">替换</string>
     <string name="replace_all_btn">全部</string>
+    <string name="replace_all_result">已替换 %1$d 处。</string>
+    <string name="reload_prompt">文件已被外部修改。\n是否重新加载？</string>
     <string name="msg_copied">已复制到剪贴板</string>
     <string name="msg_new_doc">已创建新文档</string>
     <string name="msg_doc_opened">已打开文档</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">保存</string>
     <string name="dialog_btn_dont_save">不保存</string>
     <string name="dialog_btn_done">完成</string>
-    <string name="help_text">miu v%1$s\n\n[快捷键]\nCtrl+N : 新建文件\nCtrl+O : 打开\nCtrl+S : 保存\nCtrl+Shift+S : 另存为\nCtrl+F : 查找\nCtrl+H / R : 替换\nCtrl+G : 跳转到行\nCtrl+Z : 撤销\nCtrl+Shift+Z : 重做\nCtrl+A : 全选\nCtrl+X / C / V : 剪切 / 复制 / 粘贴\nCtrl+D : 选择下一个匹配项 (多光标)\nCtrl++ / - / 0 : 缩放 (放大 / 缩小 / 重置)\nF3 / Shift+F3 : 查找下一个 / 上一个\nTab / Shift+Tab : 增加缩进 / 减少缩进\nShift+Insert : 粘贴\nESC : 取消选择/搜索/帮助\nF1 : 显示帮助</string>
+    <string name="help_text">miu v%1$s\n\n[快捷键]\nF1                  帮助\nCtrl+N               新建\nCtrl+O               打开\nCtrl+S/Shift+S       保存/另存为\nCtrl+F/H             查找/替换\nF3 / Shift+F3       查找下/上一个\nCtrl+G               转到行\nCtrl+B               跳转到匹配的括号\nCtrl+Z/Shift+Z       撤销/重做\nCtrl+X/C/V           剪切/复制/粘贴\nCtrl+Shift+K         删除行\nCtrl+U/Shift+U       转大写/转小写\nCtrl+/               切换注释\nAlt+Up/Down      移动行\nAlt+Shift+Up/Down   复制行\nCtrl+Alt+Up/Down    多光标\nCtrl+D               选中词 / 下一个\nCtrl+A               全选\nAlt+Drag / Ctrl+Alt+Shift+方向键  矩形选择\nAlt+Z / Alt+P       自动换行 / 预览\nCtrl+ + / - / 0      缩放 / 重置\n</string>
 </resources>

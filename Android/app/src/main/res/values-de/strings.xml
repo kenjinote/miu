@@ -5,10 +5,17 @@
     <string name="open_fail">Dokument konnte nicht geöffnet werden.</string>
     <string name="toolbar_new">Neu</string>
     <string name="toolbar_open">Öffnen</string>
+    <string name="menu_open_recent">Zuletzt verwendet</string>
+    <string name="menu_clear_recent">Menü löschen</string>
+    <string name="menu_no_recent">Keine letzten Dateien</string>
     <string name="toolbar_save">Speichern</string>
     <string name="toolbar_save_as">Speichern unter</string>
     <string name="toolbar_find">Suchen</string>
     <string name="toolbar_replace">Ersetzen</string>
+    <string name="menu_live_preview">Vorschau</string>
+    <string name="menu_word_wrap">Zeilenumbruch</string>
+    <string name="menu_toggle_comment">Kommentar umschalten</string>
+    <string name="menu_tab">Tabulator</string>
     <string name="toolbar_top">Anfang</string>
     <string name="toolbar_bottom">Ende</string>
     <string name="toolbar_goto">Gehe zu</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">Ersetzen durch...</string>
     <string name="replace_btn">Ers.</string>
     <string name="replace_all_btn">Alle</string>
+    <string name="replace_all_result">%1$d Element(e) ersetzt.</string>
+    <string name="reload_prompt">Die Datei wurde extern geändert.\nMöchten Sie sie neu laden?</string>
     <string name="msg_copied">In die Zwischenablage kopiert</string>
     <string name="msg_new_doc">Neues Dokument erstellt</string>
     <string name="msg_doc_opened">Dokument geöffnet</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">Speichern</string>
     <string name="dialog_btn_dont_save">Nicht speichern</string>
     <string name="dialog_btn_done">Fertig</string>
-    <string name="help_text">miu v%1$s\n\n[Tastenkombinationen]\nStrg+N : Neue Datei\nStrg+O : Öffnen\nStrg+S : Speichern\nStrg+Umschalt+S : Speichern unter\nStrg+F : Suchen\nStrg+H / R : Ersetzen\nStrg+G : Gehe zu Zeile\nStrg+Z : Rückgängig\nStrg+Umschalt+Z : Wiederholen\nStrg+A : Alles auswählen\nStrg+X / C / V : Ausschneiden / Kopieren / Einfügen\nStrg+D : Nächstes Vorkommen auswählen (Multi-Cursor)\nStrg++ / - / 0 : Zoom (Vergrößern / Verkleinern / Zurücksetzen)\nF3 / Umschalt+F3 : Nächstes / Vorheriges suchen\nTab / Umschalt+Tab : Einrücken / Ausrücken\nUmschalt+Einfg : Einfügen\nESC : Auswahl/Suche/Hilfe abbrechen\nF1 : Hilfe anzeigen</string>
+    <string name="help_text">miu v%1$s\n\n[Tastenkombinationen]\nF1                  Hilfe\nCtrl+N               Neu\nCtrl+O               Öffnen\nCtrl+S/Shift+S       Speichern / Speichern unter\nCtrl+F/H             Suchen/Ersetzen\nF3 / Shift+F3       Weitersuchen / Vorheriges\nCtrl+G               Gehe zu Zeile\nCtrl+B               Zu passender Klammer springen\nCtrl+Z/Shift+Z       Rückgängig / Wiederherstellen\nCtrl+X/C/V           Ausschneiden / Kopieren / Einfügen\nCtrl+Shift+K         Zeile löschen\nCtrl+U/Shift+U       Groß-/Kleinbuchstaben\nCtrl+/               Kommentar umschalten\nAlt+Up/Down      Zeile verschieben\nAlt+Shift+Up/Down   Zeile kopieren\nCtrl+Alt+Up/Down    Mehrere Cursor\nCtrl+D               Wort markieren / Nächstes\nCtrl+A               Alles markieren\nAlt+Drag / Ctrl+Alt+Shift+Pfeil  Rechteckauswahl\nAlt+Z / Alt+P       Zeilenumbruch / Vorschau\nCtrl+ + / - / 0      Zoom / Zurücksetzen\n</string>
 </resources>

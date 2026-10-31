@@ -30,6 +30,9 @@
 #include <vulkan/vulkan.h>
 #include "compact_enc_det/compact_enc_det.h"
 #include "util/encodings/encodings.h"
+#include "MiuSyntax.h"
+#include "MiuEmmet.h"
+#include "MiuPreview.h"
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "miu", __VA_ARGS__))
 #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "miu", __VA_ARGS__))
 void setEngineColorFromInt(float* target, int argb) {
@@ -318,9 +321,26 @@ struct ShapedGlyph {
     size_t cluster;
     bool isIME;
 };
+struct WrapSegment {
+    size_t glyphStart = 0;
+    size_t glyphEnd = 0;
+    size_t byteStart = 0;
+    size_t byteEnd = 0;
+};
 struct LineCache {
     std::vector<ShapedGlyph> glyphs;
+    std::vector<WrapSegment> wrapSegments;
     bool isShaped = false;
+    bool isWrapped = false;
+    float wrappedWidth = -1.0f;
+    float wrappedScale = -1.0f;
+};
+struct ActiveEmmetSession {
+    bool active = false;
+    size_t baseOffset = 0;
+    int currentGroupIndex = -1;
+    std::vector<Emmet::TabstopGroup> groups;
+    void clear() { active = false; baseOffset = 0; currentGroupIndex = -1; groups.clear(); }
 };
 enum MiuEncoding {
     ENC_UTF8_NOBOM = 0,
@@ -363,6 +383,21 @@ struct Engine {
     float maxLineWidth = 0.0f;
     float bottomInset = 0.0f;
     float topMargin = 100.0f;
+    float editorWidthOverride = 0.0f;
+    float editorHeightOverride = 0.0f;
+    bool wordWrapEnabled = false;
+    SyntaxDef currentSyntax;
+    std::string currentFileExt;
+    std::vector<int> commentStateCache;
+    ActiveEmmetSession activeEmmetSession;
+    std::string previewNonce;
+    bool isSelectingGutter = false;
+    int gutterAnchorLine = 0;
+    bool isDraggingSelection = false;
+    size_t dragDropTargetPos = std::string::npos;
+    bool isRectSelecting = false;
+    size_t rectAnchorPos = 0;
+    float rectAnchorX = 0.0f;
     int64_t lastClickTime = 0;
     int clickCount = 0;
     float lastClickX = 0.0f;
@@ -378,6 +413,8 @@ struct Engine {
     bool isSelecting = false;
     float lastPinchDistance = 0.0f;
     bool isKeyboardShowing = false;
+    bool isHelpShowing = false;
+    bool ignoreTouchUntilUp = false;
     int vScrollPos = 0;
     int hScrollPos = 0;
     float lineHeight = 60.0f;
@@ -512,6 +549,7 @@ int getFontIndexForChar(Engine* engine, uint32_t cp, int prevFontIndex) {
     return 0;
 }
 void ensureLineShaped(Engine* engine, int lineIdx);
+void ensureLineWrapped(Engine* engine, int lineIdx);
 void rebuildLineStarts(Engine* engine);
 void ensureCaretVisible(Engine* engine);
 float getXFromPos(Engine* engine, size_t pos);
@@ -519,6 +557,148 @@ void updateTitleBarIfNeeded(Engine* engine);
 void stopAsyncParsing(Engine* engine);
 void startAsyncLineParsing(Engine* engine, const char* buffer, size_t size);
 void pollAsyncParsing(Engine* engine);
+
+float getEditorWinW(Engine* engine) {
+    if (engine->editorWidthOverride > 0.0f) return engine->editorWidthOverride;
+    if (engine->app && engine->app->window != nullptr) {
+        return (float)ANativeWindow_getWidth(engine->app->window);
+    }
+    return 1080.0f;
+}
+
+float getEditorVisibleH(Engine* engine) {
+    float winH = 2000.0f;
+    if (engine->app && engine->app->window != nullptr) {
+        winH = (float)ANativeWindow_getHeight(engine->app->window);
+    }
+    if (engine->editorHeightOverride > 0.0f) {
+        return std::min(winH - engine->bottomInset, engine->editorHeightOverride);
+    }
+    float visibleH = winH - engine->bottomInset;
+    if (visibleH < winH * 0.3f) visibleH = winH * 0.5f;
+    return visibleH;
+}
+
+void loadSyntaxForEngine(Engine* engine, const std::string& pathOrName) {
+    if (!engine) return;
+    engine->currentFileExt = extractSyntaxExtensionFromPath(pathOrName);
+    loadSyntaxDefForExtension(engine->currentFileExt, engine->isDarkMode, engine->currentSyntax);
+    engine->commentStateCache.clear();
+}
+
+bool checkInBlockComment(Engine* engine, int targetLine) {
+    if (!engine || !engine->currentSyntax.active ||
+        engine->currentSyntax.blockCommentStart.empty() ||
+        engine->currentSyntax.blockCommentEnd.empty() || targetLine <= 0) {
+        return false;
+    }
+    if ((int)engine->commentStateCache.size() <= targetLine) {
+        int startLine = (int)engine->commentStateCache.size();
+        if (startLine == 0) {
+            engine->commentStateCache.push_back(0);
+            startLine = 1;
+        }
+        bool inComment = (engine->commentStateCache[startLine - 1] != 0);
+        const std::string& bcs = engine->currentSyntax.blockCommentStart;
+        const std::string& bce = engine->currentSyntax.blockCommentEnd;
+        const std::string& lc = engine->currentSyntax.lineComment;
+
+        for (int li = startLine; li <= targetLine && li <= (int)engine->lineStarts.size(); ++li) {
+            int prevLi = li - 1;
+            size_t s = engine->lineStarts[prevLi];
+            size_t e = (prevLi + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[prevLi + 1] : engine->pt.length();
+            std::string lineStr = engine->pt.getRange(s, e - s);
+            size_t i = 0, n = lineStr.size();
+            bool inStr = false;
+            char strQuote = 0;
+            while (i < n) {
+                if (inComment) {
+                    if (i + bce.size() <= n && lineStr.compare(i, bce.size(), bce) == 0) {
+                        inComment = false;
+                        i += bce.size();
+                    } else {
+                        i++;
+                    }
+                } else if (inStr) {
+                    if (lineStr[i] == '\\' && i + 1 < n) i += 2;
+                    else if (lineStr[i] == strQuote) { inStr = false; i++; }
+                    else i++;
+                } else {
+                    if (!lc.empty() && i + lc.size() <= n && lineStr.compare(i, lc.size(), lc) == 0) {
+                        break;
+                    }
+                    if (i + bcs.size() <= n && lineStr.compare(i, bcs.size(), bcs) == 0) {
+                        inComment = true;
+                        i += bcs.size();
+                    } else if (lineStr[i] == '"' || lineStr[i] == '\'') {
+                        inStr = true;
+                        strQuote = lineStr[i];
+                        i++;
+                    } else {
+                        i++;
+                    }
+                }
+            }
+            engine->commentStateCache.push_back(inComment ? 1 : 0);
+        }
+    }
+    return engine->commentStateCache[targetLine] != 0;
+}
+
+void notifyPreviewUpdateIfNeeded(Engine* engine) {
+    if (!engine || !engine->app || !engine->app->activity || !engine->app->activity->vm) return;
+    JNIEnv* env = nullptr;
+    JavaVM* vm = engine->app->activity->vm;
+    bool needDetach = false;
+    if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+        if (vm->AttachCurrentThread(&env, nullptr) != 0) return;
+        needDetach = true;
+    }
+    if (env) {
+        jclass clazz = env->GetObjectClass(engine->app->activity->clazz);
+        jmethodID mid = env->GetMethodID(clazz, "onNativeTextChanged", "()V");
+        if (mid) {
+            env->CallVoidMethod(engine->app->activity->clazz, mid);
+        } else if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+        }
+        env->DeleteLocalRef(clazz);
+    }
+    if (needDetach) vm->DetachCurrentThread();
+}
+
+void applyBatchToEmmetTabstops(Engine* engine, const EditBatch& batch) {
+    if (!engine || !engine->activeEmmetSession.active) return;
+    for (const auto& op : batch.ops) {
+        if (op.pos < engine->activeEmmetSession.baseOffset) {
+            engine->activeEmmetSession.active = false;
+            return;
+        }
+        size_t relPos = op.pos - engine->activeEmmetSession.baseOffset;
+        ptrdiff_t delta = (op.type == EditOp::Insert) ? (ptrdiff_t)op.text.size() : -(ptrdiff_t)op.text.size();
+        for (auto& g : engine->activeEmmetSession.groups) {
+            for (auto& r : g.ranges) {
+                if (op.type == EditOp::Insert) {
+                    if (relPos < r.first) {
+                        r.first += delta;
+                        r.second += delta;
+                    } else if (relPos >= r.first && relPos <= r.second) {
+                        r.second += delta;
+                    }
+                } else {
+                    size_t eraseEnd = relPos + op.text.size();
+                    if (eraseEnd <= r.first) {
+                        r.first += delta;
+                        r.second += delta;
+                    } else if (relPos >= r.first && eraseEnd <= r.second) {
+                        r.second += delta;
+                    }
+                }
+            }
+        }
+    }
+}
+
 void updateDirtyFlag(Engine* engine) {
     bool wasDirty = engine->isDirty;
     engine->isDirty = !engine->undo.undoStack.empty();
@@ -544,10 +724,15 @@ void performNewDocument(Engine* engine) {
     engine->scrollX = 0.0f;
     engine->scrollY = 0.0f;
     engine->lineCaches.clear();
+    engine->commentStateCache.clear();
+    engine->activeEmmetSession.clear();
+    engine->isRectSelecting = false;
     engine->newlineStr = "\n";
     engine->currentEncoding = ENC_UTF8_NOBOM;
     engine->currentCharset = "UTF-8";
+    loadSyntaxForEngine(engine, "");
     updateTitleBarIfNeeded(engine);
+    notifyPreviewUpdateIfNeeded(engine);
 }
 std::string UnescapeString(const std::string& s, const std::string& newline) {
     std::string out; out.reserve(s.size());
@@ -589,7 +774,11 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
     if (query.empty()) return std::string::npos;
     size_t len = engine->pt.length();
     std::string actualQuery = query;
-    if (isRegex) actualQuery = preprocessRegexQuery(query);
+    if (isRegex) {
+        if (!isSafeUserRegex(query)) return std::string::npos;
+        actualQuery = preprocessRegexQuery(query);
+        if (!isSafeUserRegex(actualQuery)) return std::string::npos;
+    }
     if (isRegex) {
         std::string fullText = engine->pt.getRange(0, len);
         try {
@@ -814,6 +1003,58 @@ void replaceNextCommand(Engine* engine) {
     size_t start = c.start();
     std::string selText = engine->pt.getRange(start, len);
     std::string replacement = UnescapeString(engine->replaceQuery, engine->newlineStr);
+    if (engine->searchRegex) {
+        if (!isSafeUserRegex(engine->searchQuery)) return;
+        std::string actualQuery = preprocessRegexQuery(engine->searchQuery);
+        if (!isSafeUserRegex(actualQuery)) return;
+        try {
+            std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+            if (!engine->searchMatchCase) flags |= std::regex_constants::icase;
+            std::regex re(actualQuery, flags);
+            std::smatch m;
+            std::string rawFmt = UnescapeString(engine->replaceQuery, engine->newlineStr);
+            std::string fmt;
+            for (size_t i = 0; i < rawFmt.size(); ++i) {
+                if (rawFmt[i] == '$') {
+                    fmt += '$';
+                    if (i + 1 < rawFmt.size()) {
+                        if (isdigit((unsigned char)rawFmt[i + 1])) {
+                            i++;
+                            std::string numStr;
+                            while (i < rawFmt.size() && isdigit((unsigned char)rawFmt[i])) {
+                                numStr += rawFmt[i];
+                                i++;
+                            }
+                            i--;
+                            int grp = std::stoi(numStr);
+                            if (grp > 0) grp++;
+                            fmt += std::to_string(grp);
+                        } else {
+                            fmt += rawFmt[i + 1];
+                            i++;
+                        }
+                    }
+                } else {
+                    fmt += rawFmt[i];
+                }
+            }
+            if (std::regex_match(selText, m, re)) {
+                replacement = m.format(fmt);
+            } else if (start > 0) {
+                int backStep = 0;
+                if (engine->pt.charAt(start - 1) == '\n') {
+                    backStep = 1;
+                    if (start > 1 && engine->pt.charAt(start - 2) == '\r') backStep = 2;
+                } else if (engine->pt.charAt(start - 1) == '\r') {
+                    backStep = 1;
+                }
+                if (backStep > 0) {
+                    std::string extendedText = engine->pt.getRange(start - backStep, len + backStep);
+                    if (std::regex_match(extendedText, m, re)) replacement = m.format(fmt);
+                }
+            }
+        } catch (...) {}
+    }
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
     engine->pt.erase(start, len);
@@ -825,20 +1066,24 @@ void replaceNextCommand(Engine* engine) {
     engine->cursors.push_back({ newEnd, start, getXFromPos(engine, newEnd) });
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    applyBatchToEmmetTabstops(engine, batch);
     bool wasDirty = engine->isDirty;
     engine->isDirty = true;
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
     if (!wasDirty) updateTitleBarIfNeeded(engine);
+    notifyPreviewUpdateIfNeeded(engine);
     findNextCommand(engine, true);
 }
-void replaceAllCommand(Engine* engine) {
-    if (engine->searchQuery.empty()) return;
+int replaceAllCommand(Engine* engine) {
+    if (engine->searchQuery.empty()) return 0;
     struct Match { size_t start; size_t len; std::string replacementText; };
     std::vector<Match> matches;
     size_t docLen = engine->pt.length();
     if (engine->searchRegex) {
+        if (!isSafeUserRegex(engine->searchQuery)) return 0;
         std::string actualQuery = preprocessRegexQuery(engine->searchQuery);
+        if (!isSafeUserRegex(actualQuery)) return 0;
         try {
             std::regex_constants::syntax_option_type rxFlags = std::regex_constants::ECMAScript;
             if (!engine->searchMatchCase) rxFlags |= std::regex_constants::icase;
@@ -941,7 +1186,7 @@ void replaceAllCommand(Engine* engine) {
                 currentOffset += relativeAdvance;
                 flags |= std::regex_constants::match_not_bol;
             }
-        } catch (...) { return; }
+        } catch (...) { return 0; }
     } else {
         size_t currentPos = 0;
         while (true) {
@@ -954,7 +1199,7 @@ void replaceAllCommand(Engine* engine) {
             if (currentPos > docLen) break;
         }
     }
-    if (matches.empty()) return;
+    if (matches.empty()) return 0;
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
     for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
@@ -978,48 +1223,102 @@ void replaceAllCommand(Engine* engine) {
     engine->cursors.push_back({ lastReplaceEnd, lastReplaceStart, getXFromPos(engine, lastReplaceEnd) });
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    applyBatchToEmmetTabstops(engine, batch);
     bool wasDirty = engine->isDirty;
     engine->isDirty = true;
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
     if (!wasDirty) updateTitleBarIfNeeded(engine);
+    notifyPreviewUpdateIfNeeded(engine);
+    return (int)matches.size();
 }
 static std::string MapCedEncodingToCharset(Encoding enc) {
     switch (enc) {
-        case JAPANESE_SHIFT_JIS: return "Shift_JIS";
-        case JAPANESE_EUC_JP:    return "EUC-JP";
-        case CHINESE_GB:         return "GBK";
-        case CHINESE_BIG5:       return "Big5";
-        case KOREAN_EUC_KR:      return "EUC-KR";
-        case RUSSIAN_CP1251:     return "windows-1251";
-        case LATIN1:             return "ISO-8859-1";
-        case ASCII_7BIT:         return "UTF-8";
-        default:                 return "UTF-8";
+        case JAPANESE_SHIFT_JIS:
+        case JAPANESE_CP932:
+        case KDDI_SHIFT_JIS:
+        case DOCOMO_SHIFT_JIS:
+        case SOFTBANK_SHIFT_JIS:   return "Shift_JIS";
+        case JAPANESE_EUC_JP:      return "EUC-JP";
+        case JAPANESE_JIS:
+        case KDDI_ISO_2022_JP:
+        case SOFTBANK_ISO_2022_JP: return "ISO-2022-JP";
+        case CHINESE_GB:
+        case GBK:
+        case CHINESE_EUC_CN:
+        case HZ_GB_2312:
+        case ISO_2022_CN:          return "GBK";
+        case GB18030:              return "GB18030";
+        case CHINESE_BIG5:
+        case CHINESE_BIG5_CP950:
+        case BIG5_HKSCS:           return "Big5";
+        case CHINESE_EUC_DEC:
+        case CHINESE_CNS:          return "x-EUC-TW";
+        case KOREAN_EUC_KR:        return "EUC-KR";
+        case ISO_2022_KR:          return "ISO-2022-KR";
+        case RUSSIAN_CP1251:       return "windows-1251";
+        case RUSSIAN_KOI8_R:       return "KOI8-R";
+        case RUSSIAN_KOI8_RU:      return "KOI8-U";
+        case ISO_8859_5:           return "ISO-8859-5";
+        case RUSSIAN_CP866:        return "IBM866";
+        case MSFT_CP1250:          return "windows-1250";
+        case ISO_8859_2:           return "ISO-8859-2";
+        case CZECH_CP852:          return "IBM852";
+        case MSFT_CP1252:          return "windows-1252";
+        case ISO_8859_1:           return "ISO-8859-1";
+        case ISO_8859_15:          return "ISO-8859-15";
+        case MACINTOSH_ROMAN:      return "x-MacRoman";
+        case MSFT_CP1253:          return "windows-1253";
+        case ISO_8859_7:           return "ISO-8859-7";
+        case MSFT_CP1254:          return "windows-1254";
+        case ISO_8859_9:           return "ISO-8859-9";
+        case MSFT_CP1255:          return "windows-1255";
+        case ISO_8859_8:
+        case ISO_8859_8_I:
+        case HEBREW_VISUAL:        return "ISO-8859-8";
+        case MSFT_CP1256:          return "windows-1256";
+        case ISO_8859_6:           return "ISO-8859-6";
+        case MSFT_CP1257:          return "windows-1257";
+        case ISO_8859_4:           return "ISO-8859-4";
+        case ISO_8859_13:          return "ISO-8859-13";
+        case MSFT_CP874:
+        case ISO_8859_11:          return "x-windows-874";
+        case ASCII_7BIT:
+        default:                   return "UTF-8";
     }
 }
 static bool IsValidUtf8(const char* buf, size_t len) {
     if (len == 0) return true;
-    size_t check_len = (len > 4096) ? 4096 : len;
+    size_t check_len = (len > 65536) ? 65536 : len;
     size_t i = 0;
     while (i < check_len) {
-        unsigned char c = buf[i];
-        if (c <= 0x7F) i++;
-        else if (c >= 0xC2 && c <= 0xDF) {
+        unsigned char c = (unsigned char)buf[i];
+        if (c <= 0x7F) {
+            i++;
+        } else if (c >= 0xC2 && c <= 0xDF) {
             if (i + 1 >= check_len) break;
-            if ((buf[i + 1] & 0xC0) != 0x80) return false;
+            if (((unsigned char)buf[i + 1] & 0xC0) != 0x80) return false;
             i += 2;
-        }
-        else if (c >= 0xE0 && c <= 0xEF) {
+        } else if (c >= 0xE0 && c <= 0xEF) {
             if (i + 2 >= check_len) break;
-            if ((buf[i + 1] & 0xC0) != 0x80 || (buf[i + 2] & 0xC0) != 0x80) return false;
+            unsigned char b1 = (unsigned char)buf[i + 1];
+            unsigned char b2 = (unsigned char)buf[i + 2];
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80) return false;
+            if (c == 0xE0 && b1 < 0xA0) return false;
+            if (c == 0xED && b1 >= 0xA0) return false;
             i += 3;
-        }
-        else if (c >= 0xF0 && c <= 0xF4) {
+        } else if (c >= 0xF0 && c <= 0xF4) {
             if (i + 3 >= check_len) break;
-            if ((buf[i + 1] & 0xC0) != 0x80 || (buf[i + 2] & 0xC0) != 0x80 || (buf[i + 3] & 0xC0) != 0x80) return false;
+            unsigned char b1 = (unsigned char)buf[i + 1];
+            unsigned char b2 = (unsigned char)buf[i + 2];
+            unsigned char b3 = (unsigned char)buf[i + 3];
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80) return false;
+            if (c == 0xF0 && b1 < 0x90) return false;
+            if (c == 0xF4 && b1 >= 0x90) return false;
             i += 4;
+        } else {
+            return false;
         }
-        else return false;
     }
     return true;
 }
@@ -1150,13 +1449,18 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
     engine->scrollX = 0.0f;
     engine->scrollY = 0.0f;
     engine->lineCaches.clear();
+    engine->commentStateCache.clear();
+    engine->activeEmmetSession.clear();
+    engine->isRectSelecting = false;
     engine->imeComp.clear();
+    loadSyntaxForEngine(engine, engine->displayFileName.empty() ? path : engine->displayFileName);
     updateTitleBarIfNeeded(engine);
     if (engine->pt.origPtr && engine->pt.origSize > 0) {
         startAsyncLineParsing(engine, engine->pt.origPtr, engine->pt.origSize);
     } else {
         rebuildLineStarts(engine);
     }
+    notifyPreviewUpdateIfNeeded(engine);
     return true;
 }
 void updateThemeColors(Engine* engine) {
@@ -1194,9 +1498,9 @@ void updateThemeColors(Engine* engine) {
         setEngineColor(engine->autoHlColor, accentArgb, 0.20f);
     } else {
         if (engine->isDarkMode) {
-            engine->bgColor[0] = 0.11f; engine->bgColor[1] = 0.11f; engine->bgColor[2] = 0.11f; engine->bgColor[3] = 1.0f;
+            engine->bgColor[0] = 0.0f; engine->bgColor[1] = 0.0f; engine->bgColor[2] = 0.0f; engine->bgColor[3] = 1.0f;
             engine->textColor[0] = 0.95f; engine->textColor[1] = 0.95f; engine->textColor[2] = 0.95f; engine->textColor[3] = 1.0f;
-            engine->gutterBgColor[0] = 0.11f; engine->gutterBgColor[1] = 0.11f; engine->gutterBgColor[2] = 0.11f; engine->gutterBgColor[3] = 1.0f;
+            engine->gutterBgColor[0] = 0.0f; engine->gutterBgColor[1] = 0.0f; engine->gutterBgColor[2] = 0.0f; engine->gutterBgColor[3] = 1.0f;
             engine->gutterTextColor[0] = 0.45f; engine->gutterTextColor[1] = 0.45f; engine->gutterTextColor[2] = 0.45f; engine->gutterTextColor[3] = 1.0f;
             engine->selColor[0] = 0.15f; engine->selColor[1] = 0.35f; engine->selColor[2] = 0.60f; engine->selColor[3] = 0.6f;
             engine->caretColor[0] = 1.0f; engine->caretColor[1] = 1.0f; engine->caretColor[2] = 1.0f; engine->caretColor[3] = 1.0f;
@@ -1211,6 +1515,7 @@ void updateThemeColors(Engine* engine) {
             engine->autoHlColor[0] = 0.85f; engine->autoHlColor[1] = 0.85f; engine->autoHlColor[2] = 0.85f; engine->autoHlColor[3] = 0.5f;
         }
     }
+    loadSyntaxForEngine(engine, engine->displayFileName.empty() ? engine->currentFilePath : engine->displayFileName);
     env->DeleteLocalRef(activityClass);
     if (needDetach) {
         vm->DetachCurrentThread();
@@ -1374,6 +1679,7 @@ void rebuildLineStarts(Engine* engine) {
     updateGutterWidth(engine);
     engine->lineCaches.clear();
     engine->lineCaches.resize(engine->lineStarts.size());
+    engine->commentStateCache.clear();
 }
 int getLineIdx(Engine* engine, size_t pos) {
     if (engine->lineStarts.empty()) return 0;
@@ -1389,6 +1695,8 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
     LineCache& cache = engine->lineCaches[lineIdx];
     if (cache.isShaped) return;
     cache.glyphs.clear();
+    cache.wrapSegments.clear();
+    cache.isWrapped = false;
     cache.isShaped = true;
     size_t start = engine->lineStarts[lineIdx];
     size_t end = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
@@ -1427,8 +1735,6 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
         runs.back().byteOffsets.push_back(prevOffset);
     }
     hb_buffer_t* hb_buf = hb_buffer_create();
-
-    // ★追加: 行内での現在X座標（Unscaled基準）を追跡する
     float current_line_x = 0.0f;
 
     for (const auto& run : runs) {
@@ -1453,12 +1759,11 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
             size_t charIdx = info[i].cluster;
             size_t rawCluster = run.byteOffsets[charIdx];
 
-            // ★追加: タブ文字の場合、幅（xAdvance）を半角4文字分のタブストップに揃える
             if (text[rawCluster] == '\t') {
-                float tabWidthUnscaled = 24.0f * 4.0f; // 基準半角文字幅(24.0f) × 4
+                float tabWidthUnscaled = 24.0f * 4.0f;
                 float nextStop = std::floor(current_line_x / tabWidthUnscaled + 1.0f) * tabWidthUnscaled;
                 sg.xAdvance = nextStop - current_line_x;
-                if (sg.xAdvance < 1.0f) sg.xAdvance += tabWidthUnscaled; // 近すぎる場合の保護
+                if (sg.xAdvance < 1.0f) sg.xAdvance += tabWidthUnscaled;
             }
             current_line_x += sg.xAdvance;
 
@@ -1482,33 +1787,183 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
     }
     hb_buffer_destroy(hb_buf);
 }
-float getXFromPos(Engine* engine, size_t pos) {
-    int lineIdx = getLineIdx(engine, pos);
-    if (lineIdx < 0 || lineIdx >= engine->lineStarts.size()) return engine->gutterWidth;
+void ensureLineWrapped(Engine* engine, int lineIdx) {
+    if (lineIdx < 0 || lineIdx >= (int)engine->lineCaches.size()) return;
     ensureLineShaped(engine, lineIdx);
-    float x = engine->gutterWidth;
+    LineCache& cache = engine->lineCaches[lineIdx];
+    float scale = engine->currentFontSize / 48.0f;
+    float winW = getEditorWinW(engine);
+    float availW = engine->wordWrapEnabled ? std::max(engine->charWidth * 4.0f, winW - engine->gutterWidth - engine->charWidth * 1.5f) : 1e9f;
+    if (cache.isWrapped && std::abs(cache.wrappedWidth - availW) < 0.5f && std::abs(cache.wrappedScale - scale) < 0.001f && !cache.wrapSegments.empty()) {
+        return;
+    }
+    cache.wrapSegments.clear();
+    cache.isWrapped = true;
+    cache.wrappedWidth = availW;
+    cache.wrappedScale = scale;
+
+    size_t lineStart = engine->lineStarts[lineIdx];
+    size_t lineEnd = (lineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
+    size_t textEnd = lineEnd;
+    if (textEnd > lineStart && engine->pt.charAt(textEnd - 1) == '\n') textEnd--;
+    if (textEnd > lineStart && engine->pt.charAt(textEnd - 1) == '\r') textEnd--;
+
+    if (!engine->wordWrapEnabled || cache.glyphs.empty()) {
+        cache.wrapSegments.push_back({ 0, cache.glyphs.size(), lineStart, textEnd });
+        return;
+    }
+
+    size_t segGlyphStart = 0;
+    size_t segByteStart = lineStart;
+    float curW = 0.0f;
+    size_t i = 0;
+    const auto& glyphs = cache.glyphs;
+    while (i < glyphs.size()) {
+        size_t cluster = glyphs[i].cluster;
+        bool isIME = glyphs[i].isIME;
+        float clusterW = 0.0f;
+        size_t next_i = i;
+        while (next_i < glyphs.size() && glyphs[next_i].cluster == cluster && glyphs[next_i].isIME == isIME) {
+            clusterW += glyphs[next_i].xAdvance * scale;
+            next_i++;
+        }
+        if (curW + clusterW > availW && i > segGlyphStart) {
+            cache.wrapSegments.push_back({ segGlyphStart, i, segByteStart, cluster });
+            segGlyphStart = i;
+            segByteStart = cluster;
+            curW = 0.0f;
+        }
+        curW += clusterW;
+        i = next_i;
+    }
+    cache.wrapSegments.push_back({ segGlyphStart, glyphs.size(), segByteStart, textEnd });
+}
+int getVisualRowCountForLine(Engine* engine, int lineIdx) {
+    if (!engine->wordWrapEnabled || lineIdx < 0 || lineIdx >= (int)engine->lineCaches.size()) return 1;
+    if (lineIdx < 5000 || engine->lineCaches[lineIdx].isShaped) {
+        ensureLineWrapped(engine, lineIdx);
+        return std::max(1, (int)engine->lineCaches[lineIdx].wrapSegments.size());
+    }
+    return 1;
+}
+int getTotalVisualRows(Engine* engine) {
+    int totalLines = (int)engine->lineStarts.size();
+    if (!engine->wordWrapEnabled) return std::max(1, totalLines);
+    int sum = 0;
+    for (int i = 0; i < totalLines; ++i) {
+        sum += getVisualRowCountForLine(engine, i);
+    }
+    return std::max(1, sum);
+}
+void getVisualPosForDocPos(Engine* engine, size_t pos, int& outLineIdx, int& outSubIdx, int& outGlobalVisRow, float& outX) {
+    outLineIdx = getLineIdx(engine, pos);
+    outSubIdx = 0;
+    outGlobalVisRow = outLineIdx;
+    outX = engine->gutterWidth;
+    if (outLineIdx < 0 || outLineIdx >= (int)engine->lineStarts.size()) return;
+    ensureLineWrapped(engine, outLineIdx);
+    const auto& cache = engine->lineCaches[outLineIdx];
+    const auto& segs = cache.wrapSegments;
+    for (size_t s = 0; s < segs.size(); ++s) {
+        if (pos < segs[s].byteEnd || s + 1 == segs.size()) {
+            outSubIdx = (int)s;
+            break;
+        }
+    }
+    if (engine->wordWrapEnabled) {
+        int visRow = 0;
+        for (int i = 0; i < outLineIdx; ++i) {
+            visRow += getVisualRowCountForLine(engine, i);
+        }
+        outGlobalVisRow = visRow + outSubIdx;
+    }
     float scale = engine->currentFontSize / 48.0f;
     bool hasIME = !engine->imeComp.empty() && !engine->cursors.empty();
     size_t mainCaret = engine->cursors.empty() ? 0 : engine->cursors.back().head;
-    for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
-        if (hasIME && pos == mainCaret) {
-            if (!sg.isIME && sg.cluster >= pos) break;
-        } else {
-            if (sg.cluster >= pos) break;
+    if (!segs.empty()) {
+        const auto& seg = segs[outSubIdx];
+        for (size_t k = seg.glyphStart; k < seg.glyphEnd && k < cache.glyphs.size(); ++k) {
+            const auto& sg = cache.glyphs[k];
+            if (hasIME && pos == mainCaret) {
+                if (!sg.isIME && sg.cluster >= pos) break;
+            } else {
+                if (sg.cluster >= pos) break;
+            }
+            outX += sg.xAdvance * scale;
         }
-        x += sg.xAdvance * scale;
     }
+}
+float getXFromPos(Engine* engine, size_t pos) {
+    int lineIdx = 0, subIdx = 0, visRow = 0;
+    float x = engine->gutterWidth;
+    getVisualPosForDocPos(engine, pos, lineIdx, subIdx, visRow, x);
     return x;
+}
+float getYFromPos(Engine* engine, size_t pos) {
+    int lineIdx = 0, subIdx = 0, visRow = 0;
+    float x = 0.0f;
+    getVisualPosForDocPos(engine, pos, lineIdx, subIdx, visRow, x);
+    return engine->topMargin + visRow * engine->lineHeight;
 }
 size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
     float virtualY = touchY + engine->scrollY - engine->topMargin;
     if (virtualY < 0.0f) virtualY = 0.0f;
-    int lineIdx = (int)(virtualY / engine->lineHeight);
-    if (lineIdx < 0) return 0;
-    if (lineIdx >= engine->lineStarts.size()) return engine->pt.length();
-    size_t start = engine->lineStarts[lineIdx];
+    int targetVisRow = (int)(virtualY / engine->lineHeight);
+    if (targetVisRow < 0) return 0;
+
+    int lineIdx = targetVisRow;
+    int subIdx = 0;
+    if (engine->wordWrapEnabled) {
+        int acc = 0;
+        int totalLines = (int)engine->lineStarts.size();
+        bool found = false;
+        for (int i = 0; i < totalLines; ++i) {
+            int cnt = getVisualRowCountForLine(engine, i);
+            if (targetVisRow < acc + cnt) {
+                lineIdx = i;
+                subIdx = targetVisRow - acc;
+                found = true;
+                break;
+            }
+            acc += cnt;
+        }
+        if (!found) return engine->pt.length();
+    } else {
+        if (lineIdx >= (int)engine->lineStarts.size()) return engine->pt.length();
+    }
+
+    ensureLineWrapped(engine, lineIdx);
+    const auto& cache = engine->lineCaches[lineIdx];
+    if (cache.wrapSegments.empty()) return engine->lineStarts[lineIdx];
+    if (subIdx >= (int)cache.wrapSegments.size()) subIdx = (int)cache.wrapSegments.size() - 1;
+    const auto& seg = cache.wrapSegments[subIdx];
+
+    float currentX = engine->gutterWidth - (engine->wordWrapEnabled ? 0.0f : engine->scrollX);
+    float scale = engine->currentFontSize / 48.0f;
+    const auto& glyphs = cache.glyphs;
+    size_t i = seg.glyphStart;
+    while (i < seg.glyphEnd && i < glyphs.size()) {
+        size_t cluster = glyphs[i].cluster;
+        bool isIME = glyphs[i].isIME;
+        float clusterAdvance = 0.0f;
+        size_t next_i = i;
+        while (next_i < seg.glyphEnd && next_i < glyphs.size() && glyphs[next_i].cluster == cluster && glyphs[next_i].isIME == isIME) {
+            clusterAdvance += glyphs[next_i].xAdvance * scale;
+            next_i++;
+        }
+        if (touchX < currentX + (clusterAdvance / 2.0f)) {
+            return isIME ? engine->cursors.back().head : cluster;
+        }
+        currentX += clusterAdvance;
+        i = next_i;
+    }
+    return seg.byteEnd;
+}
+size_t getPosFromLineAndX(Engine* engine, int lineIdx, float targetX) {
+    if (lineIdx < 0 || lineIdx >= (int)engine->lineStarts.size()) return engine->pt.length();
     ensureLineShaped(engine, lineIdx);
-    float currentX = engine->gutterWidth - engine->scrollX;
+    size_t start = engine->lineStarts[lineIdx];
+    float currentX = engine->gutterWidth;
     float scale = engine->currentFontSize / 48.0f;
     const auto& glyphs = engine->lineCaches[lineIdx].glyphs;
     size_t i = 0;
@@ -1521,22 +1976,56 @@ size_t getDocPosFromPoint(Engine* engine, float touchX, float touchY) {
             clusterAdvance += glyphs[next_i].xAdvance * scale;
             next_i++;
         }
-        if (touchX < currentX + (clusterAdvance / 2.0f)) {
+        if (targetX < currentX + (clusterAdvance / 2.0f)) {
             return isIME ? engine->cursors.back().head : cluster;
         }
         currentX += clusterAdvance;
         i = next_i;
     }
-    size_t end = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
-    if (end > start && engine->pt.charAt(end - 1) == '\n') {
-        end--;
-        if (end > start && engine->pt.charAt(end - 1) == '\r') end--;
-    } else if (end > start && engine->pt.charAt(end - 1) == '\r') {
-        end--;
-    }
+    size_t end = (lineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
+    if (end > start && engine->pt.charAt(end - 1) == '\n') end--;
+    if (end > start && engine->pt.charAt(end - 1) == '\r') end--;
     return end;
 }
+void mergeCursors(Engine* engine) {
+    if (engine->cursors.size() <= 1) return;
+    std::vector<Cursor> sorted = engine->cursors;
+    std::sort(sorted.begin(), sorted.end(), [](const Cursor& a, const Cursor& b) {
+        if (a.start() != b.start()) return a.start() < b.start();
+        return a.end() < b.end();
+    });
+    std::vector<Cursor> merged;
+    merged.push_back(sorted[0]);
+    for (size_t i = 1; i < sorted.size(); ++i) {
+        Cursor& prev = merged.back();
+        const Cursor& c = sorted[i];
+        bool overlap = false;
+        if (!prev.hasSelection() && !c.hasSelection()) {
+            overlap = (prev.head == c.head);
+        } else if (prev.hasSelection() && c.hasSelection()) {
+            overlap = (c.start() < prev.end());
+        } else {
+            overlap = (c.start() >= prev.start() && c.end() <= prev.end());
+        }
+        if (overlap) {
+            size_t newStart = std::min(prev.start(), c.start());
+            size_t newEnd = std::max(prev.end(), c.end());
+            if (c.head >= c.anchor) {
+                prev.anchor = newStart;
+                prev.head = newEnd;
+            } else {
+                prev.anchor = newEnd;
+                prev.head = newStart;
+            }
+            prev.desiredX = getXFromPos(engine, prev.head);
+        } else {
+            merged.push_back(c);
+        }
+    }
+    engine->cursors = std::move(merged);
+}
 void selectWordAt(Engine* engine, size_t pos) {
+    engine->isRectSelecting = false;
     if (pos >= engine->pt.length()) {
         engine->cursors.clear();
         engine->cursors.push_back({ pos, pos, getXFromPos(engine, pos) });
@@ -1566,6 +2055,7 @@ void selectWordAt(Engine* engine, size_t pos) {
     engine->cursors.push_back({ end, start, getXFromPos(engine, end) });
 }
 void selectLineAt(Engine* engine, size_t pos) {
+    engine->isRectSelecting = false;
     int lineIdx = getLineIdx(engine, pos);
     size_t start = engine->lineStarts[lineIdx];
     size_t end = (lineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
@@ -1578,39 +2068,99 @@ void selectLineAt(Engine* engine, size_t pos) {
     engine->cursors.clear();
     engine->cursors.push_back({ end, start, getXFromPos(engine, end) });
 }
+void selectLinesRange(Engine* engine, int anchorLine, int headLine) {
+    engine->isRectSelecting = false;
+    int total = (int)engine->lineStarts.size();
+    if (total == 0) return;
+    anchorLine = std::clamp(anchorLine, 0, total - 1);
+    headLine = std::clamp(headLine, 0, total - 1);
+    size_t s, e;
+    if (headLine >= anchorLine) {
+        s = engine->lineStarts[anchorLine];
+        e = (headLine + 1 < total) ? engine->lineStarts[headLine + 1] : engine->pt.length();
+    } else {
+        s = (anchorLine + 1 < total) ? engine->lineStarts[anchorLine + 1] : engine->pt.length();
+        e = engine->lineStarts[headLine];
+    }
+    engine->cursors.clear();
+    engine->cursors.push_back({ e, s, getXFromPos(engine, e) });
+    ensureCaretVisible(engine);
+}
+bool isPointInSelection(Engine* engine, size_t pos) {
+    for (const auto& c : engine->cursors) {
+        if (c.hasSelection() && pos >= c.start() && pos < c.end()) return true;
+    }
+    return false;
+}
+void performDragMove(Engine* engine, size_t targetPos) {
+    if (engine->cursors.empty() || isPointInSelection(engine, targetPos)) return;
+    engine->isRectSelecting = false;
+    auto sorted = engine->cursors;
+    std::sort(sorted.begin(), sorted.end(), [](const Cursor& a, const Cursor& b) { return a.start() < b.start(); });
+    std::string combined;
+    for (const auto& sc : sorted) {
+        if (sc.hasSelection()) {
+            combined += engine->pt.getRange(sc.start(), sc.end() - sc.start());
+        }
+    }
+    if (combined.empty()) return;
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+    size_t adjustedTarget = targetPos;
+    for (auto it = sorted.rbegin(); it != sorted.rend(); ++it) {
+        if (!it->hasSelection()) continue;
+        size_t st = it->start();
+        size_t len = it->end() - st;
+        std::string del = engine->pt.getRange(st, len);
+        engine->pt.erase(st, len);
+        batch.ops.push_back({ EditOp::Erase, st, del });
+        if (adjustedTarget > st) {
+            adjustedTarget -= std::min(adjustedTarget - st, len);
+        }
+    }
+    engine->pt.insert(adjustedTarget, combined);
+    batch.ops.push_back({ EditOp::Insert, adjustedTarget, combined });
+    size_t newEnd = adjustedTarget + combined.size();
+    rebuildLineStarts(engine);
+    engine->cursors.clear();
+    engine->cursors.push_back({ newEnd, adjustedTarget, getXFromPos(engine, newEnd) });
+    batch.afterCursors = engine->cursors;
+    engine->undo.push(batch);
+    applyBatchToEmmetTabstops(engine, batch);
+    ensureCaretVisible(engine);
+    updateDirtyFlag(engine);
+    notifyPreviewUpdateIfNeeded(engine);
+}
 void ensureCaretVisible(Engine* engine) {
     if (engine->cursors.empty()) return;
     size_t pos = engine->cursors.back().head;
-    int lineIdx = getLineIdx(engine, pos);
-    float caretY = engine->topMargin + lineIdx * engine->lineHeight;
+    float caretY = getYFromPos(engine, pos);
     float caretX = getXFromPos(engine, pos);
-    float winW = 1080.0f;
-    float winH = 2000.0f;
-    if (engine->app->window != nullptr) {
-        winW = (float)ANativeWindow_getWidth(engine->app->window);
-        winH = (float)ANativeWindow_getHeight(engine->app->window);
-    }
-    float visibleH = winH - engine->bottomInset;
-    if (visibleH < winH * 0.3f) visibleH = winH * 0.5f;
+    float winW = getEditorWinW(engine);
+    float visibleH = getEditorVisibleH(engine);
     if (caretY < engine->scrollY + engine->topMargin) {
         engine->scrollY = caretY - engine->topMargin;
     } else if (caretY + engine->lineHeight > engine->scrollY + visibleH) {
         engine->scrollY = caretY + engine->lineHeight - visibleH;
     }
-    if (caretX < engine->scrollX + engine->gutterWidth) {
-        engine->scrollX = caretX - engine->gutterWidth;
-    } else if (caretX + engine->charWidth * 2.0f > engine->scrollX + winW) {
-        engine->scrollX = caretX + engine->charWidth * 2.0f - winW;
+    if (engine->wordWrapEnabled) {
+        engine->scrollX = 0.0f;
+    } else {
+        if (caretX < engine->scrollX + engine->gutterWidth) {
+            engine->scrollX = caretX - engine->gutterWidth;
+        } else if (caretX + engine->charWidth * 2.0f > engine->scrollX + winW) {
+            engine->scrollX = caretX + engine->charWidth * 2.0f - winW;
+        }
     }
     if (engine->scrollX < 0.0f) engine->scrollX = 0.0f;
     if (engine->scrollY < 0.0f) engine->scrollY = 0.0f;
 }
 void insertAtCursors(Engine* engine, const std::string& text) {
     if (engine->cursors.empty()) return;
+    engine->isRectSelecting = false;
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
 
-    // 後ろから順に処理することで、先頭の挿入によるオフセットの狂いを防ぐ
     std::vector<size_t> indices(engine->cursors.size());
     std::iota(indices.begin(), indices.end(), 0);
     std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) {
@@ -1626,7 +2176,6 @@ void insertAtCursors(Engine* engine, const std::string& text) {
             std::string d = engine->pt.getRange(st, l);
             engine->pt.erase(st, l);
             batch.ops.push_back({ EditOp::Erase, st, d });
-            // 他のカーソル位置の調整
             for (auto& o : engine->cursors) {
                 if (o.head > st) o.head -= std::min(o.head - st, l);
                 if (o.anchor > st) o.anchor -= std::min(o.anchor - st, l);
@@ -1637,7 +2186,6 @@ void insertAtCursors(Engine* engine, const std::string& text) {
         if (!text.empty()) {
             engine->pt.insert(st, text);
             batch.ops.push_back({ EditOp::Insert, st, text });
-            // 挿入による他のカーソル位置の調整
             for (auto& o : engine->cursors) {
                 if (o.head >= st) o.head += text.size();
                 if (o.anchor >= st) o.anchor += text.size();
@@ -1645,24 +2193,26 @@ void insertAtCursors(Engine* engine, const std::string& text) {
         }
     }
 
+    rebuildLineStarts(engine);
     for (auto& c : engine->cursors) {
         c.desiredX = getXFromPos(engine, c.head);
     }
 
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    applyBatchToEmmetTabstops(engine, batch);
     bool wasDirty = engine->isDirty;
     engine->isDirty = true;
-    rebuildLineStarts(engine);
     ensureCaretVisible(engine);
     if (!wasDirty) updateTitleBarIfNeeded(engine);
+    notifyPreviewUpdateIfNeeded(engine);
 }
 void insertNewlineWithAutoIndent(Engine* engine) {
     if (engine->cursors.empty()) return;
+    engine->isRectSelecting = false;
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
 
-    // 複数カーソルがある場合、後方（ファイル末尾側）から処理してインデックスのズレを防ぐ
     std::vector<size_t> indices(engine->cursors.size());
     std::iota(indices.begin(), indices.end(), 0);
     std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) {
@@ -1673,7 +2223,6 @@ void insertNewlineWithAutoIndent(Engine* engine) {
         Cursor& c = engine->cursors[idx];
         size_t start = c.start();
 
-        // 選択範囲がある場合は先に削除
         if (c.hasSelection()) {
             size_t len = c.end() - start;
             std::string deleted = engine->pt.getRange(start, len);
@@ -1686,7 +2235,6 @@ void insertNewlineWithAutoIndent(Engine* engine) {
             c.head = start; c.anchor = start;
         }
 
-        // 現在行の行頭からカーソル位置までの間にあるスペースとタブを抽出
         int lineIdx = getLineIdx(engine, start);
         size_t lineStart = engine->lineStarts[lineIdx];
         std::string indentStr = "";
@@ -1703,32 +2251,67 @@ void insertNewlineWithAutoIndent(Engine* engine) {
             p++;
         }
 
-        // 改行コード ＋ 抽出したインデント を挿入
-        std::string textToInsert = engine->newlineStr + indentStr;
-        engine->pt.insert(start, textToInsert);
-        batch.ops.push_back({ EditOp::Insert, start, textToInsert });
-        size_t insLen = textToInsert.size();
+        char prevCh = (start > lineStart) ? engine->pt.charAt(start - 1) : '\0';
+        char nextCh = (start < engine->pt.length()) ? engine->pt.charAt(start) : '\0';
+        bool isBracketPair = ((prevCh == '{' && nextCh == '}') ||
+                              (prevCh == '(' && nextCh == ')') ||
+                              (prevCh == '[' && nextCh == ']'));
+        bool isTagPair = false;
+        if (!isBracketPair && prevCh == '>' && nextCh == '<' && start + 2 < engine->pt.length() && engine->pt.charAt(start + 1) == '/') {
+            if (start < 2 || engine->pt.charAt(start - 2) != '/') {
+                isTagPair = true;
+            }
+        }
 
-        for (auto& o : engine->cursors) {
-            if (o.head >= start) o.head += insLen;
-            if (o.anchor >= start) o.anchor += insLen;
+        if (isBracketPair || isTagPair) {
+            std::string innerIndent = indentStr + "    ";
+            std::string textToInsert = engine->newlineStr + innerIndent + engine->newlineStr + indentStr;
+            size_t caretOffsetInInsert = engine->newlineStr.size() + innerIndent.size();
+            engine->pt.insert(start, textToInsert);
+            batch.ops.push_back({ EditOp::Insert, start, textToInsert });
+            size_t insLen = textToInsert.size();
+            for (auto& o : engine->cursors) {
+                if (&o == &c) {
+                    o.head = start + caretOffsetInInsert;
+                    o.anchor = o.head;
+                } else {
+                    if (o.head >= start) o.head += insLen;
+                    if (o.anchor >= start) o.anchor += insLen;
+                }
+            }
+        } else {
+            std::string extraIndent = "";
+            if (prevCh == '{' || prevCh == '(' || prevCh == '[' || prevCh == ':') {
+                extraIndent = "    ";
+            }
+            std::string textToInsert = engine->newlineStr + indentStr + extraIndent;
+            engine->pt.insert(start, textToInsert);
+            batch.ops.push_back({ EditOp::Insert, start, textToInsert });
+            size_t insLen = textToInsert.size();
+            for (auto& o : engine->cursors) {
+                if (o.head >= start) o.head += insLen;
+                if (o.anchor >= start) o.anchor += insLen;
+            }
         }
     }
 
+    rebuildLineStarts(engine);
     for (auto& c : engine->cursors) {
         c.desiredX = getXFromPos(engine, c.head);
     }
 
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    applyBatchToEmmetTabstops(engine, batch);
     bool wasDirty = engine->isDirty;
     engine->isDirty = true;
-    rebuildLineStarts(engine);
     ensureCaretVisible(engine);
     if (!wasDirty) updateTitleBarIfNeeded(engine);
+    notifyPreviewUpdateIfNeeded(engine);
 }
 void performUndo(Engine* engine) {
     if (engine->undo.undoStack.empty()) return;
+    engine->isRectSelecting = false;
     EditBatch b = engine->undo.undoStack.back();
     engine->undo.undoStack.pop_back();
     engine->undo.redoStack.push_back(b);
@@ -1741,9 +2324,11 @@ void performUndo(Engine* engine) {
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
     updateDirtyFlag(engine);
+    notifyPreviewUpdateIfNeeded(engine);
 }
 void performRedo(Engine* engine) {
     if (engine->undo.redoStack.empty()) return;
+    engine->isRectSelecting = false;
     EditBatch b = engine->undo.redoStack.back();
     engine->undo.redoStack.pop_back();
     engine->undo.undoStack.push_back(b);
@@ -1755,9 +2340,11 @@ void performRedo(Engine* engine) {
     rebuildLineStarts(engine);
     ensureCaretVisible(engine);
     updateDirtyFlag(engine);
+    notifyPreviewUpdateIfNeeded(engine);
 }
 void backspaceAtCursors(Engine* engine) {
     if (engine->cursors.empty()) return;
+    engine->isRectSelecting = false;
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
 
@@ -1842,20 +2429,22 @@ void backspaceAtCursors(Engine* engine) {
         }
     }
 
-    for (auto& c : engine->cursors) c.desiredX = getXFromPos(engine, c.head);
-
     if (changed) {
+        rebuildLineStarts(engine);
+        for (auto& c : engine->cursors) c.desiredX = getXFromPos(engine, c.head);
         batch.afterCursors = engine->cursors;
         engine->undo.push(batch);
+        applyBatchToEmmetTabstops(engine, batch);
         bool wasDirty = engine->isDirty;
         engine->isDirty = true;
-        rebuildLineStarts(engine);
         if (!wasDirty) updateTitleBarIfNeeded(engine);
+        notifyPreviewUpdateIfNeeded(engine);
     }
     ensureCaretVisible(engine);
 }
 void deleteForwardAtCursors(Engine* engine) {
     if (engine->cursors.empty()) return;
+    engine->isRectSelecting = false;
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
 
@@ -1925,15 +2514,16 @@ void deleteForwardAtCursors(Engine* engine) {
         }
     }
 
-    for (auto& c : engine->cursors) c.desiredX = getXFromPos(engine, c.head);
-
     if (changed) {
+        rebuildLineStarts(engine);
+        for (auto& c : engine->cursors) c.desiredX = getXFromPos(engine, c.head);
         batch.afterCursors = engine->cursors;
         engine->undo.push(batch);
+        applyBatchToEmmetTabstops(engine, batch);
         bool wasDirty = engine->isDirty;
         engine->isDirty = true;
-        rebuildLineStarts(engine);
         if (!wasDirty) updateTitleBarIfNeeded(engine);
+        notifyPreviewUpdateIfNeeded(engine);
     }
     ensureCaretVisible(engine);
 }
@@ -2042,6 +2632,810 @@ std::vector<int> getUniqueLineIndices(Engine* engine) {
     std::sort(lines.begin(), lines.end());
     lines.erase(std::unique(lines.begin(), lines.end()), lines.end());
     return lines;
+}
+void deleteLineCommand(Engine* engine) {
+    if (!engine || engine->cursors.empty()) return;
+    engine->isRectSelecting = false;
+    std::vector<int> lines = getUniqueLineIndices(engine);
+    if (lines.empty()) return;
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+    std::vector<std::pair<int, int>> groups;
+    int gStart0 = lines[0], prev0 = lines[0];
+    for (size_t i = 1; i < lines.size(); ++i) {
+        if (lines[i] != prev0 + 1) {
+            groups.push_back({ gStart0, prev0 });
+            gStart0 = lines[i];
+        }
+        prev0 = lines[i];
+    }
+    groups.push_back({ gStart0, prev0 });
+
+    for (int i = (int)groups.size() - 1; i >= 0; --i) {
+        int gStart = groups[i].first, gEnd = groups[i].second;
+        size_t start = engine->lineStarts[gStart];
+        size_t end = (gEnd + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[gEnd + 1] : engine->pt.length();
+        if (end == engine->pt.length() && start > 0) {
+            char prev = engine->pt.charAt(start - 1);
+            if (prev == '\n') {
+                start--;
+                if (start > 0 && engine->pt.charAt(start - 1) == '\r') start--;
+            } else if (prev == '\r') {
+                start--;
+            }
+        }
+        size_t len = end - start;
+        if (len > 0) {
+            batch.ops.push_back({ EditOp::Erase, start, engine->pt.getRange(start, len) });
+            engine->pt.erase(start, len);
+            for (auto& c : engine->cursors) {
+                if (c.head > start) c.head = (c.head >= start + len) ? c.head - len : start;
+                if (c.anchor > start) c.anchor = (c.anchor >= start + len) ? c.anchor - len : start;
+            }
+        }
+    }
+    rebuildLineStarts(engine);
+    for (auto& c : engine->cursors) {
+        c.anchor = c.head;
+        c.desiredX = getXFromPos(engine, c.head);
+    }
+    mergeCursors(engine);
+    batch.afterCursors = engine->cursors;
+    engine->undo.push(batch);
+    applyBatchToEmmetTabstops(engine, batch);
+    ensureCaretVisible(engine);
+    updateDirtyFlag(engine);
+    notifyPreviewUpdateIfNeeded(engine);
+}
+void moveLinesCommand(Engine* engine, bool up) {
+    if (!engine || engine->cursors.empty()) return;
+    engine->isRectSelecting = false;
+    std::vector<int> lines = getUniqueLineIndices(engine);
+    if (lines.empty()) return;
+    if (up && lines.front() == 0) return;
+    if (!up && lines.back() >= (int)engine->lineStarts.size() - 1) return;
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+    std::vector<std::pair<int, int>> groups;
+    int start = lines[0], prev = lines[0];
+    for (size_t i = 1; i < lines.size(); ++i) {
+        if (lines[i] != prev + 1) { groups.push_back({ start, prev }); start = lines[i]; }
+        prev = lines[i];
+    }
+    groups.push_back({ start, prev });
+    if (up) {
+        for (const auto& g : groups) {
+            int gStart = g.first, gEnd = g.second, targetLine = gStart - 1;
+            size_t posTarget = engine->lineStarts[targetLine], posStart = engine->lineStarts[gStart];
+            size_t posEnd = (gEnd + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[gEnd + 1] : engine->pt.length();
+            bool isEOF = (posEnd == engine->pt.length());
+            std::string movingText = engine->pt.getRange(posStart, posEnd - posStart);
+            size_t moveLen = movingText.length();
+            size_t prevLineLen = posStart - posTarget;
+            bool movingIsLastNoNewline = (isEOF && (moveLen == 0 || (movingText.back() != '\n' && movingText.back() != '\r')));
+            engine->pt.erase(posStart, moveLen);
+            batch.ops.push_back({ EditOp::Erase, posStart, movingText });
+            if (movingIsLastNoNewline) {
+                size_t nlLen = 0;
+                if (posStart > 0 && engine->pt.charAt(posStart - 1) == '\n') {
+                    nlLen = 1;
+                    if (posStart > 1 && engine->pt.charAt(posStart - 2) == '\r') nlLen = 2;
+                } else if (posStart > 0 && engine->pt.charAt(posStart - 1) == '\r') {
+                    nlLen = 1;
+                }
+                if (nlLen > 0) {
+                    std::string nlStr = engine->pt.getRange(posStart - nlLen, nlLen);
+                    engine->pt.erase(posStart - nlLen, nlLen);
+                    batch.ops.push_back({ EditOp::Erase, posStart - nlLen, nlStr });
+                    movingText += nlStr;
+                    moveLen += nlLen;
+                }
+            }
+            engine->pt.insert(posTarget, movingText);
+            batch.ops.push_back({ EditOp::Insert, posTarget, movingText });
+            for (auto& c : engine->cursors) {
+                bool headInA = (c.head >= posStart && c.head < posEnd);
+                if (c.head == posEnd && c.hasSelection() && c.end() == c.head) headInA = true;
+                if (isEOF && c.head == posEnd) headInA = true;
+                bool anchorInA = (c.anchor >= posStart && c.anchor < posEnd);
+                if (c.anchor == posEnd && c.hasSelection() && c.end() == c.anchor) anchorInA = true;
+                if (isEOF && c.anchor == posEnd) anchorInA = true;
+                if (headInA) {
+                    if (c.head >= prevLineLen) c.head -= prevLineLen; else c.head = 0;
+                } else if (c.head >= posTarget && c.head < posStart) {
+                    c.head += moveLen;
+                }
+                if (anchorInA) {
+                    if (c.anchor >= prevLineLen) c.anchor -= prevLineLen; else c.anchor = 0;
+                } else if (c.anchor >= posTarget && c.anchor < posStart) {
+                    c.anchor += moveLen;
+                }
+            }
+            rebuildLineStarts(engine);
+        }
+    } else {
+        for (int i = (int)groups.size() - 1; i >= 0; --i) {
+            int gStart = groups[i].first, gEnd = groups[i].second, swapLine = gEnd + 1;
+            size_t posStart = engine->lineStarts[gStart], posEnd = (gEnd + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[gEnd + 1] : engine->pt.length();
+            size_t posSwapEnd = (swapLine + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[swapLine + 1] : engine->pt.length();
+            bool isPosEndEOF = (posEnd == engine->pt.length());
+            bool isSwapEndEOF = (posSwapEnd == engine->pt.length());
+            std::string movingText = engine->pt.getRange(posStart, posEnd - posStart);
+            size_t moveLen = movingText.length();
+            size_t swapLineLen = posSwapEnd - posEnd;
+            bool movingHasNewline = (moveLen > 0 && (movingText.back() == '\n' || movingText.back() == '\r'));
+            engine->pt.erase(posStart, moveLen);
+            batch.ops.push_back({ EditOp::Erase, posStart, movingText });
+            size_t insertPos = posStart + swapLineLen;
+            if (isSwapEndEOF && movingHasNewline) {
+                bool precedingCharIsNewline = (insertPos > 0 && (engine->pt.charAt(insertPos - 1) == '\n' || engine->pt.charAt(insertPos - 1) == '\r'));
+                if ((insertPos > 0 && !precedingCharIsNewline) || swapLineLen == 0) {
+                    std::string nlStr = "\n";
+                    if (moveLen >= 2 && movingText[moveLen - 2] == '\r' && movingText[moveLen - 1] == '\n') {
+                        nlStr = "\r\n";
+                    } else if (movingText.back() == '\r') {
+                        nlStr = "\r";
+                    }
+                    engine->pt.insert(insertPos, nlStr);
+                    batch.ops.push_back({ EditOp::Insert, insertPos, nlStr });
+                    insertPos += nlStr.size();
+                    swapLineLen += nlStr.size();
+                    movingText.erase(movingText.size() - nlStr.size());
+                    moveLen -= nlStr.size();
+                }
+            }
+            engine->pt.insert(insertPos, movingText);
+            batch.ops.push_back({ EditOp::Insert, insertPos, movingText });
+            for (auto& c : engine->cursors) {
+                bool headInA = (c.head >= posStart && c.head < posEnd);
+                if (c.head == posEnd && c.hasSelection() && c.end() == c.head) headInA = true;
+                if (isPosEndEOF && c.head == posEnd) headInA = true;
+                bool anchorInA = (c.anchor >= posStart && c.anchor < posEnd);
+                if (c.anchor == posEnd && c.hasSelection() && c.end() == c.anchor) anchorInA = true;
+                if (isPosEndEOF && c.anchor == posEnd) anchorInA = true;
+                if (headInA) { c.head += swapLineLen; } else if (c.head >= posEnd && c.head < posSwapEnd) { c.head -= moveLen; }
+                if (anchorInA) { c.anchor += swapLineLen; } else if (c.anchor >= posEnd && c.anchor < posSwapEnd) { c.anchor -= moveLen; }
+            }
+            rebuildLineStarts(engine);
+        }
+    }
+    for (auto& c : engine->cursors) {
+        c.desiredX = getXFromPos(engine, c.head);
+    }
+    batch.afterCursors = engine->cursors;
+    engine->undo.push(batch);
+    applyBatchToEmmetTabstops(engine, batch);
+    ensureCaretVisible(engine);
+    updateDirtyFlag(engine);
+    notifyPreviewUpdateIfNeeded(engine);
+}
+void duplicateLinesCommand(Engine* engine, bool up) {
+    if (!engine || engine->cursors.empty()) return;
+    engine->isRectSelecting = false;
+    std::vector<int> lines = getUniqueLineIndices(engine);
+    if (lines.empty()) return;
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+    std::vector<std::pair<int, int>> groups;
+    int start = lines[0], prev = lines[0];
+    for (size_t i = 1; i < lines.size(); ++i) {
+        if (lines[i] != prev + 1) { groups.push_back({ start, prev }); start = lines[i]; }
+        prev = lines[i];
+    }
+    groups.push_back({ start, prev });
+
+    for (int i = (int)groups.size() - 1; i >= 0; --i) {
+        int gStart = groups[i].first, gEnd = groups[i].second;
+        size_t posStart = engine->lineStarts[gStart];
+        size_t posEnd = (gEnd + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[gEnd + 1] : engine->pt.length();
+        std::string blockText = engine->pt.getRange(posStart, posEnd - posStart);
+        bool endsWithNewline = (!blockText.empty() && (blockText.back() == '\n' || blockText.back() == '\r'));
+
+        if (!endsWithNewline) {
+            std::string toInsert = engine->newlineStr + blockText;
+            size_t insLen = toInsert.size();
+            engine->pt.insert(posEnd, toInsert);
+            batch.ops.push_back({ EditOp::Insert, posEnd, toInsert });
+            for (auto& c : engine->cursors) {
+                if (!up) {
+                    if (c.head >= posStart && c.head <= posEnd) c.head += insLen;
+                    else if (c.head > posEnd) c.head += insLen;
+                    if (c.anchor >= posStart && c.anchor <= posEnd) c.anchor += insLen;
+                    else if (c.anchor > posEnd) c.anchor += insLen;
+                } else {
+                    if (c.head > posEnd) c.head += insLen;
+                    if (c.anchor > posEnd) c.anchor += insLen;
+                }
+            }
+        } else {
+            if (up) {
+                engine->pt.insert(posStart, blockText);
+                batch.ops.push_back({ EditOp::Insert, posStart, blockText });
+                size_t insLen = blockText.size();
+                for (auto& c : engine->cursors) {
+                    if (c.head >= posStart) c.head += insLen;
+                    if (c.anchor >= posStart) c.anchor += insLen;
+                    if (c.head >= posStart + insLen && c.head < posEnd + insLen) c.head -= insLen;
+                    if (c.anchor >= posStart + insLen && c.anchor < posEnd + insLen) c.anchor -= insLen;
+                }
+            } else {
+                engine->pt.insert(posEnd, blockText);
+                batch.ops.push_back({ EditOp::Insert, posEnd, blockText });
+                size_t insLen = blockText.size();
+                for (auto& c : engine->cursors) {
+                    if (c.head >= posEnd) c.head += insLen;
+                    if (c.anchor >= posEnd) c.anchor += insLen;
+                    if (c.head >= posStart && c.head < posEnd) c.head += insLen;
+                    if (c.anchor >= posStart && c.anchor < posEnd) c.anchor += insLen;
+                }
+            }
+        }
+        rebuildLineStarts(engine);
+    }
+    for (auto& c : engine->cursors) {
+        c.desiredX = getXFromPos(engine, c.head);
+    }
+    batch.afterCursors = engine->cursors;
+    engine->undo.push(batch);
+    applyBatchToEmmetTabstops(engine, batch);
+    ensureCaretVisible(engine);
+    updateDirtyFlag(engine);
+    notifyPreviewUpdateIfNeeded(engine);
+}
+void toggleCommentCommand(Engine* engine) {
+    if (!engine || engine->cursors.empty()) return;
+    if (engine->currentSyntax.lineComment.empty() &&
+        (engine->currentSyntax.blockCommentStart.empty() || engine->currentSyntax.blockCommentEnd.empty())) {
+        return;
+    }
+    engine->isRectSelecting = false;
+    std::vector<int> lines = getUniqueLineIndices(engine);
+    if (lines.empty()) return;
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+
+    struct LineCommentInfo {
+        int lineIdx;
+        size_t lineStart;
+        std::string text;
+        size_t firstNonWs;
+        size_t lastNonWs;
+        bool isBlank;
+        bool isCommented;
+        size_t openRemLen;
+        size_t closeRemLen;
+    };
+    std::vector<LineCommentInfo> infos;
+    infos.reserve(lines.size());
+
+    bool useLineComment = !engine->currentSyntax.lineComment.empty();
+    const std::string& lineTok = engine->currentSyntax.lineComment;
+    const std::string& blkOpen = engine->currentSyntax.blockCommentStart;
+    const std::string& blkClose = engine->currentSyntax.blockCommentEnd;
+    bool isBat = useLineComment && (Emmet::toLowerStr(lineTok) == "rem");
+
+    bool hasNonBlank = false;
+    bool allCommented = true;
+    size_t minIndent = std::string::npos;
+
+    for (int lineIdx : lines) {
+        if (lineIdx < 0 || lineIdx >= (int)engine->lineStarts.size()) continue;
+        size_t start = engine->lineStarts[lineIdx];
+        size_t end = (lineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
+        std::string s = engine->pt.getRange(start, end - start);
+        while (!s.empty() && (s.back() == '\n' || s.back() == '\r')) s.pop_back();
+        size_t f = 0;
+        while (f < s.size() && (s[f] == ' ' || s[f] == '\t')) f++;
+        size_t l = s.size();
+        while (l > f && (s[l - 1] == ' ' || s[l - 1] == '\t')) l--;
+        bool blank = (f >= s.size());
+        bool commented = false;
+        size_t openRem = 0;
+        size_t closeRem = 0;
+
+        if (!blank) {
+            hasNonBlank = true;
+            if (minIndent == std::string::npos || f < minIndent) minIndent = f;
+            if (useLineComment) {
+                if (isBat) {
+                    if (f + 2 <= s.size() && s.compare(f, 2, "::") == 0) {
+                        commented = true;
+                        openRem = (f + 2 < s.size() && s[f + 2] == ' ') ? 3 : 2;
+                    } else if (f + 3 <= s.size() && Emmet::toLowerStr(s.substr(f, 3)) == "rem" && (f + 3 == s.size() || s[f + 3] == ' ' || s[f + 3] == '\t')) {
+                        commented = true;
+                        openRem = (f + 3 < s.size() && s[f + 3] == ' ') ? 4 : 3;
+                    }
+                } else if (f + lineTok.size() <= s.size() && s.compare(f, lineTok.size(), lineTok) == 0) {
+                    commented = true;
+                    openRem = (f + lineTok.size() < s.size() && s[f + lineTok.size()] == ' ') ? (lineTok.size() + 1) : lineTok.size();
+                }
+            } else {
+                if (l - f >= blkOpen.size() + blkClose.size() &&
+                    s.compare(f, blkOpen.size(), blkOpen) == 0 &&
+                    s.compare(l - blkClose.size(), blkClose.size(), blkClose) == 0) {
+                    commented = true;
+                    openRem = (f + blkOpen.size() < l - blkClose.size() && s[f + blkOpen.size()] == ' ') ? (blkOpen.size() + 1) : blkOpen.size();
+                    size_t closePos = l - blkClose.size();
+                    closeRem = (closePos > f + openRem && s[closePos - 1] == ' ') ? (blkClose.size() + 1) : blkClose.size();
+                }
+            }
+            if (!commented) allCommented = false;
+        }
+        infos.push_back({ lineIdx, start, std::move(s), f, l, blank, commented, openRem, closeRem });
+    }
+
+    if (!hasNonBlank) allCommented = false;
+
+    auto applyInsert = [&](size_t pos, const std::string& ins, bool advanceCaretAtPos) {
+        engine->pt.insert(pos, ins);
+        batch.ops.push_back({ EditOp::Insert, pos, ins });
+        size_t len = ins.size();
+        for (auto& c : engine->cursors) {
+            if (c.hasSelection()) {
+                if (c.head > pos) c.head += len;
+                if (c.anchor > pos) c.anchor += len;
+            } else {
+                if (advanceCaretAtPos ? (c.head >= pos) : (c.head > pos)) {
+                    c.head += len;
+                    c.anchor = c.head;
+                }
+            }
+        }
+    };
+
+    auto applyErase = [&](size_t pos, size_t rem) {
+        if (rem == 0) return;
+        std::string deleted = engine->pt.getRange(pos, rem);
+        engine->pt.erase(pos, rem);
+        batch.ops.push_back({ EditOp::Erase, pos, deleted });
+        for (auto& c : engine->cursors) {
+            if (c.head > pos) c.head = (c.head >= pos + rem) ? (c.head - rem) : pos;
+            if (c.anchor > pos) c.anchor = (c.anchor >= pos + rem) ? (c.anchor - rem) : pos;
+        }
+    };
+
+    for (auto it = infos.rbegin(); it != infos.rend(); ++it) {
+        const auto& info = *it;
+        if (allCommented) {
+            if (info.isBlank || !info.isCommented) continue;
+            if (useLineComment) {
+                applyErase(info.lineStart + info.firstNonWs, info.openRemLen);
+            } else {
+                size_t closeErasePos = info.lineStart + info.lastNonWs - info.closeRemLen;
+                applyErase(closeErasePos, info.closeRemLen);
+                applyErase(info.lineStart + info.firstNonWs, info.openRemLen);
+            }
+        } else {
+            if (hasNonBlank && info.isBlank) continue;
+            if (useLineComment) {
+                size_t indentOffset = hasNonBlank ? std::min(info.firstNonWs, minIndent) : info.text.size();
+                std::string ins = lineTok + " ";
+                applyInsert(info.lineStart + indentOffset, ins, true);
+            } else {
+                if (!info.isBlank) {
+                    std::string closeIns = " " + blkClose;
+                    applyInsert(info.lineStart + info.lastNonWs, closeIns, false);
+                    size_t indentOffset = std::min(info.firstNonWs, minIndent);
+                    std::string openIns = blkOpen + " ";
+                    applyInsert(info.lineStart + indentOffset, openIns, true);
+                } else {
+                    size_t pos = info.lineStart + info.text.size();
+                    std::string closeIns = " " + blkClose;
+                    applyInsert(pos, closeIns, false);
+                    std::string openIns = blkOpen + " ";
+                    applyInsert(pos, openIns, true);
+                }
+            }
+        }
+    }
+
+    if (!batch.ops.empty()) {
+        rebuildLineStarts(engine);
+        for (auto& c : engine->cursors) {
+            c.desiredX = getXFromPos(engine, c.head);
+        }
+        batch.afterCursors = engine->cursors;
+        engine->undo.push(batch);
+        applyBatchToEmmetTabstops(engine, batch);
+        ensureCaretVisible(engine);
+        updateDirtyFlag(engine);
+        notifyPreviewUpdateIfNeeded(engine);
+    }
+}
+bool tryExpandEmmet(Engine* engine) {
+    if (!engine || engine->cursors.empty() || engine->isRectSelecting) return false;
+    for (const auto& c : engine->cursors) {
+        if (c.hasSelection()) return false;
+    }
+    if (engine->cursors.size() == 1 && engine->activeEmmetSession.active &&
+        engine->activeEmmetSession.currentGroupIndex >= 0 &&
+        engine->activeEmmetSession.currentGroupIndex < (int)engine->activeEmmetSession.groups.size() &&
+        !engine->activeEmmetSession.groups[engine->activeEmmetSession.currentGroupIndex].ranges.empty()) {
+        const auto& r = engine->activeEmmetSession.groups[engine->activeEmmetSession.currentGroupIndex].ranges[0];
+        size_t curStart = engine->activeEmmetSession.baseOffset + r.first;
+        size_t curEnd = engine->activeEmmetSession.baseOffset + r.second;
+        if (engine->cursors[0].head < curStart || engine->cursors[0].head > curEnd) {
+            engine->activeEmmetSession.clear();
+        } else if (curStart == curEnd) {
+            return false;
+        }
+    }
+
+    auto getEmmetModeAndContext = [&](size_t cursorPos, size_t lineStartPos, bool& outInsideCssBlock) -> Emmet::Mode {
+        outInsideCssBlock = false;
+        std::string ext = engine->currentFileExt;
+        if (!ext.empty() && ext[0] == '.') ext = ext.substr(1);
+        ext = Emmet::toLowerStr(ext);
+
+        if (ext == "css" || ext == "scss" || ext == "sass" || ext == "less" || ext == "styl" ||
+            ext == "stylus" || ext == "pcss" || ext == "postcss" || ext == "wxss") {
+            outInsideCssBlock = true;
+            return Emmet::Mode::Css;
+        }
+        if (ext == "jsx" || ext == "tsx") return Emmet::Mode::Jsx;
+        if (ext == "xml" || ext == "svg" || ext == "xhtml" || ext == "xht" || ext == "xsl" ||
+            ext == "xslt" || ext == "xsd" || ext == "rss" || ext == "atom" || ext == "mathml" ||
+            ext == "xaml" || ext == "plist" || ext == "wsdl" || ext == "csproj" || ext == "vcxproj" ||
+            ext == "props" || ext == "targets") {
+            return Emmet::Mode::Xml;
+        }
+        Emmet::Mode mode = Emmet::Mode::Auto;
+        if (ext == "html" || ext == "htm" || ext == "shtml" || ext == "vue" || ext == "svelte" ||
+            ext == "astro" || ext == "php" || ext == "phtml" || ext == "erb" || ext == "ejs" ||
+            ext == "hbs" || ext == "handlebars" || ext == "mustache" || ext == "twig" || ext == "njk" ||
+            ext == "liquid" || ext == "latte" || ext == "ftl" || ext == "vm" || ext == "jinja" ||
+            ext == "jinja2" || ext == "j2" || ext == "cfm" || ext == "cfml" || ext == "cshtml" ||
+            ext == "razor" || ext == "jsp" || ext == "asp" || ext == "aspx" || ext == "mdx") {
+            mode = Emmet::Mode::Html;
+        } else if (ext == "tsv" || ext == "csv" || ext == "c" || ext == "cpp" || ext == "cc" ||
+                   ext == "cxx" || ext == "h" || ext == "hpp" || ext == "hxx" || ext == "py" ||
+                   ext == "rb" || ext == "go" || ext == "rs" || ext == "java" || ext == "cs" ||
+                   ext == "swift" || ext == "kt" || ext == "scala" || ext == "lua" || ext == "pl" ||
+                   ext == "sh" || ext == "bash" || ext == "zsh" || ext == "bat" || ext == "cmd" ||
+                   ext == "ps1" || ext == "sql" || ext == "json" || ext == "yaml" || ext == "yml" ||
+                   ext == "toml" || ext == "ini" || ext == "cfg" || ext == "conf" || ext == "log") {
+            mode = Emmet::Mode::CodeStrict;
+        }
+        size_t searchLen = std::min(cursorPos, (size_t)32768);
+        if (searchLen > 0) {
+            std::string pre = engine->pt.getRange(cursorPos - searchLen, searchLen);
+            std::string preLower = Emmet::toLowerStr(pre);
+            size_t lastStyleOpen = preLower.rfind("<style");
+            size_t lastStyleClose = preLower.rfind("</style");
+            if (lastStyleOpen != std::string::npos && (lastStyleClose == std::string::npos || lastStyleOpen > lastStyleClose)) {
+                size_t gt = preLower.find('>', lastStyleOpen);
+                if (gt != std::string::npos) outInsideCssBlock = true;
+            }
+        }
+        return mode;
+    };
+
+    struct CursorExpansion {
+        int cursorIdx;
+        size_t erasePos;
+        size_t eraseLen;
+        Emmet::ExpandResult result;
+    };
+    std::vector<CursorExpansion> expansions;
+    expansions.reserve(engine->cursors.size());
+
+    for (size_t i = 0; i < engine->cursors.size(); ++i) {
+        const Cursor& c = engine->cursors[i];
+        int lineIdx = getLineIdx(engine, c.head);
+        if (lineIdx < 0 || lineIdx >= (int)engine->lineStarts.size()) return false;
+        size_t lineStart = engine->lineStarts[lineIdx];
+        size_t lineEnd = (lineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
+        if (c.head < lineStart || c.head > lineEnd) return false;
+        std::string lineText = engine->pt.getRange(lineStart, lineEnd - lineStart);
+        while (!lineText.empty() && (lineText.back() == '\n' || lineText.back() == '\r')) lineText.pop_back();
+        size_t caretCol = c.head - lineStart;
+        if (caretCol == 0 || caretCol > lineText.size()) return false;
+
+        bool insideCssBlock = false;
+        Emmet::Mode mode = getEmmetModeAndContext(c.head, lineStart, insideCssBlock);
+        Emmet::ExpandResult res = Emmet::expandOnLine(lineText, caretCol, mode, insideCssBlock, engine->newlineStr);
+        if (!res.matched) return false;
+
+        size_t erasePos = lineStart + res.abbrStartCol;
+        expansions.push_back({ (int)i, erasePos, res.abbrLen, std::move(res) });
+    }
+
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+    std::sort(expansions.begin(), expansions.end(), [](const CursorExpansion& a, const CursorExpansion& b) {
+        return a.erasePos > b.erasePos;
+    });
+    for (size_t k = 0; k < expansions.size(); ++k) {
+        if (k > 0 && expansions[k].erasePos + expansions[k].eraseLen > expansions[k - 1].erasePos) return false;
+    }
+
+    for (const auto& exp : expansions) {
+        std::string deleted = engine->pt.getRange(exp.erasePos, exp.eraseLen);
+        engine->pt.erase(exp.erasePos, exp.eraseLen);
+        batch.ops.push_back({ EditOp::Erase, exp.erasePos, deleted });
+        engine->pt.insert(exp.erasePos, exp.result.expanded);
+        batch.ops.push_back({ EditOp::Insert, exp.erasePos, exp.result.expanded });
+
+        long long delta = (long long)exp.result.expanded.size() - (long long)exp.eraseLen;
+        for (size_t ci = 0; ci < engine->cursors.size(); ++ci) {
+            if ((int)ci == exp.cursorIdx) continue;
+            Cursor& other = engine->cursors[ci];
+            if (other.head >= exp.erasePos + exp.eraseLen) other.head = (size_t)((long long)other.head + delta);
+            if (other.anchor >= exp.erasePos + exp.eraseLen) other.anchor = (size_t)((long long)other.anchor + delta);
+        }
+
+        Cursor& cur = engine->cursors[exp.cursorIdx];
+        if (!exp.result.tabstops.empty()) {
+            cur.anchor = exp.erasePos + exp.result.tabstops[0].startOffset;
+            cur.head = exp.erasePos + exp.result.tabstops[0].endOffset;
+        } else {
+            cur.anchor = cur.head = exp.erasePos + exp.result.expanded.size();
+        }
+    }
+
+    rebuildLineStarts(engine);
+    for (auto& c : engine->cursors) {
+        c.desiredX = getXFromPos(engine, c.head);
+    }
+
+    engine->activeEmmetSession.clear();
+    if (expansions.size() == 1 && expansions[0].result.tabstops.size() > 1) {
+        engine->activeEmmetSession.baseOffset = expansions[0].erasePos;
+        for (size_t i = 0; i < expansions[0].result.tabstops.size(); ++i) {
+            Emmet::TabstopGroup g;
+            g.id = (int)(i + 1);
+            g.ranges.push_back({ expansions[0].result.tabstops[i].startOffset, expansions[0].result.tabstops[i].endOffset });
+            engine->activeEmmetSession.groups.push_back(std::move(g));
+        }
+        engine->activeEmmetSession.currentGroupIndex = 0;
+        engine->activeEmmetSession.active = true;
+    }
+
+    batch.afterCursors = engine->cursors;
+    engine->undo.push(batch);
+    ensureCaretVisible(engine);
+    updateDirtyFlag(engine);
+    notifyPreviewUpdateIfNeeded(engine);
+    return true;
+}
+bool jumpEmmetTabstop(Engine* engine, bool forward) {
+    if (!engine || !engine->activeEmmetSession.active || engine->activeEmmetSession.groups.empty()) return false;
+    int nextIdx = engine->activeEmmetSession.currentGroupIndex + (forward ? 1 : -1);
+    if (nextIdx < 0 || nextIdx >= (int)engine->activeEmmetSession.groups.size()) {
+        if (forward) engine->activeEmmetSession.active = false;
+        return false;
+    }
+    engine->activeEmmetSession.currentGroupIndex = nextIdx;
+    const auto& grp = engine->activeEmmetSession.groups[nextIdx];
+    engine->cursors.clear();
+    for (const auto& r : grp.ranges) {
+        size_t s = std::min(engine->pt.length(), engine->activeEmmetSession.baseOffset + r.first);
+        size_t e = std::min(engine->pt.length(), engine->activeEmmetSession.baseOffset + r.second);
+        engine->cursors.push_back({ e, s, getXFromPos(engine, e) });
+    }
+    if (grp.id == 0 && nextIdx == (int)engine->activeEmmetSession.groups.size() - 1) {
+        engine->activeEmmetSession.active = false;
+    }
+    ensureCaretVisible(engine);
+    return true;
+}
+char getMatchingBracketChar(char c) {
+    switch (c) {
+        case '(': return ')';
+        case ')': return '(';
+        case '{': return '}';
+        case '}': return '{';
+        case '[': return ']';
+        case ']': return '[';
+        default: return 0;
+    }
+}
+bool isForwardBracket(char c) {
+    return c == '(' || c == '{' || c == '[';
+}
+size_t findMatchingBracketFromIter(Engine* engine, size_t pos, char openB, char closeB, bool forward) {
+    const size_t MAX_SCAN = 200000;
+    size_t len = engine->pt.length();
+    int depth = 1;
+    size_t scanned = 0;
+    if (forward) {
+        size_t cur = pos + 1;
+        while (cur < len && scanned < MAX_SCAN) {
+            char ch = engine->pt.charAt(cur);
+            if (ch == openB) depth++;
+            else if (ch == closeB) {
+                depth--;
+                if (depth == 0) return cur;
+            }
+            cur++;
+            scanned++;
+        }
+    } else {
+        if (pos == 0) return std::string::npos;
+        size_t cur = pos - 1;
+        while (scanned < MAX_SCAN) {
+            char ch = engine->pt.charAt(cur);
+            if (ch == closeB) depth++;
+            else if (ch == openB) {
+                depth--;
+                if (depth == 0) return cur;
+            }
+            if (cur == 0) break;
+            cur--;
+            scanned++;
+        }
+    }
+    return std::string::npos;
+}
+bool getAdjacentBrackets(Engine* engine, size_t caret, size_t& b1, size_t& b2) {
+    size_t len = engine->pt.length();
+    if (len == 0) return false;
+    if (caret < len) {
+        char ch = engine->pt.charAt(caret);
+        char match = getMatchingBracketChar(ch);
+        if (match != 0) {
+            bool fwd = isForwardBracket(ch);
+            size_t mPos = findMatchingBracketFromIter(engine, caret, fwd ? ch : match, fwd ? match : ch, fwd);
+            if (mPos != std::string::npos) {
+                b1 = caret;
+                b2 = mPos;
+                return true;
+            }
+        }
+    }
+    if (caret > 0 && caret - 1 < len) {
+        char ch = engine->pt.charAt(caret - 1);
+        char match = getMatchingBracketChar(ch);
+        if (match != 0) {
+            bool fwd = isForwardBracket(ch);
+            size_t mPos = findMatchingBracketFromIter(engine, caret - 1, fwd ? ch : match, fwd ? match : ch, fwd);
+            if (mPos != std::string::npos) {
+                b1 = caret - 1;
+                b2 = mPos;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+void jumpToMatchingBracketCommand(Engine* engine, bool select) {
+    if (!engine || engine->cursors.empty()) return;
+    Cursor& c = engine->cursors.back();
+    size_t b1 = 0, b2 = 0;
+    if (getAdjacentBrackets(engine, c.head, b1, b2)) {
+        size_t target = b2;
+        if (!select) c.anchor = target;
+        c.head = target;
+        c.desiredX = getXFromPos(engine, c.head);
+        ensureCaretVisible(engine);
+    }
+}
+void convertSelectedTextCommand(Engine* engine, bool toUpper) {
+    if (!engine || engine->cursors.empty()) return;
+    bool hasSel = false;
+    for (const auto& c : engine->cursors) if (c.hasSelection()) { hasSel = true; break; }
+    if (!hasSel) return;
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+    std::vector<size_t> indices(engine->cursors.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) {
+        return engine->cursors[a].start() > engine->cursors[b].start();
+    });
+    for (size_t idx : indices) {
+        Cursor& c = engine->cursors[idx];
+        if (!c.hasSelection()) continue;
+        size_t st = c.start(), len = c.end() - st;
+        std::string orig = engine->pt.getRange(st, len);
+        std::string conv;
+        conv.reserve(orig.size());
+        const char* p = orig.data();
+        const char* end = p + orig.size();
+        while (p < end) {
+            const char* charStart = p;
+            uint32_t cp = decodeUtf8(&p, end);
+            if (toUpper) {
+                if (cp >= 'a' && cp <= 'z') conv.push_back((char)(cp - 32));
+                else if (cp >= 0xFF41 && cp <= 0xFF5A) {
+                    uint32_t u = cp - 32;
+                    conv.push_back((char)(0xE0 | (u >> 12)));
+                    conv.push_back((char)(0x80 | ((u >> 6) & 0x3F)));
+                    conv.push_back((char)(0x80 | (u & 0x3F)));
+                } else conv.append(charStart, p - charStart);
+            } else {
+                if (cp >= 'A' && cp <= 'Z') conv.push_back((char)(cp + 32));
+                else if (cp >= 0xFF21 && cp <= 0xFF3A) {
+                    uint32_t u = cp + 32;
+                    conv.push_back((char)(0xE0 | (u >> 12)));
+                    conv.push_back((char)(0x80 | ((u >> 6) & 0x3F)));
+                    conv.push_back((char)(0x80 | (u & 0x3F)));
+                } else conv.append(charStart, p - charStart);
+            }
+        }
+        engine->pt.erase(st, len);
+        batch.ops.push_back({ EditOp::Erase, st, orig });
+        engine->pt.insert(st, conv);
+        batch.ops.push_back({ EditOp::Insert, st, conv });
+    }
+    rebuildLineStarts(engine);
+    for (auto& c : engine->cursors) c.desiredX = getXFromPos(engine, c.head);
+    batch.afterCursors = engine->cursors;
+    engine->undo.push(batch);
+    applyBatchToEmmetTabstops(engine, batch);
+    updateDirtyFlag(engine);
+    notifyPreviewUpdateIfNeeded(engine);
+}
+void addCursorCommand(Engine* engine, bool up) {
+    if (!engine || engine->cursors.empty()) return;
+    engine->isRectSelecting = false;
+    Cursor ref = up ? engine->cursors.front() : engine->cursors.back();
+    for (const auto& c : engine->cursors) {
+        if (up && c.head < ref.head) ref = c;
+        if (!up && c.head > ref.head) ref = c;
+    }
+    int lineIdx = getLineIdx(engine, ref.head);
+    int targetLine = up ? (lineIdx - 1) : (lineIdx + 1);
+    if (targetLine < 0 || targetLine >= (int)engine->lineStarts.size()) return;
+    size_t newPos = getPosFromLineAndX(engine, targetLine, ref.desiredX);
+    engine->cursors.push_back({ newPos, newPos, ref.desiredX });
+    mergeCursors(engine);
+    ensureCaretVisible(engine);
+}
+void moveRectSelectionCommand(Engine* engine, int dLine, int dCol) {
+    if (!engine || engine->cursors.empty()) return;
+    if (!engine->isRectSelecting) {
+        engine->isRectSelecting = true;
+        engine->rectAnchorPos = engine->cursors.front().anchor;
+        engine->rectAnchorX = getXFromPos(engine, engine->rectAnchorPos);
+    }
+    Cursor last = engine->cursors.back();
+    int headLine = getLineIdx(engine, last.head);
+    float headX = last.desiredX;
+    if (dLine != 0) {
+        headLine = std::clamp(headLine + dLine, 0, (int)engine->lineStarts.size() - 1);
+    }
+    if (dCol != 0) {
+        headX = std::max(engine->gutterWidth, headX + dCol * engine->charWidth);
+    }
+    int anchorLine = getLineIdx(engine, engine->rectAnchorPos);
+    int minLine = std::min(anchorLine, headLine);
+    int maxLine = std::max(anchorLine, headLine);
+    engine->cursors.clear();
+    auto pushLineCursor = [&](int li) {
+        size_t aPos = getPosFromLineAndX(engine, li, engine->rectAnchorX);
+        size_t hPos = getPosFromLineAndX(engine, li, headX);
+        engine->cursors.push_back({ hPos, aPos, headX });
+    };
+    if (headLine >= anchorLine) {
+        for (int li = minLine; li <= maxLine; ++li) pushLineCursor(li);
+    } else {
+        for (int li = maxLine; li >= minLine; --li) pushLineCursor(li);
+    }
+    ensureCaretVisible(engine);
+}
+bool handlePreviewTaskToggleCommand(Engine* engine, int targetLineIdx) {
+    if (!engine || targetLineIdx < 0 || targetLineIdx >= (int)engine->lineStarts.size()) return false;
+    size_t s = engine->lineStarts[targetLineIdx];
+    size_t e = (targetLineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[targetLineIdx + 1] : engine->pt.length();
+    std::string lineStr = engine->pt.getRange(s, e - s);
+    size_t bracketPos = lineStr.find('[');
+    if (bracketPos == std::string::npos || bracketPos + 2 >= lineStr.size() || lineStr[bracketPos + 2] != ']') return false;
+    char curState = lineStr[bracketPos + 1];
+    if (curState != ' ' && curState != 'x' && curState != 'X') return false;
+    std::string newChar = (curState == ' ') ? "x" : " ";
+    size_t docPos = s + bracketPos + 1;
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+    std::string oldChar(1, curState);
+    engine->pt.erase(docPos, 1);
+    batch.ops.push_back({ EditOp::Erase, docPos, oldChar });
+    engine->pt.insert(docPos, newChar);
+    batch.ops.push_back({ EditOp::Insert, docPos, newChar });
+    batch.afterCursors = engine->cursors;
+    engine->undo.push(batch);
+    updateDirtyFlag(engine);
+    notifyPreviewUpdateIfNeeded(engine);
+    return true;
 }
 extern "C" {
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_commitText(JNIEnv* env, jobject thiz, jstring text) {
@@ -2153,10 +3547,10 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdReplaceNext(JNIEnv* env,
     std::lock_guard<std::mutex> lock(g_imeMutex);
     replaceNextCommand(g_engine);
 }
-JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdReplaceAll(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
+JNIEXPORT jint JNICALL Java_jp_hack_miu_MainActivity_cmdReplaceAll(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return 0;
     std::lock_guard<std::mutex> lock(g_imeMutex);
-    replaceAllCommand(g_engine);
+    return replaceAllCommand(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_finishComposingTextNative(JNIEnv* env, jobject thiz) {
     if (!g_engine) return;
@@ -2170,12 +3564,15 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetDisplayFileName(JNIEn
         std::lock_guard<std::mutex> lock(g_imeMutex);
         g_engine->displayFileName = strName;
         env->ReleaseStringUTFChars(name, strName);
+        loadSyntaxForEngine(g_engine, g_engine->displayFileName);
         updateTitleBarIfNeeded(g_engine);
+        notifyPreviewUpdateIfNeeded(g_engine);
     }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdTop(JNIEnv* env, jobject thiz) {
     if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->isRectSelecting = false;
     g_engine->scrollY = 0.0f;
     g_engine->isFlinging = false;
     g_engine->velocityY = 0.0f;
@@ -2185,6 +3582,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdTop(JNIEnv* env, jobject
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdBottom(JNIEnv* env, jobject thiz) {
     if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->isRectSelecting = false;
     size_t len = g_engine->pt.length();
     g_engine->cursors.clear();
     g_engine->cursors.push_back({len, len, getXFromPos(g_engine, len)});
@@ -2193,6 +3591,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdBottom(JNIEnv* env, jobj
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdGoToLine(JNIEnv* env, jobject thiz, jint line) {
     if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->isRectSelecting = false;
     int totalLines = (int)g_engine->lineStarts.size();
     if (totalLines == 0) return;
     int target = line;
@@ -2223,6 +3622,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdRedo(JNIEnv* env, jobjec
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSelectAll(JNIEnv* env, jobject thiz) {
     if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->isRectSelecting = false;
     g_engine->cursors.clear();
     g_engine->cursors.push_back({g_engine->pt.length(), 0, 0.0f});
     ensureCaretVisible(g_engine);
@@ -2336,8 +3736,7 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetAutoSearchText(JNI
         if (!candidate.empty()) {
             result = candidate;
         }
-    }
-    else {
+    } else {
         if (g_engine->searchQuery.empty() && !candidate.empty() && isWord) {
             result = candidate;
         }
@@ -2348,7 +3747,9 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetAutoSearchText(JNI
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, jobject thiz, jint direction, jboolean isCtrl, jboolean keepAnchor) {
     if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->isRectSelecting = false;
     size_t len = g_engine->pt.length();
+    int totalVisRows = getTotalVisualRows(g_engine);
     for (auto& c : g_engine->cursors) {
         if (direction == 0) {
             if (!keepAnchor && c.hasSelection()) {
@@ -2376,7 +3777,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, 
                     int lineIdx = getLineIdx(g_engine, c.head);
                     size_t prevPos = 0;
                     bool found = false;
-                    if (lineIdx >= 0 && lineIdx < g_engine->lineStarts.size()) {
+                    if (lineIdx >= 0 && lineIdx < (int)g_engine->lineStarts.size()) {
                         ensureLineShaped(g_engine, lineIdx);
                         const auto& cache = g_engine->lineCaches[lineIdx];
                         for (const auto& sg : cache.glyphs) {
@@ -2391,7 +3792,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, 
                     if (found) {
                         c.head = prevPos;
                     } else {
-                        size_t lineStart = (lineIdx >= 0 && lineIdx < g_engine->lineStarts.size()) ? g_engine->lineStarts[lineIdx] : 0;
+                        size_t lineStart = (lineIdx >= 0 && lineIdx < (int)g_engine->lineStarts.size()) ? g_engine->lineStarts[lineIdx] : 0;
                         if (c.head > lineStart) {
                             c.head = lineStart;
                         } else {
@@ -2409,7 +3810,6 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, 
                 c.head = c.end(); c.anchor = c.head;
             } else if (c.head < len) {
                 if (isCtrl) {
-                    // 単語単位で右へ移動
                     size_t p = c.head;
                     char ch = g_engine->pt.charAt(p);
                     if (ch == '\r' || ch == '\n') {
@@ -2434,7 +3834,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, 
                     size_t nextPos = len;
                     bool found = false;
                     size_t textEnd = len;
-                    if (lineIdx >= 0 && lineIdx < g_engine->lineStarts.size()) {
+                    if (lineIdx >= 0 && lineIdx < (int)g_engine->lineStarts.size()) {
                         ensureLineShaped(g_engine, lineIdx);
                         const auto& cache = g_engine->lineCaches[lineIdx];
                         for (const auto& sg : cache.glyphs) {
@@ -2445,7 +3845,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, 
                                 }
                             }
                         }
-                        size_t end = (lineIdx + 1 < g_engine->lineStarts.size()) ? g_engine->lineStarts[lineIdx + 1] : len;
+                        size_t end = (lineIdx + 1 < (int)g_engine->lineStarts.size()) ? g_engine->lineStarts[lineIdx + 1] : len;
                         textEnd = end;
                         if (textEnd > g_engine->lineStarts[lineIdx] && g_engine->pt.charAt(textEnd - 1) == '\n') textEnd--;
                         if (textEnd > g_engine->lineStarts[lineIdx] && g_engine->pt.charAt(textEnd - 1) == '\r') textEnd--;
@@ -2476,12 +3876,14 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, 
                 if (!keepAnchor) c.anchor = c.head;
                 c.desiredX = getXFromPos(g_engine, c.head);
             } else {
-                int lineIdx = getLineIdx(g_engine, c.head);
-                int targetLineIdx = (direction == 2) ? (lineIdx - 1) : (lineIdx + 1);
-                if (targetLineIdx >= 0 && targetLineIdx < (int)g_engine->lineStarts.size()) {
-                    float targetVirtualY = targetLineIdx * g_engine->lineHeight + (g_engine->lineHeight * 0.5f);
+                int curLine = 0, curSub = 0, curVisRow = 0;
+                float curX = 0.0f;
+                getVisualPosForDocPos(g_engine, c.head, curLine, curSub, curVisRow, curX);
+                int targetVisRow = (direction == 2) ? (curVisRow - 1) : (curVisRow + 1);
+                if (targetVisRow >= 0 && targetVisRow < totalVisRows) {
+                    float targetVirtualY = targetVisRow * g_engine->lineHeight + (g_engine->lineHeight * 0.5f);
                     float touchY = targetVirtualY - g_engine->scrollY + g_engine->topMargin;
-                    float touchX = c.desiredX - g_engine->scrollX;
+                    float touchX = c.desiredX - (g_engine->wordWrapEnabled ? 0.0f : g_engine->scrollX);
                     size_t newPos = getDocPosFromPoint(g_engine, touchX, touchY);
                     c.head = newPos;
                     if (!keepAnchor) c.anchor = newPos;
@@ -2499,6 +3901,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, 
             }
         }
     }
+    mergeCursors(g_engine);
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteForwardText(JNIEnv* env, jobject thiz) {
@@ -2509,15 +3912,22 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteForwardText(JNIEnv* e
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveHomeEnd(JNIEnv* env, jobject thiz, jboolean isHome, jboolean isCtrl, jboolean keepAnchor) {
     if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->isRectSelecting = false;
     size_t len = g_engine->pt.length();
     for (auto& c : g_engine->cursors) {
         if (isHome) {
             if (isCtrl) {
                 c.head = 0;
+            } else if (g_engine->wordWrapEnabled) {
+                int lineIdx = 0, subIdx = 0, visRow = 0;
+                float x = 0.0f;
+                getVisualPosForDocPos(g_engine, c.head, lineIdx, subIdx, visRow, x);
+                if (lineIdx >= 0 && lineIdx < (int)g_engine->lineCaches.size() && subIdx < (int)g_engine->lineCaches[lineIdx].wrapSegments.size()) {
+                    c.head = g_engine->lineCaches[lineIdx].wrapSegments[subIdx].byteStart;
+                }
             } else {
-                // Home: 行頭
                 int lineIdx = getLineIdx(g_engine, c.head);
-                if (lineIdx >= 0 && lineIdx < g_engine->lineStarts.size()) {
+                if (lineIdx >= 0 && lineIdx < (int)g_engine->lineStarts.size()) {
                     c.head = g_engine->lineStarts[lineIdx];
                 } else {
                     c.head = 0;
@@ -2526,10 +3936,17 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveHomeEnd(JNIEnv* env,
         } else {
             if (isCtrl) {
                 c.head = len;
+            } else if (g_engine->wordWrapEnabled) {
+                int lineIdx = 0, subIdx = 0, visRow = 0;
+                float x = 0.0f;
+                getVisualPosForDocPos(g_engine, c.head, lineIdx, subIdx, visRow, x);
+                if (lineIdx >= 0 && lineIdx < (int)g_engine->lineCaches.size() && subIdx < (int)g_engine->lineCaches[lineIdx].wrapSegments.size()) {
+                    c.head = g_engine->lineCaches[lineIdx].wrapSegments[subIdx].byteEnd;
+                }
             } else {
                 int lineIdx = getLineIdx(g_engine, c.head);
-                if (lineIdx >= 0 && lineIdx < g_engine->lineStarts.size()) {
-                    size_t lineEnd = (lineIdx + 1 < g_engine->lineStarts.size()) ? g_engine->lineStarts[lineIdx + 1] : len;
+                if (lineIdx >= 0 && lineIdx < (int)g_engine->lineStarts.size()) {
+                    size_t lineEnd = (lineIdx + 1 < (int)g_engine->lineStarts.size()) ? g_engine->lineStarts[lineIdx + 1] : len;
                     if (lineEnd > g_engine->lineStarts[lineIdx] && g_engine->pt.charAt(lineEnd - 1) == '\n') lineEnd--;
                     if (lineEnd > g_engine->lineStarts[lineIdx] && g_engine->pt.charAt(lineEnd - 1) == '\r') lineEnd--;
                     c.head = lineEnd;
@@ -2543,17 +3960,17 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveHomeEnd(JNIEnv* env,
         }
         c.desiredX = getXFromPos(g_engine, c.head);
     }
+    mergeCursors(g_engine);
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSelectNextOccurrence(JNIEnv* env, jobject thiz) {
     if (!g_engine || g_engine->cursors.empty()) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->isRectSelecting = false;
 
-    // 【重要】参照(&)ではなくコピーで受け取る（push_back時のクラッシュ防止）
     Cursor c = g_engine->cursors.back();
 
     if (!c.hasSelection()) {
-        // 選択範囲がない場合は、現在の単語を選択する（1回目のCtrl+D）
         size_t targetPos = c.head;
         if (targetPos > 0) {
             char currChar = targetPos < g_engine->pt.length() ? g_engine->pt.charAt(targetPos) : '\0';
@@ -2570,21 +3987,17 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSelectNextOccurrence(JNI
         return;
     }
 
-    // すでに選択範囲がある場合は、次に出現する同じ単語を探してマルチカーソル化する（2回目以降のCtrl+D）
     size_t start = c.start();
     size_t len = c.end() - start;
     std::string query = g_engine->pt.getRange(start, len);
 
     size_t matchLen = 0;
-    // 検索開始位置は現在のカーソルの末尾（ヘッドとアンカーの大きい方）
     size_t nextPos = findText(g_engine, std::max(c.head, c.anchor), query, true, true, false, false, &matchLen);
 
     if (nextPos != std::string::npos) {
-        // すでに選択されている箇所かどうかをチェック
         for (const auto& cur : g_engine->cursors) {
             if (cur.start() == nextPos) return;
         }
-        // 未選択の新しいマッチ箇所なら、カーソルを追加
         size_t newHead = nextPos + matchLen;
         g_engine->cursors.push_back({newHead, nextPos, getXFromPos(g_engine, newHead)});
         ensureCaretVisible(g_engine);
@@ -2593,7 +4006,9 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSelectNextOccurrence(JNI
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdClearSelectionAndMultiCursor(JNIEnv* env, jobject thiz) {
     if (!g_engine || g_engine->cursors.empty()) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
-   Cursor lastCursor = g_engine->cursors.back();
+    g_engine->isRectSelecting = false;
+    g_engine->activeEmmetSession.clear();
+    Cursor lastCursor = g_engine->cursors.back();
     if (g_engine->cursors.size() > 1 || lastCursor.hasSelection()) {
         g_engine->cursors.clear();
         lastCursor.anchor = lastCursor.head;
@@ -2604,23 +4019,23 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdClearSelectionAndMultiCu
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdPageMove(JNIEnv* env, jobject thiz, jboolean isUp, jboolean keepAnchor) {
     if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
-    float winH = 2000.0f;
-    if (g_engine->app->window != nullptr) {
-        winH = (float)ANativeWindow_getHeight(g_engine->app->window);
-    }
-    float visibleH = winH - g_engine->bottomInset;
-    if (visibleH < winH * 0.3f) visibleH = winH * 0.5f; // 安全対策
+    g_engine->isRectSelecting = false;
+    float visibleH = getEditorVisibleH(g_engine) - g_engine->topMargin;
+    if (visibleH < g_engine->lineHeight) visibleH = g_engine->lineHeight * 5.0f;
     int linesPerPage = (int)(visibleH / g_engine->lineHeight);
     if (linesPerPage > 1) linesPerPage -= 1;
     if (linesPerPage < 1) linesPerPage = 1;
     size_t len = g_engine->pt.length();
+    int totalVisRows = getTotalVisualRows(g_engine);
     for (auto& c : g_engine->cursors) {
-        int lineIdx = getLineIdx(g_engine, c.head);
-        int targetLineIdx = isUp ? (lineIdx - linesPerPage) : (lineIdx + linesPerPage);
-        if (targetLineIdx >= 0 && targetLineIdx < (int)g_engine->lineStarts.size()) {
-            float targetVirtualY = targetLineIdx * g_engine->lineHeight + (g_engine->lineHeight * 0.5f);
+        int curLine = 0, curSub = 0, curVisRow = 0;
+        float curX = 0.0f;
+        getVisualPosForDocPos(g_engine, c.head, curLine, curSub, curVisRow, curX);
+        int targetVisRow = isUp ? (curVisRow - linesPerPage) : (curVisRow + linesPerPage);
+        if (targetVisRow >= 0 && targetVisRow < totalVisRows) {
+            float targetVirtualY = targetVisRow * g_engine->lineHeight + (g_engine->lineHeight * 0.5f);
             float touchY = targetVirtualY - g_engine->scrollY + g_engine->topMargin;
-            float touchX = c.desiredX - g_engine->scrollX;
+            float touchX = c.desiredX - (g_engine->wordWrapEnabled ? 0.0f : g_engine->scrollX);
             size_t newPos = getDocPosFromPoint(g_engine, touchX, touchY);
             c.head = newPos;
             if (!keepAnchor) c.anchor = newPos;
@@ -2636,6 +4051,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdPageMove(JNIEnv* env, jo
             }
         }
     }
+    mergeCursors(g_engine);
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdIndentLines(JNIEnv* env, jobject thiz, jboolean isUnindent) {
@@ -2645,9 +4061,17 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdIndentLines(JNIEnv* env,
     for (const auto& c : g_engine->cursors) {
         if (c.hasSelection()) { hasSelection = true; break; }
     }
-    if (!hasSelection && !isUnindent) {
-        insertAtCursors(g_engine, "\t");
-        return;
+    if (!isUnindent) {
+        if (!hasSelection && g_engine->cursors.size() == 1) {
+            if (tryExpandEmmet(g_engine)) return;
+        }
+        if (jumpEmmetTabstop(g_engine, true)) return;
+        if (!hasSelection) {
+            insertAtCursors(g_engine, "\t");
+            return;
+        }
+    } else {
+        if (jumpEmmetTabstop(g_engine, false)) return;
     }
     std::vector<int> lines = getUniqueLineIndices(g_engine);
     if (lines.empty()) return;
@@ -2660,8 +4084,13 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdIndentLines(JNIEnv* env,
             if (pos >= g_engine->pt.length()) continue;
             char c = g_engine->pt.charAt(pos);
             size_t eraseLen = 0;
-            if (c == '\t') eraseLen = 1;
-            else if (c == ' ') eraseLen = 1;
+            if (c == '\t') {
+                eraseLen = 1;
+            } else if (c == ' ') {
+                while (eraseLen < 4 && (pos + eraseLen) < g_engine->pt.length() && g_engine->pt.charAt(pos + eraseLen) == ' ') {
+                    eraseLen++;
+                }
+            }
             if (eraseLen > 0) {
                 std::string deleted = g_engine->pt.getRange(pos, eraseLen);
                 g_engine->pt.erase(pos, eraseLen);
@@ -2691,17 +4120,17 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdIndentLines(JNIEnv* env,
             }
         }
     }
-    for (auto& c : g_engine->cursors) {
-        c.desiredX = getXFromPos(g_engine, c.head);
-    }
     if (!batch.ops.empty()) {
+        rebuildLineStarts(g_engine);
+        for (auto& c : g_engine->cursors) {
+            c.desiredX = getXFromPos(g_engine, c.head);
+        }
         batch.afterCursors = g_engine->cursors;
         g_engine->undo.push(batch);
-        bool wasDirty = g_engine->isDirty;
-        g_engine->isDirty = true;
-        rebuildLineStarts(g_engine);
+        applyBatchToEmmetTabstops(g_engine, batch);
         ensureCaretVisible(g_engine);
-        if (!wasDirty) updateTitleBarIfNeeded(g_engine);
+        updateDirtyFlag(g_engine);
+        notifyPreviewUpdateIfNeeded(g_engine);
     }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdZoom(JNIEnv* env, jobject thiz, jint mode) {
@@ -2722,12 +4151,152 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdZoom(JNIEnv* env, jobjec
         float scale = newSize / 48.0f;
         g_engine->lineHeight = 60.0f * scale;
         g_engine->charWidth = 24.0f * scale;
+        for (auto& lc : g_engine->lineCaches) lc.isWrapped = false;
+        updateGutterWidth(g_engine);
         for (auto& c : g_engine->cursors) {
             c.desiredX = getXFromPos(g_engine, c.head);
         }
-        updateGutterWidth(g_engine);
         ensureCaretVisible(g_engine);
     }
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdToggleComment(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    toggleCommentCommand(g_engine);
+}
+JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdToggleWordWrap(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return JNI_FALSE;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->wordWrapEnabled = !g_engine->wordWrapEnabled;
+    g_engine->scrollX = 0.0f;
+    for (auto& lc : g_engine->lineCaches) lc.isWrapped = false;
+    for (auto& c : g_engine->cursors) c.desiredX = getXFromPos(g_engine, c.head);
+    ensureCaretVisible(g_engine);
+    return g_engine->wordWrapEnabled ? JNI_TRUE : JNI_FALSE;
+}
+JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdIsWordWrapEnabled(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return JNI_FALSE;
+    return g_engine->wordWrapEnabled ? JNI_TRUE : JNI_FALSE;
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetWordWrapEnabled(JNIEnv* env, jobject thiz, jboolean enabled) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->wordWrapEnabled = (enabled == JNI_TRUE);
+    if (g_engine->wordWrapEnabled) g_engine->scrollX = 0.0f;
+    for (auto& lc : g_engine->lineCaches) lc.isWrapped = false;
+    for (auto& c : g_engine->cursors) c.desiredX = getXFromPos(g_engine, c.head);
+    ensureCaretVisible(g_engine);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdDeleteLine(JNIEnv* env, jobject thiz) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    deleteLineCommand(g_engine);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveLines(JNIEnv* env, jobject thiz, jboolean up) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    moveLinesCommand(g_engine, up == JNI_TRUE);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdDuplicateLines(JNIEnv* env, jobject thiz, jboolean up) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    duplicateLinesCommand(g_engine, up == JNI_TRUE);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdJumpToBracket(JNIEnv* env, jobject thiz, jboolean select) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    jumpToMatchingBracketCommand(g_engine, select == JNI_TRUE);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdConvertCase(JNIEnv* env, jobject thiz, jboolean toUpper) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    convertSelectedTextCommand(g_engine, toUpper == JNI_TRUE);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdAddCursor(JNIEnv* env, jobject thiz, jboolean up) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    addCursorCommand(g_engine, up == JNI_TRUE);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveRectSelection(JNIEnv* env, jobject thiz, jint dLine, jint dCol) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    moveRectSelectionCommand(g_engine, (int)dLine, (int)dCol);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetEditorViewportSize(JNIEnv* env, jobject thiz, jint widthPx, jint heightPx) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    float newW = (float)widthPx;
+    float newH = (float)heightPx;
+    bool wChanged = std::abs(g_engine->editorWidthOverride - newW) > 0.5f;
+    bool hChanged = std::abs(g_engine->editorHeightOverride - newH) > 0.5f;
+    if (wChanged) {
+        g_engine->editorWidthOverride = newW;
+        for (auto& lc : g_engine->lineCaches) lc.isWrapped = false;
+    }
+    if (hChanged) {
+        g_engine->editorHeightOverride = newH;
+    }
+    if (wChanged || hChanged) {
+        ensureCaretVisible(g_engine);
+    }
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetHelpVisible(JNIEnv* env, jobject thiz, jboolean visible) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->isHelpShowing = (visible == JNI_TRUE);
+    if (g_engine->isHelpShowing) {
+        g_engine->isKeyboardShowing = false;
+    }
+}
+JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetPreviewHtml(JNIEnv* env, jobject thiz, jboolean isDark) {
+    if (!g_engine) return env->NewStringUTF("");
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    std::string text = g_engine->pt.getRange(0, g_engine->pt.length());
+    MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce);
+    return env->NewStringUTF(res.fullHtml.c_str());
+}
+JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetPreviewDomUpdateJs(JNIEnv* env, jobject thiz, jboolean isDark) {
+    if (!g_engine) return env->NewStringUTF("");
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    std::string text = g_engine->pt.getRange(0, g_engine->pt.length());
+    MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce);
+    if (!res.isMdOrMermaidShell) return env->NewStringUTF("");
+    std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, isDark == JNI_TRUE);
+    return env->NewStringUTF(js.c_str());
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdTogglePreviewTask(JNIEnv* env, jobject thiz, jint lineIdx) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    handlePreviewTaskToggleCommand(g_engine, (int)lineIdx);
+}
+JNIEXPORT jfloatArray JNICALL Java_jp_hack_miu_MainActivity_cmdGetViewState(JNIEnv* env, jobject thiz) {
+    jfloatArray arr = env->NewFloatArray(5);
+    if (!g_engine) return arr;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    size_t head = g_engine->cursors.empty() ? 0 : g_engine->cursors.back().head;
+    size_t anchor = g_engine->cursors.empty() ? 0 : g_engine->cursors.back().anchor;
+    jfloat vals[5] = {
+        g_engine->scrollX,
+        g_engine->scrollY,
+        (jfloat)head,
+        (jfloat)anchor,
+        g_engine->wordWrapEnabled ? 1.0f : 0.0f
+    };
+    env->SetFloatArrayRegion(arr, 0, 5, vals);
+    return arr;
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetViewState(JNIEnv* env, jobject thiz, jfloat scrollX, jfloat scrollY, jint head, jint anchor, jboolean wordWrap) {
+    if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->wordWrapEnabled = (wordWrap == JNI_TRUE);
+    for (auto& lc : g_engine->lineCaches) lc.isWrapped = false;
+    size_t len = g_engine->pt.length();
+    size_t h = std::min((size_t)std::max(0, (int)head), len);
+    size_t a = std::min((size_t)std::max(0, (int)anchor), len);
+    g_engine->cursors.clear();
+    g_engine->cursors.push_back({ h, a, getXFromPos(g_engine, h) });
+    g_engine->scrollX = g_engine->wordWrapEnabled ? 0.0f : std::max(0.0f, (float)scrollX);
+    g_engine->scrollY = std::max(0.0f, (float)scrollY);
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextBeforeCursor(JNIEnv* env, jobject thiz, jint length) {
     if (!g_engine || g_engine->cursors.empty()) return env->NewStringUTF("");
@@ -3344,6 +4913,7 @@ std::string GetResString(Engine* engine, const char* resName) {
 void updateTextVertices(Engine* engine) {
     float scale = engine->currentFontSize / 48.0f; float baselineOffset = engine->lineHeight * 0.8f; engine->maxLineWidth = engine->gutterWidth;
     std::vector<Vertex> bgVertices; std::vector<Vertex> lineVertices; std::vector<Vertex> charVertices; std::vector<Vertex> cursorVertices;
+    std::vector<Vertex> gutterBgVertices; std::vector<Vertex> gutterTextVertices;
     float whiteU = 1.0f / engine->atlas.width; float whiteV = 1.0f / engine->atlas.height;
     auto addRect = [&](std::vector<Vertex>& verts, float rx, float ry, float rw, float rh, float r, float g, float b, float a) {
         verts.push_back({{rx, ry}, {whiteU, whiteV}, 0.0f, {r, g, b, a}}); verts.push_back({{rx, ry + rh}, {whiteU, whiteV}, 0.0f, {r, g, b, a}});
@@ -3356,39 +4926,41 @@ void updateTextVertices(Engine* engine) {
     if (!engine->searchQuery.empty()) {
         size_t docLen = engine->pt.length();
         if (engine->searchRegex) {
-            std::string fullText = engine->pt.getRange(0, docLen); std::string actualQuery = preprocessRegexQuery(engine->searchQuery);
-            try {
-                std::regex_constants::syntax_option_type rxFlags = std::regex_constants::ECMAScript; if (!engine->searchMatchCase) rxFlags |= std::regex_constants::icase;
-                std::regex re(actualQuery, rxFlags); bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^'); bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
-                auto searchStart = fullText.cbegin(); std::smatch m; size_t currentOffset = 0; std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
-                while (std::regex_search(searchStart, fullText.cend(), m, re, flags)) {
-                    size_t matchPos = currentOffset + m.position(); size_t matchLen = m.length(); size_t anchorLen = 0;
-                    if (startsWithCaret && m.size() > 1 && m[1].matched) anchorLen = m.length(1);
-                    size_t contentPos = matchPos + anchorLen; size_t contentLen = matchLen - anchorLen; bool shouldHighlight = true;
-                    if (endsWithDollar) {
-                        bool isAtLineEnd = false;
-                        if (contentPos + contentLen >= fullText.size()) isAtLineEnd = true;
-                        else {
-                            char c = fullText[contentPos + contentLen];
-                            if (c == '\r' || c == '\n') { isAtLineEnd = true; if (contentLen == 0 && c == '\n' && contentPos + contentLen > 0 && fullText[contentPos + contentLen - 1] == '\r') isAtLineEnd = false; }
+            if (isSafeUserRegex(engine->searchQuery)) {
+                std::string fullText = engine->pt.getRange(0, docLen); std::string actualQuery = preprocessRegexQuery(engine->searchQuery);
+                try {
+                    std::regex_constants::syntax_option_type rxFlags = std::regex_constants::ECMAScript; if (!engine->searchMatchCase) rxFlags |= std::regex_constants::icase;
+                    std::regex re(actualQuery, rxFlags); bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^'); bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
+                    auto searchStart = fullText.cbegin(); std::smatch m; size_t currentOffset = 0; std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
+                    while (std::regex_search(searchStart, fullText.cend(), m, re, flags)) {
+                        size_t matchPos = currentOffset + m.position(); size_t matchLen = m.length(); size_t anchorLen = 0;
+                        if (startsWithCaret && m.size() > 1 && m[1].matched) anchorLen = m.length(1);
+                        size_t contentPos = matchPos + anchorLen; size_t contentLen = matchLen - anchorLen; bool shouldHighlight = true;
+                        if (endsWithDollar) {
+                            bool isAtLineEnd = false;
+                            if (contentPos + contentLen >= fullText.size()) isAtLineEnd = true;
+                            else {
+                                char c = fullText[contentPos + contentLen];
+                                if (c == '\r' || c == '\n') { isAtLineEnd = true; if (contentLen == 0 && c == '\n' && contentPos + contentLen > 0 && fullText[contentPos + contentLen - 1] == '\r') isAtLineEnd = false; }
+                            }
+                            if (!isAtLineEnd) shouldHighlight = false;
+                            if (shouldHighlight && contentPos > 0 && contentPos < fullText.size()) { if (fullText[contentPos] == '\n' && fullText[contentPos - 1] == '\r') shouldHighlight = false; }
                         }
-                        if (!isAtLineEnd) shouldHighlight = false;
-                        if (shouldHighlight && contentPos > 0 && contentPos < fullText.size()) { if (fullText[contentPos] == '\n' && fullText[contentPos - 1] == '\r') shouldHighlight = false; }
+                        if (shouldHighlight && startsWithCaret && endsWithDollar && contentLen == 0) {
+                            size_t globalPos = contentPos;
+                            if (globalPos == fullText.size() && !fullText.empty()) { bool isAfterNewline = false; if (globalPos > 0) { char c = fullText[globalPos - 1]; if (c == '\r' || c == '\n') isAfterNewline = true; } if (!isAfterNewline) shouldHighlight = false; }
+                        }
+                        if (shouldHighlight && !searchMatches.empty()) { const auto& last = searchMatches.back(); if (last.first == contentPos && (last.second - last.first) == 0 && contentLen == 0) shouldHighlight = false; }
+                        if (shouldHighlight) searchMatches.push_back({ contentPos, contentPos + contentLen });
+                        size_t step = matchLen;
+                        if (step == 0) { bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol)); if (isBolCaret) step = 0; else step = 1; }
+                        if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
+                        size_t relativeAdvance = m.position() + step; size_t remaining = std::distance(searchStart, fullText.cend());
+                        if (relativeAdvance > remaining) break;
+                        std::advance(searchStart, relativeAdvance); currentOffset += relativeAdvance; flags |= std::regex_constants::match_not_bol;
                     }
-                    if (shouldHighlight && startsWithCaret && endsWithDollar && contentLen == 0) {
-                        size_t globalPos = contentPos;
-                        if (globalPos == fullText.size() && !fullText.empty()) { bool isAfterNewline = false; if (globalPos > 0) { char c = fullText[globalPos - 1]; if (c == '\r' || c == '\n') isAfterNewline = true; } if (!isAfterNewline) shouldHighlight = false; }
-                    }
-                    if (shouldHighlight && !searchMatches.empty()) { const auto& last = searchMatches.back(); if (last.first == contentPos && (last.second - last.first) == 0 && contentLen == 0) shouldHighlight = false; }
-                    if (shouldHighlight) searchMatches.push_back({ contentPos, contentPos + contentLen });
-                    size_t step = matchLen;
-                    if (step == 0) { bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol)); if (isBolCaret) step = 0; else step = 1; }
-                    if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
-                    size_t relativeAdvance = m.position() + step; size_t remaining = std::distance(searchStart, fullText.cend());
-                    if (relativeAdvance > remaining) break;
-                    std::advance(searchStart, relativeAdvance); currentOffset += relativeAdvance; flags |= std::regex_constants::match_not_bol;
-                }
-            } catch (...) {}
+                } catch (...) {}
+            }
         } else {
             size_t currentSearchPos = 0;
             while (currentSearchPos <= docLen) {
@@ -3409,139 +4981,217 @@ void updateTextVertices(Engine* engine) {
             if (matchLen == 0) currentSearchPos = found + 1; else currentSearchPos = found + matchLen;
         }
     }
-    float winH = 5000.0f; float winW = 1080.0f;
-    if (engine->app->window != nullptr) { winH = (float)ANativeWindow_getHeight(engine->app->window); winW = (float)ANativeWindow_getWidth(engine->app->window); }
-    for (int lineIdx = 0; lineIdx < engine->lineStarts.size(); ++lineIdx) {
-        float lineY = engine->topMargin + baselineOffset - engine->scrollY + lineIdx * engine->lineHeight;
-        if (lineY < -engine->lineHeight || lineY > winH + engine->lineHeight) continue;
-        if (lineIdx >= engine->lineCaches.size()) break;
-        ensureLineShaped(engine, lineIdx);
-        float x = engine->gutterWidth - engine->scrollX; size_t lineStart = engine->lineStarts[lineIdx]; size_t lineEnd = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
-        for (const auto& match : searchMatches) {
-            if (match.first == match.second) {
-                if (match.first >= lineStart && (lineIdx + 1 >= engine->lineStarts.size() || match.first < engine->lineStarts[lineIdx + 1])) {
-                    float drawX = engine->gutterWidth;
-                    if (match.first > lineStart) { float s = engine->currentFontSize / 48.0f; for (const auto &sg: engine->lineCaches[lineIdx].glyphs) { if (sg.cluster >= match.first) break; drawX += sg.xAdvance * s; } }
-                    drawX -= engine->scrollX; float bgY = lineY - engine->lineHeight * 0.8f;
-                    addRect(bgVertices, drawX, bgY, engine->charWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
-                }
-            }
-        }
-        for (const auto& sg : engine->lineCaches[lineIdx].glyphs) {
-            uint64_t key = ((uint64_t)sg.fontIndex << 32) | sg.glyphIndex;
-            if (engine->atlas.glyphs.count(key) == 0) engine->atlas.loadGlyph(engine, sg.fontIndex, sg.glyphIndex);
-
-            bool isSelected = false;
-            // 【変更】全てのカーソルをループして選択状態を判定
-            for (const auto& cur : engine->cursors) {
-                if (cur.hasSelection() && sg.cluster >= cur.start() && sg.cluster < cur.end()) {
-                    isSelected = true; break;
-                }
-            }
-
-            bool isSearchResult = false;
-            for (const auto& match : searchMatches) { if (match.first < match.second && sg.cluster >= match.first && sg.cluster < match.second) { isSearchResult = true; break; } }
-            bool isAutoHlResult = false;
-            for (const auto& match : autoMatches) { if (match.first < match.second && sg.cluster >= match.first && sg.cluster < match.second) { isAutoHlResult = true; break; } }
-
-            if (sg.isIME) {
-                float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, 0.2f, 0.6f, 1.0f, 0.3f);
-                float underY = lineY + engine->lineHeight * 0.1f; addRect(lineVertices, x, underY, sg.xAdvance * scale, 2.0f, textR, textG, textB, 1.0f);
-            } else if (isSelected) {
-                float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, engine->selColor[0], engine->selColor[1], engine->selColor[2], engine->selColor[3]);
-            } else if (isSearchResult) {
-                float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
-            } else if (isAutoHlResult) {
-                float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, engine->autoHlColor[0], engine->autoHlColor[1], engine->autoHlColor[2], engine->autoHlColor[3]);
-            }
-
-            if (engine->atlas.glyphs.count(key) > 0) {
-                GlyphInfo& info = engine->atlas.glyphs[key]; float isColorFlag = info.isColor ? 1.0f : 0.0f;
-                float xpos = x + sg.xOffset * scale + info.bearingX * scale; float ypos = lineY - sg.yOffset * scale - info.bearingY * scale; float w = info.width * scale; float h = info.height * scale;
-                charVertices.push_back({{xpos, ypos}, {info.u0, info.v0}, isColorFlag, {textR, textG, textB, textA}}); charVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, isColorFlag, {textR, textG, textB, textA}});
-                charVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, isColorFlag, {textR, textG, textB, textA}}); charVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, isColorFlag, {textR, textG, textB, textA}});
-                charVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, isColorFlag, {textR, textG, textB, textA}}); charVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag, {textR, textG, textB, textA}});
-            }
-            x += sg.xAdvance * scale; float absoluteX = x + engine->scrollX; if (absoluteX > engine->maxLineWidth) engine->maxLineWidth = absoluteX;
-        }
-        if (lineEnd > lineStart) {
-            char lastChar = engine->pt.charAt(lineEnd - 1);
-            if (lastChar == '\n' || lastChar == '\r') {
-                size_t newlinePos = lineEnd - 1; uint64_t nlKey = 0xFFFFFFFFFFFFFFFD; bool skipDraw = false;
-                if (lastChar == '\n') { if (newlinePos > lineStart && engine->pt.charAt(newlinePos - 1) == '\r') { newlinePos--; nlKey = 0xFFFFFFFFFFFFFFFF; } else nlKey = 0xFFFFFFFFFFFFFFFD; }
-                else if (lastChar == '\r') { if (lineEnd < engine->pt.length() && engine->pt.charAt(lineEnd) == '\n') skipDraw = true; else nlKey = 0xFFFFFFFFFFFFFFFE; }
-                if (!skipDraw) {
-                    bool isNewlineSelected = false;
-                    // 【変更】全てのカーソルをループして改行の選択状態を判定
-                    for (const auto& cur : engine->cursors) {
-                        if (cur.hasSelection() && newlinePos >= cur.start() && newlinePos < cur.end()) {
-                            isNewlineSelected = true; break;
-                        }
-                    }
-                    bool isNewlineMatched = false; for (const auto& match : searchMatches) { if (match.first < match.second && match.first <= newlinePos && match.second > newlinePos) { isNewlineMatched = true; break; } }
-                    bool isNewlineAutoMatched = false; for (const auto& match : autoMatches) { if (match.first < match.second && match.first <= newlinePos && match.second > newlinePos) { isNewlineAutoMatched = true; break; } }
-                    if (isNewlineSelected) { float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, engine->charWidth, engine->lineHeight, engine->selColor[0], engine->selColor[1], engine->selColor[2], engine->selColor[3]); }
-                    else if (isNewlineMatched) { float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, engine->charWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f); }
-                    else if (isNewlineAutoMatched) { float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, engine->charWidth, engine->lineHeight, engine->autoHlColor[0], engine->autoHlColor[1], engine->autoHlColor[2], engine->autoHlColor[3]); }
-                    if (engine->atlas.glyphs.count(nlKey) > 0) {
-                        GlyphInfo& info = engine->atlas.glyphs[nlKey]; float nlR = engine->textColor[0], nlG = engine->textColor[1], nlB = engine->textColor[2], nlA = engine->textColor[3] * 0.3f;
-                        float targetSize = engine->charWidth * 1.0f; float iconScale = targetSize / info.width; float w = info.width * iconScale, h = info.height * iconScale;
-                        float xpos = x + (engine->charWidth - w) * 0.5f; float rowCenterY = engine->topMargin - engine->scrollY + lineIdx * engine->lineHeight + engine->lineHeight * 0.5f; float ypos = rowCenterY - h * 0.5f;
-                        charVertices.push_back({{xpos, ypos}, {info.u0, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}}); charVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
-                        charVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}}); charVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
-                        charVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}}); charVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
-                    }
-                }
-            }
-        }
-        for (const auto& c : engine->cursors) {
-            size_t vPos = c.head;
-            if (vPos >= lineStart && (lineIdx + 1 >= engine->lineStarts.size() || vPos < engine->lineStarts[lineIdx + 1])) {
-                float cx = getXFromPos(engine, vPos); float curY = lineY - engine->lineHeight * 0.8f;
-                addRect(cursorVertices, cx - engine->scrollX, curY, cursorWidth, engine->lineHeight, engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
-            }
-        }
+    size_t b1 = std::string::npos, b2 = std::string::npos;
+    if (engine->cursors.size() == 1 && !engine->cursors[0].hasSelection()) {
+        getAdjacentBrackets(engine, engine->cursors[0].head, b1, b2);
     }
-    std::vector<Vertex> gutterBgVertices; std::vector<Vertex> gutterTextVertices;
+
+    float winH = 5000.0f;
+    if (engine->app->window != nullptr) { winH = (float)ANativeWindow_getHeight(engine->app->window); }
+    float winW = getEditorWinW(engine);
+    float visibleH = getEditorVisibleH(engine);
+
     addRect(gutterBgVertices, 0.0f, 0.0f, engine->gutterWidth, winH, engine->gutterBgColor[0], engine->gutterBgColor[1], engine->gutterBgColor[2], engine->gutterBgColor[3]);
     float gutterTextR = engine->gutterTextColor[0], gutterTextG = engine->gutterTextColor[1], gutterTextB = engine->gutterTextColor[2];
-    for (int i = 0; i < engine->lineStarts.size(); ++i) {
-        float lineTop = engine->topMargin - engine->scrollY + i * engine->lineHeight;
-        if (lineTop + engine->lineHeight < 0.0f || lineTop > winH) continue;
-        std::string lineNumStr = std::to_string(i + 1); float numWidth = 0.0f;
-        for(char c : lineNumStr) {
-            uint32_t cp = c; int fontIdx = getFontIndexForChar(engine, cp, 0); uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp); uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
-            if (engine->atlas.glyphs.count(key) == 0 && !engine->fallbackFaces.empty()) engine->atlas.loadGlyph(engine, fontIdx, glyphIdx);
-            if (engine->atlas.glyphs.count(key) > 0) numWidth += engine->atlas.glyphs[key].advance * scale; else numWidth += engine->charWidth;
+
+    int currentVisRow = 0;
+    for (int lineIdx = 0; lineIdx < (int)engine->lineStarts.size(); ++lineIdx) {
+        if (lineIdx >= (int)engine->lineCaches.size()) break;
+        int rowCnt = getVisualRowCountForLine(engine, lineIdx);
+        float firstLineTop = engine->topMargin - engine->scrollY + currentVisRow * engine->lineHeight;
+        float lastLineBottom = firstLineTop + rowCnt * engine->lineHeight;
+        if (lastLineBottom < -engine->lineHeight || firstLineTop > winH + engine->lineHeight) {
+            currentVisRow += rowCnt;
+            continue;
         }
-        float rightMargin = engine->charWidth * 0.5f; float numX = engine->gutterWidth - rightMargin - numWidth; if (numX < rightMargin * 0.5f) numX = rightMargin * 0.5f;
-        float lineY = lineTop + baselineOffset;
-        for(char c : lineNumStr) {
-            uint32_t cp = c; int fontIdx = getFontIndexForChar(engine, cp, 0); uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp); uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
-            if (engine->atlas.glyphs.count(key) > 0) {
-                GlyphInfo& info = engine->atlas.glyphs[key]; float xpos = numX + info.bearingX * scale; float ypos = lineY - info.bearingY * scale; float w = info.width * scale; float h = info.height * scale;
-                gutterTextVertices.push_back({{xpos, ypos}, {info.u0, info.v0}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}}); gutterTextVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
-                gutterTextVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}}); gutterTextVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
-                gutterTextVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}}); gutterTextVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
-                numX += info.advance * scale;
-            } else numX += engine->charWidth;
+        ensureLineWrapped(engine, lineIdx);
+        const auto& cache = engine->lineCaches[lineIdx];
+        size_t lineStart = engine->lineStarts[lineIdx];
+        size_t lineEnd = (lineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
+        size_t textEnd = lineEnd;
+        if (textEnd > lineStart && engine->pt.charAt(textEnd - 1) == '\n') textEnd--;
+        if (textEnd > lineStart && engine->pt.charAt(textEnd - 1) == '\r') textEnd--;
+
+        std::vector<SyntaxColor> lineSyntaxColors;
+        if (engine->currentSyntax.active && (textEnd - lineStart) <= 10000) {
+            std::string lineStr = engine->pt.getRange(lineStart, textEnd - lineStart);
+            bool inBlk = checkInBlockComment(engine, lineIdx);
+            scanSyntaxHighlighting(lineStr, engine->currentSyntax, inBlk, lineSyntaxColors, engine->isDarkMode);
         }
+
+        // Draw gutter line number at the first visual row of this logical line
+        if (firstLineTop + engine->lineHeight >= 0.0f && firstLineTop <= winH) {
+            std::string lineNumStr = std::to_string(lineIdx + 1); float numWidth = 0.0f;
+            for (char c : lineNumStr) {
+                uint32_t cp = c; int fontIdx = getFontIndexForChar(engine, cp, 0); uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp); uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
+                if (engine->atlas.glyphs.count(key) == 0 && !engine->fallbackFaces.empty()) engine->atlas.loadGlyph(engine, fontIdx, glyphIdx);
+                if (engine->atlas.glyphs.count(key) > 0) numWidth += engine->atlas.glyphs[key].advance * scale; else numWidth += engine->charWidth;
+            }
+            float rightMargin = engine->charWidth * 0.5f; float numX = engine->gutterWidth - rightMargin - numWidth; if (numX < rightMargin * 0.5f) numX = rightMargin * 0.5f;
+            float gutterLineY = firstLineTop + baselineOffset;
+            for (char c : lineNumStr) {
+                uint32_t cp = c; int fontIdx = getFontIndexForChar(engine, cp, 0); uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp); uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
+                if (engine->atlas.glyphs.count(key) > 0) {
+                    GlyphInfo& info = engine->atlas.glyphs[key]; float xpos = numX + info.bearingX * scale; float ypos = gutterLineY - info.bearingY * scale; float w = info.width * scale; float h = info.height * scale;
+                    gutterTextVertices.push_back({{xpos, ypos}, {info.u0, info.v0}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}}); gutterTextVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
+                    gutterTextVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}}); gutterTextVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
+                    gutterTextVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}}); gutterTextVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, 0.0f, {gutterTextR, gutterTextG, gutterTextB, 1.0f}});
+                    numX += info.advance * scale;
+                } else numX += engine->charWidth;
+            }
+        }
+
+        size_t numSegs = cache.wrapSegments.size();
+        for (size_t subIdx = 0; subIdx < numSegs; ++subIdx) {
+            int visRow = currentVisRow + (int)subIdx;
+            float lineY = engine->topMargin + baselineOffset - engine->scrollY + visRow * engine->lineHeight;
+            if (lineY < -engine->lineHeight || lineY > winH + engine->lineHeight) continue;
+
+            const auto& seg = cache.wrapSegments[subIdx];
+            float effScrollX = engine->wordWrapEnabled ? 0.0f : engine->scrollX;
+            float x = engine->gutterWidth - effScrollX;
+
+            for (const auto& match : searchMatches) {
+                if (match.first == match.second) {
+                    if (match.first >= seg.byteStart && (match.first < seg.byteEnd || (subIdx + 1 == numSegs && match.first == seg.byteEnd))) {
+                        float drawX = engine->gutterWidth;
+                        for (size_t gi = seg.glyphStart; gi < seg.glyphEnd && gi < cache.glyphs.size(); ++gi) {
+                            const auto& sg = cache.glyphs[gi];
+                            if (sg.cluster >= match.first) break;
+                            drawX += sg.xAdvance * scale;
+                        }
+                        drawX -= effScrollX; float bgY = lineY - engine->lineHeight * 0.8f;
+                        addRect(bgVertices, drawX, bgY, engine->charWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
+                    }
+                }
+            }
+
+            for (size_t gi = seg.glyphStart; gi < seg.glyphEnd && gi < cache.glyphs.size(); ++gi) {
+                const auto& sg = cache.glyphs[gi];
+                uint64_t key = ((uint64_t)sg.fontIndex << 32) | sg.glyphIndex;
+                if (engine->atlas.glyphs.count(key) == 0) engine->atlas.loadGlyph(engine, sg.fontIndex, sg.glyphIndex);
+
+                bool isSelected = false;
+                for (const auto& cur : engine->cursors) {
+                    if (cur.hasSelection() && sg.cluster >= cur.start() && sg.cluster < cur.end()) {
+                        isSelected = true; break;
+                    }
+                }
+
+                bool isSearchResult = false;
+                for (const auto& match : searchMatches) { if (match.first < match.second && sg.cluster >= match.first && sg.cluster < match.second) { isSearchResult = true; break; } }
+                bool isAutoHlResult = false;
+                for (const auto& match : autoMatches) { if (match.first < match.second && sg.cluster >= match.first && sg.cluster < match.second) { isAutoHlResult = true; break; } }
+                bool isBracketMatch = (!sg.isIME && (sg.cluster == b1 || sg.cluster == b2));
+
+                if (sg.isIME) {
+                    float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, 0.2f, 0.6f, 1.0f, 0.3f);
+                    float underY = lineY + engine->lineHeight * 0.1f; addRect(lineVertices, x, underY, sg.xAdvance * scale, 2.0f, textR, textG, textB, 1.0f);
+                } else if (isSelected) {
+                    float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, engine->selColor[0], engine->selColor[1], engine->selColor[2], engine->selColor[3]);
+                } else if (isSearchResult) {
+                    float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f);
+                } else if (isAutoHlResult) {
+                    float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, engine->autoHlColor[0], engine->autoHlColor[1], engine->autoHlColor[2], engine->autoHlColor[3]);
+                }
+                if (isBracketMatch) {
+                    float bgY = lineY - engine->lineHeight * 0.8f;
+                    addRect(bgVertices, x, bgY, sg.xAdvance * scale, engine->lineHeight, engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], 0.22f);
+                    float underY = lineY + engine->lineHeight * 0.12f;
+                    addRect(lineVertices, x, underY, sg.xAdvance * scale, std::max(2.0f, 3.0f * scale), engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], 0.85f);
+                }
+
+                float glyphR = textR, glyphG = textG, glyphB = textB, glyphA = textA;
+                if (!sg.isIME && sg.cluster >= lineStart && (sg.cluster - lineStart) < lineSyntaxColors.size()) {
+                    const auto& sc = lineSyntaxColors[sg.cluster - lineStart];
+                    if (sc.a > 0.0f) {
+                        glyphR = sc.r; glyphG = sc.g; glyphB = sc.b; glyphA = sc.a;
+                    }
+                }
+
+                if (engine->atlas.glyphs.count(key) > 0) {
+                    GlyphInfo& info = engine->atlas.glyphs[key]; float isColorFlag = info.isColor ? 1.0f : 0.0f;
+                    float xpos = x + sg.xOffset * scale + info.bearingX * scale; float ypos = lineY - sg.yOffset * scale - info.bearingY * scale; float w = info.width * scale; float h = info.height * scale;
+                    charVertices.push_back({{xpos, ypos}, {info.u0, info.v0}, isColorFlag, {glyphR, glyphG, glyphB, glyphA}}); charVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, isColorFlag, {glyphR, glyphG, glyphB, glyphA}});
+                    charVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, isColorFlag, {glyphR, glyphG, glyphB, glyphA}}); charVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, isColorFlag, {glyphR, glyphG, glyphB, glyphA}});
+                    charVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, isColorFlag, {glyphR, glyphG, glyphB, glyphA}}); charVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, isColorFlag, {glyphR, glyphG, glyphB, glyphA}});
+                }
+                x += sg.xAdvance * scale;
+                float absoluteX = x + effScrollX;
+                if (absoluteX > engine->maxLineWidth) engine->maxLineWidth = absoluteX;
+            }
+
+            if (subIdx + 1 == numSegs && lineEnd > lineStart) {
+                char lastChar = engine->pt.charAt(lineEnd - 1);
+                if (lastChar == '\n' || lastChar == '\r') {
+                    size_t newlinePos = lineEnd - 1; uint64_t nlKey = 0xFFFFFFFFFFFFFFFD; bool skipDraw = false;
+                    if (lastChar == '\n') { if (newlinePos > lineStart && engine->pt.charAt(newlinePos - 1) == '\r') { newlinePos--; nlKey = 0xFFFFFFFFFFFFFFFF; } else nlKey = 0xFFFFFFFFFFFFFFFD; }
+                    else if (lastChar == '\r') { if (lineEnd < engine->pt.length() && engine->pt.charAt(lineEnd) == '\n') skipDraw = true; else nlKey = 0xFFFFFFFFFFFFFFFE; }
+                    if (!skipDraw) {
+                        bool isNewlineSelected = false;
+                        for (const auto& cur : engine->cursors) {
+                            if (cur.hasSelection() && newlinePos >= cur.start() && newlinePos < cur.end()) {
+                                isNewlineSelected = true; break;
+                            }
+                        }
+                        bool isNewlineMatched = false; for (const auto& match : searchMatches) { if (match.first < match.second && match.first <= newlinePos && match.second > newlinePos) { isNewlineMatched = true; break; } }
+                        bool isNewlineAutoMatched = false; for (const auto& match : autoMatches) { if (match.first < match.second && match.first <= newlinePos && match.second > newlinePos) { isNewlineAutoMatched = true; break; } }
+                        if (isNewlineSelected) { float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, engine->charWidth, engine->lineHeight, engine->selColor[0], engine->selColor[1], engine->selColor[2], engine->selColor[3]); }
+                        else if (isNewlineMatched) { float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, engine->charWidth, engine->lineHeight, 1.0f, 1.0f, 0.0f, 0.4f); }
+                        else if (isNewlineAutoMatched) { float bgY = lineY - engine->lineHeight * 0.8f; addRect(bgVertices, x, bgY, engine->charWidth, engine->lineHeight, engine->autoHlColor[0], engine->autoHlColor[1], engine->autoHlColor[2], engine->autoHlColor[3]); }
+                        if (engine->atlas.glyphs.count(nlKey) > 0) {
+                            GlyphInfo& info = engine->atlas.glyphs[nlKey]; float nlR = engine->textColor[0], nlG = engine->textColor[1], nlB = engine->textColor[2], nlA = engine->textColor[3] * 0.3f;
+                            float targetSize = engine->charWidth * 1.0f; float iconScale = targetSize / info.width; float w = info.width * iconScale, h = info.height * iconScale;
+                            float xpos = x + (engine->charWidth - w) * 0.5f; float rowCenterY = engine->topMargin - engine->scrollY + visRow * engine->lineHeight + engine->lineHeight * 0.5f; float ypos = rowCenterY - h * 0.5f;
+                            charVertices.push_back({{xpos, ypos}, {info.u0, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}}); charVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
+                            charVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}}); charVertices.push_back({{xpos + w, ypos}, {info.u1, info.v0}, 0.0f, {nlR, nlG, nlB, nlA}});
+                            charVertices.push_back({{xpos, ypos + h}, {info.u0, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}}); charVertices.push_back({{xpos + w, ypos + h}, {info.u1, info.v1}, 0.0f, {nlR, nlG, nlB, nlA}});
+                        }
+                    }
+                }
+            }
+        }
+
+        for (const auto& c : engine->cursors) {
+            size_t vPos = c.head;
+            if (vPos >= lineStart && (lineIdx + 1 >= (int)engine->lineStarts.size() || vPos < engine->lineStarts[lineIdx + 1])) {
+                int cLine = 0, cSub = 0, cVisRow = 0; float cx = 0.0f;
+                getVisualPosForDocPos(engine, vPos, cLine, cSub, cVisRow, cx);
+                float curY = engine->topMargin - engine->scrollY + cVisRow * engine->lineHeight;
+                float effScrollX = engine->wordWrapEnabled ? 0.0f : engine->scrollX;
+                addRect(cursorVertices, cx - effScrollX, curY, cursorWidth, engine->lineHeight, engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
+            }
+        }
+        if (engine->isDraggingSelection) {
+            size_t dPos = engine->dragDropTargetPos;
+            if (dPos >= lineStart && (lineIdx + 1 >= (int)engine->lineStarts.size() || dPos < engine->lineStarts[lineIdx + 1])) {
+                int cLine = 0, cSub = 0, cVisRow = 0; float cx = 0.0f;
+                getVisualPosForDocPos(engine, dPos, cLine, cSub, cVisRow, cx);
+                float curY = engine->topMargin - engine->scrollY + cVisRow * engine->lineHeight;
+                float effScrollX = engine->wordWrapEnabled ? 0.0f : engine->scrollX;
+                addRect(cursorVertices, cx - effScrollX, curY, cursorWidth, engine->lineHeight, engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], 0.6f);
+            }
+        }
+        currentVisRow += (int)numSegs;
     }
+
     std::vector<Vertex> vertices;
     vertices.insert(vertices.end(), bgVertices.begin(), bgVertices.end()); vertices.insert(vertices.end(), lineVertices.begin(), lineVertices.end());
     vertices.insert(vertices.end(), charVertices.begin(), charVertices.end()); vertices.insert(vertices.end(), cursorVertices.begin(), cursorVertices.end());
     vertices.insert(vertices.end(), gutterBgVertices.begin(), gutterBgVertices.end()); vertices.insert(vertices.end(), gutterTextVertices.begin(), gutterTextVertices.end());
-    float visibleH = winH - engine->bottomInset; float contentH = engine->lineStarts.size() * engine->lineHeight + engine->topMargin + engine->lineHeight;
-    float maxScrollY = std::max(0.0f, contentH - visibleH); float maxScrollX = std::max(0.0f, engine->maxLineWidth - winW + engine->charWidth * 2.0f);
+    int totalVisRows = getTotalVisualRows(engine);
+    float contentH = totalVisRows * engine->lineHeight + engine->topMargin + engine->lineHeight;
+    float maxScrollY = std::max(0.0f, contentH - visibleH);
+    float maxScrollX = engine->wordWrapEnabled ? 0.0f : std::max(0.0f, engine->maxLineWidth - winW + engine->charWidth * 2.0f);
     float sbThickness = 12.0f; float minBarLen = 40.0f; float sbR = engine->isDarkMode ? 1.0f : 0.0f; float sbG = engine->isDarkMode ? 1.0f : 0.0f; float sbB = engine->isDarkMode ? 1.0f : 0.0f; float sbA = 0.25f;
     if (maxScrollY > 0.0f) {
         float displayAreaH = visibleH - engine->topMargin; float viewportRatio = std::min(1.0f, displayAreaH / (contentH - engine->topMargin));
-        float barHeight = std::max(minBarLen, displayAreaH * viewportRatio); float scrollRatio = engine->scrollY / maxScrollY; float barY = engine->topMargin + scrollRatio * (displayAreaH - barHeight);
+        float barHeight = std::max(minBarLen, displayAreaH * viewportRatio); float scrollRatio = std::clamp(engine->scrollY / maxScrollY, 0.0f, 1.0f); float barY = engine->topMargin + scrollRatio * (displayAreaH - barHeight);
         addRect(vertices, winW - sbThickness - 4.0f, barY, sbThickness, barHeight, sbR, sbG, sbB, sbA);
     }
     if (maxScrollX > 0.0f) {
         float displayAreaW = winW - engine->gutterWidth; float contentW = displayAreaW + maxScrollX; float viewportRatio = std::min(1.0f, displayAreaW / contentW);
-        float barWidth = std::max(minBarLen, displayAreaW * viewportRatio); float scrollRatio = engine->scrollX / maxScrollX; float barX = engine->gutterWidth + scrollRatio * (displayAreaW - barWidth);
+        float barWidth = std::max(minBarLen, displayAreaW * viewportRatio); float scrollRatio = std::clamp(engine->scrollX / maxScrollX, 0.0f, 1.0f); float barX = engine->gutterWidth + scrollRatio * (displayAreaW - barWidth);
         addRect(vertices, barX, visibleH - sbThickness - 4.0f, barWidth, sbThickness, sbR, sbG, sbB, sbA);
     }
     engine->vertexCount = static_cast<uint32_t>(vertices.size());
@@ -3593,7 +5243,16 @@ void renderFrame(Engine* engine) {
     vkCmdBeginRenderPass(engine->commandBuffers[imageIndex], &offscreenRpBegin, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->graphicsPipeline);
     VkViewport viewport = {0.0f, 0.0f, (float)engine->swapchainExtent.width, (float)engine->swapchainExtent.height, 0.0f, 1.0f}; vkCmdSetViewport(engine->commandBuffers[imageIndex], 0, 1, &viewport);
-    VkRect2D scissor = {{0, 0}, engine->swapchainExtent}; vkCmdSetScissor(engine->commandBuffers[imageIndex], 0, 1, &scissor);
+    uint32_t editorClipW = engine->swapchainExtent.width;
+    if (engine->editorWidthOverride > 0.0f && (uint32_t)engine->editorWidthOverride < editorClipW) {
+        editorClipW = std::max(1u, (uint32_t)engine->editorWidthOverride);
+    }
+    uint32_t editorClipH = engine->swapchainExtent.height;
+    if (engine->editorHeightOverride > 0.0f && (uint32_t)engine->editorHeightOverride < editorClipH) {
+        editorClipH = std::max(1u, (uint32_t)engine->editorHeightOverride);
+    }
+    VkRect2D editorScissor = {{0, 0}, {editorClipW, editorClipH}};
+    vkCmdSetScissor(engine->commandBuffers[imageIndex], 0, 1, &editorScissor);
     if (engine->vertexCount > 0) {
         VkDeviceSize offsets[] = {0}; vkCmdBindVertexBuffers(engine->commandBuffers[imageIndex], 0, 1, &engine->vertexBuffer, offsets);
         vkCmdBindDescriptorSets(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->pipelineLayout, 0, 1, &engine->descriptorSet, 0, nullptr);
@@ -3610,7 +5269,8 @@ void renderFrame(Engine* engine) {
     vkCmdBeginRenderPass(engine->commandBuffers[imageIndex], &swapchainRpBegin, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->blurPipeline);
     vkCmdSetViewport(engine->commandBuffers[imageIndex], 0, 1, &viewport);
-    vkCmdSetScissor(engine->commandBuffers[imageIndex], 0, 1, &scissor);
+    VkRect2D fullScissor = {{0, 0}, engine->swapchainExtent};
+    vkCmdSetScissor(engine->commandBuffers[imageIndex], 0, 1, &fullScissor);
     vkCmdBindDescriptorSets(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->blurPipelineLayout, 0, 1, &engine->blurDescriptorSet, 0, nullptr);
     BlurPushConstants blurPc; blurPc.topMargin = engine->topMargin; blurPc.screenHeight = (float)engine->swapchainExtent.height;
     vkCmdPushConstants(engine->commandBuffers[imageIndex], engine->blurPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(BlurPushConstants), &blurPc);
@@ -3630,8 +5290,11 @@ void renderFrame(Engine* engine) {
 }
 void checkKeyboardVisibility(Engine* engine) {
     if (engine->isKeyboardShowing && !engine->cursors.empty() && engine->app->window != nullptr) {
-        size_t pos = engine->cursors.back().head; int lineIdx = getLineIdx(engine, pos); float scale = engine->currentFontSize / 48.0f; float currentLineHeight = 60.0f * scale; float caretY = engine->topMargin + lineIdx * currentLineHeight; float displayY = caretY - engine->scrollY; float winH = (float)ANativeWindow_getHeight(engine->app->window); float visibleH = winH - engine->bottomInset;
-        bool isOutsideY = (displayY + currentLineHeight < engine->topMargin) || (displayY > visibleH);
+        size_t pos = engine->cursors.back().head;
+        float caretY = getYFromPos(engine, pos);
+        float displayY = caretY - engine->scrollY;
+        float visibleH = getEditorVisibleH(engine);
+        bool isOutsideY = (displayY + engine->lineHeight < engine->topMargin) || (displayY > visibleH);
         if (isOutsideY) {
             engine->isKeyboardShowing = false; JNIEnv* env = nullptr; engine->app->activity->vm->AttachCurrentThread(&env, nullptr);
             jclass activityClass = env->GetObjectClass(engine->app->activity->clazz); jmethodID hideImeMethod = env->GetMethodID(activityClass, "hideSoftwareKeyboard", "()V");
@@ -3646,21 +5309,56 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
         int32_t action = AMotionEvent_getAction(event) & AMOTION_EVENT_ACTION_MASK;
         size_t pointerCount = AMotionEvent_getPointerCount(event);
 
-        // ★追加: 入力ソースがマウスかどうか、左クリックされているかを判定
         int32_t source = AInputEvent_getSource(event);
         bool isMouse = (source & AINPUT_SOURCE_MOUSE) == AINPUT_SOURCE_MOUSE;
         bool isPrimaryBtn = (AMotionEvent_getButtonState(event) & AMOTION_EVENT_BUTTON_PRIMARY) != 0;
+        int32_t metaState = AMotionEvent_getMetaState(event);
+        bool isAlt = (metaState & AMETA_ALT_ON) != 0;
+        bool isShift = (metaState & AMETA_SHIFT_ON) != 0;
+
+        float x = AMotionEvent_getX(event, 0); float y = AMotionEvent_getY(event, 0);
+        if (action == AMOTION_EVENT_ACTION_DOWN && engine->isHelpShowing) {
+            engine->isHelpShowing = false;
+            engine->ignoreTouchUntilUp = true;
+            if (app->activity && app->activity->vm) {
+                JNIEnv* env = nullptr;
+                bool needDetach = false;
+                if (app->activity->vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+                    if (app->activity->vm->AttachCurrentThread(&env, nullptr) == 0) needDetach = true;
+                }
+                if (env) {
+                    jclass activityClass = env->GetObjectClass(app->activity->clazz);
+                    jmethodID closeHelpMid = env->GetMethodID(activityClass, "closeHelpUI", "()V");
+                    if (closeHelpMid) env->CallVoidMethod(app->activity->clazz, closeHelpMid);
+                    env->DeleteLocalRef(activityClass);
+                }
+                if (needDetach) app->activity->vm->DetachCurrentThread();
+            }
+            return 1;
+        }
+        if (engine->ignoreTouchUntilUp) {
+            if (action == AMOTION_EVENT_ACTION_UP || action == AMOTION_EVENT_ACTION_CANCEL) {
+                engine->ignoreTouchUntilUp = false;
+            }
+            return 1;
+        }
+        float winW = getEditorWinW(engine);
+        float visibleH = getEditorVisibleH(engine);
+        if ((x > winW || y > visibleH) && !engine->isDragging && !engine->isSelecting && !engine->isSelectingGutter && !engine->isDraggingSelection && !engine->isRectSelecting) {
+            return 0;
+        }
 
         // ピンチズーム（2本指タッチ）
         if (pointerCount >= 2) {
             float x0 = AMotionEvent_getX(event, 0); float y0 = AMotionEvent_getY(event, 0); float x1 = AMotionEvent_getX(event, 1); float y1 = AMotionEvent_getY(event, 1);
             float dx = x1 - x0; float dy = y1 - y0; float distance = std::sqrt(dx * dx + dy * dy);
-            if (action == AMOTION_EVENT_ACTION_POINTER_DOWN) { engine->isPinching = true; engine->lastPinchDistance = distance; engine->isDragging = false; engine->isSelecting = false; }
+            if (action == AMOTION_EVENT_ACTION_POINTER_DOWN) { engine->isPinching = true; engine->lastPinchDistance = distance; engine->isDragging = false; engine->isSelecting = false; engine->isSelectingGutter = false; engine->isDraggingSelection = false; }
             else if (action == AMOTION_EVENT_ACTION_MOVE && engine->isPinching) {
                 if (engine->lastPinchDistance > 0.0f) {
                     float ratio = distance / engine->lastPinchDistance; float newSize = engine->currentFontSize * ratio;
                     if (newSize < 16.0f) newSize = 16.0f; if (newSize > 200.0f) newSize = 200.0f;
                     engine->currentFontSize = newSize; float scale = newSize / 48.0f; engine->lineHeight = 60.0f * scale; engine->charWidth = 24.0f * scale;
+                    for (auto& lc : engine->lineCaches) lc.isWrapped = false;
                     updateGutterWidth(engine); engine->lastPinchDistance = distance; ensureCaretVisible(engine);
                 }
             } else if (action == AMOTION_EVENT_ACTION_POINTER_UP) {
@@ -3675,22 +5373,28 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             engine->lastTouchX = AMotionEvent_getX(event, 0); engine->lastTouchY = AMotionEvent_getY(event, 0); return 1;
         }
 
-        float x = AMotionEvent_getX(event, 0); float y = AMotionEvent_getY(event, 0);
         if (action == AMOTION_EVENT_ACTION_SCROLL && isMouse) {
-            int32_t metaState = AMotionEvent_getMetaState(event);
             if ((metaState & AMETA_CTRL_ON) != 0 || (metaState & AMETA_META_ON) != 0) {
                 return 0;
             }
             float scrollY = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_VSCROLL, 0);
             float scrollX = AMotionEvent_getAxisValue(event, AMOTION_EVENT_AXIS_HSCROLL, 0);
             engine->scrollY -= scrollY * engine->lineHeight * 3.0f;
-            engine->scrollX -= scrollX * engine->charWidth * 5.0f;
+            if (!engine->wordWrapEnabled) {
+                engine->scrollX -= scrollX * engine->charWidth * 5.0f;
+            } else {
+                engine->scrollX = 0.0f;
+            }
             if (engine->scrollX < 0.0f) engine->scrollX = 0.0f;
             if (engine->scrollY < 0.0f) engine->scrollY = 0.0f;
             if (app->window != nullptr) {
-                float winW = (float)ANativeWindow_getWidth(app->window); float winH = (float)ANativeWindow_getHeight(app->window); float visibleH = winH - engine->bottomInset;
-                float contentH = engine->lineStarts.size() * engine->lineHeight + engine->topMargin + engine->lineHeight; float maxScrollY = std::max(0.0f, contentH - visibleH); float maxScrollX = std::max(0.0f, engine->maxLineWidth - winW + engine->charWidth * 2.0f);
-                if (engine->scrollY > maxScrollY) engine->scrollY = maxScrollY; if (engine->scrollX > maxScrollX) engine->scrollX = maxScrollX;
+                float visibleH = getEditorVisibleH(engine);
+                int totalVisRows = getTotalVisualRows(engine);
+                float contentH = totalVisRows * engine->lineHeight + engine->topMargin + engine->lineHeight;
+                float maxScrollY = std::max(0.0f, contentH - visibleH);
+                float maxScrollX = engine->wordWrapEnabled ? 0.0f : std::max(0.0f, engine->maxLineWidth - winW + engine->charWidth * 2.0f);
+                if (engine->scrollY > maxScrollY) engine->scrollY = maxScrollY;
+                if (engine->scrollX > maxScrollX) engine->scrollX = maxScrollX;
             }
             return 1;
         }
@@ -3701,62 +5405,142 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             engine->lastClickTime = now; engine->lastClickX = x; engine->lastClickY = y;
             engine->isDragging = false; engine->lastTouchX = x; engine->lastTouchY = y;
             engine->isFlinging = false; engine->velocityX = 0.0f; engine->velocityY = 0.0f; engine->lastMoveTime = now;
-            if (isMouse && isPrimaryBtn) {
-                engine->isSelecting = true;
-                size_t targetPos = getDocPosFromPoint(engine, x, y);
-                if (engine->clickCount >= 3) {
-                    selectLineAt(engine, targetPos);
-                } else if (engine->clickCount == 2) {
-                    selectWordAt(engine, targetPos);
+
+            if (x < engine->gutterWidth && y >= engine->topMargin) {
+                engine->isSelectingGutter = true;
+                engine->isSelecting = false;
+                engine->isDraggingSelection = false;
+                size_t targetPos = getDocPosFromPoint(engine, engine->gutterWidth + 10.0f, y);
+                int lineIdx = getLineIdx(engine, targetPos);
+                if (isShift && !engine->cursors.empty()) {
+                    selectLinesRange(engine, engine->gutterAnchorLine, lineIdx);
                 } else {
-                    engine->cursors.clear();
-                    engine->cursors.push_back({ targetPos, targetPos, getXFromPos(engine, targetPos) });
+                    engine->gutterAnchorLine = lineIdx;
+                    selectLinesRange(engine, lineIdx, lineIdx);
                 }
-                ensureCaretVisible(engine);
+            } else if (isMouse && isPrimaryBtn) {
+                size_t targetPos = getDocPosFromPoint(engine, x, y);
+                if (isAlt) {
+                    engine->isRectSelecting = true;
+                    engine->isSelecting = true;
+                    engine->isDraggingSelection = false;
+                    engine->rectAnchorPos = targetPos;
+                    engine->rectAnchorX = x + (engine->wordWrapEnabled ? 0.0f : engine->scrollX);
+                    engine->cursors.clear();
+                    engine->cursors.push_back({ targetPos, targetPos, engine->rectAnchorX });
+                    ensureCaretVisible(engine);
+                } else if (!isShift && engine->clickCount == 1 && isPointInSelection(engine, targetPos)) {
+                    engine->isDraggingSelection = true;
+                    engine->dragDropTargetPos = targetPos;
+                    engine->isSelecting = false;
+                } else {
+                    engine->isRectSelecting = false;
+                    engine->isDraggingSelection = false;
+                    engine->isSelecting = true;
+                    if (engine->clickCount >= 3) {
+                        selectLineAt(engine, targetPos);
+                    } else if (engine->clickCount == 2) {
+                        selectWordAt(engine, targetPos);
+                    } else if (isShift && !engine->cursors.empty()) {
+                        engine->cursors.back().head = targetPos;
+                        engine->cursors.back().desiredX = getXFromPos(engine, targetPos);
+                    } else {
+                        engine->cursors.clear();
+                        engine->cursors.push_back({ targetPos, targetPos, getXFromPos(engine, targetPos) });
+                    }
+                    ensureCaretVisible(engine);
+                }
             } else {
                 engine->isSelecting = false;
+                engine->isSelectingGutter = false;
+                engine->isDraggingSelection = false;
             }
         } else if (action == AMOTION_EVENT_ACTION_MOVE) {
             int64_t now = getCurrentTimeMs(); float dx = x - engine->lastTouchX; float dy = y - engine->lastTouchY; int64_t dt = now - engine->lastMoveTime;
             if (dt > 0) { float instVelX = dx / (float)dt; float instVelY = dy / (float)dt; engine->velocityX = engine->velocityX * 0.4f + instVelX * 0.6f; engine->velocityY = engine->velocityY * 0.4f + instVelY * 0.6f; }
             engine->lastMoveTime = now;
 
-            // ★変更: テキスト選択モード中（マウスドラッグ中）の処理
+            if (engine->isSelectingGutter) {
+                size_t targetPos = getDocPosFromPoint(engine, engine->gutterWidth + 10.0f, y);
+                int headLine = getLineIdx(engine, targetPos);
+                selectLinesRange(engine, engine->gutterAnchorLine, headLine);
+                engine->lastTouchX = x; engine->lastTouchY = y;
+                return 1;
+            }
+
+            if (engine->isDraggingSelection && isMouse && isPrimaryBtn) {
+                engine->dragDropTargetPos = getDocPosFromPoint(engine, x, y);
+                engine->lastTouchX = x; engine->lastTouchY = y;
+                return 1;
+            }
+
+            if (engine->isRectSelecting && isMouse && isPrimaryBtn) {
+                size_t targetPos = getDocPosFromPoint(engine, x, y);
+                int anchorLine = getLineIdx(engine, engine->rectAnchorPos);
+                int headLine = getLineIdx(engine, targetPos);
+                float headX = x + (engine->wordWrapEnabled ? 0.0f : engine->scrollX);
+                int step = (headLine >= anchorLine) ? 1 : -1;
+                engine->cursors.clear();
+                for (int l = anchorLine; ; l += step) {
+                    size_t aPos = getPosFromLineAndX(engine, l, engine->rectAnchorX);
+                    size_t hPos = getPosFromLineAndX(engine, l, headX);
+                    engine->cursors.push_back({ hPos, aPos, headX });
+                    if (l == headLine) break;
+                }
+                ensureCaretVisible(engine);
+                engine->lastTouchX = x; engine->lastTouchY = y;
+                return 1;
+            }
+
             if (engine->isSelecting && isMouse && isPrimaryBtn) {
                 if (!engine->cursors.empty()) {
                     size_t targetPos = getDocPosFromPoint(engine, x, y);
-                    engine->cursors.back().head = targetPos; // カーソルの先端(head)だけを動かす
+                    engine->cursors.back().head = targetPos;
                     engine->cursors.back().desiredX = getXFromPos(engine, targetPos);
                     ensureCaretVisible(engine);
                 }
                 engine->lastTouchX = x; engine->lastTouchY = y;
-                return 1; // 選択中はスクロール処理にフォールスルーさせない
+                return 1;
             }
 
-            // 通常のタッチによるドラッグ（スクロール処理）
             if (!engine->isDragging && !engine->isSelecting && (std::abs(x - engine->lastClickX) > 10.0f || std::abs(y - engine->lastClickY) > 10.0f)) { engine->isDragging = true; engine->lastTouchX = x; engine->lastTouchY = y; dx = 0.0f; dy = 0.0f; }
             if (engine->isDragging) {
-                engine->scrollX -= dx; engine->scrollY -= dy; if (engine->scrollX < 0.0f) engine->scrollX = 0.0f; if (engine->scrollY < 0.0f) engine->scrollY = 0.0f;
+                if (!engine->wordWrapEnabled) engine->scrollX -= dx; else engine->scrollX = 0.0f;
+                engine->scrollY -= dy;
+                if (engine->scrollX < 0.0f) engine->scrollX = 0.0f;
+                if (engine->scrollY < 0.0f) engine->scrollY = 0.0f;
                 if (app->window != nullptr) {
-                    float winW = (float)ANativeWindow_getWidth(app->window); float winH = (float)ANativeWindow_getHeight(app->window); float visibleH = winH - engine->bottomInset;
-                    float contentH = engine->lineStarts.size() * engine->lineHeight + engine->topMargin + engine->lineHeight; float maxScrollY = std::max(0.0f, contentH - visibleH); float maxScrollX = std::max(0.0f, engine->maxLineWidth - winW + engine->charWidth * 2.0f);
-                    if (engine->scrollY > maxScrollY) engine->scrollY = maxScrollY; if (engine->scrollX > maxScrollX) engine->scrollX = maxScrollX;
+                    float visibleH = getEditorVisibleH(engine);
+                    int totalVisRows = getTotalVisualRows(engine);
+                    float contentH = totalVisRows * engine->lineHeight + engine->topMargin + engine->lineHeight;
+                    float maxScrollY = std::max(0.0f, contentH - visibleH);
+                    float maxScrollX = engine->wordWrapEnabled ? 0.0f : std::max(0.0f, engine->maxLineWidth - winW + engine->charWidth * 2.0f);
+                    if (engine->scrollY > maxScrollY) engine->scrollY = maxScrollY;
+                    if (engine->scrollX > maxScrollX) engine->scrollX = maxScrollX;
                 }
                 engine->lastTouchX = x; engine->lastTouchY = y; checkKeyboardVisibility(engine);
             }
 
         } else if (action == AMOTION_EVENT_ACTION_UP) {
-            // ★変更: マウス選択の終了、または指のタップ・フリックの処理
-            if (engine->isSelecting) {
+            if (engine->isSelectingGutter) {
+                engine->isSelectingGutter = false;
+            } else if (engine->isDraggingSelection) {
+                engine->isDraggingSelection = false;
+                if (std::abs(x - engine->lastClickX) > 6.0f || std::abs(y - engine->lastClickY) > 6.0f) {
+                    performDragMove(engine, engine->dragDropTargetPos);
+                } else {
+                    size_t targetPos = engine->dragDropTargetPos;
+                    engine->cursors.clear();
+                    engine->cursors.push_back({ targetPos, targetPos, getXFromPos(engine, targetPos) });
+                    ensureCaretVisible(engine);
+                }
+            } else if (engine->isSelecting) {
                 engine->isSelecting = false;
-
-                // 選択終了後、念のためソフトウェアキーボードの表示命令を出す
                 engine->isKeyboardShowing = true; JNIEnv* env = nullptr; app->activity->vm->AttachCurrentThread(&env, nullptr);
                 jclass activityClass = env->GetObjectClass(app->activity->clazz); jmethodID showImeMethod = env->GetMethodID(activityClass, "showSoftwareKeyboard", "()V");
                 if (showImeMethod) env->CallVoidMethod(app->activity->clazz, showImeMethod); env->DeleteLocalRef(activityClass); app->activity->vm->DetachCurrentThread();
 
             } else if (!engine->isDragging) {
-                // 単なるタップ（マウスクリック または 指でのタップ）
                 engine->isKeyboardShowing = true; JNIEnv* env = nullptr; app->activity->vm->AttachCurrentThread(&env, nullptr);
                 jclass activityClass = env->GetObjectClass(app->activity->clazz); jmethodID showImeMethod = env->GetMethodID(activityClass, "showSoftwareKeyboard", "()V");
                 if (showImeMethod) env->CallVoidMethod(app->activity->clazz, showImeMethod); env->DeleteLocalRef(activityClass); app->activity->vm->DetachCurrentThread();
@@ -3768,7 +5552,6 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 ensureCaretVisible(engine);
 
             } else {
-                // 指でのフリック操作
                 float speed = std::sqrt(engine->velocityX * engine->velocityX + engine->velocityY * engine->velocityY);
                 if (speed > 0.5f) { engine->isFlinging = true; engine->lastMoveTime = getCurrentTimeMs(); }
             }
@@ -3814,11 +5597,17 @@ void android_main(struct android_app* app) {
             if (engine.isFlinging) {
                 int64_t now = getCurrentTimeMs(); int64_t dt = now - engine.lastMoveTime;
                 if (dt > 0) {
-                    if (dt > 50) dt = 50; engine.scrollX -= engine.velocityX * dt; engine.scrollY -= engine.velocityY * dt; float friction = std::pow(0.998f, (float)dt); engine.velocityX *= friction; engine.velocityY *= friction;
+                    if (dt > 50) dt = 50;
+                    if (!engine.wordWrapEnabled) engine.scrollX -= engine.velocityX * dt; else engine.scrollX = 0.0f;
+                    engine.scrollY -= engine.velocityY * dt;
+                    float friction = std::pow(0.998f, (float)dt); engine.velocityX *= friction; engine.velocityY *= friction;
                     if (std::abs(engine.velocityX) < 0.02f && std::abs(engine.velocityY) < 0.02f) engine.isFlinging = false;
                     if (engine.app->window != nullptr) {
-                        float winW = (float)ANativeWindow_getWidth(engine.app->window); float winH = (float)ANativeWindow_getHeight(engine.app->window); float visibleH = winH - engine.bottomInset;
-                        float contentH = engine.lineStarts.size() * engine.lineHeight + engine.topMargin + engine.lineHeight; float maxScrollY = std::max(0.0f, contentH - visibleH); float maxScrollX = std::max(0.0f, engine.maxLineWidth - winW + engine.charWidth * 2.0f);
+                        float winW = getEditorWinW(&engine); float visibleH = getEditorVisibleH(&engine);
+                        int totalVisRows = getTotalVisualRows(&engine);
+                        float contentH = totalVisRows * engine.lineHeight + engine.topMargin + engine.lineHeight;
+                        float maxScrollY = std::max(0.0f, contentH - visibleH);
+                        float maxScrollX = engine.wordWrapEnabled ? 0.0f : std::max(0.0f, engine.maxLineWidth - winW + engine.charWidth * 2.0f);
                         if (engine.scrollX < 0.0f) { engine.scrollX = 0.0f; engine.velocityX = 0.0f; } else if (engine.scrollX > maxScrollX) { engine.scrollX = maxScrollX; engine.velocityX = 0.0f; }
                         if (engine.scrollY < 0.0f) { engine.scrollY = 0.0f; engine.velocityY = 0.0f; } else if (engine.scrollY > maxScrollY) { engine.scrollY = maxScrollY; engine.velocityY = 0.0f; }
                         checkKeyboardVisibility(&engine);
@@ -3832,7 +5621,7 @@ void android_main(struct android_app* app) {
                 while (!g_imeQueue.empty()) {
                     ImeEvent ev = g_imeQueue.front(); g_imeQueue.pop_front();
                     if (ev.type == ImeEvent::Commit) { engine.imeComp.clear(); if (ev.text == "\n") insertNewlineWithAutoIndent(&engine); else insertAtCursors(&engine, ev.text); }
-                    else if (ev.type == ImeEvent::Composing) { engine.imeComp = ev.text; if (!engine.cursors.empty()) { int lineIdx = getLineIdx(&engine, engine.cursors.back().head); if (lineIdx >= 0 && lineIdx < engine.lineCaches.size()) engine.lineCaches[lineIdx].isShaped = false; } }
+                    else if (ev.type == ImeEvent::Composing) { engine.imeComp = ev.text; if (!engine.cursors.empty()) { int lineIdx = getLineIdx(&engine, engine.cursors.back().head); if (lineIdx >= 0 && lineIdx < (int)engine.lineCaches.size()) engine.lineCaches[lineIdx].isShaped = false; } }
                     else if (ev.type == ImeEvent::FinishComposing) { if (!engine.imeComp.empty()) { std::string textToCommit = engine.imeComp; engine.imeComp.clear(); insertAtCursors(&engine, textToCommit); } }
                     else if (ev.type == ImeEvent::Delete) backspaceAtCursors(&engine);
                     else if (ev.type == ImeEvent::DeleteForward) deleteForwardAtCursors(&engine);

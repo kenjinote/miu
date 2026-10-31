@@ -1,6 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+}
+
+val localProps = Properties().apply {
+    val propFile = rootProject.file("local.properties")
+    if (propFile.exists()) {
+        propFile.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -13,13 +22,25 @@ android {
         applicationId = "jp.hack.miu"
         minSdk = 24
         targetSdk = 36
-        versionCode = 8
-        versionName = "1.0.18"
+        versionCode = 48
+        versionName = "1.0.44"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {
             cmake {
-                cppFlags += "-std=c++17"
+                cppFlags += "-std=c++20"
+            }
+        }
+    }
+
+    signingConfigs {
+        create("release") {
+            val storeFilePath = localProps.getProperty("RELEASE_STORE_FILE") ?: System.getenv("RELEASE_STORE_FILE")
+            if (!storeFilePath.isNullOrEmpty() && file(storeFilePath).exists()) {
+                storeFile = file(storeFilePath)
+                storePassword = localProps.getProperty("RELEASE_STORE_PASSWORD") ?: System.getenv("RELEASE_STORE_PASSWORD")
+                keyAlias = localProps.getProperty("RELEASE_KEY_ALIAS") ?: System.getenv("RELEASE_KEY_ALIAS")
+                keyPassword = localProps.getProperty("RELEASE_KEY_PASSWORD") ?: System.getenv("RELEASE_KEY_PASSWORD")
             }
         }
     }
@@ -27,6 +48,10 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            val releaseSigning = signingConfigs.getByName("release")
+            if (releaseSigning.storeFile != null) {
+                signingConfig = releaseSigning
+            }
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

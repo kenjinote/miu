@@ -5,10 +5,17 @@
     <string name="open_fail">Échec de l\'ouverture du document.</string>
     <string name="toolbar_new">Nouveau</string>
     <string name="toolbar_open">Ouvrir</string>
+    <string name="menu_open_recent">Récent</string>
+    <string name="menu_clear_recent">Effacer le menu</string>
+    <string name="menu_no_recent">Aucun fichier récent</string>
     <string name="toolbar_save">Enregistrer</string>
     <string name="toolbar_save_as">Enregistrer sous</string>
     <string name="toolbar_find">Rechercher</string>
     <string name="toolbar_replace">Remplacer</string>
+    <string name="menu_live_preview">Aperçu</string>
+    <string name="menu_word_wrap">Retour à la ligne</string>
+    <string name="menu_toggle_comment">Commenter</string>
+    <string name="menu_tab">Tabulation</string>
     <string name="toolbar_top">Début</string>
     <string name="toolbar_bottom">Fin</string>
     <string name="toolbar_goto">Aller à</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">Remplacer par...</string>
     <string name="replace_btn">Remp</string>
     <string name="replace_all_btn">Tout</string>
+    <string name="replace_all_result">%1$d élément(s) remplacé(s).</string>
+    <string name="reload_prompt">Le fichier a été modifié en externe.\nVoulez-vous le recharger ?</string>
     <string name="msg_copied">Copié dans le presse-papiers</string>
     <string name="msg_new_doc">Nouveau document créé</string>
     <string name="msg_doc_opened">Document ouvert</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">Enregistrer</string>
     <string name="dialog_btn_dont_save">Ne pas enregistrer</string>
     <string name="dialog_btn_done">Terminé</string>
-    <string name="help_text">miu v%1$s\n\n[Raccourcis clavier]\nCtrl+N : Nouveau fichier\nCtrl+O : Ouvrir\nCtrl+S : Enregistrer\nCtrl+Shift+S : Enregistrer sous\nCtrl+F : Rechercher\nCtrl+H / R : Remplacer\nCtrl+G : Aller à la ligne\nCtrl+Z : Annuler\nCtrl+Shift+Z : Rétablir\nCtrl+A : Tout sélectionner\nCtrl+X / C / V : Couper / Copier / Coller\nCtrl+D : Sélectionner l\'occurrence suivante (Multi-curseur)\nCtrl++ / - / 0 : Zoom (Avant / Arrière / Réinitialiser)\nF3 / Shift+F3 : Suivant / Précédent\nTab / Shift+Tab : Indenter / Désindenter\nShift+Insert : Coller\nESC : Annuler Sélection/Recherche/Aide\nF1 : Afficher l\'aide</string>
+    <string name="help_text">miu v%1$s\n\n[Raccourcis]\nF1                  Aide\nCtrl+N               Nouveau\nCtrl+O               Ouvrir\nCtrl+S/Maj+S         Enregistrer / Enregistrer sous\nCtrl+F/H             Rechercher/Remplacer\nF3 / Maj+F3         Rechercher suiv/préc\nCtrl+G               Aller à la ligne\nCtrl+B               Aller à la parenthèse correspondante\nCtrl+Z/Shift+Z       Annuler/Rétablir\nCtrl+X/C/V           Couper/Copier/Coller\nCtrl+Maj+K           Supprimer la ligne\nCtrl+U/Maj+U         Majuscules / Minuscules\nCtrl+/               Basculer le commentaire\nAlt+Up/Down      Déplacer la ligne\nAlt+Shift+Up/Down   Copier la ligne\nCtrl+Alt+Up/Down    Multicurseur\nCtrl+D               Sélect. mot / Suivant\nCtrl+A               Tout sélectionner\nAlt+Glisser / Ctrl+Alt+Maj+Flèches  Sélect. rectangulaire\nAlt+Z / Alt+P       Retour ligne / Aperçu\nCtrl+ + / - / 0      Zoom / Réinitialiser\n</string>
 </resources>

@@ -5,10 +5,17 @@
     <string name="open_fail">ファイルを開けませんでした。</string>
     <string name="toolbar_new">新規</string>
     <string name="toolbar_open">開く</string>
+    <string name="menu_open_recent">最近使った項目</string>
+    <string name="menu_clear_recent">履歴を消去</string>
+    <string name="menu_no_recent">履歴なし</string>
     <string name="toolbar_save">保存</string>
     <string name="toolbar_save_as">別名保存</string>
     <string name="toolbar_find">検索</string>
     <string name="toolbar_replace">置換</string>
+    <string name="menu_live_preview">プレビュー</string>
+    <string name="menu_word_wrap">折り返し</string>
+    <string name="menu_toggle_comment">コメント切替</string>
+    <string name="menu_tab">タブ</string>
     <string name="toolbar_top">先頭</string>
     <string name="toolbar_bottom">末尾</string>
     <string name="toolbar_goto">指定行</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">置換...</string>
     <string name="replace_btn">置換</string>
     <string name="replace_all_btn">すべて</string>
+    <string name="replace_all_result">%1$d 件置換しました。</string>
+    <string name="reload_prompt">ファイルが外部で変更されました。\n再読み込みしますか？</string>
     <string name="msg_copied">クリップボードにコピーしました</string>
     <string name="msg_new_doc">新規ドキュメントを作成しました</string>
     <string name="msg_doc_opened">ドキュメントを開きました</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">保存する</string>
     <string name="dialog_btn_dont_save">保存しない</string>
     <string name="dialog_btn_done">完了</string>
-    <string name="help_text">miu v%1$s\n\n[ショートカットキー]\nCtrl+N : 新規作成\nCtrl+O : 開く\nCtrl+S : 保存\nCtrl+Shift+S : 名前を付けて保存\nCtrl+F : 検索\nCtrl+H / R : 置換\nCtrl+G : 指定行へ移動\nCtrl+Z : 元に戻す\nCtrl+Shift+Z : やり直し\nCtrl+A : すべて選択\nCtrl+X / C / V : カット / コピー / ペースト\nCtrl+D : 次の出現箇所を選択 (マルチカーソル)\nCtrl++ / - / 0 : ズーム (拡大/縮小/リセット)\nF3 / Shift+F3 : 次を検索 / 前を検索\nTab / Shift+Tab : インデント / インデント解除\nShift+Insert : ペースト\nESC : 選択・検索・ヘルプ解除\nF1 : ヘルプ表示</string>
+    <string name="help_text">miu v%1$s\n\n[ショートカット]\nF1                  ヘルプ\nCtrl+N               新規作成\nCtrl+O               開く\nCtrl+S/Shift+S       保存/名前を付けて保存\nCtrl+F/H             検索/置換\nF3 / Shift+F3       次/前を検索\nCtrl+G               指定行へ移動\nCtrl+B               対応するカッコにジャンプ\nCtrl+Z/Shift+Z       元に戻す/やり直し\nCtrl+X/C/V           切り取り/コピー/貼り付け\nCtrl+Shift+K         行削除\nCtrl+U/Shift+U       大文字/小文字へ変換\nCtrl+/               コメント切替\nAlt+Up/Down      行移動\nAlt+Shift+Up/Down   行コピー\nCtrl+Alt+Up/Down    マルチカーソル\nCtrl+D               単語選択 / 次を選択\nCtrl+A               すべて選択\nAlt+Drag / Ctrl+Alt+Shift+矢印  矩形選択\nAlt+Z / Alt+P       折り返し / プレビュー\nCtrl+ + / - / 0      ズーム / リセット\n</string>
 </resources>

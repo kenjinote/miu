@@ -5,10 +5,17 @@
     <string name="open_fail">Gagal membuka dokumen.</string>
     <string name="toolbar_new">Baru</string>
     <string name="toolbar_open">Buka</string>
+    <string name="menu_open_recent">Terbaru</string>
+    <string name="menu_clear_recent">Hapus Menu</string>
+    <string name="menu_no_recent">Tidak Ada File Terbaru</string>
     <string name="toolbar_save">Simpan</string>
     <string name="toolbar_save_as">Simpan Sebagai</string>
     <string name="toolbar_find">Cari</string>
     <string name="toolbar_replace">Ganti</string>
+    <string name="menu_live_preview">Pratinjau</string>
+    <string name="menu_word_wrap">Bungkus Kata</string>
+    <string name="menu_toggle_comment">Alihkan Komentar</string>
+    <string name="menu_tab">Tab</string>
     <string name="toolbar_top">Atas</string>
     <string name="toolbar_bottom">Bawah</string>
     <string name="toolbar_goto">Ke Baris</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">Ganti dengan...</string>
     <string name="replace_btn">Ganti</string>
     <string name="replace_all_btn">Semua</string>
+    <string name="replace_all_result">%1$d item telah diganti.</string>
+    <string name="reload_prompt">Berkas telah diubah dari luar.\nApakah Anda ingin memuat ulang?</string>
     <string name="msg_copied">Disalin ke papan klip</string>
     <string name="msg_new_doc">Dokumen Baru Dibuat</string>
     <string name="msg_doc_opened">Dokumen Dibuka</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">Simpan</string>
     <string name="dialog_btn_dont_save">Jangan Simpan</string>
     <string name="dialog_btn_done">Selesai</string>
-    <string name="help_text">miu v%1$s\n\n[Pintasan Keyboard]\nCtrl+N : File Baru\nCtrl+O : Buka\nCtrl+S : Simpan\nCtrl+Shift+S : Simpan Sebagai\nCtrl+F : Cari\nCtrl+H / R : Ganti\nCtrl+G : Pergi ke Baris\nCtrl+Z : Urungkan\nCtrl+Shift+Z : Ulangi\nCtrl+A : Pilih Semua\nCtrl+X / C / V : Potong / Salin / Tempel\nCtrl+D : Pilih Kemunculan Berikutnya (Multi-kursor)\nCtrl++ / - / 0 : Zoom (Perbesar / Perkecil / Atur Ulang)\nF3 / Shift+F3 : Cari Berikutnya / Sebelumnya\nTab / Shift+Tab : Indentasi / Kurangi Indentasi\nShift+Insert : Tempel\nESC : Batalkan Pilihan/Pencarian/Bantuan\nF1 : Tampilkan Bantuan</string>
+    <string name="help_text">miu v%1$s\n\n[Pintasan]\nF1                  Bantuan\nCtrl+N               Baru\nCtrl+O               Buka\nCtrl+S/Shift+S       Simpan / Simpan Sebagai\nCtrl+F/H             Cari/Ganti\nF3 / Shift+F3       Cari Berikutnya/Sebelumnya\nCtrl+G               Buka Baris\nCtrl+B               Lompat ke tanda kurung pasangannya\nCtrl+Z/Shift+Z       Urungkan/Ulangi\nCtrl+X/C/V           Potong/Salin/Tempel\nCtrl+Shift+K         Hapus Baris\nCtrl+U/Shift+U       HURUF BESAR / huruf kecil\nCtrl+/               Alihkan Komentar\nAlt+Up/Down      Pindahkan Baris\nAlt+Shift+Up/Down   Duplikasi Baris\nCtrl+Alt+Up/Down    Multi-Kursor\nCtrl+D               Pilih Kata / Berikutnya\nCtrl+A               Pilih Semua\nAlt+Tarik / Ctrl+Alt+Shift+Panah  Pilihan Kolom\nAlt+Z / Alt+P       Bungkus Teks / Pratinjau\nCtrl+ + / - / 0      Zoom / Atur Ulang\n</string>
 </resources>

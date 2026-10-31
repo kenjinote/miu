@@ -5,10 +5,17 @@
     <string name="open_fail">Ìkùnà láti ṣí àkọsílẹ̀.</string>
     <string name="toolbar_new">Tuntun</string>
     <string name="toolbar_open">Ṣí</string>
+    <string name="menu_open_recent">Recent</string>
+    <string name="menu_clear_recent">Pa Àkójọ Rẹ́</string>
+    <string name="menu_no_recent">No Recent Files</string>
     <string name="toolbar_save">Fipamọ́</string>
     <string name="toolbar_save_as">Fipamọ́ gẹ́gẹ́ bí</string>
     <string name="toolbar_find">Wá</string>
     <string name="toolbar_replace">Pàrọ̀</string>
+    <string name="menu_live_preview">Àyẹ̀wò</string>
+    <string name="menu_word_wrap">Kíkọ́ Ọ̀rọ̀</string>
+    <string name="menu_toggle_comment">Yí Àlàyé Padà</string>
+    <string name="menu_tab">Taabu</string>
     <string name="toolbar_top">Òkè</string>
     <string name="toolbar_bottom">Ìsàlẹ̀</string>
     <string name="toolbar_goto">Lọ sí</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">Fi nǹkan pàrọ̀...</string>
     <string name="replace_btn">Pàrọ̀</string>
     <string name="replace_all_btn">Gbogbo rẹ̀</string>
+    <string name="replace_all_result">A ti rọ́pò %1$d.</string>
+    <string name="reload_prompt">The file has been modified externally.\nDo you want to reload it?</string>
     <string name="msg_copied">A ti dàkọ rẹ̀</string>
     <string name="msg_new_doc">A ti dá àkọsílẹ̀ tuntun</string>
     <string name="msg_doc_opened">A ti ṣí àkọsílẹ̀</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">Fipamọ́</string>
     <string name="dialog_btn_dont_save">Má fipamọ́</string>
     <string name="dialog_btn_done">Parí</string>
-    <string name="help_text">miu v%1$s\n\n[Àwọn Ọ̀nà Àbùjá Kííbọ́ọ̀dù]\nCtrl+N : Fáìlì Tuntun\nCtrl+O : Ṣíi\nCtrl+S : Fi pamọ́\nCtrl+Shift+S : Fi pamọ́ gẹ́gẹ́ bí\nCtrl+F : Wá\nCtrl+H / R : Rọ́pò\nCtrl+G : Lọ sí Ìlà\nCtrl+Z : Dá padà\nCtrl+Shift+Z : Tún ṣe\nCtrl+A : Yan Gbogbo rẹ̀\nCtrl+X / C / V : Ge / Ṣe ẹ̀dà / Lẹ̀ ẹ́\nCtrl+D : Yan Ìṣẹ̀lẹ̀ Tí Ó Kàn (Kọ́sọ̀ púpọ̀)\nCtrl++ / - / 0 : Súùn (Sínú / Síta / Tún to)\nF3 / Shift+F3 : Wá Èyí Tó Kàn / Ti Tẹ́lẹ̀\nTab / Shift+Tab : Sún sínú / Sún sẹ́yìn\nShift+Insert : Lẹ̀ ẹ́\nESC : Fagilé Ìyàn/Ìwádìí/Ìrànlọ́wọ́\nF1 : Ṣe àfihàn Ìrànlọ́wọ́</string>
+    <string name="help_text">miu v%1$s\n\n[Shortcuts]\nF1                  Help\nCtrl+N               New\nCtrl+O               Open\nCtrl+S/Shift+S       Save / Save As\nCtrl+F/H             Find/Replace\nF3 / Shift+F3       Find Next/Prev\nCtrl+G               Go To Line\nCtrl+B               Jump to matching bracket\nCtrl+Z/Shift+Z       Undo/Redo\nCtrl+X/C/V           Cut/Copy/Paste\nCtrl+Shift+K         Delete Line\nCtrl+U/Shift+U       Upper / Lower Case\nCtrl+/               Toggle Comment\nAlt+Up/Down      Move Line\nAlt+Shift+Up/Down   Copy Line\nCtrl+Alt+Up/Down    Multi-Cursor\nCtrl+D               Select Word / Next\nCtrl+A               Select All\nAlt+Drag / Ctrl+Alt+Shift+Arrow  Rect Select\nAlt+Z / Alt+P       Word Wrap / Preview\nCtrl+ + / - / 0      Zoom / Reset\n</string>
 </resources>

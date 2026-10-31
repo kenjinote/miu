@@ -5,10 +5,17 @@
     <string name="open_fail">無法開啟文件。</string>
     <string name="toolbar_new">新增</string>
     <string name="toolbar_open">開啟</string>
+    <string name="menu_open_recent">最近</string>
+    <string name="menu_clear_recent">清除選單</string>
+    <string name="menu_no_recent">沒有最近使用的檔案</string>
     <string name="toolbar_save">儲存</string>
     <string name="toolbar_save_as">另存新檔</string>
     <string name="toolbar_find">尋找</string>
     <string name="toolbar_replace">取代</string>
+    <string name="menu_live_preview">即時預覽</string>
+    <string name="menu_word_wrap">自動換行</string>
+    <string name="menu_toggle_comment">切換註解</string>
+    <string name="menu_tab">定位鍵</string>
     <string name="toolbar_top">置頂</string>
     <string name="toolbar_bottom">置底</string>
     <string name="toolbar_goto">跳至行</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">取代為...</string>
     <string name="replace_btn">取代</string>
     <string name="replace_all_btn">全部取代</string>
+    <string name="replace_all_result">%1$d 個項目已取代。</string>
+    <string name="reload_prompt">檔案已被外部程式修改。\n是否重新載入？</string>
     <string name="msg_copied">已複製到剪貼簿</string>
     <string name="msg_new_doc">已建立新文件</string>
     <string name="msg_doc_opened">文件已開啟</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">儲存</string>
     <string name="dialog_btn_dont_save">不儲存</string>
     <string name="dialog_btn_done">完成</string>
-    <string name="help_text">miu v%1$s\n\n[鍵盤快捷鍵]\nCtrl+N : 新增檔案\nCtrl+O : 開啟\nCtrl+S : 儲存\nCtrl+Shift+S : 另存新檔\nCtrl+F : 尋找\nCtrl+H / R : 取代\nCtrl+G : 跳至行號\nCtrl+Z : 復原\nCtrl+Shift+Z : 重做\nCtrl+A : 全選\nCtrl+X / C / V : 剪下 / 複製 / 貼上\nCtrl+D : 選取下一個符合項目 (多重游標)\nCtrl++ / - / 0 : 縮放 (放大 / 縮小 / 重設)\nF3 / Shift+F3 : 尋找下一個 / 上一個\nTab / Shift+Tab : 增加縮排 / 減少縮排\nShift+Insert : 貼上\nESC : 取消選取 / 搜尋 / 說明\nF1 : 顯示說明</string>
+    <string name="help_text">miu v%1$s\n\n[快速鍵]\nF1                  說明\nCtrl+N               新增\nCtrl+O               開啟\nCtrl+S/Shift+S       儲存/另存新檔\nCtrl+F/H             尋找/取代\nF3 / Shift+F3       尋找下一個/上一個\nCtrl+G               移至行\nCtrl+B               跳轉到匹配的括號\nCtrl+Z/Shift+Z       復原/重做\nCtrl+X/C/V           剪下/複製/貼上\nCtrl+Shift+K         刪除整行\nCtrl+U/Shift+U       轉換為大寫/小寫\nCtrl+/               切換註解\nAlt+Up/Down      上移/下移行\nAlt+Shift+Up/Down   向上/向下複製行\nCtrl+Alt+Up/Down    多重游標\nCtrl+D               選取單字 / 下一個相符項\nCtrl+A               全選\nAlt+拖曳 / Ctrl+Alt+Shift+方向鍵  矩形選取\nAlt+Z / Alt+P       自動換行 / 預覽\nCtrl+ + / - / 0      縮放 / 重設\n</string>
 </resources>

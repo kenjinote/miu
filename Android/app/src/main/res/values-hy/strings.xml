@@ -5,10 +5,17 @@
     <string name="open_fail">Չհաջողվեց բացել փաստաթուղթը:</string>
     <string name="toolbar_new">Նոր</string>
     <string name="toolbar_open">Բացել</string>
+    <string name="menu_open_recent">Recent</string>
+    <string name="menu_clear_recent">Մաքրել ընտրացանկը</string>
+    <string name="menu_no_recent">No Recent Files</string>
     <string name="toolbar_save">Պահպանել</string>
     <string name="toolbar_save_as">Պահպանել որպես</string>
     <string name="toolbar_find">Փնտրել</string>
     <string name="toolbar_replace">Փոխարինել</string>
+    <string name="menu_live_preview">Նախադիտում</string>
+    <string name="menu_word_wrap">Տողադարձ</string>
+    <string name="menu_toggle_comment">Մեկնաբանություն</string>
+    <string name="menu_tab">ներդիր</string>
     <string name="toolbar_top">Վերև</string>
     <string name="toolbar_bottom">Ներքև</string>
     <string name="toolbar_goto">Անցնել տողին</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">Փոխարինել...</string>
     <string name="replace_btn">Փոխարինել</string>
     <string name="replace_all_btn">Ամբողջը</string>
+    <string name="replace_all_result">Փոխարինվեց %1$d համընկնում:</string>
+    <string name="reload_prompt">The file has been modified externally.\nDo you want to reload it?</string>
     <string name="msg_copied">Պատճենված է սեղմատախտակին</string>
     <string name="msg_new_doc">Ստեղծվել է նոր փաստաթուղթ</string>
     <string name="msg_doc_opened">Փաստաթուղթը բացված է</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">Պահպանել</string>
     <string name="dialog_btn_dont_save">Չպահպանել</string>
     <string name="dialog_btn_done">Կատարված է</string>
-    <string name="help_text">miu v%1$s\n\n[Ստեղնաշարի դյուրանցումներ]\nCtrl+N : Նոր ֆայլ\nCtrl+O : Բացել\nCtrl+S : Պահպանել\nCtrl+Shift+S : Պահպանել որպես\nCtrl+F : Գտնել\nCtrl+H / R : Փոխարինել\nCtrl+G : Անցնել տողին\nCtrl+Z : Հետարկել\nCtrl+Shift+Z : Կրկնել\nCtrl+A : Նշել բոլորը\nCtrl+X / C / V : Կտրել / Պատճենել / Տեղադրել\nCtrl+D : Նշել հաջորդ համընկնումը (Բազմակի կուրսոր)\nCtrl++ / - / 0 : Մասշտաբ (Խոշորացնել / Փոքրացնել / Վերականգնել)\nF3 / Shift+F3 : Գտնել հաջորդը / Նախորդը\nTab / Shift+Tab : Նահանջ / Հանել նահանջը\nShift+Insert : Տեղադրել\nESC : Չեղարկել նշումը/որոնումը/օգնությունը\nF1 : Ցուցադրել օգնությունը</string>
+    <string name="help_text">miu v%1$s\n\n[Shortcuts]\nF1                  Help\nCtrl+N               New\nCtrl+O               Open\nCtrl+S/Shift+S       Save / Save As\nCtrl+F/H             Find/Replace\nF3 / Shift+F3       Find Next/Prev\nCtrl+G               Go To Line\nCtrl+B               Jump to matching bracket\nCtrl+Z/Shift+Z       Undo/Redo\nCtrl+X/C/V           Cut/Copy/Paste\nCtrl+Shift+K         Delete Line\nCtrl+U/Shift+U       Upper / Lower Case\nCtrl+/               Toggle Comment\nAlt+Up/Down      Move Line\nAlt+Shift+Up/Down   Copy Line\nCtrl+Alt+Up/Down    Multi-Cursor\nCtrl+D               Select Word / Next\nCtrl+A               Select All\nAlt+Drag / Ctrl+Alt+Shift+Arrow  Rect Select\nAlt+Z / Alt+P       Word Wrap / Preview\nCtrl+ + / - / 0      Zoom / Reset\n</string>
 </resources>

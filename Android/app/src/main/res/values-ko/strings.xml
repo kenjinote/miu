@@ -5,10 +5,17 @@
     <string name="open_fail">문서를 열지 못했습니다.</string>
     <string name="toolbar_new">새로 만들기</string>
     <string name="toolbar_open">열기</string>
+    <string name="menu_open_recent">최근 항목</string>
+    <string name="menu_clear_recent">메뉴 지우기</string>
+    <string name="menu_no_recent">최근 항목 없음</string>
     <string name="toolbar_save">저장</string>
     <string name="toolbar_save_as">다른 이름으로 저장</string>
     <string name="toolbar_find">찾기</string>
     <string name="toolbar_replace">바꾸기</string>
+    <string name="menu_live_preview">미리보기</string>
+    <string name="menu_word_wrap">자동 줄바꿈</string>
+    <string name="menu_toggle_comment">주석 전환</string>
+    <string name="menu_tab">탭</string>
     <string name="toolbar_top">맨 위로</string>
     <string name="toolbar_bottom">맨 아래로</string>
     <string name="toolbar_goto">이동</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">바꿀 내용...</string>
     <string name="replace_btn">바꾸기</string>
     <string name="replace_all_btn">모두</string>
+    <string name="replace_all_result">%1$d개 항목이 바뀌었습니다.</string>
+    <string name="reload_prompt">파일이 외부에서 수정되었습니다.\n다시 불러오시겠습니까?</string>
     <string name="msg_copied">클립보드에 복사되었습니다</string>
     <string name="msg_new_doc">새 문서가 생성되었습니다</string>
     <string name="msg_doc_opened">문서를 열었습니다</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">저장</string>
     <string name="dialog_btn_dont_save">저장 안 함</string>
     <string name="dialog_btn_done">완료</string>
-    <string name="help_text">miu v%1$s\n\n[단축키]\nCtrl+N : 새 파일\nCtrl+O : 열기\nCtrl+S : 저장\nCtrl+Shift+S : 다른 이름으로 저장\nCtrl+F : 찾기\nCtrl+H / R : 바꾸기\nCtrl+G : 지정 줄로 이동\nCtrl+Z : 실행 취소\nCtrl+Shift+Z : 다시 실행\nCtrl+A : 모두 선택\nCtrl+X / C / V : 잘라내기 / 복사 / 붙여넣기\nCtrl+D : 다음 일치 항목 선택 (다중 커서)\nCtrl++ / - / 0 : 확대/축소 (확대 / 축소 / 원래대로)\nF3 / Shift+F3 : 다음 찾기 / 이전 찾기\nTab / Shift+Tab : 들여쓰기 / 내어쓰기\nShift+Insert : 붙여넣기\nESC : 선택/검색/도움말 취소\nF1 : 도움말 표시</string>
+    <string name="help_text">miu v%1$s\n\n[단축키]\nF1                  도움말\nCtrl+N               새로 만들기\nCtrl+O               열기\nCtrl+S/Shift+S       저장/다른 이름으로 저장\nCtrl+F/H             찾기/바꾸기\nF3 / Shift+F3       다음/이전 찾기\nCtrl+G               줄 이동\nCtrl+B               일치하는 괄호로 이동\nCtrl+Z/Shift+Z       실행 취소/다시 실행\nCtrl+X/C/V           잘라내기/복사/붙여넣기\nCtrl+Shift+K         줄 삭제\nCtrl+U/Shift+U       대문자/소문자로 변환\nCtrl+/               주석 토글\nAlt+Up/Down      줄 이동\nAlt+Shift+Up/Down   줄 복사\nCtrl+Alt+Up/Down    멀티 커서\nCtrl+D               단어 선택 / 다음\nCtrl+A               모두 선택\nAlt+Drag / Ctrl+Alt+Shift+방향키  사각형 선택\nAlt+Z / Alt+P       자동 줄바꿈 / 미리보기\nCtrl+ + / - / 0      확대/축소 / 초기화\n</string>
 </resources>

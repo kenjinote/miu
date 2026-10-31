@@ -1,0 +1,395 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 660" width="100%" height="100%">
+  <style>
+    body { margin: 0; background: #ffffff; display: flex; align-items: center; justify-content: center; height: 100vh; overflow: hidden; }
+    .cad   { font-family: 'Segoe UI', 'Arial Narrow', Arial, sans-serif; fill: #000000; }
+    .mono  { font-family: 'Consolas', 'Courier New', monospace; fill: #000000; }
+    .thick { fill: none; stroke: #000000; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .med   { fill: none; stroke: #000000; stroke-width: 1.1; }
+    .thin  { fill: none; stroke: #000000; stroke-width: 0.65; }
+    .dim   { fill: none; stroke: #000000; stroke-width: 0.65; marker-start: url(#arrS); marker-end: url(#arrE); }
+    .dim1  { fill: none; stroke: #000000; stroke-width: 0.65; marker-end: url(#arrE); }
+    .hid   { fill: none; stroke: #000000; stroke-width: 0.75; stroke-dasharray: 5 2.5; }
+    .cen   { fill: none; stroke: #000000; stroke-width: 0.6; stroke-dasharray: 18 3.5 3 3.5; }
+    .pha   { fill: none; stroke: #000000; stroke-width: 0.6; stroke-dasharray: 12 3 2.5 3 2.5 3; }
+  </style>
+
+  <!-- CAD Hatch Patterns & Dimension Arrowheads (JIS B 0001 / ISO 128) -->
+  <defs>
+    <marker id="arrE" viewBox="0 0 10 6" refX="9.5" refY="3" markerWidth="7" markerHeight="5" orient="auto">
+      <path d="M 0 0.8 L 9.5 3 L 0 5.2 z" fill="#000000"/>
+    </marker>
+    <marker id="arrS" viewBox="0 0 10 6" refX="0.5" refY="3" markerWidth="7" markerHeight="5" orient="auto">
+      <path d="M 9.5 0.8 L 0 3 L 9.5 5.2 z" fill="#000000"/>
+    </marker>
+    <marker id="secArr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#000000"/>
+    </marker>
+    <!-- 45-deg Section Hatching (Housing) -->
+    <pattern id="hatch45" width="6" height="6" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="6" stroke="#000000" stroke-width="0.65"/>
+    </pattern>
+    <!-- 135-deg Section Hatching (Inner Sleeve / Retainer) -->
+    <pattern id="hatch135" width="5" height="5" patternTransform="rotate(135 0 0)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="5" stroke="#000000" stroke-width="0.65"/>
+    </pattern>
+  </defs>
+
+  <!-- Pure White Drawing Sheet -->
+  <rect width="600" height="660" fill="#ffffff"/>
+
+  <!-- Outer Drawing Sheet Border & Zone Coordinates (A-D, 1-6) -->
+  <rect x="8" y="8" width="584" height="644" class="med"/>
+  <rect x="20" y="20" width="560" height="620" class="thick"/>
+
+  <!-- Grid Zone Tick Marks & Labels -->
+  <g class="thin">
+    <line x1="113" y1="8" x2="113" y2="20"/><line x1="206" y1="8" x2="206" y2="20"/>
+    <line x1="300" y1="8" x2="300" y2="20"/><line x1="393" y1="8" x2="393" y2="20"/><line x1="486" y1="8" x2="486" y2="20"/>
+    <line x1="113" y1="640" x2="113" y2="652"/><line x1="206" y1="640" x2="206" y2="652"/>
+    <line x1="300" y1="640" x2="300" y2="652"/><line x1="393" y1="640" x2="393" y2="652"/><line x1="486" y1="640" x2="486" y2="652"/>
+    <line x1="8" y1="175" x2="20" y2="175"/><line x1="8" y1="330" x2="20" y2="330"/><line x1="8" y1="485" x2="20" y2="485"/>
+    <line x1="580" y1="175" x2="592" y2="175"/><line x1="580" y1="330" x2="592" y2="330"/><line x1="580" y1="485" x2="592" y2="485"/>
+  </g>
+  <g font-size="8" text-anchor="middle" class="mono">
+    <text x="66" y="17">1</text><text x="160" y="17">2</text><text x="253" y="17">3</text>
+    <text x="346" y="17">4</text><text x="440" y="17">5</text><text x="533" y="17">6</text>
+    <text x="14" y="100">A</text><text x="14" y="255">B</text><text x="14" y="410">C</text><text x="14" y="565">D</text>
+    <text x="586" y="100">A</text><text x="586" y="255">B</text><text x="586" y="410">C</text><text x="586" y="565">D</text>
+  </g>
+
+  <!-- ================================================================= -->
+  <!-- VIEW 1: FRONT FULL SECTION VIEW (SECTION A-A)                     -->
+  <!-- Center Axis at y = 185, Left Flange Face at x = 290, Right = 470  -->
+  <!-- ================================================================= -->
+  <text x="380" y="42" font-size="10.5" font-weight="700" text-anchor="middle" class="cad">SECTION A-A (SCALE 1:1)</text>
+
+  <!-- Main Horizontal Centerline -->
+  <line x1="265" y1="185" x2="505" y2="185" class="cen"/>
+
+  <!-- Top Sectioned Housing Body (Hatched 45 deg) -->
+  <path d="M 290 75 L 322 75 L 322 115 L 448 115 L 448 128 L 470 128 L 470 155 L 436 155 L 436 143 L 340 143 L 340 133 L 306 133 L 306 147 L 290 147 Z"
+        fill="url(#hatch45)" stroke="#000000" stroke-width="1.6"/>
+  <!-- Bolt Hole Unhatched Pass-Through in Top Flange (y=90..104) -->
+  <rect x="290" y="88" width="32" height="16" fill="#ffffff" stroke="#000000" stroke-width="1.4"/>
+  <rect x="290" y="83" width="12" height="26" fill="#ffffff" stroke="#000000" stroke-width="1.4"/>
+  <line x1="278" y1="96" x2="332" y2="96" class="cen"/>
+
+  <!-- Bottom Sectioned Housing Body (Symmetrical, Hatched 45 deg) -->
+  <path d="M 290 295 L 322 295 L 322 255 L 448 255 L 448 242 L 470 242 L 470 215 L 436 215 L 436 227 L 340 227 L 340 237 L 306 237 L 306 223 L 290 223 Z"
+        fill="url(#hatch45)" stroke="#000000" stroke-width="1.6"/>
+  <!-- Bolt Hole Unhatched Pass-Through in Bottom Flange (y=266..282) -->
+  <rect x="290" y="266" width="32" height="16" fill="#ffffff" stroke="#000000" stroke-width="1.4"/>
+  <rect x="290" y="261" width="12" height="26" fill="#ffffff" stroke="#000000" stroke-width="1.4"/>
+  <line x1="278" y1="274" x2="332" y2="274" class="cen"/>
+
+  <!-- Inner Bearing Retainer Sleeve (Hatched 135 deg) -->
+  <rect x="340" y="143" width="68" height="14" fill="url(#hatch135)" stroke="#000000" stroke-width="1.4"/>
+  <rect x="340" y="213" width="68" height="14" fill="url(#hatch135)" stroke="#000000" stroke-width="1.4"/>
+
+  <!-- Angular Contact Ball Bearings (Left & Right) -->
+  <g stroke="#000000" stroke-width="1.2" fill="#ffffff">
+    <!-- Left Bearing Top & Bottom -->
+    <rect x="306" y="133" width="34" height="24"/>
+    <circle cx="323" cy="145" r="7.5"/>
+    <line x1="306" y1="140" x2="316" y2="140"/><line x1="330" y1="140" x2="340" y2="140"/>
+    <line x1="306" y1="150" x2="316" y2="150"/><line x1="330" y1="150" x2="340" y2="150"/>
+
+    <rect x="306" y="213" width="34" height="24"/>
+    <circle cx="323" cy="225" r="7.5"/>
+    <line x1="306" y1="220" x2="316" y2="220"/><line x1="330" y1="220" x2="340" y2="220"/>
+    <line x1="306" y1="230" x2="316" y2="230"/><line x1="330" y1="230" x2="340" y2="230"/>
+
+    <!-- Right Bearing Top & Bottom -->
+    <rect x="408" y="143" width="28" height="19"/>
+    <circle cx="422" cy="152.5" r="6"/>
+    <rect x="408" y="208" width="28" height="19"/>
+    <circle cx="422" cy="217.5" r="6"/>
+  </g>
+
+  <!-- Central Stepped Drive Shaft (Unsectioned per JIS/ISO Standard, with Keyway & Thread) -->
+  <path d="M 272 164 L 290 164 L 290 157 L 408 157 L 408 162 L 488 162 L 492 166 L 492 204 L 488 208 L 408 208 L 408 213 L 290 213 L 290 206 L 272 206 Z"
+        fill="#ffffff" stroke="#000000" stroke-width="1.6"/>
+  <line x1="290" y1="157" x2="290" y2="213" class="med"/>
+  <line x1="408" y1="157" x2="408" y2="213" class="med"/>
+  <line x1="488" y1="162" x2="488" y2="208" class="thin"/>
+  <!-- Keyway on Right Shaft Extension -->
+  <rect x="444" y="167" width="32" height="8" rx="4" class="med"/>
+  <!-- Center Bore Dashed Hidden Lines -->
+  <line x1="272" y1="175" x2="492" y2="175" class="hid"/>
+  <line x1="272" y1="195" x2="492" y2="195" class="hid"/>
+
+  <!-- Detail B Callout Circle -->
+  <circle cx="448" cy="122" r="14" class="pha"/>
+  <line x1="458" y1="112" x2="478" y2="92" class="thin"/>
+  <text x="480" y="90" font-size="9" font-weight="700" class="cad">B (2:1)</text>
+
+  <!-- ================================================================= -->
+  <!-- DIMENSIONS & GD&T FOR VIEW 1 (SECTION A-A)                        -->
+  <!-- ================================================================= -->
+  <!-- Overall Width: 180.0 ±0.05 -->
+  <line x1="290" y1="75" x2="290" y2="52" class="thin"/>
+  <line x1="470" y1="128" x2="470" y2="52" class="thin"/>
+  <line x1="290" y1="57" x2="470" y2="57" class="dim"/>
+  <text x="380" y="54" font-size="9.5" text-anchor="middle" class="mono">180.0 ±0.05</text>
+
+  <!-- Flange Thickness: 32.0 -->
+  <line x1="322" y1="75" x2="322" y2="66" class="thin"/>
+  <line x1="290" y1="70" x2="322" y2="70" class="dim"/>
+  <text x="306" y="68" font-size="8.5" text-anchor="middle" class="mono">32</text>
+
+  <!-- Housing Step Length: 126.0 -->
+  <line x1="448" y1="115" x2="448" y2="66" class="thin"/>
+  <line x1="322" y1="70" x2="448" y2="70" class="dim"/>
+  <text x="385" y="68" font-size="8.5" text-anchor="middle" class="mono">126.0 ±0.02</text>
+
+  <!-- Right Diameter Dimensions -->
+  <line x1="470" y1="128" x2="538" y2="128" class="thin"/>
+  <line x1="470" y1="242" x2="538" y2="242" class="thin"/>
+  <line x1="532" y1="128" x2="532" y2="242" class="dim"/>
+  <text x="528" y="185" font-size="9" text-anchor="middle" transform="rotate(-90 528 185)" class="mono">Ø114.0 h6</text>
+
+  <line x1="492" y1="162" x2="514" y2="162" class="thin"/>
+  <line x1="492" y1="208" x2="514" y2="208" class="thin"/>
+  <line x1="509" y1="162" x2="509" y2="208" class="dim"/>
+  <text x="505" y="185" font-size="8.5" text-anchor="middle" transform="rotate(-90 505 185)" class="mono">Ø46 k5</text>
+
+  <!-- Bottom Bore & Bearing Seat Dimensions -->
+  <line x1="306" y1="237" x2="306" y2="318" class="thin"/>
+  <line x1="340" y1="237" x2="340" y2="318" class="thin"/>
+  <line x1="436" y1="227" x2="436" y2="318" class="thin"/>
+  <line x1="306" y1="312" x2="340" y2="312" class="dim"/>
+  <text x="323" y="309" font-size="8.5" text-anchor="middle" class="mono">34 H7</text>
+  <line x1="340" y1="312" x2="436" y2="312" class="dim"/>
+  <text x="388" y="309" font-size="8.5" text-anchor="middle" class="mono">96.0 ±0.01</text>
+
+  <!-- Datum [A] on Left Flange Face & GD&T Frame -->
+  <polygon points="290,295 285,303 295,303" fill="#000000"/>
+  <line x1="290" y1="303" x2="290" y2="316" class="thin"/>
+  <rect x="282" y="316" width="16" height="14" fill="#ffffff" stroke="#000000" stroke-width="0.9"/>
+  <text x="290" y="326" font-size="9" font-weight="700" text-anchor="middle" class="mono">A</text>
+
+  <!-- GD&T Feature Control Frame: | ⊥ | 0.008 | A | -->
+  <g transform="translate(454, 268)">
+    <line x1="-6" y1="-26" x2="0" y2="0" class="dim1"/>
+    <rect x="0" y="0" width="76" height="15" fill="#ffffff" stroke="#000000" stroke-width="0.85"/>
+    <line x1="18" y1="0" x2="18" y2="15" class="thin"/>
+    <line x1="58" y1="0" x2="58" y2="15" class="thin"/>
+    <text x="9"  y="11" font-size="9.5" text-anchor="middle" class="mono">⊥</text>
+    <text x="38" y="11" font-size="8.5" text-anchor="middle" class="mono">Ø0.008</text>
+    <text x="67" y="11" font-size="9" font-weight="700" text-anchor="middle" class="mono">A</text>
+  </g>
+
+  <!-- ================================================================= -->
+  <!-- VIEW 2: LEFT FLANGE VIEW (Top-Left, Center at cx=132, cy=185)     -->
+  <!-- ================================================================= -->
+  <text x="132" y="42" font-size="10.5" font-weight="700" text-anchor="middle" class="cad">FRONT FLANGE VIEW</text>
+
+  <!-- Centerlines -->
+  <line x1="32"  y1="185" x2="232" y2="185" class="cen"/>
+  <line x1="132" y1="68"  x2="132" y2="302" class="cen"/>
+
+  <!-- Outer Flange Circle (R=110 -> Ø220), Step Circle (R=70), Bore Circles -->
+  <circle cx="132" cy="185" r="110" class="thick"/>
+  <circle cx="132" cy="185" r="89"  class="cen"/>
+  <circle cx="132" cy="185" r="70"  class="med"/>
+  <circle cx="132" cy="185" r="52"  class="hid"/>
+  <circle cx="132" cy="185" r="28"  class="thick"/>
+  <circle cx="132" cy="185" r="10"  class="hid"/>
+
+  <!-- Shaft Keyway on Inner Circle -->
+  <path d="M 127 157.5 L 127 151 L 137 151 L 137 157.5" fill="#ffffff" stroke="#000000" stroke-width="1.3"/>
+
+  <!-- 8 Mounting Holes on P.C.D. R=89 (0, 45, 90, 135, 180, 225, 270, 315 deg) -->
+  <g stroke="#000000" fill="#ffffff">
+    <!-- 90 deg (Top) & 270 deg (Bottom) -->
+    <circle cx="132" cy="96"  r="8"  stroke-width="1.3"/><circle cx="132" cy="96"  r="13" stroke-width="0.8"/>
+    <circle cx="132" cy="274" r="8"  stroke-width="1.3"/><circle cx="132" cy="274" r="13" stroke-width="0.8"/>
+    <!-- 0 deg (Right) & 180 deg (Left) -->
+    <circle cx="221" cy="185" r="8"  stroke-width="1.3"/><circle cx="221" cy="185" r="13" stroke-width="0.8"/>
+    <circle cx="43"  cy="185" r="8"  stroke-width="1.3"/><circle cx="43"  cy="185" r="13" stroke-width="0.8"/>
+    <!-- 45 deg Diagonals (dx=62.9, dy=62.9) -->
+    <circle cx="195" cy="122" r="8"  stroke-width="1.3"/><circle cx="195" cy="122" r="13" stroke-width="0.8"/>
+    <circle cx="69"  cy="122" r="8"  stroke-width="1.3"/><circle cx="69"  cy="122" r="13" stroke-width="0.8"/>
+    <circle cx="195" cy="248" r="8"  stroke-width="1.3"/><circle cx="195" cy="248" r="13" stroke-width="0.8"/>
+    <circle cx="69"  cy="248" r="8"  stroke-width="1.3"/><circle cx="69"  cy="248" r="13" stroke-width="0.8"/>
+  </g>
+  <!-- Radial Centerlines through 45-deg Bolt Holes -->
+  <line x1="56" y1="109" x2="208" y2="261" class="cen"/>
+  <line x1="56" y1="261" x2="208" y2="109" class="cen"/>
+
+  <!-- Cutting Plane Line A-A Indicators -->
+  <line x1="132" y1="56" x2="132" y2="74" stroke="#000000" stroke-width="2.2"/>
+  <line x1="154" y1="60" x2="134" y2="60" stroke="#000000" stroke-width="1.3" marker-end="url(#secArr)"/>
+  <text x="160" y="64" font-size="10" font-weight="700" class="cad">A</text>
+
+  <line x1="132" y1="296" x2="132" y2="314" stroke="#000000" stroke-width="2.2"/>
+  <line x1="154" y1="310" x2="134" y2="310" stroke="#000000" stroke-width="1.3" marker-end="url(#secArr)"/>
+  <text x="160" y="314" font-size="10" font-weight="700" class="cad">A</text>
+
+  <!-- Callout Leader for 8-Ø16 Thru / Ø26 C'Bore -->
+  <polyline points="204,113 216,82 262,82" class="dim1"/>
+  <text x="218" y="78" font-size="7.5" class="mono">8×Ø16 THRU</text>
+  <text x="218" y="90" font-size="7.5" class="mono">Ø26 C'BORE</text>
+
+  <!-- P.C.D. & Outer Diameter Dimensions -->
+  <line x1="43"  y1="185" x2="43"  y2="326" class="thin"/>
+  <line x1="221" y1="185" x2="221" y2="326" class="thin"/>
+  <line x1="43"  y1="321" x2="221" y2="321" class="dim"/>
+  <text x="132" y="317" font-size="8.5" text-anchor="middle" class="mono">P.C.D. Ø178.0 ±0.02</text>
+
+  <!-- ================================================================= -->
+  <!-- VIEW 3: ENLARGED SEAL GROOVE DETAIL B (Bottom-Left)               -->
+  <!-- ================================================================= -->
+  <rect x="28" y="346" width="216" height="176" fill="#ffffff" stroke="#000000" stroke-width="0.9"/>
+  <text x="36" y="362" font-size="9.5" font-weight="700" class="cad">DETAIL B — O-RING GLAND (SCALE 4:1)</text>
+
+  <!-- Enlarged Cross Section of O-Ring Groove & Chamfer -->
+  <path d="M 42 392 L 96 392 L 96 426 L 136 426 L 136 392 L 168 392 L 182 406 L 182 468 L 42 468 Z"
+        fill="url(#hatch45)" stroke="#000000" stroke-width="1.5"/>
+  <!-- O-Ring Elastomer Cross Section inside Gland -->
+  <circle cx="116" cy="409" r="14.5" fill="#1e293b"/>
+  <!-- Groove Width & Depth Dimensions -->
+  <line x1="96"  y1="392" x2="96"  y2="372" class="thin"/>
+  <line x1="136" y1="392" x2="136" y2="372" class="thin"/>
+  <line x1="96"  y1="377" x2="136" y2="377" class="dim"/>
+  <text x="116" y="373" font-size="8" text-anchor="middle" class="mono">4.20 +0.10/0</text>
+
+  <line x1="136" y1="426" x2="198" y2="426" class="thin"/>
+  <line x1="168" y1="392" x2="198" y2="392" class="thin"/>
+  <line x1="192" y1="392" x2="192" y2="426" class="dim"/>
+  <text x="196" y="412" font-size="7.5" class="mono">3.10±0.03</text>
+
+  <text x="40" y="486" font-size="7.5" class="mono">CHAMFER: C1.5 × 45° | FINISH: Ra 0.8 μm</text>
+  <text x="40" y="500" font-size="7.5" class="mono">SEAL: JIS B 2401 G-95 (FKM 75 SHORE A)</text>
+  <text x="40" y="514" font-size="7.5" class="mono">HEAT TREAT: CARBURIZE &amp; GRIND (60 HRC)</text>
+
+  <!-- ================================================================= -->
+  <!-- VIEW 4: GENERAL NOTES & SURFACE ROUGHNESS CALLOUTS                -->
+  <!-- ================================================================= -->
+  <g transform="translate(28, 534)" class="mono" font-size="7.3">
+    <text x="0" y="10" font-weight="700" font-size="8.5" class="cad">TECHNICAL NOTES (JIS B 0001 / ISO 8015):</text>
+    <text x="0" y="24">1. REMOVE ALL BURRS &amp; SHARP EDGES (R0.2 MAX).</text>
+    <text x="0" y="37">2. GENERAL TOLERANCES PER ISO 2768-mH.</text>
+    <text x="0" y="50">3. BALANCE GRADE: ISO 1940 G2.5 @ 12,000 RPM.</text>
+    <text x="0" y="63">4. ULTRASONIC CLEAN &amp; RUST-INHIBIT BEFORE PACK.</text>
+    <text x="0" y="76">5. BORES (H6/H7) 100% CMM INSPECTED AT 20°C.</text>
+    <text x="0" y="89">6. UNMARKED FILLETS: R1.5; CHAMFERS: C0.5.</text>
+  </g>
+
+  <!-- ================================================================= -->
+  <!-- BOM / PARTS TABLE & JIS/ISO TITLE BLOCK (Bottom-Right)            -->
+  <!-- ================================================================= -->
+  <!-- Parts List (BOM) Table (x=254..580, y=346..478) -->
+  <g class="mono" font-size="8">
+    <rect x="254" y="346" width="326" height="132" class="med"/>
+    <!-- Header Row -->
+    <line x1="254" y1="366" x2="580" y2="366" class="med"/>
+    <line x1="254" y1="388" x2="580" y2="388" class="thin"/>
+    <line x1="254" y1="410" x2="580" y2="410" class="thin"/>
+    <line x1="254" y1="432" x2="580" y2="432" class="thin"/>
+    <line x1="254" y1="454" x2="580" y2="454" class="thin"/>
+    <!-- Vertical Columns: NO | PART NAME | MATERIAL / SPEC | QTY | MASS -->
+    <line x1="278" y1="346" x2="278" y2="478" class="thin"/>
+    <line x1="406" y1="346" x2="406" y2="478" class="thin"/>
+    <line x1="506" y1="346" x2="506" y2="478" class="thin"/>
+    <line x1="536" y1="346" x2="536" y2="478" class="thin"/>
+
+    <text x="266" y="359" font-weight="700" text-anchor="middle">NO.</text>
+    <text x="342" y="359" font-weight="700" text-anchor="middle">PART DESCRIPTION</text>
+    <text x="456" y="359" font-weight="700" text-anchor="middle">MATERIAL / STANDARD</text>
+    <text x="521" y="359" font-weight="700" text-anchor="middle">QTY</text>
+    <text x="558" y="359" font-weight="700" text-anchor="middle">MASS</text>
+
+    <text x="266" y="380" text-anchor="middle">01</text>
+    <text x="284" y="380">SPINDLE FLANGE HOUSING</text>
+    <text x="412" y="380">SUS304 (JIS G 4303)</text>
+    <text x="521" y="380" text-anchor="middle">1</text>
+    <text x="558" y="380" text-anchor="middle">4.82kg</text>
+
+    <text x="266" y="402" text-anchor="middle">02</text>
+    <text x="284" y="402">STEPPED ROTOR SHAFT</text>
+    <text x="412" y="402">SCM440H (HRC 58-62)</text>
+    <text x="521" y="402" text-anchor="middle">1</text>
+    <text x="558" y="402" text-anchor="middle">2.15kg</text>
+
+    <text x="266" y="424" text-anchor="middle">03</text>
+    <text x="284" y="424">BEARING SPACER SLEEVE</text>
+    <text x="412" y="424">SUJ2 GROUND</text>
+    <text x="521" y="424" text-anchor="middle">1</text>
+    <text x="558" y="424" text-anchor="middle">0.44kg</text>
+
+    <text x="266" y="446" text-anchor="middle">04</text>
+    <text x="284" y="446">ANGULAR BALL BEARING (F)</text>
+    <text x="412" y="446">7010C P4 (ISO CLASS 4)</text>
+    <text x="521" y="446" text-anchor="middle">1</text>
+    <text x="558" y="446" text-anchor="middle">0.29kg</text>
+
+    <text x="266" y="468" text-anchor="middle">05</text>
+    <text x="284" y="468">ANGULAR BALL BEARING (R)</text>
+    <text x="412" y="468">7008C P4 (ISO CLASS 4)</text>
+    <text x="521" y="468" text-anchor="middle">1</text>
+    <text x="558" y="468" text-anchor="middle">0.19kg</text>
+  </g>
+
+  <!-- JIS / ISO Standard Title Block (x=254..580, y=478..640) -->
+  <g>
+    <rect x="254" y="478" width="326" height="162" class="thick"/>
+    <line x1="254" y1="512" x2="580" y2="512" class="med"/>
+    <line x1="254" y1="546" x2="580" y2="546" class="med"/>
+    <line x1="254" y1="588" x2="580" y2="588" class="med"/>
+    <line x1="254" y1="614" x2="580" y2="614" class="thin"/>
+
+    <!-- Vertical Dividers -->
+    <line x1="352" y1="478" x2="352" y2="546" class="thin"/>
+    <line x1="466" y1="478" x2="466" y2="546" class="thin"/>
+    <line x1="352" y1="588" x2="352" y2="640" class="thin"/>
+    <line x1="436" y1="588" x2="436" y2="640" class="thin"/>
+    <line x1="510" y1="588" x2="510" y2="640" class="thin"/>
+
+    <!-- Third-Angle Projection Symbol (JIS / ISO) in Box (x=254..352, y=478..512) -->
+    <text x="260" y="489" font-size="7" class="mono">PROJECTION: 3RD ANGLE</text>
+    <line x1="264" y1="500" x2="342" y2="500" class="cen"/>
+    <line x1="280" y1="488" x2="280" y2="510" class="cen"/>
+    <circle cx="280" cy="500" r="4.5" class="med"/>
+    <circle cx="280" cy="500" r="8.5" class="med"/>
+    <polygon points="304,495.5 332,491.5 332,508.5 304,504.5" class="med"/>
+
+    <!-- Tolerance & Surface Finish Summary -->
+    <text x="358" y="489" font-size="7" class="mono">GENERAL TOLERANCE</text>
+    <text x="358" y="504" font-size="9.5" font-weight="700" class="mono">ISO 2768 - mH</text>
+    <text x="472" y="489" font-size="7" class="mono">SURFACE FINISH</text>
+    <polyline points="476,502 481,508 489,494 504,494" class="med"/>
+    <text x="508" y="505" font-size="9" font-weight="700" class="mono">Ra 1.6</text>
+
+    <!-- Approvals Row (y=512..546) -->
+    <text x="260" y="523" font-size="7" class="mono">DRAWN BY</text>
+    <text x="260" y="539" font-size="9" font-weight="700" class="mono">K. MIU (2026-10)</text>
+    <text x="358" y="523" font-size="7" class="mono">CHECKED / QA</text>
+    <text x="358" y="539" font-size="9" font-weight="700" class="mono">T. SATO / METROL.</text>
+    <text x="472" y="523" font-size="7" class="mono">APPROVED</text>
+    <text x="472" y="539" font-size="9" font-weight="700" class="mono">M. TAKAHASHI</text>
+
+    <!-- Main Drawing Title (y=546..588) -->
+    <text x="260" y="558" font-size="7.5" class="mono">DRAWING TITLE / ASSY NAME</text>
+    <text x="417" y="578" font-size="12.5" font-weight="700" text-anchor="middle" class="cad">
+      PRECISION SERVO SPINDLE HOUSING ASSY
+    </text>
+
+    <!-- Scale / Unit / Mass / Sheet / DWG No (y=588..640) -->
+    <text x="260" y="599" font-size="7" class="mono">SCALE</text>
+    <text x="303" y="610" font-size="9.5" font-weight="700" text-anchor="middle" class="mono">1 : 1</text>
+    <text x="358" y="599" font-size="7" class="mono">UNIT</text>
+    <text x="394" y="610" font-size="9.5" font-weight="700" text-anchor="middle" class="mono">mm</text>
+    <text x="442" y="599" font-size="7" class="mono">TOTAL MASS</text>
+    <text x="473" y="610" font-size="9.5" font-weight="700" text-anchor="middle" class="mono">7.89 kg</text>
+    <text x="516" y="599" font-size="7" class="mono">REV.</text>
+    <text x="545" y="610" font-size="9.5" font-weight="700" text-anchor="middle" class="mono">REV. C</text>
+
+    <text x="260" y="625" font-size="7" class="mono">PLANT /DEPT</text>
+    <text x="260" y="636" font-size="8.5" font-weight="700" class="mono">TOKYO PLANT #2</text>
+    <text x="358" y="625" font-size="7" class="mono">DRAWING NUMBER</text>
+    <text x="434" y="636" font-size="10" font-weight="700" text-anchor="middle" class="mono">DWG-MIU-2026-038-C</text>
+    <text x="516" y="625" font-size="7" class="mono">SHEET</text>
+    <text x="545" y="636" font-size="9" font-weight="700" text-anchor="middle" class="mono">1 OF 1</text>
+  </g>
+</svg>

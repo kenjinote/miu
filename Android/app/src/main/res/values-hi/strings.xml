@@ -5,10 +5,17 @@
     <string name="open_fail">दस्तावेज़ खोलने में विफल।</string>
     <string name="toolbar_new">नया</string>
     <string name="toolbar_open">खोलें</string>
+    <string name="menu_open_recent">हाल ही के</string>
+    <string name="menu_clear_recent">मेनू साफ़ करें</string>
+    <string name="menu_no_recent">कोई हालिया फ़ाइल नहीं</string>
     <string name="toolbar_save">सहेजें</string>
     <string name="toolbar_save_as">इस रूप में सहेजें</string>
     <string name="toolbar_find">ढूँढें</string>
     <string name="toolbar_replace">बदलें</string>
+    <string name="menu_live_preview">पूर्वावलोकन</string>
+    <string name="menu_word_wrap">वर्ड रैप</string>
+    <string name="menu_toggle_comment">टिप्पणी टॉगल करें</string>
+    <string name="menu_tab">टैब</string>
     <string name="toolbar_top">ऊपर</string>
     <string name="toolbar_bottom">नीचे</string>
     <string name="toolbar_goto">लाइन पर जाएँ</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">इससे बदलें...</string>
     <string name="replace_btn">बदलें</string>
     <string name="replace_all_btn">सभी</string>
+    <string name="replace_all_result">%1$d आइटम बदले गए।</string>
+    <string name="reload_prompt">फ़ाइल बाहरी रूप से संशोधित की गई है।\nक्या आप इसे फिर से लोड करना चाहते हैं?</string>
     <string name="msg_copied">क्लिपबोर्ड पर कॉपी किया गया</string>
     <string name="msg_new_doc">नया दस्तावेज़ बनाया गया</string>
     <string name="msg_doc_opened">दस्तावेज़ खोला गया</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">सहेजें</string>
     <string name="dialog_btn_dont_save">न सहेजें</string>
     <string name="dialog_btn_done">पूर्ण</string>
-    <string name="help_text">miu v%1$s\n\n[कीबोर्ड शॉर्टकट]\nCtrl+N : नई फ़ाइल\nCtrl+O : खोलें\nCtrl+S : सहेजें\nCtrl+Shift+S : इस रूप में सहेजें\nCtrl+F : खोजें\nCtrl+H / R : बदलें\nCtrl+G : लाइन पर जाएं\nCtrl+Z : पूर्ववत करें\nCtrl+Shift+Z : फिर से करें\nCtrl+A : सभी का चयन करें\nCtrl+X / C / V : कट / कॉपी / पेस्ट\nCtrl+D : अगली उपस्थिति का चयन करें (मल्टी-कर्सर)\nCtrl++ / - / 0 : ज़ूम (इन / आउट / रीसेट)\nF3 / Shift+F3 : अगला / पिछला खोजें\nTab / Shift+Tab : इंडेंट / अन-इंडेंट\nShift+Insert : पेस्ट\nESC : चयन/खोज/सहायता रद्द करें\nF1 : सहायता दिखाएं</string>
+    <string name="help_text">miu v%1$s\n\n[शॉर्टकट]\nF1                  सहायता\nCtrl+N               नया\nCtrl+O               खोलें\nCtrl+S/Shift+S       सहेजें / इस रूप में सहेजें\nCtrl+F/H             खोजें / बदलें\nF3 / Shift+F3       अगला / पिछला खोजें\nCtrl+G               पंक्ति पर जाएँ\nCtrl+B               मिलान वाले ब्रैकेट पर जाएँ\nCtrl+Z/Shift+Z       पूर्ववत करें / फिर से करें\nCtrl+X/C/V           काटें / कॉपी करें / पेस्ट करें\nCtrl+Shift+K         पंक्ति हटाएँ\nCtrl+U/Shift+U       बड़े / छोटे अक्षर\nCtrl+/               टिप्पणी टॉगल करें\nAlt+Up/Down      पंक्ति स्थानांतरित करें\nAlt+Shift+Up/Down   पंक्ति की प्रतिलिपि बनाएँ\nCtrl+Alt+Up/Down    मल्टी-कर्सर\nCtrl+D               शब्द चुनें / अगला चुनें\nCtrl+A               सभी चुनें\nAlt+Drag / Ctrl+Alt+Shift+Arrows  कॉलम चयन\nAlt+Z / Alt+P       वर्ड रैप / पूर्वावलोकन\nCtrl+ + / - / 0      ज़ूम / रीसेट करें\n</string>
 </resources>

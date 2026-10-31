@@ -5,10 +5,17 @@
     <string name="open_fail">Impossibile aprire il documento.</string>
     <string name="toolbar_new">Nuovo</string>
     <string name="toolbar_open">Apri</string>
+    <string name="menu_open_recent">Recenti</string>
+    <string name="menu_clear_recent">Cancella menu</string>
+    <string name="menu_no_recent">Nessun file recente</string>
     <string name="toolbar_save">Salva</string>
     <string name="toolbar_save_as">Salva con nome</string>
     <string name="toolbar_find">Trova</string>
     <string name="toolbar_replace">Sostituisci</string>
+    <string name="menu_live_preview">Anteprima</string>
+    <string name="menu_word_wrap">A capo automatico</string>
+    <string name="menu_toggle_comment">Attiva/disattiva commento</string>
+    <string name="menu_tab">Tabulazione</string>
     <string name="toolbar_top">Inizio</string>
     <string name="toolbar_bottom">Fine</string>
     <string name="toolbar_goto">Vai a</string>
@@ -22,7 +29,10 @@
     <string name="toolbar_cancel">Annulla</string>
     <string name="search_hint">Cerca...</string>
     <string name="replace_hint">Sostituisci con...</string>
-    <string name="replace_btn">Sost</string> <string name="replace_all_btn">Tutti</string>
+    <string name="replace_btn">Sost</string>
+    <string name="replace_all_btn">Tutti</string>
+    <string name="replace_all_result">%1$d elementi sostituiti.</string>
+    <string name="reload_prompt">Il file è stato modificato esternamente.\nVuoi ricaricarlo?</string>
     <string name="msg_copied">Copiato negli appunti</string>
     <string name="msg_new_doc">Nuovo documento creato</string>
     <string name="msg_doc_opened">Documento aperto</string>
@@ -38,5 +48,5 @@
     <string name="dialog_btn_save">Salva</string>
     <string name="dialog_btn_dont_save">Non salvare</string>
     <string name="dialog_btn_done">Fatto</string>
-    <string name="help_text">miu v%1$s\n\n[Scorciatoie da tastiera]\nCtrl+N : Nuovo file\nCtrl+O : Apri\nCtrl+S : Salva\nCtrl+Shift+S : Salva con nome\nCtrl+F : Trova\nCtrl+H / R : Sostituisci\nCtrl+G : Vai alla riga\nCtrl+Z : Annulla\nCtrl+Shift+Z : Ripeti\nCtrl+A : Seleziona tutto\nCtrl+X / C / V : Taglia / Copia / Incolla\nCtrl+D : Seleziona occorrenza successiva (Cursore multiplo)\nCtrl++ / - / 0 : Zoom (Ingrandisci / Riduci / Ripristina)\nF3 / Shift+F3 : Trova successivo / precedente\nTab / Shift+Tab : Aumenta rientro / Riduci rientro\nShift+Insert : Incolla\nESC : Annulla selezione/ricerca/guida\nF1 : Mostra guida</string>
+    <string name="help_text">miu v%1$s\n\n[Scorciatoie]\nF1                  Guida\nCtrl+N               Nuovo\nCtrl+O               Apri\nCtrl+S/Shift+S       Salva / Salva con nome\nCtrl+F/H             Trova/Sostituisci\nF3 / Shift+F3       Trova succ./prec.\nCtrl+G               Vai alla riga\nCtrl+B               Vai alla parentesi corrispondente\nCtrl+Z/Shift+Z       Annulla/Ripeti\nCtrl+X/C/V           Taglia/Copia/Incolla\nCtrl+Shift+K         Elimina riga\nCtrl+U/Shift+U       Maiuscolo / Minuscolo\nCtrl+/               Attiva/Disattiva commento\nAlt+Up/Down      Sposta riga\nAlt+Shift+Up/Down   Copia riga\nCtrl+Alt+Up/Down    Multicursore\nCtrl+D               Sel. parola / Succ.\nCtrl+A               Seleziona tutto\nAlt+Drag / Ctrl+Alt+Shift+Frecce  Sel. rettangolare\nAlt+Z / Alt+P       A capo / Anteprima\nCtrl+ + / - / 0      Zoom / Reimposta\n</string>
 </resources>

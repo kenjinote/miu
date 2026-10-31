@@ -5,10 +5,17 @@
     <string name="open_fail">Falha ao abrir o documento.</string>
     <string name="toolbar_new">Novo</string>
     <string name="toolbar_open">Abrir</string>
+    <string name="menu_open_recent">Recente</string>
+    <string name="menu_clear_recent">Limpar menu</string>
+    <string name="menu_no_recent">No Recent Files</string>
     <string name="toolbar_save">Salvar</string>
     <string name="toolbar_save_as">Salvar como</string>
     <string name="toolbar_find">Localizar</string>
     <string name="toolbar_replace">Substituir</string>
+    <string name="menu_live_preview">Pré-visualização</string>
+    <string name="menu_word_wrap">Quebra de linha</string>
+    <string name="menu_toggle_comment">Alternar comentário</string>
+    <string name="menu_tab">Tabulação</string>
     <string name="toolbar_top">Início</string>
     <string name="toolbar_bottom">Fim</string>
     <string name="toolbar_goto">Ir para linha</string>
@@ -24,6 +31,8 @@
     <string name="replace_hint">Substituir por...</string>
     <string name="replace_btn">Subst.</string>
     <string name="replace_all_btn">Tudo</string>
+    <string name="replace_all_result">%1$d itens substituídos.</string>
+    <string name="reload_prompt">O arquivo foi modificado externamente.\nDeseja recarregá-lo?</string>
     <string name="msg_copied">Copiado para a área de transferência</string>
     <string name="msg_new_doc">Novo documento criado</string>
     <string name="msg_doc_opened">Documento aberto</string>
@@ -39,5 +48,5 @@
     <string name="dialog_btn_save">Salvar</string>
     <string name="dialog_btn_dont_save">Não salvar</string>
     <string name="dialog_btn_done">Concluir</string>
-    <string name="help_text">miu v%1$s\n\n[Atalhos de Teclado]\nCtrl+N : Novo Arquivo\nCtrl+O : Abrir\nCtrl+S : Salvar\nCtrl+Shift+S : Salvar Como\nCtrl+F : Localizar\nCtrl+H / R : Substituir\nCtrl+G : Ir para a Linha\nCtrl+Z : Desfazer\nCtrl+Shift+Z : Refazer\nCtrl+A : Selecionar Tudo\nCtrl+X / C / V : Recortar / Copiar / Colar\nCtrl+D : Selecionar Próxima Ocorrência (Multicursor)\nCtrl++ / - / 0 : Zoom (Ampliar / Reduzir / Redefinir)\nF3 / Shift+F3 : Localizar Próximo / Anterior\nTab / Shift+Tab : Indentar / Desindentar\nShift+Insert : Colar\nESC : Cancelar Seleção/Busca/Ajuda\nF1 : Mostrar Ajuda</string>
+    <string name="help_text">miu v%1$s\n\n[Atalhos]\nF1                  Ajuda\nCtrl+N               Novo\nCtrl+O               Abrir\nCtrl+S/Shift+S       Salvar / Salvar Como\nCtrl+F/H             Localizar/Substituir\nF3 / Shift+F3       Localizar Próximo/Anterior\nCtrl+G               Ir Para a Linha\nCtrl+B               Ir para o parêntese correspondente\nCtrl+Z/Shift+Z       Desfazer/Refazer\nCtrl+X/C/V           Recortar/Copiar/Colar\nCtrl+Shift+K         Excluir Linha\nCtrl+U/Shift+U       Maiúsculas / Minúsculas\nCtrl+/               Alternar Comentário\nAlt+Up/Down      Mover Linha\nAlt+Shift+Up/Down   Copiar Linha\nCtrl+Alt+Up/Down    Multicursor\nCtrl+D               Selecionar Palavra / Próxima\nCtrl+A               Selecionar Tudo\nAlt+Arrastar / Ctrl+Alt+Shift+Setas  Seleção Retangular\nAlt+Z / Alt+P       Quebra de Linha / Prévia\nCtrl+ + / - / 0      Zoom / Redefinir\n</string>
 </resources>
