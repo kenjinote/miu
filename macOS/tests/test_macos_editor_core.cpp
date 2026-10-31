@@ -678,16 +678,16 @@ static void testParityEdgeCases() {
               MiuIsLikelyTemporaryGuidFileName("2026-10-31-report.txt") == false,
               "Normal filenames are not misidentified as GUIDs");
 
-        CHECK(MiuBuildExportFileName("/var/mobile/Documents/memo.txt", "", ".txt", "無題") == "memo.txt",
-              "MiuBuildExportFileName preserves existing .txt extension for Save As");
-        CHECK(MiuBuildExportFileName("/var/mobile/Documents/design.md", "", ".md", "無題") == "design.md",
-              "MiuBuildExportFileName preserves existing .md extension for Save As");
-        CHECK(MiuBuildExportFileName("", "", "", "無題") == "無題.txt",
-              "MiuBuildExportFileName appends .txt to Untitled when saving new file");
-        CHECK(MiuBuildExportFileName("", "", ".md", "Untitled") == "Untitled.md",
-              "MiuBuildExportFileName appends active syntax extension to Untitled when saving new file");
-        CHECK(MiuBuildExportFileName("/File Provider Storage/E621E1F8-C36C-495A-93FC-0C247A3E6E5F", "overwrite_target.txt", ".txt", "無題") == "overwrite_target.txt",
-              "MiuBuildExportFileName uses currentDocumentDisplayName when currentFilePath is a Dropbox GUID");
+        CHECK(MiuBuildExportFileName("/var/mobile/Documents/memo.txt", "", "無題") == "memo",
+              "MiuBuildExportFileName strips extension for temp export URL so iOS does not force-append .txt");
+        CHECK(MiuBuildExportFileName("/var/mobile/Documents/index.html", "", "無題") == "index",
+              "MiuBuildExportFileName strips .html for temp export URL so custom extensions are not doubled");
+        CHECK(MiuBuildExportFileName("", "", "無題") == "無題",
+              "MiuBuildExportFileName returns extensionless Untitled so saving index.html does not become index.html.txt");
+        CHECK(MiuBuildExportFileName("", "", "Untitled") == "Untitled",
+              "MiuBuildExportFileName returns extensionless English Untitled");
+        CHECK(MiuBuildExportFileName("/File Provider Storage/E621E1F8-C36C-495A-93FC-0C247A3E6E5F", "overwrite_target.txt", "無題") == "overwrite_target",
+              "MiuBuildExportFileName uses currentDocumentDisplayName stem when currentFilePath is a Dropbox GUID");
 
         std::vector<std::string> guidOnlyCandidates = {
             "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",

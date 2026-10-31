@@ -4293,7 +4293,6 @@ std::string MiuExtractRealFileNameFromStagingName(const std::string& fileName) {
 
 std::string MiuBuildExportFileName(const std::string& currentPathUtf8,
                                    const std::string& currentDisplayNameUtf8,
-                                   const std::string& currentFileExtUtf8,
                                    const std::string& localizedUntitledUtf8) {
     auto lastComponent = [](const std::string& p) -> std::string {
         if (p.empty()) return "";
@@ -4323,20 +4322,14 @@ std::string MiuBuildExportFileName(const std::string& currentPathUtf8,
             }
         }
     }
+    if (!chosen.empty()) {
+        size_t dotPos = chosen.find_last_of('.');
+        if (dotPos != std::string::npos && dotPos > 0) {
+            chosen = chosen.substr(0, dotPos);
+        }
+    }
     if (chosen.empty()) {
         chosen = localizedUntitledUtf8.empty() ? "Untitled" : localizedUntitledUtf8;
-    }
-
-    size_t dotPos = chosen.find_last_of('.');
-    bool hasExt = (dotPos != std::string::npos && dotPos > 0 && dotPos + 1 < chosen.size());
-    if (!hasExt) {
-        std::string ext = currentFileExtUtf8;
-        if (!ext.empty() && ext != ".") {
-            if (ext[0] != '.') ext = "." + ext;
-        } else {
-            ext = ".txt";
-        }
-        chosen += ext;
     }
     return chosen;
 }

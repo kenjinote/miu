@@ -74,7 +74,6 @@ bool MiuIsLikelyTemporaryGuidFileName(const std::string& fileName);
 std::string MiuExtractRealFileNameFromStagingName(const std::string& fileName);
 std::string MiuBuildExportFileName(const std::string& currentPathUtf8,
                                    const std::string& currentDisplayNameUtf8,
-                                   const std::string& currentFileExtUtf8,
                                    const std::string& localizedUntitledUtf8 = "Untitled");
 std::string MiuResolveDisplayFileName(const std::vector<std::string>& candidatesUtf8,
                                       const std::string& fallbackNameUtf8,

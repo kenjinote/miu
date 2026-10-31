@@ -2703,39 +2703,38 @@ static NSString *s_iosClipboardSnapshot = nil;
                 }
             }
             if (!hasNonGuidCandidate) {
-                if (fallbackName.length > 0 && !MiuIsLikelyTemporaryGuidFileName(fallbackName.UTF8String)) {
+                NSArray<NSURL *> *dirContents = [fm contentsOfDirectoryAtURL:parentDir
+                                                  includingPropertiesForKeys:@[NSURLContentModificationDateKey, NSURLIsRegularFileKey]
+                                                                     options:NSDirectoryEnumerationSkipsHiddenFiles
+                                                                       error:nil];
+                NSURL *recentSibling = nil;
+                NSDate *recentDate = nil;
+                for (NSURL *itemURL in dirContents) {
+                    NSNumber *isReg = nil;
+                    [itemURL getResourceValue:&isReg forKey:NSURLIsRegularFileKey error:nil];
+                    if (isReg && !isReg.boolValue) continue;
+                    NSString *itemName = itemURL.lastPathComponent;
+                    if (itemName.length == 0 || MiuIsLikelyTemporaryGuidFileName(itemName.UTF8String)) continue;
+                    NSDate *modDate = nil;
+                    [itemURL getResourceValue:&modDate forKey:NSURLContentModificationDateKey error:nil];
+                    if (modDate && fabs([modDate timeIntervalSinceNow]) <= 15.0) {
+                        if (!recentDate || [modDate compare:recentDate] == NSOrderedDescending) {
+                            recentDate = modDate;
+                            recentSibling = itemURL;
+                        }
+                    }
+                }
+                if (recentSibling) {
+                    addCandidate(recentSibling.lastPathComponent);
+                    bestURL = recentSibling;
+                    hasNonGuidCandidate = YES;
+                }
+                if (!hasNonGuidCandidate && fallbackName.length > 0 && !MiuIsLikelyTemporaryGuidFileName(fallbackName.UTF8String)) {
                     NSURL *fallbackSibling = [parentDir URLByAppendingPathComponent:fallbackName];
                     if (fallbackSibling.path && [fm fileExistsAtPath:fallbackSibling.path]) {
                         addCandidate(fallbackName);
                         bestURL = fallbackSibling;
                         hasNonGuidCandidate = YES;
-                    }
-                }
-                if (!hasNonGuidCandidate) {
-                    NSArray<NSURL *> *dirContents = [fm contentsOfDirectoryAtURL:parentDir
-                                                      includingPropertiesForKeys:@[NSURLContentModificationDateKey, NSURLIsRegularFileKey]
-                                                                         options:NSDirectoryEnumerationSkipsHiddenFiles
-                                                                           error:nil];
-                    NSURL *recentSibling = nil;
-                    NSDate *recentDate = nil;
-                    for (NSURL *itemURL in dirContents) {
-                        NSNumber *isReg = nil;
-                        [itemURL getResourceValue:&isReg forKey:NSURLIsRegularFileKey error:nil];
-                        if (isReg && !isReg.boolValue) continue;
-                        NSString *itemName = itemURL.lastPathComponent;
-                        if (itemName.length == 0 || MiuIsLikelyTemporaryGuidFileName(itemName.UTF8String)) continue;
-                        NSDate *modDate = nil;
-                        [itemURL getResourceValue:&modDate forKey:NSURLContentModificationDateKey error:nil];
-                        if (modDate && fabs([modDate timeIntervalSinceNow]) <= 15.0) {
-                            if (!recentDate || [modDate compare:recentDate] == NSOrderedDescending) {
-                                recentDate = modDate;
-                                recentSibling = itemURL;
-                            }
-                        }
-                    }
-                    if (recentSibling) {
-                        addCandidate(recentSibling.lastPathComponent);
-                        bestURL = recentSibling;
                     }
                 }
             }
@@ -3752,17 +3751,26 @@ static NSString *s_iosClipboardSnapshot = nil;
     std::string dispUtf8 = (self.currentDocumentDisplayName && self.currentDocumentDisplayName.UTF8String)
         ? std::string(self.currentDocumentDisplayName.UTF8String)
         : "";
-    std::string extUtf8 = _editorEngine->currentFileExt;
     NSString *localizedUntitled = NSLocalizedString(@"Untitled", @"新規ファイル名");
     std::string untitledUtf8 = (localizedUntitled && localizedUntitled.UTF8String)
         ? std::string(localizedUntitled.UTF8String)
         : "Untitled";
-    std::string exportNameUtf8 = MiuBuildExportFileName(utf8Path, dispUtf8, extUtf8, untitledUtf8);
+    std::string exportNameUtf8 = MiuBuildExportFileName(utf8Path, dispUtf8, untitledUtf8);
     NSString *fileName = [NSString stringWithUTF8String:exportNameUtf8.c_str()];
     if (!fileName || fileName.length == 0) {
-        fileName = [localizedUntitled stringByAppendingPathExtension:@"txt"];
+        fileName = localizedUntitled;
     }
-    self.pendingExportFileName = fileName;
+    if (self.currentDocumentDisplayName.length > 0 &&
+        !MiuIsLikelyTemporaryGuidFileName(self.currentDocumentDisplayName.UTF8String)) {
+        self.pendingExportFileName = self.currentDocumentDisplayName;
+    } else if (!utf8Path.empty()) {
+        NSString *lastComp = [[NSString stringWithUTF8String:utf8Path.c_str()] lastPathComponent];
+        self.pendingExportFileName = (lastComp.length > 0 && !MiuIsLikelyTemporaryGuidFileName(lastComp.UTF8String))
+            ? lastComp
+            : nil;
+    } else {
+        self.pendingExportFileName = nil;
+    }
     NSString *exportDir = [NSTemporaryDirectory() stringByAppendingPathComponent:@"MiuExport"];
     NSFileManager *fm = [NSFileManager defaultManager];
     [fm removeItemAtPath:exportDir error:nil];
