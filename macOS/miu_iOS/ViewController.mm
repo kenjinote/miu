@@ -86,16 +86,23 @@
 }
 - (void)drawRect:(CGRect)rect {
     BOOL dark = self.editor ? self.editor->isDarkMode : NO;
-    UIColor *bgCol = dark ? [UIColor colorWithWhite:0.20 alpha:1.0] : [UIColor colorWithWhite:0.85 alpha:1.0];
+    UIColor *bgCol = dark ? [UIColor blackColor] : [UIColor whiteColor];
     [bgCol setFill];
     UIRectFill(CGRectIntersection(rect, self.bounds));
-    UIColor *pillCol = dark ? [UIColor colorWithWhite:0.55 alpha:0.9] : [UIColor colorWithWhite:0.50 alpha:0.9];
+    UIColor *lineCol = dark ? [UIColor colorWithWhite:1.0 alpha:0.06] : [UIColor colorWithWhite:0.0 alpha:0.06];
+    [lineCol setFill];
+    if (self.bounds.size.width < self.bounds.size.height) {
+        UIRectFillUsingBlendMode(CGRectMake(std::floor(self.bounds.size.width * 0.5), 0, 1.0, self.bounds.size.height), kCGBlendModeNormal);
+    } else {
+        UIRectFillUsingBlendMode(CGRectMake(0, std::floor(self.bounds.size.height * 0.5), self.bounds.size.width, 1.0), kCGBlendModeNormal);
+    }
+    UIColor *pillCol = dark ? [UIColor colorWithWhite:1.0 alpha:0.22] : [UIColor colorWithWhite:0.0 alpha:0.22];
     [pillCol setFill];
     CGRect pillRect;
     if (self.bounds.size.width < self.bounds.size.height) {
-        pillRect = CGRectMake((self.bounds.size.width - 2.0) * 0.5, (self.bounds.size.height - 32.0) * 0.5, 2.0, 32.0);
+        pillRect = CGRectMake((self.bounds.size.width - 2.0) * 0.5, (self.bounds.size.height - 28.0) * 0.5, 2.0, 28.0);
     } else {
-        pillRect = CGRectMake((self.bounds.size.width - 32.0) * 0.5, (self.bounds.size.height - 2.0) * 0.5, 32.0, 2.0);
+        pillRect = CGRectMake((self.bounds.size.width - 28.0) * 0.5, (self.bounds.size.height - 2.0) * 0.5, 28.0, 2.0);
     }
     UIBezierPath *bp = [UIBezierPath bezierPathWithRoundedRect:pillRect cornerRadius:1.0];
     [bp fill];

@@ -130,9 +130,18 @@ int main(int argc, const char * argv[]) {
         ev->editor->updateThemeColors();
         [ev updatePreviewBackground];
 
-        // 1. Verify initial state (preview off, help popup on, no NSVisualEffectView gray overlay)
-        if ([win.contentView isKindOfClass:[NSVisualEffectView class]]) {
-            std::cerr << "[FAIL] win.contentView should not be NSVisualEffectView (causes semi-transparent gray overlay)" << std::endl;
+        // 1. Verify initial state (preview off, help popup on, frosted-glass NSVisualEffectView active)
+        if (![win.contentView isKindOfClass:[NSVisualEffectView class]]) {
+            std::cerr << "[FAIL] win.contentView should be NSVisualEffectView for frosted-glass background" << std::endl;
+            return 1;
+        }
+        NSVisualEffectView *vev = (NSVisualEffectView *)win.contentView;
+        if (vev.material != NSVisualEffectMaterialSidebar || vev.blendingMode != NSVisualEffectBlendingModeBehindWindow) {
+            std::cerr << "[FAIL] NSVisualEffectView material/blendingMode does not match frosted-glass configuration" << std::endl;
+            return 1;
+        }
+        if (ev.isOpaque || CGColorGetAlpha(ev->editor->colBackground) != 0.0 || CGColorGetAlpha(ev->editor->colGutterBg) != 0.0) {
+            std::cerr << "[FAIL] EditorView and colBackground/colGutterBg must be transparent on macOS so frosted glass shows through" << std::endl;
             return 1;
         }
         if (ev->editor->showPreview || !ev->editor->showHelpPopup) {
@@ -204,12 +213,16 @@ int main(int argc, const char * argv[]) {
         std::cout << "=== AFTER PREVIEW TOGGLE (DARK MODE) ===" << std::endl;
         dumpLayerHierarchy(themeFrame.layer);
 
-        if (!win.isOpaque || !win.contentView.layer || !win.contentView.layer.opaque || !ev.layer || !ev.layer.opaque || !ev->splitterView.layer || !ev->splitterView.layer.opaque) {
-            std::cerr << "[FAIL] Window, contentView, EditorView, or MiuSplitterView layer is not opaque" << std::endl;
+        if (ev.isOpaque || ev.layer.opaque || ev->splitterView.isOpaque || ev->splitterView.layer.opaque) {
+            std::cerr << "[FAIL] EditorView and MiuSplitterView must be non-opaque so frosted glass shows through" << std::endl;
             return 1;
         }
-        if (!ev->splitterView.layer.masksToBounds || !ev.layer.masksToBounds || !win.contentView.layer.masksToBounds) {
-            std::cerr << "[FAIL] splitterView, EditorView, or contentView layer masksToBounds is NO (causes full-window ContentLayer bleed)" << std::endl;
+        if (!ev->splitterView.layer.masksToBounds || !ev.layer.masksToBounds || !ev->previewWebView.layer.masksToBounds) {
+            std::cerr << "[FAIL] splitterView, EditorView, or previewWebView layer masksToBounds is NO (causes full-window ContentLayer bleed)" << std::endl;
+            return 1;
+        }
+        if ((int)std::round(ev->splitterView.bounds.size.width) != 4) {
+            std::cerr << "[FAIL] splitterView bounds width should be 4pt matching subtle Windows splitter" << std::endl;
             return 1;
         }
         for (CALayer *sub in ev->splitterView.layer.sublayers) {
@@ -219,54 +232,44 @@ int main(int argc, const char * argv[]) {
             }
         }
 
-        // 5. Verify actual rendered pixels in Dark Mode (Editor, Preview, and Titlebar MUST be pure black R=0,G=0,B=0, NOT gray!)
-        PixelRGBA cvEditor = sampleViewPixel(win.contentView, 200, 300);
+        // 5. Verify actual rendered pixels in Dark Mode:
+        //    - EditorView background pixel is transparent (A=0) for frosted glass and has no gray overlay
+        //    - MiuSplitterView draws only a subtle 1pt hairline at x=3 (A ~ 13) and is transparent at x=1 (A=0)
+        //    - Preview pane pixel is pure black R=0,G=0,B=0,A=255
+        PixelRGBA evDirectDark = sampleViewPixel(ev, 200, 300);
+        PixelRGBA splitPadDark = sampleViewPixel(ev->splitterView, 1, 300);
+        PixelRGBA splitLineDark = sampleViewPixel(ev->splitterView, 3, 300);
         PixelRGBA cvPreview = sampleViewPixel(win.contentView, 650, 300);
-        PixelRGBA cvTitleL = sampleViewPixel(win.contentView, 200, 605);
-        PixelRGBA cvTitleR = sampleViewPixel(win.contentView, 650, 605);
-        PixelRGBA cvSplitter = sampleViewPixel(win.contentView, 432, 300);
-
-        PixelRGBA lyEditor = sampleLayerPixel(themeFrame.layer, 200, 300);
         PixelRGBA lyPreview = sampleLayerPixel(themeFrame.layer, 650, 300);
-        PixelRGBA lyTitleL = sampleLayerPixel(themeFrame.layer, 200, 605);
-        PixelRGBA lyTitleR = sampleLayerPixel(themeFrame.layer, 650, 605);
-
-        PixelRGBA winEditor = sampleWindowPixel(win, 200, 300);
         PixelRGBA winPreview = sampleWindowPixel(win, 650, 300);
-        PixelRGBA winTitleL = sampleWindowPixel(win, 200, 15);
-        PixelRGBA winTitleR = sampleWindowPixel(win, 650, 15);
 
-        printPixel("DARK_CONTENT_VIEW_EDITOR", 200, 300, cvEditor);
+        printPixel("DARK_EDITOR_VIEW_TRANSPARENT_BG", 200, 300, evDirectDark);
+        printPixel("DARK_SPLITTER_IDLE_PAD", 1, 300, splitPadDark);
+        printPixel("DARK_SPLITTER_1PT_LINE", 3, 300, splitLineDark);
         printPixel("DARK_CONTENT_VIEW_PREVIEW", 650, 300, cvPreview);
-        printPixel("DARK_CONTENT_VIEW_TITLE_L", 200, 605, cvTitleL);
-        printPixel("DARK_CONTENT_VIEW_TITLE_R", 650, 605, cvTitleR);
-        printPixel("DARK_CONTENT_VIEW_SPLITTER", 432, 300, cvSplitter);
-        printPixel("DARK_LAYER_EDITOR", 200, 300, lyEditor);
         printPixel("DARK_LAYER_PREVIEW", 650, 300, lyPreview);
-        printPixel("DARK_LAYER_TITLE_L", 200, 605, lyTitleL);
-        printPixel("DARK_LAYER_TITLE_R", 650, 605, lyTitleR);
-        printPixel("DARK_WIN_EDITOR", 200, 300, winEditor);
         printPixel("DARK_WIN_PREVIEW", 650, 300, winPreview);
-        printPixel("DARK_WIN_TITLE_L", 200, 15, winTitleL);
-        printPixel("DARK_WIN_TITLE_R", 650, 15, winTitleR);
 
         auto isPureBlack = [](const PixelRGBA &p) {
             return p.r == 0 && p.g == 0 && p.b == 0 && p.a == 255;
         };
-        if (!isPureBlack(cvEditor) || !isPureBlack(cvPreview) || !isPureBlack(cvTitleL) || !isPureBlack(cvTitleR)) {
-            std::cerr << "[FAIL] Dark mode contentView pixels are not pure black (gray overlay detected)!" << std::endl;
+        if (evDirectDark.a != 0) {
+            std::cerr << "[FAIL] Dark mode EditorView background pixel should be transparent (A=0) for frosted glass!" << std::endl;
             return 1;
         }
-        if (!isPureBlack(lyEditor) || !isPureBlack(lyPreview) || !isPureBlack(lyTitleL) || !isPureBlack(lyTitleR)) {
-            std::cerr << "[FAIL] Dark mode themeFrame.layer pixels are not pure black (gray overlay detected)!" << std::endl;
+        if (splitPadDark.a != 0 || splitLineDark.a < 8 || splitLineDark.a > 22) {
+            std::cerr << "[FAIL] Dark mode MiuSplitterView did not match subtle 1pt hairline (rgba(255,255,255,0.05))!" << std::endl;
             return 1;
         }
-        if (winEditor.a != -1 && (!isPureBlack(winEditor) || !isPureBlack(winPreview) || !isPureBlack(winTitleL) || !isPureBlack(winTitleR))) {
-            std::cerr << "[FAIL] Dark mode CGWindowListCreateImage pixels are not pure black (gray overlay detected)!" << std::endl;
+        if (!isPureBlack(cvPreview) || !isPureBlack(lyPreview) || (winPreview.a != -1 && !isPureBlack(winPreview))) {
+            std::cerr << "[FAIL] Dark mode Preview pixels are not pure black (gray overlay detected)!" << std::endl;
             return 1;
         }
 
-        // 6. Verify Light Mode rendered pixels as well (Editor, Preview, and Titlebar MUST be pure white R=255,G=255,B=255, NOT gray!)
+        // 6. Verify Light Mode rendered pixels as well:
+        //    - EditorView background pixel is transparent (A=0) for frosted glass
+        //    - MiuSplitterView draws only a subtle 1pt hairline at x=3 (A ~ 15) and is transparent at x=1 (A=0)
+        //    - Preview pane pixel is pure white R=255,G=255,B=255,A=255
         [win setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameAqua]];
         ev->editor->isDarkMode = false;
         ev->editor->updateThemeColors();
@@ -282,31 +285,29 @@ int main(int argc, const char * argv[]) {
         while ([lightWait timeIntervalSinceNow] > 0) {
             [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
         }
-        PixelRGBA lightCvEditor = sampleViewPixel(win.contentView, 200, 300);
+        PixelRGBA evDirectLight = sampleViewPixel(ev, 200, 300);
+        PixelRGBA splitPadLight = sampleViewPixel(ev->splitterView, 1, 300);
+        PixelRGBA splitLineLight = sampleViewPixel(ev->splitterView, 3, 300);
         PixelRGBA lightCvPreview = sampleViewPixel(win.contentView, 650, 300);
-        PixelRGBA lightCvTitleL = sampleViewPixel(win.contentView, 200, 605);
-        PixelRGBA lightCvTitleR = sampleViewPixel(win.contentView, 650, 605);
-        PixelRGBA lightLyEditor = sampleLayerPixel(themeFrame.layer, 200, 300);
         PixelRGBA lightLyPreview = sampleLayerPixel(themeFrame.layer, 650, 300);
-        PixelRGBA lightLyTitleL = sampleLayerPixel(themeFrame.layer, 200, 605);
-        PixelRGBA lightLyTitleR = sampleLayerPixel(themeFrame.layer, 650, 605);
-        printPixel("LIGHT_CONTENT_VIEW_EDITOR", 200, 300, lightCvEditor);
+        printPixel("LIGHT_EDITOR_VIEW_TRANSPARENT_BG", 200, 300, evDirectLight);
+        printPixel("LIGHT_SPLITTER_IDLE_PAD", 1, 300, splitPadLight);
+        printPixel("LIGHT_SPLITTER_1PT_LINE", 3, 300, splitLineLight);
         printPixel("LIGHT_CONTENT_VIEW_PREVIEW", 650, 300, lightCvPreview);
-        printPixel("LIGHT_CONTENT_VIEW_TITLE_L", 200, 605, lightCvTitleL);
-        printPixel("LIGHT_CONTENT_VIEW_TITLE_R", 650, 605, lightCvTitleR);
-        printPixel("LIGHT_LAYER_EDITOR", 200, 300, lightLyEditor);
         printPixel("LIGHT_LAYER_PREVIEW", 650, 300, lightLyPreview);
-        printPixel("LIGHT_LAYER_TITLE_L", 200, 605, lightLyTitleL);
-        printPixel("LIGHT_LAYER_TITLE_R", 650, 605, lightLyTitleR);
         auto isPureWhite = [](const PixelRGBA &p) {
             return p.r == 255 && p.g == 255 && p.b == 255 && p.a == 255;
         };
-        if (!isPureWhite(lightCvEditor) || !isPureWhite(lightCvPreview) || !isPureWhite(lightCvTitleL) || !isPureWhite(lightCvTitleR)) {
-            std::cerr << "[FAIL] Light mode contentView pixels are not pure white (gray overlay detected)!" << std::endl;
+        if (evDirectLight.a != 0) {
+            std::cerr << "[FAIL] Light mode EditorView background pixel should be transparent (A=0) for frosted glass!" << std::endl;
             return 1;
         }
-        if (!isPureWhite(lightLyEditor) || !isPureWhite(lightLyPreview) || !isPureWhite(lightLyTitleL) || !isPureWhite(lightLyTitleR)) {
-            std::cerr << "[FAIL] Light mode themeFrame.layer pixels are not pure white (gray overlay detected)!" << std::endl;
+        if (splitPadLight.a != 0 || splitLineLight.a < 10 || splitLineLight.a > 24) {
+            std::cerr << "[FAIL] Light mode MiuSplitterView did not match subtle 1pt hairline (rgba(0,0,0,0.06))!" << std::endl;
+            return 1;
+        }
+        if (!isPureWhite(lightCvPreview) || !isPureWhite(lightLyPreview)) {
+            std::cerr << "[FAIL] Light mode Preview pixels are not pure white (gray overlay detected)!" << std::endl;
             return 1;
         }
 
@@ -392,23 +393,28 @@ int main(int argc, const char * argv[]) {
                       << editorKnobRect.size.width << "x" << editorKnobRect.size.height << std::endl;
             return 1;
         }
+        PixelRGBA lightEditorTrackPx = sampleViewPixel(ev->vScroller, 1, 10);
         PixelRGBA lightEditorKnobPx;
         int scrollerH = (int)ev->vScroller.bounds.size.height;
         int midX = (int)std::round(NSMidX(editorKnobRect));
         for (int sy = 4; sy < scrollerH - 4; sy += 4) {
             PixelRGBA px = sampleViewPixel(ev->vScroller, midX, sy);
-            if (px.r < 240) {
+            if (px.a > 50) {
                 lightEditorKnobPx = px;
                 printPixel("LIGHT_EDITOR_SCROLLER_KNOB", midX, sy, lightEditorKnobPx);
                 break;
             }
         }
-        if (lightEditorKnobPx.r < 140 || lightEditorKnobPx.r > 175 || lightEditorKnobPx.r != lightEditorKnobPx.g || lightEditorKnobPx.g != lightEditorKnobPx.b) {
-            std::cerr << "[FAIL] Light mode Editor MiuScroller knob pixel did not match expected rgba(0,0,0,0.38) over white" << std::endl;
+        if (lightEditorTrackPx.a != 0) {
+            std::cerr << "[FAIL] Editor MiuScroller track pixel should be transparent (A=0) over frosted glass" << std::endl;
+            return 1;
+        }
+        if (lightEditorKnobPx.a < 85 || lightEditorKnobPx.a > 110 || lightEditorKnobPx.r != 0 || lightEditorKnobPx.g != 0 || lightEditorKnobPx.b != 0) {
+            std::cerr << "[FAIL] Light mode Editor MiuScroller knob pixel did not match expected rgba(0,0,0,0.38)" << std::endl;
             return 1;
         }
 
-        std::cout << "[PASS] macOS WKWebView split preview window rendered, pixel colors verified (Dark=0,0,0 / Light=255,255,255), and unified scrollbars verified: "
+        std::cout << "[PASS] macOS frosted-glass NSVisualEffectView, subtle 1pt splitter, WKWebView split preview (Dark=0,0,0 / Light=255,255,255), and unified scrollbars verified: "
                   << [renderedHtml UTF8String] << std::endl;
     }
     return 0;

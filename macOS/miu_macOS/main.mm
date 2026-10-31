@@ -15,9 +15,11 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 
 @interface MiuSplitterView : NSView
 @property (weak) EditorView *editorView;
+@property (nonatomic, assign) BOOL isHovered;
+@property (nonatomic, assign) BOOL isDragging;
 @end
 
-@interface MiuMacWorkspaceView : NSView
+@interface MiuMacWorkspaceView : NSVisualEffectView
 @property (weak) EditorView *editorView;
 @end
 
@@ -146,24 +148,75 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 }
 @end
 
-@implementation MiuSplitterView
+@implementation MiuSplitterView {
+    NSTrackingArea *trackingArea;
+}
+- (instancetype)initWithFrame:(NSRect)frameRect {
+    if (self = [super initWithFrame:frameRect]) {
+        _isHovered = NO;
+        _isDragging = NO;
+        if (@available(macOS 14.0, *)) self.clipsToBounds = YES;
+        [self setWantsLayer:YES];
+        if (self.layer) {
+            self.layer.masksToBounds = YES;
+            self.layer.opaque = NO;
+            self.layer.backgroundColor = [NSColor clearColor].CGColor;
+        }
+    }
+    return self;
+}
 - (BOOL)isOpaque {
-    return YES;
+    return NO;
 }
 - (void)resetCursorRects {
     [super resetCursorRects];
     [self addCursorRect:[self bounds] cursor:[NSCursor resizeLeftRightCursor]];
+}
+- (void)updateTrackingAreas {
+    [super updateTrackingAreas];
+    if (trackingArea) {
+        [self removeTrackingArea:trackingArea];
+    }
+    trackingArea = [[NSTrackingArea alloc] initWithRect:[self bounds]
+                                                options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways | NSTrackingInVisibleRect
+                                                  owner:self
+                                               userInfo:nil];
+    [self addTrackingArea:trackingArea];
+}
+- (void)mouseEntered:(NSEvent *)event {
+    self.isHovered = YES;
+    [self setNeedsDisplay:YES];
+}
+- (void)mouseExited:(NSEvent *)event {
+    self.isHovered = NO;
+    [self setNeedsDisplay:YES];
+}
+- (void)mouseDown:(NSEvent *)event {
+    self.isDragging = YES;
+    [self setNeedsDisplay:YES];
+}
+- (void)mouseUp:(NSEvent *)event {
+    self.isDragging = NO;
+    [self setNeedsDisplay:YES];
 }
 - (void)drawRect:(NSRect)dirtyRect {
     NSRect b = [self bounds];
     NSRectClip(b);
     EditorView *ev = self.editorView;
     BOOL dark = (ev && ev->editor) ? ev->editor->isDarkMode : NO;
-    NSColor *col = dark
-        ? [NSColor colorWithSRGBRed:0.22 green:0.22 blue:0.22 alpha:1.0]
-        : [NSColor colorWithSRGBRed:0.82 green:0.82 blue:0.82 alpha:1.0];
-    [col setFill];
-    NSRectFill(NSIntersectionRect(dirtyRect, b));
+    if (self.isHovered || self.isDragging) {
+        NSColor *sashCol = dark
+            ? [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:0.025]
+            : [NSColor colorWithSRGBRed:0.0 green:0.0 blue:0.0 alpha:0.03];
+        [sashCol setFill];
+        NSRectFillUsingOperation(b, NSCompositingOperationSourceOver);
+    }
+    NSColor *lineCol = dark
+        ? [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:0.05]
+        : [NSColor colorWithSRGBRed:0.0 green:0.0 blue:0.0 alpha:0.06];
+    [lineCol setFill];
+    NSRect lineRect = NSMakeRect(std::max((CGFloat)0.0, b.size.width - 1.0), 0.0, 1.0, b.size.height);
+    NSRectFillUsingOperation(lineRect, NSCompositingOperationSourceOver);
 }
 - (void)mouseDragged:(NSEvent *)event {
     EditorView *ev = self.editorView;
@@ -182,20 +235,6 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 @end
 
 @implementation MiuMacWorkspaceView
-- (BOOL)isOpaque {
-    return YES;
-}
-- (void)drawRect:(NSRect)dirtyRect {
-    NSRect b = [self bounds];
-    NSRectClip(b);
-    EditorView *ev = self.editorView;
-    BOOL dark = (ev && ev->editor) ? ev->editor->isDarkMode : NO;
-    NSColor *bgColor = dark
-        ? [NSColor colorWithSRGBRed:0.0 green:0.0 blue:0.0 alpha:1.0]
-        : [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:1.0];
-    [bgColor setFill];
-    NSRectFill(NSIntersectionRect(dirtyRect, b));
-}
 - (void)layout {
     [super layout];
     if (self.editorView) {
@@ -226,13 +265,14 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         [self setWantsLayer:YES];
         if (self.layer) {
             self.layer.masksToBounds = YES;
-            self.layer.opaque = YES;
+            self.layer.opaque = NO;
+            self.layer.backgroundColor = [NSColor clearColor].CGColor;
         }
     }
     return self;
 }
 - (BOOL)isFlipped { return YES; }
-- (BOOL)isOpaque { return YES; }
+- (BOOL)isOpaque { return NO; }
 - (void)setDoubleValue:(double)doubleValue {
     double clamped = std::clamp(doubleValue, 0.0, 1.0);
     if (std::abs(_doubleValue - clamped) > 1e-6) {
@@ -310,14 +350,9 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 - (void)drawRect:(NSRect)dirtyRect {
     NSRect b = [self bounds];
     NSRectClip(b);
+    if (!self.enabled || self.knobProportion >= 1.0) return;
     EditorView *ev = self.editorView;
     BOOL dark = (ev && ev->editor) ? ev->editor->isDarkMode : NO;
-    NSColor *bgColor = dark
-        ? [NSColor colorWithSRGBRed:0.0 green:0.0 blue:0.0 alpha:1.0]
-        : [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:1.0];
-    [bgColor setFill];
-    NSRectFill(NSIntersectionRect(dirtyRect, b));
-    if (!self.enabled || self.knobProportion >= 1.0) return;
     BOOL active = self.isHovered || self.isDraggingKnob;
     NSColor *knobColor = dark
         ? [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:(active ? 0.65 : 0.42)]
@@ -577,39 +612,29 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     NSColor *bgColor = dark
         ? [NSColor colorWithSRGBRed:0.0 green:0.0 blue:0.0 alpha:1.0]
         : [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:1.0];
-    if ([self window]) {
-        [[self window] setBackgroundColor:bgColor];
-        [[self window] setOpaque:YES];
-    }
     NSView *container = [self superview];
     if (container) {
         if (@available(macOS 14.0, *)) container.clipsToBounds = YES;
-        [container setWantsLayer:YES];
-        if (container.layer) {
-            container.layer.masksToBounds = YES;
-            container.layer.backgroundColor = bgColor.CGColor;
-            container.layer.opaque = YES;
-        }
         [container setNeedsDisplay:YES];
     }
     if (@available(macOS 14.0, *)) self.clipsToBounds = YES;
     [self setWantsLayer:YES];
     if (self.layer) {
         self.layer.masksToBounds = YES;
-        self.layer.backgroundColor = bgColor.CGColor;
-        self.layer.opaque = YES;
+        self.layer.backgroundColor = [NSColor clearColor].CGColor;
+        self.layer.opaque = NO;
     }
     if (vScroller) {
         if (vScroller.layer) {
-            vScroller.layer.backgroundColor = bgColor.CGColor;
-            vScroller.layer.opaque = YES;
+            vScroller.layer.backgroundColor = [NSColor clearColor].CGColor;
+            vScroller.layer.opaque = NO;
         }
         [vScroller setNeedsDisplay:YES];
     }
     if (hScroller) {
         if (hScroller.layer) {
-            hScroller.layer.backgroundColor = bgColor.CGColor;
-            hScroller.layer.opaque = YES;
+            hScroller.layer.backgroundColor = [NSColor clearColor].CGColor;
+            hScroller.layer.opaque = NO;
         }
         [hScroller setNeedsDisplay:YES];
     }
@@ -617,13 +642,11 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         if (@available(macOS 14.0, *)) splitterView.clipsToBounds = YES;
         [splitterView setWantsLayer:YES];
         if (splitterView.layer) {
-            NSColor *splitCol = dark
-                ? [NSColor colorWithSRGBRed:0.22 green:0.22 blue:0.22 alpha:1.0]
-                : [NSColor colorWithSRGBRed:0.82 green:0.82 blue:0.82 alpha:1.0];
             splitterView.layer.masksToBounds = YES;
-            splitterView.layer.backgroundColor = splitCol.CGColor;
-            splitterView.layer.opaque = YES;
+            splitterView.layer.backgroundColor = [NSColor clearColor].CGColor;
+            splitterView.layer.opaque = NO;
         }
+        [splitterView setNeedsDisplay:YES];
     }
     if (!previewWebView) return;
     if (@available(macOS 14.0, *)) previewWebView.clipsToBounds = YES;
@@ -660,7 +683,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     NSRect cb = container.bounds;
     CGFloat initW = std::max((CGFloat)200.0, std::floor(cb.size.width * 0.5));
     CGFloat initH = std::max((CGFloat)200.0, cb.size.height - 28.0);
-    previewWebView = [[WKWebView alloc] initWithFrame:NSMakeRect(initW, 0, initW, initH) configuration:cfg];
+    previewWebView = [[WKWebView alloc] initWithFrame:NSMakeRect(initW + 1.0, 0, initW, initH) configuration:cfg];
     previewWebView.navigationDelegate = previewMsgHandler;
     if ([previewWebView respondsToSelector:@selector(setValue:forKey:)]) {
         [previewWebView setValue:@(YES) forKey:@"drawsBackground"];
@@ -668,7 +691,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     [previewWebView setHidden:YES];
     [container addSubview:previewWebView];
 
-    splitterView = [[MiuSplitterView alloc] initWithFrame:NSMakeRect(initW - 5.0, 0, 5.0, initH)];
+    splitterView = [[MiuSplitterView alloc] initWithFrame:NSMakeRect(initW - 3.0, 0, 4.0, initH)];
     splitterView.editorView = self;
     [splitterView setHidden:YES];
     [container addSubview:splitterView];
@@ -692,12 +715,12 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     } else {
         [self ensurePreviewViewsCreated];
         [self updatePreviewBackground];
-        CGFloat splitW = 5.0;
+        CGFloat splitLineW = 1.0;
         CGFloat leftW = std::floor(cb.size.width * editor->previewSplitRatio);
-        CGFloat rightW = std::max((CGFloat)10.0, cb.size.width - leftW - splitW);
+        CGFloat rightW = std::max((CGFloat)10.0, cb.size.width - leftW - splitLineW);
         [self setFrame:NSMakeRect(0, 0, leftW, availH)];
-        [splitterView setFrame:NSMakeRect(leftW, 0, splitW, availH)];
-        [previewWebView setFrame:NSMakeRect(leftW + splitW, 0, rightW, availH)];
+        [splitterView setFrame:NSMakeRect(leftW - 3.0, 0, 4.0, availH)];
+        [previewWebView setFrame:NSMakeRect(leftW + splitLineW, 0, rightW, availH)];
         [splitterView setHidden:NO];
         [previewWebView setHidden:NO];
         [splitterView setNeedsDisplay:YES];
@@ -800,7 +823,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 - (BOOL)acceptsFirstResponder { return YES; }
 - (BOOL)becomeFirstResponder { return YES; }
 - (BOOL)isFlipped { return YES; }
-- (BOOL)isOpaque { return YES; }
+- (BOOL)isOpaque { return NO; }
 
 - (void)viewDidMoveToWindow {
     if (![self window]) return;
@@ -1817,23 +1840,25 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     [win setTitlebarAppearsTransparent:YES];
     [win setTitleVisibility:NSWindowTitleVisible];
     [win setTitlebarSeparatorStyle:NSTitlebarSeparatorStyleNone];
-    [win setOpaque:YES];
-    MiuMacWorkspaceView *containerView = [[MiuMacWorkspaceView alloc] initWithFrame:win.contentView.bounds];
-    [containerView setWantsLayer:YES];
-    containerView.layer.backgroundColor = [NSColor blackColor].CGColor;
-    containerView.layer.opaque = YES;
-    containerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-    [win setContentView:containerView];
+    MiuMacWorkspaceView *visualEffectView = [[MiuMacWorkspaceView alloc] initWithFrame:win.contentView.bounds];
+    visualEffectView.material = NSVisualEffectMaterialSidebar;
+    visualEffectView.blendingMode = NSVisualEffectBlendingModeBehindWindow;
+    visualEffectView.state = NSVisualEffectStateFollowsWindowActiveState;
+    visualEffectView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    if (@available(macOS 14.0, *)) visualEffectView.clipsToBounds = YES;
+    [win setContentView:visualEffectView];
 
     CGFloat titleBarHeight = 28.0;
-    NSRect contentRect = containerView.bounds;
+    NSRect contentRect = visualEffectView.bounds;
     contentRect.origin.y = 0;
     contentRect.size.height -= titleBarHeight;
     EditorView *v = [[EditorView alloc] initWithFrame:contentRect];
+    if (@available(macOS 14.0, *)) v.clipsToBounds = YES;
     [v setWantsLayer:YES];
-    v.layer.backgroundColor = [NSColor blackColor].CGColor;
-    v.layer.opaque = YES;
-    containerView.editorView = v;
+    v.layer.masksToBounds = YES;
+    v.layer.backgroundColor = [NSColor clearColor].CGColor;
+    v.layer.opaque = NO;
+    visualEffectView.editorView = v;
 
     __weak AppDelegate *weakDelegate = self;
     v->editor->cbUpdateRecentMenu = [weakDelegate]() {
@@ -1847,12 +1872,13 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         v->editor->newFile();
         v->editor->showHelpPopup = true;
     }
-    [containerView addSubview:v];
+    [visualEffectView addSubview:v];
     [v updatePreviewBackground];
     [v layoutSplitViews];
 
     [win center];
     [win setDelegate:self];
+    [win setBackgroundColor:[NSColor blackColor]];
     [win makeKeyAndOrderFront:nil];
     [win makeFirstResponder:v];
     [self.windows addObject:win];
