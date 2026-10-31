@@ -70,6 +70,15 @@ Encoding DetectEncoding(const char* buf, size_t len);
 DetectResult DetectEncodingEx(const char* buf, size_t len);
 bool IsValidUtf8(const char* buf, size_t len);
 std::string ConvertCase(const std::string& s, bool toUpper);
+bool MiuIsLikelyTemporaryGuidFileName(const std::string& fileName);
+std::string MiuExtractRealFileNameFromStagingName(const std::string& fileName);
+std::string MiuBuildExportFileName(const std::string& currentPathUtf8,
+                                   const std::string& currentDisplayNameUtf8,
+                                   const std::string& currentFileExtUtf8,
+                                   const std::string& localizedUntitledUtf8 = "Untitled");
+std::string MiuResolveDisplayFileName(const std::vector<std::string>& candidatesUtf8,
+                                      const std::string& fallbackNameUtf8,
+                                      const std::string& localizedUntitledUtf8 = "Untitled");
 
 struct Piece {
     bool isOriginal;
@@ -449,6 +458,7 @@ struct Editor {
     std::function<void(bool)> cbSetAlwaysOnTop;
     std::function<void()> cbUpdateRecentMenu;
     std::function<bool()> cbShowExternalModifyAlert;
+    std::function<bool(const std::string& utf8Path, const std::string& rawBytes)> cbCoordinateWriteFile;
 
     // Core methods
     void detectNewlineStyle(const char* buf, size_t len);
@@ -553,6 +563,7 @@ struct Editor {
     void performUndo();
     void performRedo();
     bool checkUnsavedChanges();
+    std::string getEncodedContentForSaving();
     bool saveFileElevated(const std::string& utf8Path, const std::string& rawBytes);
     bool saveFile(const std::wstring& p);
     bool saveFileAs();

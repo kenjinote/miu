@@ -658,6 +658,51 @@ static void testParityEdgeCases() {
         ed.togglePreview();
         CHECK(ed.showPreview == false && previewCbCount == 3, "togglePreview disables showPreview and fires cbUpdatePreview");
     }
+
+    // 8. iOS Save As filename extension preservation & Dropbox overwrite GUID resolution
+    {
+        CHECK(MiuIsLikelyTemporaryGuidFileName("E621E1F8-C36C-495A-93FC-0C247A3E6E5F") == true,
+              "Detects standard 8-4-4-4-12 UUID without extension as temporary GUID");
+        CHECK(MiuIsLikelyTemporaryGuidFileName("/private/var/mobile/File Provider Storage/e621e1f8-c36c-495a-93fc-0c247a3e6e5f.txt") == true,
+              "Detects UUID with extension in File Provider Storage path as temporary GUID");
+        CHECK(MiuIsLikelyTemporaryGuidFileName("0123456789abcdef0123456789abcdef.md") == true,
+              "Detects 32-hex string filename as temporary GUID");
+        CHECK(MiuIsLikelyTemporaryGuidFileName(".dat.nosync1234.5678") == true,
+              "Detects .dat.nosync staging file as temporary GUID");
+        CHECK(MiuIsLikelyTemporaryGuidFileName("notes.txt.sb-1234abcd-5678ef") == true,
+              "Detects .sb- atomic save staging file as temporary GUID");
+        CHECK(MiuExtractRealFileNameFromStagingName("notes.txt.sb-1234abcd-5678ef") == "notes.txt",
+              "Extracts real filename from .sb- atomic save staging name");
+        CHECK(MiuIsLikelyTemporaryGuidFileName("notes.txt") == false &&
+              MiuIsLikelyTemporaryGuidFileName("README.md") == false &&
+              MiuIsLikelyTemporaryGuidFileName("2026-10-31-report.txt") == false,
+              "Normal filenames are not misidentified as GUIDs");
+
+        CHECK(MiuBuildExportFileName("/var/mobile/Documents/memo.txt", "", ".txt", "無題") == "memo.txt",
+              "MiuBuildExportFileName preserves existing .txt extension for Save As");
+        CHECK(MiuBuildExportFileName("/var/mobile/Documents/design.md", "", ".md", "無題") == "design.md",
+              "MiuBuildExportFileName preserves existing .md extension for Save As");
+        CHECK(MiuBuildExportFileName("", "", "", "無題") == "無題.txt",
+              "MiuBuildExportFileName appends .txt to Untitled when saving new file");
+        CHECK(MiuBuildExportFileName("", "", ".md", "Untitled") == "Untitled.md",
+              "MiuBuildExportFileName appends active syntax extension to Untitled when saving new file");
+        CHECK(MiuBuildExportFileName("/File Provider Storage/E621E1F8-C36C-495A-93FC-0C247A3E6E5F", "overwrite_target.txt", ".txt", "無題") == "overwrite_target.txt",
+              "MiuBuildExportFileName uses currentDocumentDisplayName when currentFilePath is a Dropbox GUID");
+
+        std::vector<std::string> guidOnlyCandidates = {
+            "E621E1F8-C36C-495A-93FC-0C247A3E6E5F",
+            "/private/var/mobile/Containers/Shared/AppGroup/1234/File Provider Storage/E621E1F8-C36C-495A-93FC-0C247A3E6E5F"
+        };
+        CHECK(MiuResolveDisplayFileName(guidOnlyCandidates, "memo.txt", "無題") == "memo.txt",
+              "MiuResolveDisplayFileName falls back to real filename with extension when Dropbox returns GUID path on overwrite");
+
+        std::vector<std::string> localizedWithoutExtCandidates = {
+            "memo",
+            "E621E1F8-C36C-495A-93FC-0C247A3E6E5F.txt"
+        };
+        CHECK(MiuResolveDisplayFileName(localizedWithoutExtCandidates, "", "無題") == "memo.txt",
+              "MiuResolveDisplayFileName restores extension onto extensionless localized name");
+    }
 }
 
 int main() {

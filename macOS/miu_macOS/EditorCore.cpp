@@ -4216,7 +4216,194 @@ bool Editor::saveFileElevated(const std::string& utf8Path, const std::string& ra
 #endif
 }
 
-bool Editor::saveFile(const std::wstring& p) {
+bool MiuIsLikelyTemporaryGuidFileName(const std::string& fileName) {
+    if (fileName.empty()) return false;
+    size_t end = fileName.size();
+    while (end > 0 && (fileName[end - 1] == '/' || fileName[end - 1] == '\\')) --end;
+    if (end == 0) return false;
+    size_t slash = fileName.find_last_of("/\\", end - 1);
+    std::string baseName = (slash == std::string::npos)
+        ? fileName.substr(0, end)
+        : fileName.substr(slash + 1, end - slash - 1);
+    if (baseName.empty()) return false;
+
+    if (baseName.rfind(".dat.nosync", 0) == 0 ||
+        baseName.rfind("id:", 0) == 0 ||
+        baseName.rfind("CFNetworkDownload_", 0) == 0 ||
+        baseName.find(".sb-") != std::string::npos) {
+        return true;
+    }
+
+    std::string stem = baseName;
+    size_t dotPos = stem.find('.');
+    if (dotPos != std::string::npos && dotPos > 0) {
+        stem = stem.substr(0, dotPos);
+    }
+    if (stem.size() >= 2 &&
+        ((stem.front() == '{' && stem.back() == '}') ||
+         (stem.front() == '(' && stem.back() == ')'))) {
+        stem = stem.substr(1, stem.size() - 2);
+    }
+
+    auto isHex = [](char c) -> bool {
+        return (c >= '0' && c <= '9') ||
+               (c >= 'a' && c <= 'f') ||
+               (c >= 'A' && c <= 'F');
+    };
+    auto isUuid36 = [&](const std::string& s) -> bool {
+        if (s.size() != 36) return false;
+        for (size_t i = 0; i < 36; ++i) {
+            if (i == 8 || i == 13 || i == 18 || i == 23) {
+                if (s[i] != '-') return false;
+            } else if (!isHex(s[i])) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    if (isUuid36(stem)) return true;
+    if (stem.size() > 36 && (stem[stem.size() - 37] == '-' || stem[stem.size() - 37] == '_')) {
+        if (isUuid36(stem.substr(stem.size() - 36))) return true;
+    }
+    if (stem.size() == 32 && std::all_of(stem.begin(), stem.end(), isHex)) {
+        return true;
+    }
+    return false;
+}
+
+std::string MiuExtractRealFileNameFromStagingName(const std::string& fileName) {
+    if (fileName.empty()) return "";
+    size_t end = fileName.size();
+    while (end > 0 && (fileName[end - 1] == '/' || fileName[end - 1] == '\\')) --end;
+    if (end == 0) return "";
+    size_t slash = fileName.find_last_of("/\\", end - 1);
+    std::string baseName = (slash == std::string::npos)
+        ? fileName.substr(0, end)
+        : fileName.substr(slash + 1, end - slash - 1);
+    size_t sbPos = baseName.find(".sb-");
+    if (sbPos != std::string::npos && sbPos > 0) {
+        std::string candidate = baseName.substr(0, sbPos);
+        if (!candidate.empty() && !MiuIsLikelyTemporaryGuidFileName(candidate)) {
+            return candidate;
+        }
+    }
+    return "";
+}
+
+std::string MiuBuildExportFileName(const std::string& currentPathUtf8,
+                                   const std::string& currentDisplayNameUtf8,
+                                   const std::string& currentFileExtUtf8,
+                                   const std::string& localizedUntitledUtf8) {
+    auto lastComponent = [](const std::string& p) -> std::string {
+        if (p.empty()) return "";
+        size_t end = p.size();
+        while (end > 0 && (p[end - 1] == '/' || p[end - 1] == '\\')) --end;
+        if (end == 0) return "";
+        size_t slash = p.find_last_of("/\\", end - 1);
+        return (slash == std::string::npos) ? p.substr(0, end) : p.substr(slash + 1, end - slash - 1);
+    };
+
+    std::string chosen;
+    std::string disp = lastComponent(currentDisplayNameUtf8);
+    if (!disp.empty()) {
+        std::string extracted = MiuExtractRealFileNameFromStagingName(disp);
+        if (!extracted.empty()) disp = extracted;
+        if (!MiuIsLikelyTemporaryGuidFileName(disp)) {
+            chosen = disp;
+        }
+    }
+    if (chosen.empty()) {
+        std::string fromPath = lastComponent(currentPathUtf8);
+        if (!fromPath.empty()) {
+            std::string extracted = MiuExtractRealFileNameFromStagingName(fromPath);
+            if (!extracted.empty()) fromPath = extracted;
+            if (!MiuIsLikelyTemporaryGuidFileName(fromPath)) {
+                chosen = fromPath;
+            }
+        }
+    }
+    if (chosen.empty()) {
+        chosen = localizedUntitledUtf8.empty() ? "Untitled" : localizedUntitledUtf8;
+    }
+
+    size_t dotPos = chosen.find_last_of('.');
+    bool hasExt = (dotPos != std::string::npos && dotPos > 0 && dotPos + 1 < chosen.size());
+    if (!hasExt) {
+        std::string ext = currentFileExtUtf8;
+        if (!ext.empty() && ext != ".") {
+            if (ext[0] != '.') ext = "." + ext;
+        } else {
+            ext = ".txt";
+        }
+        chosen += ext;
+    }
+    return chosen;
+}
+
+std::string MiuResolveDisplayFileName(const std::vector<std::string>& candidatesUtf8,
+                                      const std::string& fallbackNameUtf8,
+                                      const std::string& localizedUntitledUtf8) {
+    auto lastComponent = [](const std::string& p) -> std::string {
+        if (p.empty()) return "";
+        size_t end = p.size();
+        while (end > 0 && (p[end - 1] == '/' || p[end - 1] == '\\')) --end;
+        if (end == 0) return "";
+        size_t slash = p.find_last_of("/\\", end - 1);
+        return (slash == std::string::npos) ? p.substr(0, end) : p.substr(slash + 1, end - slash - 1);
+    };
+    auto extractExt = [](const std::string& name) -> std::string {
+        size_t dot = name.find_last_of('.');
+        if (dot != std::string::npos && dot > 0 && dot + 1 < name.size()) {
+            return name.substr(dot);
+        }
+        return "";
+    };
+
+    std::string knownExt;
+    for (const auto& raw : candidatesUtf8) {
+        std::string comp = lastComponent(raw);
+        std::string extracted = MiuExtractRealFileNameFromStagingName(comp);
+        if (!extracted.empty()) comp = extracted;
+        std::string ext = extractExt(comp);
+        if (!ext.empty() && ext != ".nosync" && ext.find(".sb-") == std::string::npos) {
+            knownExt = ext;
+            break;
+        }
+    }
+    std::string fallbackBase = lastComponent(fallbackNameUtf8);
+    if (knownExt.empty() && !fallbackBase.empty()) {
+        knownExt = extractExt(fallbackBase);
+    }
+
+    for (const auto& raw : candidatesUtf8) {
+        std::string comp = lastComponent(raw);
+        if (comp.empty()) continue;
+        std::string extracted = MiuExtractRealFileNameFromStagingName(comp);
+        if (!extracted.empty()) comp = extracted;
+        if (!MiuIsLikelyTemporaryGuidFileName(comp)) {
+            if (extractExt(comp).empty() && !knownExt.empty()) {
+                comp += knownExt;
+            }
+            return comp;
+        }
+    }
+
+    if (!fallbackBase.empty()) {
+        std::string extracted = MiuExtractRealFileNameFromStagingName(fallbackBase);
+        if (!extracted.empty()) fallbackBase = extracted;
+        if (!MiuIsLikelyTemporaryGuidFileName(fallbackBase)) {
+            if (extractExt(fallbackBase).empty() && !knownExt.empty()) {
+                fallbackBase += knownExt;
+            }
+            return fallbackBase;
+        }
+    }
+
+    return localizedUntitledUtf8.empty() ? "Untitled" : localizedUntitledUtf8;
+}
+
+std::string Editor::getEncodedContentForSaving() {
     rollbackPadding();
     std::string contentUtf8 = pt.getRange(0, pt.length());
     std::string outBytes;
@@ -4232,23 +4419,33 @@ bool Editor::saveFile(const std::wstring& p) {
     } else {
         outBytes = contentUtf8;
     }
+    return outBytes;
+}
 
+bool Editor::saveFile(const std::wstring& p) {
+    std::string outBytes = getEncodedContentForSaving();
     std::string utf8Path = WToUTF8(p);
+    bool written = false;
+    if (cbCoordinateWriteFile && cbCoordinateWriteFile(utf8Path, outBytes)) {
+        written = true;
+    }
+    if (!written) {
 #if defined(_WIN32)
-    std::ofstream f(p, std::ios::binary);
+        std::ofstream f(p, std::ios::binary);
 #else
-    std::ofstream f(utf8Path, std::ios::binary);
+        std::ofstream f(utf8Path, std::ios::binary);
 #endif
-    if (!f) {
-        if (errno == EACCES || errno == EPERM) {
-            if (!saveFileElevated(utf8Path, outBytes)) return false;
+        if (!f) {
+            if (errno == EACCES || errno == EPERM) {
+                if (!saveFileElevated(utf8Path, outBytes)) return false;
+            } else {
+                return false;
+            }
         } else {
-            return false;
+            f.write(outBytes.data(), outBytes.size());
+            f.close();
+            if (!f) return false;
         }
-    } else {
-        f.write(outBytes.data(), outBytes.size());
-        f.close();
-        if (!f) return false;
     }
 
     currentFilePath = p;
