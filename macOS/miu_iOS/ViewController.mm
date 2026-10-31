@@ -2460,6 +2460,14 @@ static NSString *s_iosClipboardSnapshot = nil;
     WKWebViewConfiguration *cfg = [[WKWebViewConfiguration alloc] init];
     WKUserContentController *ucc = [[WKUserContentController alloc] init];
     [ucc addScriptMessageHandler:self.previewMsgHandler name:@"miuPreview"];
+    std::string sbJsStr = std::string("(function(){") + MiuPreview::getPreviewScrollbarJs() + "})();";
+    NSString *sbJsNS = [NSString stringWithUTF8String:sbJsStr.c_str()];
+    if (sbJsNS) {
+        WKUserScript *sbUserScript = [[WKUserScript alloc] initWithSource:sbJsNS
+                                                            injectionTime:WKUserScriptInjectionTimeAtDocumentEnd
+                                                         forMainFrameOnly:YES];
+        [ucc addUserScript:sbUserScript];
+    }
     cfg.userContentController = ucc;
 
     self.previewWebView = [[WKWebView alloc] initWithFrame:CGRectZero configuration:cfg];
@@ -2477,6 +2485,8 @@ static NSString *s_iosClipboardSnapshot = nil;
         self.previewWebView.underPageBackgroundColor = previewBg;
     }
     self.previewWebView.scrollView.scrollsToTop = NO;
+    self.previewWebView.scrollView.showsVerticalScrollIndicator = NO;
+    self.previewWebView.scrollView.showsHorizontalScrollIndicator = NO;
     self.previewWebView.hidden = YES;
     [self.workspaceContainer addSubview:self.previewWebView];
 
@@ -2865,15 +2875,20 @@ static NSString *s_iosClipboardSnapshot = nil;
     }];
     [self.workspaceContainer addSubview:self.editorView];
 
+    UIColor *scrollBarThumbColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
+        return (trait.userInterfaceStyle == UIUserInterfaceStyleDark)
+            ? [UIColor colorWithWhite:1.0 alpha:0.42]
+            : [UIColor colorWithWhite:0.0 alpha:0.38];
+    }];
     self.verticalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
-    self.verticalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
-    self.verticalScrollBar.layer.cornerRadius = 1.5;
+    self.verticalScrollBar.backgroundColor = scrollBarThumbColor;
+    self.verticalScrollBar.layer.cornerRadius = 3.0;
     self.verticalScrollBar.userInteractionEnabled = NO;
     [self.editorView addSubview:self.verticalScrollBar];
 
     self.horizontalScrollBar = [[UIView alloc] initWithFrame:CGRectZero];
-    self.horizontalScrollBar.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.4];
-    self.horizontalScrollBar.layer.cornerRadius = 1.5;
+    self.horizontalScrollBar.backgroundColor = scrollBarThumbColor;
+    self.horizontalScrollBar.layer.cornerRadius = 3.0;
     self.horizontalScrollBar.userInteractionEnabled = NO;
     [self.editorView addSubview:self.horizontalScrollBar];
 
@@ -2990,7 +3005,7 @@ static NSString *s_iosClipboardSnapshot = nil;
                         : strongSelf->_editorEngine->vScrollPos;
                     float scrollRatio = std::clamp((float)currentV / (float)maxV, 0.0f, 1.0f);
                     float barY = topMargin + scrollRatio * MAX(0.0f, vh - barHeight);
-                    strongSelf.verticalScrollBar.frame = CGRectMake(vw - 5.0f, barY, 3.0f, barHeight);
+                    strongSelf.verticalScrollBar.frame = CGRectMake(vw - 10.0f, barY, 6.0f, barHeight);
                 }
                 float editorVw = L.textAreaW;
                 float maxOffsetX = std::max(0.0f, strongSelf->_editorEngine->maxLineWidth - editorVw);
@@ -3003,7 +3018,7 @@ static NSString *s_iosClipboardSnapshot = nil;
                     float currentOffsetX = (float)strongSelf->_editorEngine->hScrollPos;
                     float scrollRatio = std::clamp(currentOffsetX / maxOffsetX, 0.0f, 1.0f);
                     float barX = strongSelf->_editorEngine->gutterWidth + scrollRatio * MAX(0.0f, editorVw - barWidth);
-                    strongSelf.horizontalScrollBar.frame = CGRectMake(barX, strongSelf.editorView.bounds.size.height - 5.0f, barWidth, 3.0f);
+                    strongSelf.horizontalScrollBar.frame = CGRectMake(barX, strongSelf.editorView.bounds.size.height - 10.0f, barWidth, 6.0f);
                 }
             }
         });

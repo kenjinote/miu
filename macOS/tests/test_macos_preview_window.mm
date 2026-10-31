@@ -325,7 +325,90 @@ int main(int argc, const char * argv[]) {
             return 1;
         }
 
-        std::cout << "[PASS] macOS WKWebView split preview window rendered and pixel colors verified (Dark=0,0,0 / Light=255,255,255): "
+        // 7. Verify scrollbars are HIDDEN when content fits within the window
+        if (!ev->vScroller.isHidden || !ev->hScroller.isHidden) {
+            std::cerr << "[FAIL] Editor scrollbars should be hidden when short content fits in window" << std::endl;
+            return 1;
+        }
+        __block NSString *shortSbState = nil;
+        {
+            __block BOOL evalDone = NO;
+            [ev->previewWebView evaluateJavaScript:@"(function(){var v=document.querySelector('.__ag_sb_v'),h=document.querySelector('.__ag_sb_h');return (v?v.getAttribute('data-visible'):'none')+':'+(h?h.getAttribute('data-visible'):'none');})()"
+                                 completionHandler:^(id result, NSError *error) {
+                if ([result isKindOfClass:[NSString class]]) shortSbState = (NSString *)result;
+                evalDone = YES;
+            }];
+            NSDate *evalWait = [NSDate dateWithTimeIntervalSinceNow:2.0];
+            while (!evalDone && [evalWait timeIntervalSinceNow] > 0) {
+                [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+            }
+        }
+        std::cout << "[SHORT_CONTENT_PREVIEW_SCROLLBAR] state=" << (shortSbState ? [shortSbState UTF8String] : "nil") << std::endl;
+        if (!shortSbState || ![shortSbState isEqualToString:@"false:false"]) {
+            std::cerr << "[FAIL] Preview scrollbars should be hidden (false:false) when content fits in window. Got: "
+                      << (shortSbState ? [shortSbState UTF8String] : "nil") << std::endl;
+            return 1;
+        }
+
+        // 8. Insert long content that overflows vertically & horizontally and verify BOTH Editor and Preview show matching scrollbars
+        std::string longMd;
+        for (int i = 1; i <= 60; ++i) {
+            longMd += "## Section Heading " + std::to_string(i) + " with extra wide text to test scrolling behavior in both panes\n\n";
+            longMd += "- Item A for section " + std::to_string(i) + "\n- Item B for section " + std::to_string(i) + "\n\n";
+        }
+        ev->editor->insertAtCursors(longMd);
+        [ev updateScrollers];
+        [ev updatePreviewPane];
+
+        __block NSString *longSbInfo = nil;
+        NSDate *longDeadline = [NSDate dateWithTimeIntervalSinceNow:5.0];
+        while ([longDeadline timeIntervalSinceNow] > 0) {
+            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+            __block BOOL evalDone = NO;
+            [ev->previewWebView evaluateJavaScript:@"(function(){if(window.__miuSbUpd)window.__miuSbUpd();var v=document.querySelector('.__ag_sb_v'),vt=document.querySelector('.__ag_sb_vt');if(!v||!vt)return '';var r=vt.getBoundingClientRect(),cs=window.getComputedStyle(vt);return v.getAttribute('data-visible')+'|'+Math.round(r.width)+'|'+Math.round(r.height)+'|'+cs.backgroundColor;})()"
+                                 completionHandler:^(id result, NSError *error) {
+                if ([result isKindOfClass:[NSString class]]) longSbInfo = (NSString *)result;
+                evalDone = YES;
+            }];
+            NSDate *evalWait = [NSDate dateWithTimeIntervalSinceNow:1.0];
+            while (!evalDone && [evalWait timeIntervalSinceNow] > 0) {
+                [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+            }
+            if (longSbInfo && [longSbInfo hasPrefix:@"true|6|"]) break;
+        }
+        std::cout << "[LONG_CONTENT_PREVIEW_SCROLLBAR_LIGHT] info=" << (longSbInfo ? [longSbInfo UTF8String] : "nil") << std::endl;
+        if (ev->vScroller.isHidden) {
+            std::cerr << "[FAIL] Editor vertical MiuScroller should be visible when 60 sections overflow the window" << std::endl;
+            return 1;
+        }
+        if (!longSbInfo || ![longSbInfo hasPrefix:@"true|6|"]) {
+            std::cerr << "[FAIL] Preview vertical scrollbar should be visible with 6px pill width when 60 sections overflow. Got: "
+                      << (longSbInfo ? [longSbInfo UTF8String] : "nil") << std::endl;
+            return 1;
+        }
+        NSRect editorKnobRect = [ev->vScroller knobRect];
+        if ((int)std::round(editorKnobRect.size.width) != 6 || editorKnobRect.size.height < 28.0) {
+            std::cerr << "[FAIL] Editor MiuScroller knobRect width should be 6px matching preview scrollbar. Got: "
+                      << editorKnobRect.size.width << "x" << editorKnobRect.size.height << std::endl;
+            return 1;
+        }
+        PixelRGBA lightEditorKnobPx;
+        int scrollerH = (int)ev->vScroller.bounds.size.height;
+        int midX = (int)std::round(NSMidX(editorKnobRect));
+        for (int sy = 4; sy < scrollerH - 4; sy += 4) {
+            PixelRGBA px = sampleViewPixel(ev->vScroller, midX, sy);
+            if (px.r < 240) {
+                lightEditorKnobPx = px;
+                printPixel("LIGHT_EDITOR_SCROLLER_KNOB", midX, sy, lightEditorKnobPx);
+                break;
+            }
+        }
+        if (lightEditorKnobPx.r < 140 || lightEditorKnobPx.r > 175 || lightEditorKnobPx.r != lightEditorKnobPx.g || lightEditorKnobPx.g != lightEditorKnobPx.b) {
+            std::cerr << "[FAIL] Light mode Editor MiuScroller knob pixel did not match expected rgba(0,0,0,0.38) over white" << std::endl;
+            return 1;
+        }
+
+        std::cout << "[PASS] macOS WKWebView split preview window rendered, pixel colors verified (Dark=0,0,0 / Light=255,255,255), and unified scrollbars verified: "
                   << [renderedHtml UTF8String] << std::endl;
     }
     return 0;

@@ -21,10 +21,25 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 @property (weak) EditorView *editorView;
 @end
 
+@interface MiuScroller : NSView
+@property (weak) EditorView *editorView;
+@property (weak) id target;
+@property (nonatomic, assign) SEL action;
+@property (nonatomic, assign) BOOL isVertical;
+@property (nonatomic, assign) BOOL enabled;
+@property (nonatomic, assign) double doubleValue;
+@property (nonatomic, assign) double knobProportion;
+@property (nonatomic, assign) BOOL isHovered;
+@property (nonatomic, assign) BOOL isDraggingKnob;
+- (NSRect)knobRect;
+@end
+
 @interface EditorView : NSView <NSTextInputClient, NSTextFieldDelegate>
 {
 @public
     std::shared_ptr<Editor> editor;
+    MiuScroller *vScroller;
+    MiuScroller *hScroller;
     NSPanel *findPanel;
     NSTextField *findLabel;
     NSTextField *findTextField;
@@ -195,6 +210,171 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 }
 @end
 
+@implementation MiuScroller {
+    NSTrackingArea *trackingArea;
+    CGFloat dragStartCoord;
+    double dragStartVal;
+}
+- (instancetype)initWithFrame:(NSRect)frameRect {
+    if (self = [super initWithFrame:frameRect]) {
+        _enabled = YES;
+        _doubleValue = 0.0;
+        _knobProportion = 1.0;
+        _isHovered = NO;
+        _isDraggingKnob = NO;
+        if (@available(macOS 14.0, *)) self.clipsToBounds = YES;
+        [self setWantsLayer:YES];
+        if (self.layer) {
+            self.layer.masksToBounds = YES;
+            self.layer.opaque = YES;
+        }
+    }
+    return self;
+}
+- (BOOL)isFlipped { return YES; }
+- (BOOL)isOpaque { return YES; }
+- (void)setDoubleValue:(double)doubleValue {
+    double clamped = std::clamp(doubleValue, 0.0, 1.0);
+    if (std::abs(_doubleValue - clamped) > 1e-6) {
+        _doubleValue = clamped;
+        [self setNeedsDisplay:YES];
+    }
+}
+- (void)setKnobProportion:(double)knobProportion {
+    double clamped = std::clamp(knobProportion, 0.0, 1.0);
+    if (std::abs(_knobProportion - clamped) > 1e-6) {
+        _knobProportion = clamped;
+        [self setNeedsDisplay:YES];
+    }
+}
+- (void)setEnabled:(BOOL)enabled {
+    if (_enabled != enabled) {
+        _enabled = enabled;
+        [self setNeedsDisplay:YES];
+    }
+}
+- (void)resetCursorRects {
+    [super resetCursorRects];
+    [self addCursorRect:[self bounds] cursor:[NSCursor arrowCursor]];
+}
+- (void)updateTrackingAreas {
+    [super updateTrackingAreas];
+    if (trackingArea) {
+        [self removeTrackingArea:trackingArea];
+    }
+    trackingArea = [[NSTrackingArea alloc] initWithRect:[self bounds]
+                                                options:NSTrackingMouseEnteredAndExited | NSTrackingActiveAlways | NSTrackingInVisibleRect
+                                                  owner:self
+                                               userInfo:nil];
+    [self addTrackingArea:trackingArea];
+}
+- (void)mouseEntered:(NSEvent *)event {
+    self.isHovered = YES;
+    [self setNeedsDisplay:YES];
+}
+- (void)mouseExited:(NSEvent *)event {
+    self.isHovered = NO;
+    [self setNeedsDisplay:YES];
+}
+- (NSRect)knobRect {
+    NSRect b = [self bounds];
+    CGFloat padEnd = 2.0;
+    BOOL active = self.isHovered || self.isDraggingKnob;
+    CGFloat thickness = active ? 8.0 : 6.0;
+    if (self.isVertical) {
+        CGFloat crossInset = std::max(0.0, (b.size.width - thickness) * 0.5);
+        CGFloat trackLen = std::max(0.0, b.size.height - padEnd * 2.0);
+        CGFloat prop = std::clamp(self.knobProportion, 0.0, 1.0);
+        CGFloat knobLen = std::min(trackLen, std::max(28.0, std::round(trackLen * prop)));
+        CGFloat maxOffset = std::max(0.0, trackLen - knobLen);
+        CGFloat offset = std::round(std::clamp(self.doubleValue, 0.0, 1.0) * maxOffset);
+        return NSMakeRect(b.origin.x + crossInset, b.origin.y + padEnd + offset, thickness, knobLen);
+    } else {
+        CGFloat crossInset = std::max(0.0, (b.size.height - thickness) * 0.5);
+        CGFloat trackLen = std::max(0.0, b.size.width - padEnd * 2.0);
+        CGFloat prop = std::clamp(self.knobProportion, 0.0, 1.0);
+        CGFloat knobLen = std::min(trackLen, std::max(28.0, std::round(trackLen * prop)));
+        CGFloat maxOffset = std::max(0.0, trackLen - knobLen);
+        CGFloat offset = std::round(std::clamp(self.doubleValue, 0.0, 1.0) * maxOffset);
+        return NSMakeRect(b.origin.x + padEnd + offset, b.origin.y + crossInset, knobLen, thickness);
+    }
+}
+- (void)sendActionToTarget {
+    if (self.target && self.action) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        [self.target performSelector:self.action withObject:self];
+#pragma clang diagnostic pop
+    }
+}
+- (void)drawRect:(NSRect)dirtyRect {
+    NSRect b = [self bounds];
+    NSRectClip(b);
+    EditorView *ev = self.editorView;
+    BOOL dark = (ev && ev->editor) ? ev->editor->isDarkMode : NO;
+    NSColor *bgColor = dark
+        ? [NSColor colorWithSRGBRed:0.0 green:0.0 blue:0.0 alpha:1.0]
+        : [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:1.0];
+    [bgColor setFill];
+    NSRectFill(NSIntersectionRect(dirtyRect, b));
+    if (!self.enabled || self.knobProportion >= 1.0) return;
+    BOOL active = self.isHovered || self.isDraggingKnob;
+    NSColor *knobColor = dark
+        ? [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:(active ? 0.65 : 0.42)]
+        : [NSColor colorWithSRGBRed:0.0 green:0.0 blue:0.0 alpha:(active ? 0.60 : 0.38)];
+    NSRect kr = [self knobRect];
+    if (kr.size.width > 0.0 && kr.size.height > 0.0) {
+        CGFloat radius = (self.isVertical ? kr.size.width : kr.size.height) * 0.5;
+        NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:kr xRadius:radius yRadius:radius];
+        [knobColor setFill];
+        [path fill];
+    }
+}
+- (void)mouseDown:(NSEvent *)event {
+    if (!self.enabled) return;
+    NSPoint pt = [self convertPoint:[event locationInWindow] fromView:nil];
+    NSRect kr = [self knobRect];
+    CGFloat padEnd = 2.0;
+    CGFloat trackLen = self.isVertical
+        ? std::max(0.0, self.bounds.size.height - padEnd * 2.0)
+        : std::max(0.0, self.bounds.size.width - padEnd * 2.0);
+    CGFloat knobLen = self.isVertical ? kr.size.height : kr.size.width;
+    CGFloat maxOffset = std::max(0.0, trackLen - knobLen);
+    CGFloat clickCoord = self.isVertical ? pt.y : pt.x;
+    if (!NSPointInRect(pt, kr) && maxOffset > 0.0) {
+        CGFloat targetOffset = std::clamp(clickCoord - padEnd - knobLen * 0.5, 0.0, maxOffset);
+        _doubleValue = targetOffset / maxOffset;
+        [self sendActionToTarget];
+    }
+    self.isDraggingKnob = YES;
+    dragStartCoord = clickCoord;
+    dragStartVal = _doubleValue;
+    [self setNeedsDisplay:YES];
+}
+- (void)mouseDragged:(NSEvent *)event {
+    if (!self.isDraggingKnob || !self.enabled) return;
+    NSPoint pt = [self convertPoint:[event locationInWindow] fromView:nil];
+    NSRect kr = [self knobRect];
+    CGFloat padEnd = 2.0;
+    CGFloat trackLen = self.isVertical
+        ? std::max(0.0, self.bounds.size.height - padEnd * 2.0)
+        : std::max(0.0, self.bounds.size.width - padEnd * 2.0);
+    CGFloat knobLen = self.isVertical ? kr.size.height : kr.size.width;
+    CGFloat maxOffset = std::max(0.0, trackLen - knobLen);
+    if (maxOffset > 0.0) {
+        CGFloat curCoord = self.isVertical ? pt.y : pt.x;
+        double delta = (curCoord - dragStartCoord) / maxOffset;
+        _doubleValue = std::clamp(dragStartVal + delta, 0.0, 1.0);
+        [self sendActionToTarget];
+        [self setNeedsDisplay:YES];
+    }
+}
+- (void)mouseUp:(NSEvent *)event {
+    self.isDraggingKnob = NO;
+    [self setNeedsDisplay:YES];
+}
+@end
+
 @interface FindPanel : NSPanel
 @property (weak) EditorView *editorView;
 @end
@@ -242,7 +422,6 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 @end
 
 @implementation EditorView {
-    NSScroller *vScroller, *hScroller;
     NSPoint boxSelectStartPoint;
     NSPoint dragStartPoint;
     BOOL isPotentialDragMove;
@@ -369,13 +548,17 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             if ([p runModal] == NSModalResponseOK) return strongSelf->editor->openFileFromPath([[[p URLs] objectAtIndex:0].path UTF8String]);
             return false;
         };
-        CGFloat sw = [NSScroller scrollerWidthForControlSize:NSControlSizeRegular scrollerStyle:NSScrollerStyleLegacy];
-        vScroller = [[NSScroller alloc] initWithFrame:NSMakeRect(fr.size.width - sw, 0, sw, fr.size.height - sw)];
+        CGFloat sw = 14.0;
+        vScroller = [[MiuScroller alloc] initWithFrame:NSMakeRect(fr.size.width - sw, 0, sw, fr.size.height - sw)];
+        vScroller.editorView = self;
+        vScroller.isVertical = YES;
         [vScroller setAutoresizingMask:NSViewMinXMargin | NSViewHeightSizable];
         [vScroller setTarget:self];
         [vScroller setAction:@selector(scrollAction:)];
         [self addSubview:vScroller];
-        hScroller = [[NSScroller alloc] initWithFrame:NSMakeRect(0, fr.size.height - sw, fr.size.width - sw, sw)];
+        hScroller = [[MiuScroller alloc] initWithFrame:NSMakeRect(0, fr.size.height - sw, fr.size.width - sw, sw)];
+        hScroller.editorView = self;
+        hScroller.isVertical = NO;
         [hScroller setAutoresizingMask:NSViewWidthSizable | NSViewMinYMargin];
         [hScroller setTarget:self];
         [hScroller setAction:@selector(scrollAction:)];
@@ -416,6 +599,20 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         self.layer.backgroundColor = bgColor.CGColor;
         self.layer.opaque = YES;
     }
+    if (vScroller) {
+        if (vScroller.layer) {
+            vScroller.layer.backgroundColor = bgColor.CGColor;
+            vScroller.layer.opaque = YES;
+        }
+        [vScroller setNeedsDisplay:YES];
+    }
+    if (hScroller) {
+        if (hScroller.layer) {
+            hScroller.layer.backgroundColor = bgColor.CGColor;
+            hScroller.layer.opaque = YES;
+        }
+        [hScroller setNeedsDisplay:YES];
+    }
     if (splitterView) {
         if (@available(macOS 14.0, *)) splitterView.clipsToBounds = YES;
         [splitterView setWantsLayer:YES];
@@ -450,6 +647,14 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     WKWebViewConfiguration *cfg = [[WKWebViewConfiguration alloc] init];
     WKUserContentController *ucc = [[WKUserContentController alloc] init];
     [ucc addScriptMessageHandler:previewMsgHandler name:@"miuPreview"];
+    std::string sbJsStr = std::string("(function(){") + MiuPreview::getPreviewScrollbarJs() + "})();";
+    NSString *sbJsNS = [NSString stringWithUTF8String:sbJsStr.c_str()];
+    if (sbJsNS) {
+        WKUserScript *sbUserScript = [[WKUserScript alloc] initWithSource:sbJsNS
+                                                            injectionTime:WKUserScriptInjectionTimeAtDocumentEnd
+                                                         forMainFrameOnly:YES];
+        [ucc addUserScript:sbUserScript];
+    }
     cfg.userContentController = ucc;
 
     NSRect cb = container.bounds;
@@ -716,7 +921,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 
 - (void)updateScrollers {
     NSRect b = [self bounds];
-    CGFloat sw = [NSScroller scrollerWidthForControlSize:NSControlSizeRegular scrollerStyle:NSScrollerStyleLegacy];
+    CGFloat sw = 14.0;
     ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
     bool needsV = L.needV;
     bool needsH = L.needH;
@@ -764,10 +969,12 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         [hScroller setEnabled:NO];
         editor->hScrollPos = 0;
     }
+    [vScroller setNeedsDisplay:YES];
+    [hScroller setNeedsDisplay:YES];
     [self setNeedsDisplay:YES];
 }
 
-- (void)scrollAction:(NSScroller*)s {
+- (void)scrollAction:(MiuScroller*)s {
     NSRect b = [self bounds];
     ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
     if (s == vScroller) {

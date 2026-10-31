@@ -640,6 +640,10 @@ static void testParityEdgeCases() {
               "Preview shell sets explicit background on root html element so empty documents are not transparent");
         CHECK(emptyLightRes.fullHtml.find("<html data-theme=\"light\">") != std::string::npos,
               "Light mode preview sets data-theme=light on html element");
+        CHECK(emptyLightRes.fullHtml.find("--sb-thumb:rgba(0,0,0,0.38)") != std::string::npos &&
+              emptyLightRes.fullHtml.find(".__ag_sb_v") != std::string::npos &&
+              emptyLightRes.fullHtml.find("window.__miuSbUpd=upd") != std::string::npos,
+              "Light mode preview includes unified scrollbar CSS and JS controller");
 
         ed.isDarkMode = true;
         ed.updateThemeColors();
@@ -649,6 +653,8 @@ static void testParityEdgeCases() {
               "Dark mode preview sets data-theme=dark on html element");
         CHECK(emptyDarkRes.fullHtml.find("--pele-bg:#000000;") != std::string::npos,
               "Dark mode preview sets --pele-bg to pure black (#000000)");
+        CHECK(emptyDarkRes.fullHtml.find("--sb-thumb:rgba(255,255,255,0.42)") != std::string::npos,
+              "Dark mode preview sets --sb-thumb to match MiuScroller dark mode knob");
         ed.togglePreview();
         CHECK(ed.showPreview == false && previewCbCount == 3, "togglePreview disables showPreview and fires cbUpdatePreview");
     }
