@@ -35,6 +35,7 @@ int main(int argc, const char * argv[]) {
         }
 
         // 2. Test Dark Mode pure black background (#000000) and Preview Mode toggle
+        [win setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameDarkAqua]];
         ev->editor->isDarkMode = true;
         ev->editor->updateThemeColors();
         [ev updatePreviewBackground];
