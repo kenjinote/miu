@@ -376,4 +376,5 @@ libced_iOS.a
 scripts/store_credentials.json
 scripts/draft_submission.json
 scripts/test_upload.py
+/build_screenshots_v2/
 

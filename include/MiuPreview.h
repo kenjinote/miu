@@ -1413,7 +1413,7 @@ inline bool looksLikeMermaid(const std::string& s)  noexcept{
         "}"
         "html[data-theme=\"dark\"]{"
         "color-scheme:dark;--md-fg:#e0e0e0;--md-hr:#383838;--md-code-bg:#2d2d2d;--md-pre-bd:#333;--md-kbd-bg:#2d2d2d;--md-bq-bd:#555;--md-tbl-bd:#444;--md-tr-even:#252526;"
-        "--pele-bg:#1e1e1e;--pele-fg:#e6edf3;--pele-muted:#9198a1;--pele-line:#9da7b3;--pele-surface:#252526;--pele-surface-alt:#2d2d30;--pele-border:#484f58;--pele-accent:#58a6ff;--pele-critical:#ff7b72;--pele-error:#ff7b72;--pele-radius:6px;"
+        "--pele-bg:#000000;--pele-fg:#e6edf3;--pele-muted:#9198a1;--pele-line:#9da7b3;--pele-surface:#252526;--pele-surface-alt:#2d2d30;--pele-border:#484f58;--pele-accent:#58a6ff;--pele-critical:#ff7b72;--pele-error:#ff7b72;--pele-radius:6px;"
         "--pele-series-1:#58a6ff;--pele-series-2:#f0883e;--pele-series-3:#3fb950;--pele-series-4:#ff7b72;--pele-series-5:#56d4dd;--pele-series-6:#d29922;--pele-series-7:#bc8cff;--pele-series-8:#a5d6ff;"
         "--al-note-bd:#2f81f7;--al-note-bg:rgba(47,129,247,.1);--al-note-fg:#58a6ff;"
         "--al-tip-bd:#3fb950;--al-tip-bg:rgba(63,185,80,.1);--al-tip-fg:#3fb950;"
@@ -1595,7 +1595,7 @@ inline PreviewRenderResult renderPreview(
     std::string& html = res.fullHtml;
     html.reserve(rawInput.size() + 1024);
     const char* webDefStyle = isDarkMode
-        ? "<style>:where(:root,body){color-scheme:dark;background:#1e1e1e;color:#e6edf3}html,body{min-height:100%;scrollbar-width:none}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}</style>"
+        ? "<style>:where(:root,body){color-scheme:dark;background:#000000;color:#e6edf3}html,body{min-height:100%;scrollbar-width:none}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}</style>"
         : "<style>:where(:root,body){color-scheme:light;background:#ffffff;color:#1f2328}html,body{min-height:100%;scrollbar-width:none}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none}</style>";
     std::string lower = Emmet::toLowerStr(rawInput.substr(0, std::min(rawInput.size(), (size_t)1024)));
     bool hasFullHtml = (lower.find("<html") != std::string::npos || lower.find("<!doctype") != std::string::npos);

@@ -2449,6 +2449,7 @@ void Editor::toggleAlwaysOnTop() {
 }
 
 void Editor::togglePreview() {
+    showHelpPopup = false;
     showPreview = !showPreview;
     previewInitialLoaded = false;
     if (previewNonce.empty()) {
@@ -4428,13 +4429,8 @@ void Editor::updateThemeColors() {
 
     if (isDarkMode) {
         colText = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
-#if TARGET_OS_IOS
         colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
         colGutterBg = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
-#elif TARGET_OS_OSX
-        colBackground = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
-        colGutterBg = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 0.0);
-#endif
         colGutterText = CGColorCreateGenericRGB(0.45, 0.45, 0.48, 1.0);
         colSel = CGColorCreateGenericRGB(0.2, 0.3, 0.5, 1.0);
         colCaret = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
@@ -4443,13 +4439,8 @@ void Editor::updateThemeColors() {
         colBracketBorder = CGColorCreateGenericRGB(0.50, 0.75, 1.0, 0.85);
     } else {
         colText = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);
-#if TARGET_OS_IOS
         colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
         colGutterBg = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 1.0);
-#elif TARGET_OS_OSX
-        colBackground = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.0);
-        colGutterBg = CGColorCreateGenericRGB(1.0, 1.0, 1.0, 0.0);
-#endif
         colGutterText = CGColorCreateGenericRGB(0.55, 0.55, 0.58, 1.0);
         colSel = CGColorCreateGenericRGB(0.70, 0.80, 1.0, 1.0);
         colCaret = CGColorCreateGenericRGB(0.0, 0.0, 0.0, 1.0);

@@ -628,11 +628,12 @@ static void testParityEdgeCases() {
     // 7. Live Preview toggle & theme background CSS verification (macOS gray window regression guard)
     {
         ed.newFile();
+        ed.showHelpPopup = true;
         ed.isDarkMode = false;
         int previewCbCount = 0;
         ed.cbUpdatePreview = [&]() { previewCbCount++; };
         ed.togglePreview();
-        CHECK(ed.showPreview == true && previewCbCount == 1, "togglePreview enables showPreview and fires cbUpdatePreview");
+        CHECK(ed.showPreview == true && !ed.showHelpPopup && previewCbCount == 1, "togglePreview enables showPreview, hides showHelpPopup, and fires cbUpdatePreview");
         MiuPreview::PreviewRenderResult emptyLightRes = ed.getPreviewRenderResult();
         CHECK(emptyLightRes.isMdOrMermaidShell == true, "Empty untitled document uses Markdown/Mermaid shell in preview");
         CHECK(emptyLightRes.fullHtml.find("html{background:var(--pele-bg);color:var(--md-fg);min-height:100%}") != std::string::npos,
@@ -646,6 +647,8 @@ static void testParityEdgeCases() {
         MiuPreview::PreviewRenderResult emptyDarkRes = ed.getPreviewRenderResult();
         CHECK(emptyDarkRes.fullHtml.find("<html data-theme=\"dark\">") != std::string::npos,
               "Dark mode preview sets data-theme=dark on html element");
+        CHECK(emptyDarkRes.fullHtml.find("--pele-bg:#000000;") != std::string::npos,
+              "Dark mode preview sets --pele-bg to pure black (#000000)");
         ed.togglePreview();
         CHECK(ed.showPreview == false && previewCbCount == 3, "togglePreview disables showPreview and fires cbUpdatePreview");
     }

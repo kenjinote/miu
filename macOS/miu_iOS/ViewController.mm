@@ -2466,11 +2466,14 @@ static NSString *s_iosClipboardSnapshot = nil;
     self.previewWebView.opaque = YES;
     UIColor *previewBg = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
         return (trait.userInterfaceStyle == UIUserInterfaceStyleDark)
-            ? [UIColor colorWithRed:0.118 green:0.118 blue:0.118 alpha:1.0]
+            ? [UIColor blackColor]
             : [UIColor whiteColor];
     }];
     self.previewWebView.backgroundColor = previewBg;
     self.previewWebView.scrollView.backgroundColor = previewBg;
+    if (@available(iOS 15.0, *)) {
+        self.previewWebView.underPageBackgroundColor = previewBg;
+    }
     self.previewWebView.scrollView.scrollsToTop = NO;
     self.previewWebView.hidden = YES;
     [self.workspaceContainer addSubview:self.previewWebView];

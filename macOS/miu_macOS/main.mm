@@ -17,6 +17,10 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 @property (weak) EditorView *editorView;
 @end
 
+@interface MiuMacWorkspaceView : NSView
+@property (weak) EditorView *editorView;
+@end
+
 @interface EditorView : NSView <NSTextInputClient, NSTextFieldDelegate>
 {
 @public
@@ -148,6 +152,21 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         [ev layoutSplitViews];
         [ev updateScrollers];
         [ev setNeedsDisplay:YES];
+    }
+}
+@end
+
+@implementation MiuMacWorkspaceView
+- (void)layout {
+    [super layout];
+    if (self.editorView) {
+        [self.editorView layoutSplitViews];
+    }
+}
+- (void)resizeSubviewsWithOldSize:(NSSize)oldSize {
+    [super resizeSubviewsWithOldSize:oldSize];
+    if (self.editorView) {
+        [self.editorView layoutSplitViews];
     }
 }
 @end
@@ -347,11 +366,28 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 }
 
 - (void)updatePreviewBackground {
-    if (!previewWebView) return;
     BOOL dark = editor ? editor->isDarkMode : NO;
     NSColor *bgColor = dark
-        ? [NSColor colorWithSRGBRed:0.118 green:0.118 blue:0.118 alpha:1.0]
+        ? [NSColor colorWithSRGBRed:0.0 green:0.0 blue:0.0 alpha:1.0]
         : [NSColor colorWithSRGBRed:1.0 green:1.0 blue:1.0 alpha:1.0];
+    if ([self window]) {
+        [[self window] setBackgroundColor:bgColor];
+        [[self window] setOpaque:YES];
+    }
+    NSView *container = [self superview];
+    if (container) {
+        [container setWantsLayer:YES];
+        if (container.layer) {
+            container.layer.backgroundColor = bgColor.CGColor;
+            container.layer.opaque = YES;
+        }
+    }
+    [self setWantsLayer:YES];
+    if (self.layer) {
+        self.layer.backgroundColor = bgColor.CGColor;
+        self.layer.opaque = YES;
+    }
+    if (!previewWebView) return;
     [previewWebView setWantsLayer:YES];
     if (previewWebView.layer) {
         previewWebView.layer.backgroundColor = bgColor.CGColor;
@@ -532,6 +568,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     editor->isDarkMode = isDark;
     editor->updateThemeColors();
     [self applySystemHighlightColor];
+    [self updatePreviewBackground];
     [self layoutSplitViews];
     [self updateScrollers];
     [[self window] makeFirstResponder:self];
@@ -1525,21 +1562,23 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     [win setTitlebarAppearsTransparent:YES];
     [win setTitleVisibility:NSWindowTitleVisible];
     [win setTitlebarSeparatorStyle:NSTitlebarSeparatorStyleNone];
-    NSVisualEffectView *visualEffectView = [[NSVisualEffectView alloc] initWithFrame:win.contentView.bounds];
-    visualEffectView.material = NSVisualEffectMaterialSidebar;
-    visualEffectView.blendingMode = NSVisualEffectBlendingModeBehindWindow;
-    visualEffectView.state = NSVisualEffectStateFollowsWindowActiveState;
-    visualEffectView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
-    [win setContentView:visualEffectView];
+    [win setOpaque:YES];
+    MiuMacWorkspaceView *containerView = [[MiuMacWorkspaceView alloc] initWithFrame:win.contentView.bounds];
+    [containerView setWantsLayer:YES];
+    containerView.layer.backgroundColor = [NSColor blackColor].CGColor;
+    containerView.layer.opaque = YES;
+    containerView.autoresizingMask = NSViewWidthSizable | NSViewHeightSizable;
+    [win setContentView:containerView];
 
     CGFloat titleBarHeight = 28.0;
-    NSRect contentRect = visualEffectView.bounds;
+    NSRect contentRect = containerView.bounds;
     contentRect.origin.y = 0;
     contentRect.size.height -= titleBarHeight;
     EditorView *v = [[EditorView alloc] initWithFrame:contentRect];
     [v setWantsLayer:YES];
-    v.layer.backgroundColor = [NSColor clearColor].CGColor;
-    v.layer.opaque = NO;
+    v.layer.backgroundColor = [NSColor blackColor].CGColor;
+    v.layer.opaque = YES;
+    containerView.editorView = v;
 
     __weak AppDelegate *weakDelegate = self;
     v->editor->cbUpdateRecentMenu = [weakDelegate]() {
@@ -1553,12 +1592,12 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         v->editor->newFile();
         v->editor->showHelpPopup = true;
     }
-    [visualEffectView addSubview:v];
+    [containerView addSubview:v];
+    [v updatePreviewBackground];
     [v layoutSplitViews];
 
     [win center];
     [win setDelegate:self];
-    [win setBackgroundColor:[NSColor blackColor]];
     [win makeKeyAndOrderFront:nil];
     [win makeFirstResponder:v];
     [self.windows addObject:win];
