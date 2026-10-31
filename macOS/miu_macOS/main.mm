@@ -89,6 +89,9 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 - (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation {
     self.previewPageLoaded = YES;
     EditorView *ev = self.editorView;
+    if (ev) {
+        [ev updatePreviewBackground];
+    }
     if (ev && ev->editor && ev->editor->showPreview && ev->editor->previewInitialLoaded) {
         MiuPreview::PreviewRenderResult res = ev->editor->getPreviewRenderResult();
         if (res.isMdOrMermaidShell) {
@@ -129,16 +132,23 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 @end
 
 @implementation MiuSplitterView
+- (BOOL)isOpaque {
+    return YES;
+}
 - (void)resetCursorRects {
     [super resetCursorRects];
     [self addCursorRect:[self bounds] cursor:[NSCursor resizeLeftRightCursor]];
 }
 - (void)drawRect:(NSRect)dirtyRect {
+    NSRect b = [self bounds];
+    NSRectClip(b);
     EditorView *ev = self.editorView;
     BOOL dark = (ev && ev->editor) ? ev->editor->isDarkMode : NO;
-    NSColor *col = dark ? [NSColor colorWithCalibratedWhite:0.25 alpha:0.9] : [NSColor colorWithCalibratedWhite:0.82 alpha:0.9];
+    NSColor *col = dark
+        ? [NSColor colorWithSRGBRed:0.22 green:0.22 blue:0.22 alpha:1.0]
+        : [NSColor colorWithSRGBRed:0.82 green:0.82 blue:0.82 alpha:1.0];
     [col setFill];
-    NSRectFill(dirtyRect);
+    NSRectFill(NSIntersectionRect(dirtyRect, b));
 }
 - (void)mouseDragged:(NSEvent *)event {
     EditorView *ev = self.editorView;
@@ -157,6 +167,9 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 @end
 
 @implementation MiuMacWorkspaceView
+- (BOOL)isOpaque {
+    return YES;
+}
 - (void)layout {
     [super layout];
     if (self.editorView) {
@@ -376,20 +389,38 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     }
     NSView *container = [self superview];
     if (container) {
+        if (@available(macOS 14.0, *)) container.clipsToBounds = YES;
         [container setWantsLayer:YES];
         if (container.layer) {
+            container.layer.masksToBounds = YES;
             container.layer.backgroundColor = bgColor.CGColor;
             container.layer.opaque = YES;
         }
     }
+    if (@available(macOS 14.0, *)) self.clipsToBounds = YES;
     [self setWantsLayer:YES];
     if (self.layer) {
+        self.layer.masksToBounds = YES;
         self.layer.backgroundColor = bgColor.CGColor;
         self.layer.opaque = YES;
     }
+    if (splitterView) {
+        if (@available(macOS 14.0, *)) splitterView.clipsToBounds = YES;
+        [splitterView setWantsLayer:YES];
+        if (splitterView.layer) {
+            NSColor *splitCol = dark
+                ? [NSColor colorWithSRGBRed:0.22 green:0.22 blue:0.22 alpha:1.0]
+                : [NSColor colorWithSRGBRed:0.82 green:0.82 blue:0.82 alpha:1.0];
+            splitterView.layer.masksToBounds = YES;
+            splitterView.layer.backgroundColor = splitCol.CGColor;
+            splitterView.layer.opaque = YES;
+        }
+    }
     if (!previewWebView) return;
+    if (@available(macOS 14.0, *)) previewWebView.clipsToBounds = YES;
     [previewWebView setWantsLayer:YES];
     if (previewWebView.layer) {
+        previewWebView.layer.masksToBounds = YES;
         previewWebView.layer.backgroundColor = bgColor.CGColor;
         previewWebView.layer.opaque = YES;
     }
@@ -417,15 +448,14 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     if ([previewWebView respondsToSelector:@selector(setValue:forKey:)]) {
         [previewWebView setValue:@(YES) forKey:@"drawsBackground"];
     }
-    [self updatePreviewBackground];
     [previewWebView setHidden:YES];
     [container addSubview:previewWebView];
 
     splitterView = [[MiuSplitterView alloc] initWithFrame:NSMakeRect(initW - 5.0, 0, 5.0, initH)];
-    [splitterView setWantsLayer:YES];
     splitterView.editorView = self;
     [splitterView setHidden:YES];
     [container addSubview:splitterView];
+    [self updatePreviewBackground];
 }
 
 - (void)layoutSplitViews {
@@ -553,6 +583,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 - (BOOL)acceptsFirstResponder { return YES; }
 - (BOOL)becomeFirstResponder { return YES; }
 - (BOOL)isFlipped { return YES; }
+- (BOOL)isOpaque { return YES; }
 
 - (void)viewDidMoveToWindow {
     if (![self window]) return;
@@ -590,6 +621,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 }
 
 - (void)drawRect:(NSRect)r {
+    NSRectClip([self bounds]);
     if (editor) {
         BOOL isDark = [[self.effectiveAppearance bestMatchFromAppearancesWithNames:@[NSAppearanceNameAqua, NSAppearanceNameDarkAqua]] isEqualToString:NSAppearanceNameDarkAqua];
         if (editor->isDarkMode != (bool)isDark) {

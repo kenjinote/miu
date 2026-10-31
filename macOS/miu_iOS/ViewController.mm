@@ -77,6 +77,8 @@
 @implementation MiuIOSPreviewSplitterView
 - (instancetype)initWithFrame:(CGRect)frame {
     if (self = [super initWithFrame:frame]) {
+        self.clipsToBounds = YES;
+        self.opaque = YES;
         UIPanGestureRecognizer *pan = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(handleSplitterPan:)];
         [self addGestureRecognizer:pan];
     }
@@ -84,9 +86,9 @@
 }
 - (void)drawRect:(CGRect)rect {
     BOOL dark = self.editor ? self.editor->isDarkMode : NO;
-    UIColor *bgCol = dark ? [UIColor colorWithWhite:0.20 alpha:0.95] : [UIColor colorWithWhite:0.85 alpha:0.95];
+    UIColor *bgCol = dark ? [UIColor colorWithWhite:0.20 alpha:1.0] : [UIColor colorWithWhite:0.85 alpha:1.0];
     [bgCol setFill];
-    UIRectFill(rect);
+    UIRectFill(CGRectIntersection(rect, self.bounds));
     UIColor *pillCol = dark ? [UIColor colorWithWhite:0.55 alpha:0.9] : [UIColor colorWithWhite:0.50 alpha:0.9];
     [pillCol setFill];
     CGRect pillRect;
