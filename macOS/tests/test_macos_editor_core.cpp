@@ -703,6 +703,28 @@ static void testParityEdgeCases() {
         CHECK(MiuResolveDisplayFileName(localizedWithoutExtCandidates, "", "無題") == "memo.txt",
               "MiuResolveDisplayFileName restores extension onto extensionless localized name");
     }
+
+    // 9. Regression guard for iOS Open Recent crash: failed openFileFromPath must preserve previous MappedFile/PieceTable
+    {
+        std::string tetrisPath = tempDir + "/Tetris.html";
+        std::string tetrisContent(15184, 'A');
+        tetrisContent.replace(0, 15, "<!DOCTYPE html>");
+        {
+            std::ofstream ofs(tetrisPath, std::ios::binary);
+            ofs.write(tetrisContent.data(), tetrisContent.size());
+        }
+        CHECK(ed.openFileFromPath(tetrisPath), "Opened 15KB Tetris.html successfully");
+        ed.cursors = { { 300, 300, 0.0f, 0.0f, false, false } };
+        CHECK(!ed.openFileFromPath(tempDir + "/nonexistent_deleted_recent_file.txt"),
+              "openFileFromPath returns false for missing recent file");
+        CHECK(ed.pt.length() == tetrisContent.size(),
+              "Failed openFileFromPath preserves previous document length");
+        CHECK(ed.getPositionByUTF16Offset(300, -1) == 299 && ed.pt.charAt(0) == '<',
+              "getPositionByUTF16Offset and PieceTable::charAt remain valid after failed openFileFromPath (no dangling mmap pointer)");
+        std::filesystem::remove(tetrisPath);
+        CHECK(ed.pt.getRange(0, 15) == "<!DOCTYPE html>",
+              "Unlinking opened file on disk does not invalidate heap-backed MappedFile buffer");
+    }
 }
 
 int main() {

@@ -2862,6 +2862,8 @@ static NSString *s_iosClipboardSnapshot = nil;
     __block NSString *coordUrlName = nil;
     __block NSString *coordLocalizedName = nil;
     __block NSString *coordLastComponent = nil;
+    NSFileManager *fm = [NSFileManager defaultManager];
+    BOOL originalFileExists = (url.path.length > 0 && [fm fileExistsAtPath:url.path]);
     NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
     [coordinator coordinateReadingItemAtURL:url options:NSFileCoordinatorReadingWithoutChanges error:nil byAccessor:^(NSURL * _Nonnull newURL) {
         if (!newURL) return;
@@ -2875,7 +2877,11 @@ static NSString *s_iosClipboardSnapshot = nil;
             coordLocalizedName = lName;
         }
         coordLastComponent = newURL.lastPathComponent;
-        if (coordLastComponent.length > 0 && !MiuIsLikelyTemporaryGuidFileName(coordLastComponent.UTF8String)) {
+        if (!originalFileExists &&
+            coordLastComponent.length > 0 &&
+            !MiuIsLikelyTemporaryGuidFileName(coordLastComponent.UTF8String) &&
+            newURL.path.length > 0 &&
+            [fm fileExistsAtPath:newURL.path]) {
             bestURL = newURL;
         }
     }];
@@ -2900,15 +2906,16 @@ static NSString *s_iosClipboardSnapshot = nil;
             addCandidate(parentName);
         }
         if (parentDir && parentDir.path.length > 0) {
-            NSFileManager *fm = [NSFileManager defaultManager];
-            for (const auto& cand : candidates) {
-                if (!cand.empty() && !MiuIsLikelyTemporaryGuidFileName(cand)) {
-                    NSString *candNS = [NSString stringWithUTF8String:cand.c_str()];
-                    if (candNS.length > 0) {
-                        NSURL *siblingURL = [parentDir URLByAppendingPathComponent:candNS];
-                        if (siblingURL.path && [fm fileExistsAtPath:siblingURL.path]) {
-                            bestURL = siblingURL;
-                            break;
+            if (!originalFileExists) {
+                for (const auto& cand : candidates) {
+                    if (!cand.empty() && !MiuIsLikelyTemporaryGuidFileName(cand)) {
+                        NSString *candNS = [NSString stringWithUTF8String:cand.c_str()];
+                        if (candNS.length > 0) {
+                            NSURL *siblingURL = [parentDir URLByAppendingPathComponent:candNS];
+                            if (siblingURL.path && [fm fileExistsAtPath:siblingURL.path]) {
+                                bestURL = siblingURL;
+                                break;
+                            }
                         }
                     }
                 }
@@ -2920,7 +2927,7 @@ static NSString *s_iosClipboardSnapshot = nil;
                     break;
                 }
             }
-            if (!hasNonGuidCandidate) {
+            if (!hasNonGuidCandidate && _isExportingDocument) {
                 NSArray<NSURL *> *dirContents = [fm contentsOfDirectoryAtURL:parentDir
                                                   includingPropertiesForKeys:@[NSURLContentModificationDateKey, NSURLIsRegularFileKey]
                                                                      options:NSDirectoryEnumerationSkipsHiddenFiles
@@ -2944,14 +2951,18 @@ static NSString *s_iosClipboardSnapshot = nil;
                 }
                 if (recentSibling) {
                     addCandidate(recentSibling.lastPathComponent);
-                    bestURL = recentSibling;
+                    if (!originalFileExists) {
+                        bestURL = recentSibling;
+                    }
                     hasNonGuidCandidate = YES;
                 }
                 if (!hasNonGuidCandidate && fallbackName.length > 0 && !MiuIsLikelyTemporaryGuidFileName(fallbackName.UTF8String)) {
                     NSURL *fallbackSibling = [parentDir URLByAppendingPathComponent:fallbackName];
                     if (fallbackSibling.path && [fm fileExistsAtPath:fallbackSibling.path]) {
                         addCandidate(fallbackName);
-                        bestURL = fallbackSibling;
+                        if (!originalFileExists) {
+                            bestURL = fallbackSibling;
+                        }
                         hasNonGuidCandidate = YES;
                     }
                 }
@@ -3014,14 +3025,12 @@ static NSString *s_iosClipboardSnapshot = nil;
 }
 - (void)openRecentFileAtPath:(const std::string &)path {
     if (!_editorEngine) return;
-    if (self.currentDocumentURL) {
-        [self.currentDocumentURL stopAccessingSecurityScopedResource];
-        self.currentDocumentURL = nil;
-    }
     NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
     NSString *savedName = [self savedDisplayNameForPath:nsPath];
     NSURL *targetURL = nsPath ? [NSURL fileURLWithPath:nsPath] : nil;
+    NSURL *scopedURL = nil;
     BOOL accessGranted = NO;
+    BOOL bookmarkWasStale = NO;
     if (nsPath) {
         NSDictionary *dict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"MiuRecentBookmarks"];
         NSData *bm = dict[nsPath];
@@ -3030,38 +3039,88 @@ static NSString *s_iosClipboardSnapshot = nil;
             NSURL *resolved = [NSURL URLByResolvingBookmarkData:bm options:0 relativeToURL:nil bookmarkDataIsStale:&isStale error:nil];
             if (resolved) {
                 targetURL = resolved;
-                accessGranted = [targetURL startAccessingSecurityScopedResource];
-                if (isStale) {
-                    [self saveBookmarkForURL:targetURL];
-                }
+                scopedURL = resolved;
+                accessGranted = [scopedURL startAccessingSecurityScopedResource];
+                bookmarkWasStale = isStale;
             }
         }
     }
     if (!accessGranted && targetURL) {
-        accessGranted = [targetURL startAccessingSecurityScopedResource];
+        scopedURL = targetURL;
+        accessGranted = [scopedURL startAccessingSecurityScopedResource];
     }
     NSString *resolvedDisplayName = nil;
     if (targetURL) {
-        targetURL = [self resolveDocumentURL:targetURL fallbackName:savedName outDisplayName:&resolvedDisplayName];
-    }
-    self.currentDocumentURL = accessGranted ? targetURL : nil;
-    self.currentDocumentDisplayName = resolvedDisplayName ?: savedName;
-    if (targetURL && targetURL.path && self.currentDocumentDisplayName.length > 0) {
-        [self saveDisplayName:self.currentDocumentDisplayName forPath:targetURL.path];
+        NSURL *resolvedURL = [self resolveDocumentURL:targetURL fallbackName:savedName outDisplayName:&resolvedDisplayName];
+        if (resolvedURL && resolvedURL != targetURL) {
+            BOOL resolvedAccess = [resolvedURL startAccessingSecurityScopedResource];
+            if (resolvedAccess) {
+                if (accessGranted && scopedURL && scopedURL != self.currentDocumentURL) {
+                    [scopedURL stopAccessingSecurityScopedResource];
+                }
+                scopedURL = resolvedURL;
+                accessGranted = YES;
+                targetURL = resolvedURL;
+            } else if (resolvedURL.path.length > 0 && [[NSFileManager defaultManager] isReadableFileAtPath:resolvedURL.path]) {
+                targetURL = resolvedURL;
+            }
+        }
     }
     std::string actualPath = (targetURL && targetURL.path) ? std::string(targetURL.path.UTF8String) : path;
     [self.editorView unmarkText];
     [self.editorView.inputDelegate selectionWillChange:self.editorView];
     [self.editorView.inputDelegate textWillChange:self.editorView];
     bool success = _editorEngine->openFileFromPath(actualPath);
+    if (!success && targetURL) {
+        __block bool coordSuccess = false;
+        __block std::string coordOpenedPath;
+        NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+        [coordinator coordinateReadingItemAtURL:targetURL options:NSFileCoordinatorReadingWithoutChanges error:nil byAccessor:^(NSURL * _Nonnull newURL) {
+            if (newURL && newURL.path.length > 0) {
+                coordOpenedPath = std::string(newURL.path.UTF8String);
+                coordSuccess = _editorEngine->openFileFromPath(coordOpenedPath);
+            }
+        }];
+        if (coordSuccess) {
+            success = true;
+            if (coordOpenedPath != actualPath && !actualPath.empty()) {
+                _editorEngine->currentFilePath = UTF8ToW(actualPath);
+                _editorEngine->addToRecentFiles(actualPath);
+            }
+        }
+    }
     if (success) {
+        if (self.currentDocumentURL && self.currentDocumentURL != scopedURL) {
+            [self.currentDocumentURL stopAccessingSecurityScopedResource];
+        }
+        self.currentDocumentURL = accessGranted ? scopedURL : nil;
+        self.currentDocumentDisplayName = resolvedDisplayName ?: savedName;
         if (self.currentDocumentDisplayName.length > 0) {
+            if (nsPath.length > 0) {
+                [self saveDisplayName:self.currentDocumentDisplayName forPath:nsPath];
+            }
+            if (targetURL && targetURL.path.length > 0) {
+                [self saveDisplayName:self.currentDocumentDisplayName forPath:targetURL.path];
+            }
             _editorEngine->loadSyntaxForExtension(self.currentDocumentDisplayName.UTF8String);
+        }
+        if (bookmarkWasStale && scopedURL) {
+            [self saveBookmarkForURL:scopedURL];
         }
         if (self.searchField.text.length > 0) {
             _editorEngine->searchQuery = self.searchField.text.UTF8String;
         }
         _editorEngine->updateTitleBar();
+    } else {
+        if (accessGranted && scopedURL && scopedURL != self.currentDocumentURL) {
+            [scopedURL stopAccessingSecurityScopedResource];
+        }
+        auto &rf = _editorEngine->recentFiles;
+        rf.erase(std::remove(rf.begin(), rf.end(), path), rf.end());
+        if (actualPath != path) {
+            rf.erase(std::remove(rf.begin(), rf.end(), actualPath), rf.end());
+        }
+        _editorEngine->saveRecentFiles();
     }
     [self.editorView.inputDelegate textDidChange:self.editorView];
     [self.editorView.inputDelegate selectionDidChange:self.editorView];
@@ -3407,9 +3466,9 @@ static NSString *s_iosClipboardSnapshot = nil;
         NSError *coordError = nil;
         NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
         [coordinator coordinateWritingItemAtURL:targetURL options:NSFileCoordinatorWritingForReplacing error:&coordError byAccessor:^(NSURL * _Nonnull newURL) {
-            writeSuccess = [data writeToURL:newURL options:NSDataWritingAtomic error:nil];
+            writeSuccess = [data writeToURL:newURL options:0 error:nil];
             if (!writeSuccess) {
-                writeSuccess = [data writeToURL:newURL options:0 error:nil];
+                writeSuccess = [data writeToURL:newURL options:NSDataWritingAtomic error:nil];
             }
         }];
         return writeSuccess ? true : false;
@@ -4065,34 +4124,60 @@ static NSString *s_iosClipboardSnapshot = nil;
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
     NSURL *url = urls.firstObject;
     if (!url || !_editorEngine) return;
-    if (self.currentDocumentURL) {
-        [self.currentDocumentURL stopAccessingSecurityScopedResource];
-        self.currentDocumentURL = nil;
-    }
-    BOOL accessGranted = [url startAccessingSecurityScopedResource];
+    NSURL *scopedURL = url;
+    BOOL accessGranted = [scopedURL startAccessingSecurityScopedResource];
     NSString *fallbackName = _isExportingDocument
         ? (self.pendingExportFileName ?: self.currentDocumentDisplayName)
-        : self.currentDocumentDisplayName;
+        : ((url.path.length > 0) ? [self savedDisplayNameForPath:url.path] : nil);
     NSString *resolvedDisplayName = nil;
     NSURL *resolvedURL = [self resolveDocumentURL:url fallbackName:fallbackName outDisplayName:&resolvedDisplayName];
     if (resolvedURL && resolvedURL != url) {
         BOOL resolvedAccess = [resolvedURL startAccessingSecurityScopedResource];
         if (resolvedAccess) {
-            if (accessGranted) [url stopAccessingSecurityScopedResource];
+            if (accessGranted && scopedURL != self.currentDocumentURL) {
+                [scopedURL stopAccessingSecurityScopedResource];
+            }
+            scopedURL = resolvedURL;
             url = resolvedURL;
             accessGranted = YES;
+        } else if (resolvedURL.path.length > 0 && [[NSFileManager defaultManager] isReadableFileAtPath:resolvedURL.path]) {
+            url = resolvedURL;
         }
     }
-    self.currentDocumentURL = accessGranted ? url : nil;
-    self.currentDocumentDisplayName = resolvedDisplayName;
-    [self saveBookmarkForURL:url];
     if (!_isExportingDocument) {
         std::string path = url.path ? std::string(url.path.UTF8String) : "";
         [self.editorView unmarkText];
         [self.editorView.inputDelegate selectionWillChange:self.editorView];
         [self.editorView.inputDelegate textWillChange:self.editorView];
         bool success = _editorEngine->openFileFromPath(path);
+        if (!success && url) {
+            __block bool coordSuccess = false;
+            __block std::string coordOpenedPath;
+            NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+            [coordinator coordinateReadingItemAtURL:url options:NSFileCoordinatorReadingWithoutChanges error:nil byAccessor:^(NSURL * _Nonnull newURL) {
+                if (newURL && newURL.path.length > 0) {
+                    coordOpenedPath = std::string(newURL.path.UTF8String);
+                    coordSuccess = _editorEngine->openFileFromPath(coordOpenedPath);
+                }
+            }];
+            if (coordSuccess) {
+                success = true;
+                if (coordOpenedPath != path && !path.empty()) {
+                    _editorEngine->currentFilePath = UTF8ToW(path);
+                    _editorEngine->addToRecentFiles(path);
+                }
+            }
+        }
         if (success) {
+            if (self.currentDocumentURL && self.currentDocumentURL != scopedURL) {
+                [self.currentDocumentURL stopAccessingSecurityScopedResource];
+            }
+            self.currentDocumentURL = accessGranted ? scopedURL : nil;
+            self.currentDocumentDisplayName = resolvedDisplayName;
+            [self saveBookmarkForURL:scopedURL ?: url];
+            if (url.path.length > 0 && resolvedDisplayName.length > 0) {
+                [self saveDisplayName:resolvedDisplayName forPath:url.path];
+            }
             if (resolvedDisplayName.length > 0) {
                 _editorEngine->loadSyntaxForExtension(resolvedDisplayName.UTF8String);
             }
@@ -4100,11 +4185,24 @@ static NSString *s_iosClipboardSnapshot = nil;
                 _editorEngine->searchQuery = self.searchField.text.UTF8String;
             }
             _editorEngine->updateTitleBar();
+        } else {
+            if (accessGranted && scopedURL && scopedURL != self.currentDocumentURL) {
+                [scopedURL stopAccessingSecurityScopedResource];
+            }
         }
         [self.editorView.inputDelegate textDidChange:self.editorView];
         [self.editorView.inputDelegate selectionDidChange:self.editorView];
         [self.editorView setNeedsDisplay];
     } else {
+        if (self.currentDocumentURL && self.currentDocumentURL != scopedURL) {
+            [self.currentDocumentURL stopAccessingSecurityScopedResource];
+        }
+        self.currentDocumentURL = accessGranted ? scopedURL : nil;
+        self.currentDocumentDisplayName = resolvedDisplayName;
+        [self saveBookmarkForURL:scopedURL ?: url];
+        if (url.path.length > 0 && resolvedDisplayName.length > 0) {
+            [self saveDisplayName:resolvedDisplayName forPath:url.path];
+        }
         if (self.pendingExportTempFilePath) {
             [[NSFileManager defaultManager] removeItemAtPath:self.pendingExportTempFilePath error:nil];
             self.pendingExportTempFilePath = nil;
@@ -4133,15 +4231,34 @@ static NSString *s_iosClipboardSnapshot = nil;
             NSString *refreshedName = nil;
             NSURL *refreshedURL = [strongSelf resolveDocumentURL:pickedURL fallbackName:initialFallback outDisplayName:&refreshedName];
             if (refreshedName.length > 0 &&
-                !MiuIsLikelyTemporaryGuidFileName(refreshedName.UTF8String) &&
-                ![refreshedName isEqualToString:strongSelf.currentDocumentDisplayName]) {
-                strongSelf.currentDocumentDisplayName = refreshedName;
-                if (refreshedURL && refreshedURL.path) {
+                !MiuIsLikelyTemporaryGuidFileName(refreshedName.UTF8String)) {
+                if (pickedURL.path.length > 0) {
+                    [strongSelf saveDisplayName:refreshedName forPath:pickedURL.path];
+                }
+                if (refreshedURL && refreshedURL.path.length > 0) {
                     [strongSelf saveDisplayName:refreshedName forPath:refreshedURL.path];
                 }
-                strongSelf->_editorEngine->loadSyntaxForExtension(refreshedName.UTF8String);
-                strongSelf->_editorEngine->updateTitleBar();
-                [strongSelf.editorView setNeedsDisplay];
+                if (![refreshedName isEqualToString:strongSelf.currentDocumentDisplayName]) {
+                    strongSelf.currentDocumentDisplayName = refreshedName;
+                    strongSelf->_editorEngine->loadSyntaxForExtension(refreshedName.UTF8String);
+                    strongSelf->_editorEngine->updateTitleBar();
+                    [strongSelf.editorView setNeedsDisplay];
+                }
+            }
+            if (refreshedURL && refreshedURL.path.length > 0 && pickedURL.path.length > 0 &&
+                ![refreshedURL.path isEqualToString:pickedURL.path]) {
+                NSFileManager *fm = [NSFileManager defaultManager];
+                if (![fm fileExistsAtPath:pickedURL.path] && [fm fileExistsAtPath:refreshedURL.path]) {
+                    std::string oldPath = std::string(pickedURL.path.UTF8String);
+                    std::string newPath = std::string(refreshedURL.path.UTF8String);
+                    auto &rf = strongSelf->_editorEngine->recentFiles;
+                    rf.erase(std::remove(rf.begin(), rf.end(), oldPath), rf.end());
+                    strongSelf->_editorEngine->currentFilePath = UTF8ToW(newPath);
+                    strongSelf->_editorEngine->recordFileMtime(newPath);
+                    strongSelf->_editorEngine->addToRecentFiles(newPath);
+                    [strongSelf saveBookmarkForURL:refreshedURL];
+                    strongSelf->_editorEngine->updateTitleBar();
+                }
             }
         });
     }

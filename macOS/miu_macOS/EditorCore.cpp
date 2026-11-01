@@ -327,14 +327,57 @@ static std::string Utf8ToUtf16Bytes(const std::string& utf8, bool isBigEndian) {
 
 bool MappedFile::open(const char* path) {
 #if defined(__APPLE__)
+    if (!path || !*path) return false;
     fd = ::open(path, O_RDONLY);
     if (fd == -1) return false;
     struct stat sb;
-    if (fstat(fd, &sb) == -1) { ::close(fd); fd = -1; return false; }
-    size = sb.st_size;
-    if (size == 0) { ptr = nullptr; return true; }
+    if (fstat(fd, &sb) == -1 || S_ISDIR(sb.st_mode)) { ::close(fd); fd = -1; return false; }
+    size = (size_t)sb.st_size;
+    if (size == 0) {
+        ::close(fd);
+        fd = -1;
+        ptr = nullptr;
+        return true;
+    }
+    // For files <= 16MB, copy into heap buffer and immediately unmap/close fd
+    // so external FileProvider/iCloud mutations or unmapping never cause SIGBUS/SIGSEGV.
+    if (size <= 16 * 1024 * 1024) {
+        char* mapped = (char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+        if (mapped != MAP_FAILED) {
+            winFallbackBuf.assign(mapped, size);
+            munmap(mapped, size);
+            ::close(fd);
+            fd = -1;
+            ptr = winFallbackBuf.data();
+            return true;
+        }
+        winFallbackBuf.resize(size);
+        size_t totalRead = 0;
+        while (totalRead < size) {
+            ssize_t r = ::read(fd, winFallbackBuf.data() + totalRead, size - totalRead);
+            if (r <= 0) break;
+            totalRead += (size_t)r;
+        }
+        ::close(fd);
+        fd = -1;
+        if (totalRead == size) {
+            ptr = winFallbackBuf.data();
+            return true;
+        }
+        winFallbackBuf.clear();
+        size = 0;
+        ptr = nullptr;
+        return false;
+    }
     ptr = (char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-    return (ptr != MAP_FAILED);
+    if (ptr == MAP_FAILED) {
+        ptr = nullptr;
+        ::close(fd);
+        fd = -1;
+        size = 0;
+        return false;
+    }
+    return true;
 #else
     std::ifstream ifs(UTF8ToW(path), std::ios::binary | std::ios::ate);
     if (!ifs) return false;
@@ -349,10 +392,16 @@ bool MappedFile::open(const char* path) {
 
 void MappedFile::close() {
 #if defined(__APPLE__)
-    if (ptr && ptr != MAP_FAILED) munmap(ptr, size);
+    if (!winFallbackBuf.empty()) {
+        winFallbackBuf.clear();
+        ptr = nullptr;
+    } else if (ptr && ptr != MAP_FAILED) {
+        munmap(ptr, size);
+    }
     if (fd != -1) ::close(fd);
     ptr = nullptr;
     fd = -1;
+    size = 0;
 #else
     winFallbackBuf.clear();
     ptr = nullptr;
@@ -4458,61 +4507,64 @@ bool Editor::saveFileAs() {
 }
 
 bool Editor::openFileFromPath(const std::string& p) {
+    if (p.empty()) return false;
+    std::unique_ptr<MappedFile> newMap(new MappedFile());
+    if (!newMap->open(p.c_str())) {
+        return false;
+    }
     saveCurrentViewState();
     rollbackPadding();
     isRectSelecting = false;
     activeEmmetSession.active = false;
-    fileMap.reset(new MappedFile());
-    if (fileMap->open(p.c_str())) {
-        DetectResult encRes = DetectEncodingEx(fileMap->ptr, fileMap->size);
-        currentEncoding = encRes.type;
-        currentCodePage = encRes.codePage;
-        const char* ptr = fileMap->ptr;
-        size_t sz = fileMap->size;
-        this->currentFileBuffer = "";
-        bool usedDecodedBuffer = false;
-        if (currentEncoding == ENC_UTF16LE) {
-            this->currentFileBuffer = Utf16ToUtf8(ptr, sz, false);
-            usedDecodedBuffer = true;
-        } else if (currentEncoding == ENC_UTF16BE) {
-            this->currentFileBuffer = Utf16ToUtf8(ptr, sz, true);
-            usedDecodedBuffer = true;
-        } else if (currentEncoding == ENC_UTF8_BOM) {
-            if (sz >= 3) { ptr += 3; sz -= 3; }
-        } else if (currentEncoding == ENC_LOCAL) {
-            this->currentFileBuffer = LocalToUtf8(ptr, sz, currentCodePage);
-            if (!this->currentFileBuffer.empty() || sz == 0) usedDecodedBuffer = true;
-        }
-        if (usedDecodedBuffer) {
-            pt.initFromFile(this->currentFileBuffer.data(), this->currentFileBuffer.size());
-            detectNewlineStyle(this->currentFileBuffer.data(), this->currentFileBuffer.size());
-        } else {
-            pt.initFromFile(ptr, sz);
-            detectNewlineStyle(ptr, sz);
-        }
-        currentFilePath = UTF8ToW(p);
-        loadSyntaxForExtension(p);
-        recordFileMtime(p);
-        addToRecentFiles(p);
-        undo.clear();
-        isDirty = false;
-        vScrollPos = 0;
-        vScrollSubLine = 0;
-        hScrollPos = 0;
-        cursors.clear();
-        cursors.push_back({ 0, 0, 0.0f, 0.0f, false, false });
-        rebuildLineStarts();
-        restoreViewState(currentFilePath);
-        updateTitleBar();
-        updateScrollBars();
-        if (cbUpdatePreview && showPreview) {
-            previewInitialLoaded = false;
-            cbUpdatePreview();
-        }
-        if (cbNeedsDisplay) cbNeedsDisplay();
-        return true;
+    DetectResult encRes = DetectEncodingEx(newMap->ptr, newMap->size);
+    currentEncoding = encRes.type;
+    currentCodePage = encRes.codePage;
+    const char* ptr = newMap->ptr;
+    size_t sz = newMap->size;
+    std::string decodedBuffer;
+    bool usedDecodedBuffer = false;
+    if (currentEncoding == ENC_UTF16LE) {
+        decodedBuffer = Utf16ToUtf8(ptr, sz, false);
+        usedDecodedBuffer = true;
+    } else if (currentEncoding == ENC_UTF16BE) {
+        decodedBuffer = Utf16ToUtf8(ptr, sz, true);
+        usedDecodedBuffer = true;
+    } else if (currentEncoding == ENC_UTF8_BOM) {
+        if (sz >= 3) { ptr += 3; sz -= 3; }
+    } else if (currentEncoding == ENC_LOCAL) {
+        decodedBuffer = LocalToUtf8(ptr, sz, currentCodePage);
+        if (!decodedBuffer.empty() || sz == 0) usedDecodedBuffer = true;
     }
-    return false;
+    this->currentFileBuffer = std::move(decodedBuffer);
+    if (usedDecodedBuffer) {
+        pt.initFromFile(this->currentFileBuffer.data(), this->currentFileBuffer.size());
+        detectNewlineStyle(this->currentFileBuffer.data(), this->currentFileBuffer.size());
+    } else {
+        pt.initFromFile(ptr, sz);
+        detectNewlineStyle(ptr, sz);
+    }
+    fileMap = std::move(newMap);
+    currentFilePath = UTF8ToW(p);
+    loadSyntaxForExtension(p);
+    recordFileMtime(p);
+    addToRecentFiles(p);
+    undo.clear();
+    isDirty = false;
+    vScrollPos = 0;
+    vScrollSubLine = 0;
+    hScrollPos = 0;
+    cursors.clear();
+    cursors.push_back({ 0, 0, 0.0f, 0.0f, false, false });
+    rebuildLineStarts();
+    restoreViewState(currentFilePath);
+    updateTitleBar();
+    updateScrollBars();
+    if (cbUpdatePreview && showPreview) {
+        previewInitialLoaded = false;
+        cbUpdatePreview();
+    }
+    if (cbNeedsDisplay) cbNeedsDisplay();
+    return true;
 }
 
 bool Editor::openFile() {
