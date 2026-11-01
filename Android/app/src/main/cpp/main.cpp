@@ -727,6 +727,14 @@ void performNewDocument(Engine* engine) {
     engine->commentStateCache.clear();
     engine->activeEmmetSession.clear();
     engine->isRectSelecting = false;
+    engine->isFlinging = false;
+    engine->velocityX = 0.0f;
+    engine->velocityY = 0.0f;
+    engine->isDragging = false;
+    engine->isSelecting = false;
+    engine->isSelectingGutter = false;
+    engine->isDraggingSelection = false;
+    engine->imeComp.clear();
     engine->newlineStr = "\n";
     engine->currentEncoding = ENC_UTF8_NOBOM;
     engine->currentCharset = "UTF-8";
@@ -773,6 +781,7 @@ std::string preprocessRegexQuery(const std::string& query) {
 size_t findText(Engine* engine, size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
     size_t len = engine->pt.length();
+    if (len == 0) return std::string::npos;
     std::string actualQuery = query;
     if (isRegex) {
         if (!isSafeUserRegex(query)) return std::string::npos;
@@ -1196,7 +1205,7 @@ int replaceAllCommand(Engine* engine) {
             std::string rText = UnescapeString(engine->replaceQuery, engine->newlineStr);
             matches.push_back({ pos, matchLen, rText });
             currentPos = pos + matchLen;
-            if (currentPos > docLen) break;
+            if (currentPos >= docLen) break;
         }
     }
     if (matches.empty()) return 0;
@@ -1393,6 +1402,7 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
     const char* ptr = engine->fileMap.ptr;
     size_t size = engine->fileMap.size;
     if (size == 0) {
+        engine->fileMap.close();
         engine->currentEncoding = ENC_UTF8_NOBOM;
         engine->currentCharset = "UTF-8";
         engine->newlineStr = "\n";
@@ -1401,8 +1411,15 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
         engine->currentEncoding = encRes.type;
         engine->currentCharset = encRes.charsetName;
         if (engine->currentEncoding == ENC_UTF8_NOBOM) {
-            engine->pt.origPtr = ptr;
-            engine->pt.origSize = size;
+            if (size <= 16 * 1024 * 1024) {
+                engine->convertedFileBuffer.assign(ptr, size);
+                engine->fileMap.close();
+                engine->pt.origPtr = engine->convertedFileBuffer.data();
+                engine->pt.origSize = engine->convertedFileBuffer.size();
+            } else {
+                engine->pt.origPtr = ptr;
+                engine->pt.origSize = size;
+            }
             engine->pt.pieces.push_back({ true, 0, size });
         } else {
             std::string contentUtf8;
@@ -1419,6 +1436,7 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
                     contentUtf8 = std::string(ptr, size);
                     break;
             }
+            engine->fileMap.close();
             engine->convertedFileBuffer = std::move(contentUtf8);
             engine->pt.origPtr = engine->convertedFileBuffer.data();
             engine->pt.origSize = engine->convertedFileBuffer.size();
@@ -1439,6 +1457,7 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
         }
     }
     engine->currentFilePath = path;
+    engine->displayFileName.clear();
     engine->undo.undoStack.clear();
     engine->undo.redoStack.clear();
     engine->isDirty = false;
@@ -1452,6 +1471,13 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
     engine->commentStateCache.clear();
     engine->activeEmmetSession.clear();
     engine->isRectSelecting = false;
+    engine->isFlinging = false;
+    engine->velocityX = 0.0f;
+    engine->velocityY = 0.0f;
+    engine->isDragging = false;
+    engine->isSelecting = false;
+    engine->isSelectingGutter = false;
+    engine->isDraggingSelection = false;
     engine->imeComp.clear();
     loadSyntaxForEngine(engine, engine->displayFileName.empty() ? path : engine->displayFileName);
     updateTitleBarIfNeeded(engine);
@@ -3463,6 +3489,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteSurroundingText(JNIEn
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateVisibleHeight(JNIEnv* env, jobject thiz, jint bottomInset) {
     if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
     float oldInset = g_engine->bottomInset;
     g_engine->bottomInset = (float)bottomInset;
     g_engine->isKeyboardShowing = (bottomInset > 0);
@@ -3472,6 +3499,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateVisibleHeight(JNIEnv*
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateTopMargin(JNIEnv* env, jobject thiz, jint topMargin) {
     if (!g_engine) return;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
     g_engine->topMargin = (float)topMargin;
     ensureCaretVisible(g_engine);
 }
@@ -3491,7 +3519,6 @@ JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdOpenDocument(JNIEnv*
         success = openDocumentFromFile(g_engine, strPath, env);
         env->ReleaseStringUTFChars(path, strPath);
         if (success) {
-            rebuildLineStarts(g_engine);
             ensureCaretVisible(g_engine);
         }
     }
@@ -3504,6 +3531,7 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetCharset(JNIEnv* en
 }
 JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdIsDirty(JNIEnv* env, jobject thiz) {
     if (!g_engine) return JNI_FALSE;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
     return g_engine->isDirty ? JNI_TRUE : JNI_FALSE;
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextContent(JNIEnv* env, jobject thiz) {
@@ -4176,6 +4204,7 @@ JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdToggleWordWrap(JNIEn
 }
 JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdIsWordWrapEnabled(JNIEnv* env, jobject thiz) {
     if (!g_engine) return JNI_FALSE;
+    std::lock_guard<std::mutex> lock(g_imeMutex);
     return g_engine->wordWrapEnabled ? JNI_TRUE : JNI_FALSE;
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetWordWrapEnabled(JNIEnv* env, jobject thiz, jboolean enabled) {
@@ -4295,8 +4324,12 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetViewState(JNIEnv* env
     size_t a = std::min((size_t)std::max(0, (int)anchor), len);
     g_engine->cursors.clear();
     g_engine->cursors.push_back({ h, a, getXFromPos(g_engine, h) });
+    float visibleH = getEditorVisibleH(g_engine);
+    int totalVisRows = getTotalVisualRows(g_engine);
+    float contentH = totalVisRows * g_engine->lineHeight + g_engine->topMargin + g_engine->lineHeight;
+    float maxScrollY = std::max(0.0f, contentH - visibleH);
     g_engine->scrollX = g_engine->wordWrapEnabled ? 0.0f : std::max(0.0f, (float)scrollX);
-    g_engine->scrollY = std::max(0.0f, (float)scrollY);
+    g_engine->scrollY = std::clamp((float)scrollY, 0.0f, maxScrollY);
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextBeforeCursor(JNIEnv* env, jobject thiz, jint length) {
     if (!g_engine || g_engine->cursors.empty()) return env->NewStringUTF("");
@@ -4963,7 +4996,7 @@ void updateTextVertices(Engine* engine) {
             }
         } else {
             size_t currentSearchPos = 0;
-            while (currentSearchPos <= docLen) {
+            while (currentSearchPos < docLen) {
                 size_t matchLen = 0; size_t found = findText(engine, currentSearchPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, false, &matchLen);
                 if (found == std::string::npos || found < currentSearchPos) break;
                 searchMatches.push_back({found, found + matchLen});
@@ -4974,7 +5007,7 @@ void updateTextVertices(Engine* engine) {
     std::vector<std::pair<size_t, size_t>> autoMatches; auto [autoStr, isWholeWord] = getHighlightTarget(engine);
     if (!autoStr.empty() && autoStr != engine->searchQuery) {
         size_t currentSearchPos = 0; size_t docLen = engine->pt.length();
-        while (currentSearchPos <= docLen) {
+        while (currentSearchPos < docLen) {
             size_t matchLen = 0; size_t found = findText(engine, currentSearchPos, autoStr, true, true, isWholeWord, false, &matchLen);
             if (found == std::string::npos || found < currentSearchPos) break;
             autoMatches.push_back({found, found + matchLen});
@@ -5594,30 +5627,30 @@ void android_main(struct android_app* app) {
         int events; struct android_poll_source* source; int timeout = engine.isWindowReady ? 0 : -1;
         while (ALooper_pollOnce(timeout, nullptr, &events, (void**)&source) >= 0) { if (source != nullptr) source->process(app, source); if (app->destroyRequested != 0) { cleanupVulkan(&engine); return; } timeout = engine.isWindowReady ? 0 : -1; }
         if (engine.isWindowReady) {
-            if (engine.isFlinging) {
-                int64_t now = getCurrentTimeMs(); int64_t dt = now - engine.lastMoveTime;
-                if (dt > 0) {
-                    if (dt > 50) dt = 50;
-                    if (!engine.wordWrapEnabled) engine.scrollX -= engine.velocityX * dt; else engine.scrollX = 0.0f;
-                    engine.scrollY -= engine.velocityY * dt;
-                    float friction = std::pow(0.998f, (float)dt); engine.velocityX *= friction; engine.velocityY *= friction;
-                    if (std::abs(engine.velocityX) < 0.02f && std::abs(engine.velocityY) < 0.02f) engine.isFlinging = false;
-                    if (engine.app->window != nullptr) {
-                        float winW = getEditorWinW(&engine); float visibleH = getEditorVisibleH(&engine);
-                        int totalVisRows = getTotalVisualRows(&engine);
-                        float contentH = totalVisRows * engine.lineHeight + engine.topMargin + engine.lineHeight;
-                        float maxScrollY = std::max(0.0f, contentH - visibleH);
-                        float maxScrollX = engine.wordWrapEnabled ? 0.0f : std::max(0.0f, engine.maxLineWidth - winW + engine.charWidth * 2.0f);
-                        if (engine.scrollX < 0.0f) { engine.scrollX = 0.0f; engine.velocityX = 0.0f; } else if (engine.scrollX > maxScrollX) { engine.scrollX = maxScrollX; engine.velocityX = 0.0f; }
-                        if (engine.scrollY < 0.0f) { engine.scrollY = 0.0f; engine.velocityY = 0.0f; } else if (engine.scrollY > maxScrollY) { engine.scrollY = maxScrollY; engine.velocityY = 0.0f; }
-                        checkKeyboardVisibility(&engine);
-                    }
-                    engine.lastMoveTime = now;
-                }
-            }
-            pollAsyncParsing(&engine);
             {
                 std::lock_guard<std::mutex> lock(g_imeMutex);
+                if (engine.isFlinging) {
+                    int64_t now = getCurrentTimeMs(); int64_t dt = now - engine.lastMoveTime;
+                    if (dt > 0) {
+                        if (dt > 50) dt = 50;
+                        if (!engine.wordWrapEnabled) engine.scrollX -= engine.velocityX * dt; else engine.scrollX = 0.0f;
+                        engine.scrollY -= engine.velocityY * dt;
+                        float friction = std::pow(0.998f, (float)dt); engine.velocityX *= friction; engine.velocityY *= friction;
+                        if (std::abs(engine.velocityX) < 0.02f && std::abs(engine.velocityY) < 0.02f) engine.isFlinging = false;
+                        if (engine.app->window != nullptr) {
+                            float winW = getEditorWinW(&engine); float visibleH = getEditorVisibleH(&engine);
+                            int totalVisRows = getTotalVisualRows(&engine);
+                            float contentH = totalVisRows * engine.lineHeight + engine.topMargin + engine.lineHeight;
+                            float maxScrollY = std::max(0.0f, contentH - visibleH);
+                            float maxScrollX = engine.wordWrapEnabled ? 0.0f : std::max(0.0f, engine.maxLineWidth - winW + engine.charWidth * 2.0f);
+                            if (engine.scrollX < 0.0f) { engine.scrollX = 0.0f; engine.velocityX = 0.0f; } else if (engine.scrollX > maxScrollX) { engine.scrollX = maxScrollX; engine.velocityX = 0.0f; }
+                            if (engine.scrollY < 0.0f) { engine.scrollY = 0.0f; engine.velocityY = 0.0f; } else if (engine.scrollY > maxScrollY) { engine.scrollY = maxScrollY; engine.velocityY = 0.0f; }
+                            checkKeyboardVisibility(&engine);
+                        }
+                        engine.lastMoveTime = now;
+                    }
+                }
+                pollAsyncParsing(&engine);
                 while (!g_imeQueue.empty()) {
                     ImeEvent ev = g_imeQueue.front(); g_imeQueue.pop_front();
                     if (ev.type == ImeEvent::Commit) { engine.imeComp.clear(); if (ev.text == "\n") insertNewlineWithAutoIndent(&engine); else insertAtCursors(&engine, ev.text); }

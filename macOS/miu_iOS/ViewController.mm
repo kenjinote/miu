@@ -176,6 +176,7 @@
 @property (nonatomic, copy) void (^onNewDocumentAction)(void);
 @property (nonatomic, copy) void (^onGoToLineAction)(void);
 @property (nonatomic, copy) void (^onOpenRecentAction)(UIView *sourceView);
+@property (nonatomic, copy) UIMenu *(^onBuildOpenRecentMenu)(void);
 @property (nonatomic, copy) BOOL (^onDismissOpenRecentIfVisible)(void);
 @property (nonatomic, copy) void (^onDismissOpenRecentThenPerform)(void (^block)(void));
 @property (nonatomic, copy) void (^onSyncKeyboardLayout)(void);
@@ -217,6 +218,11 @@
     UITapGestureRecognizer *_tripleTapGR;
     UITapGestureRecognizer *_accessoryTapGR;
     CGSize _lastRenderedBoundsSize;
+    CGFloat _panTotalDx;
+    CGFloat _panTotalDy;
+    CGFloat _unconsumedDownwardSwipe;
+    BOOL _didDismissKeyboardInCurrentPan;
+    BOOL _isTouchPan;
 }
 @synthesize inputDelegate = _inputDelegate;
 @synthesize markedTextStyle = _markedTextStyle;
@@ -813,8 +819,16 @@
         [self stopMomentumScroll];
         _vScrollAccumulator = 0.0;
         _isScrolling = YES;
+        _panTotalDx = 0.0;
+        _panTotalDy = 0.0;
+        _unconsumedDownwardSwipe = 0.0;
+        _didDismissKeyboardInCurrentPan = NO;
+        _isTouchPan = (gesture.numberOfTouches > 0);
         [self.inputDelegate selectionDidChange:self];
     } else if (gesture.state == UIGestureRecognizerStateChanged) {
+        if (gesture.numberOfTouches > 0) {
+            _isTouchPan = YES;
+        }
         CGPoint translation = [gesture translationInView:self];
         CGFloat dx = 0;
         CGFloat dy = 0;
@@ -827,11 +841,36 @@
             dx = translation.x * scrollMultiplier;
             dy = translation.y * scrollMultiplier;
         }
+        int prevV = self.editor ? self.editor->vScrollPos : 0;
+        int prevSub = self.editor ? self.editor->vScrollSubLine : 0;
         [self applyScrollDeltaX:dx deltaY:dy];
+        if (_isTouchPan && !_didDismissKeyboardInCurrentPan && self.editor) {
+            _panTotalDx += dx;
+            _panTotalDy += dy;
+            BOOL atTopBefore = (prevV == 0 && (!self.editor->wordWrapEnabled || prevSub == 0));
+            BOOL atTopAfter = (self.editor->vScrollPos == 0 && (!self.editor->wordWrapEnabled || self.editor->vScrollSubLine == 0));
+            if (dy > 0.0 && atTopAfter) {
+                _unconsumedDownwardSwipe += atTopBefore ? dy : (dy * 0.6);
+            } else if (dy < 0.0) {
+                _unconsumedDownwardSwipe = MAX(0.0, _unconsumedDownwardSwipe + dy);
+            }
+            if ((_unconsumedDownwardSwipe >= 24.0 || (atTopAfter && _panTotalDy >= 28.0)) &&
+                fabs(_panTotalDy) > fabs(_panTotalDx)) {
+                _didDismissKeyboardInCurrentPan = YES;
+                [self dismissKeyboard];
+            }
+        }
         [gesture setTranslation:CGPointZero inView:self];
         [self setNeedsDisplay];
     } else if (gesture.state == UIGestureRecognizerStateEnded || gesture.state == UIGestureRecognizerStateCancelled) {
         _scrollVelocity = [gesture velocityInView:self];
+        if (_isTouchPan && !_didDismissKeyboardInCurrentPan && self.editor) {
+            BOOL atTopAfter = (self.editor->vScrollPos == 0 && (!self.editor->wordWrapEnabled || self.editor->vScrollSubLine == 0));
+            if (atTopAfter && _panTotalDy >= 16.0 && _scrollVelocity.y > 180.0 && fabs(_panTotalDy) > fabs(_panTotalDx)) {
+                _didDismissKeyboardInCurrentPan = YES;
+                [self dismissKeyboard];
+            }
+        }
         if (fabs(_scrollVelocity.x) < 10.0 && fabs(_scrollVelocity.y) < 10.0) {
             _isScrolling = NO;
             [self.inputDelegate selectionDidChange:self];
@@ -2124,132 +2163,311 @@
         }
     }
     if (_customAccessoryView) return _customAccessoryView;
-    CGFloat barHeight = 36.0;
+    CGFloat barHeight = 44.0;
     _customAccessoryView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, barHeight)];
     _customAccessoryView.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+    _customAccessoryView.backgroundColor = [UIColor clearColor];
+
+    UIView *shadowContainer = [[UIView alloc] init];
+    shadowContainer.translatesAutoresizingMaskIntoConstraints = NO;
+    shadowContainer.backgroundColor = [UIColor clearColor];
+    shadowContainer.layer.cornerRadius = 12.0;
+    if (@available(iOS 13.0, *)) {
+        shadowContainer.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    shadowContainer.layer.shadowColor = [UIColor blackColor].CGColor;
+    shadowContainer.layer.shadowOpacity = 0.20f;
+    shadowContainer.layer.shadowOffset = CGSizeMake(0, 2.0);
+    shadowContainer.layer.shadowRadius = 7.0;
+    [_customAccessoryView addSubview:shadowContainer];
+
     UIBlurEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemChromeMaterial];
     UIVisualEffectView *effectView = [[UIVisualEffectView alloc] initWithEffect:blurEffect];
-    effectView.frame = _customAccessoryView.bounds;
-    effectView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    [_customAccessoryView addSubview:effectView];
-    UIScrollView *scrollView = [[UIScrollView alloc] initWithFrame:_customAccessoryView.bounds];
-    scrollView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+    effectView.translatesAutoresizingMaskIntoConstraints = NO;
+    effectView.layer.cornerRadius = 12.0;
+    if (@available(iOS 13.0, *)) {
+        effectView.layer.cornerCurve = kCACornerCurveContinuous;
+    }
+    effectView.clipsToBounds = YES;
+    effectView.layer.borderWidth = 0.5;
+    effectView.layer.borderColor = [UIColor separatorColor].CGColor;
+    [shadowContainer addSubview:effectView];
+
+    UIScrollView *scrollView = [[UIScrollView alloc] init];
+    scrollView.translatesAutoresizingMaskIntoConstraints = NO;
     scrollView.showsHorizontalScrollIndicator = NO;
-    scrollView.alwaysBounceHorizontal = YES;
+    scrollView.alwaysBounceHorizontal = NO;
     scrollView.scrollsToTop = NO;
-    [_customAccessoryView addSubview:scrollView];
+    [effectView.contentView addSubview:scrollView];
+
     UIStackView *stackView = [[UIStackView alloc] init];
     stackView.axis = UILayoutConstraintAxisHorizontal;
-    stackView.spacing = 1.0;
+    stackView.spacing = 0.0;
     stackView.alignment = UIStackViewAlignmentFill;
     stackView.distribution = UIStackViewDistributionFill;
     stackView.translatesAutoresizingMaskIntoConstraints = NO;
     [scrollView addSubview:stackView];
+
+    NSLayoutConstraint *fitWidthConstraint = [scrollView.widthAnchor constraintEqualToAnchor:stackView.widthAnchor];
+    fitWidthConstraint.priority = UILayoutPriorityDefaultHigh;
+
     [NSLayoutConstraint activateConstraints:@[
+        [shadowContainer.topAnchor constraintEqualToAnchor:_customAccessoryView.topAnchor constant:3.0],
+        [shadowContainer.bottomAnchor constraintEqualToAnchor:_customAccessoryView.bottomAnchor constant:-5.0],
+        [shadowContainer.centerXAnchor constraintEqualToAnchor:_customAccessoryView.centerXAnchor],
+        [shadowContainer.leadingAnchor constraintGreaterThanOrEqualToAnchor:_customAccessoryView.safeAreaLayoutGuide.leadingAnchor constant:6.0],
+        [shadowContainer.trailingAnchor constraintLessThanOrEqualToAnchor:_customAccessoryView.safeAreaLayoutGuide.trailingAnchor constant:-6.0],
+
+        [effectView.topAnchor constraintEqualToAnchor:shadowContainer.topAnchor],
+        [effectView.bottomAnchor constraintEqualToAnchor:shadowContainer.bottomAnchor],
+        [effectView.leadingAnchor constraintEqualToAnchor:shadowContainer.leadingAnchor],
+        [effectView.trailingAnchor constraintEqualToAnchor:shadowContainer.trailingAnchor],
+
+        [scrollView.topAnchor constraintEqualToAnchor:effectView.contentView.topAnchor],
+        [scrollView.bottomAnchor constraintEqualToAnchor:effectView.contentView.bottomAnchor],
+        [scrollView.leadingAnchor constraintEqualToAnchor:effectView.contentView.leadingAnchor],
+        [scrollView.trailingAnchor constraintEqualToAnchor:effectView.contentView.trailingAnchor],
+        fitWidthConstraint,
+
         [stackView.topAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.topAnchor],
         [stackView.bottomAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.bottomAnchor],
         [stackView.leadingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.leadingAnchor],
         [stackView.trailingAnchor constraintEqualToAnchor:scrollView.contentLayoutGuide.trailingAnchor],
         [stackView.heightAnchor constraintEqualToAnchor:scrollView.frameLayoutGuide.heightAnchor]
     ]];
+
     _accessoryTapGR = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(onAccessoryBackgroundTap:)];
     _accessoryTapGR.cancelsTouchesInView = NO;
     _accessoryTapGR.delegate = self;
     [_customAccessoryView addGestureRecognizer:_accessoryTapGR];
+
     __weak typeof(self) weakSelf = self;
-    auto createBtn = ^UIButton*(NSString *title, SEL action) {
-        UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
+
+    auto createSeparator = ^UIView*() {
+        UIView *sepContainer = [[UIView alloc] init];
+        sepContainer.translatesAutoresizingMaskIntoConstraints = NO;
+        UIView *line = [[UIView alloc] init];
+        line.translatesAutoresizingMaskIntoConstraints = NO;
+        line.backgroundColor = [UIColor separatorColor];
+        [sepContainer addSubview:line];
+        [NSLayoutConstraint activateConstraints:@[
+            [sepContainer.widthAnchor constraintEqualToConstant:0.5],
+            [line.widthAnchor constraintEqualToConstant:0.5],
+            [line.centerXAnchor constraintEqualToAnchor:sepContainer.centerXAnchor],
+            [line.centerYAnchor constraintEqualToAnchor:sepContainer.centerYAnchor],
+            [line.heightAnchor constraintEqualToAnchor:sepContainer.heightAnchor multiplier:0.55]
+        ]];
+        return sepContainer;
+    };
+
+    auto applyPopupBtnStyle = ^(UIButton *btn, NSString *title, NSString *symbolName) {
         [btn setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
         [btn setContentCompressionResistancePriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
         if (@available(iOS 15.0, *)) {
             UIButtonConfiguration *config = [UIButtonConfiguration plainButtonConfiguration];
-            NSDictionary *attributes = @{NSFontAttributeName: [UIFont systemFontOfSize:13 weight:UIFontWeightMedium]};
-            config.attributedTitle = [[NSAttributedString alloc] initWithString:title attributes:attributes];
+            if (title.length > 0) {
+                NSDictionary *attributes = @{NSFontAttributeName: [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium]};
+                config.attributedTitle = [[NSAttributedString alloc] initWithString:title attributes:attributes];
+            }
+            if (symbolName.length > 0) {
+                CGFloat ptSize = (title.length > 0) ? 11.5 : 13.5;
+                UIImageSymbolConfiguration *symCfg = [UIImageSymbolConfiguration configurationWithPointSize:ptSize weight:UIImageSymbolWeightMedium];
+                config.image = [UIImage systemImageNamed:symbolName withConfiguration:symCfg];
+                config.imagePlacement = NSDirectionalRectEdgeLeading;
+                config.imagePadding = (title.length > 0) ? 3.5 : 0.0;
+            }
             config.baseForegroundColor = [UIColor labelColor];
             config.background.cornerRadius = 0;
-            config.contentInsets = NSDirectionalEdgeInsetsMake(0, 10, 0, 10);
+            CGFloat hInset = (title.length > 0) ? 8.5 : 9.0;
+            config.contentInsets = NSDirectionalEdgeInsetsMake(0, hInset, 0, hInset);
             btn.configuration = config;
             btn.configurationUpdateHandler = ^(UIButton *updatedBtn) {
                 UIButtonConfiguration *updatedConfig = updatedBtn.configuration;
                 if (updatedBtn.isHighlighted) {
                     updatedConfig.background.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-                        return trait.userInterfaceStyle == UIUserInterfaceStyleDark ? [UIColor colorWithWhite:1.0 alpha:0.3] : [UIColor colorWithWhite:0.0 alpha:0.15];
+                        return trait.userInterfaceStyle == UIUserInterfaceStyleDark
+                            ? [UIColor colorWithWhite:1.0 alpha:0.22]
+                            : [UIColor colorWithWhite:0.0 alpha:0.12];
                     }];
                 } else {
-                    updatedConfig.background.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
-                        return trait.userInterfaceStyle == UIUserInterfaceStyleDark ? [UIColor colorWithWhite:1.0 alpha:0.1] : [UIColor colorWithWhite:0.0 alpha:0.05];
-                    }];
+                    updatedConfig.background.backgroundColor = [UIColor clearColor];
                 }
                 updatedBtn.configuration = updatedConfig;
             };
         } else {
-            [btn setTitle:title forState:UIControlStateNormal];
+            if (title.length > 0) {
+                [btn setTitle:title forState:UIControlStateNormal];
+            }
+            if (symbolName.length > 0) {
+                [btn setImage:[UIImage systemImageNamed:symbolName] forState:UIControlStateNormal];
+            }
             [btn setTitleColor:[UIColor labelColor] forState:UIControlStateNormal];
-            btn.titleLabel.font = [UIFont systemFontOfSize:13 weight:UIFontWeightMedium];
-            btn.backgroundColor = [UIColor colorWithWhite:0.5 alpha:0.2];
-            btn.layer.cornerRadius = 0;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            btn.contentEdgeInsets = UIEdgeInsetsMake(0, 10, 0, 10);
-            btn.showsTouchWhenHighlighted = YES;
-#pragma clang diagnostic pop
+            btn.tintColor = [UIColor labelColor];
+            btn.titleLabel.font = [UIFont systemFontOfSize:12.5 weight:UIFontWeightMedium];
         }
-        [btn addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull uiAction) {
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf) return;
-            if (action == @selector(openRecentDocument:)) {
-                if (strongSelf.onDismissOpenRecentIfVisible && strongSelf.onDismissOpenRecentIfVisible()) {
-                    return;
+    };
+
+    auto invokeEditorAction = ^(SEL action, id senderObj) {
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf hideHelpIfNeeded];
+        [strongSelf hideEditMenuIfNeeded];
+        void (^fireAction)(void) = ^{
+            __strong typeof(weakSelf) innerSelf = weakSelf;
+            if (!innerSelf) return;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+            [innerSelf performSelector:action withObject:senderObj];
+#pragma clang diagnostic pop
+        };
+        if (strongSelf.onDismissOpenRecentThenPerform) {
+            strongSelf.onDismissOpenRecentThenPerform(fireAction);
+        } else {
+            fireAction();
+        }
+    };
+
+    auto createMenuAction = ^UIAction*(NSString *title, NSString *symbolName, SEL action) {
+        UIImage *img = (symbolName.length > 0) ? [UIImage systemImageNamed:symbolName] : nil;
+        return [UIAction actionWithTitle:title image:img identifier:nil handler:^(__kindof UIAction * _Nonnull uiAction) {
+            invokeEditorAction(action, uiAction.sender);
+        }];
+    };
+
+    auto createCategoryBtn = ^UIButton*(NSString *title, NSString *symbolName, NSArray<UIMenuElement *> *(^elementsProvider)(void)) {
+        UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
+        applyPopupBtnStyle(btn, title, symbolName);
+        if (@available(iOS 15.0, *)) {
+            UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^ _Nonnull completion)(NSArray<UIMenuElement *> * _Nonnull elements)) {
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (strongSelf) {
+                    [strongSelf hideHelpIfNeeded];
+                    [strongSelf hideEditMenuIfNeeded];
                 }
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-                [strongSelf performSelector:action withObject:uiAction.sender];
-#pragma clang diagnostic pop
-                return;
-            }
-            id senderObj = uiAction.sender;
-            void (^fireAction)(void) = ^{
-                __strong typeof(weakSelf) innerSelf = weakSelf;
-                if (!innerSelf) return;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
-                [innerSelf performSelector:action withObject:senderObj];
-#pragma clang diagnostic pop
-            };
-            if (strongSelf.onDismissOpenRecentThenPerform) {
-                strongSelf.onDismissOpenRecentThenPerform(fireAction);
-            } else {
-                fireAction();
-            }
+                completion(elementsProvider ? elementsProvider() : @[]);
+            }];
+            btn.menu = [UIMenu menuWithTitle:@"" children:@[deferred]];
+            btn.showsMenuAsPrimaryAction = YES;
+        } else if (@available(iOS 14.0, *)) {
+            UIDeferredMenuElement *deferred = [UIDeferredMenuElement elementWithProvider:^(void (^ _Nonnull completion)(NSArray<UIMenuElement *> * _Nonnull elements)) {
+                completion(elementsProvider ? elementsProvider() : @[]);
+            }];
+            btn.menu = [UIMenu menuWithTitle:@"" children:@[deferred]];
+            btn.showsMenuAsPrimaryAction = YES;
+        }
+        return btn;
+    };
+
+    auto createIconBtn = ^UIButton*(NSString *symbolName, NSString *accessibilityTitle, SEL action) {
+        UIButton *btn = [UIButton buttonWithType:UIButtonTypeCustom];
+        applyPopupBtnStyle(btn, @"", symbolName);
+        btn.accessibilityLabel = accessibilityTitle;
+        [btn addAction:[UIAction actionWithHandler:^(__kindof UIAction * _Nonnull uiAction) {
+            invokeEditorAction(action, uiAction.sender);
         }] forControlEvents:UIControlEventTouchUpInside];
         return btn;
     };
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"New", nil), @selector(newDocument:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Open", nil), @selector(openDocument:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Open Recent", nil), @selector(openRecentDocument:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Save", nil), @selector(saveDocument:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Save As", nil), @selector(saveDocumentAs:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Find", nil), @selector(cmdFind:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Replace", nil), @selector(cmdReplace:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Live Preview", nil), @selector(togglePreviewAction:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Word Wrap", nil), @selector(toggleWordWrapAction:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Toggle Comment", nil), @selector(toggleCommentAction:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Tab", nil), @selector(handleTabKey:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Top", nil), @selector(moveToDocStart:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Bottom", nil), @selector(moveToDocEnd:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Go To", nil), @selector(cmdGoToLine:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Undo", nil), @selector(handleUndo:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Redo", nil), @selector(handleRedo:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Select All", nil), @selector(selectAll:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Cut", nil), @selector(cut:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Copy", nil), @selector(copy:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Paste", nil), @selector(paste:))];
-    [stackView addArrangedSubview:createBtn(@"?", @selector(toggleHelp:))];
-    [stackView addArrangedSubview:createBtn(NSLocalizedString(@"Done", nil), @selector(dismissKeyboard))];
+
+    NSString *helpMenuTitle = @"?";
+    NSString *rawHelpText = NSLocalizedString(@"HelpText_iOS", nil);
+    if (rawHelpText.length > 0) {
+        for (NSString *line in [rawHelpText componentsSeparatedByCharactersInSet:[NSCharacterSet newlineCharacterSet]]) {
+            NSString *trimmed = [line stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+            if ([trimmed hasPrefix:@"F1 "]) {
+                NSString *candidate = [[trimmed substringFromIndex:3] stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceCharacterSet]];
+                if (candidate.length > 0) {
+                    helpMenuTitle = candidate;
+                    break;
+                }
+            }
+        }
+    }
+
+    UIButton *fileBtn = createCategoryBtn(NSLocalizedString(@"File", nil), @"doc.text", ^NSArray<UIMenuElement *> *{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        UIMenuElement *recentElement = nil;
+        if (strongSelf && strongSelf.onBuildOpenRecentMenu) {
+            recentElement = strongSelf.onBuildOpenRecentMenu();
+        }
+        if (!recentElement) {
+            recentElement = createMenuAction(NSLocalizedString(@"Open Recent", nil), @"clock.arrow.circlepath", @selector(openRecentDocument:));
+        }
+        UIMenu *openGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
+            createMenuAction(NSLocalizedString(@"New", nil), @"doc.badge.plus", @selector(newDocument:)),
+            createMenuAction(NSLocalizedString(@"Open", nil), @"folder", @selector(openDocument:)),
+            recentElement
+        ]];
+        UIMenu *saveGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
+            createMenuAction(NSLocalizedString(@"Save", nil), @"square.and.arrow.down", @selector(saveDocument:)),
+            createMenuAction(NSLocalizedString(@"Save As", nil), @"square.and.arrow.down.on.square", @selector(saveDocumentAs:))
+        ]];
+        return @[openGroup, saveGroup];
+    });
+
+    UIButton *editBtn = createCategoryBtn(NSLocalizedString(@"Edit", nil), @"pencil", ^NSArray<UIMenuElement *> *{
+        UIMenu *undoGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
+            createMenuAction(NSLocalizedString(@"Undo", nil), @"arrow.uturn.backward", @selector(handleUndo:)),
+            createMenuAction(NSLocalizedString(@"Redo", nil), @"arrow.uturn.forward", @selector(handleRedo:))
+        ]];
+        UIMenu *clipGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
+            createMenuAction(NSLocalizedString(@"Cut", nil), @"scissors", @selector(cut:)),
+            createMenuAction(NSLocalizedString(@"Copy", nil), @"doc.on.doc", @selector(copy:)),
+            createMenuAction(NSLocalizedString(@"Paste", nil), @"doc.on.clipboard", @selector(paste:)),
+            createMenuAction(NSLocalizedString(@"Select All", nil), @"selection.pin.in.out", @selector(selectAll:))
+        ]];
+        UIMenu *codeGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
+            createMenuAction(NSLocalizedString(@"Toggle Comment", nil), @"chevron.left.forwardslash.chevron.right", @selector(toggleCommentAction:))
+        ]];
+        return @[undoGroup, clipGroup, codeGroup];
+    });
+
+    UIButton *findBtn = createCategoryBtn(NSLocalizedString(@"Find", nil), @"magnifyingglass", ^NSArray<UIMenuElement *> *{
+        UIMenu *searchGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
+            createMenuAction(NSLocalizedString(@"Find", nil), @"magnifyingglass", @selector(cmdFind:)),
+            createMenuAction(NSLocalizedString(@"Replace", nil), @"arrow.left.arrow.right", @selector(cmdReplace:))
+        ]];
+        UIMenu *navGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
+            createMenuAction(NSLocalizedString(@"Go To", nil), @"number", @selector(cmdGoToLine:)),
+            createMenuAction(NSLocalizedString(@"Top", nil), @"arrow.up.to.line", @selector(moveToDocStart:)),
+            createMenuAction(NSLocalizedString(@"Bottom", nil), @"arrow.down.to.line", @selector(moveToDocEnd:))
+        ]];
+        return @[searchGroup, navGroup];
+    });
+
+    UIButton *viewBtn = createCategoryBtn(NSLocalizedString(@"View", nil), @"eye", ^NSArray<UIMenuElement *> *{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        UIAction *previewAction = createMenuAction(NSLocalizedString(@"Live Preview", nil), @"rectangle.split.2x1", @selector(togglePreviewAction:));
+        UIAction *wrapAction = createMenuAction(NSLocalizedString(@"Word Wrap", nil), @"arrow.turn.down.left", @selector(toggleWordWrapAction:));
+        if (strongSelf && strongSelf.editor) {
+            previewAction.state = strongSelf.editor->showPreview ? UIMenuElementStateOn : UIMenuElementStateOff;
+            wrapAction.state = strongSelf.editor->wordWrapEnabled ? UIMenuElementStateOn : UIMenuElementStateOff;
+        }
+        UIMenu *modeGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
+            previewAction,
+            wrapAction
+        ]];
+        UIMenu *helpGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
+            createMenuAction(helpMenuTitle, @"questionmark.circle", @selector(toggleHelp:))
+        ]];
+        return @[modeGroup, helpGroup];
+    });
+
+    UIButton *undoBtn = createIconBtn(@"arrow.uturn.backward", NSLocalizedString(@"Undo", nil), @selector(handleUndo:));
+    UIButton *redoBtn = createIconBtn(@"arrow.uturn.forward", NSLocalizedString(@"Redo", nil), @selector(handleRedo:));
+    UIButton *tabBtn  = createIconBtn(@"arrow.right.to.line", NSLocalizedString(@"Tab", nil), @selector(handleTabKey:));
+
+    NSArray<UIView *> *buttons = @[fileBtn, editBtn, findBtn, viewBtn, undoBtn, redoBtn, tabBtn];
+    for (NSUInteger i = 0; i < buttons.count; ++i) {
+        if (i > 0) {
+            [stackView addArrangedSubview:createSeparator()];
+        }
+        [stackView addArrangedSubview:buttons[i]];
+    }
     return _customAccessoryView;
 }
 - (void)dismissKeyboard {
     [self resignFirstResponder];
+    [self.window endEditing:YES];
 }
 - (void)checkCaretVisibilityAndDismissKeyboardIfNeeded {
     if (!self.isFirstResponder) return;
@@ -2431,7 +2649,7 @@ static NSString *s_iosClipboardSnapshot = nil;
                 if (!CGRectIsEmpty(accInView) && !CGRectIsNull(accInView) &&
                     accInView.origin.y > 0.0 && accInView.origin.y < self.view.bounds.size.height) {
                     CGFloat fromAcc = self.view.bounds.size.height - accInView.origin.y;
-                    if (fromAcc > shrinkAmount && fromAcc <= shrinkAmount + 44.0) {
+                    if (fromAcc > shrinkAmount && fromAcc <= shrinkAmount + 56.0) {
                         shrinkAmount = fromAcc;
                     }
                 }
@@ -3353,6 +3571,63 @@ static NSString *s_iosClipboardSnapshot = nil;
     };
     self.editorView.onOpenRecentAction = ^(UIView *sourceView) {
         [weakSelf presentOpenRecentMenuFromView:sourceView];
+    };
+    self.editorView.onBuildOpenRecentMenu = ^UIMenu *{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf || !strongSelf->_editorEngine) {
+            return [UIMenu menuWithTitle:NSLocalizedString(@"Open Recent", nil) children:@[]];
+        }
+        strongSelf->_editorEngine->loadRecentFiles();
+        NSMutableArray<UIMenuElement *> *recentItems = [NSMutableArray array];
+        if (strongSelf->_editorEngine->recentFiles.empty()) {
+            UIAction *emptyAction = [UIAction actionWithTitle:NSLocalizedString(@"No Recent Files", nil)
+                                                        image:[UIImage systemImageNamed:@"doc"]
+                                                   identifier:nil
+                                                      handler:^(__kindof UIAction * _Nonnull action) {}];
+            emptyAction.attributes = UIMenuElementAttributesDisabled;
+            [recentItems addObject:emptyAction];
+        } else {
+            NSMutableArray<UIAction *> *fileActions = [NSMutableArray array];
+            for (const auto& path : strongSelf->_editorEngine->recentFiles) {
+                NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
+                if (!nsPath || nsPath.length == 0) continue;
+                NSString *displayTitle = [strongSelf savedDisplayNameForPath:nsPath] ?: [nsPath lastPathComponent];
+                std::string capturedPath = path;
+                UIAction *fileAction = [UIAction actionWithTitle:displayTitle
+                                                           image:[UIImage systemImageNamed:@"doc.text"]
+                                                      identifier:nil
+                                                         handler:^(__kindof UIAction * _Nonnull action) {
+                    __strong typeof(weakSelf) innerSelf = weakSelf;
+                    if (!innerSelf || !innerSelf->_editorEngine) return;
+                    [innerSelf confirmSaveIfNeededWithAction:^{
+                        [innerSelf openRecentFileAtPath:capturedPath];
+                    }];
+                }];
+                [fileActions addObject:fileAction];
+            }
+            UIMenu *filesGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:fileActions];
+            [recentItems addObject:filesGroup];
+
+            UIAction *clearAction = [UIAction actionWithTitle:NSLocalizedString(@"Clear Menu", nil)
+                                                        image:[UIImage systemImageNamed:@"trash"]
+                                                   identifier:nil
+                                                      handler:^(__kindof UIAction * _Nonnull action) {
+                __strong typeof(weakSelf) innerSelf = weakSelf;
+                if (innerSelf && innerSelf->_editorEngine) {
+                    innerSelf->_editorEngine->clearRecentFiles();
+                    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"MiuRecentBookmarks"];
+                    [[NSUserDefaults standardUserDefaults] removeObjectForKey:@"MiuRecentDisplayNames"];
+                }
+            }];
+            clearAction.attributes = UIMenuElementAttributesDestructive;
+            UIMenu *clearGroup = [UIMenu menuWithTitle:@"" image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[clearAction]];
+            [recentItems addObject:clearGroup];
+        }
+        return [UIMenu menuWithTitle:NSLocalizedString(@"Open Recent", nil)
+                               image:[UIImage systemImageNamed:@"clock.arrow.circlepath"]
+                          identifier:nil
+                             options:0
+                            children:recentItems];
     };
     self.editorView.onDismissOpenRecentIfVisible = ^BOOL{
         __strong typeof(weakSelf) strongSelf = weakSelf;

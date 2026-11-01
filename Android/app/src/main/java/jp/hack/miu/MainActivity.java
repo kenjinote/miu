@@ -144,6 +144,7 @@ public class MainActivity extends NativeActivity {
     private long lastKnownModifiedTime = 0L;
     private boolean isShowingReloadPrompt = false;
     private Runnable pendingAction = null;
+    private int tempOpenSlot = 0;
 
     // Live Preview state
     private PopupWindow previewPopup;
@@ -1478,10 +1479,13 @@ public class MainActivity extends NativeActivity {
     private void actionNewDocument() {
         confirmSaveIfNeeded(() -> {
             saveCurrentViewState();
+            mainHandler.removeCallbacks(debouncedPreviewUpdateRunnable);
             cmdNewDocument();
             currentDocumentUri = null;
             lastKnownModifiedTime = 0L;
             previewShellLoaded = false;
+            pendingPreviewShellIsMdOrMermaid = false;
+            pendingPreviewDomRefresh = false;
             if (isLivePreviewVisible) updateLivePreviewContent(true);
             showSoftwareKeyboardIfNeeded();
             Toast.makeText(this, getStringResourceByName("msg_new_doc"), Toast.LENGTH_SHORT).show();
@@ -1731,20 +1735,31 @@ public class MainActivity extends NativeActivity {
             saveCurrentViewState();
             InputStream inputStream = getContentResolver().openInputStream(uri);
             if (inputStream == null) return;
-            File tempFile = new File(getCacheDir(), "miu_temp_open.txt");
-            FileOutputStream outputStream = new FileOutputStream(tempFile);
-            byte[] buffer = new byte[8192];
-            int length;
-            while ((length = inputStream.read(buffer)) > 0) outputStream.write(buffer, 0, length);
-            outputStream.flush(); outputStream.close(); inputStream.close();
+            int nextSlot = 1 - tempOpenSlot;
+            File tempFile = new File(getCacheDir(), "miu_temp_open_" + nextSlot + ".txt");
+            try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
+                byte[] buffer = new byte[8192];
+                int length;
+                while ((length = inputStream.read(buffer)) > 0) {
+                    outputStream.write(buffer, 0, length);
+                }
+                outputStream.flush();
+            } finally {
+                try { inputStream.close(); } catch (Exception ignored) {}
+            }
+            String displayName = getFileName(uri);
             if (cmdOpenDocument(tempFile.getAbsolutePath())) {
+                tempOpenSlot = nextSlot;
                 currentDocumentUri = uri;
                 lastKnownModifiedTime = queryLastModified(uri);
                 addRecentUri(uri);
-                cmdSetDisplayFileName(getFileName(uri));
+                cmdSetDisplayFileName(displayName);
                 cmdMarkSaved();
                 restoreViewStateForUri(uri);
+                mainHandler.removeCallbacks(debouncedPreviewUpdateRunnable);
                 previewShellLoaded = false;
+                pendingPreviewShellIsMdOrMermaid = false;
+                pendingPreviewDomRefresh = false;
                 if (isLivePreviewVisible) updateLivePreviewContent(true);
                 hideSoftwareKeyboard();
                 Toast.makeText(this, getStringResourceByName("msg_doc_opened"), Toast.LENGTH_SHORT).show();
@@ -2114,8 +2129,8 @@ public class MainActivity extends NativeActivity {
     }
 
     public void closeHelpUI() {
-        cmdSetHelpVisible(false);
         if (Looper.myLooper() == Looper.getMainLooper()) {
+            cmdSetHelpVisible(false);
             if (helpPopup != null) {
                 if (helpPopup.isShowing()) {
                     helpPopup.dismiss();
@@ -2124,6 +2139,7 @@ public class MainActivity extends NativeActivity {
             }
         } else {
             runOnUiThread(() -> {
+                cmdSetHelpVisible(false);
                 if (helpPopup != null) {
                     if (helpPopup.isShowing()) {
                         helpPopup.dismiss();
