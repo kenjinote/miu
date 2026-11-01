@@ -1086,6 +1086,47 @@ ASC_PROMOTIONAL_TEXT = {
 for _loc, _pt in ASC_PROMOTIONAL_TEXT.items():
     assert len(_pt) <= 170, f"Promotional text for {_loc} exceeds 170 chars ({len(_pt)}): {_pt}"
 
+# Map of App Store Connect locale codes -> AppInfo subtitle (<= 30 characters, direct "Text Editor" in each language)
+ASC_SUBTITLES = {
+    "ja": "テキストエディタ",
+    "en-US": "Text Editor",
+    "en-GB": "Text Editor",
+    "en-AU": "Text Editor",
+    "en-CA": "Text Editor",
+    "zh-Hans": "文本编辑器",
+    "zh-Hant": "文字編輯器",
+    "ko": "텍스트 에디터",
+    "de-DE": "Texteditor",
+    "fr-FR": "Éditeur de texte",
+    "fr-CA": "Éditeur de texte",
+    "es-ES": "Editor de texto",
+    "es-MX": "Editor de texto",
+    "it": "Editor di testo",
+    "pt-BR": "Editor de Texto",
+    "pt-PT": "Editor de texto",
+    "ru": "Текстовый редактор",
+    "nl-NL": "Teksteditor",
+    "sv": "Textredigerare",
+    "da": "Teksteditor",
+    "no": "Tekstredigerer",
+    "fi": "Tekstieditori",
+    "pl": "Edytor tekstu",
+    "cs": "Textový editor",
+    "hu": "Szövegszerkesztő",
+    "ro": "Editor de text",
+    "el": "Επεξεργαστής κειμένου",
+    "tr": "Metin Düzenleyici",
+    "uk": "Текстовий редактор",
+    "vi": "Trình soạn thảo văn bản",
+    "th": "โปรแกรมแก้ไขข้อความ",
+    "id": "Editor Teks",
+    "ms": "Penyunting Teks",
+    "hi": "टेक्स्ट एडिटर",
+}
+
+for _loc, _sub in ASC_SUBTITLES.items():
+    assert len(_sub) <= 30, f"Subtitle for {_loc} exceeds 30 chars ({len(_sub)}): {_sub}"
+
 # Map of App Store Connect locale codes -> (description, whatsNew)
 ASC_LOCALIZATIONS = {
     "ja": (JA_DESC, JA_WHATS_NEW),
@@ -1243,19 +1284,22 @@ def sync_app_info_localizations(app_id, app_name, headers):
         updated_count = 0
         created_count = 0
         for locale in ASC_LOCALIZATIONS.keys():
+            subtitle = ASC_SUBTITLES[locale]
             if locale in existing_locales:
                 loc_obj = existing_locales[locale]
                 loc_id = loc_obj["id"]
                 cur_url = (loc_obj.get("attributes", {}).get("privacyPolicyUrl") or "").strip()
-                if cur_url == privacy_url:
+                cur_sub = (loc_obj.get("attributes", {}).get("subtitle") or "").strip()
+                if cur_url == privacy_url and cur_sub == subtitle:
                     updated_count += 1
-                    print(f"  [OK] AppInfo {locale} privacyPolicyUrl already set ({privacy_url})")
+                    print(f"  [OK] AppInfo {locale} subtitle ('{subtitle}') & privacyPolicyUrl already set")
                     continue
                 patch_payload = {
                     "data": {
                         "type": "appInfoLocalizations",
                         "id": loc_id,
                         "attributes": {
+                            "subtitle": subtitle,
                             "privacyPolicyUrl": privacy_url,
                         },
                     }
@@ -1263,7 +1307,7 @@ def sync_app_info_localizations(app_id, app_name, headers):
                 res_p = requests.patch(f"{BASE_URL}/appInfoLocalizations/{loc_id}", headers=headers, json=patch_payload)
                 if res_p.status_code == 200:
                     updated_count += 1
-                    print(f"  [OK] Updated AppInfo {locale} privacyPolicyUrl -> {privacy_url}")
+                    print(f"  [OK] Updated AppInfo {locale} subtitle='{subtitle}', privacyPolicyUrl='{privacy_url}'")
                 else:
                     print(f"  [ERR] Failed to update AppInfo {locale} (HTTP {res_p.status_code}: {res_p.text[:200]})")
             else:
@@ -1273,6 +1317,7 @@ def sync_app_info_localizations(app_id, app_name, headers):
                         "attributes": {
                             "locale": locale,
                             "name": "miu",
+                            "subtitle": subtitle,
                             "privacyPolicyUrl": privacy_url,
                         },
                         "relationships": {
@@ -1288,13 +1333,13 @@ def sync_app_info_localizations(app_id, app_name, headers):
                 res = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
                 if res.status_code in (200, 201):
                     created_count += 1
-                    print(f"  [+] Created AppInfo {locale} (name: 'miu', privacyPolicyUrl: {privacy_url})")
+                    print(f"  [+] Created AppInfo {locale} (name: 'miu', subtitle: '{subtitle}', privacyPolicyUrl: {privacy_url})")
                 else:
                     payload["data"]["attributes"]["name"] = app_name
                     res2 = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
                     if res2.status_code in (200, 201):
                         created_count += 1
-                        print(f"  [+] Created AppInfo {locale} (name: '{app_name}', privacyPolicyUrl: {privacy_url})")
+                        print(f"  [+] Created AppInfo {locale} (name: '{app_name}', subtitle: '{subtitle}', privacyPolicyUrl: {privacy_url})")
                     else:
                         print(f"  [!] Skipped AppInfo {locale} (HTTP {res2.status_code}: {res2.text[:200]})")
         print(f"AppInfo Summary (ID: {info_id}): {updated_count} updated/verified, {created_count} created.")
