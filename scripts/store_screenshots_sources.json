@@ -1,27 +1,27 @@
 {
   "cs": [
-    "md_en.png",
+    "md_cs.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "da": [
-    "md_en.png",
+    "md_da.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "de": [
-    "md_en.png",
+    "md_de.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "el": [
-    "md_en.png",
+    "md_el.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
@@ -35,49 +35,49 @@
     "mc_en.png"
   ],
   "es": [
-    "md_en.png",
+    "md_es.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "fi": [
-    "md_en.png",
+    "md_fi.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "fr": [
-    "md_en.png",
+    "md_fr.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "hi": [
-    "md_en.png",
+    "md_hi.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "hu": [
-    "md_en.png",
+    "md_hu.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "id": [
-    "md_en.png",
+    "md_id.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "it": [
-    "md_en.png",
+    "md_it.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
@@ -91,105 +91,105 @@
     "mc_ja.png"
   ],
   "ko": [
-    "md_en.png",
+    "md_ko.png",
     "mermaid_ko.png",
     "math_ko.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "ms": [
-    "md_en.png",
+    "md_ms.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "nb": [
-    "md_en.png",
+    "md_nb.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "nl": [
-    "md_en.png",
+    "md_nl.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "pl": [
-    "md_en.png",
+    "md_pl.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "pt_br": [
-    "md_en.png",
+    "md_pt_br.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "ro": [
-    "md_en.png",
+    "md_ro.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "ru": [
-    "md_en.png",
+    "md_ru.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "sv": [
-    "md_en.png",
+    "md_sv.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "th": [
-    "md_en.png",
+    "md_th.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "tr": [
-    "md_en.png",
+    "md_tr.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "uk": [
-    "md_en.png",
+    "md_uk.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "vi": [
-    "md_en.png",
+    "md_vi.png",
     "mermaid_en.png",
     "math_en.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "zh_cn": [
-    "md_en.png",
+    "md_zh_cn.png",
     "mermaid_zh_cn.png",
     "math_zh_cn.png",
     "regex_en.png",
     "mc_en.png"
   ],
   "zh_tw": [
-    "md_en.png",
+    "md_zh_tw.png",
     "mermaid_zh_tw.png",
     "math_zh_tw.png",
     "regex_en.png",

@@ -463,9 +463,13 @@ def apply_frosted_glass_panel(panel_img, bg_crop, is_dark, has_right_preview=Fal
     bg_arr = np.asarray(acrylic_bg, dtype=np.float32)
 
     h, w, _ = arr.shape
-    sample_y = min(h - 1, max(0, h - 24 if not is_vertical_split else (h // 2 - 20)))
-    sample_x = min(w - 1, 180)
-    sample_bg = arr[sample_y, sample_x].copy()
+    ed_h = (h // 2) if (has_right_preview and is_vertical_split) else h
+    ed_w = (w // 2) if (has_right_preview and not is_vertical_split) else w
+    patch = arr[max(0, ed_h - 80):max(10, ed_h - 6), min(60, ed_w - 10):max(70, ed_w - 20)]
+    if patch.size > 0:
+        sample_bg = np.percentile(patch, 20 if is_dark else 80, axis=(0, 1)).astype(np.float32)
+    else:
+        sample_bg = arr[min(h - 1, ed_h - 10), min(w - 1, 180)].copy()
 
     glass_mask = np.ones((h, w, 1), dtype=np.float32)
     if has_right_preview:
@@ -654,34 +658,83 @@ def draw_ios_find_replace_bar(bar_w, ui_strings, font_bold_path, font_reg_path):
 
 
 def draw_ios_accessory_bar(bar_w, is_dark, ui_strings, font_bold_path, active_preview=False):
-    """Render the localized iOS quick-action toolbar from ViewController.mm."""
-    bar_h = 44
-    bg_col = (24, 28, 38, 250) if is_dark else (241, 245, 249, 250)
-    bar = Image.new("RGBA", (bar_w, bar_h), bg_col)
+    """Render the localized iOS/Android categorized floating pill toolbar (File | Edit | Find | View | Undo | Redo | Tab | Dismiss)."""
+    bar_h = 48
+    bar = Image.new("RGBA", (bar_w, bar_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(bar)
-    sep_col = (51, 65, 85, 255) if is_dark else (203, 213, 225, 255)
-    draw.line([(0, 0), (bar_w, 0)], fill=sep_col, width=1)
+
+    # Outer floating capsule container
+    pad_x = 12
+    pill_y1, pill_y2 = 4, bar_h - 4
+    pill_bg = (26, 31, 45, 244) if is_dark else (245, 247, 252, 246)
+    pill_bd = (71, 85, 105, 190) if is_dark else (203, 213, 225, 220)
+    draw.rounded_rectangle([pad_x, pill_y1, bar_w - pad_x, pill_y2], radius=20, fill=pill_bg, outline=pill_bd, width=1)
 
     f_btn = ImageFont.truetype(font_bold_path, 13)
-    keys = ["New", "Open", "Save", "Find", "Replace", "Live Preview", "Word Wrap", "Toggle Comment", "Tab", "Done"]
-    px = 10
-    for k in keys:
+    cat_keys = ["File", "Edit", "Find", "View"]
+    px = pad_x + 10
+    for k in cat_keys:
         lbl = ui_strings.get(k, k)
         bb = draw.textbbox((0, 0), lbl, font=f_btn)
-        bw = (bb[2] - bb[0]) + 20
-        if px + bw > bar_w - 8:
+        tw = bb[2] - bb[0]
+        bw = tw + 30
+        if px + bw > bar_w - pad_x - 126:
             break
-        is_hi = (k == "Live Preview" and active_preview)
+        is_hi = (k == "View" and active_preview)
         if is_hi:
-            btn_bg = (14, 165, 233, 55) if is_dark else (0, 122, 255, 28)
+            btn_bg = (14, 165, 233, 62) if is_dark else (0, 122, 255, 32)
             btn_fg = (56, 189, 248, 255) if is_dark else (0, 102, 225, 255)
-            draw.rounded_rectangle([px, 7, px + bw, bar_h - 7], radius=6, fill=btn_bg, outline=btn_fg, width=1)
+            draw.rounded_rectangle([px, 9, px + bw, bar_h - 9], radius=14, fill=btn_bg, outline=btn_fg, width=1)
         else:
-            btn_bg = (255, 255, 255, 22) if is_dark else (15, 23, 42, 12)
+            btn_bg = (255, 255, 255, 24) if is_dark else (15, 23, 42, 14)
             btn_fg = (226, 232, 240, 255) if is_dark else (30, 41, 59, 255)
-            draw.rounded_rectangle([px, 7, px + bw, bar_h - 7], radius=6, fill=btn_bg)
-        draw.text((px + 10, 13), lbl, font=f_btn, fill=btn_fg)
+            draw.rounded_rectangle([px, 9, px + bw, bar_h - 9], radius=14, fill=btn_bg)
+        draw.text((px + 10, 15), lbl, font=f_btn, fill=btn_fg)
+        # Vector downward chevron
+        cx = px + 10 + tw + 9
+        cy = bar_h // 2 + 1
+        draw.line([(cx - 3, cy - 2), (cx, cy + 2), (cx + 3, cy - 2)], fill=btn_fg, width=2)
         px += bw + 6
+
+    # Vertical divider before quick-action buttons
+    sep_col = (71, 85, 105, 180) if is_dark else (203, 213, 225, 210)
+    if px + 110 < bar_w - pad_x:
+        draw.line([(px + 2, 13), (px + 2, bar_h - 13)], fill=sep_col, width=1)
+        px += 10
+
+    # Vector Undo & Redo buttons + Tab pill
+    btn_bg = (255, 255, 255, 20) if is_dark else (15, 23, 42, 12)
+    btn_fg = (226, 232, 240, 255) if is_dark else (30, 41, 59, 255)
+    for is_redo in (False, True):
+        bw = 32
+        if px + bw > bar_w - pad_x - 42:
+            break
+        draw.rounded_rectangle([px, 9, px + bw, bar_h - 9], radius=14, fill=btn_bg)
+        cx = px + bw // 2
+        cy = bar_h // 2
+        draw.arc([cx - 6, cy - 5, cx + 6, cy + 7], start=200 if not is_redo else 250, end=70 if not is_redo else 340, fill=btn_fg, width=2)
+        if not is_redo:
+            draw.line([(cx - 6, cy - 2), (cx - 2, cy - 5)], fill=btn_fg, width=2)
+            draw.line([(cx - 6, cy - 2), (cx - 2, cy + 1)], fill=btn_fg, width=2)
+        else:
+            draw.line([(cx + 6, cy - 2), (cx + 2, cy - 5)], fill=btn_fg, width=2)
+            draw.line([(cx + 6, cy - 2), (cx + 2, cy + 1)], fill=btn_fg, width=2)
+        px += bw + 5
+
+    tab_lbl = ui_strings.get("Tab", "Tab")
+    bb = draw.textbbox((0, 0), tab_lbl, font=f_btn)
+    tw = bb[2] - bb[0]
+    bw = max(36, tw + 18)
+    if px + bw <= bar_w - pad_x - 42:
+        draw.rounded_rectangle([px, 9, px + bw, bar_h - 9], radius=14, fill=btn_bg)
+        draw.text((px + (bw - tw) // 2, 15), tab_lbl, font=f_btn, fill=btn_fg)
+
+    # Right-pinned keyboard dismiss button
+    kb_x = bar_w - pad_x - 38
+    kb_bg = (255, 255, 255, 24) if is_dark else (15, 23, 42, 14)
+    kb_fg = (180, 194, 214, 255) if is_dark else (71, 85, 105, 255)
+    draw.rounded_rectangle([kb_x, 9, kb_x + 30, bar_h - 9], radius=14, fill=kb_bg)
+    draw.line([(kb_x + 10, 21), (kb_x + 15, 26), (kb_x + 20, 21)], fill=kb_fg, width=2)
 
     return bar
 
@@ -1248,6 +1301,224 @@ def render_ipad_slide(spec, font_bold_path, font_reg_path, target_size=(2732, 20
 
 
 # ============================================================================
+# Compositor 4: iPhone Duo Unfolded Dual-Screen Book Mode (APP_IPHONE_DUO)
+# ============================================================================
+
+IPHONE_DUO_BG_CACHE = {}
+
+def draw_ios_category_popup_menu(ui_strings, is_dark, font_bold_path, font_reg_path):
+    """Render an authentic iOS UIMenu popup above the 'View' category pill."""
+    mw, mh = 224, 184
+    menu = Image.new("RGBA", (mw, mh), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(menu)
+
+    bg_col = (34, 41, 58, 246) if is_dark else (250, 252, 255, 248)
+    bd_col = (100, 116, 139, 180) if is_dark else (203, 213, 225, 220)
+    draw.rounded_rectangle([0, 0, mw - 1, mh - 1], radius=14, fill=bg_col, outline=bd_col, width=1)
+
+    f_item = ImageFont.truetype(font_reg_path, 12)
+    f_bold = ImageFont.truetype(font_bold_path, 12)
+    fg_col = (241, 245, 249, 255) if is_dark else (15, 23, 42, 255)
+    acc_col = (56, 189, 248, 255) if is_dark else (0, 122, 255, 255)
+    sep_col = (71, 85, 105, 140) if is_dark else (226, 232, 240, 220)
+
+    items = [
+        (ui_strings.get("Live Preview", "Live Preview"), True, "Opt+P"),
+        (ui_strings.get("Word Wrap", "Word Wrap"), True, "Opt+Z"),
+        (ui_strings.get("Show Line Numbers", "Line Numbers"), True, "#123"),
+        (ui_strings.get("Status Bar", "Status Bar"), True, "Ln/Col"),
+        (ui_strings.get("Zoom In", "Zoom In") + " / " + ui_strings.get("Zoom Out", "Zoom Out"), False, "A+ / A-"),
+    ]
+    ry = 8
+    for idx, (label, checked, icon_str) in enumerate(items):
+        short_lbl = label if len(label) <= 20 else label[:18] + "…"
+        col = acc_col if idx == 0 else fg_col
+        if checked:
+            draw.line([(12, ry + 14), (16, ry + 18), (22, ry + 10)], fill=acc_col, width=2)
+        draw.text((30, ry + 6), short_lbl, font=f_bold if idx == 0 else f_item, fill=col)
+        ib = draw.textbbox((0, 0), icon_str, font=f_item)
+        draw.text((mw - 12 - (ib[2] - ib[0]), ry + 6), icon_str, font=f_item, fill=(148, 163, 184, 230) if idx > 0 else acc_col)
+        ry += 34
+        if idx < len(items) - 1:
+            draw.line([(12, ry - 2), (mw - 12, ry - 2)], fill=sep_col, width=1)
+    return menu
+
+
+def render_iphone_duo_slide(spec, font_bold_path, font_reg_path, target_size=(2796, 1864)):
+    """Render an iPhone Duo unfolded dual-screen book-posture screenshot with 50:50 center-hinge split."""
+    W, H = 1398, 932
+    pal_key = (id(spec["palette"]), W, H)
+    if pal_key not in IPHONE_DUO_BG_CACHE:
+        IPHONE_DUO_BG_CACHE[pal_key] = make_mesh_background(W, H, spec["palette"])
+    bg = IPHONE_DUO_BG_CACHE[pal_key]
+    is_dark = spec["is_dark"]
+
+    canvas = bg.convert("RGBA")
+    cdraw = ImageDraw.Draw(canvas)
+
+    # Top marketing header
+    f_badge = ImageFont.truetype(font_bold_path, 14)
+    badge_txt = "iPhone Duo  ·  " + spec["badge"]
+    bb = cdraw.textbbox((0, 0), badge_txt, font=f_badge)
+    bw = (bb[2] - bb[0]) + 32
+    bh = 32
+    bx = (W - bw) // 2
+    ty = 22
+    if is_dark:
+        cdraw.rounded_rectangle([bx, ty, bx + bw, ty + bh], radius=16, fill=(56, 189, 248, 45), outline=(56, 189, 248, 165), width=2)
+        cdraw.text((bx + 16, ty + 6), badge_txt, font=f_badge, fill=(125, 211, 252, 255))
+    else:
+        cdraw.rounded_rectangle([bx, ty, bx + bw, ty + bh], radius=16, fill=(255, 255, 255, 185), outline=(29, 78, 216, 130), width=2)
+        cdraw.text((bx + 16, ty + 6), badge_txt, font=f_badge, fill=(23, 58, 148, 255))
+
+    is_cjk = any(ord(ch) > 0x2E80 for line in spec["title"] for ch in line)
+    sep = "" if is_cjk else " "
+    full_title = sep.join(spec["title"])
+    max_tw = W - 120
+    title_sz = 38
+    while title_sz > 22:
+        f_title = ImageFont.truetype(font_bold_path, title_sz)
+        tb = cdraw.textbbox((0, 0), full_title, font=f_title)
+        if (tb[2] - tb[0]) <= max_tw:
+            break
+        title_sz -= 2
+
+    ty += 42
+    title_col = (255, 255, 255, 255) if is_dark else (18, 42, 92, 255)
+    tb = cdraw.textbbox((0, 0), full_title, font=f_title)
+    cdraw.text(((W - (tb[2] - tb[0])) // 2, ty), full_title, font=f_title, fill=title_col)
+
+    ty += int(title_sz * 1.34)
+    sub_col = (203, 213, 225, 245) if is_dark else (45, 72, 122, 240)
+    f_sub = ImageFont.truetype(font_reg_path, 16)
+    for sline in spec["sub"]:
+        sb = cdraw.textbbox((0, 0), sline, font=f_sub)
+        cdraw.text(((W - (sb[2] - sb[0])) // 2, ty), sline, font=f_sub, fill=sub_col)
+        ty += 24
+
+    # iPhone Duo Unfolded Dual-Screen Chassis Geometry
+    dev_w, dev_h = 1172, 704
+    bezel = 14
+    hinge_w = 16
+    scr_w, scr_h = dev_w - bezel * 2, dev_h - bezel * 2  # 1144 x 676
+    pane_w = (scr_w - hinge_w) // 2                      # 564px per screen
+    dx = (W - dev_w) // 2
+    dy = 196
+
+    # Drop shadow under both halves of the unfolded device
+    shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    ImageDraw.Draw(shadow).rounded_rectangle(
+        [dx - 8, dy + 14, dx + dev_w + 8, dy + dev_h + 24],
+        radius=42,
+        fill=(4, 8, 22, 155 if is_dark else 90),
+    )
+    shadow = shadow.filter(ImageFilter.GaussianBlur(radius=24))
+    canvas = Image.alpha_composite(canvas, shadow)
+    cdraw = ImageDraw.Draw(canvas)
+
+    # Left & Right Titanium book-mode chassis halves + center hinge spine
+    half_dev_w = (dev_w - 4) // 2
+    cdraw.rounded_rectangle(
+        [dx, dy, dx + half_dev_w + 10, dy + dev_h - 1],
+        radius=38,
+        fill=(28, 33, 46, 255),
+        outline=(148, 163, 184, 155),
+        width=3,
+    )
+    cdraw.rounded_rectangle(
+        [dx + dev_w - half_dev_w - 10, dy, dx + dev_w - 1, dy + dev_h - 1],
+        radius=38,
+        fill=(28, 33, 46, 255),
+        outline=(148, 163, 184, 155),
+        width=3,
+    )
+    # Center mechanical hinge caps (top & bottom)
+    hx_center = dx + dev_w // 2
+    cdraw.rounded_rectangle([hx_center - 10, dy - 2, hx_center + 10, dy + 16], radius=4, fill=(71, 85, 105, 255), outline=(148, 163, 184, 180), width=1)
+    cdraw.rounded_rectangle([hx_center - 10, dy + dev_h - 16, hx_center + 10, dy + dev_h + 2], radius=4, fill=(71, 85, 105, 255), outline=(148, 163, 184, 180), width=1)
+
+    screen = Image.new("RGBA", (scr_w, scr_h), (16, 20, 34, 255) if is_dark else (248, 251, 255, 255))
+    sdraw = ImageDraw.Draw(screen)
+
+    # Top status + document bar across dual screens (40px)
+    hdr_h = 40
+    hdr_col = (18, 23, 38, 255) if is_dark else (241, 245, 251, 255)
+    sdraw.rectangle([0, 0, scr_w, hdr_h], fill=hdr_col)
+
+    # Compact Dynamic Island on left display top center
+    di_w, di_h = 96, 22
+    di_x = (pane_w - di_w) // 2
+    sdraw.rounded_rectangle([di_x, 7, di_x + di_w, 7 + di_h], radius=11, fill=(8, 10, 16, 255))
+
+    f_stat = ImageFont.truetype(font_bold_path, 13)
+    fg_stat = (226, 232, 240, 255) if is_dark else (30, 41, 59, 255)
+    sdraw.text((22, 11), "9:41  iPhone Duo", font=f_stat, fill=fg_stat)
+    # Right display status header: document title + 50:50 split badge + battery
+    right_x0 = pane_w + hinge_w
+    sdraw.text((right_x0 + 18, 11), spec["doc_title"], font=f_stat, fill=fg_stat)
+    bx_stat = scr_w - 52
+    sdraw.rounded_rectangle([bx_stat, 13, bx_stat + 24, 25], radius=3, outline=fg_stat, width=2)
+    sdraw.rectangle([bx_stat + 3, 16, bx_stat + 19, 22], fill=fg_stat)
+
+    foot_h = 52
+    body_h = scr_h - hdr_h - foot_h  # 584px
+
+    panel_raw = Image.open(spec["panel_path"]).convert("RGB")
+    panel_raw = panel_raw.crop((0, 0, panel_raw.width, panel_raw.height - 16))
+    panel_resized = panel_raw.resize((scr_w, body_h), Image.Resampling.LANCZOS)
+    bg_crop = bg.crop((dx + bezel, dy + bezel + hdr_h, dx + bezel + scr_w, dy + bezel + hdr_h + body_h))
+    frosted_body = apply_frosted_glass_panel(panel_resized, bg_crop, is_dark, spec["has_preview"], is_vertical_split=False)
+    screen.paste(frosted_body.convert("RGBA"), (0, hdr_h))
+
+    if spec["overlay"] == "regex":
+        find_bar = draw_ios_find_replace_bar(pane_w, spec["ui_strings"], font_bold_path, font_reg_path)
+        screen.alpha_composite(find_bar, (right_x0, hdr_h + body_h - find_bar.height))
+
+    # Draw Categorized Floating Pill Toolbar on the Left Screen (Editor pane)
+    acc_bar = draw_ios_accessory_bar(pane_w, is_dark, spec["ui_strings"], font_bold_path, active_preview=spec["has_preview"])
+    screen.alpha_composite(acc_bar, (0, hdr_h + body_h))
+
+    # On Slide 1 (Markdown Live Preview), also showcase the View UIMenu popup above the pill toolbar
+    if spec["idx"] == 1:
+        popup = draw_ios_category_popup_menu(spec["ui_strings"], is_dark, font_bold_path, font_reg_path)
+        screen.alpha_composite(popup, (152, hdr_h + body_h - popup.height - 4))
+
+    # Right screen bottom status / home indicator bar
+    sdraw.rectangle([right_x0, hdr_h + body_h, scr_w, scr_h], fill=hdr_col)
+    f_status = ImageFont.truetype(font_reg_path, 12)
+    st_col = (148, 163, 184, 235) if is_dark else (71, 85, 105, 220)
+    status_txt = spec.get("status_right", "Ln 1, Col 1    UTF-8    LF    100%")
+    sdraw.text((right_x0 + 20, hdr_h + body_h + 10), status_txt, font=f_status, fill=st_col)
+
+    # Home indicators on both left and right screens
+    hi_col = (203, 213, 225, 190) if is_dark else (71, 85, 105, 175)
+    sdraw.rounded_rectangle([(pane_w - 130) // 2, scr_h - 6, (pane_w + 130) // 2, scr_h - 2], radius=2, fill=hi_col)
+    sdraw.rounded_rectangle([right_x0 + (pane_w - 130) // 2, scr_h - 6, right_x0 + (pane_w + 130) // 2, scr_h - 2], radius=2, fill=hi_col)
+
+    # Draw the Center Hinge Fold Seam & MiuIOSPreviewSplitterView (50:50 snapped)
+    hx1, hx2 = pane_w, pane_w + hinge_w
+    sdraw.rectangle([hx1, 0, hx2, scr_h], fill=(10, 13, 22, 255))
+    sdraw.line([(hx1, 0), (hx1, scr_h)], fill=(71, 85, 105, 180), width=1)
+    sdraw.line([(hx2, 0), (hx2, scr_h)], fill=(71, 85, 105, 180), width=1)
+    # Center splitter grabber pill (MiuIOSPreviewSplitterView)
+    sp_cy = hdr_h + body_h // 2
+    sdraw.rounded_rectangle([hx1 + 5, sp_cy - 28, hx2 - 5, sp_cy + 28], radius=3, fill=(56, 189, 248, 210) if spec["has_preview"] else (148, 163, 184, 180))
+
+    scr_mask = Image.new("L", (scr_w, scr_h), 0)
+    mdraw = ImageDraw.Draw(scr_mask)
+    mdraw.rounded_rectangle([0, 0, pane_w - 1, scr_h - 1], radius=26, fill=255)
+    mdraw.rounded_rectangle([right_x0, 0, scr_w - 1, scr_h - 1], radius=26, fill=255)
+    mdraw.rectangle([pane_w - 6, 14, right_x0 + 6, scr_h - 14], fill=255)
+    screen.putalpha(scr_mask)
+    canvas.alpha_composite(screen, (dx + bezel, dy + bezel))
+
+    out_rgb = canvas.convert("RGB")
+    if out_rgb.size != target_size:
+        out_rgb = out_rgb.resize(target_size, Image.Resampling.LANCZOS)
+    return out_rgb
+
+
+# ============================================================================
 # Batch Renderer for All Needed Display Types & Prefixes
 # ============================================================================
 
@@ -1255,6 +1526,7 @@ DISPLAY_TYPE_RENDERERS = {
     "APP_DESKTOP": lambda spec, fb, fr: render_macos_slide(spec, fb, fr),
     "APP_IPHONE_67": lambda spec, fb, fr: render_iphone_slide(spec, fb, fr, (1290, 2796)),
     "APP_IPHONE_65": lambda spec, fb, fr: render_iphone_slide(spec, fb, fr, (1284, 2778)),
+    "APP_IPHONE_DUO": lambda spec, fb, fr: render_iphone_duo_slide(spec, fb, fr, (2796, 1864)),
     "APP_IPAD_PRO_3GEN_129": lambda spec, fb, fr: render_ipad_slide(spec, fb, fr, (2732, 2048)),
     "APP_IPAD_PRO_129": lambda spec, fb, fr: render_ipad_slide(spec, fb, fr, (2732, 2048)),
 }
@@ -1270,9 +1542,8 @@ def render_prefix_display_type(prefix, display_type, out_dir):
     for spec in specs:
         fname = f"miu_{prefix}_{display_type}_{spec['idx']}.png"
         fpath = os.path.join(out_dir, fname)
-        if not os.path.exists(fpath):
-            img = renderer(spec, fb, fr)
-            img.save(fpath, "PNG", optimize=False)
+        img = renderer(spec, fb, fr)
+        img.save(fpath, "PNG", optimize=False)
         paths.append(fpath)
     return paths
 
@@ -1558,7 +1829,7 @@ def main():
     if args.local_test:
         print(f"=== Local Test Mode: Rendering ja & en into {args.out_dir} ===")
         for prefix in ("ja", "en"):
-            for dt in ("APP_DESKTOP", "APP_IPHONE_67", "APP_IPAD_PRO_3GEN_129"):
+            for dt in ("APP_DESKTOP", "APP_IPHONE_67", "APP_IPHONE_DUO", "APP_IPAD_PRO_3GEN_129"):
                 t0 = time.time()
                 paths = render_prefix_display_type(prefix, dt, args.out_dir)
                 print(f"  [OK] {prefix} / {dt}: {len(paths)} files in {time.time() - t0:.2f}s")

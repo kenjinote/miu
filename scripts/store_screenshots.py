@@ -126,7 +126,7 @@ def build(args):
                     'Existing source pixels retained; synthetic outer titlebar, not a new macOS capture.',
                     'Mermaid/Math use English document samples outside ja/en/zh/ko.',
                     'Regex/Multi-cursor use English document samples outside ja/en.',
-                    'Markdown uses English except ja: other old sources have blank previews or Windows-only copy.',
+                    'Markdown uses localized md_<prefix>.png assets with verified live preview rendering across all 28 languages.',
                     'Region variants share their declared language deck; no implicit locale fallback.',
                     'Low resolution source assets are proportionally resampled, not detail-enhanced.'
                 ]}
