@@ -1127,6 +1127,47 @@ ASC_SUBTITLES = {
 for _loc, _sub in ASC_SUBTITLES.items():
     assert len(_sub) <= 30, f"Subtitle for {_loc} exceeds 30 chars ({len(_sub)}): {_sub}"
 
+# Map of App Store Connect locale codes -> Fallback App Name when "miu" is already taken (<= 30 characters)
+ASC_FALLBACK_NAMES = {
+    "ja": "miu – シンプルなテキストエディタ",
+    "en-US": "miu – Minimal Text Editor",
+    "en-GB": "miu – Minimal Text Editor",
+    "en-AU": "miu – Minimal Text Editor",
+    "en-CA": "miu – Minimal Text Editor",
+    "zh-Hans": "miu – 极简文本编辑器",
+    "zh-Hant": "miu – 極簡文字編輯器",
+    "ko": "miu – 심플 텍스트 에디터",
+    "de-DE": "miu – Einfacher Texteditor",
+    "fr-FR": "miu – Éditeur de texte simple",
+    "fr-CA": "miu – Éditeur de texte simple",
+    "es-ES": "miu – Editor de texto simple",
+    "es-MX": "miu – Editor de texto simple",
+    "it": "miu – Editor di testo semplice",
+    "pt-BR": "miu – Editor de texto simples",
+    "pt-PT": "miu – Editor de texto simples",
+    "ru": "miu – Лёгкий редактор текста",
+    "nl-NL": "miu – Simpele teksteditor",
+    "sv": "miu – Enkel textredigerare",
+    "da": "miu – Enkel teksteditor",
+    "no": "miu – Enkel tekstredigerer",
+    "fi": "miu – Selkeä tekstieditori",
+    "pl": "miu – Prosty edytor tekstu",
+    "cs": "miu – Jednoduchý editor textu",
+    "hu": "miu – Könnyű szövegszerkesztő",
+    "ro": "miu – Editor de text simplu",
+    "el": "miu – Επεξεργαστής κειμένου",
+    "tr": "miu – Basit Metin Düzenleyici",
+    "uk": "miu – Простий редактор тексту",
+    "vi": "miu – Soạn thảo văn bản nhẹ",
+    "th": "miu – ตัวแก้ไขข้อความอย่างง่าย",
+    "id": "miu – Editor Teks Sederhana",
+    "ms": "miu – Penyunting Teks Ringkas",
+    "hi": "miu – सरल टेक्स्ट एडिटर",
+}
+
+for _loc, _nm in ASC_FALLBACK_NAMES.items():
+    assert len(_nm) <= 30, f"Fallback name for {_loc} exceeds 30 chars ({len(_nm)}): {_nm}"
+
 # Map of App Store Connect locale codes -> (description, whatsNew)
 ASC_LOCALIZATIONS = {
     "ja": (JA_DESC, JA_WHATS_NEW),
@@ -1285,29 +1326,41 @@ def sync_app_info_localizations(app_id, app_name, headers):
         created_count = 0
         for locale in ASC_LOCALIZATIONS.keys():
             subtitle = ASC_SUBTITLES[locale]
+            fallback_name = ASC_FALLBACK_NAMES[locale]
             if locale in existing_locales:
                 loc_obj = existing_locales[locale]
                 loc_id = loc_obj["id"]
-                cur_url = (loc_obj.get("attributes", {}).get("privacyPolicyUrl") or "").strip()
-                cur_sub = (loc_obj.get("attributes", {}).get("subtitle") or "").strip()
-                if cur_url == privacy_url and cur_sub == subtitle:
+                attrs = loc_obj.get("attributes", {})
+                cur_name = (attrs.get("name") or "").strip()
+                cur_url = (attrs.get("privacyPolicyUrl") or "").strip()
+                cur_sub = (attrs.get("subtitle") or "").strip()
+
+                # Keep "miu" if this locale was able to claim "miu"; otherwise use the localized "miu – ..." name
+                target_name = "miu" if cur_name == "miu" else fallback_name
+
+                if cur_name == target_name and cur_url == privacy_url and cur_sub == subtitle:
                     updated_count += 1
-                    print(f"  [OK] AppInfo {locale} subtitle ('{subtitle}') & privacyPolicyUrl already set")
+                    print(f"  [OK] AppInfo {locale} name='{cur_name}', subtitle='{subtitle}' already set")
                     continue
+
+                patch_attrs = {
+                    "subtitle": subtitle,
+                    "privacyPolicyUrl": privacy_url,
+                }
+                if cur_name != target_name:
+                    patch_attrs["name"] = target_name
+
                 patch_payload = {
                     "data": {
                         "type": "appInfoLocalizations",
                         "id": loc_id,
-                        "attributes": {
-                            "subtitle": subtitle,
-                            "privacyPolicyUrl": privacy_url,
-                        },
+                        "attributes": patch_attrs,
                     }
                 }
                 res_p = requests.patch(f"{BASE_URL}/appInfoLocalizations/{loc_id}", headers=headers, json=patch_payload)
                 if res_p.status_code == 200:
                     updated_count += 1
-                    print(f"  [OK] Updated AppInfo {locale} subtitle='{subtitle}', privacyPolicyUrl='{privacy_url}'")
+                    print(f"  [OK] Updated AppInfo {locale} name='{target_name}' (was '{cur_name}'), subtitle='{subtitle}'")
                 else:
                     print(f"  [ERR] Failed to update AppInfo {locale} (HTTP {res_p.status_code}: {res_p.text[:200]})")
             else:
@@ -1335,11 +1388,11 @@ def sync_app_info_localizations(app_id, app_name, headers):
                     created_count += 1
                     print(f"  [+] Created AppInfo {locale} (name: 'miu', subtitle: '{subtitle}', privacyPolicyUrl: {privacy_url})")
                 else:
-                    payload["data"]["attributes"]["name"] = app_name
+                    payload["data"]["attributes"]["name"] = fallback_name
                     res2 = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
                     if res2.status_code in (200, 201):
                         created_count += 1
-                        print(f"  [+] Created AppInfo {locale} (name: '{app_name}', subtitle: '{subtitle}', privacyPolicyUrl: {privacy_url})")
+                        print(f"  [+] Created AppInfo {locale} (name: '{fallback_name}', subtitle: '{subtitle}', privacyPolicyUrl: {privacy_url})")
                     else:
                         print(f"  [!] Skipped AppInfo {locale} (HTTP {res2.status_code}: {res2.text[:200]})")
         print(f"AppInfo Summary (ID: {info_id}): {updated_count} updated/verified, {created_count} created.")
