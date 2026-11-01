@@ -1344,9 +1344,11 @@ def draw_ios_category_popup_menu(ui_strings, is_dark, font_bold_path, font_reg_p
     return menu
 
 
-def render_iphone_duo_slide(spec, font_bold_path, font_reg_path, target_size=(2796, 1864)):
-    """Render an iPhone Duo unfolded dual-screen book-posture screenshot with 50:50 center-hinge split."""
-    W, H = 1398, 932
+def render_iphone_duo_slide(spec, font_bold_path, font_reg_path, target_size=(2853, 2007)):
+    """Render an iPhone Duo unfolded dual-screen book-posture screenshot with 50:50 center-hinge split.
+    Official App Store Connect APP_IPHONE_DUO sizes: 2853x2007 (Inner Landscape), 2007x2853, 2034x1398, 1398x2034.
+    """
+    W, H = 1426, 1004
     pal_key = (id(spec["palette"]), W, H)
     if pal_key not in IPHONE_DUO_BG_CACHE:
         IPHONE_DUO_BG_CACHE[pal_key] = make_mesh_background(W, H, spec["palette"])
@@ -1363,7 +1365,7 @@ def render_iphone_duo_slide(spec, font_bold_path, font_reg_path, target_size=(27
     bw = (bb[2] - bb[0]) + 32
     bh = 32
     bx = (W - bw) // 2
-    ty = 22
+    ty = 26
     if is_dark:
         cdraw.rounded_rectangle([bx, ty, bx + bw, ty + bh], radius=16, fill=(56, 189, 248, 45), outline=(56, 189, 248, 165), width=2)
         cdraw.text((bx + 16, ty + 6), badge_txt, font=f_badge, fill=(125, 211, 252, 255))
@@ -1375,7 +1377,7 @@ def render_iphone_duo_slide(spec, font_bold_path, font_reg_path, target_size=(27
     sep = "" if is_cjk else " "
     full_title = sep.join(spec["title"])
     max_tw = W - 120
-    title_sz = 38
+    title_sz = 40
     while title_sz > 22:
         f_title = ImageFont.truetype(font_bold_path, title_sz)
         tb = cdraw.textbbox((0, 0), full_title, font=f_title)
@@ -1383,27 +1385,27 @@ def render_iphone_duo_slide(spec, font_bold_path, font_reg_path, target_size=(27
             break
         title_sz -= 2
 
-    ty += 42
+    ty += 44
     title_col = (255, 255, 255, 255) if is_dark else (18, 42, 92, 255)
     tb = cdraw.textbbox((0, 0), full_title, font=f_title)
     cdraw.text(((W - (tb[2] - tb[0])) // 2, ty), full_title, font=f_title, fill=title_col)
 
-    ty += int(title_sz * 1.34)
+    ty += int(title_sz * 1.35)
     sub_col = (203, 213, 225, 245) if is_dark else (45, 72, 122, 240)
-    f_sub = ImageFont.truetype(font_reg_path, 16)
+    f_sub = ImageFont.truetype(font_reg_path, 17)
     for sline in spec["sub"]:
         sb = cdraw.textbbox((0, 0), sline, font=f_sub)
         cdraw.text(((W - (sb[2] - sb[0])) // 2, ty), sline, font=f_sub, fill=sub_col)
-        ty += 24
+        ty += 25
 
     # iPhone Duo Unfolded Dual-Screen Chassis Geometry
-    dev_w, dev_h = 1172, 704
+    dev_w, dev_h = 1200, 756
     bezel = 14
     hinge_w = 16
-    scr_w, scr_h = dev_w - bezel * 2, dev_h - bezel * 2  # 1144 x 676
-    pane_w = (scr_w - hinge_w) // 2                      # 564px per screen
+    scr_w, scr_h = dev_w - bezel * 2, dev_h - bezel * 2  # 1172 x 728
+    pane_w = (scr_w - hinge_w) // 2                      # 578px per screen
     dx = (W - dev_w) // 2
-    dy = 196
+    dy = 208
 
     # Drop shadow under both halves of the unfolded device
     shadow = Image.new("RGBA", (W, H), (0, 0, 0, 0))
@@ -1522,11 +1524,13 @@ def render_iphone_duo_slide(spec, font_bold_path, font_reg_path, target_size=(27
 # Batch Renderer for All Needed Display Types & Prefixes
 # ============================================================================
 
+DUO_TARGET_SIZE = (2853, 2007)
+
 DISPLAY_TYPE_RENDERERS = {
     "APP_DESKTOP": lambda spec, fb, fr: render_macos_slide(spec, fb, fr),
     "APP_IPHONE_67": lambda spec, fb, fr: render_iphone_slide(spec, fb, fr, (1290, 2796)),
     "APP_IPHONE_65": lambda spec, fb, fr: render_iphone_slide(spec, fb, fr, (1284, 2778)),
-    "APP_IPHONE_DUO": lambda spec, fb, fr: render_iphone_duo_slide(spec, fb, fr, (2796, 1864)),
+    "APP_IPHONE_DUO": lambda spec, fb, fr: render_iphone_duo_slide(spec, fb, fr, DUO_TARGET_SIZE),
     "APP_IPAD_PRO_3GEN_129": lambda spec, fb, fr: render_ipad_slide(spec, fb, fr, (2732, 2048)),
     "APP_IPAD_PRO_129": lambda spec, fb, fr: render_ipad_slide(spec, fb, fr, (2732, 2048)),
 }
@@ -1727,8 +1731,8 @@ def clean_all_existing_screenshots_for_locale(loc_id, locale):
     return total_deleted
 
 
-def sync_localization_screenshot_set(loc_id, locale, display_type, file_paths):
-    """Ensure the screenshot set exists for (loc_id, display_type), delete any remaining screenshots, and upload 5 new ones."""
+def sync_localization_screenshot_set(loc_id, locale, display_type, file_paths, force_clean=False, verify_delivery=False):
+    """Ensure the screenshot set exists for (loc_id, display_type), upload 5 screenshots if not already complete."""
     # 1. List existing sets for this localization
     r_sets = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}/appScreenshotSets?limit=50")
     if r_sets.status_code != 200:
@@ -1767,25 +1771,47 @@ def sync_localization_screenshot_set(loc_id, locale, display_type, file_paths):
                     set_id = s["id"]
                     break
         if not set_id:
-            return False, f"[{locale}/{display_type}] Failed to create set ({r_create.status_code}): {r_create.text[:200]}"
+            return False, f"[{locale}/{display_type}] Failed to create set ({r_create.status_code}): {r_create.text[:300]}"
 
-    # 2. Ensure set is empty before uploading
+    # 2. Check existing screenshots in this set
     r_existing = api_request("GET", f"{BASE_URL}/appScreenshotSets/{set_id}/appScreenshots?limit=50")
+    existing_items = r_existing.json().get("data", []) if r_existing.status_code == 200 else []
+    if not force_clean and len(existing_items) == len(file_paths):
+        all_ok = all(
+            item.get("attributes", {}).get("assetDeliveryState", {}).get("state") in ("COMPLETE", "UPLOAD_COMPLETE")
+            for item in existing_items
+        )
+        if all_ok:
+            return True, f"[{locale}/{display_type}] Already has {len(existing_items)} complete screenshots (skipped)"
+
     deleted_count = 0
-    if r_existing.status_code == 200:
-        for old_ss in r_existing.json().get("data", []):
-            old_id = old_ss["id"]
-            r_del = api_request("DELETE", f"{BASE_URL}/appScreenshots/{old_id}")
-            if r_del.status_code in (200, 204, 404):
-                deleted_count += 1
+    for old_ss in existing_items:
+        old_id = old_ss["id"]
+        r_del = api_request("DELETE", f"{BASE_URL}/appScreenshots/{old_id}")
+        if r_del.status_code in (200, 204, 404):
+            deleted_count += 1
 
     # 3. Upload the 5 new screenshots in order (1..5)
     uploaded_ids = []
-    for fpath in file_paths:
+    for idx, fpath in enumerate(file_paths):
         ok, info = upload_single_screenshot(set_id, fpath)
         if not ok:
             return False, f"[{locale}/{display_type}] {info}"
         uploaded_ids.append(info)
+
+        # Optionally verify first screenshot processing state on App Store Connect
+        if verify_delivery and idx == 0:
+            for _ in range(8):
+                time.sleep(1.5)
+                r_chk = api_request("GET", f"{BASE_URL}/appScreenshots/{info}")
+                if r_chk.status_code == 200:
+                    st_obj = r_chk.json().get("data", {}).get("attributes", {}).get("assetDeliveryState", {})
+                    st = st_obj.get("state", "")
+                    errs = st_obj.get("errors", [])
+                    if errs or st == "FAILED":
+                        return False, f"DELIVERY_FAILED:{st}:{errs}"
+                    if st == "COMPLETE":
+                        break
 
     # 4. Explicitly set the ordering relationship on the set
     order_payload = {
@@ -1796,8 +1822,41 @@ def sync_localization_screenshot_set(loc_id, locale, display_type, file_paths):
     return True, f"[{locale}/{display_type}] Uploaded {len(uploaded_ids)} screenshots"
 
 
+def discover_iphone_duo_display_type(existing_locs):
+    """Discover or confirm the exact ScreenshotDisplayType enum value for iPhone Duo on IOS."""
+    probe_loc_id = existing_locs.get("ja") or existing_locs.get("en-US") or next(iter(existing_locs.values()))
+    r = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{probe_loc_id}/appScreenshotSets?limit=50")
+    if r.status_code == 200:
+        for s in r.json().get("data", []):
+            dt = s.get("attributes", {}).get("screenshotDisplayType", "")
+            if "DUO" in dt or "FOLD" in dt:
+                print(f"[IOS] Found existing iPhone Duo screenshot set with displayType={dt}")
+                return dt
+
+    candidates = ["APP_IPHONE_DUO", "APP_IPHONE_FOLD", "APP_IPHONE_DUAL"]
+    for cand in candidates:
+        payload = {
+            "data": {
+                "type": "appScreenshotSets",
+                "attributes": {"screenshotDisplayType": cand},
+                "relationships": {
+                    "appStoreVersionLocalization": {
+                        "data": {"type": "appStoreVersionLocalizations", "id": probe_loc_id}
+                    }
+                },
+            }
+        }
+        r_try = api_request("POST", f"{BASE_URL}/appScreenshotSets", json_data=payload)
+        if r_try.status_code in (200, 201, 409):
+            print(f"[IOS] Confirmed iPhone Duo displayType={cand} (HTTP {r_try.status_code})")
+            return cand
+        else:
+            print(f"[IOS] Probe {cand} returned HTTP {r_try.status_code}: {r_try.text[:300]}")
+    return "APP_IPHONE_DUO"
+
+
 def discover_platform_display_types(version_id, plat, existing_locs):
-    """Discover active screenshotDisplayTypes configured on primary locales, ensuring both iPhone & iPad on IOS."""
+    """Discover active screenshotDisplayTypes configured on primary locales, ensuring iPhone, iPhone Duo & iPad on IOS."""
     if plat == "MAC_OS":
         return ["APP_DESKTOP"]
 
@@ -1814,15 +1873,23 @@ def discover_platform_display_types(version_id, plat, existing_locs):
                         discovered_iphone = dt
                     elif dt in ("APP_IPAD_PRO_3GEN_129", "APP_IPAD_PRO_129") and not discovered_ipad:
                         discovered_ipad = dt
+
+    duo_dt = discover_iphone_duo_display_type(existing_locs)
+    if duo_dt not in DISPLAY_TYPE_RENDERERS:
+        DISPLAY_TYPE_RENDERERS[duo_dt] = DISPLAY_TYPE_RENDERERS["APP_IPHONE_DUO"]
+
     return [
         discovered_iphone or "APP_IPHONE_67",
+        duo_dt,
         discovered_ipad or "APP_IPAD_PRO_3GEN_129",
     ]
 
 
 def main():
+    global DUO_TARGET_SIZE
     parser = argparse.ArgumentParser()
     parser.add_argument("--local-test", action="store_true", help="Render ja & en-US screenshots locally without uploading")
+    parser.add_argument("--force-clean", action="store_true", help="Delete and re-upload even if a set already has 5 complete screenshots")
     parser.add_argument("--out-dir", default=os.path.join(REPO_ROOT, "build_screenshots"), help="Output directory for generated PNGs")
     args = parser.parse_args()
 
@@ -1853,32 +1920,86 @@ def main():
         display_types = discover_platform_display_types(version_id, plat, existing_locs)
         print(f"[{plat}] Target screenshotDisplayTypes: {display_types}")
 
-        # Delete all existing screenshots across all sets for all locales first
-        print(f"[{plat}] Cleaning existing screenshots across {len(existing_locs)} locales...")
-        with ThreadPoolExecutor(max_workers=8) as clean_pool:
-            clean_futs = {
-                clean_pool.submit(clean_all_existing_screenshots_for_locale, loc_id, loc): loc
-                for loc, loc_id in existing_locs.items()
-            }
-            total_del = sum(f.result() for f in as_completed(clean_futs))
-        print(f"[{plat}] Deleted {total_del} existing screenshot(s).")
+        if args.force_clean:
+            print(f"[{plat}] Force-cleaning existing screenshots across {len(existing_locs)} locales...")
+            with ThreadPoolExecutor(max_workers=8) as clean_pool:
+                clean_futs = {
+                    clean_pool.submit(clean_all_existing_screenshots_for_locale, loc_id, loc): loc
+                    for loc, loc_id in existing_locs.items()
+                }
+                total_del = sum(f.result() for f in as_completed(clean_futs))
+            print(f"[{plat}] Deleted {total_del} existing screenshot(s).")
 
-        # Also clean any other existing screenshot sets not in display_types if needed
-        # First pre-render all 28 language prefixes for each display_type in display_types
+        # Determine which (locale, dt) sets actually need uploading (in parallel)
+        pending_tasks_by_dt = {dt: [] for dt in display_types}
+        skipped_count = 0
+
+        def _check_loc(item):
+            locale, loc_id = item
+            if args.force_clean:
+                return locale, loc_id, list(display_types), 0
+            r_sets = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}/appScreenshotSets?limit=50")
+            set_map = {}
+            if r_sets.status_code == 200:
+                for s in r_sets.json().get("data", []):
+                    set_map[s.get("attributes", {}).get("screenshotDisplayType", "")] = s["id"]
+            need = []
+            skip = 0
+            for dt in display_types:
+                if dt in set_map:
+                    r_ss = api_request("GET", f"{BASE_URL}/appScreenshotSets/{set_map[dt]}/appScreenshots?limit=50")
+                    items = r_ss.json().get("data", []) if r_ss.status_code == 200 else []
+                    if len(items) == 5 and all(
+                        it.get("attributes", {}).get("assetDeliveryState", {}).get("state") in ("COMPLETE", "UPLOAD_COMPLETE")
+                        for it in items
+                    ):
+                        skip += 1
+                        continue
+                need.append(dt)
+            return locale, loc_id, need, skip
+
+        with ThreadPoolExecutor(max_workers=8) as chk_pool:
+            for locale, loc_id, need_dts, skip_c in chk_pool.map(_check_loc, sorted(existing_locs.items())):
+                skipped_count += skip_c
+                for dt in need_dts:
+                    pending_tasks_by_dt[dt].append((loc_id, locale))
+
+        active_dts = [dt for dt in display_types if pending_tasks_by_dt[dt]]
+        print(f"[{plat}] {skipped_count} sets already complete (skipped); active displayTypes to render & upload: {active_dts}")
+        if not active_dts:
+            continue
+
+        # Pre-render all needed language prefixes for active_dts
         rendered_map = {}  # (prefix, dt) -> list of 5 paths
         needed_prefixes = sorted(set(ASC_LOCALE_TO_PREFIX[loc] for loc in existing_locs if loc in ASC_LOCALE_TO_PREFIX))
-        print(f"[{plat}] Rendering {len(needed_prefixes)} language sets for {display_types}...")
+        print(f"[{plat}] Rendering {len(needed_prefixes)} language sets for {active_dts}...")
         t_render = time.time()
         for prefix in needed_prefixes:
-            for dt in display_types:
+            for dt in active_dts:
                 rendered_map[(prefix, dt)] = render_prefix_display_type(prefix, dt, args.out_dir)
         print(f"[{plat}] Finished rendering {len(rendered_map) * 5} screenshots in {time.time() - t_render:.1f}s.")
 
-        # Upload across all localizations in parallel
+        # If any active_dt is iPhone Duo, verify the first locale ('ja') delivery before parallel upload
+        for dt in active_dts:
+            if "DUO" in dt or "FOLD" in dt:
+                first_loc_id, first_locale = pending_tasks_by_dt[dt][0]
+                first_prefix = ASC_LOCALE_TO_PREFIX.get(first_locale, "en")
+                print(f"[{plat}] Verifying {dt} dimension acceptance ({DUO_TARGET_SIZE}) on {first_locale}...")
+                ok_probe, msg_probe = sync_localization_screenshot_set(
+                    first_loc_id, first_locale, dt, rendered_map[(first_prefix, dt)], force_clean=True, verify_delivery=True
+                )
+                print(f"  [PROBE] {msg_probe}", flush=True)
+                if not ok_probe and "DELIVERY_FAILED" in msg_probe and DUO_TARGET_SIZE != (2034, 1398):
+                    print(f"[{plat}] Switching {dt} target resolution from {DUO_TARGET_SIZE} to (2034, 1398) and re-rendering...")
+                    DUO_TARGET_SIZE = (2034, 1398)
+                    for prefix in needed_prefixes:
+                        rendered_map[(prefix, dt)] = render_prefix_display_type(prefix, dt, args.out_dir)
+
+        # Upload across all pending localizations in parallel
         tasks = []
-        for locale, loc_id in sorted(existing_locs.items()):
-            prefix = ASC_LOCALE_TO_PREFIX.get(locale, "en")
-            for dt in display_types:
+        for dt in active_dts:
+            for loc_id, locale in pending_tasks_by_dt[dt]:
+                prefix = ASC_LOCALE_TO_PREFIX.get(locale, "en")
                 tasks.append((loc_id, locale, dt, rendered_map[(prefix, dt)]))
 
         print(f"[{plat}] Uploading {len(tasks)} screenshot sets ({len(tasks) * 5} screenshots) with ThreadPoolExecutor...")
@@ -1886,7 +2007,7 @@ def main():
         fail_count = 0
         with ThreadPoolExecutor(max_workers=8) as pool:
             future_map = {
-                pool.submit(sync_localization_screenshot_set, loc_id, locale, dt, fpaths): (locale, dt)
+                pool.submit(sync_localization_screenshot_set, loc_id, locale, dt, fpaths, args.force_clean): (locale, dt)
                 for (loc_id, locale, dt, fpaths) in tasks
             }
             for fut in as_completed(future_map):
@@ -1903,7 +2024,7 @@ def main():
                     fail_count += 1
                     print(f"  [EXC] [{locale}/{dt}] {ex}", flush=True)
 
-        print(f"[{plat}] Summary: {ok_count} sets succeeded, {fail_count} failed.")
+        print(f"[{plat}] Summary: {ok_count} sets succeeded ({skipped_count} already complete), {fail_count} failed.")
 
 
 if __name__ == "__main__":
