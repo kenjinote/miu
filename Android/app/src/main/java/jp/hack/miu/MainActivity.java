@@ -117,15 +117,22 @@ public class MainActivity extends NativeActivity {
 
     private ImeBridgeView imeView;
     private PopupWindow toolbarPopup;
+    private PopupWindow categoryPopup;
+    private int activeCategoryIndex = -1;
+    private View activeCategoryButton = null;
     private PopupWindow titleOverlayPopup;
     private PopupWindow helpPopup;
     private View rootView;
     private boolean isKeyboardOpen = false;
+    private boolean isToolbarRequestedByTap = false;
+    private boolean lastImeInsetVisible = false;
+    private int lastSystemBarsBottomInset = 0;
     private int lastKeyboardHeight = 0;
     private int currentEffectiveBottomInset = 0;
     private int currentCppTopMargin = 0;
     private boolean isSwitchingUI = false;
-    private LinearLayout mainToolbar;
+    private FrameLayout mainToolbar;
+    private LinearLayout searchContainer;
     private LinearLayout searchToolbar;
     private LinearLayout replaceToolbar;
     private SearchEditText searchField;
@@ -160,12 +167,14 @@ public class MainActivity extends NativeActivity {
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final Runnable hideToolbarRunnable = new Runnable() {
         @Override public void run() {
+            dismissCategoryPopup();
             if (toolbarPopup != null && toolbarPopup.isShowing()) {
                 toolbarPopup.dismiss();
                 resetToolbarToMainInternal();
             }
             isKeyboardOpen = false;
-            currentEffectiveBottomInset = 0;
+            lastKeyboardHeight = lastSystemBarsBottomInset;
+            currentEffectiveBottomInset = lastSystemBarsBottomInset;
             updatePreviewLayout();
         }
     };
@@ -273,17 +282,26 @@ public class MainActivity extends NativeActivity {
             int topInset = 0;
             int imeHeight = 0;
             int captionBarHeight = 0;
+            boolean imeInsetVisible = false;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 imeHeight = insets.getInsets(WindowInsets.Type.ime()).bottom;
                 int systemBars = insets.getInsets(WindowInsets.Type.systemBars()).bottom;
+                lastSystemBarsBottomInset = systemBars;
                 bottomInset = Math.max(imeHeight, systemBars);
                 topInset = insets.getInsets(WindowInsets.Type.statusBars()).top;
                 captionBarHeight = insets.getInsets(WindowInsets.Type.captionBar()).top;
+                imeInsetVisible = (imeHeight > 0) || insets.isVisible(WindowInsets.Type.ime());
             } else {
                 bottomInset = insets.getSystemWindowInsetBottom();
                 topInset = insets.getSystemWindowInsetTop();
                 imeHeight = bottomInset > (rootView.getHeight() * 0.15) ? bottomInset : 0;
+                lastSystemBarsBottomInset = (imeHeight > 0) ? 0 : bottomInset;
+                imeInsetVisible = (imeHeight > 0);
             }
+            if (lastImeInsetVisible && !imeInsetVisible) {
+                isToolbarRequestedByTap = false;
+            }
+            lastImeInsetVisible = imeInsetVisible;
             Configuration config = getResources().getConfiguration();
             boolean isDeskMode = (config.uiMode & Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_DESK;
             boolean isMultiWindow = false;
@@ -313,7 +331,7 @@ public class MainActivity extends NativeActivity {
                 }
             }
             boolean helpVisible = (helpPopup != null && helpPopup.isShowing());
-            boolean currentlyOpen = imeHeight > 0 && !helpVisible;
+            boolean currentlyOpen = (imeInsetVisible || isToolbarRequestedByTap) && !helpVisible;
             if (!helpVisible && toolbarPopup != null && toolbarPopup.isFocusable() && toolbarPopup.isShowing()) {
                 currentlyOpen = true;
                 bottomInset = lastKeyboardHeight;
@@ -349,6 +367,7 @@ public class MainActivity extends NativeActivity {
         });
         rootView.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
             if ((right - left) != (oldRight - oldLeft) || (bottom - top) != (oldBottom - oldTop)) {
+                dismissCategoryPopup();
                 if (isLivePreviewVisible) {
                     updatePreviewLayout();
                 }
@@ -475,6 +494,8 @@ public class MainActivity extends NativeActivity {
                 invalidate();
                 return true;
             } else if (action == MotionEvent.ACTION_MOVE && isDraggingSplitter) {
+                int[] winLoc = new int[2];
+                if (rootView != null) rootView.getLocationOnScreen(winLoc);
                 if (isVerticalSplit) {
                     int totalH = getWindowFullHeight();
                     int topMargin = currentCppTopMargin;
@@ -485,15 +506,15 @@ public class MainActivity extends NativeActivity {
                     int visibleBottom = Math.max(topMargin + 80, totalH - currentEffectiveBottomInset);
                     int availH = visibleBottom - topMargin;
                     if (availH > 0) {
-                        float rawY = event.getRawY();
-                        previewSplitRatio = Math.max(0.20f, Math.min(0.80f, (rawY - topMargin) / (float) availH));
+                        float winY = event.getRawY() - winLoc[1];
+                        previewSplitRatio = Math.max(0.20f, Math.min(0.80f, (winY - topMargin) / (float) availH));
                         updatePreviewLayout();
                     }
                 } else {
                     int totalW = getWindowFullWidth();
                     if (totalW > 0) {
-                        float rawX = event.getRawX();
-                        previewSplitRatio = Math.max(0.20f, Math.min(0.80f, rawX / (float) totalW));
+                        float winX = event.getRawX() - winLoc[0];
+                        previewSplitRatio = Math.max(0.20f, Math.min(0.80f, winX / (float) totalW));
                         updatePreviewLayout();
                     }
                 }
@@ -887,6 +908,10 @@ public class MainActivity extends NativeActivity {
         boolean isAlt = event.isAltPressed();
 
         if (keyCode == KeyEvent.KEYCODE_ESCAPE) {
+            if (categoryPopup != null && categoryPopup.isShowing()) {
+                dismissCategoryPopup();
+                return true;
+            }
             if (searchToolbar != null && searchToolbar.getVisibility() == View.VISIBLE) resetToolbarToMain();
             else cmdClearSelectionAndMultiCursor();
             return true;
@@ -923,7 +948,10 @@ public class MainActivity extends NativeActivity {
         if (isCtrl) {
             switch (keyCode) {
                 case KeyEvent.KEYCODE_N: actionNewDocument(); return true;
-                case KeyEvent.KEYCODE_O: actionOpenDocument(); return true;
+                case KeyEvent.KEYCODE_O:
+                    if (isShift) actionOpenRecent();
+                    else actionOpenDocument();
+                    return true;
                 case KeyEvent.KEYCODE_S:
                     if (isShift) actionSaveAsDocument(null);
                     else actionSaveDocument(null);
@@ -1034,52 +1062,742 @@ public class MainActivity extends NativeActivity {
         }
     }
 
+    private static class ToolbarIconDrawable extends android.graphics.drawable.Drawable {
+        static final int ICON_FILE = 1;
+        static final int ICON_EDIT = 2;
+        static final int ICON_FIND = 3;
+        static final int ICON_VIEW = 4;
+        static final int ICON_UNDO = 5;
+        static final int ICON_REDO = 6;
+        static final int ICON_TAB = 7;
+        static final int ICON_NEW = 8;
+        static final int ICON_OPEN = 9;
+        static final int ICON_RECENT = 10;
+        static final int ICON_SAVE = 11;
+        static final int ICON_SAVE_AS = 12;
+        static final int ICON_CUT = 13;
+        static final int ICON_COPY = 14;
+        static final int ICON_PASTE = 15;
+        static final int ICON_SELECT_ALL = 16;
+        static final int ICON_COMMENT = 17;
+        static final int ICON_REPLACE = 18;
+        static final int ICON_GOTO = 19;
+        static final int ICON_TOP = 20;
+        static final int ICON_BOTTOM = 21;
+        static final int ICON_PREVIEW = 22;
+        static final int ICON_WRAP = 23;
+        static final int ICON_HELP = 24;
+        static final int ICON_CLEAR = 25;
+        static final int ICON_CHECK = 26;
+        static final int ICON_CHEVRON_RIGHT = 27;
+
+        private final int iconType;
+        private final int sizePx;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path path = new android.graphics.Path();
+        private final RectF oval = new RectF();
+
+        ToolbarIconDrawable(int iconType, int sizePx, int color) {
+            this.iconType = iconType;
+            this.sizePx = sizePx;
+            paint.setColor(color);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setStrokeJoin(Paint.Join.ROUND);
+        }
+
+        void setColor(int color) {
+            if (paint.getColor() != color) {
+                paint.setColor(color);
+                invalidateSelf();
+            }
+        }
+
+        @Override public int getIntrinsicWidth() { return sizePx; }
+        @Override public int getIntrinsicHeight() { return sizePx; }
+
+        @Override
+        public void draw(Canvas canvas) {
+            android.graphics.Rect b = getBounds();
+            if (b.width() <= 0 || b.height() <= 0) return;
+            float s = Math.min(b.width(), b.height()) / 24.0f;
+            float ox = b.left + (b.width() - 24.0f * s) * 0.5f;
+            float oy = b.top + (b.height() - 24.0f * s) * 0.5f;
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(Math.max(1.5f, 2.0f * s));
+            path.reset();
+
+            canvas.save();
+            canvas.translate(ox, oy);
+            switch (iconType) {
+                case ICON_FILE:
+                    path.moveTo(6*s, 3*s); path.lineTo(14*s, 3*s); path.lineTo(18*s, 7*s);
+                    path.lineTo(18*s, 20.5f*s); path.lineTo(6*s, 20.5f*s); path.close();
+                    path.moveTo(13.5f*s, 3*s); path.lineTo(13.5f*s, 7.5f*s); path.lineTo(18*s, 7.5f*s);
+                    path.moveTo(9*s, 12*s); path.lineTo(15*s, 12*s);
+                    path.moveTo(9*s, 16*s); path.lineTo(15*s, 16*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_EDIT:
+                    path.moveTo(16.2f*s, 3.8f*s); path.lineTo(20.2f*s, 7.8f*s);
+                    path.lineTo(8.2f*s, 19.8f*s); path.lineTo(4*s, 20*s); path.lineTo(4.2f*s, 15.8f*s); path.close();
+                    path.moveTo(13.8f*s, 6.2f*s); path.lineTo(17.8f*s, 10.2f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_FIND:
+                    canvas.drawCircle(10.5f*s, 10.5f*s, 6.2f*s, paint);
+                    canvas.drawLine(15.0f*s, 15.0f*s, 20.2f*s, 20.2f*s, paint);
+                    break;
+                case ICON_VIEW:
+                    path.moveTo(2.5f*s, 12*s); path.quadTo(12*s, 4.2f*s, 21.5f*s, 12*s);
+                    path.quadTo(12*s, 19.8f*s, 2.5f*s, 12*s);
+                    canvas.drawPath(path, paint);
+                    canvas.drawCircle(12*s, 12*s, 2.7f*s, paint);
+                    break;
+                case ICON_UNDO:
+                    path.moveTo(9*s, 5.5f*s); path.lineTo(4.5f*s, 10*s); path.lineTo(9*s, 14.5f*s);
+                    path.moveTo(5*s, 10*s); path.lineTo(14.5f*s, 10*s);
+                    oval.set(10*s, 10*s, 19*s, 19*s);
+                    path.arcTo(oval, -90, 180, false);
+                    path.lineTo(9*s, 19*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_REDO:
+                    path.moveTo(15*s, 5.5f*s); path.lineTo(19.5f*s, 10*s); path.lineTo(15*s, 14.5f*s);
+                    path.moveTo(19*s, 10*s); path.lineTo(9.5f*s, 10*s);
+                    oval.set(5*s, 10*s, 14*s, 19*s);
+                    path.arcTo(oval, -90, -180, false);
+                    path.lineTo(15*s, 19*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_TAB:
+                    path.moveTo(3.5f*s, 12*s); path.lineTo(16.5f*s, 12*s);
+                    path.moveTo(12*s, 7.5f*s); path.lineTo(16.8f*s, 12*s); path.lineTo(12*s, 16.5f*s);
+                    path.moveTo(20*s, 6*s); path.lineTo(20*s, 18*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_NEW:
+                    path.moveTo(5.5f*s, 3*s); path.lineTo(13.5f*s, 3*s); path.lineTo(18*s, 7.5f*s);
+                    path.lineTo(18*s, 20.5f*s); path.lineTo(5.5f*s, 20.5f*s); path.close();
+                    path.moveTo(13.2f*s, 3*s); path.lineTo(13.2f*s, 7.8f*s); path.lineTo(18*s, 7.8f*s);
+                    path.moveTo(11.8f*s, 11.2f*s); path.lineTo(11.8f*s, 16.8f*s);
+                    path.moveTo(9.0f*s, 14.0f*s); path.lineTo(14.6f*s, 14.0f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_OPEN:
+                    path.moveTo(3*s, 6*s); path.lineTo(9.2f*s, 6*s); path.lineTo(11.2f*s, 8.5f*s);
+                    path.lineTo(21*s, 8.5f*s); path.lineTo(21*s, 19*s); path.lineTo(3*s, 19*s); path.close();
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_RECENT:
+                    canvas.drawCircle(12*s, 12*s, 8.2f*s, paint);
+                    path.moveTo(12*s, 7.5f*s); path.lineTo(12*s, 12.2f*s); path.lineTo(15.5f*s, 14.2f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_SAVE:
+                    path.moveTo(4*s, 14*s); path.lineTo(4*s, 19.5f*s); path.lineTo(20*s, 19.5f*s); path.lineTo(20*s, 14*s);
+                    path.moveTo(12*s, 4*s); path.lineTo(12*s, 15*s);
+                    path.moveTo(8*s, 11*s); path.lineTo(12*s, 15*s); path.lineTo(16*s, 11*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_SAVE_AS:
+                    path.moveTo(7.5f*s, 17*s); path.lineTo(7.5f*s, 20.5f*s); path.lineTo(21*s, 20.5f*s); path.lineTo(21*s, 14.5f*s);
+                    path.moveTo(3*s, 12.5f*s); path.lineTo(3*s, 17*s); path.lineTo(17*s, 17*s); path.lineTo(17*s, 12.5f*s);
+                    path.moveTo(10*s, 3.5f*s); path.lineTo(10*s, 13*s);
+                    path.moveTo(6.5f*s, 9.5f*s); path.lineTo(10*s, 13*s); path.lineTo(13.5f*s, 9.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_CUT:
+                    canvas.drawCircle(6.5f*s, 17.5f*s, 2.5f*s, paint);
+                    canvas.drawCircle(17.5f*s, 17.5f*s, 2.5f*s, paint);
+                    path.moveTo(8.5f*s, 15.5f*s); path.lineTo(18.5f*s, 4.5f*s);
+                    path.moveTo(15.5f*s, 15.5f*s); path.lineTo(5.5f*s, 4.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_COPY:
+                    path.moveTo(8.5f*s, 8.5f*s); path.lineTo(19.5f*s, 8.5f*s); path.lineTo(19.5f*s, 20.5f*s); path.lineTo(8.5f*s, 20.5f*s); path.close();
+                    path.moveTo(15.5f*s, 8.5f*s); path.lineTo(15.5f*s, 4*s); path.lineTo(4.5f*s, 4*s); path.lineTo(4.5f*s, 16*s); path.lineTo(8.5f*s, 16*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_PASTE:
+                    path.moveTo(9*s, 4*s); path.lineTo(15*s, 4*s); path.lineTo(15*s, 7.2f*s); path.lineTo(9*s, 7.2f*s); path.close();
+                    path.moveTo(9*s, 5.5f*s); path.lineTo(5.5f*s, 5.5f*s); path.lineTo(5.5f*s, 20.5f*s);
+                    path.lineTo(18.5f*s, 20.5f*s); path.lineTo(18.5f*s, 5.5f*s); path.lineTo(15*s, 5.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_SELECT_ALL:
+                    path.moveTo(4*s, 8*s); path.lineTo(4*s, 4*s); path.lineTo(8*s, 4*s);
+                    path.moveTo(16*s, 4*s); path.lineTo(20*s, 4*s); path.lineTo(20*s, 8*s);
+                    path.moveTo(20*s, 16*s); path.lineTo(20*s, 20*s); path.lineTo(16*s, 20*s);
+                    path.moveTo(8*s, 20*s); path.lineTo(4*s, 20*s); path.lineTo(4*s, 16*s);
+                    path.moveTo(8.5f*s, 8.5f*s); path.lineTo(15.5f*s, 8.5f*s); path.lineTo(15.5f*s, 15.5f*s); path.lineTo(8.5f*s, 15.5f*s); path.close();
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_COMMENT:
+                    path.moveTo(8*s, 7.5f*s); path.lineTo(3.5f*s, 12*s); path.lineTo(8*s, 16.5f*s);
+                    path.moveTo(13.8f*s, 6*s); path.lineTo(10.2f*s, 18*s);
+                    path.moveTo(16*s, 7.5f*s); path.lineTo(20.5f*s, 12*s); path.lineTo(16*s, 16.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_REPLACE:
+                    path.moveTo(4*s, 8.5f*s); path.lineTo(19.5f*s, 8.5f*s);
+                    path.moveTo(15.5f*s, 5*s); path.lineTo(19.5f*s, 8.5f*s); path.lineTo(15.5f*s, 12*s);
+                    path.moveTo(20*s, 15.5f*s); path.lineTo(4.5f*s, 15.5f*s);
+                    path.moveTo(8.5f*s, 12*s); path.lineTo(4.5f*s, 15.5f*s); path.lineTo(8.5f*s, 19*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_GOTO:
+                    path.moveTo(9.5f*s, 4.5f*s); path.lineTo(7.5f*s, 19.5f*s);
+                    path.moveTo(16.5f*s, 4.5f*s); path.lineTo(14.5f*s, 19.5f*s);
+                    path.moveTo(4.5f*s, 9.5f*s); path.lineTo(19.5f*s, 9.5f*s);
+                    path.moveTo(4.5f*s, 14.5f*s); path.lineTo(19.5f*s, 14.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_TOP:
+                    path.moveTo(5*s, 4.5f*s); path.lineTo(19*s, 4.5f*s);
+                    path.moveTo(12*s, 20*s); path.lineTo(12*s, 8*s);
+                    path.moveTo(7.5f*s, 12.5f*s); path.lineTo(12*s, 8*s); path.lineTo(16.5f*s, 12.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_BOTTOM:
+                    path.moveTo(5*s, 19.5f*s); path.lineTo(19*s, 19.5f*s);
+                    path.moveTo(12*s, 4*s); path.lineTo(12*s, 16*s);
+                    path.moveTo(7.5f*s, 11.5f*s); path.lineTo(12*s, 16*s); path.lineTo(16.5f*s, 11.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_PREVIEW:
+                    oval.set(3.5f*s, 5*s, 20.5f*s, 19*s);
+                    canvas.drawRoundRect(oval, 2.2f*s, 2.2f*s, paint);
+                    canvas.drawLine(12*s, 5*s, 12*s, 19*s, paint);
+                    break;
+                case ICON_WRAP:
+                    path.moveTo(4*s, 7*s); path.lineTo(15*s, 7*s);
+                    oval.set(11*s, 7*s, 19*s, 15*s);
+                    path.arcTo(oval, -90, 180, false);
+                    path.lineTo(6.5f*s, 15*s);
+                    path.moveTo(10.5f*s, 11.5f*s); path.lineTo(6.5f*s, 15*s); path.lineTo(10.5f*s, 18.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_HELP:
+                    canvas.drawCircle(12*s, 12*s, 8.5f*s, paint);
+                    path.moveTo(9.8f*s, 9.5f*s);
+                    oval.set(9.5f*s, 7.2f*s, 14.5f*s, 11.8f*s);
+                    path.arcTo(oval, 190, 230, false);
+                    path.quadTo(12*s, 12.6f*s, 12*s, 14.0f*s);
+                    canvas.drawPath(path, paint);
+                    paint.setStyle(Paint.Style.FILL);
+                    canvas.drawCircle(12*s, 17.2f*s, 1.15f*s, paint);
+                    break;
+                case ICON_CLEAR:
+                    path.moveTo(5*s, 6.5f*s); path.lineTo(19*s, 6.5f*s);
+                    path.moveTo(9.5f*s, 6.5f*s); path.lineTo(9.5f*s, 4.5f*s); path.lineTo(14.5f*s, 4.5f*s); path.lineTo(14.5f*s, 6.5f*s);
+                    path.moveTo(6.8f*s, 6.5f*s); path.lineTo(7.8f*s, 19.5f*s); path.lineTo(16.2f*s, 19.5f*s); path.lineTo(17.2f*s, 6.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_CHECK:
+                    path.moveTo(5*s, 12.5f*s); path.lineTo(10*s, 17.5f*s); path.lineTo(19*s, 7.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+                case ICON_CHEVRON_RIGHT:
+                    path.moveTo(9.5f*s, 6.5f*s); path.lineTo(15*s, 12*s); path.lineTo(9.5f*s, 17.5f*s);
+                    canvas.drawPath(path, paint);
+                    break;
+            }
+            canvas.restore();
+        }
+
+        @Override public void setAlpha(int alpha) { paint.setAlpha(alpha); invalidateSelf(); }
+        @Override public void setColorFilter(android.graphics.ColorFilter colorFilter) { paint.setColorFilter(colorFilter); invalidateSelf(); }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
+
+    private int getToolbarPillBgColor() {
+        boolean isDark = isDarkThemeActive();
+        int r = Color.red(sysGutterBgColor);
+        int g = Color.green(sysGutterBgColor);
+        int b = Color.blue(sysGutterBgColor);
+        if (isDark) {
+            r = Math.min(255, r + 18);
+            g = Math.min(255, g + 18);
+            b = Math.min(255, b + 20);
+            return Color.argb(246, r, g, b);
+        } else {
+            r = Math.min(255, r + 6);
+            g = Math.min(255, g + 6);
+            b = Math.min(255, b + 6);
+            return Color.argb(248, r, g, b);
+        }
+    }
+
+    private int getToolbarBorderColor() {
+        return (sysGutterTextColor & 0x00FFFFFF) | 0x55000000;
+    }
+
+    private void applyCategoryBtnBackground(View btn, boolean isActive) {
+        float density = getResources().getDisplayMetrics().density;
+        if (isActive) {
+            GradientDrawable activeBg = new GradientDrawable();
+            activeBg.setColor(isDarkThemeActive() ? 0x38FFFFFF : 0x20000000);
+            activeBg.setCornerRadius(8 * density);
+            btn.setBackground(activeBg);
+        } else {
+            TypedValue outValue = new TypedValue();
+            getTheme().resolveAttribute(android.R.attr.selectableItemBackgroundBorderless, outValue, true);
+            btn.setBackgroundResource(outValue.resourceId);
+        }
+    }
+
+    public void dismissCategoryPopup() {
+        if (categoryPopup != null) {
+            if (categoryPopup.isShowing()) {
+                categoryPopup.dismiss();
+            }
+            categoryPopup = null;
+        }
+        if (activeCategoryButton != null) {
+            applyCategoryBtnBackground(activeCategoryButton, false);
+            activeCategoryButton = null;
+        }
+        activeCategoryIndex = -1;
+    }
+
+    private static class CategoryMenuItem {
+        final String title;
+        final int iconType;
+        final boolean isDivider;
+        final boolean isChecked;
+        final boolean hasSubmenu;
+        final boolean isEnabled;
+        final Runnable action;
+
+        CategoryMenuItem(String title, int iconType, boolean isChecked, boolean hasSubmenu, boolean isEnabled, Runnable action) {
+            this.title = title;
+            this.iconType = iconType;
+            this.isDivider = false;
+            this.isChecked = isChecked;
+            this.hasSubmenu = hasSubmenu;
+            this.isEnabled = isEnabled;
+            this.action = action;
+        }
+
+        static CategoryMenuItem divider() {
+            return new CategoryMenuItem(null, 0, false, false, false, null, true);
+        }
+
+        private CategoryMenuItem(String title, int iconType, boolean isChecked, boolean hasSubmenu, boolean isEnabled, Runnable action, boolean isDivider) {
+            this.title = title;
+            this.iconType = iconType;
+            this.isDivider = isDivider;
+            this.isChecked = isChecked;
+            this.hasSubmenu = hasSubmenu;
+            this.isEnabled = isEnabled;
+            this.action = action;
+        }
+    }
+
+    private void showCategoryPopup(int categoryIndex, View anchorBtn) {
+        if (helpPopup != null && helpPopup.isShowing()) {
+            closeHelpUI();
+        }
+        if (categoryPopup != null && categoryPopup.isShowing() && activeCategoryIndex == categoryIndex) {
+            dismissCategoryPopup();
+            return;
+        }
+        dismissCategoryPopup();
+
+        List<CategoryMenuItem> items = new ArrayList<>();
+        if (categoryIndex == 0) {
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_new"), ToolbarIconDrawable.ICON_NEW, false, false, true, () -> {
+                dismissCategoryPopup();
+                actionNewDocument();
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_open"), ToolbarIconDrawable.ICON_OPEN, false, false, true, () -> {
+                dismissCategoryPopup();
+                actionOpenDocument();
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("menu_open_recent"), ToolbarIconDrawable.ICON_RECENT, false, true, true, () -> {
+                showCategoryPopup(4, anchorBtn);
+            }));
+            items.add(CategoryMenuItem.divider());
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_save"), ToolbarIconDrawable.ICON_SAVE, false, false, true, () -> {
+                dismissCategoryPopup();
+                actionSaveDocument(null);
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_save_as"), ToolbarIconDrawable.ICON_SAVE_AS, false, false, true, () -> {
+                dismissCategoryPopup();
+                actionSaveAsDocument(null);
+            }));
+        } else if (categoryIndex == 4) {
+            List<Uri> recents = getRecentUris();
+            if (recents.isEmpty()) {
+                items.add(new CategoryMenuItem(getStringResourceByName("menu_no_recent"), ToolbarIconDrawable.ICON_RECENT, false, false, false, null));
+            } else {
+                for (Uri uri : recents) {
+                    final Uri selectedUri = uri;
+                    items.add(new CategoryMenuItem(getFileName(uri), ToolbarIconDrawable.ICON_FILE, false, false, true, () -> {
+                        dismissCategoryPopup();
+                        confirmSaveIfNeeded(() -> loadDocumentFromUri(selectedUri));
+                    }));
+                }
+                items.add(CategoryMenuItem.divider());
+                items.add(new CategoryMenuItem(getStringResourceByName("menu_clear_recent"), ToolbarIconDrawable.ICON_CLEAR, false, false, true, () -> {
+                    dismissCategoryPopup();
+                    clearRecentUris();
+                }));
+            }
+        } else if (categoryIndex == 1) {
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_undo"), ToolbarIconDrawable.ICON_UNDO, false, false, true, () -> {
+                dismissCategoryPopup();
+                cmdUndo();
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_redo"), ToolbarIconDrawable.ICON_REDO, false, false, true, () -> {
+                dismissCategoryPopup();
+                cmdRedo();
+            }));
+            items.add(CategoryMenuItem.divider());
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_cut"), ToolbarIconDrawable.ICON_CUT, false, false, true, () -> {
+                dismissCategoryPopup();
+                actionCut();
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_copy"), ToolbarIconDrawable.ICON_COPY, false, false, true, () -> {
+                dismissCategoryPopup();
+                actionCopy();
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_paste"), ToolbarIconDrawable.ICON_PASTE, false, false, true, () -> {
+                dismissCategoryPopup();
+                actionPaste();
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_select_all"), ToolbarIconDrawable.ICON_SELECT_ALL, false, false, true, () -> {
+                dismissCategoryPopup();
+                cmdSelectAll();
+            }));
+            items.add(CategoryMenuItem.divider());
+            items.add(new CategoryMenuItem(getStringResourceByName("menu_toggle_comment"), ToolbarIconDrawable.ICON_COMMENT, false, false, true, () -> {
+                dismissCategoryPopup();
+                cmdToggleComment();
+            }));
+        } else if (categoryIndex == 2) {
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_find"), ToolbarIconDrawable.ICON_FIND, false, false, true, () -> {
+                dismissCategoryPopup();
+                openSearchUI(false);
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_replace"), ToolbarIconDrawable.ICON_REPLACE, false, false, true, () -> {
+                dismissCategoryPopup();
+                openSearchUI(true);
+            }));
+            items.add(CategoryMenuItem.divider());
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_goto"), ToolbarIconDrawable.ICON_GOTO, false, false, true, () -> {
+                dismissCategoryPopup();
+                actionGoTo();
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_top"), ToolbarIconDrawable.ICON_TOP, false, false, true, () -> {
+                dismissCategoryPopup();
+                cmdTop();
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_bottom"), ToolbarIconDrawable.ICON_BOTTOM, false, false, true, () -> {
+                dismissCategoryPopup();
+                cmdBottom();
+            }));
+        } else if (categoryIndex == 3) {
+            boolean ww = cmdIsWordWrapEnabled();
+            items.add(new CategoryMenuItem(getStringResourceByName("menu_live_preview"), ToolbarIconDrawable.ICON_PREVIEW, isLivePreviewVisible, false, true, () -> {
+                dismissCategoryPopup();
+                toggleLivePreview();
+            }));
+            items.add(new CategoryMenuItem(getStringResourceByName("menu_word_wrap"), ToolbarIconDrawable.ICON_WRAP, ww, false, true, () -> {
+                dismissCategoryPopup();
+                actionToggleWordWrap();
+            }));
+            items.add(CategoryMenuItem.divider());
+            items.add(new CategoryMenuItem(getStringResourceByName("toolbar_help"), ToolbarIconDrawable.ICON_HELP, false, false, true, () -> {
+                dismissCategoryPopup();
+                if (helpPopup != null && helpPopup.isShowing()) closeHelpUI();
+                else showHelpUI();
+            }));
+        }
+
+        float density = getResources().getDisplayMetrics().density;
+        int screenW = getWindowFullWidth();
+        int screenH = getWindowFullHeight();
+        int toolbarH = (toolbarPopup != null && toolbarPopup.getContentView() != null && toolbarPopup.getContentView().getHeight() > 0)
+                ? toolbarPopup.getContentView().getHeight()
+                : Math.round(46 * density);
+        int bottomOffset = lastKeyboardHeight + toolbarH + Math.round(4 * density);
+        int maxPopupH = Math.max(Math.round(140 * density), screenH - bottomOffset - currentCppTopMargin - Math.round(12 * density));
+
+        FrameLayout outerShadowWrap = new FrameLayout(this);
+        int shadowPad = Math.round(6 * density);
+        outerShadowWrap.setPadding(shadowPad, shadowPad, shadowPad, shadowPad);
+
+        android.widget.ScrollView menuScroll = new android.widget.ScrollView(this);
+        menuScroll.setVerticalScrollBarEnabled(false);
+        menuScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        GradientDrawable menuBg = new GradientDrawable();
+        menuBg.setColor(getToolbarPillBgColor());
+        menuBg.setCornerRadius(13 * density);
+        menuBg.setStroke(Math.max(1, Math.round(0.7f * density)), getToolbarBorderColor());
+        menuScroll.setBackground(menuBg);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            menuScroll.setElevation(8 * density);
+            menuScroll.setClipToOutline(true);
+        }
+
+        LinearLayout menuList = new LinearLayout(this);
+        menuList.setOrientation(LinearLayout.VERTICAL);
+        int listPadV = Math.round(4 * density);
+        menuList.setPadding(0, listPadV, 0, listPadV);
+
+        int iconSizePx = Math.round(17 * density);
+        int trailIconPx = Math.round(15 * density);
+        int rowPadH = Math.round(14 * density);
+        int rowMinH = Math.round(40 * density);
+        int minMenuW = Math.round(180 * density);
+        int maxMenuW = Math.min(Math.round(280 * density), screenW - Math.round(16 * density));
+
+        for (CategoryMenuItem item : items) {
+            if (item.isDivider) {
+                View div = new View(this);
+                div.setBackgroundColor(getToolbarBorderColor());
+                LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, Math.round(0.6f * density)));
+                dlp.topMargin = Math.round(3 * density);
+                dlp.bottomMargin = Math.round(3 * density);
+                menuList.addView(div, dlp);
+                continue;
+            }
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(Gravity.CENTER_VERTICAL);
+            row.setMinimumHeight(rowMinH);
+            row.setPadding(rowPadH, Math.round(7 * density), rowPadH, Math.round(7 * density));
+            int itemColor = !item.isEnabled
+                    ? ((sysTextColor & 0x00FFFFFF) | 0x66000000)
+                    : (item.isChecked ? sysAccentColor : sysTextColor);
+
+            if (item.iconType != 0) {
+                android.widget.ImageView iconView = new android.widget.ImageView(this);
+                iconView.setImageDrawable(new ToolbarIconDrawable(item.iconType, iconSizePx, itemColor));
+                LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(iconSizePx, iconSizePx);
+                ilp.rightMargin = Math.round(11 * density);
+                row.addView(iconView, ilp);
+            }
+
+            TextView labelView = new TextView(this);
+            labelView.setText(item.title);
+            labelView.setTextColor(itemColor);
+            labelView.setTextSize(14.0f);
+            labelView.setSingleLine(true);
+            labelView.setEllipsize(android.text.TextUtils.TruncateAt.MIDDLE);
+            if (item.isChecked) {
+                labelView.setTypeface(null, android.graphics.Typeface.BOLD);
+            }
+            LinearLayout.LayoutParams llp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1.0f);
+            row.addView(labelView, llp);
+
+            if (item.isChecked || item.hasSubmenu) {
+                android.widget.ImageView trailView = new android.widget.ImageView(this);
+                int trailType = item.isChecked ? ToolbarIconDrawable.ICON_CHECK : ToolbarIconDrawable.ICON_CHEVRON_RIGHT;
+                int trailColor = item.isChecked ? sysAccentColor : ((sysTextColor & 0x00FFFFFF) | 0x99000000);
+                trailView.setImageDrawable(new ToolbarIconDrawable(trailType, trailIconPx, trailColor));
+                LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(trailIconPx, trailIconPx);
+                tlp.leftMargin = Math.round(10 * density);
+                row.addView(trailView, tlp);
+            }
+
+            if (item.isEnabled && item.action != null) {
+                TypedValue outValue = new TypedValue();
+                getTheme().resolveAttribute(android.R.attr.selectableItemBackground, outValue, true);
+                row.setBackgroundResource(outValue.resourceId);
+                row.setClickable(true);
+                row.setOnClickListener(v -> item.action.run());
+            } else {
+                row.setEnabled(false);
+            }
+            menuList.addView(row, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        }
+
+        menuScroll.addView(menuList, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        menuList.measure(
+                View.MeasureSpec.makeMeasureSpec(maxMenuW, View.MeasureSpec.AT_MOST),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        );
+        int desiredW = Math.max(minMenuW, Math.min(maxMenuW, menuList.getMeasuredWidth() + Math.round(16 * density)));
+        menuList.measure(
+                View.MeasureSpec.makeMeasureSpec(desiredW, View.MeasureSpec.EXACTLY),
+                View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED)
+        );
+        int desiredH = Math.min(maxPopupH, menuList.getMeasuredHeight());
+
+        FrameLayout.LayoutParams sParams = new FrameLayout.LayoutParams(desiredW, desiredH);
+        outerShadowWrap.addView(menuScroll, sParams);
+
+        int popupW = desiredW + shadowPad * 2;
+        int popupH = desiredH + shadowPad * 2;
+
+        categoryPopup = new PopupWindow(outerShadowWrap, popupW, popupH);
+        categoryPopup.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        categoryPopup.setFocusable(false);
+        categoryPopup.setTouchable(true);
+        categoryPopup.setOutsideTouchable(true);
+        categoryPopup.setInputMethodMode(PopupWindow.INPUT_METHOD_NOT_NEEDED);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            categoryPopup.setIsClippedToScreen(true);
+        }
+
+        activeCategoryIndex = categoryIndex;
+        activeCategoryButton = anchorBtn;
+        if (anchorBtn != null) {
+            applyCategoryBtnBackground(anchorBtn, true);
+        }
+        categoryPopup.setOnDismissListener(() -> {
+            if (activeCategoryButton != null) {
+                applyCategoryBtnBackground(activeCategoryButton, false);
+                activeCategoryButton = null;
+            }
+            activeCategoryIndex = -1;
+        });
+
+        int[] anchorLoc = new int[2];
+        int[] rootLoc = new int[2];
+        if (anchorBtn != null) {
+            anchorBtn.getLocationOnScreen(anchorLoc);
+        }
+        if (rootView != null) {
+            rootView.getLocationOnScreen(rootLoc);
+        }
+        int popupX = (anchorLoc[0] - rootLoc[0]) - shadowPad;
+        int minX = Math.round(4 * density);
+        int maxX = Math.max(minX, screenW - popupW - minX);
+        popupX = Math.max(minX, Math.min(maxX, popupX));
+        int popupBottomY = Math.max(0, bottomOffset - shadowPad);
+
+        if (rootView != null && rootView.getWindowToken() != null) {
+            categoryPopup.showAtLocation(rootView, Gravity.BOTTOM | Gravity.LEFT, popupX, popupBottomY);
+        }
+    }
+
+    private View createPillSeparator() {
+        float density = getResources().getDisplayMetrics().density;
+        FrameLayout sepWrap = new FrameLayout(this);
+        LinearLayout.LayoutParams wrapParams = new LinearLayout.LayoutParams(Math.max(1, Math.round(0.6f * density)), ViewGroup.LayoutParams.MATCH_PARENT);
+        sepWrap.setLayoutParams(wrapParams);
+        View line = new View(this);
+        line.setTag("pillSep");
+        line.setBackgroundColor(getToolbarBorderColor());
+        FrameLayout.LayoutParams lineParams = new FrameLayout.LayoutParams( ViewGroup.LayoutParams.MATCH_PARENT, Math.round(20 * density), Gravity.CENTER);
+        sepWrap.addView(line, lineParams);
+        return sepWrap;
+    }
+
+    private TextView createCategoryToolbarButton(String title, int iconType, int categoryIndex) {
+        float density = getResources().getDisplayMetrics().density;
+        TextView btn = new TextView(this);
+        btn.setTextColor(sysTextColor);
+        btn.setText(title);
+        btn.setGravity(Gravity.CENTER);
+        btn.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12.5f);
+        btn.setSingleLine(true);
+        btn.setTypeface(null, android.graphics.Typeface.NORMAL);
+        int iconPx = Math.round(14 * density);
+        ToolbarIconDrawable icon = new ToolbarIconDrawable(iconType, iconPx, sysTextColor);
+        icon.setBounds(0, 0, iconPx, iconPx);
+        btn.setCompoundDrawables(icon, null, null, null);
+        btn.setCompoundDrawablePadding(Math.round(3.5f * density));
+        applyCategoryBtnBackground(btn, false);
+        btn.setFocusable(false);
+        btn.setClickable(true);
+        int padH = Math.round(7.5f * density);
+        btn.setPadding(padH, 0, padH, 0);
+        btn.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        btn.setOnClickListener(v -> showCategoryPopup(categoryIndex, v));
+        return btn;
+    }
+
+    private View createIconToolbarButton(int iconType, String contentDesc, View.OnClickListener listener) {
+        float density = getResources().getDisplayMetrics().density;
+        android.widget.ImageView btn = new android.widget.ImageView(this);
+        int iconPx = Math.round(16 * density);
+        btn.setImageDrawable(new ToolbarIconDrawable(iconType, iconPx, sysTextColor));
+        btn.setScaleType(android.widget.ImageView.ScaleType.CENTER);
+        btn.setContentDescription(contentDesc);
+        applyCategoryBtnBackground(btn, false);
+        btn.setFocusable(false);
+        btn.setClickable(true);
+        int padH = Math.round(8.5f * density);
+        btn.setPadding(padH, 0, padH, 0);
+        btn.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        btn.setOnClickListener(v -> {
+            dismissCategoryPopup();
+            if (listener != null) listener.onClick(v);
+        });
+        return btn;
+    }
+
     private void setupToolbarPopup() {
+        float density = getResources().getDisplayMetrics().density;
         LinearLayout rootContainer = new LinearLayout(this);
         rootContainer.setOrientation(LinearLayout.VERTICAL);
-        int bgColor = (sysGutterBgColor & 0x00FFFFFF) | 0xF2000000;
-        rootContainer.setBackgroundColor(bgColor);
+        rootContainer.setBackgroundColor(Color.TRANSPARENT);
+
+        mainToolbar = new FrameLayout(this);
+        int outerPadH = Math.round(6 * density);
+        int outerPadTop = Math.round(3 * density);
+        int outerPadBottom = Math.round(5 * density);
+        mainToolbar.setPadding(outerPadH, outerPadTop, outerPadH, outerPadBottom);
+        mainToolbar.setClipToPadding(false);
+
+        HorizontalScrollView scrollView = new HorizontalScrollView(this);
+        scrollView.setTag("pillContainer");
+        scrollView.setHorizontalScrollBarEnabled(false);
+        scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        GradientDrawable pillBg = new GradientDrawable();
+        pillBg.setColor(getToolbarPillBgColor());
+        pillBg.setCornerRadius(12 * density);
+        pillBg.setStroke(Math.max(1, Math.round(0.6f * density)), getToolbarBorderColor());
+        scrollView.setBackground(pillBg);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            scrollView.setElevation(5 * density);
+            scrollView.setClipToOutline(true);
+        }
+
+        int pillHeightPx = Math.round(38 * density);
+        LinearLayout buttonStack = new LinearLayout(this);
+        buttonStack.setOrientation(LinearLayout.HORIZONTAL);
+        buttonStack.setGravity(Gravity.CENTER_VERTICAL);
+        buttonStack.setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, pillHeightPx));
+
+        View[] barItems = new View[] {
+            createCategoryToolbarButton(getStringResourceByName("toolbar_cat_file"), ToolbarIconDrawable.ICON_FILE, 0),
+            createCategoryToolbarButton(getStringResourceByName("toolbar_cat_edit"), ToolbarIconDrawable.ICON_EDIT, 1),
+            createCategoryToolbarButton(getStringResourceByName("toolbar_find"), ToolbarIconDrawable.ICON_FIND, 2),
+            createCategoryToolbarButton(getStringResourceByName("toolbar_cat_view"), ToolbarIconDrawable.ICON_VIEW, 3),
+            createIconToolbarButton(ToolbarIconDrawable.ICON_UNDO, getStringResourceByName("toolbar_undo"), v -> cmdUndo()),
+            createIconToolbarButton(ToolbarIconDrawable.ICON_REDO, getStringResourceByName("toolbar_redo"), v -> cmdRedo()),
+            createIconToolbarButton(ToolbarIconDrawable.ICON_TAB, getStringResourceByName("menu_tab"), v -> cmdIndentLines(false))
+        };
+        for (int i = 0; i < barItems.length; i++) {
+            if (i > 0) {
+                buttonStack.addView(createPillSeparator());
+            }
+            buttonStack.addView(barItems[i]);
+        }
+
+        scrollView.addView(buttonStack);
+        FrameLayout.LayoutParams pillParams = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, pillHeightPx, Gravity.CENTER_HORIZONTAL);
+        mainToolbar.addView(scrollView, pillParams);
+
+        searchContainer = new LinearLayout(this);
+        searchContainer.setTag("searchContainer");
+        searchContainer.setOrientation(LinearLayout.VERTICAL);
+        searchContainer.setBackgroundColor((sysGutterBgColor & 0x00FFFFFF) | 0xF2000000);
+        searchContainer.setVisibility(View.GONE);
+
         View borderLine = new View(this);
         borderLine.setTag("borderLine");
         int borderColor = (sysGutterTextColor & 0x00FFFFFF) | 0x40000000;
         borderLine.setBackgroundColor(borderColor);
         borderLine.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 1));
-        rootContainer.addView(borderLine);
-        mainToolbar = new LinearLayout(this);
-        HorizontalScrollView scrollView = new HorizontalScrollView(this);
-        scrollView.setHorizontalScrollBarEnabled(false);
-        scrollView.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        LinearLayout buttonStack = new LinearLayout(this);
-        buttonStack.setOrientation(LinearLayout.HORIZONTAL);
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_new"), v -> actionNewDocument()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_open"), v -> actionOpenDocument()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("menu_open_recent"), v -> actionOpenRecent()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_save"), v -> actionSaveDocument(null)));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_save_as"), v -> actionSaveAsDocument(null)));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_find"), v -> openSearchUI(false)));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_replace"), v -> openSearchUI(true)));
-        previewToolbarBtn = createToolbarButton(getStringResourceByName("menu_live_preview"), v -> toggleLivePreview());
-        wordWrapToolbarBtn = createToolbarButton(getStringResourceByName("menu_word_wrap"), v -> actionToggleWordWrap());
-        buttonStack.addView(previewToolbarBtn);
-        buttonStack.addView(wordWrapToolbarBtn);
-        buttonStack.addView(createToolbarButton(getStringResourceByName("menu_toggle_comment"), v -> cmdToggleComment()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("menu_tab"), v -> cmdIndentLines(false)));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_top"), v -> cmdTop()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_bottom"), v -> cmdBottom()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_goto"), v -> actionGoTo()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_undo"), v -> cmdUndo()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_redo"), v -> cmdRedo()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_select_all"), v -> cmdSelectAll()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_cut"), v -> actionCut()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_copy"), v -> actionCopy()));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_paste"), v -> actionPaste()));
-        buttonStack.addView(createToolbarButton("?", v -> {
-            if (helpPopup != null && helpPopup.isShowing()) closeHelpUI();
-            else showHelpUI();
-        }));
-        buttonStack.addView(createToolbarButton(getStringResourceByName("toolbar_done"), v -> hideSoftwareKeyboard()));
-        scrollView.addView(buttonStack);
-        mainToolbar.addView(scrollView);
+        searchContainer.addView(borderLine);
+
         searchToolbar = new LinearLayout(this);
         searchToolbar.setOrientation(LinearLayout.HORIZONTAL);
         searchToolbar.setGravity(Gravity.CENTER_VERTICAL);
@@ -1142,13 +1860,15 @@ public class MainActivity extends NativeActivity {
         optionsToolbar.addView(regexBtn);
         searchToolbar.addView(optionsToolbar);
         searchToolbar.addView(createToolbarButton(getStringResourceByName("toolbar_done"), v -> resetToolbarToMain()));
-        int padH = (int) (12 * getResources().getDisplayMetrics().density);
-        int padV = (int) (8 * getResources().getDisplayMetrics().density);
+        int padH = (int) (12 * density);
+        int padV = (int) (8 * density);
         searchToolbar.setPadding(padH, padV, padH, padV);
         replaceToolbar.setPadding(padH, 0, padH, padV);
-        rootContainer.addView(mainToolbar);
-        rootContainer.addView(searchToolbar);
-        rootContainer.addView(replaceToolbar);
+        searchContainer.addView(searchToolbar);
+        searchContainer.addView(replaceToolbar);
+
+        rootContainer.addView(mainToolbar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        rootContainer.addView(searchContainer, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         rootContainer.addOnLayoutChangeListener((v, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> {
             int newH = bottom - top;
             int oldH = oldBottom - oldTop;
@@ -1198,7 +1918,7 @@ public class MainActivity extends NativeActivity {
                 }, 100);
             }
         };
-        applyFocusListenerToAll(rootContainer, focusListener);
+        applyFocusListenerToAll(searchContainer, focusListener);
     }
 
     private void setEditTextStyle(AppCompatEditText editText) {
@@ -1261,9 +1981,11 @@ public class MainActivity extends NativeActivity {
     }
 
     private void openSearchUI(boolean withReplace) {
+        dismissCategoryPopup();
         boolean wasAlreadyOpen = searchToolbar != null && searchToolbar.getVisibility() == View.VISIBLE;
         isSwitchingUI = true;
         mainToolbar.setVisibility(View.GONE);
+        if (searchContainer != null) searchContainer.setVisibility(View.VISIBLE);
         searchToolbar.setVisibility(View.VISIBLE);
         replaceToolbar.setVisibility(withReplace ? View.VISIBLE : View.GONE);
         if (!wasAlreadyOpen) {
@@ -1298,7 +2020,7 @@ public class MainActivity extends NativeActivity {
     public void resetToolbarToMain() {
         isSwitchingUI = true;
         resetToolbarToMainInternal();
-        if (isHardwareKeyboardConnected()) {
+        if (isHardwareKeyboardConnected() && !isToolbarRequestedByTap) {
             if (toolbarPopup != null && toolbarPopup.isShowing()) {
                 toolbarPopup.dismiss();
             }
@@ -1334,7 +2056,9 @@ public class MainActivity extends NativeActivity {
     }
 
     private void resetToolbarToMainInternal() {
+        dismissCategoryPopup();
         mainToolbar.setVisibility(View.VISIBLE);
+        if (searchContainer != null) searchContainer.setVisibility(View.GONE);
         searchToolbar.setVisibility(View.GONE);
         replaceToolbar.setVisibility(View.GONE);
         updateToolbarToggleStates();
@@ -1788,13 +2512,39 @@ public class MainActivity extends NativeActivity {
                     toolbarPopup.update();
                 }
             }
+            isToolbarRequestedByTap = true;
             imeView.requestFocus();
+            boolean hwKb = isHardwareKeyboardConnected();
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            if (imm != null) imm.showSoftInput(imeView, InputMethodManager.SHOW_IMPLICIT);
+            if (imm != null && !hwKb) {
+                imm.showSoftInput(imeView, InputMethodManager.SHOW_IMPLICIT);
+            }
+            mainHandler.removeCallbacks(hideToolbarRunnable);
+            Runnable ensureToolbarShown = () -> {
+                if (!isKeyboardOpen && isToolbarRequestedByTap && (helpPopup == null || !helpPopup.isShowing()) && !isFinishing() && !isDestroyed()) {
+                    int fallbackBottom = lastImeInsetVisible ? lastKeyboardHeight : lastSystemBarsBottomInset;
+                    lastKeyboardHeight = fallbackBottom;
+                    showToolbarPopup(fallbackBottom);
+                    isKeyboardOpen = true;
+                    int toolbarHeight = toolbarPopup != null && toolbarPopup.getContentView() != null && toolbarPopup.getContentView().getHeight() > 0
+                            ? toolbarPopup.getContentView().getHeight()
+                            : (int) (46 * getResources().getDisplayMetrics().density);
+                    currentEffectiveBottomInset = fallbackBottom + toolbarHeight;
+                    updateVisibleHeight(currentEffectiveBottomInset);
+                    updatePreviewLayout();
+                }
+            };
+            if (hwKb) {
+                ensureToolbarShown.run();
+            } else {
+                mainHandler.postDelayed(ensureToolbarShown, 80);
+            }
         });
     }
     public void hideSoftwareKeyboard() {
         runOnUiThread(() -> {
+            isToolbarRequestedByTap = false;
+            dismissCategoryPopup();
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             if (imm != null) {
                 if (imeView != null && imeView.getWindowToken() != null) {
@@ -1803,6 +2553,13 @@ public class MainActivity extends NativeActivity {
                 if (getWindow() != null && getWindow().getDecorView() != null && getWindow().getDecorView().getWindowToken() != null) {
                     imm.hideSoftInputFromWindow(getWindow().getDecorView().getWindowToken(), 0);
                 }
+            }
+            if (isKeyboardOpen && !lastImeInsetVisible) {
+                mainHandler.removeCallbacks(hideToolbarRunnable);
+                mainHandler.postDelayed(hideToolbarRunnable, 60);
+                currentEffectiveBottomInset = lastSystemBarsBottomInset;
+                updateVisibleHeight(currentEffectiveBottomInset);
+                updatePreviewLayout();
             }
         });
     }
@@ -1983,10 +2740,12 @@ public class MainActivity extends NativeActivity {
         else getTheme().applyStyle(isDark ? android.R.style.Theme_DeviceDefault : android.R.style.Theme_DeviceDefault_Light, true);
         updateSystemColors();
         updateSystemUI(isDark);
+        if (overlayTitleView != null) {
+            overlayTitleView.setTextColor(sysAccentColor);
+        }
+        dismissCategoryPopup();
         if (toolbarPopup != null && toolbarPopup.getContentView() != null) {
             View root = toolbarPopup.getContentView();
-            int bgColor = (sysGutterBgColor & 0x00FFFFFF) | 0xF2000000;
-            root.setBackgroundColor(bgColor);
             updateViewColors(root);
             updateToolbarToggleStates();
         }
@@ -2007,6 +2766,20 @@ public class MainActivity extends NativeActivity {
             view.setBackgroundColor((sysGutterTextColor & 0x00FFFFFF) | 0x40000000);
             return;
         }
+        if ("pillSep".equals(view.getTag())) {
+            view.setBackgroundColor(getToolbarBorderColor());
+            return;
+        }
+        if ("pillContainer".equals(view.getTag())) {
+            if (view.getBackground() instanceof GradientDrawable) {
+                float density = getResources().getDisplayMetrics().density;
+                GradientDrawable gd = (GradientDrawable) view.getBackground();
+                gd.setColor(getToolbarPillBgColor());
+                gd.setStroke(Math.max(1, Math.round(0.6f * density)), getToolbarBorderColor());
+            }
+        } else if ("searchContainer".equals(view.getTag())) {
+            view.setBackgroundColor((sysGutterBgColor & 0x00FFFFFF) | 0xF2000000);
+        }
         if (view instanceof AppCompatEditText) {
             AppCompatEditText et = (AppCompatEditText) view;
             et.setTextColor(sysTextColor);
@@ -2015,7 +2788,21 @@ public class MainActivity extends NativeActivity {
                 ((GradientDrawable) et.getBackground()).setColor((sysBgColor & 0x00FFFFFF) | 0x80000000);
             }
         } else if (view instanceof TextView) {
-            ((TextView) view).setTextColor(sysTextColor);
+            TextView tv = (TextView) view;
+            tv.setTextColor(sysTextColor);
+            android.graphics.drawable.Drawable[] drawables = tv.getCompoundDrawables();
+            if (drawables != null) {
+                for (android.graphics.drawable.Drawable d : drawables) {
+                    if (d instanceof ToolbarIconDrawable) {
+                        ((ToolbarIconDrawable) d).setColor(sysTextColor);
+                    }
+                }
+            }
+        } else if (view instanceof android.widget.ImageView) {
+            android.graphics.drawable.Drawable d = ((android.widget.ImageView) view).getDrawable();
+            if (d instanceof ToolbarIconDrawable) {
+                ((ToolbarIconDrawable) d).setColor(sysTextColor);
+            }
         } else if (view instanceof ViewGroup) {
             ViewGroup vg = (ViewGroup) view;
             for (int i = 0; i < vg.getChildCount(); i++) updateViewColors(vg.getChildAt(i));
@@ -2038,6 +2825,7 @@ public class MainActivity extends NativeActivity {
     @Override
     protected void onDestroy() {
         saveCurrentViewState();
+        dismissCategoryPopup();
         if (helpPopup != null && helpPopup.isShowing()) {
             helpPopup.dismiss();
         }
@@ -2065,6 +2853,7 @@ public class MainActivity extends NativeActivity {
             resetToolbarToMainInternal();
         }
         isKeyboardOpen = false;
+        isToolbarRequestedByTap = false;
         currentEffectiveBottomInset = 0;
         updateVisibleHeight(0);
         updatePreviewLayout();

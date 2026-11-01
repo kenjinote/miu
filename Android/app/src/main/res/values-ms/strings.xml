@@ -3,7 +3,11 @@
     <string name="untitled">Tanpa Tajuk</string>
     <string name="error_title">Error</string>
     <string name="open_fail">Failed to open document.</string>
-    <string name="toolbar_new">New</string>
+        <string name="toolbar_cat_file">Fail</string>
+    <string name="toolbar_cat_edit">Edit</string>
+    <string name="toolbar_cat_view">Paparan</string>
+    <string name="toolbar_help">Bantuan</string>
+<string name="toolbar_new">New</string>
     <string name="toolbar_open">Open</string>
     <string name="menu_open_recent">Terkini</string>
     <string name="menu_clear_recent">Kosongkan Menu</string>

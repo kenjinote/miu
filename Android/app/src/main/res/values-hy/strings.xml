@@ -3,7 +3,11 @@
     <string name="untitled">Անանուն</string>
     <string name="error_title">Սխալ</string>
     <string name="open_fail">Չհաջողվեց բացել փաստաթուղթը:</string>
-    <string name="toolbar_new">Նոր</string>
+        <string name="toolbar_cat_file">Ֆայլ</string>
+    <string name="toolbar_cat_edit">Խմբագրել</string>
+    <string name="toolbar_cat_view">Տեսք</string>
+    <string name="toolbar_help">Help</string>
+<string name="toolbar_new">Նոր</string>
     <string name="toolbar_open">Բացել</string>
     <string name="menu_open_recent">Recent</string>
     <string name="menu_clear_recent">Մաքրել ընտրացանկը</string>

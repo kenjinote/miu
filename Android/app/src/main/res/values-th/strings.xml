@@ -3,7 +3,11 @@
     <string name="untitled">ไม่มีชื่อ</string>
     <string name="error_title">Error</string>
     <string name="open_fail">Failed to open document.</string>
-    <string name="toolbar_new">New</string>
+        <string name="toolbar_cat_file">ไฟล์</string>
+    <string name="toolbar_cat_edit">แก้ไข</string>
+    <string name="toolbar_cat_view">มุมมอง</string>
+    <string name="toolbar_help">วิธีใช้</string>
+<string name="toolbar_new">New</string>
     <string name="toolbar_open">Open</string>
     <string name="menu_open_recent">ไฟล์ล่าสุด</string>
     <string name="menu_clear_recent">ล้างเมนู</string>

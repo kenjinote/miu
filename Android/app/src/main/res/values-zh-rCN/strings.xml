@@ -3,7 +3,11 @@
     <string name="untitled">无标题</string>
     <string name="error_title">错误</string>
     <string name="open_fail">打开文档失败。</string>
-    <string name="toolbar_new">新建</string>
+        <string name="toolbar_cat_file">文件</string>
+    <string name="toolbar_cat_edit">编辑</string>
+    <string name="toolbar_cat_view">视图</string>
+    <string name="toolbar_help">帮助</string>
+<string name="toolbar_new">新建</string>
     <string name="toolbar_open">打开</string>
     <string name="menu_open_recent">最近</string>
     <string name="menu_clear_recent">清除菜单</string>

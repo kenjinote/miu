@@ -3,7 +3,11 @@
     <string name="untitled">Tanpa judul</string>
     <string name="error_title">Kesalahan</string>
     <string name="open_fail">Gagal membuka dokumen.</string>
-    <string name="toolbar_new">Baru</string>
+        <string name="toolbar_cat_file">File</string>
+    <string name="toolbar_cat_edit">Edit</string>
+    <string name="toolbar_cat_view">Tampilan</string>
+    <string name="toolbar_help">Bantuan</string>
+<string name="toolbar_new">Baru</string>
     <string name="toolbar_open">Buka</string>
     <string name="menu_open_recent">Terbaru</string>
     <string name="menu_clear_recent">Hapus Menu</string>

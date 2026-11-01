@@ -3,7 +3,11 @@
     <string name="untitled">Laisi àkọlé</string>
     <string name="error_title">Àṣìṣe</string>
     <string name="open_fail">Ìkùnà láti ṣí àkọsílẹ̀.</string>
-    <string name="toolbar_new">Tuntun</string>
+        <string name="toolbar_cat_file">Fáìlì</string>
+    <string name="toolbar_cat_edit">Ṣàtúnṣe</string>
+    <string name="toolbar_cat_view">Ìwò</string>
+    <string name="toolbar_help">Help</string>
+<string name="toolbar_new">Tuntun</string>
     <string name="toolbar_open">Ṣí</string>
     <string name="menu_open_recent">Recent</string>
     <string name="menu_clear_recent">Pa Àkójọ Rẹ́</string>

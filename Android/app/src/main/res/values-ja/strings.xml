@@ -3,7 +3,11 @@
     <string name="untitled">無題</string>
     <string name="error_title">エラー</string>
     <string name="open_fail">ファイルを開けませんでした。</string>
-    <string name="toolbar_new">新規</string>
+        <string name="toolbar_cat_file">ファイル</string>
+    <string name="toolbar_cat_edit">編集</string>
+    <string name="toolbar_cat_view">表示</string>
+    <string name="toolbar_help">ヘルプ</string>
+<string name="toolbar_new">新規</string>
     <string name="toolbar_open">開く</string>
     <string name="menu_open_recent">最近使った項目</string>
     <string name="menu_clear_recent">履歴を消去</string>

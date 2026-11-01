@@ -3,7 +3,11 @@
     <string name="untitled">Chưa có tiêu đề</string>
     <string name="error_title">Error</string>
     <string name="open_fail">Failed to open document.</string>
-    <string name="toolbar_new">New</string>
+        <string name="toolbar_cat_file">Tệp</string>
+    <string name="toolbar_cat_edit">Chỉnh sửa</string>
+    <string name="toolbar_cat_view">Xem</string>
+    <string name="toolbar_help">Trợ giúp</string>
+<string name="toolbar_new">New</string>
     <string name="toolbar_open">Open</string>
     <string name="menu_open_recent">Gần đây</string>
     <string name="menu_clear_recent">Xóa menu</string>

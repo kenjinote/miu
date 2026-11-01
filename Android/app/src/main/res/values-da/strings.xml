@@ -3,7 +3,11 @@
     <string name="untitled">Uden titel</string>
     <string name="error_title">Error</string>
     <string name="open_fail">Failed to open document.</string>
-    <string name="toolbar_new">New</string>
+        <string name="toolbar_cat_file">Arkiv</string>
+    <string name="toolbar_cat_edit">Rediger</string>
+    <string name="toolbar_cat_view">Oversigt</string>
+    <string name="toolbar_help">Hjælp</string>
+<string name="toolbar_new">New</string>
     <string name="toolbar_open">Open</string>
     <string name="menu_open_recent">Seneste</string>
     <string name="menu_clear_recent">Ryd menu</string>

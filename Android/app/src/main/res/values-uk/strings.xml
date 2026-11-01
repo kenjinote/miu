@@ -3,7 +3,11 @@
     <string name="untitled">Без назви</string>
     <string name="error_title">Error</string>
     <string name="open_fail">Failed to open document.</string>
-    <string name="toolbar_new">New</string>
+        <string name="toolbar_cat_file">Файл</string>
+    <string name="toolbar_cat_edit">Правка</string>
+    <string name="toolbar_cat_view">Вигляд</string>
+    <string name="toolbar_help">Довідка</string>
+<string name="toolbar_new">New</string>
     <string name="toolbar_open">Open</string>
     <string name="menu_open_recent">Нещодавні</string>
     <string name="menu_clear_recent">Очистити меню</string>

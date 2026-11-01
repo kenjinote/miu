@@ -3,7 +3,11 @@
     <string name="untitled">Χωρίς τίτλο</string>
     <string name="error_title">Error</string>
     <string name="open_fail">Failed to open document.</string>
-    <string name="toolbar_new">New</string>
+        <string name="toolbar_cat_file">Αρχείο</string>
+    <string name="toolbar_cat_edit">Επεξεργασία</string>
+    <string name="toolbar_cat_view">Προβολή</string>
+    <string name="toolbar_help">Βοήθεια</string>
+<string name="toolbar_new">New</string>
     <string name="toolbar_open">Open</string>
     <string name="menu_open_recent">Πρόσφατα</string>
     <string name="menu_clear_recent">Εκκαθάριση μενού</string>

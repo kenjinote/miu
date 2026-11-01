@@ -3,7 +3,11 @@
     <string name="untitled">제목 없음</string>
     <string name="error_title">오류</string>
     <string name="open_fail">문서를 열지 못했습니다.</string>
-    <string name="toolbar_new">새로 만들기</string>
+        <string name="toolbar_cat_file">파일</string>
+    <string name="toolbar_cat_edit">편집</string>
+    <string name="toolbar_cat_view">보기</string>
+    <string name="toolbar_help">도움말</string>
+<string name="toolbar_new">새로 만들기</string>
     <string name="toolbar_open">열기</string>
     <string name="menu_open_recent">최근 항목</string>
     <string name="menu_clear_recent">메뉴 지우기</string>

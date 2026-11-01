@@ -3,7 +3,11 @@
     <string name="untitled">Bez názvu</string>
     <string name="error_title">Error</string>
     <string name="open_fail">Failed to open document.</string>
-    <string name="toolbar_new">New</string>
+        <string name="toolbar_cat_file">Soubor</string>
+    <string name="toolbar_cat_edit">Úpravy</string>
+    <string name="toolbar_cat_view">Zobrazení</string>
+    <string name="toolbar_help">Nápověda</string>
+<string name="toolbar_new">New</string>
     <string name="toolbar_open">Open</string>
     <string name="menu_open_recent">Nedávné</string>
     <string name="menu_clear_recent">Vyčistit nabídku</string>

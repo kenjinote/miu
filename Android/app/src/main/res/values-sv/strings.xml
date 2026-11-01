@@ -3,7 +3,11 @@
     <string name="untitled">Namnlös</string>
     <string name="error_title">Error</string>
     <string name="open_fail">Failed to open document.</string>
-    <string name="toolbar_new">New</string>
+        <string name="toolbar_cat_file">Arkiv</string>
+    <string name="toolbar_cat_edit">Redigera</string>
+    <string name="toolbar_cat_view">Innehåll</string>
+    <string name="toolbar_help">Hjälp</string>
+<string name="toolbar_new">New</string>
     <string name="toolbar_open">Open</string>
     <string name="menu_open_recent">Senaste</string>
     <string name="menu_clear_recent">Rensa meny</string>

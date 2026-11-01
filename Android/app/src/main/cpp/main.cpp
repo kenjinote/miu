@@ -413,6 +413,8 @@ struct Engine {
     bool isSelecting = false;
     float lastPinchDistance = 0.0f;
     bool isKeyboardShowing = false;
+    float unconsumedDownSwipe = 0.0f;
+    bool didDismissKeyboardInPan = false;
     bool isHelpShowing = false;
     bool ignoreTouchUntilUp = false;
     int vScrollPos = 0;
@@ -5321,6 +5323,22 @@ void renderFrame(Engine* engine) {
     VkResult presentResult = vkQueuePresentKHR(engine->graphicsQueue, &present);
     if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) { recreateSwapchain(engine); }
 }
+void dismissKeyboardFromCpp(Engine* engine) {
+    if (!engine || !engine->app || !engine->app->activity || !engine->app->activity->vm) return;
+    engine->isKeyboardShowing = false;
+    JNIEnv* env = nullptr;
+    bool needDetach = false;
+    if (engine->app->activity->vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
+        if (engine->app->activity->vm->AttachCurrentThread(&env, nullptr) == 0) needDetach = true;
+    }
+    if (env) {
+        jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
+        jmethodID hideImeMethod = env->GetMethodID(activityClass, "hideSoftwareKeyboard", "()V");
+        if (hideImeMethod) env->CallVoidMethod(engine->app->activity->clazz, hideImeMethod);
+        env->DeleteLocalRef(activityClass);
+    }
+    if (needDetach) engine->app->activity->vm->DetachCurrentThread();
+}
 void checkKeyboardVisibility(Engine* engine) {
     if (engine->isKeyboardShowing && !engine->cursors.empty() && engine->app->window != nullptr) {
         size_t pos = engine->cursors.back().head;
@@ -5329,10 +5347,7 @@ void checkKeyboardVisibility(Engine* engine) {
         float visibleH = getEditorVisibleH(engine);
         bool isOutsideY = (displayY + engine->lineHeight < engine->topMargin) || (displayY > visibleH);
         if (isOutsideY) {
-            engine->isKeyboardShowing = false; JNIEnv* env = nullptr; engine->app->activity->vm->AttachCurrentThread(&env, nullptr);
-            jclass activityClass = env->GetObjectClass(engine->app->activity->clazz); jmethodID hideImeMethod = env->GetMethodID(activityClass, "hideSoftwareKeyboard", "()V");
-            if (hideImeMethod) env->CallVoidMethod(engine->app->activity->clazz, hideImeMethod);
-            env->DeleteLocalRef(activityClass); engine->app->activity->vm->DetachCurrentThread();
+            dismissKeyboardFromCpp(engine);
         }
     }
 }
@@ -5437,6 +5452,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             if (now - engine->lastClickTime < 400 && std::abs(x - engine->lastClickX) < 30.0f && std::abs(y - engine->lastClickY) < 30.0f) engine->clickCount++; else engine->clickCount = 1;
             engine->lastClickTime = now; engine->lastClickX = x; engine->lastClickY = y;
             engine->isDragging = false; engine->lastTouchX = x; engine->lastTouchY = y;
+            engine->unconsumedDownSwipe = 0.0f; engine->didDismissKeyboardInPan = false;
             engine->isFlinging = false; engine->velocityX = 0.0f; engine->velocityY = 0.0f; engine->lastMoveTime = now;
 
             if (x < engine->gutterWidth && y >= engine->topMargin) {
@@ -5538,6 +5554,7 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
 
             if (!engine->isDragging && !engine->isSelecting && (std::abs(x - engine->lastClickX) > 10.0f || std::abs(y - engine->lastClickY) > 10.0f)) { engine->isDragging = true; engine->lastTouchX = x; engine->lastTouchY = y; dx = 0.0f; dy = 0.0f; }
             if (engine->isDragging) {
+                float prevScrollY = engine->scrollY;
                 if (!engine->wordWrapEnabled) engine->scrollX -= dx; else engine->scrollX = 0.0f;
                 engine->scrollY -= dy;
                 if (engine->scrollX < 0.0f) engine->scrollX = 0.0f;
@@ -5552,6 +5569,23 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                     if (engine->scrollX > maxScrollX) engine->scrollX = maxScrollX;
                 }
                 engine->lastTouchX = x; engine->lastTouchY = y; checkKeyboardVisibility(engine);
+                if (engine->isKeyboardShowing && !engine->didDismissKeyboardInPan && !isMouse) {
+                    bool atTopBefore = (prevScrollY <= 0.5f);
+                    bool atTopAfter = (engine->scrollY <= 0.5f);
+                    if (dy > 0.0f && atTopAfter) {
+                        engine->unconsumedDownSwipe += atTopBefore ? dy : (dy * 0.6f);
+                    } else if (dy < 0.0f) {
+                        engine->unconsumedDownSwipe = std::max(0.0f, engine->unconsumedDownSwipe + dy);
+                    }
+                    float totalDx = x - engine->lastClickX;
+                    float totalDy = y - engine->lastClickY;
+                    float swipeThreshold = std::max(36.0f, engine->lineHeight * 0.75f);
+                    if ((engine->unconsumedDownSwipe >= swipeThreshold * 0.8f || (atTopAfter && totalDy >= swipeThreshold)) &&
+                        std::abs(totalDy) > std::abs(totalDx)) {
+                        engine->didDismissKeyboardInPan = true;
+                        dismissKeyboardFromCpp(engine);
+                    }
+                }
             }
 
         } else if (action == AMOTION_EVENT_ACTION_UP) {
@@ -5585,6 +5619,15 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 ensureCaretVisible(engine);
 
             } else {
+                if (engine->isKeyboardShowing && !engine->didDismissKeyboardInPan && !isMouse) {
+                    float totalDx = x - engine->lastClickX;
+                    float totalDy = y - engine->lastClickY;
+                    float minQuickDy = std::max(24.0f, engine->lineHeight * 0.45f);
+                    if (engine->scrollY <= 0.5f && totalDy >= minQuickDy && engine->velocityY > 0.35f && std::abs(totalDy) > std::abs(totalDx)) {
+                        engine->didDismissKeyboardInPan = true;
+                        dismissKeyboardFromCpp(engine);
+                    }
+                }
                 float speed = std::sqrt(engine->velocityX * engine->velocityX + engine->velocityY * engine->velocityY);
                 if (speed > 0.5f) { engine->isFlinging = true; engine->lastMoveTime = getCurrentTimeMs(); }
             }

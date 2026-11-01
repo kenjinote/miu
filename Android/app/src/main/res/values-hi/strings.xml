@@ -3,7 +3,11 @@
     <string name="untitled">बिना शीर्षक वाला</string>
     <string name="error_title">त्रुटि</string>
     <string name="open_fail">दस्तावेज़ खोलने में विफल।</string>
-    <string name="toolbar_new">नया</string>
+        <string name="toolbar_cat_file">फ़ाइल</string>
+    <string name="toolbar_cat_edit">संपादन</string>
+    <string name="toolbar_cat_view">दृश्य</string>
+    <string name="toolbar_help">सहायता</string>
+<string name="toolbar_new">नया</string>
     <string name="toolbar_open">खोलें</string>
     <string name="menu_open_recent">हाल ही के</string>
     <string name="menu_clear_recent">मेनू साफ़ करें</string>

@@ -107,6 +107,10 @@
     UIBezierPath *bp = [UIBezierPath bezierPathWithRoundedRect:pillRect cornerRadius:1.0];
     [bp fill];
 }
+- (BOOL)pointInside:(CGPoint)point withEvent:(UIEvent *)event {
+    CGRect hitBounds = CGRectInset(self.bounds, -10.0, -10.0);
+    return CGRectContainsPoint(hitBounds, point);
+}
 - (void)handleSplitterPan:(UIPanGestureRecognizer *)pan {
     if (!self.editor || !self.superview) return;
     UIView *container = self.superview;
@@ -114,13 +118,17 @@
     if (self.isVerticalSplit) {
         CGFloat totalH = container.bounds.size.height;
         if (totalH > 100.0) {
-            self.editor->previewSplitRatio = std::clamp((float)(pt.y / totalH), 0.15f, 0.85f);
+            float ratio = std::clamp((float)(pt.y / totalH), 0.15f, 0.85f);
+            if (std::fabs(ratio - 0.5f) < 0.025f) ratio = 0.5f;
+            self.editor->previewSplitRatio = ratio;
             if (self.onRatioChanged) self.onRatioChanged();
         }
     } else {
         CGFloat totalW = container.bounds.size.width;
         if (totalW > 100.0) {
-            self.editor->previewSplitRatio = std::clamp((float)(pt.x / totalW), 0.15f, 0.85f);
+            float ratio = std::clamp((float)(pt.x / totalW), 0.15f, 0.85f);
+            if (std::fabs(ratio - 0.5f) < 0.025f) ratio = 0.5f;
+            self.editor->previewSplitRatio = ratio;
             if (self.onRatioChanged) self.onRatioChanged();
         }
     }
@@ -280,6 +288,9 @@
 - (void)hardwareKeyboardStateChanged:(NSNotification *)note {
     dispatch_async(dispatch_get_main_queue(), ^{
         [self reloadInputViews];
+        if (self.onSyncKeyboardLayout) {
+            self.onSyncKeyboardLayout();
+        }
     });
 }
 - (void)dealloc {
@@ -1412,6 +1423,7 @@
         [UIKeyCommand keyCommandWithInput:@"[" modifierFlags:UIKeyModifierCommand action:@selector(unindentLinesAction:)],
         [UIKeyCommand keyCommandWithInput:@"n" modifierFlags:UIKeyModifierCommand action:@selector(newDocument:)],
         [UIKeyCommand keyCommandWithInput:@"o" modifierFlags:UIKeyModifierCommand action:@selector(openDocument:)],
+        [UIKeyCommand keyCommandWithInput:@"o" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(openRecentDocument:)],
         [UIKeyCommand keyCommandWithInput:@"s" modifierFlags:UIKeyModifierCommand action:@selector(saveDocument:)],
         [UIKeyCommand keyCommandWithInput:@"s" modifierFlags:UIKeyModifierCommand | UIKeyModifierShift action:@selector(saveDocumentAs:)],
         [UIKeyCommand keyCommandWithInput:@"f" modifierFlags:UIKeyModifierCommand action:@selector(cmdFind:)],
@@ -2157,11 +2169,6 @@
     [self setNeedsDisplay];
 }
 - (UIView *)inputAccessoryView {
-    if (@available(iOS 14.0, *)) {
-        if ([GCKeyboard coalescedKeyboard] != nil) {
-            return nil;
-        }
-    }
     if (_customAccessoryView) return _customAccessoryView;
     CGFloat barHeight = 44.0;
     _customAccessoryView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, 0, barHeight)];
@@ -2596,50 +2603,55 @@ static NSString *s_iosClipboardSnapshot = nil;
     std::shared_ptr<Editor> _editorEngine;
     BOOL _isFirstLayoutDone;
     NSLayoutConstraint *_editorBottomConstraint;
+    NSLayoutConstraint *_headerTopConstraint;
     BOOL _isExportingDocument;
     CGSize _lastTopFillSize;
     CGRect _lastKeyboardScreenFrame;
     CGRect _lastKeyboardScreenBounds;
     BOOL _isKeyboardVisible;
     BOOL _isTransitioningSize;
+    BOOL _hasLastSplitOrientation;
+    BOOL _lastIsVerticalSplit;
+    float _savedVerticalSplitRatio;
+    float _savedHorizontalSplitRatio;
 }
 - (CGFloat)computeCurrentKeyboardShrinkAmount {
-    if (!self.isViewLoaded || self.view.bounds.size.height <= 0 || !_isKeyboardVisible) return 0.0;
+    if (!self.isViewLoaded || self.view.bounds.size.height <= 0) return 0.0;
     CGFloat shrinkAmount = 0.0;
     UIScreen *screen = self.view.window.windowScene.screen ?: [UIScreen mainScreen];
     CGRect screenBounds = screen ? screen.bounds : self.view.bounds;
-    if (!CGRectIsEmpty(_lastKeyboardScreenFrame) && !CGRectIsNull(_lastKeyboardScreenFrame) &&
-        !CGRectIsEmpty(_lastKeyboardScreenBounds) && !CGRectIsNull(_lastKeyboardScreenBounds) &&
-        CGSizeEqualToSize(_lastKeyboardScreenBounds.size, screenBounds.size) && screen) {
-        CGRect screenIntersection = CGRectIntersection(screenBounds, _lastKeyboardScreenFrame);
-        if (!CGRectIsNull(screenIntersection) && !CGRectIsEmpty(screenIntersection) && screenIntersection.size.height > 0.0) {
-            CGFloat kbHeightOnScreen = screenIntersection.size.height;
-            BOOL viewOrientationMatchesScreen = ((self.view.bounds.size.width >= self.view.bounds.size.height) ==
-                                                 (screenBounds.size.width >= screenBounds.size.height));
-            if (viewOrientationMatchesScreen && !_isTransitioningSize) {
-                CGRect convertedFrame = [self.view convertRect:screenIntersection fromCoordinateSpace:screen.coordinateSpace];
-                CGRect viewIntersection = CGRectIntersection(self.view.bounds, convertedFrame);
-                if (!CGRectIsNull(viewIntersection) && !CGRectIsEmpty(viewIntersection)) {
-                    CGFloat fromNotif = self.view.bounds.size.height - viewIntersection.origin.y;
-                    shrinkAmount = MIN(kbHeightOnScreen, MAX(0.0, fromNotif));
+    if (_isKeyboardVisible) {
+        if (!CGRectIsEmpty(_lastKeyboardScreenFrame) && !CGRectIsNull(_lastKeyboardScreenFrame) &&
+            !CGRectIsEmpty(_lastKeyboardScreenBounds) && !CGRectIsNull(_lastKeyboardScreenBounds) &&
+            CGSizeEqualToSize(_lastKeyboardScreenBounds.size, screenBounds.size) && screen) {
+            CGRect screenIntersection = CGRectIntersection(screenBounds, _lastKeyboardScreenFrame);
+            if (!CGRectIsNull(screenIntersection) && !CGRectIsEmpty(screenIntersection) && screenIntersection.size.height > 0.0) {
+                CGFloat kbHeightOnScreen = screenIntersection.size.height;
+                if (self.view.window != nil && !_isTransitioningSize) {
+                    CGRect convertedFrame = [self.view convertRect:screenIntersection fromCoordinateSpace:screen.coordinateSpace];
+                    CGRect viewIntersection = CGRectIntersection(self.view.bounds, convertedFrame);
+                    if (!CGRectIsNull(viewIntersection) && !CGRectIsEmpty(viewIntersection)) {
+                        CGFloat fromNotif = self.view.bounds.size.height - viewIntersection.origin.y;
+                        shrinkAmount = MIN(kbHeightOnScreen, MAX(0.0, fromNotif));
+                    }
+                } else {
+                    shrinkAmount = kbHeightOnScreen;
                 }
-            } else {
-                shrinkAmount = kbHeightOnScreen;
             }
-        }
-    } else if (!_isTransitioningSize) {
-        if (@available(iOS 15.0, *)) {
-            CGRect guideFrame = self.view.keyboardLayoutGuide.layoutFrame;
-            if (!CGRectIsEmpty(guideFrame) && !CGRectIsNull(guideFrame) &&
-                guideFrame.origin.y > 0.0 && guideFrame.origin.y < self.view.bounds.size.height) {
-                CGFloat fromGuide = self.view.bounds.size.height - guideFrame.origin.y;
-                if (fromGuide > 0.0 && fromGuide <= self.view.bounds.size.height * 0.65) {
-                    shrinkAmount = MAX(shrinkAmount, fromGuide);
+        } else if (!_isTransitioningSize) {
+            if (@available(iOS 15.0, *)) {
+                CGRect guideFrame = self.view.keyboardLayoutGuide.layoutFrame;
+                if (!CGRectIsEmpty(guideFrame) && !CGRectIsNull(guideFrame) &&
+                    guideFrame.origin.y > 0.0 && guideFrame.origin.y < self.view.bounds.size.height) {
+                    CGFloat fromGuide = self.view.bounds.size.height - guideFrame.origin.y;
+                    if (fromGuide > 0.0 && fromGuide <= self.view.bounds.size.height * 0.65) {
+                        shrinkAmount = MAX(shrinkAmount, fromGuide);
+                    }
                 }
             }
         }
     }
-    if (!_isTransitioningSize && shrinkAmount > 0.0 && self.editorView.isFirstResponder) {
+    if (!_isTransitioningSize && (self.editorView.isFirstResponder || _isKeyboardVisible)) {
         UIView *accView = [self.editorView activeAccessoryView];
         if (accView && accView.window && !accView.hidden && accView.alpha > 0.01) {
             UIScreen *accScreen = accView.window.windowScene.screen ?: screen;
@@ -2649,7 +2661,8 @@ static NSString *s_iosClipboardSnapshot = nil;
                 if (!CGRectIsEmpty(accInView) && !CGRectIsNull(accInView) &&
                     accInView.origin.y > 0.0 && accInView.origin.y < self.view.bounds.size.height) {
                     CGFloat fromAcc = self.view.bounds.size.height - accInView.origin.y;
-                    if (fromAcc > shrinkAmount && fromAcc <= shrinkAmount + 56.0) {
+                    CGFloat maxAccDelta = (shrinkAmount > 0.0) ? 56.0 : (self.view.safeAreaInsets.bottom + 60.0);
+                    if (fromAcc > shrinkAmount && fromAcc <= shrinkAmount + maxAccDelta) {
                         shrinkAmount = fromAcc;
                     }
                 }
@@ -2725,6 +2738,11 @@ static NSString *s_iosClipboardSnapshot = nil;
     self.splitterView.onRatioChanged = ^{
         __strong typeof(self) strongSelf = weakSelf;
         if (!strongSelf || !strongSelf->_editorEngine) return;
+        if (strongSelf.splitterView.isVerticalSplit) {
+            strongSelf->_savedVerticalSplitRatio = strongSelf->_editorEngine->previewSplitRatio;
+        } else {
+            strongSelf->_savedHorizontalSplitRatio = strongSelf->_editorEngine->previewSplitRatio;
+        }
         [strongSelf layoutSplitViews];
         strongSelf->_editorEngine->updateScrollBars();
         [strongSelf.editorView setNeedsDisplay];
@@ -2742,6 +2760,19 @@ static NSString *s_iosClipboardSnapshot = nil;
     } else {
         [self ensurePreviewViewsCreated];
         BOOL verticalSplit = (cb.size.width < 600.0 && cb.size.height > cb.size.width);
+        if (!_hasLastSplitOrientation) {
+            _hasLastSplitOrientation = YES;
+            _lastIsVerticalSplit = verticalSplit;
+        } else if (_lastIsVerticalSplit != verticalSplit) {
+            if (_lastIsVerticalSplit) {
+                _savedVerticalSplitRatio = _editorEngine->previewSplitRatio;
+                _editorEngine->previewSplitRatio = _savedHorizontalSplitRatio;
+            } else {
+                _savedHorizontalSplitRatio = _editorEngine->previewSplitRatio;
+                _editorEngine->previewSplitRatio = _savedVerticalSplitRatio;
+            }
+            _lastIsVerticalSplit = verticalSplit;
+        }
         self.splitterView.isVerticalSplit = verticalSplit;
         if (!verticalSplit) {
             CGFloat splitW = 8.0;
@@ -3308,6 +3339,10 @@ static NSString *s_iosClipboardSnapshot = nil;
     _lastKeyboardScreenBounds = CGRectNull;
     _isKeyboardVisible = NO;
     _isTransitioningSize = NO;
+    _hasLastSplitOrientation = NO;
+    _lastIsVerticalSplit = NO;
+    _savedVerticalSplitRatio = 0.5f;
+    _savedHorizontalSplitRatio = 0.5f;
     self.view.backgroundColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *trait) {
         return (trait.userInterfaceStyle == UIUserInterfaceStyleDark) ? [UIColor blackColor] : [UIColor systemBackgroundColor];
     }];
@@ -3319,6 +3354,7 @@ static NSString *s_iosClipboardSnapshot = nil;
     self.titleBarView = [[UIView alloc] init];
     self.titleBarView.translatesAutoresizingMaskIntoConstraints = NO;
     self.titleBarView.backgroundColor = [UIColor clearColor];
+    self.titleBarView.clipsToBounds = YES;
     [self.headerStack addArrangedSubview:self.titleBarView];
     UIStackView *titleStack = [[UIStackView alloc] init];
     titleStack.axis = UILayoutConstraintAxisHorizontal;
@@ -3392,13 +3428,14 @@ static NSString *s_iosClipboardSnapshot = nil;
 
     UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
     _editorBottomConstraint = [self.workspaceContainer.bottomAnchor constraintEqualToAnchor:self.footerStack.topAnchor];
+    _headerTopConstraint = [self.headerStack.topAnchor constraintEqualToAnchor:safeArea.topAnchor constant:-12];
     self.footerBottomConstraint = [self.footerStack.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor];
     [NSLayoutConstraint activateConstraints:@[
         [self.topFillView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
         [self.topFillView.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.topFillView.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.topFillView.bottomAnchor constraintEqualToAnchor:self.headerStack.bottomAnchor constant:10],
-        [self.headerStack.topAnchor constraintEqualToAnchor:safeArea.topAnchor constant:-12],
+        _headerTopConstraint,
         [self.headerStack.leadingAnchor constraintEqualToAnchor:self.view.leadingAnchor],
         [self.headerStack.trailingAnchor constraintEqualToAnchor:self.view.trailingAnchor],
         [self.titleBarView.heightAnchor constraintEqualToConstant:17],
@@ -3841,11 +3878,28 @@ static NSString *s_iosClipboardSnapshot = nil;
     if (self.scrollToTopHelper) {
         self.scrollToTopHelper.contentSize = CGSizeMake(self.view.bounds.size.width, 2000);
     }
-    BOOL hideTitleBar = (self.traitCollection.verticalSizeClass == UIUserInterfaceSizeClassCompact) || (self.view.bounds.size.height < 480.0);
+    CGFloat safeTop = self.view.safeAreaInsets.top;
+    if (safeTop == 0 && self.view.window) {
+        CGPoint originInWin = [self.view convertPoint:CGPointZero toView:self.view.window];
+        if (originInWin.y <= 1.0) {
+            safeTop = self.view.window.safeAreaInsets.top;
+        }
+    }
+    BOOL hideTitleBar = (self.traitCollection.verticalSizeClass == UIUserInterfaceSizeClassCompact && safeTop < 18.0) || (self.view.bounds.size.height < 340.0);
+    self.titleBarView.hidden = hideTitleBar;
     for (NSLayoutConstraint *c in self.titleBarView.constraints) {
         if (c.firstAttribute == NSLayoutAttributeHeight && c.relation == NSLayoutRelationEqual) {
             c.constant = hideTitleBar ? 0 : 17;
             break;
+        }
+    }
+    if (_headerTopConstraint) {
+        if (safeTop >= 44.0) {
+            _headerTopConstraint.constant = -12.0;
+        } else if (safeTop >= 18.0) {
+            _headerTopConstraint.constant = -2.0;
+        } else {
+            _headerTopConstraint.constant = 4.0;
         }
     }
     CGFloat desiredShrink = [self computeCurrentKeyboardShrinkAmount];
@@ -3854,20 +3908,13 @@ static NSString *s_iosClipboardSnapshot = nil;
         [self.workspaceContainer layoutIfNeeded];
     }
     if (_editorEngine) {
-        CGFloat safeTop = self.view.safeAreaInsets.top;
-        if (safeTop == 0) {
-            UIWindow *firstWindow = nil;
-            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-                if ([scene isKindOfClass:[UIWindowScene class]]) {
-                    firstWindow = ((UIWindowScene *)scene).windows.firstObject;
-                    if (firstWindow) break;
-                }
-            }
-            if (firstWindow) {
-                safeTop = firstWindow.safeAreaInsets.top;
-            }
+        if (hideTitleBar) {
+            self.editorView.topRenderMargin = MAX(8.0, safeTop + 4.0);
+        } else if (safeTop >= 44.0) {
+            self.editorView.topRenderMargin = safeTop + 15.0;
+        } else {
+            self.editorView.topRenderMargin = safeTop + 23.0;
         }
-        self.editorView.topRenderMargin = safeTop + 15;
         [self layoutSplitViews];
         if (self.topFillView.bounds.size.height > 0) {
             CGSize curFillSize = self.topFillView.bounds.size;
@@ -3988,12 +4035,13 @@ static NSString *s_iosClipboardSnapshot = nil;
         if (endFrameVal) {
             CGRect endFrame = [endFrameVal CGRectValue];
             CGRect screenIntersection = CGRectIntersection(screenBounds, endFrame);
+            CGFloat minRequiredWidth = MIN(screenBounds.size.width * 0.4, MAX(120.0, self.view.bounds.size.width * 0.5));
             BOOL isDockedAtBottom = !CGRectIsNull(screenIntersection) &&
                                     !CGRectIsEmpty(screenIntersection) &&
                                     screenIntersection.size.height > 1.0 &&
                                     endFrame.origin.y < screenBounds.size.height - 1.0 &&
-                                    CGRectGetMaxY(screenIntersection) >= screenBounds.size.height - 10.0 &&
-                                    screenIntersection.size.width >= screenBounds.size.width * 0.5;
+                                    CGRectGetMaxY(screenIntersection) >= screenBounds.size.height - 16.0 &&
+                                    screenIntersection.size.width >= minRequiredWidth;
             if (isDockedAtBottom) {
                 _isKeyboardVisible = YES;
                 _lastKeyboardScreenFrame = endFrame;

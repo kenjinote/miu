@@ -3,7 +3,11 @@
     <string name="untitled">Unbenannt</string>
     <string name="error_title">Fehler</string>
     <string name="open_fail">Dokument konnte nicht geöffnet werden.</string>
-    <string name="toolbar_new">Neu</string>
+        <string name="toolbar_cat_file">Ablage</string>
+    <string name="toolbar_cat_edit">Bearbeiten</string>
+    <string name="toolbar_cat_view">Darstellung</string>
+    <string name="toolbar_help">Hilfe</string>
+<string name="toolbar_new">Neu</string>
     <string name="toolbar_open">Öffnen</string>
     <string name="menu_open_recent">Zuletzt verwendet</string>
     <string name="menu_clear_recent">Menü löschen</string>

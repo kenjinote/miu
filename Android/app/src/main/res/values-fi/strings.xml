@@ -3,7 +3,11 @@
     <string name="untitled">Nimetön</string>
     <string name="error_title">Error</string>
     <string name="open_fail">Failed to open document.</string>
-    <string name="toolbar_new">New</string>
+        <string name="toolbar_cat_file">Arkisto</string>
+    <string name="toolbar_cat_edit">Muokkaa</string>
+    <string name="toolbar_cat_view">Näytä</string>
+    <string name="toolbar_help">Ohje</string>
+<string name="toolbar_new">New</string>
     <string name="toolbar_open">Open</string>
     <string name="menu_open_recent">Viimeisimmät</string>
     <string name="menu_clear_recent">Tyhjennä valikko</string>

@@ -3,7 +3,11 @@
     <string name="untitled">Adsız</string>
     <string name="error_title">Error</string>
     <string name="open_fail">Failed to open document.</string>
-    <string name="toolbar_new">New</string>
+        <string name="toolbar_cat_file">Dosya</string>
+    <string name="toolbar_cat_edit">Düzen</string>
+    <string name="toolbar_cat_view">Görünüm</string>
+    <string name="toolbar_help">Yardım</string>
+<string name="toolbar_new">New</string>
     <string name="toolbar_open">Open</string>
     <string name="menu_open_recent">Son</string>
     <string name="menu_clear_recent">Menüyü Temizle</string>
