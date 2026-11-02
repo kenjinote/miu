@@ -8,30 +8,30 @@ namespace TreeViewDiagram {
 // src/diagrams/treeview/boxDrawing.ts
 // ============================================================================
 
-inline bool isBranchChar(uint16_t c) noexcept {
+inline bool isBranchChar(uint16_t c) {
     return c == 0x2514 || c == 0x2517 || c == 0x251c || c == 0x2523;
 }
 
-inline bool isDashChar(uint16_t c) noexcept {
+inline bool isDashChar(uint16_t c) {
     return c == 0x2500 || c == 0x2501;
 }
 
-inline bool isPipeChar(uint16_t c) noexcept {
+inline bool isPipeChar(uint16_t c) {
     return c == 0x2502 || c == 0x2503;
 }
 
-inline bool isAllBoxChar(uint16_t c) noexcept {
+inline bool isAllBoxChar(uint16_t c) {
     return isBranchChar(c) || isDashChar(c) || isPipeChar(c);
 }
 
-inline bool hasAnyBoxChar(const std::string& s) noexcept {
+inline bool hasAnyBoxChar(const std::string& s) {
     for (uint16_t c : toUtf16(s)) {
         if (isAllBoxChar(c)) return true;
     }
     return false;
 }
 
-inline bool isDecorationOnly(const std::string& line) noexcept {
+inline bool isDecorationOnly(const std::string& line) {
     auto u16 = toUtf16(line);
     if (u16.empty()) return false;
     for (uint16_t c : u16) {
@@ -40,7 +40,7 @@ inline bool isDecorationOnly(const std::string& line) noexcept {
     return true;
 }
 
-inline bool isBoxOnly(const std::string& line) noexcept {
+inline bool isBoxOnly(const std::string& line) {
     auto u16 = toUtf16(line);
     if (u16.empty()) return false;
     for (uint16_t c : u16) {
@@ -177,7 +177,7 @@ enum Kind {
 };
 } // namespace T
 
-inline bool annotationAt(const std::string& src, int at) noexcept {
+inline bool annotationAt(const std::string& src, int at) {
     if (startsWith(src, "##", static_cast<size_t>(at)) || startsWith(src, "icon(", static_cast<size_t>(at))) return true;
     if (!startsWith(src, ":::", static_cast<size_t>(at))) return false;
     int i = at + 3;
@@ -186,7 +186,7 @@ inline bool annotationAt(const std::string& src, int at) noexcept {
     return (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95;
 }
 
-inline int matchBareName(const std::string& src, int at, int) noexcept {
+inline int matchBareName(const std::string& src, int at, int) {
     int first = charCodeAt(src, at);
     if (first < 0 || isBlank(first) || first == 10 || first == 13 || first == 34 || first == 39) return -1;
     if (startsWith(src, ":::", static_cast<size_t>(at)) || startsWith(src, "icon(", static_cast<size_t>(at)) || startsWith(src, "##", static_cast<size_t>(at))) return -1;
@@ -207,7 +207,7 @@ inline int matchBareName(const std::string& src, int at, int) noexcept {
     return i;
 }
 
-inline TokenType makeTreeViewTitle() noexcept {
+inline TokenType makeTreeViewTitle() {
     TokenType t = common_tokens::makeTitle();
     t.match = [](const std::string& src, int at, int) -> int {
         int p = common_tokens::matchTabsSpaces(src, at);
@@ -226,7 +226,7 @@ inline TokenType makeTreeViewTitle() noexcept {
     return t;
 }
 
-inline const std::vector<TokenType>& treeViewTokens() noexcept {
+inline const std::vector<TokenType>& treeViewTokens() {
     static const std::vector<TokenType> types = []() {
         TokenType kw = common_tokens::keyword("treeView-beta");
         kw.longer = {T::bareName};
@@ -346,7 +346,7 @@ inline const std::vector<TokenType>& treeViewTokens() noexcept {
     return types;
 }
 
-inline std::string trimBlanksEnd(const std::string& text) noexcept {
+inline std::string trimBlanksEnd(const std::string& text) {
     size_t end = text.size();
     while (end > 0 && isBlank(static_cast<unsigned char>(text[end - 1]))) end--;
     return end == text.size() ? text : text.substr(0, end);
@@ -367,7 +367,7 @@ struct TreeViewAst {
     std::vector<TreeNodeAst> nodes;
 };
 
-inline std::string fixSingle(const std::string& text) noexcept {
+inline std::string fixSingle(const std::string& text) {
     std::string s = trimStr(text);
     std::string out;
     int spaces = 0;
@@ -387,19 +387,19 @@ inline std::string fixSingle(const std::string& text) noexcept {
     return out;
 }
 
-inline std::string fixTitleValue(const std::string& text) noexcept {
+inline std::string fixTitleValue(const std::string& text) {
     size_t pos = text.find("title");
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 5));
 }
 
-inline std::string fixAccTitleValue(const std::string& text) noexcept {
+inline std::string fixAccTitleValue(const std::string& text) {
     size_t pos = text.find(':');
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 1));
 }
 
-inline std::string fixAccDescrValue(const std::string& text) noexcept {
+inline std::string fixAccDescrValue(const std::string& text) {
     size_t brace = text.find('{');
     size_t colon = text.find(':');
     if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -475,7 +475,7 @@ struct TreeViewModel : public DiagramMeta {
     int count = 1;
 };
 
-inline TreeViewModel buildTreeView(const TreeViewAst& ast, const std::string& fallbackTitle) noexcept {
+inline TreeViewModel buildTreeView(const TreeViewAst& ast, const std::string& fallbackTitle) {
     TreeViewModel model;
     model.root = std::make_shared<TreeNode>();
     model.root->id = 0;
@@ -516,7 +516,7 @@ inline TreeViewModel buildTreeView(const TreeViewAst& ast, const std::string& fa
 
 inline const std::string BUILTIN_PACK = "mermaid-treeview";
 
-inline std::string builtinGlyph(const std::string& name) noexcept {
+inline std::string builtinGlyph(const std::string& name) {
     if (name == "folder") return "M3 6.5A1.5 1.5 0 0 1 4.5 5h4.6l2.4 2.5h8A1.5 1.5 0 0 1 21 9v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 18z";
     if (name == "file") return "M6.5 3h7L19 8.5v11a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5v-15A1.5 1.5 0 0 1 6.5 3zM13.5 3v5.5H19";
     return "";
@@ -529,14 +529,14 @@ struct IconConfig {
     const Config* extensionIcons = nullptr;
 };
 
-inline std::optional<std::string> ownIconMap(const Config* m, const std::string& key) noexcept {
+inline std::optional<std::string> ownIconMap(const Config* m, const std::string& key) {
     if (!m || !m->isMap()) return std::nullopt;
     const auto* v = m->get(key);
     if (v && v->isString()) return v->sVal;
     return std::nullopt;
 }
 
-inline std::optional<std::string> detectIcon(const std::string& name, const IconConfig& cfg) noexcept {
+inline std::optional<std::string> detectIcon(const std::string& name, const IconConfig& cfg) {
     auto byName = ownIconMap(cfg.filenameIcons, name);
     if (byName.has_value() && !byName->empty()) return byName;
     size_t dot = name.rfind('.');
@@ -549,13 +549,13 @@ inline std::optional<std::string> detectIcon(const std::string& name, const Icon
     return std::nullopt;
 }
 
-inline std::string qualifyIcon(const std::string& icon, const std::string& defaultIconPack) noexcept {
+inline std::string qualifyIcon(const std::string& icon, const std::string& defaultIconPack) {
     if (icon.find(':') != std::string::npos) return icon;
     if (!builtinGlyph(icon).empty() || defaultIconPack.empty()) return Pele::cat({BUILTIN_PACK, ":", icon});
     return Pele::cat({defaultIconPack, ":", icon});
 }
 
-inline std::optional<std::string> getNodeIcon(const TreeNode& node, const IconConfig& config) noexcept {
+inline std::optional<std::string> getNodeIcon(const TreeNode& node, const IconConfig& config) {
     if (node.icon.has_value()) {
         if (*node.icon == "none") return std::nullopt;
         if (!node.icon->empty()) return qualifyIcon(*node.icon, config.defaultIconPack);
@@ -571,7 +571,7 @@ inline std::optional<std::string> getNodeIcon(const TreeNode& node, const IconCo
     return Pele::cat({BUILTIN_PACK, ":", (node.nodeType == "directory" ? "folder" : "file")});
 }
 
-inline IconConfig getIconConfig(const Config& config) noexcept {
+inline IconConfig getIconConfig(const Config& config) {
     IconConfig out;
     const auto* c = config.get("treeView");
     if (!c || !c->isMap()) return out;
@@ -602,7 +602,7 @@ constexpr double GUIDE_INSET = 7.0;
 constexpr double ELBOW = 4.0;
 constexpr double HIGHLIGHT_OVERHANG = 4.0;
 
-inline double treeSetting(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) noexcept {
+inline double treeSetting(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) {
     const auto* tv = config.get("treeView");
     if (!tv || !tv->isMap()) return fallback;
     const auto* v = tv->get(key);
@@ -624,13 +624,13 @@ struct Row {
     double height = 0.0;
 };
 
-inline double treeViewTitleRoom(const RenderOptions& options) noexcept {
+inline double treeViewTitleRoom(const RenderOptions& options) {
     double available = options.maxWidth;
     double pad = options.hasPadding ? options.padding : 8.0;
     return available > 0.0 ? std::max(80.0, available - 2.0 * pad) : 4000.0;
 }
 
-inline bool hasHighlightClass(const std::optional<std::string>& cssClass) noexcept {
+inline bool hasHighlightClass(const std::optional<std::string>& cssClass) {
     if (!cssClass.has_value()) return false;
     std::istringstream iss(*cssClass);
     std::string tok;
@@ -640,7 +640,7 @@ inline bool hasHighlightClass(const std::optional<std::string>& cssClass) noexce
     return false;
 }
 
-inline Rendered drawTreeView(const TreeViewModel& model, const Config& config, const RenderOptions& options, bool tight) noexcept {
+inline Rendered drawTreeView(const TreeViewModel& model, const Config& config, const RenderOptions& options, bool tight) {
     double size = options.hasFontSize ? options.fontSize : 16.0;
     const TextMeasurer& measurer = getMeasurer(options);
     double pad = options.hasPadding ? options.padding : 8.0;
@@ -797,7 +797,7 @@ inline Rendered drawTreeView(const TreeViewModel& model, const Config& config, c
     };
 }
 
-inline Rendered renderTreeViewModel(const TreeViewModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderTreeViewModel(const TreeViewModel& model, const Config& config, const RenderOptions& options) {
     return tighten(options, [&](bool tight) {
         return drawTreeView(model, config, options, tight);
     });

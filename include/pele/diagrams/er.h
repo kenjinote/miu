@@ -29,7 +29,7 @@ using StateDiagram::direction;
 using StateDiagram::runsAcross;
 using StateDiagram::turnToFit;
 
-inline std::string num(double value) noexcept {
+inline std::string num(double value) {
     if (!std::isfinite(value)) return "0";
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
@@ -44,7 +44,7 @@ inline std::string num(double value) noexcept {
     return s + "." + std::to_string(r);
 }
 
-inline CEdge cedge(int src, int dst, int minlen = 1, double labelW = 0.0, double labelH = 0.0) noexcept {
+inline CEdge cedge(int src, int dst, int minlen = 1, double labelW = 0.0, double labelH = 0.0) {
     CEdge e;
     e.src = src;
     e.dst = dst;
@@ -54,7 +54,7 @@ inline CEdge cedge(int src, int dst, int minlen = 1, double labelW = 0.0, double
     return e;
 }
 
-inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, double dx, double dy) noexcept {
+inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, double dx, double dy) {
     for (auto& c : nodes) {
         c.x += dx;
         c.y += dy;
@@ -71,14 +71,14 @@ inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, do
 
 using Crossings = std::unordered_map<int, std::vector<double>>;
 
-inline void markCrossings(Crossings& crossings, const std::vector<double>& route) noexcept {
+inline void markCrossings(Crossings& crossings, const std::vector<double>& route) {
     for (size_t k = 0; k + 1 < route.size(); k += 3) {
         int key = static_cast<int>(std::llround(route[k + 1]));
         crossings[key].push_back(route[k]);
     }
 }
 
-inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) noexcept {
+inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) {
     if (width == 0.0) return c.x;
     double top = c.y - c.h / 2.0;
     double left = c.x - c.w / 2.0;
@@ -103,7 +103,7 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
     return best;
 }
 
-inline bool internalLink(const std::string& name, const RenderOptions& options) noexcept {
+inline bool internalLink(const std::string& name, const RenderOptions& options) {
     std::string url = sanitizeUrl(name);
     if (url == "about:blank" || linkUrl(url, options).empty()) return false;
     std::string seen;
@@ -358,7 +358,7 @@ struct ErGraph {
     std::vector<ErGraphEdge> edges;
 };
 
-inline ErGraph buildErGraph(const ErDb& model) noexcept {
+inline ErGraph buildErGraph(const ErDb& model) {
     std::vector<ErGraphNode> nodes;
     std::vector<ErGraphEdge> edges;
     const auto& subgraphs = model.subgraphs;
@@ -450,7 +450,7 @@ inline ErGraph buildErGraph(const ErDb& model) noexcept {
 
 constexpr double MARKER_LENGTH = 18.0;
 
-inline std::string erMarker(const std::string& type, double x, double y, double dx, double dy) noexcept {
+inline std::string erMarker(const std::string& type, double x, double y, double dx, double dy) {
     constexpr double BAR = 5.0;
     constexpr double FOOT = 6.0;
     constexpr double FOOT_LENGTH = 10.0;
@@ -1373,7 +1373,7 @@ template <typename Opts>
 struct HasMonospaceVec<Opts, std::void_t<decltype(std::declval<const Opts&>().monospace)>> : std::true_type {};
 
 template <typename Opts>
-inline bool hasMonospaceOption(const Opts& opts, const std::string& item) noexcept {
+inline bool hasMonospaceOption(const Opts& opts, const std::string& item) {
     if constexpr (HasMonospaceVec<Opts>::value) {
         for (const auto& m : opts.monospace) {
             if (m == item) return true;
@@ -1382,7 +1382,7 @@ inline bool hasMonospaceOption(const Opts& opts, const std::string& item) noexce
     return false;
 }
 
-inline double numberOption(const Config& config, const std::string& key, double fallback) noexcept {
+inline double numberOption(const Config& config, const std::string& key, double fallback) {
     if (!config.isMap()) return fallback;
     auto itEr = config.mVal.find("er");
     if (itEr == config.mVal.end() || !itEr->second.isMap()) return fallback;
@@ -1419,7 +1419,7 @@ struct Loop {
     double at = 0.0;
 };
 
-inline std::string textLeft(const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons, int mono = 0) noexcept {
+inline std::string textLeft(const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons, int mono = 0) {
     const auto& lines = label.lines;
     if (lines.empty()) return "";
     if (lines.size() == 1 && lines[0].size() == 1) {
@@ -1467,7 +1467,7 @@ inline std::string cellText(const std::string& raw) {
     return (converted == raw) ? raw : replaceAllStr(replaceAllStr(converted, "<", "&lt;"), ">", "&gt;");
 }
 
-inline std::vector<double> straighten(const std::vector<double>& route) noexcept {
+inline std::vector<double> straighten(const std::vector<double>& route) {
     std::vector<double> out;
     for (size_t i = 0; i < 3 && i < route.size(); i++) out.push_back(route[i]);
     for (size_t k = 3; k + 2 < route.size(); k += 3) {
@@ -1484,7 +1484,7 @@ inline std::vector<double> straighten(const std::vector<double>& route) noexcept
     return out;
 }
 
-inline void spreadEnds(std::vector<CEdge>& cedges, const std::vector<CNode>& cnodes, const std::vector<NodeView>& views) noexcept {
+inline void spreadEnds(std::vector<CEdge>& cedges, const std::vector<CNode>& cnodes, const std::vector<NodeView>& views) {
     struct End {
         size_t edgeIdx = 0;
         size_t at = 0;
@@ -1532,7 +1532,7 @@ inline void spreadEnds(std::vector<CEdge>& cedges, const std::vector<CNode>& cno
     }
 }
 
-inline void inset(std::vector<double>& route, size_t at, const NodeView& view, const CNode& c) noexcept {
+inline void inset(std::vector<double>& route, size_t at, const NodeView& view, const CNode& c) {
     if (c.isGroup) return;
     double dx = route[at] - c.x;
     double dy = route[at + 1] - c.y;
@@ -1545,7 +1545,7 @@ inline void inset(std::vector<double>& route, size_t at, const NodeView& view, c
     }
 }
 
-inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& options, bool turned) noexcept {
+inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& options, bool turned) {
     ErGraph graph = buildErGraph(db);
     bool monospaced = hasMonospaceOption(options, "attributes");
     double size = options.fontSize > 0.0 ? options.fontSize : 16.0;

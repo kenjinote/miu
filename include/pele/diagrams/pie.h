@@ -40,13 +40,13 @@ namespace T {
     };
 }
 
-inline int scanDigits(const std::string& src, int from) noexcept {
+inline int scanDigits(const std::string& src, int from) {
     int i = from;
     for (int c = charCodeAt(src, i); c >= 48 && c <= 57; c = charCodeAt(src, ++i)) {}
     return i;
 }
 
-inline TokenScanner numberScanner() noexcept {
+inline TokenScanner numberScanner() {
     int from = 0;
     int end = 0;
     int fraction = -1;
@@ -71,7 +71,7 @@ inline TokenScanner numberScanner() noexcept {
     };
 }
 
-inline const std::vector<TokenType>& pieTokens() noexcept {
+inline const std::vector<TokenType>& pieTokens() {
     static const std::vector<TokenType> tokens = []() {
         TokenType colonTok;
         colonTok.name = ":";
@@ -190,7 +190,7 @@ inline PieAst parsePie(const std::string& src) {
     return ast;
 }
 
-inline std::string jsNumStr(double v) noexcept {
+inline std::string jsNumStr(double v) {
     if (std::isnan(v)) return "NaN";
     if (std::isinf(v)) return v < 0 ? "-Infinity" : "Infinity";
     if (v == 0.0) return "0";
@@ -199,7 +199,7 @@ inline std::string jsNumStr(double v) noexcept {
     return oss.str();
 }
 
-inline std::string stripNewlineIndent(const std::string& s) noexcept {
+inline std::string stripNewlineIndent(const std::string& s) {
     std::string out;
     out.reserve(s.size());
     size_t i = 0;
@@ -249,17 +249,17 @@ constexpr double GAP = 32.0;
 constexpr double OUTSIDE = 28.0;
 constexpr double PI = 3.14159265358979323846;
 
-inline const YamlValue* pieOption(const Config& config, const std::string& key) noexcept {
+inline const YamlValue* pieOption(const Config& config, const std::string& key) {
     const auto* pie = config.get("pie");
     if (!pie || !pie->isMap()) return nullptr;
     return pie->get(key);
 }
 
-inline std::string piePoint(double angle, double radius) noexcept {
+inline std::string piePoint(double angle, double radius) {
     return Pele::cat({num(std::sin(angle) * radius), ",", num(-std::cos(angle) * radius)});
 }
 
-inline std::string pieSlice(double start, double end, double outer, double inner) noexcept {
+inline std::string pieSlice(double start, double end, double outer, double inner) {
     if (end - start >= PI * 2.0 - 1e-9) {
         auto ring = [](double r, int sweep) {
             return "M0," + num(-r) + "A" + num(r) + "," + num(r) + " 0 1 " + std::to_string(sweep) + " 0," + num(r) + "A" + num(r) + "," + num(r) + " 0 1 " + std::to_string(sweep) + " 0," + num(-r) + "Z";
@@ -274,12 +274,12 @@ inline std::string pieSlice(double start, double end, double outer, double inner
            "L" + piePoint(end, inner) + "A" + num(inner) + "," + num(inner) + " 0 " + std::to_string(large) + " 0 " + piePoint(start, inner) + "Z";
 }
 
-inline double pieTitleRoom(const RenderOptions& options) noexcept {
+inline double pieTitleRoom(const RenderOptions& options) {
     double available = options.maxWidth;
     return available > 0.0 ? std::max(80.0, available - 2.0 * options.padding) : 4000.0;
 }
 
-inline Rendered drawPie(const PieModel& model, const Config& config, const RenderOptions& options, double radius, bool tight) noexcept {
+inline Rendered drawPie(const PieModel& model, const Config& config, const RenderOptions& options, double radius, bool tight) {
     double size = options.fontSize;
     double small = std::round(size * 0.875);
     const auto& measurer = getMeasurer(options);
@@ -436,7 +436,7 @@ inline Rendered drawPie(const PieModel& model, const Config& config, const Rende
     };
 }
 
-inline Rendered renderPieModel(const PieModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderPieModel(const PieModel& model, const Config& config, const RenderOptions& options) {
     double natural = PIE_RADIUS * 2.0;
     double least = 140.0;
     Rendered result = drawPie(model, config, options, natural / 2.0, false);

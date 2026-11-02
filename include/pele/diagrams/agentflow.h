@@ -5,7 +5,7 @@
 namespace Pele {
 namespace Agentflow {
 
-inline std::string afNum(double v) noexcept {
+inline std::string afNum(double v) {
     return num(Flowchart::jsRound(v * 100.0) / 100.0);
 }
 
@@ -13,7 +13,7 @@ inline std::string afNum(double v) noexcept {
 // Port of src/diagrams/agentflow/colorSlots.ts
 // ============================================================================
 
-inline const Pele::FlatMap<std::string, int>& kindSlotMap() noexcept {
+inline const Pele::FlatMap<std::string, int>& kindSlotMap() {
     static const Pele::FlatMap<std::string, int> m = {
         {"tool", 0},
         {"task", 1},
@@ -28,11 +28,11 @@ inline const Pele::FlatMap<std::string, int>& kindSlotMap() noexcept {
 
 constexpr int KIND_COUNT = 7;
 
-inline int containerSlotCount(int paletteLength) noexcept {
+inline int containerSlotCount(int paletteLength) {
     return std::max(1, paletteLength - KIND_COUNT);
 }
 
-inline int containerSlot(int n, int paletteLength) noexcept {
+inline int containerSlot(int n, int paletteLength) {
     int slot = KIND_COUNT + (n % containerSlotCount(paletteLength));
     return paletteLength > 0 ? (slot % paletteLength) : slot;
 }
@@ -41,7 +41,7 @@ inline int containerSlot(int n, int paletteLength) noexcept {
 // Port of src/diagrams/agentflow/shapes.ts
 // ============================================================================
 
-inline const Pele::FlatMap<std::string, std::string>& shapeAliasesMap() noexcept {
+inline const Pele::FlatMap<std::string, std::string>& shapeAliasesMap() {
     static const Pele::FlatMap<std::string, std::string> m = {
         {"task", "roundedRect"},
         {"tool", "subroutine"},
@@ -54,7 +54,7 @@ inline const Pele::FlatMap<std::string, std::string>& shapeAliasesMap() noexcept
     return m;
 }
 
-inline const Pele::FlatSet<std::string>& removedShapesSet() noexcept {
+inline const Pele::FlatSet<std::string>& removedShapesSet() {
     static const Pele::FlatSet<std::string> s = {
         "doc",
         "stadium",
@@ -87,7 +87,7 @@ inline const Pele::FlatSet<std::string>& removedShapesSet() noexcept {
     return s;
 }
 
-inline const Pele::FlatSet<std::string>& allowedShapesSet() noexcept {
+inline const Pele::FlatSet<std::string>& allowedShapesSet() {
     static const Pele::FlatSet<std::string> s = {
         "roundedRect",
         "subroutine",
@@ -108,14 +108,14 @@ inline const Pele::FlatSet<std::string>& allowedShapesSet() noexcept {
 
 inline const std::string DEFAULT_SHAPE = "roundedRect";
 
-inline std::string resolveShapeAlias(const std::string& shape) noexcept {
+inline std::string resolveShapeAlias(const std::string& shape) {
     if (shape.empty()) return shape;
     const auto& m = shapeAliasesMap();
     auto it = m.find(shape);
     return it != m.end() ? it->second : shape;
 }
 
-inline bool isValidShape(const std::string& name) noexcept {
+inline bool isValidShape(const std::string& name) {
     return Flowchart::isValidShape(name) || name == "constructor";
 }
 
@@ -243,24 +243,24 @@ struct AgentflowDbOptions {
     bool hasSource = false;
 };
 
-inline bool isToolDefinition(const AgentNode& vertex) noexcept {
+inline bool isToolDefinition(const AgentNode& vertex) {
     static const Pele::FlatSet<std::string> TOOL_SHAPES = {
         "subroutine", "subprocess", "subproc", "framed-rectangle", "tool"
     };
     return vertex.hasType && TOOL_SHAPES.count(vertex.type) > 0;
 }
 
-inline std::string agentLabelType(const std::string& type) noexcept {
+inline std::string agentLabelType(const std::string& type) {
     return (type == "markdown" || type == "string" || type == "text") ? type : "markdown";
 }
 
-inline std::string agentUnquote(const std::string& text) noexcept {
+inline std::string agentUnquote(const std::string& text) {
     return (text.size() >= 2 && text.front() == '"' && text.back() == '"')
         ? text.substr(1, text.size() - 2)
         : text;
 }
 
-inline YamlValue stripPrototypeKeys(const YamlValue& root) noexcept {
+inline YamlValue stripPrototypeKeys(const YamlValue& root) {
     if (root.isArray()) {
         YamlValue out = YamlValue::makeArray();
         for (const auto& entry : root.aVal) {
@@ -279,7 +279,7 @@ inline YamlValue stripPrototypeKeys(const YamlValue& root) noexcept {
     return root;
 }
 
-inline void mergeMetadata(YamlValue& into, bool& hasInto, const YamlValue& doc) noexcept {
+inline void mergeMetadata(YamlValue& into, bool& hasInto, const YamlValue& doc) {
     if (!hasInto || !into.isMap()) {
         into = YamlValue::makeMap();
         hasInto = true;
@@ -295,7 +295,7 @@ inline void mergeMetadata(YamlValue& into, bool& hasInto, const YamlValue& doc) 
     }
 }
 
-inline bool isBlockScalarHeaderLine(const std::string& code) noexcept {
+inline bool isBlockScalarHeaderLine(const std::string& code) {
     // /:\s*[>|][\d+-]*\s*$/
     size_t colon = code.rfind(':');
     if (colon == std::string::npos) return false;
@@ -308,7 +308,7 @@ inline bool isBlockScalarHeaderLine(const std::string& code) noexcept {
     return p == code.size();
 }
 
-inline std::string stripTrailingComma(const std::string& code) noexcept {
+inline std::string stripTrailingComma(const std::string& code) {
     // code.replace(/,([\t ]*)$/, '$1')
     size_t p = code.size();
     while (p > 0 && (code[p - 1] == ' ' || code[p - 1] == '\t')) p--;
@@ -318,7 +318,7 @@ inline std::string stripTrailingComma(const std::string& code) noexcept {
     return code;
 }
 
-inline std::string stripLineTrailingCommas(const std::string& body) noexcept {
+inline std::string stripLineTrailingCommas(const std::string& body) {
     bool inSingle = false;
     bool inDouble = false;
     int flowDepth = 0;
@@ -373,14 +373,14 @@ inline std::string stripLineTrailingCommas(const std::string& body) noexcept {
     return result;
 }
 
-inline std::string edgeSemanticOf(const std::string& type, const std::string& stroke) noexcept {
+inline std::string edgeSemanticOf(const std::string& type, const std::string& stroke) {
     if (type == "arrow_point" && stroke == "normal") return "sequence";
     if (type == "arrow_cross" && stroke == "normal") return "failure";
     if (type == "arrow_open" && stroke == "dotted") return "reference";
     return "";
 }
 
-inline AgentLinkInfo destructEndLink(const std::string& raw) noexcept {
+inline AgentLinkInfo destructEndLink(const std::string& raw) {
     std::string str = trimStr(raw);
     std::string line = str.empty() ? "" : str.substr(0, str.size() - 1);
     std::string type = "arrow_open";
@@ -1143,7 +1143,7 @@ enum T : int {
     EOF_TOK
 };
 
-inline const char* tokenName(int t) noexcept {
+inline const char* tokenName(int t) {
     static const char* NAMES[] = {
         "$end",
         "INVALID",
@@ -2276,7 +2276,7 @@ struct AgentFrame {
     bool collect = false;
 };
 
-inline std::pair<std::string, std::vector<std::pair<size_t, size_t>>> stripBraceTrail(const std::string& source) noexcept {
+inline std::pair<std::string, std::vector<std::pair<size_t, size_t>>> stripBraceTrail(const std::string& source) {
     // Replaces /}[^\S\n]*\n/g with "}\n"
     std::string out;
     out.reserve(source.size());
@@ -3107,7 +3107,7 @@ struct AgentGraph {
     std::vector<GraphEdge> edges;
 };
 
-inline void normaliseNodeShapes(std::vector<GraphNode>& nodes, AgentflowDb& sink) noexcept {
+inline void normaliseNodeShapes(std::vector<GraphNode>& nodes, AgentflowDb& sink) {
     const auto& removed = removedShapesSet();
     const auto& allowed = allowedShapesSet();
     for (auto& node : nodes) {
@@ -3150,7 +3150,7 @@ inline void assignColorSlots(
     }
 }
 
-inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std::string& defaultCurve = "") noexcept {
+inline AgentGraph buildAgentGraph(AgentflowDb& db, int paletteLength, const std::string& defaultCurve = "") {
     std::vector<GraphNode> nodes;
     std::vector<GraphEdge> edges;
     const auto& subgraphs = db.subgraphs;
@@ -3427,14 +3427,14 @@ constexpr double GROUP_PAD = 20.0;
 constexpr double LOOP = 26.0;
 constexpr double DOTS = 14.0;
 
-inline int flowEndSide(const std::string& dir) noexcept {
+inline int flowEndSide(const std::string& dir) {
     if (dir == "RL") return 3;
     if (dir == "BT") return 0;
     if (dir == "LR") return 1;
     return 2; // TB
 }
 
-inline double numberOption(const Config& config, const std::string& key, double fallback) noexcept {
+inline double numberOption(const Config& config, const std::string& key, double fallback) {
     if (!config.isMap()) return fallback;
     const auto* af = config.get("agentflow");
     if (!af || !af->isMap()) return fallback;
@@ -3443,16 +3443,16 @@ inline double numberOption(const Config& config, const std::string& key, double 
     return fallback;
 }
 
-inline std::string tint(int slot, const std::string& wash, const ResolvedStyle& style) noexcept {
+inline std::string tint(int slot, const std::string& wash, const ResolvedStyle& style) {
     std::string color = seriesColor(slot);
     return Pele::cat({" fill=\"", color, "\"", (setsFill(style.shape) ? "" : Pele::cat({" fill-opacity=\"", wash, "\""})), " stroke=\"", color, "\""});
 }
 
-inline std::string dotPath(double x, double y) noexcept {
+inline std::string dotPath(double x, double y) {
     return Pele::cat({"M", afNum(x - 1.75), ",", afNum(y), "a1.75,1.75 0 1 0 3.5,0a1.75,1.75 0 1 0 -3.5,0Z"});
 }
 
-inline std::string drawAgentShape(const std::string& shape, double w, double h, const std::string& a, const std::string& line) noexcept {
+inline std::string drawAgentShape(const std::string& shape, double w, double h, const std::string& a, const std::string& line) {
     auto afRect = [&](double rw, double rh, const std::string& attrs, const std::string& extra = "") {
         return Pele::cat({"<rect x=\"", afNum(-rw / 2.0), "\" y=\"", afNum(-rh / 2.0), "\" width=\"", afNum(rw), "\" height=\"", afNum(rh), "\"", extra, attrs, "/>"});
     };
@@ -3883,7 +3883,7 @@ inline Rendered drawAgentflow(
     return {std::move(svg), width, height, std::move(links)};
 }
 
-inline Rendered renderAgentflowDiagram(AgentflowDb& db, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderAgentflowDiagram(AgentflowDb& db, const Config& config, const RenderOptions& options) {
     std::string curve;
     if (config.isMap()) {
         if (const auto* fc = config.get("flowchart"); fc && fc->isMap()) {

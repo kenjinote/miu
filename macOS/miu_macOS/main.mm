@@ -829,7 +829,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     if (![self window]) return;
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
     NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
-    if (!appVersion) appVersion = @"1.0.44";
+    if (!appVersion) appVersion = @"1.0.45";
     NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
     editor->appVersionStr = UTF8ToW([versionString UTF8String]);
     NSString *localizedHelp = NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧");
@@ -1837,6 +1837,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 - (void)createWindowWithPath:(const char*)path {
     NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskFullSizeContentView;
     CustomWindow *win = [[CustomWindow alloc] initWithContentRect:NSMakeRect(0, 0, 860, 620) styleMask:style backing:NSBackingStoreBuffered defer:NO];
+    [win setReleasedWhenClosed:NO];
     [win setTitlebarAppearsTransparent:YES];
     [win setTitleVisibility:NSWindowTitleVisible];
     [win setTitlebarSeparatorStyle:NSTitlebarSeparatorStyleNone];

@@ -193,3 +193,6 @@ jobs:
             -authenticationKeyPath "$KEY_PATH" \
             -authenticationKeyID "$APPSTORE_KEY_ID" \
             -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" || echo "miu_macOS upload finished or build already exists"
+
+          echo "=== Updating App Store Connect Version to 1.0.45 (Keeping Release Notes Unchanged) ==="
+          python3 scripts/appstore_metadata_sync.py

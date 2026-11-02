@@ -28,7 +28,7 @@ using StateDiagram::direction;
 using StateDiagram::runsAcross;
 using StateDiagram::turnToFit;
 
-inline std::string num(double value) noexcept {
+inline std::string num(double value) {
     if (!std::isfinite(value)) return "0";
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
@@ -43,7 +43,7 @@ inline std::string num(double value) noexcept {
     return s + "." + std::to_string(r);
 }
 
-inline CEdge cedge(int src, int dst, int minlen = 1, double labelW = 0.0, double labelH = 0.0) noexcept {
+inline CEdge cedge(int src, int dst, int minlen = 1, double labelW = 0.0, double labelH = 0.0) {
     CEdge e;
     e.src = src;
     e.dst = dst;
@@ -53,7 +53,7 @@ inline CEdge cedge(int src, int dst, int minlen = 1, double labelW = 0.0, double
     return e;
 }
 
-inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, double dx, double dy) noexcept {
+inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, double dx, double dy) {
     for (auto& c : nodes) {
         c.x += dx;
         c.y += dy;
@@ -74,13 +74,13 @@ inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, do
 
 namespace detail_generics {
 
-inline int tildes(const std::string& text) noexcept {
+inline int tildes(const std::string& text) {
     int count = 0;
     for (size_t i = text.find('~'); i != std::string::npos; i = text.find('~', i + 1)) count++;
     return count;
 }
 
-inline std::string pairTildes(const std::string& text) noexcept {
+inline std::string pairTildes(const std::string& text) {
     int count = tildes(text);
     if (count <= 1) return text;
     bool lead = (count % 2 != 0) && !text.empty() && text[0] == '~';
@@ -247,14 +247,14 @@ inline bool wrapComponents(
 
 using Crossings = std::unordered_map<int, std::vector<double>>;
 
-inline void markCrossings(Crossings& crossings, const std::vector<double>& route) noexcept {
+inline void markCrossings(Crossings& crossings, const std::vector<double>& route) {
     for (size_t k = 0; k + 1 < route.size(); k += 3) {
         int key = static_cast<int>(std::llround(route[k + 1]));
         crossings[key].push_back(route[k]);
     }
 }
 
-inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) noexcept {
+inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) {
     if (width == 0.0) return c.x;
     double top = c.y - c.h / 2.0;
     double left = c.x - c.w / 2.0;
@@ -279,7 +279,7 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
     return best;
 }
 
-inline bool titleCrossed(const CNode& c, double width, double x, const Crossings& crossings) noexcept {
+inline bool titleCrossed(const CNode& c, double width, double x, const Crossings& crossings) {
     if (width <= 0.0) return false;
     auto it = crossings.find(static_cast<int>(std::llround(c.y - c.h / 2.0)));
     if (it == crossings.end()) return false;
@@ -307,7 +307,7 @@ inline std::string struckTitle(
     return Pele::cat({"<g class=\"pele-cluster-title\" data-id=\"", id, "\">", labelSvg(label,  x,  y, Pele::cat({" fill=\"none\" stroke=\"", fill, "\" stroke-width=\"5\" stroke-linejoin=\"round\""}),  icons), labelSvg(label, x, y, attrs, icons), "</g>"});
 }
 
-inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) noexcept {
+inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) {
     double dx = route[at] - c.x;
     double dy = route[at + 1] - c.y;
     if (std::abs(std::abs(dy) - c.h / 2.0) < 0.5) return dy < 0.0 ? 0 : 2;
@@ -319,7 +319,7 @@ inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) 
 // src/diagrams/class/members.ts
 // ============================================================================
 
-inline bool isVisibilityChar(char ch) noexcept {
+inline bool isVisibilityChar(char ch) {
     return ch == '#' || ch == '+' || ch == '~' || ch == '-';
 }
 
@@ -516,7 +516,7 @@ constexpr int COMPOSITION = 2;
 constexpr int DEPENDENCY = 3;
 constexpr int LOLLIPOP = 4;
 
-inline std::pair<std::string, std::string> splitName(const std::string& id) noexcept {
+inline std::pair<std::string, std::string> splitName(const std::string& id) {
     size_t at = id.find('~');
     if (at == std::string::npos || at == 0) return {id, ""};
     size_t end = id.find('~', at + 1);
@@ -526,7 +526,7 @@ inline std::pair<std::string, std::string> splitName(const std::string& id) noex
     };
 }
 
-inline std::string lookupId(const std::string& id) noexcept {
+inline std::string lookupId(const std::string& id) {
     int c = charCodeAt(id, 0);
     std::string s = (c >= 48 && c <= 57) ? Pele::cat({"classId-", id}) : id;
     return splitName(s).first;
@@ -894,13 +894,13 @@ struct ClassGraph {
     std::vector<GraphEdge> edges;
 };
 
-inline std::string relationEndMarker(int type) noexcept {
+inline std::string relationEndMarker(int type) {
     static const char* MARKERS[5] = {"aggregation", "extension", "composition", "dependency", "lollipop"};
     if (type >= 0 && type < 5) return MARKERS[type];
     return "none";
 }
 
-inline ClassGraph buildClassGraph(const ClassDb& model, bool hierarchical = true) noexcept {
+inline ClassGraph buildClassGraph(const ClassDb& model, bool hierarchical = true) {
     std::vector<GraphNode> nodes;
     std::vector<GraphEdge> edges;
     Pele::FlatMap<std::string, int> namespaceAt;
@@ -1048,7 +1048,7 @@ inline ClassGraph buildClassGraph(const ClassDb& model, bool hierarchical = true
     return {std::move(nodes), std::move(edges)};
 }
 
-inline double classMarkerTrim(const std::string& type) noexcept {
+inline double classMarkerTrim(const std::string& type) {
     if (type == "extension") return 12.0;
     if (type == "composition" || type == "aggregation") return 16.0;
     if (type == "lollipop") return 10.0;
@@ -2051,7 +2051,7 @@ constexpr double EMPTY_SECTION = 10.0;
 constexpr double MIN_WIDTH = 64.0;
 constexpr double FOLD = 8.0;
 
-inline double numberOption(const Config& config, const std::string& key, double fallback) noexcept {
+inline double numberOption(const Config& config, const std::string& key, double fallback) {
     if (!config.isMap()) return fallback;
     auto it = config.mVal.find(key);
     if (it != config.mVal.end() && it->second.isNumber() && it->second.nVal > 0.0) {
@@ -2066,7 +2066,7 @@ template <typename Opts>
 struct HasMonospaceVec<Opts, std::void_t<decltype(std::declval<const Opts&>().monospace)>> : std::true_type {};
 
 template <typename Opts>
-inline bool hasMonospaceOption(const Opts& opts, const std::string& item) noexcept {
+inline bool hasMonospaceOption(const Opts& opts, const std::string& item) {
     if constexpr (HasMonospaceVec<Opts>::value) {
         for (const auto& m : opts.monospace) {
             if (m == item) return true;
@@ -2112,7 +2112,7 @@ struct End {
     bool after = false;
 };
 
-inline Line memberLine(const ClassMember& member, const TextMeasurer& measurer, double size, bool isMono) noexcept {
+inline Line memberLine(const ClassMember& member, const TextMeasurer& measurer, double size, bool isMono) {
     std::string text = trimStr(decodeEntities(member.getDisplayDetails().first));
     int style = (member.classifier == "*" ? Style::Italic : 0) | (isMono ? Style::Mono : 0);
     return {text, measurer.width(text, size, style), member.classifier};

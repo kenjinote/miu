@@ -91,7 +91,7 @@ struct C4Rel {
 // src/diagrams/c4/db.ts
 // ============================================================================
 
-inline bool jsParseInt(const std::string& raw, int& out) noexcept {
+inline bool jsParseInt(const std::string& raw, int& out) {
     std::string s = trimStartStr(raw);
     if (s.empty()) return false;
     size_t i = 0;
@@ -111,7 +111,7 @@ inline bool jsParseInt(const std::string& raw, int& out) noexcept {
     return true;
 }
 
-inline void setElementField(C4Element& el, const std::string& field, const std::string& val) noexcept {
+inline void setElementField(C4Element& el, const std::string& field, const std::string& val) {
     if (field == "label") el.label = val;
     else if (field == "type") el.type = val;
     else if (field == "descr") el.descr = val;
@@ -129,7 +129,7 @@ inline void setElementField(C4Element& el, const std::string& field, const std::
     else el.extra[field] = val;
 }
 
-inline void setRelField(C4Rel& rel, const std::string& field, const std::string& val) noexcept {
+inline void setRelField(C4Rel& rel, const std::string& field, const std::string& val) {
     if (field == "label") rel.label = val;
     else if (field == "descr") rel.descr = val;
     else if (field == "techn") rel.techn = val;
@@ -141,11 +141,11 @@ inline void setRelField(C4Rel& rel, const std::string& field, const std::string&
     else rel.extra[field] = val;
 }
 
-inline void applyNamedEl(C4Element& el, const C4Named& attr) noexcept {
+inline void applyNamedEl(C4Element& el, const C4Named& attr) {
     setElementField(el, attr.key, attr.value);
 }
 
-inline void applyNamedRel(C4Rel& rel, const C4Named& attr) noexcept {
+inline void applyNamedRel(C4Rel& rel, const C4Named& attr) {
     if (attr.key == "offsetX" || attr.key == "offsetY") {
         int v = 0;
         if (jsParseInt(attr.value, v)) {
@@ -160,19 +160,19 @@ inline void applyNamedRel(C4Rel& rel, const C4Named& attr) noexcept {
     }
 }
 
-inline void putEl(C4Element& el, const std::string& field, const C4Attr* attr) noexcept {
+inline void putEl(C4Element& el, const std::string& field, const C4Attr* attr) {
     if (!attr) return;
     if (!attr->isNamed) setElementField(el, field, attr->str);
     else applyNamedEl(el, attr->named);
 }
 
-inline void putRel(C4Rel& rel, const std::string& field, const C4Attr* attr) noexcept {
+inline void putRel(C4Rel& rel, const std::string& field, const C4Attr* attr) {
     if (!attr) return;
     if (!attr->isNamed) setRelField(rel, field, attr->str);
     else applyNamedRel(rel, attr->named);
 }
 
-inline void textEl(C4Element& el, const std::string& field, const C4Attr* attr) noexcept {
+inline void textEl(C4Element& el, const std::string& field, const C4Attr* attr) {
     if (!attr) {
         if (field == "descr" && !el.descr.has_value()) el.descr = "";
         if (field == "techn" && !el.techn.has_value()) el.techn = "";
@@ -181,7 +181,7 @@ inline void textEl(C4Element& el, const std::string& field, const C4Attr* attr) 
     }
 }
 
-inline void textRel(C4Rel& rel, const std::string& field, const C4Attr* attr) noexcept {
+inline void textRel(C4Rel& rel, const std::string& field, const C4Attr* attr) {
     if (!attr) {
         if (field == "descr" && !rel.descr.has_value()) rel.descr = "";
         if (field == "techn" && !rel.techn.has_value()) rel.techn = "";
@@ -190,7 +190,7 @@ inline void textRel(C4Rel& rel, const std::string& field, const C4Attr* attr) no
     }
 }
 
-inline void setLabelEl(C4Element& el, const C4Attr* attr) noexcept {
+inline void setLabelEl(C4Element& el, const C4Attr* attr) {
     el.labelAttr = std::nullopt;
     if (attr && attr->isNamed) {
         el.label = "";
@@ -201,7 +201,7 @@ inline void setLabelEl(C4Element& el, const C4Attr* attr) noexcept {
     }
 }
 
-inline void setLabelRel(C4Rel& rel, const C4Attr* attr) noexcept {
+inline void setLabelRel(C4Rel& rel, const C4Attr* attr) {
     rel.labelAttr = std::nullopt;
     if (attr && attr->isNamed) {
         rel.label = "";
@@ -538,7 +538,7 @@ namespace T {
     };
 }
 
-inline const std::vector<std::string>& tokenNames() noexcept {
+inline const std::vector<std::string>& tokenNames() {
     static const std::vector<std::string> names = {
         "$end", "INVALID", "direction_tb", "direction_bt", "direction_rl", "direction_lr",
         "title", "accDescription", "acc_title", "acc_title_value", "acc_descr", "acc_descr_value",
@@ -556,7 +556,7 @@ inline const std::vector<std::string>& tokenNames() noexcept {
     return names;
 }
 
-inline const Pele::FlatMap<std::string, int>& c4Keywords() noexcept {
+inline const Pele::FlatMap<std::string, int>& c4Keywords() {
     static const Pele::FlatMap<std::string, int> m = {
         {"C4Context", T::C4_CONTEXT},
         {"C4Container", T::C4_CONTAINER},
@@ -1150,19 +1150,19 @@ constexpr double NEAR = 6.0;
 constexpr double FRAME_NEAR = 3.0;
 constexpr double PORT_STEP = 12.0;
 
-inline double cylRy(double w) noexcept {
+inline double cylRy(double w) {
     return std::min(12.0, std::max(6.0, w / 14.0));
 }
 
-inline double queueRx(double h) noexcept {
+inline double queueRx(double h) {
     return std::min(12.0, h / 4.0);
 }
 
-inline double mathSign(double v) noexcept {
+inline double mathSign(double v) {
     return v > 0.0 ? 1.0 : v < 0.0 ? -1.0 : 0.0;
 }
 
-inline double hitRect(double x0, double y0, double x1, double y1, double px, double py, double dx, double dy) noexcept {
+inline double hitRect(double x0, double y0, double x1, double y1, double px, double py, double dx, double dy) {
     double enter = 0.0;
     double leave = 1.0;
     constexpr double INF = std::numeric_limits<double>::infinity();
@@ -1185,7 +1185,7 @@ inline double hitRect(double x0, double y0, double x1, double y1, double px, dou
     return enter <= leave ? enter : INF;
 }
 
-inline double hitEllipse(double cx, double cy, double rx, double ry, double px, double py, double dx, double dy) noexcept {
+inline double hitEllipse(double cx, double cy, double rx, double ry, double px, double py, double dx, double dy) {
     constexpr double INF = std::numeric_limits<double>::infinity();
     double ux = dx / rx;
     double uy = dy / ry;
@@ -1200,7 +1200,7 @@ inline double hitEllipse(double cx, double cy, double rx, double ry, double px, 
     return (t >= 0.0 && t <= 1.0) ? t : (c <= 0.0 ? 0.0 : INF);
 }
 
-inline double hit(const Box& box, double px, double py, double qx, double qy) noexcept {
+inline double hit(const Box& box, double px, double py, double qx, double qy) {
     double x = box.x, y = box.y, w = box.w, h = box.h;
     double dx = qx - px;
     double dy = qy - py;
@@ -1226,7 +1226,7 @@ inline double hit(const Box& box, double px, double py, double qx, double qy) no
     return hitRect(x, y, x + w, y + h, px, py, dx, dy);
 }
 
-inline bool crosses(const std::vector<double>& points, double x0, double y0, double x1, double y1) noexcept {
+inline bool crosses(const std::vector<double>& points, double x0, double y0, double x1, double y1) {
     for (size_t i = 2; i + 1 < points.size(); i += 2) {
         double px = points[i - 2];
         double py = points[i - 1];
@@ -1235,14 +1235,14 @@ inline bool crosses(const std::vector<double>& points, double x0, double y0, dou
     return false;
 }
 
-inline bool contains(const Box& outer, const Box& inner) noexcept {
+inline bool contains(const Box& outer, const Box& inner) {
     return outer.x <= inner.x &&
            outer.y <= inner.y &&
            outer.x + outer.w >= inner.x + inner.w &&
            outer.y + outer.h >= inner.y + inner.h;
 }
 
-inline std::array<double, 4> connect(const Box& a, const Box& b, double shift) noexcept {
+inline std::array<double, 4> connect(const Box& a, const Box& b, double shift) {
     double ax = a.x + a.w / 2.0;
     double ay = a.y + a.h / 2.0;
     double bx = b.x + b.w / 2.0;
@@ -1372,7 +1372,7 @@ public:
     }
 };
 
-inline std::string routePathStr(const std::vector<double>& points, double startTrim, double endTrim) noexcept {
+inline std::string routePathStr(const std::vector<double>& points, double startTrim, double endTrim) {
     size_t n = points.size();
     double ux = mathSign(points[2] - points[0]);
     double uy = mathSign(points[3] - points[1]);
@@ -1396,14 +1396,14 @@ inline std::string routePathStr(const std::vector<double>& points, double startT
     return d + (lx != 0.0 ? Pele::cat({"H", num(points[n - 2] - lx * endTrim)}) : Pele::cat({"V", num(points[n - 1] - ly * endTrim)}));
 }
 
-inline bool clearOf(const std::vector<double>& points, const std::vector<const Box*>& others, const Box* a, const Box* b) noexcept {
+inline bool clearOf(const std::vector<double>& points, const std::vector<const Box*>& others, const Box* a, const Box* b) {
     for (const Box* other : others) {
         if (other != a && other != b && crosses(points, other->x, other->y, other->x + other->w, other->y + other->h)) return false;
     }
     return true;
 }
 
-inline Route bent(const std::vector<double>& points, size_t along, double startTrim, double endTrim, double nx, double ny, double lean, double room) noexcept {
+inline Route bent(const std::vector<double>& points, size_t along, double startTrim, double endTrim, double nx, double ny, double lean, double room) {
     size_t n = points.size();
     Route r;
     r.d = routePathStr(points, startTrim, endTrim);
@@ -1427,7 +1427,7 @@ inline Route bent(const std::vector<double>& points, size_t along, double startT
     return r;
 }
 
-inline std::vector<double> acrossLanes(double lo, double hi) noexcept {
+inline std::vector<double> acrossLanes(double lo, double hi) {
     std::vector<double> out;
     double mid = (lo + hi) / 2.0;
     double step = std::max(LANE_STEP, (hi - lo) / 4.0);
@@ -1438,7 +1438,7 @@ inline std::vector<double> acrossLanes(double lo, double hi) noexcept {
     return out;
 }
 
-inline std::optional<Route> elbow(const Box* a, const Box* b, const std::vector<const Box*>& others, Lanes& lanes, double startTrim, double endTrim) noexcept {
+inline std::optional<Route> elbow(const Box* a, const Box* b, const std::vector<const Box*>& others, Lanes& lanes, double startTrim, double endTrim) {
     double ax = a->x + a->w / 2.0;
     double ay = a->y + a->h / 2.0;
     double bx = b->x + b->w / 2.0;
@@ -1704,7 +1704,7 @@ constexpr double GROUP_GAP = 48.0;
 constexpr double HEAD_LEFT = 16.0;
 constexpr double HEAD_TOP = 10.0;
 
-inline const Pele::FlatMap<std::string, std::string>& c4Forms() noexcept {
+inline const Pele::FlatMap<std::string, std::string>& c4Forms() {
     static const Pele::FlatMap<std::string, std::string> m = {
         {"person", "person"},
         {"box", "rect"},
@@ -1741,7 +1741,7 @@ struct Layout {
     std::unordered_map<const C4Element*, const Box*> boxes;
 };
 
-inline std::string formOf(const C4Shape& shape) noexcept {
+inline std::string formOf(const C4Shape& shape) {
     const auto& forms = c4Forms();
     if (shape.shape.has_value()) {
         auto it = forms.find(toLowerAscii(*shape.shape));
@@ -1764,7 +1764,7 @@ inline std::string formOf(const C4Shape& shape) noexcept {
     return "rect";
 }
 
-inline Node measureShape(const C4Shape& shape, const TextMeasurer& measurer, double size, double small, double width = SHAPE_W) noexcept {
+inline Node measureShape(const C4Shape& shape, const TextMeasurer& measurer, double size, double small, double width = SHAPE_W) {
     std::string form = formOf(shape);
     double capW = (form == "h-cyl") ? 36.0 : 0.0;
     double capH = (form == "person") ? HEAD : (form == "cyl") ? 24.0 : 0.0;
@@ -1797,7 +1797,7 @@ inline Node measureShape(const C4Shape& shape, const TextMeasurer& measurer, dou
 }
 
 template <typename PtrVec>
-inline std::pair<double, double> placeRows(PtrVec& boxes, int perRow, double gapX, double gapY, bool stretch) noexcept {
+inline std::pair<double, double> placeRows(PtrVec& boxes, int perRow, double gapX, double gapY, bool stretch) {
     double width = 0;
     double y = 0;
     int total = static_cast<int>(boxes.size());
@@ -1819,7 +1819,7 @@ inline std::pair<double, double> placeRows(PtrVec& boxes, int perRow, double gap
     return {width, total > 0 ? y - gapY : 0.0};
 }
 
-inline Layout layoutC4(const C4Db& db, const TextMeasurer& measurer, double size, double small, std::optional<double> room, double gap) noexcept {
+inline Layout layoutC4(const C4Db& db, const TextMeasurer& measurer, double size, double small, std::optional<double> room, double gap) {
     Layout lay;
     double groupPad = !room.has_value() ? GROUP_PAD : 12.0;
     std::unordered_map<const C4Boundary*, Group*> groups;
@@ -1933,7 +1933,7 @@ constexpr double MAX_OFFSET = 2000.0;
 constexpr double EDGE = 8.0;
 constexpr double CARE_BUDGET = 2000000.0;
 
-inline ResolvedStyle userStyle(const std::optional<std::string>& fill, const std::optional<std::string>& stroke, const std::optional<std::string>& color) noexcept {
+inline ResolvedStyle userStyle(const std::optional<std::string>& fill, const std::optional<std::string>& stroke, const std::optional<std::string>& color) {
     std::vector<std::string> declarations;
     if (fill.has_value() && !fill->empty()) declarations.push_back("fill:" + *fill);
     if (stroke.has_value() && !stroke->empty()) declarations.push_back("stroke:" + *stroke);
@@ -1941,7 +1941,7 @@ inline ResolvedStyle userStyle(const std::optional<std::string>& fill, const std
     return resolveStyle(declarations);
 }
 
-inline std::string linkC4(const std::string& body, const std::optional<std::string>& url, const std::string& id, std::vector<LinkInfo>& links, const RenderOptions& options) noexcept {
+inline std::string linkC4(const std::string& body, const std::optional<std::string>& url, const std::string& id, std::vector<LinkInfo>& links, const RenderOptions& options) {
     if (!url.has_value() || url->empty()) return body;
     std::string u = *url;
     if (u.find("\xC2\xB6\xC3\x9F") != std::string::npos) {

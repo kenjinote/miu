@@ -100,8 +100,11 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
     version_code = bundle_info["versionCode"]
     print(f"Uploaded bundle versionCode: {version_code} (sha256: {bundle_info.get('sha256')})")
 
-    # 3. Assign bundle to track (default: internal)
-    print(f"Assigning versionCode {version_code} to track '{track}' (status={status})...")
+    # 3. Assign bundle to track (and also update production/internal if active)
+    tracks_to_update = [track]
+    if track == "production" and "internal" not in tracks_to_update:
+        tracks_to_update.append("internal")
+
     release_notes = RELEASE_NOTES_44
     try:
         from playstore_metadata_screenshots_sync import ANDROID_RELEASE_NOTES
@@ -111,24 +114,38 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
         ]
     except Exception:
         pass
-    track_body = {
-        "track": track,
-        "releases": [
-            {
-                "name": "1.0.44",
-                "versionCodes": [str(version_code)],
-                "status": status,
-                "releaseNotes": release_notes,
-            }
-        ],
-    }
-    r_track = requests.put(
-        f"{base_url}/edits/{edit_id}/tracks/{track}",
-        headers={**headers, "Content-Type": "application/json"},
-        json=track_body,
-        timeout=60,
-    )
-    r_track.raise_for_status()
+
+    # Preserve existing localized release notes on the track if present
+    for t_check in ("production", track):
+        r_existing = requests.get(f"{base_url}/edits/{edit_id}/tracks/{t_check}", headers=headers, timeout=30)
+        if r_existing.status_code == 200:
+            ex_rels = r_existing.json().get("releases", [])
+            if ex_rels and ex_rels[0].get("releaseNotes"):
+                release_notes = ex_rels[0]["releaseNotes"]
+                print(f"Preserving {len(release_notes)} existing localized releaseNotes from '{t_check}' track.")
+                break
+
+    for target_track in tracks_to_update:
+        rel_name = f"{version_code} (1.0.45)" if target_track == "production" else "1.0.45"
+        print(f"Assigning versionCode {version_code} ({rel_name}) to track '{target_track}' (status={status})...")
+        track_body = {
+            "track": target_track,
+            "releases": [
+                {
+                    "name": rel_name,
+                    "versionCodes": [str(version_code)],
+                    "status": status,
+                    "releaseNotes": release_notes,
+                }
+            ],
+        }
+        r_track = requests.put(
+            f"{base_url}/edits/{edit_id}/tracks/{target_track}",
+            headers={**headers, "Content-Type": "application/json"},
+            json=track_body,
+            timeout=60,
+        )
+        r_track.raise_for_status()
 
     # 4. Commit edit
     print(f"Committing edit {edit_id}...")

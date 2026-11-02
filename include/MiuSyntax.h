@@ -50,7 +50,7 @@ struct SyntaxWordSet {
         }
         return *this;
     }
-    void insert(const std::string& s)  noexcept{
+    void insert(const std::string& s){
         storage.push_back(s);
         lookup.insert(std::string_view(storage.back()));
     }
@@ -92,7 +92,7 @@ struct SyntaxDef {
     std::vector<std::pair<std::regex, SyntaxColor>> regexes;
     std::vector<SyntaxRuleMeta> ruleMetas;
 };
-static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) noexcept {
+static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) {
     SyntaxRuleMeta m;
     if (pat == R"(#[ \t]*include[ \t]*[<"][^>"]+[>"])") { m.kind = SyntaxRuleKind::CppInclude; m.reqChar1 = '#'; return m; }
     if (pat == R"(#[ \t]*[a-zA-Z0-9_]+)") { m.kind = SyntaxRuleKind::CppDirective; m.reqChar1 = '#'; return m; }
@@ -127,7 +127,7 @@ static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) noexcep
     }
     return m;
 }
-static inline bool isSafeUserRegex(const std::string& q) noexcept {
+static inline bool isSafeUserRegex(const std::string& q) {
     if (q.empty() || q.size() > 1024) return false;
     int parenDepth = 0;
     bool groupHasQuantifier[64] = {};

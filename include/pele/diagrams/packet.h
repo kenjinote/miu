@@ -50,7 +50,7 @@ namespace T {
     };
 }
 
-inline const std::vector<TokenType>& packetTokens() noexcept {
+inline const std::vector<TokenType>& packetTokens() {
     static const std::vector<TokenType> tokens = []() {
         TokenType pb;
         pb.name = "packet-beta";
@@ -202,7 +202,7 @@ inline PacketAst parsePacket(const std::string& src) {
 
 constexpr size_t MAX_ROWS = 10000;
 
-inline double packetOption(const Config& config, const std::string& key, double fallback, double min, double max) noexcept {
+inline double packetOption(const Config& config, const std::string& key, double fallback, double min, double max) {
     const auto* pkt = config.get("packet");
     if (pkt && pkt->isMap()) {
         const auto* val = pkt->get(key);
@@ -213,7 +213,7 @@ inline double packetOption(const Config& config, const std::string& key, double 
     return fallback;
 }
 
-inline std::string stripNewlineIndent(const std::string& s) noexcept {
+inline std::string stripNewlineIndent(const std::string& s) {
     std::string out;
     out.reserve(s.size());
     size_t i = 0;
@@ -306,7 +306,7 @@ struct FittedText {
     bool valid = false;
 };
 
-inline FittedText fitPacketText(const std::string& text, double max, double size, double min, const TextMeasurer& measurer, int style = 0) noexcept {
+inline FittedText fitPacketText(const std::string& text, double max, double size, double min, const TextMeasurer& measurer, int style = 0) {
     if (text.empty() || max <= 0.0) return {};
     double width = measurer.width(text, size, style);
     if (width <= max) return {text, size, width, true};
@@ -346,12 +346,12 @@ inline FittedText fitPacketText(const std::string& text, double max, double size
     return {};
 }
 
-inline double packetTitleRoom(const RenderOptions& options) noexcept {
+inline double packetTitleRoom(const RenderOptions& options) {
     double available = options.maxWidth;
     return available > 0.0 ? std::max(80.0, available - 2.0 * options.padding) : 4000.0;
 }
 
-inline Rendered drawPacket(const PacketModel& model, const Config& config, const RenderOptions& options, bool down) noexcept {
+inline Rendered drawPacket(const PacketModel& model, const Config& config, const RenderOptions& options, bool down) {
     double size = options.fontSize;
     double labelSize = std::round(size * 0.875);
     double bitSize = std::round(size * 0.625);
@@ -510,7 +510,7 @@ inline Rendered drawPacket(const PacketModel& model, const Config& config, const
     };
 }
 
-inline Rendered renderPacketModel(const PacketModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderPacketModel(const PacketModel& model, const Config& config, const RenderOptions& options) {
     Rendered across = drawPacket(model, config, options, false);
     double available = options.maxWidth;
     if (!(available > 0.0) || across.width <= available || available >= 640.0) return across;

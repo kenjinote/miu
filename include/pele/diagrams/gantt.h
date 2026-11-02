@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../layout.h"
 #include "../common_parse.h"
 #include <algorithm>
@@ -20,7 +20,7 @@ namespace gantt_detail {
 // Proleptic Gregorian Date in Local Time (`src/diagrams/gantt/dates.ts`)
 // ============================================================================
 
-inline int localTzOffsetMinutes() noexcept {
+inline int localTzOffsetMinutes() {
   static const int offset = []() {
     std::time_t sample = 1704067200; // 2024-01-01 00:00:00 UTC
     std::tm utcTm{};
@@ -50,7 +50,7 @@ inline int localTzOffsetMinutes() noexcept {
   return offset;
 }
 
-inline long long daysFromCivil(long long y, long long m, long long d) noexcept {
+inline long long daysFromCivil(long long y, long long m, long long d) {
   y -= m <= 2;
   const long long era = (y >= 0 ? y : y - 399) / 400;
   const long long yoe = y - era * 400;
@@ -70,7 +70,7 @@ struct CivilDate {
   int ms = 0;
 };
 
-inline CivilDate decomposeMs(double utcMs, int tzOffsetMin) noexcept {
+inline CivilDate decomposeMs(double utcMs, int tzOffsetMin) {
   double localMs = std::floor(utcMs - static_cast<double>(tzOffsetMin) * 60000.0);
   double daysD = std::floor(localMs / 86400000.0);
   long long z = static_cast<long long>(daysD);
@@ -105,7 +105,7 @@ inline CivilDate decomposeMs(double utcMs, int tzOffsetMin) noexcept {
   return c;
 }
 
-inline double composeMs(long long year, long long month0, long long day, long long hours, long long minutes, long long seconds, double ms, int tzOffsetMin) noexcept {
+inline double composeMs(long long year, long long month0, long long day, long long hours, long long minutes, long long seconds, double ms, int tzOffsetMin) {
   long long ym = year + (month0 >= 0 ? month0 / 12 : (month0 - 11) / 12);
   long long mn = ((month0 % 12) + 12) % 12;
   long long epochDays = daysFromCivil(ym, mn + 1, 1) + (day - 1);
@@ -186,7 +186,7 @@ struct GanttDate {
   }
 };
 
-inline const std::vector<std::string>& MONTHS() noexcept {
+inline const std::vector<std::string>& MONTHS() {
   static const std::vector<std::string> m = {
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
@@ -194,7 +194,7 @@ inline const std::vector<std::string>& MONTHS() noexcept {
   return m;
 }
 
-inline const std::vector<std::string>& WEEKDAYS() noexcept {
+inline const std::vector<std::string>& WEEKDAYS() {
   static const std::vector<std::string> w = {
     "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"
   };
@@ -204,16 +204,16 @@ inline const std::vector<std::string>& WEEKDAYS() noexcept {
 constexpr double DAY_MS = 86400000.0;
 constexpr double WEEK_MS = 7.0 * DAY_MS;
 
-inline bool isValid(const GanttDate& date) noexcept {
+inline bool isValid(const GanttDate& date) {
   return date.isValid();
 }
 
-inline std::string padZero(int value, size_t length) noexcept {
+inline std::string padZero(int value, size_t length) {
   std::string s = std::to_string(value);
   return s.size() >= length ? s : std::string(length - s.size(), '0') + s;
 }
 
-inline std::string ordinal(int n) noexcept {
+inline std::string ordinal(int n) {
   static const char* s[4] = {"th", "st", "nd", "rd"};
   int v = n % 100;
   int idx1 = (v - 20) % 10;
@@ -221,36 +221,36 @@ inline std::string ordinal(int n) noexcept {
   return std::to_string(n) + suf;
 }
 
-inline int utcOffset(const GanttDate& date) noexcept {
+inline int utcOffset(const GanttDate& date) {
   int offset = -static_cast<int>(std::round(static_cast<double>(date.getTimezoneOffset()) / 15.0)) * 15;
   return offset == 0 ? 0 : offset;
 }
 
-inline std::string zone(const GanttDate& date) noexcept {
+inline std::string zone(const GanttDate& date) {
   int offset = utcOffset(date);
   int minutes = std::abs(offset);
   return std::string(offset >= 0 ? "+" : "-") + padZero(minutes / 60, 2) + ":" + padZero(minutes % 60, 2);
 }
 
-inline int isoWeekday(const GanttDate& date) noexcept {
+inline int isoWeekday(const GanttDate& date) {
   int d = date.getDay();
   return d == 0 ? 7 : d;
 }
 
-inline GanttDate addDays(const GanttDate& date, int days) noexcept {
+inline GanttDate addDays(const GanttDate& date, int days) {
   GanttDate next = date;
   next.setDate(next.getDate() + days);
   return next;
 }
 
-inline int daysInMonth(const GanttDate& date) noexcept {
+inline int daysInMonth(const GanttDate& date) {
   GanttDate last = GanttDate::fromLocal(date.getFullYear(), date.getMonth() + 1, 0, 0, 0, 0, 0, false);
   last.setHours(23, 59, 59, 999);
   return last.getDate();
 }
 
 template <typename ApplyFn>
-inline GanttDate setCalendar(const GanttDate& date, ApplyFn apply) noexcept {
+inline GanttDate setCalendar(const GanttDate& date, ApplyFn apply) {
   GanttDate next = date;
   next.setDate(1);
   apply(next);
@@ -258,7 +258,7 @@ inline GanttDate setCalendar(const GanttDate& date, ApplyFn apply) noexcept {
   return next;
 }
 
-inline GanttDate add(const GanttDate& date, double amount, const std::string& unit) noexcept {
+inline GanttDate add(const GanttDate& date, double amount, const std::string& unit) {
   if (unit == "M") {
     return setCalendar(date, [&](GanttDate& d) { d.setMonth(date.getMonth() + static_cast<int>(amount)); });
   }
@@ -283,11 +283,11 @@ inline GanttDate add(const GanttDate& date, double amount, const std::string& un
   return GanttDate(date.getTime() + amount);
 }
 
-inline GanttDate weekThursday(const GanttDate& date) noexcept {
+inline GanttDate weekThursday(const GanttDate& date) {
   return addDays(date, 4 - isoWeekday(date));
 }
 
-inline int isoWeek(const GanttDate& date) noexcept {
+inline int isoWeek(const GanttDate& date) {
   GanttDate thursday = weekThursday(date);
   GanttDate jan1 = GanttDate::fromLocal(thursday.getFullYear(), 0, 1, 0, 0, 0, 0, false);
   int weekday = isoWeekday(jan1);
@@ -298,7 +298,7 @@ inline int isoWeek(const GanttDate& date) noexcept {
   return w + 1;
 }
 
-inline std::string isoDate(const GanttDate& date) noexcept {
+inline std::string isoDate(const GanttDate& date) {
   int year = date.getFullYear();
   int month = date.getMonth() + 1;
   int day = date.getDate();
@@ -306,7 +306,7 @@ inline std::string isoDate(const GanttDate& date) noexcept {
   return yStr + (month < 10 ? "-0" : "-") + std::to_string(month) + (day < 10 ? "-0" : "-") + std::to_string(day);
 }
 
-inline std::optional<std::string> format(const GanttDate& date, const std::string& tmpl) noexcept {
+inline std::optional<std::string> format(const GanttDate& date, const std::string& tmpl) {
   if (!isValid(date)) return "Invalid Date";
   std::string str = tmpl.empty() ? "YYYY-MM-DDTHH:mm:ssZ" : tmpl;
   if (str == "YYYY-MM-DD") return isoDate(date);
@@ -444,17 +444,17 @@ struct ParseStep {
   std::string token; // literal text or format token name
 };
 
-inline bool isSepChar(char c) noexcept {
+inline bool isSepChar(char c) {
   return c == '-' || c == '_' || c == ':' || c == '/' || c == '.' || c == ',' || c == '(' || c == ')' ||
          isSpace(static_cast<unsigned char>(c));
 }
 
-inline bool isWordNonSepNonDigit(char c) noexcept {
+inline bool isWordNonSepNonDigit(char c) {
   return !(c >= '0' && c <= '9') && c != '-' && c != '_' && c != ':' && c != '/' && c != ',' && c != '(' && c != ')' &&
          !isSpace(static_cast<unsigned char>(c));
 }
 
-inline std::optional<std::string> findMatchInSlice(const std::string& slice, MatchKind kind) noexcept {
+inline std::optional<std::string> findMatchInSlice(const std::string& slice, MatchKind kind) {
   size_t n = slice.size();
   auto isDig = [](char c) { return c >= '0' && c <= '9'; };
   switch (kind) {
@@ -520,75 +520,79 @@ inline std::optional<std::string> findMatchInSlice(const std::string& slice, Mat
 }
 
 inline bool applyStepReader(Fields& f, const std::string& token, const std::string& input) {
-  if (token == "A") { f.afternoon = (input == "PM"); return true; }
-  if (token == "a") { f.afternoon = (input == "pm"); return true; }
-  if (token == "Q") { f.month = (std::stoi(input) - 1) * 3 + 1; return true; }
-  if (token == "S") { f.milliseconds = std::stoi(input) * 100; return true; }
-  if (token == "SS") { f.milliseconds = std::stoi(input) * 10; return true; }
-  if (token == "SSS") { f.milliseconds = std::stoi(input); return true; }
-  if (token == "s" || token == "ss") { f.seconds = std::stoi(input); return true; }
-  if (token == "m" || token == "mm") { f.minutes = std::stoi(input); return true; }
-  if (token == "H" || token == "h" || token == "HH" || token == "hh") { f.hours = std::stoi(input); return true; }
-  if (token == "D" || token == "DD") { f.day = std::stoi(input); return true; }
-  if (token == "Do") {
-    std::string digits;
-    for (char c : input) {
-      if (c >= '0' && c <= '9') digits.push_back(c);
-      else if (!digits.empty()) break;
-    }
-    if (digits.empty()) return false;
-    f.day = std::stoi(digits);
-    f.dayGiven = true;
-    for (int i = 1; i <= 31; i++) {
-      if (ordinal(i) == input) f.day = i;
-    }
-    return true;
-  }
-  if (token == "w" || token == "ww") { f.week = std::stoi(input); return true; }
-  if (token == "M" || token == "MM") { f.month = std::stoi(input); return true; }
-  if (token == "MMM") {
-    for (int i = 0; i < 12; i++) {
-      if (MONTHS()[i].substr(0, 3) == input) {
-        int idx = i + 1;
-        f.month = (idx % 12) ? (idx % 12) : idx;
-        return true;
+  try {
+    if (token == "A") { f.afternoon = (input == "PM"); return true; }
+    if (token == "a") { f.afternoon = (input == "pm"); return true; }
+    if (token == "Q") { f.month = (std::stoi(input) - 1) * 3 + 1; return true; }
+    if (token == "S") { f.milliseconds = std::stoi(input) * 100; return true; }
+    if (token == "SS") { f.milliseconds = std::stoi(input) * 10; return true; }
+    if (token == "SSS") { f.milliseconds = std::stoi(input); return true; }
+    if (token == "s" || token == "ss") { f.seconds = std::stoi(input); return true; }
+    if (token == "m" || token == "mm") { f.minutes = std::stoi(input); return true; }
+    if (token == "H" || token == "h" || token == "HH" || token == "hh") { f.hours = std::stoi(input); return true; }
+    if (token == "D" || token == "DD") { f.day = std::stoi(input); return true; }
+    if (token == "Do") {
+      std::string digits;
+      for (char c : input) {
+        if (c >= '0' && c <= '9') digits.push_back(c);
+        else if (!digits.empty()) break;
       }
-    }
-    return false;
-  }
-  if (token == "MMMM") {
-    for (int i = 0; i < 12; i++) {
-      if (MONTHS()[i] == input) {
-        int idx = i + 1;
-        f.month = (idx % 12) ? (idx % 12) : idx;
-        return true;
+      if (digits.empty()) return false;
+      f.day = std::stoi(digits);
+      f.dayGiven = true;
+      for (int i = 1; i <= 31; i++) {
+        if (ordinal(i) == input) f.day = i;
       }
+      return true;
     }
+    if (token == "w" || token == "ww") { f.week = std::stoi(input); return true; }
+    if (token == "M" || token == "MM") { f.month = std::stoi(input); return true; }
+    if (token == "MMM") {
+      for (int i = 0; i < 12; i++) {
+        if (MONTHS()[i].substr(0, 3) == input) {
+          int idx = i + 1;
+          f.month = (idx % 12) ? (idx % 12) : idx;
+          return true;
+        }
+      }
+      return false;
+    }
+    if (token == "MMMM") {
+      for (int i = 0; i < 12; i++) {
+        if (MONTHS()[i] == input) {
+          int idx = i + 1;
+          f.month = (idx % 12) ? (idx % 12) : idx;
+          return true;
+        }
+      }
+      return false;
+    }
+    if (token == "Y" || token == "YYYY") { f.year = std::stoi(input); return true; }
+    if (token == "YY") {
+      int v = std::stoi(input);
+      f.year = v + (v > 68 ? 1900 : 2000);
+      return true;
+    }
+    if (token == "Z" || token == "ZZ") {
+      if (input == "Z") { f.offset = 0; return true; }
+      char sign = input[0];
+      int hh = std::stoi(input.substr(1, 2));
+      int mm = 0;
+      if (input.size() >= 5) {
+        size_t mPos = (input[3] == ':') ? 4 : 3;
+        if (mPos + 2 <= input.size()) mm = std::stoi(input.substr(mPos, 2));
+      }
+      int mins = hh * 60 + mm;
+      f.offset = (mins == 0) ? 0 : (sign == '+' ? -mins : mins);
+      return true;
+    }
+  } catch (...) {
     return false;
-  }
-  if (token == "Y" || token == "YYYY") { f.year = std::stoi(input); return true; }
-  if (token == "YY") {
-    int v = std::stoi(input);
-    f.year = v + (v > 68 ? 1900 : 2000);
-    return true;
-  }
-  if (token == "Z" || token == "ZZ") {
-    if (input == "Z") { f.offset = 0; return true; }
-    char sign = input[0];
-    int hh = std::stoi(input.substr(1, 2));
-    int mm = 0;
-    if (input.size() >= 5) {
-      size_t mPos = (input[3] == ':') ? 4 : 3;
-      if (mPos + 2 <= input.size()) mm = std::stoi(input.substr(mPos, 2));
-    }
-    int mins = hh * 60 + mm;
-    f.offset = (mins == 0) ? 0 : (sign == '+' ? -mins : mins);
-    return true;
   }
   return false;
 }
 
-inline std::optional<MatchKind> readerKindForToken(const std::string& tok) noexcept {
+inline std::optional<MatchKind> readerKindForToken(const std::string& tok) {
   if (tok == "A" || tok == "a" || tok == "Do" || tok == "MMM" || tok == "MMMM") return MatchKind::Word;
   if (tok == "Q" || tok == "S") return MatchKind::Digit1;
   if (tok == "SS" || tok == "DD" || tok == "ww" || tok == "MM" || tok == "YY") return MatchKind::Digit2;
@@ -601,7 +605,7 @@ inline std::optional<MatchKind> readerKindForToken(const std::string& tok) noexc
   return std::nullopt;
 }
 
-inline std::optional<std::vector<ParseStep>> compileFormat(const std::string& tmpl) noexcept {
+inline std::optional<std::vector<ParseStep>> compileFormat(const std::string& tmpl) {
   // Check for 'L' or 'l' outside [...]
   for (size_t i = 0; i < tmpl.size(); ) {
     if (tmpl[i] == '[') {
@@ -658,7 +662,7 @@ inline std::optional<std::vector<ParseStep>> compileFormat(const std::string& tm
   return steps;
 }
 
-inline bool isAllDigitsOrSign(const std::string& s, bool allowDot = true) noexcept {
+inline bool isAllDigitsOrSign(const std::string& s, bool allowDot = true) {
   std::string t = trimStr(s);
   if (t.empty()) return false;
   size_t i = (t[0] == '+' || t[0] == '-') ? 1 : 0;
@@ -674,8 +678,12 @@ inline bool isAllDigitsOrSign(const std::string& s, bool allowDot = true) noexce
 inline std::optional<GanttDate> loose(const std::string& input, const std::string& tmpl, const GanttDate& now) {
   if (tmpl == "x" || tmpl == "X") {
     if (!isAllDigitsOrSign(input)) return std::nullopt;
-    double v = std::stod(input);
-    return GanttDate((tmpl == "X" ? 1000.0 : 1.0) * v);
+    try {
+      double v = std::stod(input);
+      return GanttDate((tmpl == "X" ? 1000.0 : 1.0) * v);
+    } catch (...) {
+      return std::nullopt;
+    }
   }
   auto steps = compileFormat(tmpl);
   if (!steps.has_value()) return std::nullopt;
@@ -734,11 +742,38 @@ inline GanttDate parseJsFallbackDate(const std::string& raw) {
   auto isDig = [](char c) { return c >= '0' && c <= '9'; };
   if (s.size() == 10 && isDig(s[0]) && isDig(s[1]) && isDig(s[2]) && isDig(s[3]) &&
       s[4] == '-' && isDig(s[5]) && isDig(s[6]) && s[7] == '-' && isDig(s[8]) && isDig(s[9])) {
-    int y = std::stoi(s.substr(0, 4));
-    int m = std::stoi(s.substr(5, 2));
-    int d = std::stoi(s.substr(8, 2));
-    if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
-      return GanttDate::fromUTC(y, m - 1, d, 0, 0, 0, 0, false);
+    try {
+      int y = std::stoi(s.substr(0, 4));
+      int m = std::stoi(s.substr(5, 2));
+      int d = std::stoi(s.substr(8, 2));
+      if (m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+        return GanttDate::fromUTC(y, m - 1, d, 0, 0, 0, 0, false);
+      }
+    } catch (...) {}
+  }
+  // Match YYY-M-D / YYYY-M-D / YYY/M/D / YYYY/M/D (3-to-4 digit year -> local time in JS `new Date(str)`)
+  {
+    size_t p = 0;
+    while (p < s.size() && isDig(s[p])) p++;
+    if (p >= 3 && p <= 4 && p < s.size() && (s[p] == '-' || s[p] == '/')) {
+      char sep = s[p++];
+      size_t mStart = p;
+      while (p < s.size() && isDig(s[p])) p++;
+      if (p > mStart && p - mStart <= 2 && p < s.size() && s[p] == sep) {
+        p++;
+        size_t dStart = p;
+        while (p < s.size() && isDig(s[p])) p++;
+        if (p > dStart && p - dStart <= 2 && p == s.size()) {
+          try {
+            int y = std::stoi(s.substr(0, mStart - 1));
+            int m = std::stoi(s.substr(mStart, dStart - 1 - mStart));
+            int d = std::stoi(s.substr(dStart));
+            if (y >= 100 && y <= 9999 && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+              return GanttDate::fromLocal(y, m - 1, d, 0, 0, 0, 0, false);
+            }
+          } catch (...) {}
+        }
+      }
     }
   }
   // Try parseStrict with common formats
@@ -770,11 +805,11 @@ struct Calendar {
   double ms = 1.0;
 };
 
-inline void startOfDay(GanttDate& d) noexcept {
+inline void startOfDay(GanttDate& d) {
   d.setHours(0, 0, 0, 0);
 }
 
-inline Calendar weekCalendar(int weekStart) noexcept {
+inline Calendar weekCalendar(int weekStart) {
   Calendar c;
   c.floorFn = [weekStart](GanttDate& d) {
     d.setDate(d.getDate() - ((d.getDay() + 7 - weekStart) % 7));
@@ -788,7 +823,7 @@ inline Calendar weekCalendar(int weekStart) noexcept {
   return c;
 }
 
-inline Calendar baseCalendar(const std::string& unit, int weekStart = 0) noexcept {
+inline Calendar baseCalendar(const std::string& unit, int weekStart = 0) {
   if (unit == "week") return weekCalendar(weekStart);
   Calendar c;
   if (unit == "millisecond") {
@@ -835,15 +870,15 @@ inline Calendar baseCalendar(const std::string& unit, int weekStart = 0) noexcep
   return c;
 }
 
-inline int spanUnits(const GanttDate& start, const GanttDate& end, double unit) noexcept {
+inline int spanUnits(const GanttDate& start, const GanttDate& end, double unit) {
   return static_cast<int>(std::floor((end.getTime() - start.getTime() - (end.getTimezoneOffset() - start.getTimezoneOffset()) * MINUTE) / unit));
 }
 
-inline int posMod(int a, int b) noexcept {
+inline int posMod(int a, int b) {
   return ((a % b) + b) % b;
 }
 
-inline Calendar every(const std::string& unit, int step, int weekStart) noexcept {
+inline Calendar every(const std::string& unit, int step, int weekStart) {
   Calendar base = baseCalendar(unit, weekStart);
   if (step <= 1) return base;
   if (unit == "millisecond") {
@@ -877,20 +912,22 @@ inline Calendar every(const std::string& unit, int step, int weekStart) noexcept
   auto test = [field, step](const GanttDate& d) -> bool { return field(d) % step == 0; };
   Calendar c = base;
   c.floorFn = [base, test](GanttDate& d) {
-    for (base.floorFn(d); std::isfinite(d.getTime()) && !test(d); base.floorFn(d)) {
+    int guard = 0;
+    for (base.floorFn(d); std::isfinite(d.getTime()) && !test(d) && ++guard < 1024; base.floorFn(d)) {
       d.setTime(d.getTime() - 1.0);
     }
   };
   c.offsetFn = [base, test](GanttDate& d, int n) {
     for (int i = 0; i < n && std::isfinite(d.getTime()); i++) {
+      int guard = 0;
       do base.offsetFn(d, 1);
-      while (std::isfinite(d.getTime()) && !test(d));
+      while (std::isfinite(d.getTime()) && !test(d) && ++guard < 1024);
     }
   };
   return c;
 }
 
-inline std::optional<std::vector<double>> rangeTicks(const Calendar& calendar, double start, double stop, size_t limit) noexcept {
+inline std::optional<std::vector<double>> rangeTicks(const Calendar& calendar, double start, double stop, size_t limit) {
   GanttDate d(start - 1.0);
   calendar.floorFn(d);
   calendar.offsetFn(d, 1);
@@ -907,7 +944,7 @@ inline std::optional<std::vector<double>> rangeTicks(const Calendar& calendar, d
   return out;
 }
 
-inline int tickStep(double start, double stop, int count) noexcept {
+inline int tickStep(double start, double stop, int count) {
   double step = (stop - start) / std::max(0, count);
   double power = std::floor(std::log10(step));
   double error = step / std::pow(10.0, power);
@@ -915,7 +952,7 @@ inline int tickStep(double start, double stop, int count) noexcept {
   return static_cast<int>(std::pow(10.0, power) * factor);
 }
 
-inline std::vector<double> autoTicks(double start, double stop, int count) noexcept {
+inline std::vector<double> autoTicks(double start, double stop, int count) {
   struct AutoEntry { const char* unit; int step; double ms; };
   static const AutoEntry AUTO[] = {
     {"second", 1, SECOND},
@@ -969,7 +1006,14 @@ inline std::optional<std::vector<double>> intervalTicks(
       unit != "day" && unit != "week" && unit != "month") {
     return std::nullopt;
   }
-  int step = std::stoi(interval.substr(0, p));
+  if (p > 9) return std::nullopt;
+  int step = 0;
+  try {
+    step = std::stoi(interval.substr(0, p));
+  } catch (...) {
+    return std::nullopt;
+  }
+  if (step <= 0) return std::nullopt;
   static const char* WEEK_STARTS[] = {"sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"};
   int wkIdx = 0;
   for (int i = 0; i < 7; i++) if (weekday == WEEK_STARTS[i]) { wkIdx = i; break; }
@@ -980,7 +1024,7 @@ inline std::optional<std::vector<double>> intervalTicks(
   return rangeTicks(calendar, start, stop, limit);
 }
 
-inline std::string d3Pad(long long value, const std::string& fill, size_t width) noexcept {
+inline std::string d3Pad(long long value, const std::string& fill, size_t width) {
   std::string sign = value < 0 ? "-" : "";
   std::string digits = std::to_string(value < 0 ? -value : value);
   if (digits.size() < width) {
@@ -991,19 +1035,19 @@ inline std::string d3Pad(long long value, const std::string& fill, size_t width)
   return sign + digits;
 }
 
-inline GanttDate floored(const GanttDate& date, const Calendar& calendar) noexcept {
+inline GanttDate floored(const GanttDate& date, const Calendar& calendar) {
   GanttDate d(date.getTime());
   calendar.floorFn(d);
   return d;
 }
 
-inline int weekOfYear(const GanttDate& date, int weekStart) noexcept {
+inline int weekOfYear(const GanttDate& date, int weekStart) {
   Calendar week = weekCalendar(weekStart);
   GanttDate yearStart = floored(date, baseCalendar("year"));
   return spanUnits(floored(GanttDate(yearStart.getTime() - 1.0), week), floored(date, week), WEEK);
 }
 
-inline GanttDate isoThursday(const GanttDate& date) noexcept {
+inline GanttDate isoThursday(const GanttDate& date) {
   Calendar thursday = weekCalendar(4);
   int day = date.getDay();
   GanttDate d = floored((day >= 4 || day == 0) ? date : GanttDate(date.getTime() - 1.0), thursday);
@@ -1016,7 +1060,7 @@ inline GanttDate isoThursday(const GanttDate& date) noexcept {
 
 inline std::string timeFormat(const std::string& specifier, const GanttDate& date);
 
-inline std::string directive(char c, const GanttDate& d, const std::string& p) noexcept {
+inline std::string directive(char c, const GanttDate& d, const std::string& p) {
   switch (c) {
     case 'a': return WEEKDAYS()[d.getDay()].substr(0, 3);
     case 'A': return WEEKDAYS()[d.getDay()];
@@ -1131,7 +1175,7 @@ enum T {
   EOF_TOK
 };
 
-inline const std::vector<std::string>& TOKEN_NAMES() noexcept {
+inline const std::vector<std::string>& TOKEN_NAMES() {
   static const std::vector<std::string> names = {
     "$end", "INVALID", "open_directive", "acc_title", "acc_title_value",
     "acc_descr", "acc_descr_value", "acc_descr_multiline_value", "NL",
@@ -1145,7 +1189,7 @@ inline const std::vector<std::string>& TOKEN_NAMES() noexcept {
   return names;
 }
 
-inline bool ciAt(const std::string& src, int p, const std::string& word) noexcept {
+inline bool ciAt(const std::string& src, int p, const std::string& word) {
   if (p + static_cast<int>(word.size()) > static_cast<int>(src.size())) return false;
   for (size_t i = 0; i < word.size(); i++) {
     char a = src[p + i];
@@ -1157,11 +1201,11 @@ inline bool ciAt(const std::string& src, int p, const std::string& word) noexcep
   return true;
 }
 
-inline bool isWordChar(char c) noexcept {
+inline bool isWordChar(char c) {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
 }
 
-inline bool wordBoundaryAt(const std::string& src, int p) noexcept {
+inline bool wordBoundaryAt(const std::string& src, int p) {
   return p >= static_cast<int>(src.size()) || !isWordChar(src[p]);
 }
 
@@ -1502,7 +1546,7 @@ struct GanttTask {
   } raw;
 };
 
-inline double ganttClock(std::optional<double> nowOpt = std::nullopt) noexcept {
+inline double ganttClock(std::optional<double> nowOpt = std::nullopt) {
   if (nowOpt.has_value() && std::isfinite(*nowOpt)) return *nowOpt;
   auto tp = std::chrono::system_clock::now();
   auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch()).count();
@@ -1534,10 +1578,14 @@ inline std::pair<double, std::string> parseDuration(const std::string& str) {
     if (c == '.' && !dot && i > 0 && i + 1 < numPart.size()) dot = true;
     else if (c < '0' || c > '9') return {std::numeric_limits<double>::quiet_NaN(), "ms"};
   }
-  return {std::stod(numPart), unit};
+  try {
+    return {std::stod(numPart), unit};
+  } catch (...) {
+    return {std::numeric_limits<double>::quiet_NaN(), "ms"};
+  }
 }
 
-inline std::vector<std::string> mergeTokens(const std::vector<std::string>& existing, const std::string& txt) noexcept {
+inline std::vector<std::string> mergeTokens(const std::vector<std::string>& existing, const std::string& txt) {
   std::vector<std::string> out;
   Pele::FlatSet<std::string> seen;
   for (const auto& e : existing) {
@@ -2108,12 +2156,12 @@ constexpr double WIDTH = 800.0;
 constexpr double MIN_PLOT = 240.0;
 constexpr double LABEL_GAP = 8.0;
 
-inline double ganttCapWidth(const RenderOptions& options, double natural, double floor) noexcept {
+inline double ganttCapWidth(const RenderOptions& options, double natural, double floor) {
   double maxWidth = options.maxWidth;
   return maxWidth > 0.0 ? std::max(std::min(floor, natural), std::min(natural, maxWidth)) : natural;
 }
 
-inline std::optional<double> setting(const Config& config, const std::string& key, double minV, double maxV) noexcept {
+inline std::optional<double> setting(const Config& config, const std::string& key, double minV, double maxV) {
   const auto* sec = config.get("gantt");
   if (sec && sec->isMap()) {
     const auto* v = sec->get(key);
@@ -2124,7 +2172,7 @@ inline std::optional<double> setting(const Config& config, const std::string& ke
   return std::nullopt;
 }
 
-inline std::optional<std::string> textSetting(const Config& config, const std::string& key) noexcept {
+inline std::optional<std::string> textSetting(const Config& config, const std::string& key) {
   const auto* sec = config.get("gantt");
   if (sec && sec->isMap()) {
     const auto* v = sec->get(key);
@@ -2133,7 +2181,7 @@ inline std::optional<std::string> textSetting(const Config& config, const std::s
   return std::nullopt;
 }
 
-inline bool flagSetting(const Config& config, const std::string& key) noexcept {
+inline bool flagSetting(const Config& config, const std::string& key) {
   const auto* sec = config.get("gantt");
   if (sec && sec->isMap()) {
     const auto* v = sec->get(key);
@@ -2142,7 +2190,7 @@ inline bool flagSetting(const Config& config, const std::string& key) noexcept {
   return false;
 }
 
-inline std::string replaceBreakTags(const std::string& raw) noexcept {
+inline std::string replaceBreakTags(const std::string& raw) {
   std::string out;
   for (size_t i = 0; i < raw.size(); ) {
     if (raw[i] == '<' && i + 3 < raw.size() &&
@@ -2162,7 +2210,7 @@ inline std::string replaceBreakTags(const std::string& raw) noexcept {
   return out;
 }
 
-inline Label oneLine(const std::string& raw, const TextMeasurer& measurer, double size) noexcept {
+inline Label oneLine(const std::string& raw, const TextMeasurer& measurer, double size) {
   Label label = layoutLabel(replaceBreakTags(raw), false, measurer, size, 4000.0);
   if (label.lines.size() <= 1) return label;
   Label single = label;
@@ -2173,12 +2221,12 @@ inline Label oneLine(const std::string& raw, const TextMeasurer& measurer, doubl
   return single;
 }
 
-inline bool scheduled(const GanttTask& task) noexcept {
+inline bool scheduled(const GanttTask& task) {
   return task.startTime.has_value() && task.endTime.has_value() &&
          std::isfinite(task.startTime->getTime()) && std::isfinite(task.endTime->getTime());
 }
 
-inline int packRows(const std::vector<const GanttTask*>& tasks, int offset, std::unordered_map<const GanttTask*, int>& rowOf) noexcept {
+inline int packRows(const std::vector<const GanttTask*>& tasks, int offset, std::unordered_map<const GanttTask*, int>& rowOf) {
   std::vector<const GanttTask*> sorted;
   for (const auto* t : tasks) if (scheduled(*t)) sorted.push_back(t);
   std::stable_sort(sorted.begin(), sorted.end(), [](const GanttTask* a, const GanttTask* b) {
@@ -2213,7 +2261,7 @@ struct Bar {
   bool inside = false;
 };
 
-inline Rendered renderGanttModel(GanttDb& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderGanttModel(GanttDb& model, const Config& config, const RenderOptions& options) {
   double size = options.fontSize;
   const TextMeasurer& measurer = getMeasurer(options);
   double pad = options.padding;

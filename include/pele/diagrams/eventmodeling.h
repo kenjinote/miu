@@ -60,7 +60,7 @@ enum Kind {
 };
 } // namespace T
 
-inline TokenType makeEmTitle() noexcept {
+inline TokenType makeEmTitle() {
     TokenType t = common_tokens::makeTitle();
     t.name = "EM_TITLE";
     t.match = [](const std::string& src, int at, int) -> int {
@@ -293,20 +293,20 @@ struct EventModelAst {
     std::string source;
 };
 
-inline bool isTimeFrameKind(int k) noexcept {
+inline bool isTimeFrameKind(int k) {
     return k == T::tf || k == T::timeframe;
 }
 
-inline bool isResetFrameKind(int k) noexcept {
+inline bool isResetFrameKind(int k) {
     return k == T::rf || k == T::resetframe;
 }
 
-inline bool isEntityTypeKind(int k) noexcept {
+inline bool isEntityTypeKind(int k) {
     return k == T::rmo || k == T::readmodel || k == T::ui || k == T::cmd ||
            k == T::command || k == T::evt || k == T::event || k == T::pcr || k == T::processor;
 }
 
-inline bool isDataTypeKind(int k) noexcept {
+inline bool isDataTypeKind(int k) {
     return k == T::json || k == T::jsobj || k == T::figma || k == T::salt ||
            k == T::uri || k == T::md || k == T::html || k == T::text;
 }
@@ -453,7 +453,7 @@ struct EventModelingModel : public DiagramMeta {
     std::vector<std::string> entities;
 };
 
-inline std::string mapEntityKind(const std::string& raw) noexcept {
+inline std::string mapEntityKind(const std::string& raw) {
     if (raw == "ui") return "ui";
     if (raw == "pcr" || raw == "processor") return "processor";
     if (raw == "rmo" || raw == "readmodel") return "readmodel";
@@ -461,13 +461,13 @@ inline std::string mapEntityKind(const std::string& raw) noexcept {
     return "event";
 }
 
-inline std::string groupOfKind(const std::string& kind) noexcept {
+inline std::string groupOfKind(const std::string& kind) {
     if (kind == "ui" || kind == "processor") return "trigger";
     if (kind == "event") return "stream";
     return "state";
 }
 
-inline std::string blockText(const std::string& raw) noexcept {
+inline std::string blockText(const std::string& raw) {
     size_t open = raw.find('{');
     size_t close = raw.rfind('}');
     std::string inner;
@@ -625,7 +625,7 @@ constexpr double RAIL_GAP = 8.0;
 constexpr double CARD_MIN = 120.0;
 constexpr double ARROW_ROOM = 20.0;
 
-inline std::optional<int> entitySeries(const std::string& kind) noexcept {
+inline std::optional<int> entitySeries(const std::string& kind) {
     if (kind == "command") return 0;
     if (kind == "event") return 1;
     if (kind == "readmodel") return 2;
@@ -633,7 +633,7 @@ inline std::optional<int> entitySeries(const std::string& kind) noexcept {
     return std::nullopt;
 }
 
-inline std::vector<std::string> hardWrap(const std::string& text, size_t columns) noexcept {
+inline std::vector<std::string> hardWrap(const std::string& text, size_t columns) {
     std::vector<std::string> out;
     for (const auto& line : splitStr(decodeEntities(text), '\n')) {
         std::vector<std::string> chars;
@@ -656,7 +656,7 @@ inline std::vector<std::string> hardWrap(const std::string& text, size_t columns
     return out;
 }
 
-inline std::string renderLinesSvg(const std::vector<std::string>& rows, double x, double y, double step, const std::string& attrs) noexcept {
+inline std::string renderLinesSvg(const std::vector<std::string>& rows, double x, double y, double step, const std::string& attrs) {
     std::string body;
     for (size_t i = 0; i < rows.size(); i++) {
         if (!rows[i].empty()) {
@@ -666,7 +666,7 @@ inline std::string renderLinesSvg(const std::vector<std::string>& rows, double x
     return body.empty() ? "" : Pele::cat({"<text", attrs, " xml:space=\"preserve\">", body, "</text>"});
 }
 
-inline std::string joinVec(const std::vector<std::string>& v, const std::string& sep) noexcept {
+inline std::string joinVec(const std::vector<std::string>& v, const std::string& sep) {
     std::string out;
     for (size_t i = 0; i < v.size(); i++) {
         if (i > 0) out += sep;
@@ -675,7 +675,7 @@ inline std::string joinVec(const std::vector<std::string>& v, const std::string&
     return out;
 }
 
-inline Rendered verticalEventModel(const EventModelingModel& model, const RenderOptions& options) noexcept {
+inline Rendered verticalEventModel(const EventModelingModel& model, const RenderOptions& options) {
     double size = options.hasFontSize ? options.fontSize : 16.0;
     double small = std::round(size * 0.875);
     double mono = std::round(size * 0.75);
@@ -833,7 +833,7 @@ inline Rendered verticalEventModel(const EventModelingModel& model, const Render
     return {svgDocument("eventmodeling", totalWidth, height, size, options, model, content), totalWidth, height, {}};
 }
 
-inline Rendered drawEventModel(const EventModelingModel& model, const Config& config, const RenderOptions& options, bool down) noexcept {
+inline Rendered drawEventModel(const EventModelingModel& model, const Config& config, const RenderOptions& options, bool down) {
     (void)config;
     if (down) return verticalEventModel(model, options);
     double size = options.hasFontSize ? options.fontSize : 16.0;
@@ -1018,7 +1018,7 @@ inline Rendered drawEventModel(const EventModelingModel& model, const Config& co
 }
 
 template <typename DrawFn>
-inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) noexcept {
+inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) {
     Rendered across = draw(false);
     double available = options.maxWidth;
     if (!(available > 0.0) || across.width <= available) return across;
@@ -1027,7 +1027,7 @@ inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) noexcept 
     return down.width < across.width ? down : across;
 }
 
-inline Rendered renderEventModel(const EventModelingModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderEventModel(const EventModelingModel& model, const Config& config, const RenderOptions& options) {
     return turnToFit(options, [&](bool down) {
         return drawEventModel(model, config, options, down);
     });

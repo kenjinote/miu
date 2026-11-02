@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #ifdef _MSC_VER
 #pragma optimize("s", on)
 #endif
@@ -225,6 +225,9 @@ inline RenderResult render(const std::string& text, const RenderOptions& options
     } catch (const std::exception& ex) {
         result.ok = false;
         result.error = ex.what();
+    } catch (...) {
+        result.ok = false;
+        result.error = "Unknown diagram rendering error.";
     }
     return result;
 }

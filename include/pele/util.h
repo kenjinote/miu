@@ -42,7 +42,7 @@ struct CatPiece {
     const char* data() const noexcept { return ptr ? ptr : chBuf; }
 };
 
-PELE_NOINLINE inline std::string cat(std::initializer_list<CatPiece> parts) noexcept {
+PELE_NOINLINE inline std::string cat(std::initializer_list<CatPiece> parts) {
     size_t total = 0;
     for (const auto& p : parts) total += p.len;
     std::string out;
@@ -51,7 +51,7 @@ PELE_NOINLINE inline std::string cat(std::initializer_list<CatPiece> parts) noex
     return out;
 }
 
-PELE_NOINLINE inline void appendCat(std::string& dst, std::initializer_list<CatPiece> parts) noexcept {
+PELE_NOINLINE inline void appendCat(std::string& dst, std::initializer_list<CatPiece> parts) {
     size_t extra = 0;
     for (const auto& p : parts) extra += p.len;
     if (dst.size() + extra > dst.capacity()) {
@@ -245,7 +245,7 @@ inline uint32_t nextCodepoint(const std::string& s, size_t& i) noexcept {
     return c;
 }
 
-inline void appendCodepoint(std::string& out, uint32_t cp) noexcept {
+inline void appendCodepoint(std::string& out, uint32_t cp) {
     if (cp < 0x80) {
         out.push_back(static_cast<char>(cp));
     } else if (cp < 0x800) {
@@ -263,7 +263,7 @@ inline void appendCodepoint(std::string& out, uint32_t cp) noexcept {
     }
 }
 
-inline std::vector<uint16_t> toUtf16(const std::string& s) noexcept {
+inline std::vector<uint16_t> toUtf16(const std::string& s) {
     std::vector<uint16_t> out;
     out.reserve(s.size());
     size_t i = 0;
@@ -280,7 +280,7 @@ inline std::vector<uint16_t> toUtf16(const std::string& s) noexcept {
     return out;
 }
 
-inline std::string fromUtf16(const uint16_t* data, size_t len) noexcept {
+inline std::string fromUtf16(const uint16_t* data, size_t len) {
     std::string out;
     out.reserve(len);
     size_t i = 0;
@@ -301,7 +301,7 @@ inline std::string fromUtf16(const uint16_t* data, size_t len) noexcept {
 // src/util/chars.ts
 // ============================================================================
 
-inline bool isSpace(int c) noexcept {
+inline bool isSpace(int c) {
     if (c < 0) return false;
     if (c < 128) return c == 32 || (c >= 9 && c <= 13);
     return (
@@ -317,31 +317,31 @@ inline bool isSpace(int c) noexcept {
     );
 }
 
-inline bool isBlank(int c) noexcept {
+inline bool isBlank(int c) {
     return c == 32 || c == 9;
 }
 
-inline bool isLineEnd(int c) noexcept {
+inline bool isLineEnd(int c) {
     return c == 10 || c == 13 || c == 0x2028 || c == 0x2029;
 }
 
-inline bool isDigit(int c) noexcept {
+inline bool isDigit(int c) {
     return c >= 48 && c <= 57;
 }
 
-inline bool isLetter(int c) noexcept {
+inline bool isLetter(int c) {
     return (c >= 65 && c <= 90) || (c >= 97 && c <= 122);
 }
 
-inline bool isHex(int c) noexcept {
+inline bool isHex(int c) {
     return (c >= 48 && c <= 57) || (c >= 65 && c <= 70) || (c >= 97 && c <= 102);
 }
 
-inline bool isWord(int c) noexcept {
+inline bool isWord(int c) {
     return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95;
 }
 
-inline int charCodeAtUtf8(const std::string& s, size_t pos, size_t* nextPos = nullptr) noexcept {
+inline int charCodeAtUtf8(const std::string& s, size_t pos, size_t* nextPos = nullptr) {
     if (pos >= s.size()) {
         if (nextPos) *nextPos = pos;
         return -1;
@@ -352,7 +352,7 @@ inline int charCodeAtUtf8(const std::string& s, size_t pos, size_t* nextPos = nu
     return static_cast<int>(cp);
 }
 
-inline std::string trimStartStr(const std::string& s) noexcept {
+inline std::string trimStartStr(const std::string& s) {
     size_t i = 0;
     while (i < s.size()) {
         size_t next = i;
@@ -363,7 +363,7 @@ inline std::string trimStartStr(const std::string& s) noexcept {
     return s.substr(i);
 }
 
-inline std::string trimEndStr(const std::string& s) noexcept {
+inline std::string trimEndStr(const std::string& s) {
     size_t end = s.size();
     while (end > 0) {
         unsigned char b = static_cast<unsigned char>(s[end - 1]);
@@ -382,11 +382,11 @@ inline std::string trimEndStr(const std::string& s) noexcept {
     return s.substr(0, end);
 }
 
-inline std::string trimStr(const std::string& s) noexcept {
+inline std::string trimStr(const std::string& s) {
     return trimEndStr(trimStartStr(s));
 }
 
-inline std::string toLowerAscii(const std::string& s) noexcept {
+inline std::string toLowerAscii(const std::string& s) {
     std::string out = s;
     for (char& c : out) {
         if (c >= 'A' && c <= 'Z') c = static_cast<char>(c + 32);
@@ -394,7 +394,7 @@ inline std::string toLowerAscii(const std::string& s) noexcept {
     return out;
 }
 
-inline std::vector<std::string> splitStr(const std::string& s, char delim) noexcept {
+inline std::vector<std::string> splitStr(const std::string& s, char delim) {
     std::vector<std::string> out;
     size_t start = 0;
     while (true) {
@@ -409,17 +409,17 @@ inline std::vector<std::string> splitStr(const std::string& s, char delim) noexc
     return out;
 }
 
-inline bool startsWith(const std::string& s, const std::string& prefix, size_t pos = 0) noexcept {
+inline bool startsWith(const std::string& s, const std::string& prefix, size_t pos = 0) {
     if (pos + prefix.size() > s.size()) return false;
     return std::memcmp(s.data() + pos, prefix.data(), prefix.size()) == 0;
 }
 
-inline bool endsWith(const std::string& s, const std::string& suffix) noexcept {
+inline bool endsWith(const std::string& s, const std::string& suffix) {
     if (suffix.size() > s.size()) return false;
     return std::memcmp(s.data() + s.size() - suffix.size(), suffix.data(), suffix.size()) == 0;
 }
 
-inline std::string replaceAllStr(std::string s, const std::string& from, const std::string& to) noexcept {
+inline std::string replaceAllStr(std::string s, const std::string& from, const std::string& to) {
     if (from.empty()) return s;
     size_t pos = 0;
     while ((pos = s.find(from, pos)) != std::string::npos) {
@@ -433,7 +433,7 @@ inline std::string replaceAllStr(std::string s, const std::string& from, const s
 // src/util/unicode.ts
 // ============================================================================
 
-inline const std::vector<uint16_t>& unicodeLetterTable() noexcept {
+inline const std::vector<uint16_t>& unicodeLetterTable() {
     static const std::vector<uint16_t> table = []() {
         const char* PACKED =
             "4q 0 b 0 5 0 6 m 2 u 2 cp 5 b f 4 8 0 2 0 3m 4 2 1 3 3 9 0 2 2 2 0 2 j 2 2a 2 3u 9 4d a 11 3 0 8 12 21 q 6 2 1a 16 10 1 2 2q 2 0 g 1 8 1 b 2 3 0 h 0 2 t u 2g c 0 p w a 1 5 0 6 l 5 0 a 0 4 0 o o 20 0 2 a 2g 1h 4 0 j 0 8 9 g 6 2 6 6 7 3 1 3 l 2 6 2 0 4 3 4 0 h 0 e 1 2 2 f 1 k 5 5 1 3 l 2 6 2 1 2 1 2 1 w 3 2 0 k 2 h 8 2 2 2 l 2 6 2 1 2 4 4 0 j 0 g 1 10 7 3 1 3 l 2 6 2 1 2 4 4 0 v 1 2 2 g 0 i 0 2 5 4 2 2 3 4 1 2 0 2 1 4 1 4 2 4 b n 0 1h 7 2 2 2 m 2 9 2 4 4 0 r 1 7 1 10 7 2 2 2 m 2 9 2 4 4 0 x 0 2 1 g 1 j 7 2 2 2 14 3 0 h 0 i 1 p 5 6 h 4 n 2 8 2 0 3 6 1n 1b 2 1 d 6 1n 1 2 0 3 1 2 0 3 0 7 3 2 6 2 2 2 0 2 0 3 1 2 3 2 1 a 0 3 4 2 0 m 3 x 0 1s 7 2 z s 4 38 16 l 0 h 5 5 3 4 0 4 1 8 2 5 c d 0 i 11 2 0 6 0 3 16 2 98 2 3 3 6 2 0 2 3 3 14 2 3 3 w 2 3 3 6 2 0 2 3 3 e 2 1k 2 3 3 1u 12 f h 2c d h7 3 g 2 p 6 22 m c 2 3 f h f h f c 2 2 g 1f 10 0 5 0 1w 2f 9 14 2 0 6 1x b s 1g t 3 4 c 17 m 6 1l m a 1g 2b 0 2m 1a i 6 1k t e 1 b 17 r z 16 2 b z 30 3 2 3 4 1 a 5b 1t 7p 3 5 3 11 3 5 3 7 2 0 2 0 2 0 2 u 3 1g 2 6 2 0 4 2 2 6 4 3 3 5 5 c 6 2 2 6 39 0 e 0 h c 2u 0 5 0 3 9 2 0 4 4 7 0 2 0 2 0 2 3 2 a 3 3 6 4 5 0 1h 1 22k 1a 2 1a 2 3o 7 3 4 1 d 11 2 0 6 0 3 1j 8 0 h m a 6 2 6 2 6 2 6 2 6 2 6 2 6 2 6 29 0 d2 1 17 4 6 1 5 2d 7 2 2 2h 2 3 6 14 4 2l i q 1i f e9 52t 23 g5o 1g wc 1w 19 3 7g 4 f b 1 l 1a h o 9 1x 1e 8 3 2u 3 3 2 3 d a 26 9 2 2 2 3 2 m u 1f f 1d 1r 5 4 0 f r b m q s 8 1a t 0 1d 14 o 2 2 7 l m 4 0 6 1b 2 0 4 1 3 4 3 0 2 0 p 2 3 a 8 2 d 5 3 5 3 5 a 6 2 6 42 y u 8mb d m 5 1c 6it a5 3 2x 13 6 d 4 6 0 2 9 2 c 2 4 2 0 2 1 2 1 2 2z y a2 j 1r 3 1h 15 b 39 4 2 3q 11 p 7 p c 2g 4 5 3 5 3 5 3 2";
@@ -451,7 +451,7 @@ inline const std::vector<uint16_t>& unicodeLetterTable() noexcept {
     return table;
 }
 
-inline bool isUnicodeLetter(int code) noexcept {
+inline bool isUnicodeLetter(int code) {
     if (code < 0xaa || code > 0xffdc) return false;
     const auto& t = unicodeLetterTable();
     int lo = 0;
@@ -469,7 +469,7 @@ inline bool isUnicodeLetter(int code) noexcept {
 // src/text/entities.ts
 // ============================================================================
 
-inline const std::unordered_map<std::string, std::string>& namedEntitiesMap() noexcept {
+inline const std::unordered_map<std::string, std::string>& namedEntitiesMap() {
     static const std::unordered_map<std::string, std::string> m = []() {
         const std::string NAMED =
             "amp:38,lt:60,gt:62,quot:34,apos:39,nbsp:160,shy:173,iexcl:161,cent:162,pound:163,curren:164,yen:165,sect:167,"
@@ -510,7 +510,7 @@ inline const std::unordered_map<std::string, std::string>& namedEntitiesMap() no
 inline const std::string PLACEHOLDER_OPEN = "\xEF\xAC\x82\xC2\xB0";
 inline const std::string PLACEHOLDER_CLOSE = "\xC2\xB6\xC3\x9F";
 
-inline std::string restorePlaceholders(const std::string& text) noexcept {
+inline std::string restorePlaceholders(const std::string& text) {
     std::string out;
     size_t last = 0;
     size_t from = text.find(PLACEHOLDER_OPEN);
@@ -526,7 +526,7 @@ inline std::string restorePlaceholders(const std::string& text) noexcept {
     return last == 0 ? text : out + text.substr(last);
 }
 
-inline std::string writtenCodes(const std::string& text) noexcept {
+inline std::string writtenCodes(const std::string& text) {
     if (text.find(PLACEHOLDER_CLOSE) == std::string::npos) return text;
     std::string out;
     size_t last = 0;
@@ -543,7 +543,7 @@ inline std::string writtenCodes(const std::string& text) noexcept {
     return last == 0 ? text : out + text.substr(last);
 }
 
-inline std::string decodeEntities(std::string text) noexcept {
+inline std::string decodeEntities(std::string text) {
     if (text.find(PLACEHOLDER_CLOSE) != std::string::npos) {
         text = restorePlaceholders(text);
     }
@@ -676,7 +676,7 @@ public:
         : std::runtime_error(msg), code(code_), type(type_), line(line_), column(col_), snippet(snip_) {}
 };
 
-inline PeleError syntaxError(const std::string& type, const std::string& src, size_t offset, const std::string& detail, bool lexical = false) noexcept {
+inline PeleError syntaxError(const std::string& type, const std::string& src, size_t offset, const std::string& detail, bool lexical = false) {
     size_t end = trimEndStr(src).size();
     if (end > 0 && offset >= end) offset = end;
     int line = 1;
@@ -749,7 +749,7 @@ struct YamlValue {
 
 using Config = YamlValue;
 
-inline YamlValue yamlScalar(const std::string& raw) noexcept {
+inline YamlValue yamlScalar(const std::string& raw) {
     std::string s = trimStr(raw);
     if (s.empty() || s == "~" || s == "null" || s == "Null" || s == "NULL") return YamlValue::makeNull();
     if (s == "true" || s == "True" || s == "TRUE") return YamlValue::makeBool(true);
@@ -765,7 +765,7 @@ inline YamlValue yamlScalar(const std::string& raw) noexcept {
     return YamlValue::makeString(s);
 }
 
-inline std::pair<YamlValue, size_t> parseYamlFlow(const std::string& s, size_t pos, const std::string& stops, int depth = 0) noexcept {
+inline std::pair<YamlValue, size_t> parseYamlFlow(const std::string& s, size_t pos, const std::string& stops, int depth = 0) {
     if (depth > 64) return {YamlValue::makeNull(), s.size()};
     auto skip = [&](size_t p) {
         while (p < s.size()) {
@@ -846,7 +846,7 @@ inline std::pair<YamlValue, size_t> parseYamlFlow(const std::string& s, size_t p
     return {yamlScalar(s.substr(pos, end - pos)), end};
 }
 
-inline YamlValue parseYaml(const std::string& src) noexcept {
+inline YamlValue parseYaml(const std::string& src) {
     std::string trimmed = trimStr(src);
     if (trimmed.empty()) return YamlValue::makeNull();
     if (trimmed[0] == '{' || trimmed[0] == '[') {
@@ -912,7 +912,7 @@ inline YamlValue parseYaml(const std::string& src) noexcept {
     return parseBlock(parseBlock, 0, 0);
 }
 
-inline void mergeConfig(Config& target, const Config& source) noexcept {
+inline void mergeConfig(Config& target, const Config& source) {
     if (!source.isMap()) return;
     if (!target.isMap()) target = YamlValue::makeMap();
     for (const auto& [k, v] : source.mVal) {
@@ -934,7 +934,7 @@ struct Preprocessed {
     int lineOffset = 0;
 };
 
-inline std::string normalizeLineBreaks(const std::string& text) noexcept {
+inline std::string normalizeLineBreaks(const std::string& text) {
     if (text.find('\r') == std::string::npos) return text;
     std::string out;
     out.reserve(text.size());
@@ -949,7 +949,7 @@ inline std::string normalizeLineBreaks(const std::string& text) noexcept {
     return out;
 }
 
-inline std::string cleanupComments(const std::string& text) noexcept {
+inline std::string cleanupComments(const std::string& text) {
     if (text.find("%%") == std::string::npos) return trimStartStr(text);
     std::string out;
     size_t i = 0;
@@ -968,7 +968,7 @@ inline std::string cleanupComments(const std::string& text) noexcept {
     return trimStartStr(out);
 }
 
-inline Preprocessed preprocess(const std::string& source) noexcept {
+inline Preprocessed preprocess(const std::string& source) {
     Preprocessed res;
     std::string text = normalizeLineBreaks(source);
 
@@ -1085,7 +1085,7 @@ inline Preprocessed preprocess(const std::string& source) noexcept {
     return res;
 }
 
-inline std::string dropColorSemicolons(const std::string& text, const std::string& keyword) noexcept {
+inline std::string dropColorSemicolons(const std::string& text, const std::string& keyword) {
     size_t from = text.find(keyword);
     if (from == std::string::npos) return text;
     std::string out;
@@ -1116,7 +1116,7 @@ inline std::string dropColorSemicolons(const std::string& text, const std::strin
     return last == 0 ? text : out + text.substr(last);
 }
 
-inline std::string encodeEntities(std::string text) noexcept {
+inline std::string encodeEntities(std::string text) {
     if (text.find('#') == std::string::npos) return text;
     text = dropColorSemicolons(dropColorSemicolons(text, "style"), "classDef");
     std::string out;
@@ -1152,7 +1152,7 @@ struct Detected {
     std::string mermaidType;
 };
 
-inline bool detectDiagram(const std::string& cleaned, Detected& out) noexcept {
+inline bool detectDiagram(const std::string& cleaned, Detected& out) {
     std::string s = trimStartStr(cleaned);
     auto matchPrefix = [&](const std::string& p, bool caseInsensitive = false, bool wordBoundary = false, bool spaceOrEnd = false, bool spaceColonOrEnd = false) {
         if (s.size() < p.size()) return false;
@@ -1221,11 +1221,11 @@ inline bool detectDiagram(const std::string& cleaned, Detected& out) noexcept {
 // src/diagrams/common/caseless.ts & accDescr.ts & generics.ts & fit*.ts
 // ============================================================================
 
-inline std::string foldCase(const std::string& s) noexcept {
+inline std::string foldCase(const std::string& s) {
     return toLowerAscii(s);
 }
 
-inline std::string cleanAccDescr(const std::string& text) noexcept {
+inline std::string cleanAccDescr(const std::string& text) {
     auto lines = splitStr(text, '\n');
     std::string out;
     for (const auto& rawLine : lines) {
@@ -1250,13 +1250,13 @@ inline std::string cleanAccDescr(const std::string& text) noexcept {
     return out;
 }
 
-inline int countTildes(const std::string& text) noexcept {
+inline int countTildes(const std::string& text) {
     int count = 0;
     for (char c : text) if (c == '~') count++;
     return count;
 }
 
-inline std::string pairTildes(const std::string& text) noexcept {
+inline std::string pairTildes(const std::string& text) {
     int count = countTildes(text);
     if (count <= 1) return text;
     bool lead = (count % 2 != 0) && !text.empty() && text[0] == '~';
@@ -1272,7 +1272,7 @@ inline std::string pairTildes(const std::string& text) noexcept {
     return chars;
 }
 
-inline std::string parseGenericTypes(const std::string& input) noexcept {
+inline std::string parseGenericTypes(const std::string& input) {
     if (input.find('~') == std::string::npos) return input;
     std::vector<std::string> sets;
     size_t start = 0;
@@ -1299,7 +1299,7 @@ inline std::string parseGenericTypes(const std::string& input) noexcept {
     return res;
 }
 
-inline double fitScale(double contentWidth, double pad, const RenderOptions& options) noexcept {
+inline double fitScale(double contentWidth, double pad, const RenderOptions& options) {
     double maxWidth = options.maxWidth;
     if (!(maxWidth > 0)) return 1.0;
     double room = maxWidth - 2.0 * pad;
@@ -1307,11 +1307,11 @@ inline double fitScale(double contentWidth, double pad, const RenderOptions& opt
     return std::max(0.25, room / contentWidth);
 }
 
-inline double fitFontSize(double scale, double base, double floor = 11.0) noexcept {
+inline double fitFontSize(double scale, double base, double floor = 11.0) {
     return scale < 1.0 ? std::max(floor, std::round(base * std::pow(scale, 0.7) * 2.0) / 2.0) : base;
 }
 
-inline RenderOptions fitTextOptions(double contentWidth, double pad, const RenderOptions& options, double floor = 11.0) noexcept {
+inline RenderOptions fitTextOptions(double contentWidth, double pad, const RenderOptions& options, double floor = 11.0) {
     double scale = fitScale(contentWidth, pad, options);
     double base = options.fontSize;
     double fontSize = fitFontSize(scale, base, floor);
@@ -1321,14 +1321,14 @@ inline RenderOptions fitTextOptions(double contentWidth, double pad, const Rende
     return next;
 }
 
-inline double titleRoom(const RenderOptions& options) noexcept {
+inline double titleRoom(const RenderOptions& options) {
     double maxWidth = options.maxWidth;
     double pad = options.padding;
     return maxWidth > 0 ? std::max(120.0, maxWidth - 2.0 * pad) : 4000.0;
 }
 
 template <typename DrawFn>
-inline Rendered tighten(const RenderOptions& options, DrawFn&& draw) noexcept {
+inline Rendered tighten(const RenderOptions& options, DrawFn&& draw) {
     Rendered wide = draw(false);
     double maxWidth = options.maxWidth;
     if (!(maxWidth > 0 && wide.width > maxWidth)) return wide;

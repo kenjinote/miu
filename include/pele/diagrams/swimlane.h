@@ -43,7 +43,7 @@ constexpr double MARGIN = 20.0;
 constexpr double LEG = 14.0;
 constexpr double CLOSE = 3.0;
 
-inline std::pair<double, double> border(const CNode& from, const CNode& to) noexcept {
+inline std::pair<double, double> border(const CNode& from, const CNode& to) {
     double dx = to.x - from.x;
     double dy = to.y - from.y;
     double hw = std::max(from.w / 2.0, 0.5);
@@ -62,7 +62,7 @@ inline std::pair<double, double> border(const CNode& from, const CNode& to) noex
     return {from.x + dx * scale, from.y + dy * scale};
 }
 
-inline double jsSign(double x) noexcept {
+inline double jsSign(double x) {
     if (x > 0.0) return 1.0;
     if (x < 0.0) return -1.0;
     return 0.0;
@@ -739,7 +739,7 @@ inline CompoundResult laneLayout(
 // Port of src/diagrams/swimlane/index.ts
 // ============================================================================
 
-inline void prepareSwimlane(FlowGraph& graph) noexcept {
+inline void prepareSwimlane(FlowGraph& graph) {
     const std::string DEFAULT_LANE = "__swimlane_default__";
     bool loose = false;
     for (auto& node : graph.nodes) {
@@ -782,7 +782,7 @@ inline std::string drawLane(
     return Pele::cat({"<g class=\"pele-cluster pele-lane", classes, "\" data-id=\"", id, "\">", "<rect x=\"", num(left), "\" y=\"", num(top), "\" width=\"", num(c.w), "\" height=\"", num(c.h), "\" fill=\"none\" stroke=\"var(--_b)\"/>", "<rect x=\"", num(left), "\" y=\"", num(top), "\" width=\"", num(sideways ? c.padTop : c.w), "\" height=\"", num(sideways ? c.h : c.padTop), "\" fill=\"var(--_a)\" stroke=\"var(--_b)\"", style.shape, "/>", (sideways && !text.empty() ? Pele::cat({"<g transform=\"rotate(-90 ", num(cx), " ", num(cy), ")\">", text, "</g>"}) : text), "</g>"});
 }
 
-inline std::array<double, 4> laneBand(const CNode& c, const std::string& dir) noexcept {
+inline std::array<double, 4> laneBand(const CNode& c, const std::string& dir) {
     double left = c.x - c.w / 2.0;
     double top = c.y - c.h / 2.0;
     if (dir == "LR" || dir == "RL") {
@@ -791,7 +791,7 @@ inline std::array<double, 4> laneBand(const CNode& c, const std::string& dir) no
     return {left, top, left + c.w, top + c.padTop};
 }
 
-inline const FlowVariant& swimlaneVariant() noexcept {
+inline const FlowVariant& swimlaneVariant() {
     static const FlowVariant v{
         "swimlane",
         prepareSwimlane,

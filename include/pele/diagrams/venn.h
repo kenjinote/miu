@@ -27,7 +27,7 @@ struct VennStyle {
     std::vector<std::pair<std::string, std::string>> styles;
 };
 
-inline std::string normalizeText(const std::string& text) noexcept {
+inline std::string normalizeText(const std::string& text) {
     std::string trimmed = trimStr(text);
     if (trimmed.size() >= 2 && trimmed.front() == '"' && trimmed.back() == '"') {
         return trimmed.substr(1, trimmed.size() - 2);
@@ -35,7 +35,7 @@ inline std::string normalizeText(const std::string& text) noexcept {
     return trimmed;
 }
 
-inline std::vector<std::string> normalizeIds(const std::vector<std::string>& ids) noexcept {
+inline std::vector<std::string> normalizeIds(const std::vector<std::string>& ids) {
     std::vector<std::string> out;
     out.reserve(ids.size());
     for (const auto& id : ids) out.push_back(normalizeText(id));
@@ -137,7 +137,7 @@ namespace T {
     };
 }
 
-inline const char* tokenName(int t) noexcept {
+inline const char* tokenName(int t) {
     static const char* NAMES[] = {
         "$end", "INVALID", "EOF", "NEWLINE", "VENN", "TITLE", "SET", "UNION",
         "TEXT", "INDENT_TEXT", "STYLE", "BRACKET_LABEL", "NUMERIC", "HEXCOLOR",
@@ -480,7 +480,7 @@ struct Spot {
 constexpr double VENN_PI = 3.14159265358979323846;
 constexpr double VENN_TAU = VENN_PI * 2.0;
 
-inline std::string jsonStrArray(const std::vector<std::string>& arr) noexcept {
+inline std::string jsonStrArray(const std::vector<std::string>& arr) {
     std::string out = "[";
     for (size_t i = 0; i < arr.size(); i++) {
         if (i > 0) out.push_back(',');
@@ -495,11 +495,11 @@ inline std::string jsonStrArray(const std::vector<std::string>& arr) noexcept {
     return out;
 }
 
-inline std::string keyOf(const std::vector<std::string>& ids) noexcept {
+inline std::string keyOf(const std::vector<std::string>& ids) {
     return ids.size() == 1 ? ids[0] : jsonStrArray(ids);
 }
 
-inline std::vector<VennSubset> ensurePairwiseSubsets(const std::vector<VennSubset>& subsets) noexcept {
+inline std::vector<VennSubset> ensurePairwiseSubsets(const std::vector<VennSubset>& subsets) {
     Pele::FlatSet<std::string> present;
     Pele::FlatMap<std::string, double> sizes;
     for (const auto& subset : subsets) {
@@ -532,7 +532,7 @@ inline std::vector<VennSubset> ensurePairwiseSubsets(const std::vector<VennSubse
     return res;
 }
 
-inline double lensArea(double r1, double r2, double d) noexcept {
+inline double lensArea(double r1, double r2, double d) {
     if (d >= r1 + r2) return 0.0;
     double small = std::min(r1, r2);
     if (d <= std::abs(r1 - r2)) return VENN_PI * small * small;
@@ -542,7 +542,7 @@ inline double lensArea(double r1, double r2, double d) noexcept {
     return a1 + a2 - a3;
 }
 
-inline double distanceForOverlap(double r1, double r2, double area) noexcept {
+inline double distanceForOverlap(double r1, double r2, double area) {
     double low = std::abs(r1 - r2);
     double high = r1 + r2;
     if (!(area > 0.0)) return high;
@@ -556,7 +556,7 @@ inline double distanceForOverlap(double r1, double r2, double area) noexcept {
     return (low + high) / 2.0;
 }
 
-inline double circleMargin(const std::vector<Circle>& circles, const std::vector<int>& inside, const std::vector<int>& outside, double x, double y, double floor) noexcept {
+inline double circleMargin(const std::vector<Circle>& circles, const std::vector<int>& inside, const std::vector<int>& outside, double x, double y, double floor) {
     double best = std::numeric_limits<double>::infinity();
     for (int i : inside) {
         const auto& c = circles[i];
@@ -581,7 +581,7 @@ inline double circleMargin(const std::vector<Circle>& circles, const std::vector
     return best;
 }
 
-inline Spot findSpot(const std::vector<Circle>& circles, const std::vector<int>& inside, const std::vector<int>& outside) noexcept {
+inline Spot findSpot(const std::vector<Circle>& circles, const std::vector<int>& inside, const std::vector<int>& outside) {
     double cx = 0.0;
     double cy = 0.0;
     const Circle* smallest = &circles[inside[0]];
@@ -629,7 +629,7 @@ inline Spot findSpot(const std::vector<Circle>& circles, const std::vector<int>&
     return {x, y, best};
 }
 
-inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets) noexcept {
+inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets) {
     std::vector<std::string> sizeOrder;
     Pele::FlatMap<std::string, double> sizes;
     auto setSize = [&](const std::string& id, double val, bool onlyIfNew) {
@@ -768,7 +768,7 @@ inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets)
     return circles;
 }
 
-inline std::string regionPath(const std::vector<Circle>& circles) noexcept {
+inline std::string regionPath(const std::vector<Circle>& circles) {
     auto whole = [](const Circle& c) -> std::string {
         return Pele::cat({"M", num(c.x - c.r), ",", num(c.y), "A", num(c.r), ",", num(c.r), " 0 1 1 ", num(c.x + c.r), ",", num(c.y), "A", num(c.r), ",", num(c.r), " 0 1 1 ", num(c.x - c.r), ",", num(c.y), "Z"});
     };
@@ -858,7 +858,7 @@ inline std::string regionPath(const std::vector<Circle>& circles) noexcept {
 // src/diagrams/venn/render.ts
 // ============================================================================
 
-inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, const RenderOptions& options) noexcept {
+inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, const RenderOptions& options) {
     constexpr double VENN_RADIUS = 100.0;
     constexpr double MAX_GROWTH = 1.6;
     const ResolvedStyle NO_STYLE = resolveStyle({});

@@ -291,20 +291,20 @@ namespace T {
     };
 }
 
-inline int scanDigits(const std::string& src, int from) noexcept {
+inline int scanDigits(const std::string& src, int from) {
     int i = from;
     while (i < static_cast<int>(src.size()) && isDigit(charCodeAt(src, i))) i++;
     return i;
 }
 
-inline bool isWardleyNameCont(const std::string& src, int p) noexcept {
+inline bool isWardleyNameCont(const std::string& src, int p) {
     int c = charCodeAt(src, p);
     if (isWord(c) || c == '(' || c == ')' || c == '&') return true;
     if (c == '-' && charCodeAt(src, p + 1) != '>') return true;
     return false;
 }
 
-inline const std::vector<TokenType>& wardleyTokens() noexcept {
+inline const std::vector<TokenType>& wardleyTokens() {
     static const std::vector<TokenType> types = []() {
         auto lit = [](const std::string& name, const std::string& pat) {
             TokenType t;
@@ -632,7 +632,7 @@ struct WardleyAst {
     std::vector<ForceAst> deaccelerators;
 };
 
-inline std::string wardleySingle(const std::string& text) noexcept {
+inline std::string wardleySingle(const std::string& text) {
     std::string s = trimStr(text);
     std::string out;
     size_t i = 0;
@@ -650,19 +650,19 @@ inline std::string wardleySingle(const std::string& text) noexcept {
     return out;
 }
 
-inline std::string wardleyTitleValue(const std::string& text) noexcept {
+inline std::string wardleyTitleValue(const std::string& text) {
     size_t pos = text.find("title");
     if (pos == std::string::npos) return "";
     return wardleySingle(text.substr(pos + 5));
 }
 
-inline std::string wardleyAccTitleValue(const std::string& text) noexcept {
+inline std::string wardleyAccTitleValue(const std::string& text) {
     size_t pos = text.find(':');
     if (pos == std::string::npos) return "";
     return wardleySingle(text.substr(pos + 1));
 }
 
-inline std::string wardleyAccDescrValue(const std::string& text) noexcept {
+inline std::string wardleyAccDescrValue(const std::string& text) {
     size_t brace = text.find('{');
     size_t colon = text.find(':');
     if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -909,11 +909,11 @@ inline double toPercent(double value, const std::string& context) {
     return normalized;
 }
 
-inline WardleyCoord toCoordinates(double visibility, double evolution, const std::string& context) noexcept {
+inline WardleyCoord toCoordinates(double visibility, double evolution, const std::string& context) {
     return {toPercent(evolution, Pele::cat({context, " evolution"})), toPercent(visibility, Pele::cat({context, " visibility"}))};
 }
 
-inline std::string flowFromPort(const std::string& port) noexcept {
+inline std::string flowFromPort(const std::string& port) {
     if (port == "+<>") return "bidirectional";
     if (port == "+<") return "backward";
     if (port == "+>") return "forward";
@@ -926,7 +926,7 @@ struct ArrowFlowInfo {
     bool hasLabel = false;
 };
 
-inline ArrowFlowInfo flowFromArrow(const std::string& arrow) noexcept {
+inline ArrowFlowInfo flowFromArrow(const std::string& arrow) {
     if (arrow.empty() || arrow[0] != '+') return {};
     ArrowFlowInfo res;
     size_t end = arrow.find('\'', 2);
@@ -1070,7 +1070,7 @@ inline void populate(const WardleyAst& ast, WardleyBuilder& db) {
     }
 }
 
-inline WardleyModel buildWardley(const WardleyAst& ast, const std::string& title) noexcept {
+inline WardleyModel buildWardley(const WardleyAst& ast, const std::string& title) {
     WardleyBuilder db;
     populate(ast, db);
     WardleyModel model;
@@ -1108,7 +1108,7 @@ inline WardleyModel buildWardley(const WardleyAst& ast, const std::string& title
 // src/diagrams/wardley/render.ts
 // ============================================================================
 
-inline double wardleySetting(const Config& config, const std::string& key, double fallback, double minV, double maxV) noexcept {
+inline double wardleySetting(const Config& config, const std::string& key, double fallback, double minV, double maxV) {
     const auto* sec = config.get("wardley-beta");
     if (sec && sec->isMap()) {
         const auto* v = sec->get(key);
@@ -1117,11 +1117,11 @@ inline double wardleySetting(const Config& config, const std::string& key, doubl
     return fallback;
 }
 
-inline double wardleyClamp(double value, double minV, double maxV) noexcept {
+inline double wardleyClamp(double value, double minV, double maxV) {
     return value < minV ? minV : value > maxV ? maxV : value;
 }
 
-inline std::string startLabel(const Label& label, double x, double y, const std::string& attrs) noexcept {
+inline std::string startLabel(const Label& label, double x, double y, const std::string& attrs) {
     int shared = sharedStyle(label);
     std::string body;
     double baseline = y;
@@ -1138,14 +1138,14 @@ inline std::string startLabel(const Label& label, double x, double y, const std:
     return body.empty() ? "" : Pele::cat({"<text", textStyle(attrs, shared), " xml:space=\"preserve\">", body, "</text>"});
 }
 
-inline double wardleyDimension(const Config& config, double given, bool hasGiven, const std::string& key, double fallback) noexcept {
+inline double wardleyDimension(const Config& config, double given, bool hasGiven, const std::string& key, double fallback) {
     constexpr double CANVAS_MARGIN = 48.0;
     double value = (hasGiven && std::isfinite(given)) ? given : wardleySetting(config, key, fallback, 1.0, 1e6);
     return wardleyClamp(value, 200.0, 10000.0) - 2.0 * CANVAS_MARGIN;
 }
 
 template <typename DrawFn>
-inline Rendered fitWidthWardley(const RenderOptions& options, double natural, double least, DrawFn&& draw) noexcept {
+inline Rendered fitWidthWardley(const RenderOptions& options, double natural, double least, DrawFn&& draw) {
     Rendered result = draw(natural, false);
     double available = options.maxWidth;
     if (!(available > 0.0) || result.width <= available) return result;
@@ -1159,7 +1159,7 @@ inline Rendered fitWidthWardley(const RenderOptions& options, double natural, do
     return result;
 }
 
-inline Rendered drawWardley(const WardleyModel& model, const Config& config, const RenderOptions& options, double plotW, double naturalW, bool tight) noexcept {
+inline Rendered drawWardley(const WardleyModel& model, const Config& config, const RenderOptions& options, double plotW, double naturalW, bool tight) {
     static const std::vector<std::string> DEFAULT_STAGES = {"Genesis", "Custom Built", "Product", "Commodity"};
     constexpr double R = 6.0;
     constexpr double SQUARE = 10.0;

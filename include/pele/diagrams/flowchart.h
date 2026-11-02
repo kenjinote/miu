@@ -5,11 +5,11 @@
 namespace Pele {
 namespace Flowchart {
 
-inline double jsRound(double x) noexcept {
+inline double jsRound(double x) {
     return std::floor(x + 0.5);
 }
 
-inline bool objectIs(double a, double b) noexcept {
+inline bool objectIs(double a, double b) {
     if (std::isnan(a) && std::isnan(b)) return true;
     return a == b && std::signbit(a) == std::signbit(b);
 }
@@ -77,7 +77,7 @@ struct LayeredResult {
     int declared = 0;
 };
 
-inline LNode lnode(double w, double h, LKind kind = LKind::Node) noexcept {
+inline LNode lnode(double w, double h, LKind kind = LKind::Node) {
     LNode n;
     n.w = w;
     n.h = h;
@@ -85,7 +85,7 @@ inline LNode lnode(double w, double h, LKind kind = LKind::Node) noexcept {
     return n;
 }
 
-inline LEdge ledge(int tail, int head, int minlen = 1, double labelW = 0.0, double labelH = 0.0) noexcept {
+inline LEdge ledge(int tail, int head, int minlen = 1, double labelW = 0.0, double labelH = 0.0) {
     LEdge e;
     e.tail = tail;
     e.head = head;
@@ -125,11 +125,11 @@ enum EndKind : uint8_t {
     EndArrives = 2
 };
 
-inline bool isDummy(uint8_t kind) noexcept {
+inline bool isDummy(uint8_t kind) {
     return kind == static_cast<uint8_t>(LKind::Dummy) || kind == static_cast<uint8_t>(LKind::Label);
 }
 
-inline void sortRange(std::vector<int>& list, int from, int to, const std::vector<int>& key) noexcept {
+inline void sortRange(std::vector<int>& list, int from, int to, const std::vector<int>& key) {
     for (int i = from + 1; i < to; i++) {
         int item = list[i];
         int k = key[item];
@@ -142,7 +142,7 @@ inline void sortRange(std::vector<int>& list, int from, int to, const std::vecto
     }
 }
 
-inline void sortByBary(std::vector<int>& list, int count, const std::vector<double>& bary, const std::vector<int>& pos, bool right, std::vector<int>& spare) noexcept {
+inline void sortByBary(std::vector<int>& list, int count, const std::vector<double>& bary, const std::vector<int>& pos, bool right, std::vector<int>& spare) {
     auto before = [&](int a, int b) -> bool {
         return bary[a] < bary[b] || (bary[a] == bary[b] && (right ? pos[a] > pos[b] : pos[a] < pos[b]));
     };
@@ -211,19 +211,19 @@ struct Graph {
     std::vector<int> groupParent;
 };
 
-inline double halfRoom(const Graph& g, const LayeredOptions& opt, int v) noexcept {
+inline double halfRoom(const Graph& g, const LayeredOptions& opt, int v) {
     return g.W[v] / 2.0 + (g.KIND[v] == static_cast<uint8_t>(LKind::Node) ? opt.nodeSep : opt.edgeSep) / 2.0;
 }
 
 } // namespace detail
 
-inline double ease(double across, double along) noexcept {
+inline double ease(double across, double along) {
     double den = std::abs(across);
     if (den == 0.0) den = 1.0;
     return std::max(0.25, std::min(0.5, (4.0 * std::abs(along)) / den));
 }
 
-inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) noexcept {
+inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) {
     int n = static_cast<int>(nodes.size());
     int m = static_cast<int>(edges.size());
     std::vector<int> start(n + 1, 0);
@@ -263,7 +263,7 @@ inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) noexcep
     }
 }
 
-inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step) noexcept {
+inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step) {
     int n = static_cast<int>(nodes.size());
     int m = static_cast<int>(edges.size());
     std::vector<int> from(m), to(m), len(m);
@@ -355,7 +355,7 @@ inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step)
 
 namespace detail {
 
-inline double sideEnds(const Graph& g, int v, int side, double span, const std::vector<uint8_t>& kinds, std::vector<int>& ids, std::vector<double>& room) noexcept {
+inline double sideEnds(const Graph& g, int v, int side, double span, const std::vector<uint8_t>& kinds, std::vector<int>& ids, std::vector<double>& room) {
     const auto& start = side == 0 ? g.predStart : g.succStart;
     const auto& list = side == 0 ? g.predE : g.succE;
     const auto& other = side == 0 ? g.EF : g.ET;
@@ -386,7 +386,7 @@ inline double sideEnds(const Graph& g, int v, int side, double span, const std::
     return total * pitch;
 }
 
-inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) noexcept {
+inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) {
     for (int v = 0; v < g.real; v++) {
         double span = std::min(nodes[v].span, g.W[v]);
         if (span <= 0.0 || nodes[v].kind != LKind::Node) continue;
@@ -405,7 +405,7 @@ inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<
     }
 }
 
-inline int follow(const Graph& g, const std::vector<uint8_t>* empty, int e, int side) noexcept {
+inline int follow(const Graph& g, const std::vector<uint8_t>* empty, int e, int side) {
     if (!empty) return e;
     for (int hops = 0; hops < 100000; hops++) {
         int u = side == 0 ? g.EF[e] : g.ET[e];
@@ -415,7 +415,7 @@ inline int follow(const Graph& g, const std::vector<uint8_t>* empty, int e, int 
     return e;
 }
 
-inline std::pair<std::vector<int>, std::vector<int>> freeEnds(const Graph& g, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) noexcept {
+inline std::pair<std::vector<int>, std::vector<int>> freeEnds(const Graph& g, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) {
     std::pair<std::vector<int>, std::vector<int>> free{std::vector<int>(g.n, 0), std::vector<int>(g.n, 0)};
     for (size_t e = 0; e < g.EF.size(); e++) {
         if (ETK[e] != EndHeld) free.first[g.ET[e]]++;
@@ -424,7 +424,7 @@ inline std::pair<std::vector<int>, std::vector<int>> freeEnds(const Graph& g, co
     return free;
 }
 
-inline void alignLabels(const Graph& g, const std::vector<LNode>& nodes, std::vector<double>& xs, const std::pair<std::vector<int>, std::vector<int>>& free, const LayeredOptions& opt, const std::vector<uint8_t>* empty) noexcept {
+inline void alignLabels(const Graph& g, const std::vector<LNode>& nodes, std::vector<double>& xs, const std::pair<std::vector<int>, std::vector<int>>& free, const LayeredOptions& opt, const std::vector<uint8_t>* empty) {
     double sep = opt.edgeSep;
     auto placed = [&](int v) -> bool {
         return g.KIND[v] == static_cast<uint8_t>(LKind::Label) || (g.KIND[v] == static_cast<uint8_t>(LKind::Dummy) && !(empty && (*empty)[g.RANK[v]] == 1));
@@ -487,7 +487,7 @@ inline void alignLabels(const Graph& g, const std::vector<LNode>& nodes, std::ve
     }
 }
 
-inline void settle(Graph& g, const std::vector<LNode>& nodes, const std::vector<double>& xs, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK, const std::pair<std::vector<int>, std::vector<int>>& free, const std::vector<uint8_t>* empty) noexcept {
+inline void settle(Graph& g, const std::vector<LNode>& nodes, const std::vector<double>& xs, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK, const std::pair<std::vector<int>, std::vector<int>>& free, const std::vector<uint8_t>* empty) {
     auto wanted = [&](int e, int side, int v, double span, bool again) -> double {
         int fv = side == 0 ? free.first[v] : free.second[v];
         if (fv < 2) return 0.0;
@@ -593,7 +593,7 @@ inline void settle(Graph& g, const std::vector<LNode>& nodes, const std::vector<
     }
 }
 
-inline void snap(const Graph& g, std::vector<double>& xs, const std::vector<uint8_t>* empty, const LayeredOptions& opt) noexcept {
+inline void snap(const Graph& g, std::vector<double>& xs, const std::vector<uint8_t>* empty, const LayeredOptions& opt) {
     auto passed = [&](int u) -> bool {
         return empty && g.KIND[u] == static_cast<uint8_t>(LKind::Dummy) && (*empty)[g.RANK[u]] == 1;
     };
@@ -672,7 +672,7 @@ inline void snap(const Graph& g, std::vector<double>& xs, const std::vector<uint
     }
 }
 
-inline bool emptyRanks(const Graph& g, std::vector<uint8_t>& empty) noexcept {
+inline bool emptyRanks(const Graph& g, std::vector<uint8_t>& empty) {
     empty.assign(g.maxRank + 1, 0);
     bool any = false;
     for (int r = 1; r < g.maxRank; r++) {
@@ -688,7 +688,7 @@ inline bool emptyRanks(const Graph& g, std::vector<uint8_t>& empty) noexcept {
     return any;
 }
 
-inline void assignTracks(Pieces& pieces, std::vector<int>& trackCount, bool curved, const std::vector<double>& room, std::vector<double>& tall) noexcept {
+inline void assignTracks(Pieces& pieces, std::vector<int>& trackCount, bool curved, const std::vector<double>& room, std::vector<double>& tall) {
     auto& from = pieces.from;
     auto& to = pieces.to;
     auto& rank = pieces.rank;
@@ -948,7 +948,7 @@ inline void assignTracks(Pieces& pieces, std::vector<int>& trackCount, bool curv
     }
 }
 
-inline void straighten(const Graph& g, std::vector<double>& xs, const std::vector<uint8_t>& empty, const std::vector<int>& firstDummy, const std::vector<int>& span, double sep, std::vector<uint8_t>& onLine) noexcept {
+inline void straighten(const Graph& g, std::vector<double>& xs, const std::vector<uint8_t>& empty, const std::vector<int>& firstDummy, const std::vector<int>& span, double sep, std::vector<uint8_t>& onLine) {
     std::vector<double> want(xs.size(), 0.0);
     std::vector<double> from(xs.size(), 0.0);
     std::vector<double> to(xs.size(), 0.0);
@@ -1002,7 +1002,7 @@ inline void straighten(const Graph& g, std::vector<double>& xs, const std::vecto
     }
 }
 
-inline void pastLabels(const Graph& g, std::vector<double>& xs, const std::vector<int>& firstDummy, const std::vector<int>& span, double clear, std::vector<uint8_t>& onLine) noexcept {
+inline void pastLabels(const Graph& g, std::vector<double>& xs, const std::vector<int>& firstDummy, const std::vector<int>& span, double clear, std::vector<uint8_t>& onLine) {
     std::vector<uint8_t> labelled(g.maxRank + 1, 0);
     bool any = false;
     for (int r = 1; r < g.maxRank; r++) {
@@ -1048,7 +1048,7 @@ inline void pastLabels(const Graph& g, std::vector<double>& xs, const std::vecto
     }
 }
 
-inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& nodes) noexcept {
+inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& nodes) {
     int widest = 0;
     for (int r = 0; r <= g.maxRank; r++) widest = std::max(widest, g.layerStart[r + 1] - g.layerStart[r]);
     if (widest < 2) return {0, 0};
@@ -1381,7 +1381,7 @@ inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& n
     return {best, declared};
 }
 
-inline std::vector<double> position(Graph& g, const LayeredOptions& opt) noexcept {
+inline std::vector<double> position(Graph& g, const LayeredOptions& opt) {
     int segments = static_cast<int>(g.EF.size());
     std::vector<double> gap(g.n, 0.0);
     for (int i = 0; i < g.n; i++) gap[i] = halfRoom(g, opt, i);
@@ -1561,7 +1561,7 @@ inline std::vector<double> position(Graph& g, const LayeredOptions& opt) noexcep
 
 } // namespace detail
 
-inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt) noexcept {
+inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt) {
     using namespace detail;
     int real = static_cast<int>(nodes.size());
     if (real == 0) return {0.0, 0.0, 0, 0};
@@ -2077,7 +2077,7 @@ inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edge
 // Port of src/layout/compound.ts
 // ============================================================================
 
-inline std::string direction(const std::string& dir) noexcept {
+inline std::string direction(const std::string& dir) {
     return (dir == "BT" || dir == "LR" || dir == "RL") ? dir : "TB";
 }
 
@@ -2126,7 +2126,7 @@ enum class RouteStyle : int {
     Linear = 2
 };
 
-inline RouteStyle styleOf(const LayeredOptions& opt) noexcept {
+inline RouteStyle styleOf(const LayeredOptions& opt) {
     return opt.tracks ? RouteStyle::Stepped : opt.straight ? RouteStyle::Linear : RouteStyle::Curved;
 }
 
@@ -2182,7 +2182,7 @@ struct Snapshot {
     CompoundResult total;
 };
 
-inline Snapshot snapshot(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, const std::vector<Level>& levels, CompoundResult total) noexcept {
+inline Snapshot snapshot(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, const std::vector<Level>& levels, CompoundResult total) {
     Snapshot s;
     s.nodes.reserve(nodes.size() * 4);
     for (const auto& c : nodes) {
@@ -2210,7 +2210,7 @@ inline Snapshot snapshot(const std::vector<CNode>& nodes, const std::vector<CEdg
     return s;
 }
 
-inline CompoundResult restore(const Snapshot& s, std::vector<CNode>& nodes, std::vector<CEdge>& edges, std::vector<Level>& levels) noexcept {
+inline CompoundResult restore(const Snapshot& s, std::vector<CNode>& nodes, std::vector<CEdge>& edges, std::vector<Level>& levels) {
     for (size_t i = 0; i < nodes.size(); i++) {
         nodes[i].x = s.nodes[4 * i];
         nodes[i].y = s.nodes[4 * i + 1];
@@ -2234,17 +2234,17 @@ inline CompoundResult restore(const Snapshot& s, std::vector<CNode>& nodes, std:
     return s.total;
 }
 
-inline Side startSide(const std::string& dir) noexcept {
+inline Side startSide(const std::string& dir) {
     return dir == "TB" ? Side::Top : dir == "BT" ? Side::Bottom : dir == "LR" ? Side::Left : Side::Right;
 }
 
-inline Side opposite(Side side) noexcept {
+inline Side opposite(Side side) {
     return static_cast<Side>((static_cast<int>(side) + 2) & 3);
 }
 
 } // namespace detail
 
-inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, RouteStyle style = RouteStyle::Curved) noexcept {
+inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, RouteStyle style = RouteStyle::Curved) {
     using namespace detail;
     size_t size = 0;
     for (const auto& e : edges) {
@@ -2485,7 +2485,7 @@ inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEd
     return total;
 }
 
-inline void inheritCrossedDirections(std::vector<CNode>& nodes, const std::vector<std::pair<int, int>>& ends) noexcept {
+inline void inheritCrossedDirections(std::vector<CNode>& nodes, const std::vector<std::pair<int, int>>& ends) {
     auto ancestors = [&](int i) -> Pele::FlatSet<int> {
         Pele::FlatSet<int> set;
         for (int p = nodes[i].parent; p >= 0 && !set.count(p); p = nodes[p].parent) set.insert(p);
@@ -2500,7 +2500,7 @@ inline void inheritCrossedDirections(std::vector<CNode>& nodes, const std::vecto
     }
 }
 
-inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, double ox, double oy) noexcept {
+inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, double ox, double oy) {
     for (auto& c : nodes) {
         c.x += ox;
         c.y += oy;
@@ -2515,7 +2515,7 @@ inline void shiftLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, do
     }
 }
 
-inline CNode cnode(double w, double h, int parent = -1) noexcept {
+inline CNode cnode(double w, double h, int parent = -1) {
     CNode c;
     c.w = w;
     c.h = h;
@@ -2523,7 +2523,7 @@ inline CNode cnode(double w, double h, int parent = -1) noexcept {
     return c;
 }
 
-inline CompoundResult compoundLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, const std::string& rootDir, const LayeredOptions& opt) noexcept {
+inline CompoundResult compoundLayout(std::vector<CNode>& nodes, std::vector<CEdge>& edges, const std::string& rootDir, const LayeredOptions& opt) {
     using namespace detail;
     int n = static_cast<int>(nodes.size());
     std::vector<Level> order;
@@ -3145,7 +3145,7 @@ inline CompoundResult compoundLayout(std::vector<CNode>& nodes, std::vector<CEdg
 // Port of SVG, Cluster, Edge, URL, and Fit-Width helpers for Flowchart
 // ============================================================================
 
-inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) noexcept {
+inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) {
     double dx = route[at] - c.x;
     double dy = route[at + 1] - c.y;
     if (std::abs(std::abs(dy) - c.h / 2.0) < 0.5) return dy < 0.0 ? 0 : 2;
@@ -3154,7 +3154,7 @@ inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) 
 }
 
 template <typename ViewT>
-inline void insetRoute(std::vector<double>& route, size_t at, const ViewT& view, const CNode& c) noexcept {
+inline void insetRoute(std::vector<double>& route, size_t at, const ViewT& view, const CNode& c) {
     if (c.isGroup) return;
     int side = endSide(route, at, c);
     if (side == 0 || side == 2) {
@@ -3168,14 +3168,14 @@ inline void insetRoute(std::vector<double>& route, size_t at, const ViewT& view,
 
 using Crossings = std::unordered_map<int, std::vector<double>>;
 
-inline void markCrossings(Crossings& crossings, const std::vector<double>& route) noexcept {
+inline void markCrossings(Crossings& crossings, const std::vector<double>& route) {
     for (size_t k = 0; k < route.size(); k += 3) {
         int key = static_cast<int>(std::round(route[k + 1]));
         crossings[key].push_back(route[k]);
     }
 }
 
-inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) noexcept {
+inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) {
     if (width == 0.0) return c.x;
     double top = c.y - c.h / 2.0;
     double left = c.x - c.w / 2.0;
@@ -3200,7 +3200,7 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
     return best;
 }
 
-inline bool titleCrossed(const CNode& c, double width, double x, const Crossings& crossings) noexcept {
+inline bool titleCrossed(const CNode& c, double width, double x, const Crossings& crossings) {
     if (width <= 0.0) return false;
     auto it = crossings.find(static_cast<int>(std::round(c.y - c.h / 2.0)));
     if (it == crossings.end()) return false;
@@ -3270,18 +3270,18 @@ inline EdgePath loopPath(
     return ep;
 }
 
-inline double titleRoomExact(const RenderOptions& options) noexcept {
+inline double titleRoomExact(const RenderOptions& options) {
     double available = options.maxWidth;
     double pad = options.hasPadding ? options.padding : 8.0;
     return (options.hasMaxWidth && available > 0.0) ? std::max(80.0, available - 2.0 * pad) : 4000.0;
 }
 
-inline bool runsAcross(const std::string& dir) noexcept {
+inline bool runsAcross(const std::string& dir) {
     return dir == "LR" || dir == "RL";
 }
 
 template <typename DrawFn>
-inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) noexcept {
+inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) {
     Rendered across = draw(false);
     double available = options.maxWidth;
     if (!options.hasMaxWidth || !(available > 0.0) || across.width <= available) return across;
@@ -3291,7 +3291,7 @@ inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) noexcept 
 }
 
 template <typename DrawFn>
-inline Rendered tightenExact(const RenderOptions& options, DrawFn&& draw) noexcept {
+inline Rendered tightenExact(const RenderOptions& options, DrawFn&& draw) {
     Rendered loose = draw(false);
     double available = options.maxWidth;
     if (!options.hasMaxWidth || !(available > 0.0) || loose.width <= available) return loose;
@@ -3299,7 +3299,7 @@ inline Rendered tightenExact(const RenderOptions& options, DrawFn&& draw) noexce
     return tight.width < loose.width ? tight : loose;
 }
 
-inline bool internalLink(const std::string& name, const RenderOptions& options) noexcept {
+inline bool internalLink(const std::string& name, const RenderOptions& options) {
     std::string url = sanitizeUrl(name);
     if (url == "about:blank" || linkUrl(url, options).empty()) return false;
     std::string seen;
@@ -3320,7 +3320,7 @@ inline bool internalLink(const std::string& name, const RenderOptions& options) 
 // Port of src/diagrams/flowchart/shapes.ts
 // ============================================================================
 
-inline const Pele::FlatMap<std::string, std::string>& canonicalShapeMap() noexcept {
+inline const Pele::FlatMap<std::string, std::string>& canonicalShapeMap() {
     static const Pele::FlatMap<std::string, std::string> m = []() {
         static const std::vector<std::vector<std::string>> SHAPES = {
             {"rect", "proc", "process", "rectangle", "squareRect"},
@@ -3395,11 +3395,11 @@ inline const Pele::FlatMap<std::string, std::string>& canonicalShapeMap() noexce
     return m;
 }
 
-inline bool isValidShape(const std::string& name) noexcept {
+inline bool isValidShape(const std::string& name) {
     return canonicalShapeMap().count(name) > 0;
 }
 
-inline std::string canonicalShape(const std::string& name) noexcept {
+inline std::string canonicalShape(const std::string& name) {
     if (name.empty()) return "rect";
     if (name == "square") return "rect";
     if (name == "round") return "rounded";
@@ -3526,23 +3526,23 @@ struct FlowDbOptions {
     std::string direction;
 };
 
-inline std::string flowLabelType(const std::string& type) noexcept {
+inline std::string flowLabelType(const std::string& type) {
     return (type == "markdown" || type == "string" || type == "text") ? type : "markdown";
 }
 
-inline std::string flowUnquote(const std::string& text) noexcept {
+inline std::string flowUnquote(const std::string& text) {
     return (text.size() >= 2 && text.front() == '"' && text.back() == '"')
         ? text.substr(1, text.size() - 2)
         : text;
 }
 
-inline int flowCountChar(char ch, const std::string& str) noexcept {
+inline int flowCountChar(char ch, const std::string& str) {
     int count = 0;
     for (char c : str) if (c == ch) count++;
     return count;
 }
 
-inline FlowLinkInfo destructStartLink(const std::string& raw) noexcept {
+inline FlowLinkInfo destructStartLink(const std::string& raw) {
     std::string str = trimStr(raw);
     std::string type = "arrow_open";
     if (!str.empty()) {
@@ -3570,7 +3570,7 @@ inline FlowLinkInfo destructStartLink(const std::string& raw) noexcept {
     return info;
 }
 
-inline FlowLinkInfo destructEndLink(const std::string& raw) noexcept {
+inline FlowLinkInfo destructEndLink(const std::string& raw) {
     std::string str = trimStr(raw);
     std::string line = str.empty() ? "" : str.substr(0, str.size() - 1);
     std::string type = "arrow_open";
@@ -3616,7 +3616,7 @@ inline FlowLinkInfo destructEndLink(const std::string& raw) noexcept {
     return info;
 }
 
-inline std::string flowSafeUrl(const std::string& rawUrl) noexcept {
+inline std::string flowSafeUrl(const std::string& rawUrl) {
     std::string u = sanitizeUrl(rawUrl);
     if (u == "about:blank") return u;
     std::string normalized = replaceAllStr(u, "\\", "/");
@@ -4153,7 +4153,7 @@ enum T : int {
     EOF_TOK
 };
 
-inline const char* tokenName(int t) noexcept {
+inline const char* tokenName(int t) {
     static const char* NAMES[] = {
         "$end", "INVALID", "acc_title", "acc_title_value", "acc_descr", "acc_descr_value",
         "acc_descr_multiline_value", "SHAPE_DATA", "CALLBACKNAME", "CALLBACKARGS", "MD_STR", "STR",
@@ -4179,7 +4179,7 @@ struct FlowTokens {
 
 namespace detail {
 
-inline const std::array<uint8_t, 128>& nodeCharTable() noexcept {
+inline const std::array<uint8_t, 128>& nodeCharTable() {
     static const std::array<uint8_t, 128> tbl = []() {
         std::array<uint8_t, 128> a{};
         const char* chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!\"#$%&'*+.`?\\_/";
@@ -4189,21 +4189,21 @@ inline const std::array<uint8_t, 128>& nodeCharTable() noexcept {
     return tbl;
 }
 
-inline int codepointAt(const std::string& src, size_t pos, size_t& nextPos) noexcept {
+inline int codepointAt(const std::string& src, size_t pos, size_t& nextPos) {
     if (pos >= src.size()) { nextPos = pos; return -1; }
     unsigned char c = static_cast<unsigned char>(src[pos]);
     if (c < 0x80) { nextPos = pos + 1; return c; }
     return charCodeAtUtf8(src, pos, &nextPos);
 }
 
-inline bool isSpaceAt(const std::string& src, size_t pos, size_t* nextPos = nullptr) noexcept {
+inline bool isSpaceAt(const std::string& src, size_t pos, size_t* nextPos = nullptr) {
     size_t np = pos;
     int cp = codepointAt(src, pos, np);
     if (nextPos) *nextPos = np;
     return isSpace(cp);
 }
 
-inline size_t skipSpaces(const std::string& src, size_t pos) noexcept {
+inline size_t skipSpaces(const std::string& src, size_t pos) {
     while (pos < src.size()) {
         size_t np = pos;
         int cp = codepointAt(src, pos, np);
@@ -4214,7 +4214,7 @@ inline size_t skipSpaces(const std::string& src, size_t pos) noexcept {
 }
 
 // Sticky matchers corresponding to RE_* in lexer.ts
-inline int matchAccHeader(const std::string& src, size_t q, const char* word, char sep) noexcept {
+inline int matchAccHeader(const std::string& src, size_t q, const char* word, char sep) {
     size_t len = std::strlen(word);
     if (!startsWith(src, word, q)) return -1;
     size_t p = skipSpaces(src, q + len);
@@ -4222,14 +4222,14 @@ inline int matchAccHeader(const std::string& src, size_t q, const char* word, ch
     return static_cast<int>(skipSpaces(src, p + 1));
 }
 
-inline int matchWordSpaces(const std::string& src, size_t q, const char* word) noexcept {
+inline int matchWordSpaces(const std::string& src, size_t q, const char* word) {
     size_t len = std::strlen(word);
     if (!startsWith(src, word, q)) return -1;
     size_t p = skipSpaces(src, q + len);
     return p > q + len ? static_cast<int>(p) : -1;
 }
 
-inline int matchNoDir(const std::string& src, size_t q) noexcept {
+inline int matchNoDir(const std::string& src, size_t q) {
     size_t p = q;
     int lastNl = -1;
     while (p < src.size()) {
@@ -4242,7 +4242,7 @@ inline int matchNoDir(const std::string& src, size_t q) noexcept {
     return lastNl;
 }
 
-inline int matchDirWord(const std::string& src, size_t q) noexcept {
+inline int matchDirWord(const std::string& src, size_t q) {
     size_t p = skipSpaces(src, q);
     if (p + 2 > src.size()) return -1;
     char a = src[p], b = src[p + 1];
@@ -4254,13 +4254,13 @@ inline int matchDirWord(const std::string& src, size_t q) noexcept {
     return static_cast<int>(p + 2);
 }
 
-inline int matchDirSym(const std::string& src, size_t q) noexcept {
+inline int matchDirSym(const std::string& src, size_t q) {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == '<' || src[p] == '>' || src[p] == '^')) return static_cast<int>(p + 1);
     return -1;
 }
 
-inline int matchDirV(const std::string& src, size_t q) noexcept {
+inline int matchDirV(const std::string& src, size_t q) {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && src[p] == 'v' && (p + 1 >= src.size() || !isWord(static_cast<unsigned char>(src[p + 1])))) {
         return static_cast<int>(p + 1);
@@ -4268,7 +4268,7 @@ inline int matchDirV(const std::string& src, size_t q) noexcept {
     return -1;
 }
 
-inline int matchDirectionStmt(const std::string& src, size_t q, size_t lineEnd, const char* dirCode) noexcept {
+inline int matchDirectionStmt(const std::string& src, size_t q, size_t lineEnd, const char* dirCode) {
     // Matches /.*direction\s+(TB|BT|RL|LR|TD)[^\n]*/y starting at q
     size_t pos = q;
     while (pos < lineEnd) {
@@ -4291,7 +4291,7 @@ inline int matchDirectionStmt(const std::string& src, size_t q, size_t lineEnd, 
 }
 
 // RE_LINK = /\s*[xo<]?--+[-xo>]\s*/y
-inline int matchLink(const std::string& src, size_t q) noexcept {
+inline int matchLink(const std::string& src, size_t q) {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     size_t dashStart = p;
@@ -4304,7 +4304,7 @@ inline int matchLink(const std::string& src, size_t q) noexcept {
 }
 
 // RE_START_LINK = /\s*[xo<]?--\s*/y
-inline int matchStartLink(const std::string& src, size_t q) noexcept {
+inline int matchStartLink(const std::string& src, size_t q) {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     if (p + 2 > src.size() || src[p] != '-' || src[p + 1] != '-') return -1;
@@ -4312,7 +4312,7 @@ inline int matchStartLink(const std::string& src, size_t q) noexcept {
 }
 
 // RE_THICK_LINK = /\s*[xo<]?==+[=xo>]\s*/y
-inline int matchThickLink(const std::string& src, size_t q) noexcept {
+inline int matchThickLink(const std::string& src, size_t q) {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     size_t eqStart = p;
@@ -4325,7 +4325,7 @@ inline int matchThickLink(const std::string& src, size_t q) noexcept {
 }
 
 // RE_THICK_START = /\s*[xo<]?==\s*/y
-inline int matchThickStart(const std::string& src, size_t q) noexcept {
+inline int matchThickStart(const std::string& src, size_t q) {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     if (p + 2 > src.size() || src[p] != '=' || src[p + 1] != '=') return -1;
@@ -4333,7 +4333,7 @@ inline int matchThickStart(const std::string& src, size_t q) noexcept {
 }
 
 // RE_DOTTED_LINK = /\s*[xo<]?-?\.+-[xo>]?\s*/y
-inline int matchDottedLink(const std::string& src, size_t q) noexcept {
+inline int matchDottedLink(const std::string& src, size_t q) {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     if (p < src.size() && src[p] == '-') p++;
@@ -4347,7 +4347,7 @@ inline int matchDottedLink(const std::string& src, size_t q) noexcept {
 }
 
 // RE_DOTTED_START = /\s*[xo<]?-\.\s*/y
-inline int matchDottedStart(const std::string& src, size_t q) noexcept {
+inline int matchDottedStart(const std::string& src, size_t q) {
     size_t p = skipSpaces(src, q);
     if (p < src.size() && (src[p] == 'x' || src[p] == 'o' || src[p] == '<')) p++;
     if (p + 2 > src.size() || src[p] != '-' || src[p + 1] != '.') return -1;
@@ -4355,7 +4355,7 @@ inline int matchDottedStart(const std::string& src, size_t q) noexcept {
 }
 
 // RE_INVIS_LINK = /\s*~~~+\s*/y
-inline int matchInvisLink(const std::string& src, size_t q) noexcept {
+inline int matchInvisLink(const std::string& src, size_t q) {
     size_t p = skipSpaces(src, q);
     size_t tildeStart = p;
     while (p < src.size() && src[p] == '~') p++;
@@ -4364,7 +4364,7 @@ inline int matchInvisLink(const std::string& src, size_t q) noexcept {
 }
 
 // RE_NEWLINE = /(?:\r?\n)+/y
-inline int matchNewline(const std::string& src, size_t q) noexcept {
+inline int matchNewline(const std::string& src, size_t q) {
     size_t p = q;
     while (p < src.size()) {
         if (src[p] == '\n') p++;
@@ -4375,7 +4375,7 @@ inline int matchNewline(const std::string& src, size_t q) noexcept {
 }
 
 // RE_SPACE = /[^\S\n\r]+/y
-inline int matchNonNlSpace(const std::string& src, size_t q) noexcept {
+inline int matchNonNlSpace(const std::string& src, size_t q) {
     size_t p = q;
     while (p < src.size()) {
         size_t np = p;
@@ -4387,14 +4387,14 @@ inline int matchNonNlSpace(const std::string& src, size_t q) noexcept {
 }
 
 // RE_EMPTY_CALL = /\(\s*\)/y
-inline int matchEmptyCall(const std::string& src, size_t q) noexcept {
+inline int matchEmptyCall(const std::string& src, size_t q) {
     if (q >= src.size() || src[q] != '(') return -1;
     size_t p = skipSpaces(src, q + 1);
     if (p < src.size() && src[p] == ')') return static_cast<int>(p + 1);
     return -1;
 }
 
-inline std::string replaceNewlineIndentsWithBr(const std::string& s) noexcept {
+inline std::string replaceNewlineIndentsWithBr(const std::string& s) {
     std::string out;
     size_t i = 0;
     while (i < s.size()) {
@@ -5995,7 +5995,7 @@ struct FlowGraph {
     std::vector<GraphEdge> edges;
 };
 
-inline std::string flowShapeOf(const FlowNode& vertex) noexcept {
+inline std::string flowShapeOf(const FlowNode& vertex) {
     if (!vertex.img.empty()) return "imageSquare";
     if (!vertex.icon.empty()) {
         if (vertex.form == "circle") return "iconCircle";
@@ -6008,7 +6008,7 @@ inline std::string flowShapeOf(const FlowNode& vertex) noexcept {
     return vertex.type;
 }
 
-inline std::pair<std::string, std::string> flowArrows(const std::string& type) noexcept {
+inline std::pair<std::string, std::string> flowArrows(const std::string& type) {
     if (type == "arrow_point" || type == "arrow_circle" || type == "arrow_cross") {
         return {"none", type};
     }
@@ -6019,7 +6019,7 @@ inline std::pair<std::string, std::string> flowArrows(const std::string& type) n
     return {"none", "arrow_point"};
 }
 
-inline FlowGraph buildFlowGraph(const FlowDb& model, const std::string& defaultCurve = "") noexcept {
+inline FlowGraph buildFlowGraph(const FlowDb& model, const std::string& defaultCurve = "") {
     std::vector<GraphNode> nodes;
     std::vector<GraphEdge> edges;
     const auto& subgraphs = model.subgraphs;
@@ -6266,14 +6266,14 @@ struct NodeView {
     int loops = 0;
 };
 
-inline double flowNumberOption(const Config& section, const std::string& key, double fallback) noexcept {
+inline double flowNumberOption(const Config& section, const std::string& key, double fallback) {
     if (!section.isMap()) return fallback;
     const auto* v = section.get(key);
     if (v && v->isNumber() && v->nVal > 0.0) return std::min(v->nVal, 2000.0);
     return fallback;
 }
 
-inline double flowAssetSize(bool hasValue, double value, double fallback) noexcept {
+inline double flowAssetSize(bool hasValue, double value, double fallback) {
     return (hasValue && value > 0.0 && value <= 4000.0) ? value : fallback;
 }
 
@@ -6622,7 +6622,7 @@ inline Rendered drawFlowchart(
     return {std::move(svg), width, height, std::move(links)};
 }
 
-inline Rendered renderFlowchartModel(const FlowDb& db, const Config& config, const RenderOptions& options, const FlowVariant* variant = nullptr) noexcept {
+inline Rendered renderFlowchartModel(const FlowDb& db, const Config& config, const RenderOptions& options, const FlowVariant* variant = nullptr) {
     auto fitted = [&](bool down) -> Rendered {
         return tightenExact(options, [&](bool tight) {
             return drawFlowchart(db, config, options, variant, down, tight);

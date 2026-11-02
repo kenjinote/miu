@@ -65,14 +65,14 @@ struct Tokens {
   std::vector<int> starts;
 };
 
-inline bool isTextData(uint32_t c) noexcept {
+inline bool isTextData(uint32_t c) {
   return (c >= 32 && c <= 126 && c != 34 && c != 44) ||
          (c >= 0xa0 && c <= 0xd7ff) ||
          (c >= 0xe000 && c <= 0xfffd) ||
          (c >= 0x10000 && c <= 0x10ffff);
 }
 
-inline bool isBlankU16(uint16_t c) noexcept {
+inline bool isBlankU16(uint16_t c) {
   if (c == 10 || c == 13) return false;
   if (c < 128) return c == 32 || c == 9 || c == 11 || c == 12;
   return c == 0xa0 || c == 0x1680 || (c >= 0x2000 && c <= 0x200a) ||
@@ -80,11 +80,11 @@ inline bool isBlankU16(uint16_t c) noexcept {
          c == 0x3000 || c == 0xfeff;
 }
 
-inline bool isJsTrimU16(uint16_t c) noexcept {
+inline bool isJsTrimU16(uint16_t c) {
   return c == 10 || c == 13 || isBlankU16(c);
 }
 
-inline std::vector<uint16_t> trimU16(const std::vector<uint16_t>& s) noexcept {
+inline std::vector<uint16_t> trimU16(const std::vector<uint16_t>& s) {
   size_t a = 0;
   size_t b = s.size();
   while (a < b && isJsTrimU16(s[a])) a++;
@@ -92,12 +92,12 @@ inline std::vector<uint16_t> trimU16(const std::vector<uint16_t>& s) noexcept {
   return std::vector<uint16_t>(s.begin() + static_cast<ptrdiff_t>(a), s.begin() + static_cast<ptrdiff_t>(b));
 }
 
-inline std::string trimJsStr(const std::string& s) noexcept {
+inline std::string trimJsStr(const std::string& s) {
   auto trimmed = trimU16(toUtf16(s));
   return fromUtf16(trimmed.data(), trimmed.size());
 }
 
-inline std::vector<uint16_t> prepareTextForParsingU16(const std::string& text) noexcept {
+inline std::vector<uint16_t> prepareTextForParsingU16(const std::string& text) {
   std::vector<uint16_t> u = toUtf16(text);
   size_t end = u.size();
   while (end > 0 && isBlankU16(u[end - 1])) end--;
@@ -146,7 +146,7 @@ inline std::vector<uint16_t> prepareTextForParsingU16(const std::string& text) n
   return trimU16(collapsed);
 }
 
-inline uint32_t codePointAtU16(const std::vector<uint16_t>& src, size_t q) noexcept {
+inline uint32_t codePointAtU16(const std::vector<uint16_t>& src, size_t q) {
   uint16_t c1 = src[q];
   if (c1 >= 0xD800 && c1 <= 0xDBFF && q + 1 < src.size()) {
     uint16_t c2 = src[q + 1];
@@ -252,7 +252,7 @@ inline Tokens tokenize(const std::vector<uint16_t>& src) {
   return out;
 }
 
-inline double jsParseFloat(const std::string& raw) noexcept {
+inline double jsParseFloat(const std::string& raw) {
   std::string s = trimJsStr(raw);
   if (s.empty()) return std::numeric_limits<double>::quiet_NaN();
   if (s.size() >= 2 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
@@ -347,7 +347,7 @@ struct SankeyLayout {
 };
 
 template <typename Compare>
-inline void sortSmallOrStd(std::vector<int>& list, Compare compare) noexcept {
+inline void sortSmallOrStd(std::vector<int>& list, Compare compare) {
   if (list.size() > 8) {
     std::stable_sort(list.begin(), list.end(), [&](int a, int b) {
       return compare(a, b) < 0;
@@ -365,7 +365,7 @@ inline void sortSmallOrStd(std::vector<int>& list, Compare compare) noexcept {
   }
 }
 
-inline SankeyLayout layoutSankey(const SankeyModel& model, const LayoutOptions& options) noexcept {
+inline SankeyLayout layoutSankey(const SankeyModel& model, const LayoutOptions& options) {
   constexpr int PASSES = 6;
   int n = static_cast<int>(model.nodes.size());
   std::vector<PlacedLink> links;
@@ -607,7 +607,7 @@ inline SankeyLayout layoutSankey(const SankeyModel& model, const LayoutOptions& 
   return {nodes, links};
 }
 
-inline std::string u32ToBase36(uint32_t v) noexcept {
+inline std::string u32ToBase36(uint32_t v) {
   if (v == 0) return "0";
   static const char digits[] = "0123456789abcdefghijklmnopqrstuvwxyz";
   std::string out;
@@ -619,7 +619,7 @@ inline std::string u32ToBase36(uint32_t v) noexcept {
   return out;
 }
 
-inline std::string contentId(const std::string& text) noexcept {
+inline std::string contentId(const std::string& text) {
   std::vector<uint16_t> u = toUtf16(text);
   uint32_t a = 0x811c9dc5u;
   int32_t b = 5381;
@@ -631,7 +631,7 @@ inline std::string contentId(const std::string& text) noexcept {
   return u32ToBase36(a) + u32ToBase36(static_cast<uint32_t>(b));
 }
 
-inline double numberOption(const Config& conf, const std::string& key, double fallback, double minVal, double maxVal) noexcept {
+inline double numberOption(const Config& conf, const std::string& key, double fallback, double minVal, double maxVal) {
   if (!conf.isMap()) return fallback;
   const Config* v = conf.get(key);
   if (v && v->isNumber() && v->nVal >= minVal) {
@@ -640,7 +640,7 @@ inline double numberOption(const Config& conf, const std::string& key, double fa
   return fallback;
 }
 
-inline std::string textOption(const Config& conf, const std::string& key) noexcept {
+inline std::string textOption(const Config& conf, const std::string& key) {
   if (!conf.isMap()) return "";
   const Config* v = conf.get(key);
   if (!v) return "";
@@ -649,23 +649,23 @@ inline std::string textOption(const Config& conf, const std::string& key) noexce
   return "";
 }
 
-inline double rounded(double value) noexcept {
+inline double rounded(double value) {
   return std::abs(value) < 1e15 ? std::floor(value * 100.0 + 0.5) / 100.0 : value;
 }
 
-inline std::string fillStyle(const Config& color) noexcept {
+inline std::string fillStyle(const Config& color) {
   if (!color.isString()) return "";
   return resolveStyle({Pele::cat({"fill:", color.sVal})}).shape;
 }
 
-inline double sankeyTitleRoom(const RenderOptions& options) noexcept {
+inline double sankeyTitleRoom(const RenderOptions& options) {
   double pad = options.hasPadding ? options.padding : 8.0;
   double maxW = options.maxWidth;
   return maxW > 0.0 ? std::max(80.0, maxW - 2.0 * pad) : 4000.0;
 }
 
 template <typename DrawFn>
-inline Rendered fitWidth(const RenderOptions& options, double natural, double least, DrawFn&& draw) noexcept {
+inline Rendered fitWidth(const RenderOptions& options, double natural, double least, DrawFn&& draw) {
   Rendered result = draw(natural);
   double available = options.maxWidth;
   if (!(available > 0.0) || result.width <= available) return result;
@@ -678,7 +678,7 @@ inline Rendered fitWidth(const RenderOptions& options, double natural, double le
   return result;
 }
 
-inline bool isWordOrDashId(const std::string& s) noexcept {
+inline bool isWordOrDashId(const std::string& s) {
   if (s.empty()) return false;
   for (unsigned char c : s) {
     bool ok = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
@@ -687,7 +687,7 @@ inline bool isWordOrDashId(const std::string& s) noexcept {
   return true;
 }
 
-inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderOptions& options, double chartWidth, double natural) noexcept {
+inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderOptions& options, double chartWidth, double natural) {
   constexpr double LABEL_GAP = 6.0;
   constexpr double VALUE_GAP = 15.0;
   constexpr double LABEL_ROOM = 1.8;
@@ -939,7 +939,7 @@ inline Rendered draw(const SankeyModel& model, const Config& conf, const RenderO
   return {svg, width, height, {}};
 }
 
-inline Rendered renderSankeyModel(const SankeyModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderSankeyModel(const SankeyModel& model, const Config& config, const RenderOptions& options) {
   const Config emptyObj = Config::makeMap();
   const Config* sc = config.isMap() ? config.get("sankey") : nullptr;
   const Config& conf = (sc && sc->isMap()) ? *sc : emptyObj;

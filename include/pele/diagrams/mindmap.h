@@ -87,7 +87,7 @@ constexpr double STEM = 12.0;
 constexpr double BEND = 8.0;
 constexpr double ROW_GAP = 10.0;
 
-inline std::string leftLabelMindmap(const Label& label, double left, double cy, const IconResolver& icons) noexcept {
+inline std::string leftLabelMindmap(const Label& label, double left, double cy, const IconResolver& icons) {
     if (label.lines.size() < 2) {
         return labelSvg(label, left + label.width / 2.0, cy, " class=\"pele-label\"", icons);
     }
@@ -99,12 +99,12 @@ inline std::string leftLabelMindmap(const Label& label, double left, double cy, 
     return out;
 }
 
-inline double mindmapTitleRoom(const RenderOptions& options) noexcept {
+inline double mindmapTitleRoom(const RenderOptions& options) {
     double available = options.maxWidth;
     return available > 0.0 ? std::max(80.0, available - 2.0 * options.padding) : 4000.0;
 }
 
-inline Rendered drawMindmap(const MindmapModel& model, const Config& config, const RenderOptions& options, bool down) noexcept {
+inline Rendered drawMindmap(const MindmapModel& model, const Config& config, const RenderOptions& options, bool down) {
     static const char* SHAPES[7] = {"", "rounded", "rect", "circle", "cloud", "bang", "hex"};
     static const std::string ROOT_SHAPE = "stadium";
 
@@ -344,7 +344,7 @@ inline Rendered drawMindmap(const MindmapModel& model, const Config& config, con
     };
 }
 
-inline Rendered renderMindmapModel(const MindmapModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderMindmapModel(const MindmapModel& model, const Config& config, const RenderOptions& options) {
     Rendered across = drawMindmap(model, config, options, false);
     double available = options.maxWidth;
     if (!(available > 0.0) || across.width <= available || available >= 640.0) return across;

@@ -20,7 +20,7 @@
 
 namespace Pele::SequenceDiagram {
 
-inline std::string num(double value) noexcept {
+inline std::string num(double value) {
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
     bool neg = n < 0;
@@ -271,7 +271,7 @@ enum class K {
     None
 };
 
-inline K kind(const std::string& term) noexcept {
+inline K kind(const std::string& term) {
     std::string lower = toLowerAscii(term);
     if (lower == "none") return K::None;
     size_t n = lower.size();
@@ -306,12 +306,12 @@ inline K kind(const std::string& term) noexcept {
     return K::Bad;
 }
 
-inline bool isAlpha(const std::string& term, bool modern) noexcept {
+inline bool isAlpha(const std::string& term, bool modern) {
     K k = kind(term);
     return k == K::Number || k == K::Percent || (modern && k == K::None);
 }
 
-inline std::vector<std::string> splitWhitespace(const std::string& s) noexcept {
+inline std::vector<std::string> splitWhitespace(const std::string& s) {
     std::vector<std::string> out;
     size_t i = 0;
     size_t n = s.size();
@@ -335,7 +335,7 @@ inline std::vector<std::string> splitWhitespace(const std::string& s) noexcept {
     return out;
 }
 
-inline bool isFunction(const std::string& color) noexcept {
+inline bool isFunction(const std::string& color) {
     bool hsl = startsWith(color, "hsl");
     size_t open = color.find('(');
     if (open == std::string::npos) return false;
@@ -379,7 +379,7 @@ inline bool isFunction(const std::string& color) noexcept {
     return true;
 }
 
-inline bool isCssColor(const std::string& color) noexcept {
+inline bool isCssColor(const std::string& color) {
     if (color.find('(') != std::string::npos) return isFunction(color);
     static const Pele::FlatSet<std::string> keywords = []() {
         const std::string KEYWORDS =
@@ -428,7 +428,7 @@ namespace detail_db {
     throw PeleError(message, "semantic", "sequence");
 }
 
-inline SeqText extractWrap(const std::string& raw) noexcept {
+inline SeqText extractWrap(const std::string& raw) {
     std::string text = trimStr(raw);
     std::optional<bool> wrap;
     size_t prefixLen = 0;
@@ -451,7 +451,7 @@ inline SeqText extractWrap(const std::string& raw) noexcept {
     return {text, wrap, "", false};
 }
 
-inline bool hasLineTerminator(const std::string& s) noexcept {
+inline bool hasLineTerminator(const std::string& s) {
     for (size_t i = 0; i < s.size();) {
         size_t next = i;
         int cp = charCodeAtUtf8(s, i, &next);
@@ -461,7 +461,7 @@ inline bool hasLineTerminator(const std::string& s) noexcept {
     return false;
 }
 
-inline std::optional<std::pair<std::string, std::string>> splitBox(const std::string& str) noexcept {
+inline std::optional<std::pair<std::string, std::string>> splitBox(const std::string& str) {
     // Check /^(?:rgba?|hsla?)\s*\(/
     size_t fnLen = 0;
     if (startsWith(str, "rgba") || startsWith(str, "hsla")) fnLen = 4;
@@ -1011,7 +1011,7 @@ enum T : int {
     T_STICK_ARROW_BOTTOM_REVERSE_DOTTED = 78
 };
 
-inline const std::vector<std::string>& tokenNames() noexcept {
+inline const std::vector<std::string>& tokenNames() {
     static const std::vector<std::string> names = {
         "$end",
         "INVALID",
@@ -1120,7 +1120,7 @@ constexpr uint8_t C_IdWide = 8;
 constexpr uint8_t C_Line = 16;
 constexpr uint8_t C_Menu = 32;
 
-inline const std::array<uint8_t, 128>& classTable() noexcept {
+inline const std::array<uint8_t, 128>& classTable() {
     static const std::array<uint8_t, 128> tab = []() {
         std::array<uint8_t, 128> t{};
         const std::string actorStartEx = "/\\+()<->:\n,;";
@@ -1649,7 +1649,7 @@ struct ParseFrame {
     std::vector<FrameSection> sections;
 };
 
-inline int signalForToken(int tok) noexcept {
+inline int signalForToken(int tok) {
     switch (tok) {
         case T_SOLID_OPEN_ARROW: return LINETYPE::SOLID_OPEN;
         case T_DOTTED_OPEN_ARROW: return LINETYPE::DOTTED_OPEN;
@@ -1681,7 +1681,7 @@ inline int signalForToken(int tok) noexcept {
     }
 }
 
-inline K blockForToken(int tok) noexcept {
+inline K blockForToken(int tok) {
     switch (tok) {
         case T_loop: return K::Loop;
         case T_rect: return K::Rect;
@@ -2255,20 +2255,20 @@ constexpr double CAP = 6.0;
 inline const std::string SHAPE = " fill=\"var(--_s)\" stroke=\"var(--_b)\"";
 inline const std::string LINE = " fill=\"none\" stroke=\"var(--_b)\"";
 
-inline bool isKnownKind(const std::string& type) noexcept {
+inline bool isKnownKind(const std::string& type) {
     return type == "participant" || type == "actor" || type == "boundary" || type == "control" ||
            type == "entity" || type == "database" || type == "collections" || type == "queue";
 }
 
-inline std::string actorKind(const std::string& type) noexcept {
+inline std::string actorKind(const std::string& type) {
     return isKnownKind(type) ? type : "participant";
 }
 
-inline bool isFigure(const std::string& kind) noexcept {
+inline bool isFigure(const std::string& kind) {
     return kind == "actor" || kind == "boundary" || kind == "control" || kind == "entity" || kind == "database";
 }
 
-inline ActorSize actorSize(const std::string& kind, const Label& label, double minW, double minH, double paddingX = PAD_X) noexcept {
+inline ActorSize actorSize(const std::string& kind, const Label& label, double minW, double minH, double paddingX = PAD_X) {
     if (isFigure(kind)) {
         return {std::max(40.0, label.width + 8.0), GLYPH + (label.height > 0.0 ? GLYPH_GAP + label.height : 0.0)};
     }
@@ -2279,7 +2279,7 @@ inline ActorSize actorSize(const std::string& kind, const Label& label, double m
     };
 }
 
-inline std::string figure(const std::string& kind, double cx, double top) noexcept {
+inline std::string figure(const std::string& kind, double cx, double top) {
     std::string x = num(cx);
     auto y = [&](double dy) -> std::string { return num(top + dy); };
     if (kind == "actor") {
@@ -2360,7 +2360,7 @@ struct LineStyle {
     bool bottom = false;
 };
 
-inline const std::array<LineStyle, 64>& lineStyles() noexcept {
+inline const std::array<LineStyle, 64>& lineStyles() {
     static const std::array<LineStyle, 64> styles = []() {
         std::array<LineStyle, 64> s{};
         auto style = [&](int type, bool dotted, Head head, int ends = 1, bool bottom = false) {
@@ -2392,7 +2392,7 @@ inline const std::array<LineStyle, 64>& lineStyles() noexcept {
     return styles;
 }
 
-inline std::string frameKindFor(int type) noexcept {
+inline std::string frameKindFor(int type) {
     switch (type) {
         case LINETYPE::LOOP_START: return "loop";
         case LINETYPE::ALT_START: return "alt";
@@ -2428,12 +2428,12 @@ struct Numbering {
     bool visible = false;
 };
 
-inline bool isLineMessage(int type, bool hasType) noexcept {
+inline bool isLineMessage(int type, bool hasType) {
     if (!hasType || type < 0 || type >= 64) return false;
     return lineStyles()[type].valid;
 }
 
-inline Numbering numberMessages(const std::vector<SeqMessage>& messages, bool always) noexcept {
+inline Numbering numberMessages(const std::vector<SeqMessage>& messages, bool always) {
     Numbering out;
     out.index.assign(messages.size(), std::numeric_limits<double>::quiet_NaN());
     out.shown.assign(messages.size(), false);
@@ -2507,20 +2507,20 @@ struct BoxRun {
     double grow = 0.0;
 };
 
-inline double option(const Config& conf, const std::string& key, double fallback) noexcept {
+inline double option(const Config& conf, const std::string& key, double fallback) {
     if (const auto* v = conf.get(key); v && v->isNumber() && v->nVal >= 0.0 && v->nVal <= 2000.0) {
         return v->nVal;
     }
     return fallback;
 }
 
-inline std::string half(double x, double y, double dir, double up, bool stick, const std::string& color) noexcept {
+inline std::string half(double x, double y, double dir, double up, bool stick, const std::string& color) {
     std::string bx = num(x - dir * ARROW);
     if (stick) return Pele::cat({"<path class=\"pele-marker\" d=\"M", num(x), ",", num(y), "L", bx, ",", num(y + up * 5.0), "\"/>"});
     return Pele::cat({"<path class=\"pele-marker\" d=\"M", num(x), ",", num(y), "L", bx, ",", num(y + up * 4.5), "V", num(y), "Z\" fill=\"", color, "\" stroke=\"none\"/>"});
 }
 
-inline std::string head(Head type, double x, double y, double dir, double up, const std::string& color) noexcept {
+inline std::string head(Head type, double x, double y, double dir, double up, const std::string& color) {
     switch (type) {
         case Head::Arrow:
             return marker("arrow_point", x, y, dir, 0.0, color);
@@ -2537,11 +2537,11 @@ inline std::string head(Head type, double x, double y, double dir, double up, co
     }
 }
 
-inline double trim(Head type) noexcept {
+inline double trim(Head type) {
     return type == Head::Arrow ? ARROW - 1.0 : (type == Head::Cross ? 4.0 : 0.0);
 }
 
-inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions& options, bool tight, double hold = 0.0, bool byNeed = true) noexcept {
+inline Rendered draw(const SeqDb& db, const Config& config, const RenderOptions& options, bool tight, double hold = 0.0, bool byNeed = true) {
     const double INF = std::numeric_limits<double>::infinity();
     Config conf = YamlValue::makeMap();
     if (const auto* sc = config.get("sequence"); sc && sc->isMap()) conf = *sc;
@@ -3363,7 +3363,7 @@ inline SeqDb parse(const std::string& source, const Config& config, const std::s
     return db;
 }
 
-inline Rendered renderSequence(const SeqDb& db, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderSequence(const SeqDb& db, const Config& config, const RenderOptions& options) {
     return Pele::tighten(options, [&](bool tight) {
         return detail_render::draw(db, config, options, tight);
     });

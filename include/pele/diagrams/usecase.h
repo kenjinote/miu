@@ -203,7 +203,7 @@ enum T {
     RPAREN
 };
 
-inline const std::vector<std::string>& tokenNames() noexcept {
+inline const std::vector<std::string>& tokenNames() {
     static const std::vector<std::string> names = splitStr(
         "EOF USECASE ACTOR SYSTEM_BOUNDARY END DIRECTION TD TB BT LR RL NOTE FOR JSON CLASS_DEF CLASS STYLE INCLUDE EXTEND TRUE FALSE IDENTIFIER NUMBER AT COMMA COLON HASH_COLOR CSS_IDENTIFIER CSS_ESCAPED_COMMA DASH DOT PERCENT CSS_PUNCTUATION LABEL_PUNCTUATION LABEL_SYMBOL PLAIN_STRING MARKDOWN_STRING UNCLOSED_MARKDOWN_STRING COMMENT NEWLINE ACC_DESCR_BLOCK ACC_TITLE_LINE ACC_DESCR_LINE JSON_DECLARATION_START JSON_OBJECT_LITERAL UNCLOSED_JSON_OBJECT_LITERAL GENERALIZATION DEPENDENCY_ARROW STEREOTYPE_START STEREOTYPE_END STEREOTYPE_TEXT UNCLOSED_STEREOTYPE_TEXT CLASS_SEPARATOR FORWARD_SOLID BACKWARD_SOLID FORWARD_CIRCLE BACKWARD_CIRCLE FORWARD_CROSS BACKWARD_CROSS MARKERLESS_SOLID METADATA_START LBRACE RBRACE LBRACKET RBRACKET LPAREN RPAREN",
         ' '
@@ -234,7 +234,7 @@ inline bool isLexWord(int c) {
     return c >= 0 && c < 128 && (lexClassTable()[c] & 1) != 0;
 }
 
-inline bool startsWithNoCase(const std::string& src, int at, const std::string& word) noexcept {
+inline bool startsWithNoCase(const std::string& src, int at, const std::string& word) {
     if (at < 0 || static_cast<size_t>(at) + word.size() > src.size()) return false;
     for (size_t k = 0; k < word.size(); k++) {
         if ((static_cast<unsigned char>(src[at + k]) | 32) != static_cast<unsigned char>(word[k])) return false;
@@ -242,7 +242,7 @@ inline bool startsWithNoCase(const std::string& src, int at, const std::string& 
     return true;
 }
 
-inline int keywordAt(const std::string& src, int at, int c) noexcept {
+inline int keywordAt(const std::string& src, int at, int c) {
     size_t pos = static_cast<size_t>(at);
     switch (c) {
         case 97: return startsWith(src, "actor", pos) ? ACTOR : 0;
@@ -266,7 +266,7 @@ inline int keywordAt(const std::string& src, int at, int c) noexcept {
     }
 }
 
-inline std::pair<int, int> lineColumn(const std::string& src, int offset) noexcept {
+inline std::pair<int, int> lineColumn(const std::string& src, int offset) {
     int line = 1;
     int lineStart = 0;
     int limit = std::min(offset, static_cast<int>(src.size()));
@@ -280,7 +280,7 @@ inline std::pair<int, int> lineColumn(const std::string& src, int offset) noexce
     return {line, limit - lineStart + 1};
 }
 
-inline int stringEnd(const std::string& src, int at, int quote) noexcept {
+inline int stringEnd(const std::string& src, int at, int quote) {
     int n = static_cast<int>(src.size());
     for (int k = at + 1; k < n; k++) {
         int c = charCodeAt(src, k);
@@ -290,7 +290,7 @@ inline int stringEnd(const std::string& src, int at, int quote) noexcept {
     return -1;
 }
 
-inline bool startsToken(const std::string& src, int at) noexcept {
+inline bool startsToken(const std::string& src, int at) {
     int c = charCodeAt(src, at);
     if (c != 34 && c != 39) return true;
     return (c == 34 && charCodeAt(src, at + 1) == 96) || stringEnd(src, at, c) != -1;
@@ -898,7 +898,7 @@ struct Drafts {
     std::string accDescription;
 };
 
-inline void pushUnique(std::vector<std::string>& target, const std::vector<std::string>& values) noexcept {
+inline void pushUnique(std::vector<std::string>& target, const std::vector<std::string>& values) {
     if (values.empty()) return;
     for (const auto& v : values) {
         if (std::find(target.begin(), target.end(), v) == target.end()) {
@@ -1464,7 +1464,7 @@ inline const std::array<uint8_t, RPAREN + 1>& parserFlags() {
     return flags;
 }
 
-inline std::string generatedId(const std::string& label) noexcept {
+inline std::string generatedId(const std::string& label) {
     auto u16 = toUtf16(label);
     std::string out;
     out.reserve(u16.size());
@@ -2097,7 +2097,7 @@ struct UsecaseGraph {
     std::vector<UsecaseGraphEdge> edges;
 };
 
-inline std::vector<JsonRow> flattenJsonRows(const UsecaseJsonNode& json) noexcept {
+inline std::vector<JsonRow> flattenJsonRows(const UsecaseJsonNode& json) {
     std::vector<JsonRow> rows;
     struct StackItem {
         const JsonVal* val;
@@ -2162,7 +2162,7 @@ inline std::vector<JsonRow> flattenJsonRows(const UsecaseJsonNode& json) noexcep
     return rows;
 }
 
-inline std::string joinClassList(const std::vector<std::string>& parts) noexcept {
+inline std::string joinClassList(const std::vector<std::string>& parts) {
     std::string out;
     for (const auto& p : parts) {
         if (p.empty()) continue;
@@ -2172,7 +2172,7 @@ inline std::string joinClassList(const std::vector<std::string>& parts) noexcept
     return out;
 }
 
-inline std::pair<std::string, std::string> relationshipMarkers(const Relationship& rel) noexcept {
+inline std::pair<std::string, std::string> relationshipMarkers(const Relationship& rel) {
     static const std::pair<const char*, const char*> MARKERS[] = {
         {"none", "arrow_point"},
         {"arrow_point", "none"},
@@ -2188,7 +2188,7 @@ inline std::pair<std::string, std::string> relationshipMarkers(const Relationshi
     return {MARKERS[LINE_SOLID].first, MARKERS[LINE_SOLID].second};
 }
 
-inline UsecaseGraph buildUsecaseGraph(const UsecaseModel& model) noexcept {
+inline UsecaseGraph buildUsecaseGraph(const UsecaseModel& model) {
     UsecaseGraph g;
 
     auto compiled = [&](const std::vector<std::string>& classNames) -> std::vector<std::string> {
@@ -2417,7 +2417,7 @@ struct View {
     int loops = 0;
 };
 
-inline double ucNumberOption(const Config& config, const std::string& key, double fallback) noexcept {
+inline double ucNumberOption(const Config& config, const std::string& key, double fallback) {
     if (const auto* uc = config.get("usecase"); uc && uc->isMap()) {
         if (const auto* v = uc->get(key); v && v->isNumber() && v->nVal > 0) {
             return std::min(v->nVal, 2000.0);
@@ -2426,7 +2426,7 @@ inline double ucNumberOption(const Config& config, const std::string& key, doubl
     return fallback;
 }
 
-inline std::string ucLiteral(const std::string& text) noexcept {
+inline std::string ucLiteral(const std::string& text) {
     std::string out;
     out.reserve(text.size() + 8);
     for (unsigned char c : text) {
@@ -2439,11 +2439,11 @@ inline std::string ucLiteral(const std::string& text) noexcept {
     return out;
 }
 
-inline Label ucText(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double wrap, int base = 0) noexcept {
+inline Label ucText(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double wrap, int base = 0) {
     return layoutLabel((!raw.empty() && !markdown) ? ucLiteral(raw) : raw, markdown, measurer, size, wrap, base);
 }
 
-inline std::pair<double, double> ucAnchor(const View& view, const Flowchart::CNode& c, int side, double along) noexcept {
+inline std::pair<double, double> ucAnchor(const View& view, const Flowchart::CNode& c, int side, double along) {
     double sign = (side == 1 || side == 2) ? 1.0 : -1.0;
     bool upright = (side == 1 || side == 3);
     double reach = (upright ? view.w : view.h) / 2.0;
@@ -2464,7 +2464,7 @@ inline std::pair<double, double> ucAnchor(const View& view, const Flowchart::CNo
                    : std::make_pair(c.x + along, c.y + sign * reach);
 }
 
-inline double ucSideLength(const View& view, int side) noexcept {
+inline double ucSideLength(const View& view, int side) {
     bool upright = (side == 1 || side == 3);
     if (view.kind == ViewKind::Actor) return upright ? UC_FIGURE_H * 0.5 : UC_FIGURE_W * 0.6;
     double length = upright ? view.h : view.w;
@@ -2477,7 +2477,7 @@ struct UcEnd {
     double toward = 0.0;
 };
 
-inline void ucAttachEnds(std::vector<Flowchart::CEdge>& cedges, const std::vector<Flowchart::CNode>& cnodes, const std::vector<View>& views) noexcept {
+inline void ucAttachEnds(std::vector<Flowchart::CEdge>& cedges, const std::vector<Flowchart::CNode>& cnodes, const std::vector<View>& views) {
     std::vector<int> sideKeys;
     std::unordered_map<int, std::vector<UcEnd>> sides;
     auto add = [&](int index, std::vector<double>& route, size_t at, size_t next) {
@@ -2517,26 +2517,26 @@ inline void ucAttachEnds(std::vector<Flowchart::CEdge>& cedges, const std::vecto
     }
 }
 
-inline std::string ucNum(double value) noexcept {
+inline std::string ucNum(double value) {
     return num(Flowchart::jsRound(value * 100.0) / 100.0);
 }
 
-inline std::string ucExtension(double x, double y, double dx, double dy, const std::string& color) noexcept {
+inline std::string ucExtension(double x, double y, double dx, double dy, const std::string& color) {
     double bx = x - dx * UC_EXTENSION;
     double by = y - dy * UC_EXTENSION;
     double half = UC_EXTENSION * 0.5;
     return Pele::cat({"<path class=\"pele-marker\" d=\"M", ucNum(x), ",", ucNum(y), "L", ucNum(bx - dy * half), ",", ucNum(by + dx * half), "L", ucNum(bx + dy * half), ",", ucNum(by - dx * half), "Z\" fill=\"var(--_bg)\" stroke=\"", color, "\" stroke-linejoin=\"round\"/>"});
 }
 
-inline double ucTrim(const std::string& type) noexcept {
+inline double ucTrim(const std::string& type) {
     return type == "extension" ? UC_EXTENSION : markerTrim(type);
 }
 
-inline std::string ucMark(const std::string& type, double x, double y, double dx, double dy, const std::string& color, const std::string& stroke = "none") noexcept {
+inline std::string ucMark(const std::string& type, double x, double y, double dx, double dy, const std::string& color, const std::string& stroke = "none") {
     return type == "extension" ? ucExtension(x, y, dx, dy, color) : marker(type, x, y, dx, dy, color, stroke);
 }
 
-inline std::string ucFigure(const View& view, const IconResolver& icons) noexcept {
+inline std::string ucFigure(const View& view, const IconResolver& icons) {
     const auto& node = view.node;
     const auto& shape = view.style.shape;
     std::string line = Pele::cat({" fill=\"none\" stroke=\"var(--_b)\"", view.style.line});
@@ -2563,7 +2563,7 @@ inline std::string ucFigure(const View& view, const IconResolver& icons) noexcep
     return out;
 }
 
-inline double ucTitleX(const Flowchart::CNode& c, double width, const Flowchart::Crossings& crossings) noexcept {
+inline double ucTitleX(const Flowchart::CNode& c, double width, const Flowchart::Crossings& crossings) {
     auto it = crossings.find(static_cast<int>(Flowchart::jsRound(c.y - c.h / 2.0)));
     if (width == 0.0 || it == crossings.end()) return c.x;
     double left = c.x - c.w / 2.0 + 6.0;
@@ -2595,7 +2595,7 @@ inline double ucTitleX(const Flowchart::CNode& c, double width, const Flowchart:
     return best;
 }
 
-inline std::string ucLeftLabel(const Label& label, double x, double cy, const std::string& attrs, const IconResolver& icons) noexcept {
+inline std::string ucLeftLabel(const Label& label, double x, double cy, const std::string& attrs, const IconResolver& icons) {
     if (label.lines.size() < 2) return labelSvg(label, x + label.width / 2.0, cy, attrs, icons);
     std::string out;
     for (size_t i = 0; i < label.lines.size(); i++) {
@@ -2604,7 +2604,7 @@ inline std::string ucLeftLabel(const Label& label, double x, double cy, const st
     return out;
 }
 
-inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, const RenderOptions& options, bool turned) noexcept {
+inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, const RenderOptions& options, bool turned) {
     UsecaseGraph graph = buildUsecaseGraph(model);
     double size = options.fontSize > 0 ? options.fontSize : 16.0;
     double small = std::round(size * 0.875);
@@ -2941,7 +2941,7 @@ inline Rendered drawUsecase(const UsecaseModel& model, const Config& config, con
     return {svg, width, height, {}};
 }
 
-inline Rendered renderUsecaseModel(const UsecaseModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderUsecaseModel(const UsecaseModel& model, const Config& config, const RenderOptions& options) {
     if (!Flowchart::runsAcross(model.direction)) return drawUsecase(model, config, options, false);
     return Flowchart::turnToFit(options, [&](bool down) { return drawUsecase(model, config, options, down); });
 }

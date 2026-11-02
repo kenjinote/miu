@@ -16,7 +16,7 @@ struct JourneyModel : public DiagramMeta {
     std::vector<JourneyTask> tasks;
 };
 
-inline std::vector<std::string> journeyActors(const std::vector<JourneyTask>& tasks) noexcept {
+inline std::vector<std::string> journeyActors(const std::vector<JourneyTask>& tasks) {
     Pele::FlatSet<std::string> seen;
     std::vector<std::string> names;
     for (const auto& t : tasks) {
@@ -46,7 +46,7 @@ inline double jsNumber(const std::string& raw) {
     return std::numeric_limits<double>::quiet_NaN();
 }
 
-inline std::string stripNewlineIndent(const std::string& s) noexcept {
+inline std::string stripNewlineIndent(const std::string& s) {
     std::string out;
     out.reserve(s.size());
     size_t i = 0;
@@ -118,7 +118,7 @@ namespace T {
     };
 }
 
-inline const char* journeyTokenName(int t) noexcept {
+inline const char* journeyTokenName(int t) {
     static const char* NAMES[] = {
         "$end", "EOF", "INVALID", "NEWLINE", "journey", "title",
         "acc_title", "acc_title_value", "acc_descr", "acc_descr_value",
@@ -127,7 +127,7 @@ inline const char* journeyTokenName(int t) noexcept {
     return (t >= 0 && t <= 14) ? NAMES[t] : "$end";
 }
 
-inline int textEnd(const std::string& src, int from, bool colon) noexcept {
+inline int textEnd(const std::string& src, int from, bool colon) {
     int n = static_cast<int>(src.size());
     int e = from;
     for (; e < n; e++) {
@@ -137,7 +137,7 @@ inline int textEnd(const std::string& src, int from, bool colon) noexcept {
     return e;
 }
 
-inline int skipSpaceUtf8(const std::string& src, int from) noexcept {
+inline int skipSpaceUtf8(const std::string& src, int from) {
     size_t p = static_cast<size_t>(from);
     while (p < src.size()) {
         size_t next = p;
@@ -148,7 +148,7 @@ inline int skipSpaceUtf8(const std::string& src, int from) noexcept {
     return static_cast<int>(p);
 }
 
-inline int skipTriviaUtf8(const std::string& src, int from) noexcept {
+inline int skipTriviaUtf8(const std::string& src, int from) {
     int n = static_cast<int>(src.size());
     int p = from;
     while (p < n) {
@@ -175,7 +175,7 @@ inline int skipTriviaUtf8(const std::string& src, int from) noexcept {
     return p;
 }
 
-inline int scanAccessibility(const std::string& src, int p, ScanTokens& out, int first) noexcept {
+inline int scanAccessibility(const std::string& src, int p, ScanTokens& out, int first) {
     bool descr = keywordAt(src, p, "accdescr");
     if (!descr && !keywordAt(src, p, "acctitle")) return p;
     int n = static_cast<int>(src.size());
@@ -341,7 +341,7 @@ inline void parseJourney(const std::string& src, JourneyDb& db) {
     }
 }
 
-inline size_t matchBrTag(const std::string& s, size_t pos) noexcept {
+inline size_t matchBrTag(const std::string& s, size_t pos) {
     if (pos + 3 >= s.size() || s[pos] != '<') return 0;
     if ((s[pos + 1] != 'b' && s[pos + 1] != 'B') || (s[pos + 2] != 'r' && s[pos + 2] != 'R')) return 0;
     size_t p = pos + 3;
@@ -356,7 +356,7 @@ inline size_t matchBrTag(const std::string& s, size_t pos) noexcept {
     return 0;
 }
 
-inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
+inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
     if (raw.empty()) return Label{};
     std::string text;
     if (raw.find('<') != std::string::npos) {
@@ -377,7 +377,7 @@ inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, do
     return layoutLabel(text, false, measurer, size, max, base);
 }
 
-inline Label fitPlainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
+inline Label fitPlainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
     Label label = plainLabel(raw, measurer, size, max, base);
     if (raw.empty() || label.width <= max) return label;
     std::string out;
@@ -449,7 +449,7 @@ constexpr double DOT = 5.0;
 constexpr double DOT_STEP = 13.0;
 constexpr double LEGEND_GAP = 20.0;
 
-inline std::string faceSvg(double x, double y, const std::string& mood) noexcept {
+inline std::string faceSvg(double x, double y, const std::string& mood) {
     static const std::string EYES = "<circle cx=\"-3.6\" cy=\"-2.8\" r=\"1.3\"/><circle cx=\"3.6\" cy=\"-2.8\" r=\"1.3\"/>";
     std::string mouth = (mood == "happy") ? "M-5,2A6,6 0 0 0 5,2" : (mood == "sad") ? "M-5,6.5A6,6 0 0 1 5,6.5" : "M-4.5,4.5H4.5";
     return Pele::cat({"<g class=\"pele-face pele-face-", mood, "\" transform=\"translate(", num(x), ",", num(y), ")\">"
@@ -459,7 +459,7 @@ inline std::string faceSvg(double x, double y, const std::string& mood) noexcept
            "</g>"});
 }
 
-inline Rendered verticalJourney(const JourneyModel& model, const RenderOptions& options) noexcept {
+inline Rendered verticalJourney(const JourneyModel& model, const RenderOptions& options) {
     double size = options.fontSize;
     double small = std::round(size * 0.875);
     const auto& measurer = getMeasurer(options);
@@ -530,7 +530,7 @@ inline Rendered verticalJourney(const JourneyModel& model, const RenderOptions& 
     return {svgDocument("journey", totalWidth, height, size, options, model, content), totalWidth, height, {}};
 }
 
-inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/, const RenderOptions& options, bool down) noexcept {
+inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/, const RenderOptions& options, bool down) {
     if (down) return verticalJourney(model, options);
     double size = options.fontSize;
     double small = std::round(size * 0.875);
@@ -714,7 +714,7 @@ inline Rendered drawJourney(const JourneyModel& model, const Config& /*config*/,
     };
 }
 
-inline Rendered renderJourneyModel(const JourneyModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderJourneyModel(const JourneyModel& model, const Config& config, const RenderOptions& options) {
     Rendered across = drawJourney(model, config, options, false);
     double available = options.maxWidth;
     if (!(available > 0.0) || across.width <= available || available >= 640.0) return across;

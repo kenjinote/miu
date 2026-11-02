@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 // Pele Native C++ LaTeX-to-MathML Engine
 #include <algorithm>
 #include <cctype>
@@ -22,14 +22,14 @@ using MathResolver = std::function<MathBox(const std::string& tex, double fontSi
 
 namespace detail {
 
-inline std::string mathTrim(const std::string& s) noexcept {
+inline std::string mathTrim(const std::string& s) {
     size_t a = 0, b = s.size();
     while (a < b && (s[a] == ' ' || s[a] == '\t' || s[a] == '\r' || s[a] == '\n')) a++;
     while (b > a && (s[b - 1] == ' ' || s[b - 1] == '\t' || s[b - 1] == '\r' || s[b - 1] == '\n')) b--;
     return s.substr(a, b - a);
 }
 
-inline std::string mathEsc(const std::string& s) noexcept {
+inline std::string mathEsc(const std::string& s) {
     std::string out;
     out.reserve(s.size());
     for (char c : s) {
@@ -45,7 +45,7 @@ inline std::string mathEsc(const std::string& s) noexcept {
     return out;
 }
 
-inline uint32_t mathNextUtf8(const std::string& s, size_t& i) noexcept {
+inline uint32_t mathNextUtf8(const std::string& s, size_t& i) {
     unsigned char c = (unsigned char)s[i++];
     if (c < 0x80) return c;
     if ((c & 0xE0) == 0xC0 && i < s.size()) {
@@ -69,7 +69,7 @@ inline uint32_t mathNextUtf8(const std::string& s, size_t& i) noexcept {
     return c;
 }
 
-inline bool mathIsWideCodepoint(uint32_t cp) noexcept {
+inline bool mathIsWideCodepoint(uint32_t cp) {
     return (cp >= 0x1100 && cp <= 0x11FF) ||
            (cp >= 0x2E80 && cp <= 0x9FFF) ||
            (cp >= 0xAC00 && cp <= 0xD7AF) ||
@@ -87,7 +87,7 @@ struct MNode {
     bool isLargeOp = false;
 };
 
-inline std::string doubleStruckUtf8(char c) noexcept {
+inline std::string doubleStruckUtf8(char c) {
     switch (c) {
         case 'C': return "\xE2\x84\x82";
         case 'H': return "\xE2\x84\x8D";
@@ -707,24 +707,28 @@ struct LatexParser {
     }
 };
 
-inline MathBox typesetLatexMath(const std::string& tex, double fontSize = 16.0, bool displayMode = true) noexcept {
+inline MathBox typesetLatexMath(const std::string& tex, double fontSize = 16.0, bool displayMode = true) {
     MathBox box;
-    std::string clean = mathTrim(tex);
-    if (clean.empty()) return box;
-    LatexParser parser(clean, displayMode);
-    MNode root = parser.parseExpr();
-    std::string dispAttr = displayMode ? " display=\"block\"" : "";
-    box.html = "<math xmlns=\"http://www.w3.org/1998/Math/MathML\"" + dispAttr + "><mrow>" + root.mml + "</mrow></math>";
-    box.width = std::ceil(std::max(fontSize * 1.1, root.w * fontSize + 14.0));
-    box.height = std::ceil(std::max(fontSize * 1.35, root.h * fontSize + 6.0));
+    try {
+        std::string clean = mathTrim(tex);
+        if (clean.empty()) return box;
+        LatexParser parser(clean, displayMode);
+        MNode root = parser.parseExpr();
+        std::string dispAttr = displayMode ? " display=\"block\"" : "";
+        box.html = "<math xmlns=\"http://www.w3.org/1998/Math/MathML\"" + dispAttr + "><mrow>" + root.mml + "</mrow></math>";
+        box.width = std::ceil(std::max(fontSize * 1.1, root.w * fontSize + 14.0));
+        box.height = std::ceil(std::max(fontSize * 1.35, root.h * fontSize + 6.0));
+    } catch (...) {
+        return MathBox{};
+    }
     return box;
 }
 
-inline MathResolver& activeMathResolver() noexcept {
+inline MathResolver& activeMathResolver() {
     static MathResolver r = nullptr;
     return r;
 }
-inline bool looksLikeInlineMath(const std::string& inner) noexcept {
+inline bool looksLikeInlineMath(const std::string& inner) {
     if (inner.empty() || inner.front() == ' ' || inner.back() == ' ') return false;
     bool allDigits = true;
     for (char c : inner) {
@@ -743,11 +747,11 @@ inline bool looksLikeInlineMath(const std::string& inner) noexcept {
 
 } // namespace detail
 
-inline MathBox typesetMath(const std::string& tex, double fontSize = 16.0, bool displayMode = true) noexcept {
+inline MathBox typesetMath(const std::string& tex, double fontSize = 16.0, bool displayMode = true) {
     return detail::typesetLatexMath(tex, fontSize, displayMode);
 }
 
-inline std::string latexToMathML(const std::string& tex, bool displayMode = true) noexcept {
+inline std::string latexToMathML(const std::string& tex, bool displayMode = true) {
     return detail::typesetLatexMath(tex, 16.0, displayMode).html;
 }
 

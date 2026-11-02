@@ -367,6 +367,36 @@ static void testPhase3PreviewPeleAndLatex() {
     CHECK(ed.pt.getRange(0, ed.pt.length()).find("- [x] Task one") != std::string::npos, "Line 1 updated from [ ] to [x] in Editor buffer");
     ed.performUndo();
     CHECK(ed.pt.getRange(0, ed.pt.length()).find("- [ ] Task one") != std::string::npos, "Undo restored checkbox from [x] to [ ]");
+
+    // Regression test for Gantt 3-digit year (205-01-01) and malformed/in-progress diagram inputs
+    std::string gantt205 =
+        "gantt\n"
+        "    title A Gantt Diagram\n"
+        "    %% This is a comment\n"
+        "    dateFormat YYYY-MM-DD\n"
+        "    section Section\n"
+        "        A task          :a1, 205-01-01, 30d\n"
+        "        Another task    :after a1, 20d\n"
+        "    section Another\n"
+        "        Task in Another :2014-01-12, 12d\n"
+        "        another task    :24d\n";
+    auto ganttRes = MiuPreview::renderPreview(gantt205, "mmd", true);
+    CHECK(ganttRes.bodyHtml.find("<svg") != std::string::npos, "Gantt with 205-01-01 renders SVG without crashing");
+
+    // Malformed / mid-typing Gantt and C4 diagrams must return cleanly without std::terminate
+    std::string ganttBad =
+        "gantt\n"
+        "    dateFormat YYYY-MM-DD\n"
+        "    section S\n"
+        "        Task :a1, 205-, 30d\n";
+    auto ganttBadRes = MiuPreview::renderPreview(ganttBad, "mmd", true);
+    CHECK(ganttBadRes.bodyHtml.find("data-empty=\"1\"") != std::string::npos, "Malformed Gantt returns empty placeholder without crashing");
+
+    std::string c4Bad =
+        "C4Context\n"
+        "    Rel(unknownA, unknownB, \"Uses\")\n";
+    auto c4BadRes = MiuPreview::renderPreview(c4Bad, "mmd", true);
+    CHECK(c4BadRes.bodyHtml.find("data-empty=\"1\"") != std::string::npos, "C4 with unknown rel returns empty placeholder without crashing");
 }
 
 static void testPhase4ViewStateRecentFilesAndEncodings() {

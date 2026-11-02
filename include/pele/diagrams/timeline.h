@@ -17,7 +17,7 @@ struct TimelineModel : public DiagramMeta {
     std::vector<TimelinePeriod> periods;
 };
 
-inline std::string stripNewlineIndent(const std::string& s) noexcept {
+inline std::string stripNewlineIndent(const std::string& s) {
     std::string out;
     out.reserve(s.size());
     size_t i = 0;
@@ -95,7 +95,7 @@ namespace T {
     };
 }
 
-inline const char* timelineTokenName(int t) noexcept {
+inline const char* timelineTokenName(int t) {
     static const char* NAMES[] = {
         "$end", "EOF", "INVALID", "NEWLINE", "timeline", "timeline_lr", "timeline_td",
         "title", "acc_title", "acc_title_value", "acc_descr", "acc_descr_value",
@@ -104,7 +104,7 @@ inline const char* timelineTokenName(int t) noexcept {
     return (t >= 0 && t <= 15) ? NAMES[t] : "$end";
 }
 
-inline int skipSpaceUtf8(const std::string& src, int from) noexcept {
+inline int skipSpaceUtf8(const std::string& src, int from) {
     size_t p = static_cast<size_t>(from);
     while (p < src.size()) {
         size_t next = p;
@@ -115,7 +115,7 @@ inline int skipSpaceUtf8(const std::string& src, int from) noexcept {
     return static_cast<int>(p);
 }
 
-inline int skipTriviaUtf8(const std::string& src, int from) noexcept {
+inline int skipTriviaUtf8(const std::string& src, int from) {
     int n = static_cast<int>(src.size());
     int p = from;
     while (p < n) {
@@ -142,7 +142,7 @@ inline int skipTriviaUtf8(const std::string& src, int from) noexcept {
     return p;
 }
 
-inline int scanAccessibility(const std::string& src, int p, ScanTokens& out, int first) noexcept {
+inline int scanAccessibility(const std::string& src, int p, ScanTokens& out, int first) {
     bool descr = keywordAt(src, p, "accdescr");
     if (!descr && !keywordAt(src, p, "acctitle")) return p;
     int n = static_cast<int>(src.size());
@@ -340,7 +340,7 @@ inline void parseTimeline(const std::string& src, TimelineDb& db) {
 // Port of src/diagrams/common/fit.ts (plainLabel, fitLabel)
 // ============================================================================
 
-inline size_t matchBrTag(const std::string& s, size_t pos) noexcept {
+inline size_t matchBrTag(const std::string& s, size_t pos) {
     if (pos + 3 >= s.size() || s[pos] != '<') return 0;
     if ((s[pos + 1] != 'b' && s[pos + 1] != 'B') || (s[pos + 2] != 'r' && s[pos + 2] != 'R')) return 0;
     size_t p = pos + 3;
@@ -355,7 +355,7 @@ inline size_t matchBrTag(const std::string& s, size_t pos) noexcept {
     return 0;
 }
 
-inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
+inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
     if (raw.empty()) return Label{};
     std::string text;
     if (raw.find('<') != std::string::npos) {
@@ -376,7 +376,7 @@ inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, do
     return layoutLabel(text, false, measurer, size, max, base);
 }
 
-inline Label fitPlainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
+inline Label fitPlainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
     Label label = plainLabel(raw, measurer, size, max, base);
     if (raw.empty() || label.width <= max) return label;
     std::string out;
@@ -452,11 +452,11 @@ struct TimelineGroup {
     std::vector<int> periods;
 };
 
-inline std::string timelineBox(double x, double y, double w, double h, const std::string& attrs) noexcept {
+inline std::string timelineBox(double x, double y, double w, double h, const std::string& attrs) {
     return Pele::cat({"<rect x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(w), "\" height=\"", num(h), "\"", rounded(attrs), "/>"});
 }
 
-inline Rendered drawTimeline(const TimelineModel& model, const Config& config, const RenderOptions& options, bool vertical) noexcept {
+inline Rendered drawTimeline(const TimelineModel& model, const Config& config, const RenderOptions& options, bool vertical) {
     static const std::string ON_COLOR = " fill=\"var(--_bg)\"";
     static const std::string LINE = " fill=\"none\" stroke=\"var(--_b)\"";
 
@@ -684,7 +684,7 @@ inline Rendered drawTimeline(const TimelineModel& model, const Config& config, c
     };
 }
 
-inline Rendered renderTimelineModel(const TimelineModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderTimelineModel(const TimelineModel& model, const Config& config, const RenderOptions& options) {
     if (model.direction == "TD") return drawTimeline(model, config, options, true);
     Rendered across = drawTimeline(model, config, options, false);
     double available = options.maxWidth;

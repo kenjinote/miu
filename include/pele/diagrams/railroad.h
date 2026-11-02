@@ -14,7 +14,7 @@ namespace Pele {
 
 namespace railroad_detail {
 
-inline std::string rrSingle(const std::string& text) noexcept {
+inline std::string rrSingle(const std::string& text) {
   std::string s = trimStr(text);
   std::string out;
   int spaces = 0;
@@ -32,19 +32,19 @@ inline std::string rrSingle(const std::string& text) noexcept {
   return out;
 }
 
-inline std::string rrTitleValue(const std::string& text) noexcept {
+inline std::string rrTitleValue(const std::string& text) {
   size_t pos = text.find("title");
   if (pos == std::string::npos) return "";
   return rrSingle(text.substr(pos + 5));
 }
 
-inline std::string rrAccTitleValue(const std::string& text) noexcept {
+inline std::string rrAccTitleValue(const std::string& text) {
   size_t pos = text.find(':');
   if (pos == std::string::npos) return "";
   return rrSingle(text.substr(pos + 1));
 }
 
-inline std::string rrAccDescrValue(const std::string& text) noexcept {
+inline std::string rrAccDescrValue(const std::string& text) {
   size_t brace = text.find('{');
   size_t colon = text.find(':');
   if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -58,23 +58,23 @@ inline std::string rrAccDescrValue(const std::string& text) noexcept {
   return "";
 }
 
-inline bool isWordDash(char c) noexcept {
+inline bool isWordDash(char c) {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_' || c == '-';
 }
 
-inline bool isAlnumDash(char c) noexcept {
+inline bool isAlnumDash(char c) {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-';
 }
 
-inline bool isAlpha(char c) noexcept {
+inline bool isAlpha(char c) {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
 }
 
-inline bool isHexDigit(char c) noexcept {
+inline bool isHexDigit(char c) {
   return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
 }
 
-inline TokenType rrLiteral(const std::string& name, std::vector<int> longer = {}) noexcept {
+inline TokenType rrLiteral(const std::string& name, std::vector<int> longer = {}) {
   TokenType t;
   t.name = name;
   t.literal = name;
@@ -83,13 +83,13 @@ inline TokenType rrLiteral(const std::string& name, std::vector<int> longer = {}
   return t;
 }
 
-inline TokenType rrOpening(const std::string& word, int nameTokIdx) noexcept {
+inline TokenType rrOpening(const std::string& word, int nameTokIdx) {
   TokenType t = common_tokens::keyword(word);
   t.longer = {nameTokIdx};
   return t;
 }
 
-inline TokenType rrIdentifier(const std::string& name) noexcept {
+inline TokenType rrIdentifier(const std::string& name) {
   TokenType t;
   t.name = name;
   t.isRegex = true;
@@ -106,13 +106,13 @@ inline TokenType rrIdentifier(const std::string& name) noexcept {
   return t;
 }
 
-inline TokenType rrQuoted(const std::string& name) noexcept {
+inline TokenType rrQuoted(const std::string& name) {
   TokenType t = common_tokens::makeString();
   t.name = name;
   return t;
 }
 
-inline TokenType rrTitle(bool allowUnderscore) noexcept {
+inline TokenType rrTitle(bool allowUnderscore) {
   TokenType t;
   t.name = "TITLE";
   t.isRegex = true;
@@ -132,7 +132,7 @@ inline TokenType rrTitle(bool allowUnderscore) noexcept {
   return t;
 }
 
-inline TokenType rrAccTitle() noexcept {
+inline TokenType rrAccTitle() {
   TokenType t;
   t.name = "ACC_TITLE";
   t.isRegex = true;
@@ -148,7 +148,7 @@ inline TokenType rrAccTitle() noexcept {
   return t;
 }
 
-inline TokenType rrAccDescr() noexcept {
+inline TokenType rrAccDescr() {
   TokenType t;
   t.name = "ACC_DESCR";
   t.isRegex = true;
@@ -180,7 +180,7 @@ inline TokenType rrAccDescr() noexcept {
   return t;
 }
 
-inline std::vector<TokenType> rrHiddenTokens(const std::string& prefix) noexcept {
+inline std::vector<TokenType> rrHiddenTokens(const std::string& prefix) {
   TokenType ws;
   ws.name = Pele::cat({prefix, "_WHITESPACE"});
   ws.isRegex = true;
@@ -208,7 +208,7 @@ inline std::vector<TokenType> rrHiddenTokens(const std::string& prefix) noexcept
   return {ws, yaml, dir, slc};
 }
 
-inline TokenType rrBlockComment(const std::string& name) noexcept {
+inline TokenType rrBlockComment(const std::string& name) {
   TokenType t;
   t.name = name;
   t.isRegex = true;
@@ -225,7 +225,7 @@ inline TokenType rrBlockComment(const std::string& name) noexcept {
   return t;
 }
 
-inline std::string rrUnescape(const std::string& text) noexcept {
+inline std::string rrUnescape(const std::string& text) {
   if (text.size() < 2) return "";
   if (text.find('\\') == std::string::npos) return text.substr(1, text.size() - 2);
   size_t end = text.size() - 1;
@@ -262,35 +262,35 @@ struct RailroadModel : DiagramMeta {
   std::vector<RailroadRule> rules;
 };
 
-inline RailroadNode makeTerminal(const std::string& value) noexcept {
+inline RailroadNode makeTerminal(const std::string& value) {
   RailroadNode n;
   n.type = "terminal";
   n.value = value;
   return n;
 }
 
-inline RailroadNode makeNonterminal(const std::string& name) noexcept {
+inline RailroadNode makeNonterminal(const std::string& name) {
   RailroadNode n;
   n.type = "nonterminal";
   n.name = name;
   return n;
 }
 
-inline RailroadNode makeSpecial(const std::string& text) noexcept {
+inline RailroadNode makeSpecial(const std::string& text) {
   RailroadNode n;
   n.type = "special";
   n.text = text;
   return n;
 }
 
-inline RailroadNode makeOptional(RailroadNode element) noexcept {
+inline RailroadNode makeOptional(RailroadNode element) {
   RailroadNode n;
   n.type = "optional";
   n.children.push_back(std::move(element));
   return n;
 }
 
-inline RailroadNode makeRepetition(RailroadNode element, double min, double max = std::numeric_limits<double>::infinity()) noexcept {
+inline RailroadNode makeRepetition(RailroadNode element, double min, double max = std::numeric_limits<double>::infinity()) {
   RailroadNode n;
   n.type = "repetition";
   n.min = min;
@@ -299,7 +299,7 @@ inline RailroadNode makeRepetition(RailroadNode element, double min, double max 
   return n;
 }
 
-inline RailroadNode makeSequence(std::vector<RailroadNode> elements) noexcept {
+inline RailroadNode makeSequence(std::vector<RailroadNode> elements) {
   if (elements.size() == 1) return std::move(elements[0]);
   RailroadNode n;
   n.type = "sequence";
@@ -307,7 +307,7 @@ inline RailroadNode makeSequence(std::vector<RailroadNode> elements) noexcept {
   return n;
 }
 
-inline RailroadNode makeChoice(std::vector<RailroadNode> alternatives) noexcept {
+inline RailroadNode makeChoice(std::vector<RailroadNode> alternatives) {
   if (alternatives.size() == 1) return std::move(alternatives[0]);
   RailroadNode n;
   n.type = "choice";
@@ -385,7 +385,7 @@ enum T {
   string
 };
 
-inline const std::vector<TokenType>& getTokens() noexcept {
+inline const std::vector<TokenType>& getTokens() {
   static const std::vector<TokenType> tokens = []() {
     std::vector<TokenType> v;
     v.push_back(rrOpening("railroad-beta", T::id));
@@ -523,7 +523,7 @@ enum T {
   special
 };
 
-inline int specialSequence(const std::string& src, int at, int) noexcept {
+inline int specialSequence(const std::string& src, int at, int) {
   int n = static_cast<int>(src.size());
   if (at >= n || src[at] != '?') return -1;
   bool solid = false;
@@ -536,7 +536,7 @@ inline int specialSequence(const std::string& src, int at, int) noexcept {
   return -1;
 }
 
-inline const std::vector<TokenType>& getTokens() noexcept {
+inline const std::vector<TokenType>& getTokens() {
   static const std::vector<TokenType> tokens = []() {
     std::vector<TokenType> v;
     // Indices:
@@ -599,7 +599,7 @@ struct Frame {
   bool except = false;
 };
 
-inline Frame makeFrame(int bracketKind, int close, bool except) noexcept {
+inline Frame makeFrame(int bracketKind, int close, bool except) {
   Frame f;
   f.alternatives.push_back({});
   f.bracketKind = bracketKind;
@@ -608,7 +608,7 @@ inline Frame makeFrame(int bracketKind, int close, bool except) noexcept {
   return f;
 }
 
-inline RailroadNode foldChoice(std::vector<std::vector<RailroadNode>>& alternatives) noexcept {
+inline RailroadNode foldChoice(std::vector<std::vector<RailroadNode>>& alternatives) {
   std::vector<RailroadNode> seqs;
   seqs.reserve(alternatives.size());
   for (auto& seq : alternatives) {
@@ -743,7 +743,7 @@ enum T {
   exact
 };
 
-inline const std::vector<TokenType>& getTokens() noexcept {
+inline const std::vector<TokenType>& getTokens() {
   static const std::vector<TokenType> tokens = []() {
     std::vector<TokenType> v;
     // Indices: 11 = name, 20 = ABNF_COMMENT
@@ -858,7 +858,7 @@ struct Frame {
   std::optional<std::string> repeat;
 };
 
-inline Frame makeFrame(int bracketKind, int close, std::optional<std::string> repeat) noexcept {
+inline Frame makeFrame(int bracketKind, int close, std::optional<std::string> repeat) {
   Frame f;
   f.alternatives.push_back({});
   f.bracketKind = bracketKind;
@@ -977,7 +977,7 @@ enum T {
   string
 };
 
-inline const std::vector<TokenType>& getTokens() noexcept {
+inline const std::vector<TokenType>& getTokens() {
   static const std::vector<TokenType> tokens = []() {
     std::vector<TokenType> v;
     v.push_back(rrOpening("railroad-peg-beta", T::id)); // 0
@@ -1022,14 +1022,14 @@ struct Frame {
   std::optional<std::string> op;
 };
 
-inline Frame makeFrame(std::optional<std::string> op) noexcept {
+inline Frame makeFrame(std::optional<std::string> op) {
   Frame f;
   f.alternatives.push_back({});
   f.op = std::move(op);
   return f;
 }
 
-inline std::string pegLabel(const RailroadNode& node) noexcept {
+inline std::string pegLabel(const RailroadNode& node) {
   if (node.type == "terminal") return Pele::cat({"\"", node.value, "\""});
   if (node.type == "nonterminal") return node.name;
   if (node.type == "special") return node.text;
@@ -1110,7 +1110,7 @@ inline ParsedGrammar parse(const std::string& src) {
 // DB & Notation Detection
 // ----------------------------------------------------------------------------
 
-inline std::optional<std::string> notationOf(const std::string& source) noexcept {
+inline std::optional<std::string> notationOf(const std::string& source) {
   size_t p = 0;
   while (p < source.size() && isSpace(charCodeAt(source, static_cast<int>(p)))) p++;
   std::string rem = toLowerAscii(source.substr(p, 24));
@@ -1190,7 +1190,7 @@ constexpr double RULE_GAP = 18;
 constexpr double COUNT_SIZE = 12;
 constexpr double ARROW = 7;
 
-inline double option(const Config& config, const std::string& key, double fallback, double maxVal) noexcept {
+inline double option(const Config& config, const std::string& key, double fallback, double maxVal) {
   const auto* rr = config.get("railroad");
   if (!rr || !rr->isMap()) return fallback;
   const auto* v = rr->get(key);
@@ -1200,7 +1200,7 @@ inline double option(const Config& config, const std::string& key, double fallba
   return fallback;
 }
 
-inline std::string shown(const std::string& text) noexcept {
+inline std::string shown(const std::string& text) {
   std::string s = text.find(PLACEHOLDER_CLOSE) != std::string::npos
     ? decodeEntities(replaceAllStr(text, "&", "&amp;"))
     : text;
@@ -1215,17 +1215,17 @@ inline std::string shown(const std::string& text) noexcept {
   return out;
 }
 
-inline double even(double value) noexcept {
+inline double even(double value) {
   return std::ceil(value / 2.0) * 2.0;
 }
 
-inline Box leaf(Kind kind, const std::string& text, const std::string& id, int style, const Metrics& m) noexcept {
+inline Box leaf(Kind kind, const std::string& text, const std::string& id, int style, const Metrics& m) {
   double half = m.height / 2.0;
   double width = std::max(even(m.measurer->width(text, m.size, style) + 2.0 * m.padding), m.height);
   return {kind, width, half, half, {}, text, id, 0};
 }
 
-inline std::string countStr(double min, double max) noexcept {
+inline std::string countStr(double min, double max) {
   if (!std::isfinite(max) && min <= 1.0) return "";
   auto fmt = [](double value) -> std::string {
     return std::isfinite(value) ? num(value) : "\xE2\x88\x9E"; // ∞
@@ -1237,18 +1237,18 @@ inline std::string countStr(double min, double max) noexcept {
     : fmt(min) + "\xE2\x80\x93" + fmt(max) + "\xC3\x97"; // –...×
 }
 
-inline double below(double offset, const Box& above, const Box& branch, const Metrics& m) noexcept {
+inline double below(double offset, const Box& above, const Box& branch, const Metrics& m) {
   return std::max(offset + above.down + m.sep + branch.up, 2.0 * m.arc);
 }
 
-inline Box bypass(Box kid, const Metrics& m) noexcept {
+inline Box bypass(Box kid, const Metrics& m) {
   double reach = std::max(kid.up + m.sep, 2.0 * m.arc);
   double width = kid.width + 4.0 * m.arc;
   double down = kid.down;
   return {Kind::Bypass, width, reach, down, {std::move(kid)}, "", "", reach};
 }
 
-inline bool isAllSpaces(const std::string& s) noexcept {
+inline bool isAllSpaces(const std::string& s) {
   if (s.empty()) return false;
   for (char c : s) {
     if (c != ' ') return false;
@@ -1256,7 +1256,7 @@ inline bool isAllSpaces(const std::string& s) noexcept {
   return true;
 }
 
-inline Box measure(const RailroadNode& root, const Metrics& m, double room = std::numeric_limits<double>::infinity()) noexcept {
+inline Box measure(const RailroadNode& root, const Metrics& m, double room = std::numeric_limits<double>::infinity()) {
   std::unordered_map<const RailroadNode*, double> budgets;
   if (std::isfinite(room)) {
     std::vector<std::pair<const RailroadNode*, double>> pending = {{&root, room}};
@@ -1384,7 +1384,7 @@ inline Box measure(const RailroadNode& root, const Metrics& m, double room = std
 }
 
 template <typename T>
-inline void reverseFrom(std::vector<T>& list, size_t from) noexcept {
+inline void reverseFrom(std::vector<T>& list, size_t from) {
   for (size_t i = from, j = list.size(); i < j && j > 0; i++) {
     j--;
     if (i >= j) break;
@@ -1392,7 +1392,7 @@ inline void reverseFrom(std::vector<T>& list, size_t from) noexcept {
   }
 }
 
-inline Rendered draw(const RailroadModel& model, const Config& config, const RenderOptions& options, bool tight) noexcept {
+inline Rendered draw(const RailroadModel& model, const Config& config, const RenderOptions& options, bool tight) {
   double base = options.fontSize;
   double fontSize = option(config, "fontSize", 0.0, 200.0);
   double size = fontSize > 0.0 ? fontSize : std::round(base * 0.875);
@@ -1617,7 +1617,7 @@ inline Rendered draw(const RailroadModel& model, const Config& config, const Ren
   };
 }
 
-inline Rendered renderRailroadModel(const RailroadModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderRailroadModel(const RailroadModel& model, const Config& config, const RenderOptions& options) {
   return tighten(options, [&](bool tight) {
     return draw(model, config, options, tight);
   });

@@ -130,11 +130,11 @@ struct Graph {
   std::vector<int> groupParent;
 };
 
-inline double halfRoom(const Graph& g, const LayeredOptions& opt, int v) noexcept {
+inline double halfRoom(const Graph& g, const LayeredOptions& opt, int v) {
   return g.W[v] / 2.0 + (g.KIND[v] == static_cast<uint8_t>(LKind::Node) ? opt.nodeSep : opt.edgeSep) / 2.0;
 }
 
-inline void sortByBary(std::vector<int>& arr, int len, const std::vector<double>& bary, const std::vector<int>& pos, bool biasRight, std::vector<int>& tmp) noexcept {
+inline void sortByBary(std::vector<int>& arr, int len, const std::vector<double>& bary, const std::vector<int>& pos, bool biasRight, std::vector<int>& tmp) {
   if (len <= 16) {
     for (int i = 1; i < len; i++) {
       int v = arr[i];
@@ -180,7 +180,7 @@ inline void sortByBary(std::vector<int>& arr, int len, const std::vector<double>
 
 } // namespace detail_layered
 
-inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) noexcept {
+inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) {
   int n = static_cast<int>(nodes.size());
   int m = static_cast<int>(edges.size());
   std::vector<int> head(n, -1);
@@ -223,7 +223,7 @@ inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) noexcep
   }
 }
 
-inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step = 1) noexcept {
+inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step = 1) {
   int n = static_cast<int>(nodes.size());
   int m = static_cast<int>(edges.size());
   if (n == 0) return;
@@ -336,7 +336,7 @@ inline void rank(std::vector<LNode>& nodes, std::vector<LEdge>& edges, int step 
 
 namespace detail_layered {
 
-inline std::vector<uint8_t> emptyRanks(const Graph& g) noexcept {
+inline std::vector<uint8_t> emptyRanks(const Graph& g) {
   std::vector<uint8_t> out;
   for (int r = 1; r < g.maxRank; r++) {
     bool allDummy = true;
@@ -354,7 +354,7 @@ inline std::vector<uint8_t> emptyRanks(const Graph& g) noexcept {
   return out;
 }
 
-inline int freeEnds(const Graph& g, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) noexcept {
+inline int freeEnds(const Graph& g, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) {
   int total = 0;
   for (int i = 0; i < g.real; i++) {
     if (g.KIND[i] != static_cast<uint8_t>(LKind::Node)) continue;
@@ -491,7 +491,7 @@ inline void alignLabels(
   }
 }
 
-inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) noexcept {
+inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) {
   auto& real = g.real;
   auto& RANK = g.RANK;
   auto& EF = g.EF;
@@ -718,7 +718,7 @@ inline void settle(
   }
 }
 
-inline void snap(Graph& g, std::vector<double>& xs, const std::vector<uint8_t>& empty, const LayeredOptions& opt) noexcept {
+inline void snap(Graph& g, std::vector<double>& xs, const std::vector<uint8_t>& empty, const LayeredOptions& opt) {
   auto& n = g.n;
   auto& real = g.real;
   auto& maxRank = g.maxRank;
@@ -1157,7 +1157,7 @@ inline void assignTracks(
   }
 }
 
-inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& nodes) noexcept {
+inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& nodes) {
   auto& n = g.n;
   auto& real = g.real;
   auto& maxRank = g.maxRank;
@@ -1532,7 +1532,7 @@ inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& n
   return {best, declared};
 }
 
-inline std::vector<double> position(const Graph& g, const LayeredOptions& opt) noexcept {
+inline std::vector<double> position(const Graph& g, const LayeredOptions& opt) {
   auto& n = g.n;
   auto& maxRank = g.maxRank;
   auto& W = g.W;
@@ -1730,7 +1730,7 @@ inline std::vector<double> position(const Graph& g, const LayeredOptions& opt) n
 
 } // namespace detail_layered
 
-inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt = {}) noexcept {
+inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt = {}) {
   using namespace detail_layered;
   int real = static_cast<int>(nodes.size());
   int m = static_cast<int>(edges.size());
@@ -2321,18 +2321,18 @@ constexpr int MAX_CROSSING_EDGES = 600;
 
 enum class Side : int { Top = 0, Right = 1, Bottom = 2, Left = 3 };
 
-inline Side startSide(const std::string& dir) noexcept {
+inline Side startSide(const std::string& dir) {
   if (dir == "BT") return Side::Bottom;
   if (dir == "LR") return Side::Left;
   if (dir == "RL") return Side::Right;
   return Side::Top;
 }
 
-inline Side opposite(Side s) noexcept {
+inline Side opposite(Side s) {
   return static_cast<Side>((static_cast<int>(s) + 2) & 3);
 }
 
-inline LayeredOptions styleOf(const CompoundOptions& opt) noexcept {
+inline LayeredOptions styleOf(const CompoundOptions& opt) {
   LayeredOptions lo;
   lo.nodeSep = opt.nodeSep;
   lo.rankSep = opt.rankSep;
@@ -2387,7 +2387,7 @@ struct Level {
   double y = 0;
 };
 
-inline void toLocal(const std::string& dir, std::vector<LNode>& lnodes, std::vector<LEdge>& ledges, double width, double height) noexcept {
+inline void toLocal(const std::string& dir, std::vector<LNode>& lnodes, std::vector<LEdge>& ledges, double width, double height) {
   if (dir == "TB") {
     for (auto& e : ledges) {
       std::vector<double> out;
@@ -2458,7 +2458,7 @@ inline void toLocal(const std::string& dir, std::vector<LNode>& lnodes, std::vec
   }
 }
 
-inline void appendRoute(std::vector<double>& dst, const std::vector<double>& pts, double ox, double oy) noexcept {
+inline void appendRoute(std::vector<double>& dst, const std::vector<double>& pts, double ox, double oy) {
   int n = static_cast<int>(pts.size());
   if (n == 0) return;
   int start = 0;
@@ -2473,7 +2473,7 @@ inline void appendRoute(std::vector<double>& dst, const std::vector<double>& pts
   }
 }
 
-inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, const LayeredOptions& style) noexcept {
+inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, const LayeredOptions& style) {
   struct Seg {
     int e;
     double ax, ay, bx, by;
@@ -2535,7 +2535,7 @@ struct Snapshot {
   Size total;
 };
 
-inline Snapshot snapshot(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, const std::vector<Level>& levels, Size total) noexcept {
+inline Snapshot snapshot(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, const std::vector<Level>& levels, Size total) {
   Snapshot s;
   s.nodePos.resize(nodes.size() * 4);
   for (size_t i = 0; i < nodes.size(); i++) {
@@ -2566,7 +2566,7 @@ inline Snapshot snapshot(const std::vector<CNode>& nodes, const std::vector<CEdg
   return s;
 }
 
-inline Size restore(const Snapshot& s, std::vector<CNode>& nodes, std::vector<CEdge>& edges, std::vector<Level>& levels) noexcept {
+inline Size restore(const Snapshot& s, std::vector<CNode>& nodes, std::vector<CEdge>& edges, std::vector<Level>& levels) {
   for (size_t i = 0; i < nodes.size(); i++) {
     nodes[i].x = s.nodePos[i * 4];
     nodes[i].y = s.nodePos[i * 4 + 1];
@@ -2593,9 +2593,9 @@ inline Size restore(const Snapshot& s, std::vector<CNode>& nodes, std::vector<CE
   return s.total;
 }
 
-inline void extendPort(Port& port, const std::vector<double>& pts, bool atStart, double boxW, double boxH) noexcept;
+inline void extendPort(Port& port, const std::vector<double>& pts, bool atStart, double boxW, double boxH);
 
-inline void layoutSingleLevel(Level& level, std::vector<CNode>& nodes, std::vector<CEdge>& edges, const LayeredOptions& style, bool keyed, const std::vector<double>& keys) noexcept {
+inline void layoutSingleLevel(Level& level, std::vector<CNode>& nodes, std::vector<CEdge>& edges, const LayeredOptions& style, bool keyed, const std::vector<double>& keys) {
   const auto& dir = level.dir;
   bool sideways = dir == "LR" || dir == "RL";
   bool rev = dir == "BT" || dir == "RL";
@@ -2798,7 +2798,7 @@ inline void layoutSingleLevel(Level& level, std::vector<CNode>& nodes, std::vect
   }
 }
 
-inline void extendPort(Port& port, const std::vector<double>& pts, bool atStart, double boxW, double boxH) noexcept {
+inline void extendPort(Port& port, const std::vector<double>& pts, bool atStart, double boxW, double boxH) {
   int end = atStart ? 0 : static_cast<int>(pts.size()) - 3;
   double x = pts[end];
   double y = pts[end + 1];
@@ -2827,7 +2827,7 @@ inline void extendPort(Port& port, const std::vector<double>& pts, bool atStart,
   port.route = std::move(out);
 }
 
-inline void shiftPortRoute(std::vector<double>& route, int end, int adj, bool vertical, double np) noexcept {
+inline void shiftPortRoute(std::vector<double>& route, int end, int adj, bool vertical, double np) {
   if (vertical) {
     double oldX = route[end];
     if (std::abs(route[adj] - oldX) < 0.01) route[adj] = np;
@@ -2839,7 +2839,7 @@ inline void shiftPortRoute(std::vector<double>& route, int end, int adj, bool ve
   }
 }
 
-inline void adjustBorderPorts(Level& childLv, const CNode& childNode, Level& parentLv, std::vector<CEdge>& edges) noexcept {
+inline void adjustBorderPorts(Level& childLv, const CNode& childNode, Level& parentLv, std::vector<CEdge>& edges) {
   if (childLv.ports.empty()) return;
   double gx = childNode.x - childNode.w / 2.0;
   double gy = childNode.y - childNode.h / 2.0;
@@ -2938,7 +2938,7 @@ inline void adjustBorderPorts(Level& childLv, const CNode& childNode, Level& par
   }
 }
 
-inline void rerouteSideEntries(const Level& childLv, const CNode& childNode, Level& parentLv, const std::vector<CNode>& nodes) noexcept {
+inline void rerouteSideEntries(const Level& childLv, const CNode& childNode, Level& parentLv, const std::vector<CNode>& nodes) {
   double gx0 = childNode.x - childNode.w / 2.0;
   double gx1 = childNode.x + childNode.w / 2.0;
   double gy0 = childNode.y - childNode.h / 2.0;
@@ -2992,7 +2992,7 @@ inline void rerouteSideEntries(const Level& childLv, const CNode& childNode, Lev
   }
 }
 
-inline std::vector<double> flatOrder(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, const std::vector<int>& loops, const LayeredOptions& style) noexcept {
+inline std::vector<double> flatOrder(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, const std::vector<int>& loops, const LayeredOptions& style) {
   int n = static_cast<int>(nodes.size());
   std::vector<int> leafIdx(n, -1);
   std::vector<int> groupIdx(n, -1);
@@ -3069,7 +3069,7 @@ inline std::vector<double> flatOrder(const std::vector<CNode>& nodes, const std:
 
 } // namespace detail_compound
 
-inline Size layoutCompound(std::vector<CNode>& nodes, std::vector<CEdge>& edges, const CompoundOptions& opt = {}) noexcept {
+inline Size layoutCompound(std::vector<CNode>& nodes, std::vector<CEdge>& edges, const CompoundOptions& opt = {}) {
   using namespace detail_compound;
   int n = static_cast<int>(nodes.size());
   if (n == 0) return {0, 0};
@@ -3402,7 +3402,7 @@ inline Size layoutCompound(std::vector<CNode>& nodes, std::vector<CEdge>& edges,
 // Port of src/layout/components.ts
 // ============================================================================
 
-inline std::vector<std::vector<int>> components(int count, const std::vector<std::pair<int, int>>& links) noexcept {
+inline std::vector<std::vector<int>> components(int count, const std::vector<std::pair<int, int>>& links) {
   std::vector<int> parent(count);
   for (int i = 0; i < count; i++) parent[i] = i;
   auto find = [&](int x) {
@@ -3441,7 +3441,7 @@ struct ComponentItem {
   double y = 0;
 };
 
-inline Size packComponents(std::vector<ComponentItem>& items, double gap = 48, double targetAspect = 1.4) noexcept {
+inline Size packComponents(std::vector<ComponentItem>& items, double gap = 48, double targetAspect = 1.4) {
   if (items.empty()) return {0, 0};
   if (items.size() == 1) {
     items[0].x = 0;
@@ -4016,7 +4016,7 @@ inline LanedGraph layoutLanes(
 // Port of endSide / insetRoute from src/svg/shapes.ts and src/svg/cluster.ts
 // ============================================================================
 
-inline int endSide(const std::vector<double>& route, int at, const CNode& c) noexcept {
+inline int endSide(const std::vector<double>& route, int at, const CNode& c) {
   double dx = route[at] - c.x;
   double dy = route[at + 1] - c.y;
   if (std::abs(std::abs(dy) - c.h / 2.0) < 0.5) return dy < 0 ? 0 : 2;
@@ -4030,7 +4030,7 @@ struct ShapeViewRef {
   double h = 0;
 };
 
-inline void insetRoute(std::vector<double>& route, int at, const ShapeViewRef& view, const CNode& c) noexcept {
+inline void insetRoute(std::vector<double>& route, int at, const ShapeViewRef& view, const CNode& c) {
   if (c.isGroup) return;
   int side = endSide(route, at, c);
   if (side == 0 || side == 2) {
@@ -4044,14 +4044,14 @@ inline void insetRoute(std::vector<double>& route, int at, const ShapeViewRef& v
 
 using Crossings = std::unordered_map<int, std::vector<double>>;
 
-inline void markCrossings(Crossings& crossings, const std::vector<double>& route) noexcept {
+inline void markCrossings(Crossings& crossings, const std::vector<double>& route) {
   for (size_t k = 0; k < route.size(); k += 3) {
     int key = static_cast<int>(std::llround(route[k + 1]));
     crossings[key].push_back(route[k]);
   }
 }
 
-inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) noexcept {
+inline double clusterTitleX(const CNode& c, double width, const Crossings& crossings, double pad) {
   if (width == 0) return c.x;
   double top = c.y - c.h / 2.0;
   double left = c.x - c.w / 2.0;
@@ -4076,7 +4076,7 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
   return best;
 }
 
-inline bool titleCrossed(const CNode& c, double width, double x, const Crossings& crossings) noexcept {
+inline bool titleCrossed(const CNode& c, double width, double x, const Crossings& crossings) {
   if (width <= 0) return false;
   auto it = crossings.find(static_cast<int>(std::llround(c.y - c.h / 2.0)));
   if (it == crossings.end()) return false;

@@ -28,7 +28,7 @@ enum Kind {
 };
 } // namespace T
 
-inline TokenType makeTreemapTitle() noexcept {
+inline TokenType makeTreemapTitle() {
     TokenType t = common_tokens::makeTitle();
     t.match = [](const std::string& src, int at, int) -> int {
         int p = common_tokens::matchTabsSpaces(src, at);
@@ -43,7 +43,7 @@ inline TokenType makeTreemapTitle() noexcept {
     return t;
 }
 
-inline const std::vector<TokenType>& treemapTokens() noexcept {
+inline const std::vector<TokenType>& treemapTokens() {
     static const std::vector<TokenType> types = []() {
         TokenType kw;
         kw.name = "TREEMAP_KEYWORD";
@@ -199,7 +199,7 @@ struct TreemapAst {
     std::vector<TreemapRowEntry> rows;
 };
 
-inline std::string fixSingle(const std::string& text) noexcept {
+inline std::string fixSingle(const std::string& text) {
     std::string s = trimStr(text);
     std::string out;
     int spaces = 0;
@@ -219,19 +219,19 @@ inline std::string fixSingle(const std::string& text) noexcept {
     return out;
 }
 
-inline std::string fixTitleValue(const std::string& text) noexcept {
+inline std::string fixTitleValue(const std::string& text) {
     size_t pos = text.find("title");
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 5));
 }
 
-inline std::string fixAccTitleValue(const std::string& text) noexcept {
+inline std::string fixAccTitleValue(const std::string& text) {
     size_t pos = text.find(':');
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 1));
 }
 
-inline std::string fixAccDescrValue(const std::string& text) noexcept {
+inline std::string fixAccDescrValue(const std::string& text) {
     size_t brace = text.find('{');
     size_t colon = text.find(':');
     if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -352,7 +352,7 @@ struct TreemapModel : public DiagramMeta {
     std::unordered_map<std::string, std::vector<std::string>> classes;
 };
 
-inline std::vector<TreemapNode> buildHierarchy(const std::vector<TreemapItem>& items) noexcept {
+inline std::vector<TreemapNode> buildHierarchy(const std::vector<TreemapItem>& items) {
     // Use shared_ptr tree first so pushing onto children vectors never invalidates pointers in `stack`
     struct TempNode {
         TreemapNode data;
@@ -387,7 +387,7 @@ inline std::vector<TreemapNode> buildHierarchy(const std::vector<TreemapItem>& i
     return roots;
 }
 
-inline TreemapModel buildTreemap(const TreemapAst& ast, const std::string& fallbackTitle) noexcept {
+inline TreemapModel buildTreemap(const TreemapAst& ast, const std::string& fallbackTitle) {
     TreemapModel model;
     for (const auto& row : ast.rows) {
         if (!row.isClassDef) continue;
@@ -431,7 +431,7 @@ inline TreemapModel buildTreemap(const TreemapAst& ast, const std::string& fallb
 // src/diagrams/treemap/format.ts
 // ============================================================================
 
-inline std::string groupDigits(const std::string& digits) noexcept {
+inline std::string groupDigits(const std::string& digits) {
     std::string out;
     for (int i = static_cast<int>(digits.size()); i > 0; i -= 3) {
         int start = std::max(0, i - 3);
@@ -570,7 +570,7 @@ struct Insets {
     double side = 0.0;
 };
 
-inline std::shared_ptr<Box> makeBox(const TreemapNode& node, const std::shared_ptr<Box>& parent, int series) noexcept {
+inline std::shared_ptr<Box> makeBox(const TreemapNode& node, const std::shared_ptr<Box>& parent, int series) {
     auto b = std::make_shared<Box>();
     b->node = &node;
     b->parent = parent;
@@ -579,11 +579,11 @@ inline std::shared_ptr<Box> makeBox(const TreemapNode& node, const std::shared_p
     return b;
 }
 
-inline double clampVal(double v, double low, double high) noexcept {
+inline double clampVal(double v, double low, double high) {
     return v >= low ? std::min(v, high) : low;
 }
 
-inline void squarify(std::vector<std::shared_ptr<Box>>& boxes, double total, double x, double y, double w, double h, double gap) noexcept {
+inline void squarify(std::vector<std::shared_ptr<Box>>& boxes, double total, double x, double y, double w, double h, double gap) {
     double rest = total;
     size_t from = 0;
     while (from < boxes.size()) {
@@ -632,7 +632,7 @@ inline void squarify(std::vector<std::shared_ptr<Box>>& boxes, double total, dou
     }
 }
 
-inline std::vector<std::shared_ptr<Box>> layoutTreemap(const std::vector<TreemapNode>& roots, double width, double height, const Insets& insets) noexcept {
+inline std::vector<std::shared_ptr<Box>> layoutTreemap(const std::vector<TreemapNode>& roots, double width, double height, const Insets& insets) {
     std::vector<std::shared_ptr<Box>> top;
     for (size_t i = 0; i < roots.size(); i++) {
         top.push_back(makeBox(roots[i], nullptr, static_cast<int>(i)));
@@ -758,11 +758,11 @@ inline std::optional<FittedText> fitText(
     return std::nullopt;
 }
 
-inline std::string titlePart(const std::string& raw) noexcept {
+inline std::string titlePart(const std::string& raw) {
     return trimStr(esc(trimStr(decodeEntities(raw))));
 }
 
-inline int leafCount(const std::vector<TreemapNode>& roots) noexcept {
+inline int leafCount(const std::vector<TreemapNode>& roots) {
     int count = 0;
     std::vector<const TreemapNode*> stack;
     for (const auto& r : roots) stack.push_back(&r);
@@ -778,7 +778,7 @@ inline int leafCount(const std::vector<TreemapNode>& roots) noexcept {
     return count;
 }
 
-inline std::string corners(const std::string& attrs, const Box& b) noexcept {
+inline std::string corners(const std::string& attrs, const Box& b) {
     double cap = std::min(b.w, b.h) / 4.0;
     if (cap < 4.0) {
         return replaceAllStr(rounded(attrs),  "rx:var(--_r)", Pele::cat({"rx:min(var(--_r),", num(cap), "px)"}));
@@ -786,7 +786,7 @@ inline std::string corners(const std::string& attrs, const Box& b) noexcept {
     return rounded(attrs);
 }
 
-inline double treemapOption(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) noexcept {
+inline double treemapOption(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) {
     const auto* t = config.get("treemap");
     if (!t || !t->isMap()) return fallback;
     const auto* v = t->get(key);
@@ -794,19 +794,19 @@ inline double treemapOption(const Config& config, const std::string& key, double
     return v->nVal >= minVal ? std::min(v->nVal, maxVal) : fallback;
 }
 
-inline double capWidth(const RenderOptions& options, double natural, double least, double around = 0.0) noexcept {
+inline double capWidth(const RenderOptions& options, double natural, double least, double around = 0.0) {
     double available = options.maxWidth;
     if (!(available > 0.0)) return natural;
     return std::max(std::min(least, natural), std::min(natural, available - around));
 }
 
-inline double treemapTitleRoom(const RenderOptions& options) noexcept {
+inline double treemapTitleRoom(const RenderOptions& options) {
     double available = options.maxWidth;
     double pad = options.hasPadding ? options.padding : 8.0;
     return available > 0.0 ? std::max(80.0, available - 2.0 * pad) : 4000.0;
 }
 
-inline Rendered renderTreemapModel(const TreemapModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderTreemapModel(const TreemapModel& model, const Config& config, const RenderOptions& options) {
     double size = options.hasFontSize ? options.fontSize : 16.0;
     double small = std::round(size * 0.875);
     double tiny = std::round(size * 0.75);

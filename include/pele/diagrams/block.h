@@ -60,7 +60,7 @@ struct BlockModel : public DiagramMeta {
 // src/diagrams/block/db.ts
 // ============================================================================
 
-inline std::string typeStr2Type(const std::string& typeStr) noexcept {
+inline std::string typeStr2Type(const std::string& typeStr) {
     if (typeStr == "[]") return "square";
     if (typeStr == "()") return "round";
     if (typeStr == "(())") return "circle";
@@ -79,7 +79,7 @@ inline std::string typeStr2Type(const std::string& typeStr) noexcept {
     return "na";
 }
 
-inline std::string edgeStrToEdgeData(const std::string& typeStr) noexcept {
+inline std::string edgeStrToEdgeData(const std::string& typeStr) {
     std::string t = trimStr(typeStr);
     if (t.empty()) return "";
     switch (t.back()) {
@@ -90,7 +90,7 @@ inline std::string edgeStrToEdgeData(const std::string& typeStr) noexcept {
     }
 }
 
-inline std::string edgeStrToEdgeStartData(const std::string& typeStr) noexcept {
+inline std::string edgeStrToEdgeStartData(const std::string& typeStr) {
     std::string t = trimStr(typeStr);
     if (t.empty()) return "arrow_open";
     switch (t.front()) {
@@ -101,11 +101,11 @@ inline std::string edgeStrToEdgeStartData(const std::string& typeStr) noexcept {
     }
 }
 
-inline std::string edgeStrToThickness(const std::string& typeStr) noexcept {
+inline std::string edgeStrToThickness(const std::string& typeStr) {
     return typeStr.find("==") != std::string::npos ? "thick" : "normal";
 }
 
-inline std::string edgeStrToPattern(const std::string& typeStr) noexcept {
+inline std::string edgeStrToPattern(const std::string& typeStr) {
     return typeStr.find(".-") != std::string::npos ? "dotted" : "solid";
 }
 
@@ -308,7 +308,7 @@ struct Tokens {
     std::vector<size_t> starts;
 };
 
-inline bool isBlockIdStop(int ch) noexcept {
+inline bool isBlockIdStop(int ch) {
     if (ch < 0) return true;
     if (ch < 128) {
         switch (ch) {
@@ -742,7 +742,7 @@ inline Tokens tokenize(const std::string& src) {
 // src/diagrams/block/parser.ts
 // ============================================================================
 
-inline std::vector<Statement> closeDocument(std::vector<Statement> list) noexcept {
+inline std::vector<Statement> closeDocument(std::vector<Statement> list) {
     if (list.empty() || !list.back().isList) return list;
     auto last = std::move(list.back().list);
     list.pop_back();
@@ -985,7 +985,7 @@ struct ArrowSize {
     double dy = 0.0;
 };
 
-inline int arrowMask(const std::vector<std::string>& directions) noexcept {
+inline int arrowMask(const std::vector<std::string>& directions) {
     int mask = 0;
     for (const auto& rawDir : directions) {
         std::string d = trimStr(rawDir);
@@ -999,13 +999,13 @@ inline int arrowMask(const std::vector<std::string>& directions) noexcept {
     return mask;
 }
 
-inline char arrowAxis(int mask) noexcept {
+inline char arrowAxis(int mask) {
     if (mask != 0 && (mask & (ARR_UP | ARR_DOWN)) == 0) return 'x';
     if (mask != 0 && (mask & (ARR_RIGHT | ARR_LEFT)) == 0) return 'y';
     return '\0';
 }
 
-inline ArrowSize arrowSize(int mask, double tw, double th) noexcept {
+inline ArrowSize arrowSize(int mask, double tw, double th) {
     char axis = arrowAxis(mask);
     auto bit = [&](int flag) -> int { return (mask & flag) ? 1 : 0; };
     int across = bit(ARR_LEFT) - bit(ARR_RIGHT);
@@ -1028,7 +1028,7 @@ inline ArrowSize arrowSize(int mask, double tw, double th) noexcept {
     };
 }
 
-inline std::string drawArrow(int mask, double w, double h, const std::string& attrs) noexcept {
+inline std::string drawArrow(int mask, double w, double h, const std::string& attrs) {
     char axis = arrowAxis(mask);
     double x = w / 2.0;
     double y = h / 2.0;
@@ -1132,13 +1132,13 @@ struct Route {
     double ly = 0.0;
 };
 
-inline double totalGaps(const std::vector<double>& gaps) noexcept {
+inline double totalGaps(const std::vector<double>& gaps) {
     double sum = 0.0;
     for (double g : gaps) sum += g;
     return sum;
 }
 
-inline void measureCell(View& box, double gap, double inset) noexcept {
+inline void measureCell(View& box, double gap, double inset) {
     int columns = box.columns;
     std::vector<double> heights;
     int position = 0;
@@ -1174,7 +1174,7 @@ inline void measureCell(View& box, double gap, double inset) noexcept {
     box.nh = height + 2.0 * inset + box.head;
 }
 
-inline void arrangeCell(View& box, double gap, double inset) noexcept {
+inline void arrangeCell(View& box, double gap, double inset) {
     int cols = box.cols;
     const auto& heights = box.heights;
     const auto& rowGaps = box.rowGaps;
@@ -1212,7 +1212,7 @@ inline void arrangeCell(View& box, double gap, double inset) noexcept {
     }
 }
 
-inline std::pair<double, double> layoutCells(View& root, double gap) noexcept {
+inline std::pair<double, double> layoutCells(View& root, double gap) {
     std::vector<View*> order = {&root};
     for (size_t i = 0; i < order.size(); i++) {
         for (View* child : order[i]->children) order.push_back(child);
@@ -1232,11 +1232,11 @@ inline std::pair<double, double> layoutCells(View& root, double gap) noexcept {
     return {root.w, root.h};
 }
 
-inline bool isRoundView(const View& v) noexcept {
+inline bool isRoundView(const View& v) {
     return v.kind == ViewKind::Leaf && (v.shape == "circle" || v.shape == "dbl-circ");
 }
 
-inline double blockEdgeY(const View& v, double x, double sign) noexcept {
+inline double blockEdgeY(const View& v, double x, double sign) {
     double hw = v.bw / 2.0;
     double hh = v.bh / 2.0;
     double dx = std::abs(x - v.x);
@@ -1248,7 +1248,7 @@ inline double blockEdgeY(const View& v, double x, double sign) noexcept {
     return v.y + sign * reach;
 }
 
-inline double blockEdgeX(const View& v, double y, double sign) noexcept {
+inline double blockEdgeX(const View& v, double y, double sign) {
     double hw = v.bw / 2.0;
     double hh = v.bh / 2.0;
     double dy = std::abs(y - v.y);
@@ -1260,7 +1260,7 @@ inline double blockEdgeX(const View& v, double y, double sign) noexcept {
     return v.x + sign * reach;
 }
 
-inline void blockBorder(const View& v, double tx, double ty, std::vector<double>& out) noexcept {
+inline void blockBorder(const View& v, double tx, double ty, std::vector<double>& out) {
     double dx = tx - v.x;
     double dy = ty - v.y;
     double hw = v.bw / 2.0;
@@ -1282,7 +1282,7 @@ inline void blockBorder(const View& v, double tx, double ty, std::vector<double>
     out.push_back(v.y + dy * k);
 }
 
-inline bool crossesBox(double x1, double y1, double x2, double y2, const View& v) noexcept {
+inline bool crossesBox(double x1, double y1, double x2, double y2, const View& v) {
     double l = v.x - v.bw / 2.0 + 1.0;
     double r = v.x + v.bw / 2.0 - 1.0;
     double t = v.y - v.bh / 2.0 + 1.0;
@@ -1299,7 +1299,7 @@ inline bool crossesBox(double x1, double y1, double x2, double y2, const View& v
     return first == 0 || side(r, t) != first || side(r, b) != first || side(l, b) != first;
 }
 
-inline int countHits(const std::vector<double>& points, const View* s, const View* t, const std::vector<View*>& obstacles) noexcept {
+inline int countHits(const std::vector<double>& points, const View* s, const View* t, const std::vector<View*>& obstacles) {
     int count = 0;
     for (const View* v : obstacles) {
         if (v == s || v == t) continue;
@@ -1313,7 +1313,7 @@ inline int countHits(const std::vector<double>& points, const View* s, const Vie
     return count;
 }
 
-inline std::vector<double> routeBlockEdge(const View& s, const View& t, double shift, const std::vector<View*>* obstacles) noexcept {
+inline std::vector<double> routeBlockEdge(const View& s, const View& t, double shift, const std::vector<View*>* obstacles) {
     double sl = s.x - s.bw / 2.0;
     double sr = s.x + s.bw / 2.0;
     double st = s.y - s.bh / 2.0;
@@ -1380,7 +1380,7 @@ inline std::vector<double> routeBlockEdge(const View& s, const View& t, double s
     return countHits(direct, &s, &t, *obstacles) < least ? direct : best;
 }
 
-inline EdgePath traceBlockEdge(const std::vector<double>& p, double startTrim, double endTrim) noexcept {
+inline EdgePath traceBlockEdge(const std::vector<double>& p, double startTrim, double endTrim) {
     size_t n = p.size();
     double sx = p[0];
     double sy = p[1];
@@ -1416,7 +1416,7 @@ struct LoopArcInfo {
     double px, py, r, a1, a2;
 };
 
-inline LoopArcInfo blockLoopArc(const View& v, int k) noexcept {
+inline LoopArcInfo blockLoopArc(const View& v, int k) {
     constexpr double PI = 3.14159265358979323846;
     constexpr double SQRT1_2 = 0.70710678118654752440;
     double hw = v.bw / 2.0;
@@ -1438,7 +1438,7 @@ inline LoopArcInfo blockLoopArc(const View& v, int k) noexcept {
     return {v.x + hw, v.y - hh, r, PI, PI / 2.0};
 }
 
-inline EdgePath blockLoopPath(const View& v, int k, double startTrim, double endTrim) noexcept {
+inline EdgePath blockLoopPath(const View& v, int k, double startTrim, double endTrim) {
     constexpr double PI = 3.14159265358979323846;
     auto arc = blockLoopArc(v, k);
     double from = arc.a1 + startTrim / arc.r;
@@ -1467,7 +1467,7 @@ inline EdgePath blockLoopPath(const View& v, int k, double startTrim, double end
     };
 }
 
-inline bool coversBox(double x, double y, double w, double h, const View* s, const View* t, const std::vector<Box>* obstacles) noexcept {
+inline bool coversBox(double x, double y, double w, double h, const View* s, const View* t, const std::vector<Box>* obstacles) {
     if (!obstacles) return false;
     for (const auto& v : *obstacles) {
         if (v.viewPtr != s && v.viewPtr != t && std::abs(x - v.x) < (w + v.bw) / 2.0 && std::abs(y - v.y) < (h + v.bh) / 2.0) return true;
@@ -1475,7 +1475,7 @@ inline bool coversBox(double x, double y, double w, double h, const View* s, con
     return false;
 }
 
-inline double labelSpot(const std::vector<double>& p, size_t at, double w, double h, const View* s, const View* t, const std::vector<View*>* obstacles) noexcept {
+inline double labelSpot(const std::vector<double>& p, size_t at, double w, double h, const View* s, const View* t, const std::vector<View*>* obstacles) {
     if (!obstacles) return 0.5;
     static const double SPOTS[5] = {0.5, 0.3, 0.7, 0.15, 0.85};
     for (double spot : SPOTS) {
@@ -1493,7 +1493,7 @@ inline double labelSpot(const std::vector<double>& p, size_t at, double w, doubl
     return 0.5;
 }
 
-inline double stackLabels(const std::vector<size_t>& stack, std::vector<Route>& routes, const std::vector<std::vector<double>>& legs, const View* s, const View* t, const std::vector<Box>* obstacles) noexcept {
+inline double stackLabels(const std::vector<size_t>& stack, std::vector<Route>& routes, const std::vector<std::vector<double>>& legs, const View* s, const View* t, const std::vector<Box>* obstacles) {
     constexpr double LABEL_GAP = 4.0;
     bool vertical = (legs[stack[0]][0] == legs[stack[0]][2]);
     double lo = -std::numeric_limits<double>::infinity();
@@ -1531,7 +1531,7 @@ inline double stackLabels(const std::vector<size_t>& stack, std::vector<Route>& 
     return 0.0;
 }
 
-inline bool widenGap(const std::vector<View*>& parents, View* s, View* t, bool vertical, double shortAmt, std::unordered_map<std::vector<double>*, std::vector<double>>& base) noexcept {
+inline bool widenGap(const std::vector<View*>& parents, View* s, View* t, bool vertical, double shortAmt, std::unordered_map<std::vector<double>*, std::vector<double>>& base) {
     std::unordered_set<View*> chain;
     for (View* v = s; v != nullptr; v = parents[v->index]) chain.insert(v);
     View* tb = nullptr;
@@ -1562,7 +1562,7 @@ inline bool widenGap(const std::vector<View*>& parents, View* s, View* t, bool v
     return true;
 }
 
-inline Rendered drawBlock(const BlockModel& model, const Config& config, const RenderOptions& options, bool tight) noexcept {
+inline Rendered drawBlock(const BlockModel& model, const Config& config, const RenderOptions& options, bool tight) {
     double size = options.fontSize;
     double edgeSize = std::round(size * 0.875);
     const TextMeasurer& measurer = getMeasurer(options);

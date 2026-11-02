@@ -93,7 +93,7 @@ struct CynefinAst {
     std::vector<TransitionAst> transitions;
 };
 
-inline std::string fixSingle(const std::string& text) noexcept {
+inline std::string fixSingle(const std::string& text) {
     std::string s = trimStr(text);
     std::string out;
     int spaces = 0;
@@ -113,19 +113,19 @@ inline std::string fixSingle(const std::string& text) noexcept {
     return out;
 }
 
-inline std::string fixTitleValue(const std::string& text) noexcept {
+inline std::string fixTitleValue(const std::string& text) {
     size_t pos = text.find("title");
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 5));
 }
 
-inline std::string fixAccTitleValue(const std::string& text) noexcept {
+inline std::string fixAccTitleValue(const std::string& text) {
     size_t pos = text.find(':');
     if (pos == std::string::npos) return "";
     return fixSingle(text.substr(pos + 1));
 }
 
-inline std::string fixAccDescrValue(const std::string& text) noexcept {
+inline std::string fixAccDescrValue(const std::string& text) {
     size_t brace = text.find('{');
     size_t colon = text.find(':');
     if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -225,7 +225,7 @@ struct CynefinModel : public DiagramMeta {
     std::vector<CynefinTransition> transitions;
 };
 
-inline CynefinModel buildCynefin(const CynefinAst& ast, const std::string& fallbackTitle) noexcept {
+inline CynefinModel buildCynefin(const CynefinAst& ast, const std::string& fallbackTitle) {
     CynefinModel model;
     for (const auto& block : ast.domains) {
         model.domains[block.domain] = {block.domain, block.items};
@@ -255,7 +255,7 @@ inline CynefinModel buildCynefin(const CynefinAst& ast, const std::string& fallb
 // src/diagrams/cynefin/boundaries.ts
 // ============================================================================
 
-inline double seededRandom(double seedVal) noexcept {
+inline double seededRandom(double seedVal) {
     uint32_t seed = static_cast<uint32_t>(static_cast<int32_t>(static_cast<int64_t>(seedVal)));
     uint32_t t = seed + 0x6d2b79f5u;
     t = (t ^ (t >> 15)) * (t | 1u);
@@ -263,7 +263,7 @@ inline double seededRandom(double seedVal) noexcept {
     return static_cast<double>(t ^ (t >> 14)) / 4294967296.0;
 }
 
-inline int32_t hashString(const std::string& str) noexcept {
+inline int32_t hashString(const std::string& str) {
     auto u16 = toUtf16(str);
     uint32_t hash = 0;
     for (uint16_t c : u16) {
@@ -272,7 +272,7 @@ inline int32_t hashString(const std::string& str) noexcept {
     return static_cast<int32_t>(hash);
 }
 
-inline double resolveSeed(double configured, const std::string& id) noexcept {
+inline double resolveSeed(double configured, const std::string& id) {
     if (std::isfinite(configured) && configured != 0.0) return configured;
     return static_cast<double>(hashString(id));
 }
@@ -287,7 +287,7 @@ struct WaveOptions {
     bool pinEnd = false;
 };
 
-inline std::vector<double> wave(double from, double to, double center, double seed, double amplitude, const WaveOptions& o) noexcept {
+inline std::vector<double> wave(double from, double to, double center, double seed, double amplitude, const WaveOptions& o) {
     double step = (to - from) / static_cast<double>(o.segments);
     std::vector<double> along;
     std::vector<double> across;
@@ -319,7 +319,7 @@ inline std::vector<double> wave(double from, double to, double center, double se
     return out;
 }
 
-inline std::vector<double> cliff(double cx, double top, double bottom, double amplitude) noexcept {
+inline std::vector<double> cliff(double cx, double top, double bottom, double amplitude) {
     double h = bottom - top;
     return {
         cx, top,
@@ -328,7 +328,7 @@ inline std::vector<double> cliff(double cx, double top, double bottom, double am
     };
 }
 
-inline std::string forwardCurve(const std::vector<double>& curve) noexcept {
+inline std::string forwardCurve(const std::vector<double>& curve) {
     std::string d;
     for (size_t i = 2; i + 5 < curve.size(); i += 6) {
         Pele::appendCat(d, {"C", num(curve[i]), ",", num(curve[i + 1]), " ", num(curve[i + 2]), ",", num(curve[i + 3]), " ", num(curve[i + 4]), ",", num(curve[i + 5])});
@@ -336,7 +336,7 @@ inline std::string forwardCurve(const std::vector<double>& curve) noexcept {
     return d;
 }
 
-inline std::string backwardCurve(const std::vector<double>& curve) noexcept {
+inline std::string backwardCurve(const std::vector<double>& curve) {
     std::string d;
     for (int i = static_cast<int>(curve.size()) - 6; i >= 2; i -= 6) {
         Pele::appendCat(d, {"C", num(curve[i + 2]), ",", num(curve[i + 3]), " ", num(curve[i]), ",", num(curve[i + 1]), " ", num(curve[i - 2]), ",", num(curve[i - 1])});
@@ -344,11 +344,11 @@ inline std::string backwardCurve(const std::vector<double>& curve) noexcept {
     return d;
 }
 
-inline std::string curvePath(const std::vector<double>& curve) noexcept {
+inline std::string curvePath(const std::vector<double>& curve) {
     return Pele::cat({"M", num(curve[0]), ",", num(curve[1]), forwardCurve(curve)});
 }
 
-inline std::string ellipsePath(double cx, double cy, double rx, double ry) noexcept {
+inline std::string ellipsePath(double cx, double cy, double rx, double ry) {
     std::string r = Pele::cat({num(rx), ",", num(ry)});
     return Pele::cat({"M", num(cx - rx), ",", num(cy), "A", r, " 0 1,1 ", num(cx + rx), ",", num(cy), "A", r, " 0 1,1 ", num(cx - rx), ",", num(cy), "Z"});
 }
@@ -386,7 +386,7 @@ struct Block {
     double cy = 0.0;
 };
 
-inline double cynefinSetting(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) noexcept {
+inline double cynefinSetting(const Config& config, const std::string& key, double fallback, double minVal, double maxVal) {
     const auto* c = config.get("cynefin");
     if (!c || !c->isMap()) return fallback;
     const auto* v = c->get(key);
@@ -394,7 +394,7 @@ inline double cynefinSetting(const Config& config, const std::string& key, doubl
     return (v->nVal >= minVal && v->nVal <= maxVal) ? v->nVal : fallback;
 }
 
-inline Rendered renderCynefinModel(const CynefinModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderCynefinModel(const CynefinModel& model, const Config& config, const RenderOptions& options) {
     double size = options.hasFontSize ? options.fontSize : 16.0;
     double small = std::round(size * 0.8125);
     double itemSize = std::round(size * 0.875);

@@ -219,28 +219,17 @@ def main():
         notes = args.notes
         if not notes:
             # Default release notes template
-            notes = f"# miu {release_name} リリースノート\n\n" + r"""### 🎨 25言語のシンタックスハイライト新規追加（全49カテゴリ・120種以上の拡張子対応）＆ 全角文字の行番号位置ズレ修正・水平スクロールバー＆編集エンジンの精度向上
+            notes = f"# miu {release_name} リリースノート\n\n" + r"""### 🛡️ ライブプレビュー（Mermaid図表・KaTeX数式・Markdown）のクラッシュ修正と例外安全性強化
 
-1. **25種類の言語・設定ファイルのシンタックスハイライト＆コメント切り替え（`Ctrl+/`）新規追加**
-   - 従来の24カテゴリから **全49カテゴリ（120種以上の拡張子・特殊ファイル名）** へ大幅拡充しました。ゼロアロケーション・高速決定性スキャナにより、超巨大ファイルでもフレーム落ちなく瞬時に色分け表示します。
-   - **モダン・統計・関数型・スクリプト言語（10種）**:
-     - **Dart / Flutter** (`.dart`)、**R** (`.r`)、**Zig** (`.zig`)、**Scala** (`.scala`, `.sc`)、**Perl** (`.pl`, `.pm`)、**Visual Basic / VBA / VBScript** (`.vb`, `.vbs`, `.bas`, `.vba`)、**F#** (`.fs`, `.fsi`, `.fsx`)、**Julia** (`.jl`)、**Haskell** (`.hs`, `.lhs`)、**Elixir** (`.ex`, `.exs`)
-   - **クラウド・コンテナ・ビルド・設定・スキーマ（8種）**:
-     - **Dockerfile** (`Dockerfile`, `Containerfile`, `Dockerfile.*`, `.dockerfile`)、**Terraform / HCL** (`.tf`, `.tfvars`, `.hcl`)、**TOML / `.env`** (`.toml`, `.env`, `.env.*`)、**GraphQL** (`.graphql`, `.gql`)、**Protocol Buffers** (`.proto`)、**CMake** (`.cmake`, `CMakeLists.txt`)、**Makefile** (`Makefile`, `GNUmakefile`, `.mk`, `.mak`)、**Windows レジストリ** (`.reg`)
-   - **シェーダー・低レイヤ・ハードウェア記述言語（4種）**:
-     - **Shaders HLSL / GLSL / WGSL** (`.hlsl`, `.fx`, `.glsl`, `.vert`, `.frag`, `.comp`, `.geom`, `.tesc`, `.tese`, `.wgsl`)、**Assembly (x86/x64/ARM/GAS)** (`.asm`, `.s`, `.inc`)、**Verilog / SystemVerilog** (`.v`, `.sv`, `.svh`, `.vh`)、**VHDL** (`.vhd`, `.vhdl`)
-   - **開発ツール・ログ・既存言語の派生拡張子（3種＋派生拡張子）**:
-     - **Diff / Patch** (`.diff`, `.patch`：追加行・削除行・ハンクヘッダの色分け)、**Log ファイル** (`.log`：タイムスタンプ・`ERROR`/`WARN`/`INFO`/`DEBUG` 重要度・IPv4・文字列の色分け)、および C/C++ (`.rc`, `.ino`, `.cu`, `.cuh`, `.ipp`, `.tpp`, `.hh`, `.inl`)、XML/MSBuild (`.vcxproj`, `.csproj`, `.fsproj`, `.vbproj`, `.props`, `.targets`, `.wapproj`, `.appxmanifest`, `.resw`, `.resx`, `.plist`, `.xaml`, `.nuspec`, `.config`, `.manifest`)、Python (`.pyw`, `.pyi`)、PowerShell (`.psm1`, `.psd1`) に対応しました。
+1. **Mermaid ガントチャート等の入力中ライブプレビューで強制終了する不具合を修正**
+   - ガントチャート（`gantt`）等で日付入力途中（例：`205-01-01` 等の3桁年号や未完了の文字列）に内部の `std::runtime_error` が送出された際、図表レンダラ（`include/pele/diagrams/` 全26種）やプレビュー変換関数に付与されていた `noexcept` 指定によって `std::terminate`（即時クラッシュ）が発生していた問題を修正しました。
+   - 例外を送出する可能性のある図表・数式・SVG・Markdown 変換関数から不適切な `noexcept` を除去し、`Pele::renderToSvg`・`cachedMermaidRenderSvg`・`renderMathToHtml`・`buildFullPreviewHtml`・`updatePreviewContent` の各境界に多層の `try / catch (...)` ガードを実装しました。
 
-2. **全角文字（日本語・CJK・絵文字）入力時の行番号と本文の縦位置ズレ修正**
-   - DirectWrite のフォントフォールバック（Consolas → Yu Gothic UI / Meiryo 等）発生時に行のアセント・ディセントが微小変動していた問題を特定し、本文レイアウトと行番号ガターの両方に均一ラインスペーシング（`DWRITE_LINE_SPACING_METHOD_UNIFORM`: `lineHeight` / `baseline = lineHeight * 0.8f`）を適用しました。
-   - 半角のみの行と全角を含む行でベースラインと行高が 1 ピクセルの狂いもなく完全一致し、描画パフォーマンスの低下も一切ありません。
+2. **Mermaid ガントチャートの日付パーサ拡張（3〜4桁年号フォールバック対応）**
+   - `parseJsFallbackDate()` を拡張し、標準の4桁年号（`YYYY-MM-DD`）だけでなく入力途中の3桁年号（`YYY-MM-DD`、例：`205-01-01`）もローカル日付として安全に解釈・描画できるよう改善しました。
 
-3. **水平スクロールバーの表示精度改善 ＆ 編集エンジンの堅牢性強化**
-   - **新規作成直後の改行で水平スクロールバーが表示される不具合を修正**: `ensureCaretVisible()` で負の `hScrollPos`（左マージンオフセット）がクランプ前に加算されていた計算順序の不整合を修正し、実際にテキスト幅が表示領域を超えた時のみ水平スクロールバーが表示されるようになりました。
-   - **単一行編集時の行幅再計測の統一**: 全角文字入力時の UTF-8 バイト数と表示幅の乖離による不要な水平スクロールバー表示を解消し、長文行を Backspace / Delete で短くした際にも即座に水平スクロールバーが消えるようになりました。
-   - **最終行（改行なし）での下方向行複製（`Alt+Shift+Down`）の修正**: 末尾に改行がない最終行を複製した際に余分な空行が1行多く挿入されていた問題を修正しました。
-   - **Undo / Redo およびファイル切り替え時の状態整合性強化**: Undo / Redo 時の矩形選択パディングのロールバック漏れ修正、および新規作成・ファイルオープン時の矩形選択モード状態リセットを追加しました。
+3. **プレビューHTML生成エンジンの堅牢性強化**
+   - 未閉じの `$$` 数式ブロックや構文途中の Mermaid コードブロックをリアルタイム編集中でも、例外でエディタが落ちることなく安全にフォールバック表示・継続編集できるよう安定性を強化しました。
 """
         elif os.path.exists(notes):
             with open(notes, "r", encoding="utf-8") as f:

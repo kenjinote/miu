@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "text.h"
 
 namespace Pele {
@@ -7,11 +7,11 @@ namespace Pele {
 // src/svg/builder.ts
 // ============================================================================
 
-inline bool isInvalidXmlCodepoint(uint32_t cp) noexcept {
+inline bool isInvalidXmlCodepoint(uint32_t cp) {
     return (cp <= 0x08) || cp == 0x0b || cp == 0x0c || (cp >= 0x0e && cp <= 0x1f) || cp == 0x7f || (cp >= 0xd800 && cp <= 0xdfff) || cp == 0xfffe || cp == 0xffff;
 }
 
-inline bool hasInvalidXml(const std::string& text) noexcept {
+inline bool hasInvalidXml(const std::string& text) {
     size_t i = 0;
     while (i < text.size()) {
         uint32_t cp = nextCodepoint(text, i);
@@ -20,7 +20,7 @@ inline bool hasInvalidXml(const std::string& text) noexcept {
     return false;
 }
 
-PELE_NOINLINE inline std::string esc(const std::string& text) noexcept {
+PELE_NOINLINE inline std::string esc(const std::string& text) {
     std::string out;
     out.reserve(text.size() + 8);
     size_t i = 0;
@@ -37,11 +37,11 @@ PELE_NOINLINE inline std::string esc(const std::string& text) noexcept {
     return out;
 }
 
-PELE_NOINLINE inline std::string escText(const std::string& text) noexcept {
+PELE_NOINLINE inline std::string escText(const std::string& text) {
     return esc(decodeEntities(text));
 }
 
-PELE_NOINLINE inline std::string num(double value) noexcept {
+PELE_NOINLINE inline std::string num(double value) {
     if (!std::isfinite(value)) return "0";
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
@@ -72,7 +72,7 @@ PELE_NOINLINE inline std::string num(double value) noexcept {
     return std::string(p, static_cast<size_t>(end - p));
 }
 
-inline std::string spanStyle(int style) noexcept {
+inline std::string spanStyle(int style) {
     std::string out;
     if (style & Style::Bold) out += " font-weight=\"var(--_w)\"";
     if (style & Style::Italic) out += " font-style=\"italic\"";
@@ -83,7 +83,7 @@ inline std::string spanStyle(int style) noexcept {
     return out;
 }
 
-inline int sharedStyle(const Label& label) noexcept {
+inline int sharedStyle(const Label& label) {
     int shared = Style::Bold | Style::Italic | Style::Mono;
     bool any = false;
     for (const auto& line : label.lines) {
@@ -96,7 +96,7 @@ inline int sharedStyle(const Label& label) noexcept {
     return any ? shared : 0;
 }
 
-inline std::string textStyle(const std::string& attrs, int shared) noexcept {
+inline std::string textStyle(const std::string& attrs, int shared) {
     std::string out = attrs;
     if ((shared & Style::Bold) && attrs.find(" font-weight=\"") == std::string::npos) out += " font-weight=\"var(--_w)\"";
     if ((shared & Style::Italic) && attrs.find(" font-style=\"") == std::string::npos) out += " font-style=\"italic\"";
@@ -110,7 +110,7 @@ struct MathLook {
     bool hasHalo = false;
 };
 
-inline std::string extractAttrVal(const std::string& s, const std::string& key) noexcept {
+inline std::string extractAttrVal(const std::string& s, const std::string& key) {
     std::string needle = Pele::cat({" ", key, "=\""});
     size_t pos = s.find(needle);
     if (pos == std::string::npos) return "";
@@ -120,7 +120,7 @@ inline std::string extractAttrVal(const std::string& s, const std::string& key) 
     return s.substr(start, end - start);
 }
 
-inline std::string extractCssProp(const std::string& css, const std::string& prop) noexcept {
+inline std::string extractCssProp(const std::string& css, const std::string& prop) {
     for (const auto& decl : splitStr(css, ';')) {
         size_t colon = decl.find(':');
         if (colon == std::string::npos) continue;
@@ -131,7 +131,7 @@ inline std::string extractCssProp(const std::string& css, const std::string& pro
     return "";
 }
 
-inline MathLook computeMathLook(const std::string& attrs) noexcept {
+inline MathLook computeMathLook(const std::string& attrs) {
     std::string style = extractAttrVal(attrs, "style");
     std::string fill = extractCssProp(style, "fill");
     if (fill.empty()) fill = trimStr(extractAttrVal(attrs, "fill"));
@@ -144,7 +144,7 @@ inline MathLook computeMathLook(const std::string& attrs) noexcept {
     return {res, "", false};
 }
 
-inline std::string mathSvg(const MathMarkup& math, const std::string& box, double size, const std::string& attrs) noexcept {
+inline std::string mathSvg(const MathMarkup& math, const std::string& box, double size, const std::string& attrs) {
     if (math.hasSvg) {
         return Pele::cat({"<svg class=\"pele-math\" ", box, " overflow=\"visible\"", attrs, ">", math.svg, "</svg>"});
     }
@@ -153,7 +153,7 @@ inline std::string mathSvg(const MathMarkup& math, const std::string& box, doubl
         "</foreignObject>";
 }
 
-inline std::string labelSvg(const Label& label, double cx, double cy, std::string attrs, const IconResolver& icons = nullptr) noexcept {
+inline std::string labelSvg(const Label& label, double cx, double cy, std::string attrs, const IconResolver& icons = nullptr) {
     const auto& lines = label.lines;
     if (lines.empty()) return "";
     double lh = label.lineHeight;
@@ -212,11 +212,11 @@ inline std::string labelSvg(const Label& label, double cx, double cy, std::strin
     return Pele::cat({"<text", attrs, " text-anchor=\"middle\" xml:space=\"preserve\">", body, "</text>", extra});
 }
 
-inline std::string iconSvg(const std::string& name, double x, double y, double side, const IconResolver& icons = nullptr) noexcept {
+inline std::string iconSvg(const std::string& name, double x, double y, double side, const IconResolver& icons = nullptr) {
     return Pele::cat({"<svg class=\"pele-icon\" data-icon=\"", escText(name), "\" x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(side), "\" height=\"", num(side), "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">", (icons ? icons(name) : ""), "</svg>"});
 }
 
-inline std::string leftLabelSvg(const Label& label, double x, double top, const std::string& attrs) noexcept {
+inline std::string leftLabelSvg(const Label& label, double x, double top, const std::string& attrs) {
     int shared = sharedStyle(label);
     std::string open = Pele::cat({"<text", textStyle(attrs, shared)});
     std::string body;
@@ -261,17 +261,17 @@ inline const std::string RADIUS = "var(--pele-radius,4px)";
 inline const std::string ROUNDED = " style=\"rx:var(--_r)\"";
 inline const std::string CRITICAL = "var(--pele-critical,#e45756)";
 
-inline bool setsFill(const std::string& shape) noexcept {
+inline bool setsFill(const std::string& shape) {
     return shape.find("\"fill:") != std::string::npos || shape.find(";fill:") != std::string::npos;
 }
 
-inline std::string rounded(const std::string& attrs) noexcept {
+inline std::string rounded(const std::string& attrs) {
     size_t at = attrs.find(" style=\"");
     if (at == std::string::npos) return attrs + ROUNDED;
     return Pele::cat({attrs.substr(0, at + 8), "rx:var(--_r);", attrs.substr(at + 8)});
 }
 
-inline bool isSafeFontFamilies(const std::string& list) noexcept {
+inline bool isSafeFontFamilies(const std::string& list) {
     if (trimStr(list).empty()) return false;
     for (char c : list) {
         if (c == '\\' || c == '\n' || c == '\r' || c == '<' || c == '>' || c == '{' || c == '}' || c == '(' || c == ')' || c == ';' || c == ':' || c == '@') return false;
@@ -279,11 +279,11 @@ inline bool isSafeFontFamilies(const std::string& list) noexcept {
     return true;
 }
 
-inline std::string fontFamilies(const std::string& list, const std::string& generic) noexcept {
+inline std::string fontFamilies(const std::string& list, const std::string& generic) {
     return isSafeFontFamilies(list) ? list : generic;
 }
 
-inline std::string fontStyle(double size, const std::string& family, const std::string& mono) noexcept {
+inline std::string fontStyle(double size, const std::string& family, const std::string& mono) {
     return Pele::cat({";--_fm:var(--pele-font-mono,", fontFamilies(mono, "monospace"), ");font:", num(size), "px sans-serif;"
         "letter-spacing:normal;word-spacing:normal;text-transform:none;direction:ltr;"
         "font-family:var(--pele-font,", fontFamilies(family, "sans-serif"), ")"});
@@ -301,7 +301,7 @@ struct ResolvedStyle {
     bool hasFontSize = false;
 };
 
-inline bool isUnsafeCssValue(const std::string& v) noexcept {
+inline bool isUnsafeCssValue(const std::string& v) {
     std::string low = toLowerAscii(v);
     if (low.find("url(") != std::string::npos || low.find("url ") != std::string::npos ||
         low.find("expression") != std::string::npos || low.find("javascript:") != std::string::npos ||
@@ -313,7 +313,7 @@ inline bool isUnsafeCssValue(const std::string& v) noexcept {
     return hasInvalidXml(v);
 }
 
-inline ResolvedStyle resolveStyle(const std::vector<std::string>& declarations) noexcept {
+inline ResolvedStyle resolveStyle(const std::vector<std::string>& declarations) {
     ResolvedStyle none;
     if (declarations.empty()) return none;
     static const Pele::FlatSet<std::string> SHAPE_PROPS = {
@@ -405,7 +405,7 @@ inline ResolvedStyle resolveStyle(const std::vector<std::string>& declarations) 
     return res;
 }
 
-inline std::string classNames(const std::string& raw) noexcept {
+inline std::string classNames(const std::string& raw) {
     std::string cleaned;
     bool inSpace = false;
     for (char c : raw) {
@@ -423,7 +423,7 @@ inline std::string classNames(const std::string& raw) noexcept {
     return cleaned.empty() ? "" : Pele::cat({" ", cleaned});
 }
 
-inline std::string seriesColor(int index) noexcept {
+inline std::string seriesColor(int index) {
     static const char* SERIES[8] = {"#4c78a8", "#f58518", "#54a24b", "#e45756", "#72b7b2", "#eeca3b", "#b279a2", "#9d755d"};
     int k = ((index % 8) + 8) % 8;
     return "var(--pele-series-" + std::to_string(k + 1) + "," + SERIES[k] + ")";
@@ -436,15 +436,15 @@ inline std::string seriesColor(int index) noexcept {
 inline const std::string ON_LIGHT = "var(--pele-fg-on-light,#1f1f1f)";
 inline const std::string ON_DARK = "var(--pele-fg-on-dark,#fff)";
 
-inline double srgbLinear(double c) noexcept {
+inline double srgbLinear(double c) {
     return c <= 0.04045 ? c / 12.92 : std::pow((c + 0.055) / 1.055, 2.4);
 }
 
-inline double srgbLuminance(double r, double g, double b) noexcept {
+inline double srgbLuminance(double r, double g, double b) {
     return 0.2126 * srgbLinear(r) + 0.7152 * srgbLinear(g) + 0.0722 * srgbLinear(b);
 }
 
-inline bool parseColorLumAlpha(const std::string& raw, double& outLum, double& outAlpha) noexcept {
+inline bool parseColorLumAlpha(const std::string& raw, double& outLum, double& outAlpha) {
     static const Pele::FlatSet<std::string> DARK = {
         "black","blue","blueviolet","brown","crimson","darkblue","darkcyan","darkgreen","darkmagenta","darkolivegreen",
         "darkorchid","darkred","darkslateblue","darkslategray","darkviolet","dimgray","firebrick","forestgreen","green",
@@ -553,7 +553,7 @@ inline bool parseColorLumAlpha(const std::string& raw, double& outLum, double& o
     return false;
 }
 
-inline std::string findStyleProp(const std::string& styleAttr, const std::string& prop) noexcept {
+inline std::string findStyleProp(const std::string& styleAttr, const std::string& prop) {
     for (const char* prefix : {"\"", ";"}) {
         std::string needle = std::string(prefix) + prop + ":";
         size_t pos = styleAttr.find(needle);
@@ -566,7 +566,7 @@ inline std::string findStyleProp(const std::string& styleAttr, const std::string
     return "";
 }
 
-inline double shapeOpacityProduct(const std::string& shape) noexcept {
+inline double shapeOpacityProduct(const std::string& shape) {
     double prod = 1.0;
     for (const char* prop : {"fill-opacity", "opacity"}) {
         std::string val = findStyleProp(shape, prop);
@@ -586,7 +586,7 @@ inline double shapeOpacityProduct(const std::string& shape) noexcept {
     return prod;
 }
 
-inline std::string ink(const std::string& shape, const std::string& text = "") noexcept {
+inline std::string ink(const std::string& shape, const std::string& text = "") {
     std::string fillVal = findStyleProp(shape, "fill");
     if (fillVal.empty() || !findStyleProp(text, "fill").empty()) return "";
     double lum = 0, alpha = 1;
@@ -597,7 +597,7 @@ inline std::string ink(const std::string& shape, const std::string& text = "") n
     return lum > EVEN ? ON_LIGHT : ON_DARK;
 }
 
-inline bool paints(const std::string& shape) noexcept {
+inline bool paints(const std::string& shape) {
     std::string fill = toLowerAscii(findStyleProp(shape, "fill"));
     if (fill.empty() || fill == "none" || fill == "transparent") return false;
     double scale = shapeOpacityProduct(shape);
@@ -606,7 +606,7 @@ inline bool paints(const std::string& shape) noexcept {
     return alpha * (std::isnan(scale) ? 1.0 : scale) > 0;
 }
 
-inline std::string inkFill(const ResolvedStyle& style, const std::string& fallback = "") noexcept {
+inline std::string inkFill(const ResolvedStyle& style, const std::string& fallback = "") {
     std::string color = ink(style.shape, style.text);
     if (color.empty()) color = fallback;
     return color.empty() ? "" : Pele::cat({" fill=\"", color, "\""});
@@ -626,19 +626,19 @@ constexpr double SHAPE_PAD_X = 18.0;
 constexpr double SHAPE_PAD_Y = 12.0;
 constexpr double SHAPE_CORNER = 12.0;
 
-inline double shapeBulge(double t, double half, double depth) noexcept {
+inline double shapeBulge(double t, double half, double depth) {
     double k = std::min(1.0, std::abs(t) / (half == 0 ? 1.0 : half));
     return depth * (1.0 - std::sqrt(1.0 - k * k));
 }
 
-inline ShapeSize triShapeSize(double tw, double th, bool flip) noexcept {
+inline ShapeSize triShapeSize(double tw, double th, bool flip) {
     double w = std::max(1.6 * tw + 40.0, 80.0);
     double h = (th + 10.0) / (1.0 - (tw + 8.0) / w);
     double dy = h / 2.0 - 10.0 - th / 2.0;
     return {w, h, flip ? -dy : dy};
 }
 
-inline std::string svgPoly(const std::vector<double>& points, const std::string& a) noexcept {
+inline std::string svgPoly(const std::vector<double>& points, const std::string& a) {
     std::string d;
     for (size_t i = 0; i + 1 < points.size(); i += 2) {
         if (i > 0) d.push_back(' ');
@@ -647,17 +647,17 @@ inline std::string svgPoly(const std::vector<double>& points, const std::string&
     return Pele::cat({"<polygon points=\"", d, "\"", a, "/>"});
 }
 
-inline std::string svgRectCentered(double w, double h, const std::string& a, const std::string& rx = "") noexcept {
+inline std::string svgRectCentered(double w, double h, const std::string& a, const std::string& rx = "") {
     return Pele::cat({"<rect x=\"", num(-w / 2.0), "\" y=\"", num(-h / 2.0), "\" width=\"", num(w), "\" height=\"", num(h), "\"", rx, a, "/>"});
 }
 
-inline std::string svgBrace(double x, double h, double dir, const std::string& line) noexcept {
+inline std::string svgBrace(double x, double h, double dir, const std::string& line) {
     double y = h / 2.0;
     double k = 6.0 * dir;
     return Pele::cat({"<path d=\"M", num(x), ",", num(-y), "q", num(k), ",0 ", num(k), ",6V-6q0,6 ", num(k), ",6q", num(-k), ",0 ", num(-k), ",6V", num(y - 6.0), "q0,6 ", num(-k), ",6\" fill=\"none\"", line, "/>"});
 }
 
-inline std::string svgWave(double w, double h, const std::string& a) noexcept {
+inline std::string svgWave(double w, double h, const std::string& a) {
     double x = w / 2.0;
     double top = -h / 2.0;
     double base = h / 2.0 - 10.0;
@@ -665,7 +665,7 @@ inline std::string svgWave(double w, double h, const std::string& a) noexcept {
     return Pele::cat({"<path d=\"M", num(-x), ",", num(top), "H", num(x), "V", num(base), "q", num(-q), ",-12 ", num(-2.0 * q), ",0t", num(-2.0 * q), ",0Z\"", a, "/>"});
 }
 
-inline ShapeSize shapeSize(const std::string& shape, double tw, double th) noexcept {
+inline ShapeSize shapeSize(const std::string& shape, double tw, double th) {
     const double PX = SHAPE_PAD_X;
     const double PY = SHAPE_PAD_Y;
     if (shape == "stadium") {
@@ -749,7 +749,7 @@ inline ShapeSize shapeSize(const std::string& shape, double tw, double th) noexc
     return {std::max(tw + 2 * PX, 2 * PX + 12.0), th + 2 * PY, 0};
 }
 
-inline double shapeInset(const std::string& shape, double w, double h, int side, double t = 0.0) noexcept {
+inline double shapeInset(const std::string& shape, double w, double h, int side, double t = 0.0) {
     if (shape == "stadium") return (side & 1) ? shapeBulge(t, h / 2.0, h / 2.0) : 0.0;
     if (shape == "cyl" || shape == "lin-cyl") return (side & 1) ? 0.0 : shapeBulge(t, w / 2.0, std::min(12.0, std::max(6.0, w / 14.0)));
     if (shape == "circle" || shape == "dbl-circ" || shape == "ellipse" || shape == "sm-circ" || shape == "f-circ" || shape == "fr-circ" || shape == "cross-circ") {
@@ -771,7 +771,7 @@ inline double shapeInset(const std::string& shape, double w, double h, int side,
     return 0.0;
 }
 
-inline double shapeSpan(const std::string& shape, double w, double h, bool sideways) noexcept {
+inline double shapeSpan(const std::string& shape, double w, double h, bool sideways) {
     const double C = SHAPE_CORNER;
     double res = 0.0;
     if (shape == "rect" || shape == "rounded" || shape == "fr-rect" || shape == "text" || shape == "notch-rect" || shape == "lin-rect" || shape == "div-rect" || shape == "win-pane" || shape == "notch-pent" || shape == "datastore" || shape == "console" || shape == "browser" || shape == "tag-rect") {
@@ -798,15 +798,15 @@ inline double shapeSpan(const std::string& shape, double w, double h, bool sidew
     return std::max(0.0, res);
 }
 
-inline bool shapeHasLabel(const std::string& shape) noexcept {
+inline bool shapeHasLabel(const std::string& shape) {
     return !(shape == "sm-circ" || shape == "f-circ" || shape == "fr-circ" || shape == "fork" || shape == "hourglass" || shape == "cross-circ" || shape == "bolt");
 }
 
-inline bool shapeFilled(const std::string& shape) noexcept {
+inline bool shapeFilled(const std::string& shape) {
     return !(shape == "text" || shape == "brace" || shape == "brace-r" || shape == "braces");
 }
 
-inline std::string drawShape(const std::string& shape, double w, double h, const std::string& a, const std::string& line) noexcept {
+inline std::string drawShape(const std::string& shape, double w, double h, const std::string& a, const std::string& line) {
     if (shape == "rounded") return svgRectCentered(w,  h,  a, Pele::cat({" rx=\"", num(std::min(12.0, h / 2.0)), "\""}));
     if (shape == "stadium") return svgRectCentered(w,  h,  a, Pele::cat({" rx=\"", num(h / 2.0), "\""}));
     if (shape == "fr-rect") {
@@ -1013,20 +1013,20 @@ struct EdgePath {
     double edy = 0.0;
 };
 
-inline double easeCurve(double across, double along) noexcept {
+inline double easeCurve(double across, double along) {
     double den = std::abs(across);
     if (den == 0.0) den = 1.0;
     return std::max(0.25, std::min(0.5, (4.0 * std::abs(along)) / den));
 }
 
-inline double markerTrim(const std::string& type) noexcept {
+inline double markerTrim(const std::string& type) {
     if (type == "arrow_point") return ARROW - 1.0;
     if (type == "arrow_circle") return ARROW;
     if (type == "arrow_cross") return 4.0;
     return 0.0;
 }
 
-inline std::string marker(const std::string& type, double x, double y, double dx, double dy, const std::string& color, const std::string& stroke = "none") noexcept {
+inline std::string marker(const std::string& type, double x, double y, double dx, double dy, const std::string& color, const std::string& stroke = "none") {
     double nx = -dy;
     double ny = dx;
     if (type == "arrow_point") {
@@ -1067,7 +1067,7 @@ struct SideReach {
     }
 };
 
-inline double writtenCoord(double v) noexcept {
+inline double writtenCoord(double v) {
     long long n = static_cast<long long>(std::llround(v * 100.0));
     return n == 0 ? 0.0 : static_cast<double>(n) / 100.0;
 }
@@ -1235,7 +1235,7 @@ inline EdgePath routePath(
     return {d, std::move(tokens), true, sx, sy, -sdx, -sdy, ex, ey, edx, edy};
 }
 
-inline std::vector<double> tokenizeSvgPath(const std::string& d) noexcept {
+inline std::vector<double> tokenizeSvgPath(const std::string& d) {
     std::vector<double> out;
     int at = -1;
     size_t i = 0;
@@ -1272,7 +1272,7 @@ inline std::vector<double> tokenizeSvgPath(const std::string& d) noexcept {
     return out;
 }
 
-inline void sampleSvgArc(std::vector<double>& out, double x1, double y1, double rx, double ry, double large, double sweep, double x2, double y2) noexcept {
+inline void sampleSvgArc(std::vector<double>& out, double x1, double y1, double rx, double ry, double large, double sweep, double x2, double y2) {
     double hx = (x1 - x2) / 2.0;
     double hy = (y1 - y2) / 2.0;
     if (rx == 0 || ry == 0 || (hx == 0 && hy == 0)) {
@@ -1297,7 +1297,7 @@ inline void sampleSvgArc(std::vector<double>& out, double x1, double y1, double 
     }
 }
 
-inline std::vector<double> sampleSvgTokens(const std::vector<double>& tokens) noexcept {
+inline std::vector<double> sampleSvgTokens(const std::vector<double>& tokens) {
     std::vector<double> out;
     double x = 0, y = 0;
     size_t i = 0;
@@ -1362,7 +1362,7 @@ inline std::vector<double> sampleSvgTokens(const std::vector<double>& tokens) no
     return out;
 }
 
-inline bool clipsSegmentBox(double x, double y, double dx, double dy, double l, double t, double r, double b) noexcept {
+inline bool clipsSegmentBox(double x, double y, double dx, double dy, double l, double t, double r, double b) {
     double lo = 0.0, hi = 1.0;
     for (int side = 0; side < 4; side++) {
         double p = (side == 0) ? -dx : (side == 1) ? dx : (side == 2) ? -dy : dy;
@@ -1378,7 +1378,7 @@ inline bool clipsSegmentBox(double x, double y, double dx, double dy, double l, 
     return lo < hi;
 }
 
-inline bool entersPointsBox(const std::vector<double>& points, double l, double t, double r, double b) noexcept {
+inline bool entersPointsBox(const std::vector<double>& points, double l, double t, double r, double b) {
     for (size_t k = 0; k + 3 < points.size(); k += 2) {
         double x = points[k], y = points[k + 1], x2 = points[k + 2], y2 = points[k + 3];
         if (std::isnan(x) || std::isnan(x2)) continue;
@@ -1398,7 +1398,7 @@ struct FillLookup {
     Fill fill;
 };
 
-inline FillLookup fillUnder(const std::string& d, const std::vector<double>& tips, const std::vector<Fill>& fills, const std::vector<double>* tokens = nullptr) noexcept {
+inline FillLookup fillUnder(const std::string& d, const std::vector<double>& tips, const std::vector<Fill>& fills, const std::vector<double>* tokens = nullptr) {
     if (fills.empty()) return {FillLookup::None, {}};
     std::vector<double> points = tokens ? sampleSvgTokens(*tokens) : sampleSvgTokens(tokenizeSvgPath(d));
     double minX = std::numeric_limits<double>::infinity();
@@ -1435,12 +1435,12 @@ inline FillLookup fillUnder(const std::string& d, const std::vector<double>& tip
     return {FillLookup::None, {}};
 }
 
-inline std::string edgeInk(const Fill& fill, const std::string& line = "") noexcept {
+inline std::string edgeInk(const Fill& fill, const std::string& line = "") {
     if (!findStyleProp(line, "stroke").empty()) return "";
     return ink(fill.shape);
 }
 
-inline std::string hollowOn(const std::string& markers, const Fill& fill) noexcept {
+inline std::string hollowOn(const std::string& markers, const Fill& fill) {
     std::string color = findStyleProp(fill.shape, "fill");
     return !color.empty() ? replaceAllStr(markers,  " fill=\"var(--_bg)\"", Pele::cat({" fill=\"", color, "\""})) : markers;
 }
@@ -1451,14 +1451,14 @@ struct OverFillResult {
     std::string value;
 };
 
-inline OverFillResult overFills(const std::string& d, const std::vector<double>& tips, const std::vector<Fill>& fills, const std::string& line = "", const std::vector<double>* tokens = nullptr) noexcept {
+inline OverFillResult overFills(const std::string& d, const std::vector<double>& tips, const std::vector<Fill>& fills, const std::string& line = "", const std::vector<double>* tokens = nullptr) {
     auto res = fillUnder(d, tips, fills, tokens);
     if (res.state == FillLookup::None) return {false, ""};
     if (res.state == FillLookup::CrossesBorder) return {true, ""};
     return {true, edgeInk(res.fill, line)};
 }
 
-inline std::string casing(const std::string& d, const std::string& markers, const std::string& line = "", bool thick = false) noexcept {
+inline std::string casing(const std::string& d, const std::string& markers, const std::string& line = "", bool thick = false) {
     constexpr double CASE = 4.0;
     std::string stroke = findStyleProp(line, "stroke");
     if (stroke == "none" || stroke == "transparent") return "";
@@ -1470,8 +1470,10 @@ inline std::string casing(const std::string& d, const std::string& markers, cons
         bool isPlainNum = !numPart.empty();
         for (char c : numPart) if (!isDigit(static_cast<unsigned char>(c)) && c != '.') { isPlainNum = false; break; }
         if (isPlainNum) {
-            double wVal = std::stod(numPart);
-            if (wVal != 1.0) attrs = " stroke-width=\"" + num(wVal + CASE) + "\"";
+            try {
+                double wVal = std::stod(numPart);
+                if (wVal != 1.0) attrs = " stroke-width=\"" + num(wVal + CASE) + "\"";
+            } catch (...) {}
         } else {
             Pele::appendCat(style, {"stroke-width:calc(", width, " + 4px);"});
         }
@@ -1484,7 +1486,7 @@ inline std::string casing(const std::string& d, const std::string& markers, cons
     return (!attrs.empty() || !style.empty()) ? Pele::cat({"<g", attrs, (!style.empty() ? Pele::cat({" style=\"", style, "\""}) : ""), ">", body, "</g>"}) : body;
 }
 
-inline std::string edgeCasing(const EdgePath& path, const std::string& startType, const std::string& endType, const std::string& line = "", bool thick = false) noexcept {
+inline std::string edgeCasing(const EdgePath& path, const std::string& startType, const std::string& endType, const std::string& line = "", bool thick = false) {
     return casing(
         path.d,
         marker(startType, path.sx, path.sy, path.sdx, path.sdy, "var(--_bg)", "var(--_bg)") +
@@ -1494,13 +1496,13 @@ inline std::string edgeCasing(const EdgePath& path, const std::string& startType
     );
 }
 
-inline std::string casingsSvg(const std::string& casings) noexcept {
+inline std::string casingsSvg(const std::string& casings) {
     return !casings.empty()
         ? Pele::cat({"<g class=\"pele-casings\" fill=\"none\" stroke=\"var(--_bg)\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" pointer-events=\"none\">", casings, "</g>"})
         : "";
 }
 
-inline std::string edgeLabelSvg(const std::string& id, const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons = nullptr) noexcept {
+inline std::string edgeLabelSvg(const std::string& id, const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons = nullptr) {
     double w = label.width + 8.0;
     double h = label.height;
     return Pele::cat({"<g class=\"pele-edge-label\" data-id=\"", escText(id), "\">"
@@ -1511,7 +1513,7 @@ inline std::string edgeLabelSvg(const std::string& id, const Label& label, doubl
 // src/svg/title.ts & src/svg/root.ts & src/util/url.ts
 // ============================================================================
 
-inline Label titleLabel(const std::string& title, const TextMeasurer& measurer, double size, double maxWidth) noexcept {
+inline Label titleLabel(const std::string& title, const TextMeasurer& measurer, double size, double maxWidth) {
     return withoutMath([&]() { return layoutLabel(title, false, measurer, size, maxWidth, Style::Bold); });
 }
 
@@ -1521,7 +1523,7 @@ struct Titled {
     std::string content;
 };
 
-inline Titled withTitle(const std::string& title, const TextMeasurer& measurer, double size, double pad, double width, double height, const std::string& content) noexcept {
+inline Titled withTitle(const std::string& title, const TextMeasurer& measurer, double size, double pad, double width, double height, const std::string& content) {
     Label label = titleLabel(title, measurer, size, 4000.0);
     if (label.height == 0.0) return {width, height, content};
     double shift = label.height + 12.0;
@@ -1563,7 +1565,7 @@ inline std::string svgDocument(
     return "<svg xmlns=\"http://www.w3.org/2000/svg\" class=\"pele pele-" + type + "\" viewBox=\"0 0 " + wStr + " " + hStr + "\" width=\"" + wStr + "\" height=\"" + hStr + "\" style=\"" + fit + ROOT_STYLE + weights + esc(fontStyle(fontSize, options.fontFamily, options.fontFamilyMono)) + "\" fill=\"var(--_fg)\" role=\"graphics-document document\" aria-roledescription=\"" + type + "\"" + aria + ">" + head + content + "</svg>";
 }
 
-inline std::string sanitizeUrl(const std::string& rawUrl) noexcept {
+inline std::string sanitizeUrl(const std::string& rawUrl) {
     std::string u = trimStr(decodeEntities(rawUrl));
     if (u.empty()) return "about:blank";
     std::string low = toLowerAscii(u);
@@ -1571,7 +1573,7 @@ inline std::string sanitizeUrl(const std::string& rawUrl) noexcept {
     return u;
 }
 
-inline std::string linkUrl(const std::string& url, const RenderOptions& options) noexcept {
+inline std::string linkUrl(const std::string& url, const RenderOptions& options) {
     if (!options.links) return "";
     std::string s = sanitizeUrl(url);
     if (s == "about:blank" || startsWith(s, "//") || startsWith(s, "\\\\")) return "";
@@ -1590,7 +1592,7 @@ inline std::string linkUrl(const std::string& url, const RenderOptions& options)
     return s;
 }
 
-inline std::string imageUrl(const std::string& url, const RenderOptions& options) noexcept {
+inline std::string imageUrl(const std::string& url, const RenderOptions& options) {
     if (!options.images) return "";
     std::string s = sanitizeUrl(url);
     if (s == "about:blank" || startsWith(s, "//") || startsWith(s, "\\\\")) return "";
@@ -1602,11 +1604,11 @@ inline std::string imageUrl(const std::string& url, const RenderOptions& options
     return s;
 }
 
-inline std::string relAttr(const RenderOptions& options) noexcept {
+inline std::string relAttr(const RenderOptions& options) {
     return options.linkRel.empty() ? "" : Pele::cat({" rel=\"", esc(options.linkRel), "\""});
 }
 
-inline std::string linked(const std::string& body, const std::string& url, const std::string& id, std::vector<LinkInfo>& links, const RenderOptions& options, const std::string& attrs = "") noexcept {
+inline std::string linked(const std::string& body, const std::string& url, const std::string& id, std::vector<LinkInfo>& links, const RenderOptions& options, const std::string& attrs = "") {
     std::string href = linkUrl(url, options);
     if (href.empty()) return body;
     links.push_back({id, href, false});

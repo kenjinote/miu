@@ -34,15 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.44 更新日誌
-🎨 新增 25 種語言語法高亮（共支援 49 大類、120+ 副檔名）& 修復全形字元行號對齊偏差與水平捲軸問題
+        "releaseNotes": """miu v1.0.45 更新日誌
+🛡️ 修復即時預覽（Mermaid 圖表、KaTeX 公式與 Markdown）閃退問題並強化穩定性
 
-・新增 25 種程式語言與設定檔語法高亮及 Ctrl+/ 註解切換：
-  新增 Dart、R、Zig、Scala、Perl、VB/VBA、F#、Julia、Haskell、Elixir、Dockerfile、Terraform/HCL、TOML/.env、GraphQL、Protobuf、CMake、Makefile、登錄檔（.reg）、著色器（HLSL/GLSL/WGSL）、組合語言、Verilog/SystemVerilog、VHDL、Diff/Patch 與紀錄檔（.log），總計支援 49 大類、120 餘種副檔名。
-・修復輸入繁體中文/日文等全形字元時行號高度輕微偏移的問題：
-  採用 DirectWrite 統一行距與基線機制，確保包含全形字元或表情符號的行與行號像素級精準對齊，且零效能損耗。
-・水平捲軸與編輯引擎精度最佳化：
-  修復新建檔案按 Enter 換行或輸入全形字元時意外出現水平捲軸的問題，支援刪減長行後立即隱藏水平捲軸，並改進末行複製（Alt+Shift+Down）與復原/重做狀態一致性。""",
+・修復編輯 Mermaid 圖表時即時預覽閃退的問題：
+  修復了在甘特圖（gantt）等圖表中輸入未完成日期或語法（如 205-01-01 等三位數年份）時觸發內部例外穿過 noexcept 邊界導致程式結束的問題。
+・改進 Mermaid 甘特圖日期解析器：
+  除標準四位數年份外新增對三位數年份（YYY-MM-DD）的相容解析，輸入過程中即可平滑渲染。
+・全面加固即時預覽例外安全性：
+  為全部 26 種 Mermaid 圖表渲染器、KaTeX 數學公式轉換、SVG 最佳化與預覽 HTML 產生增加多層例外防護，在輸入未閉合語法時依然穩定運作。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.44 Versionshinweise
-🎨 25 neue Sprachen für Syntaxhervorhebung (49 Kategorien / 120+ Dateiendungen) + CJK-Zeilennummernausrichtung & Korrekturen der horizontalen Bildlaufleiste
+        "releaseNotes": """miu v1.0.45 Versionshinweise
+🛡️ Absturzbehebung in der Live-Vorschau (Mermaid-Diagramme, KaTeX-Formeln & Markdown) & verbesserte Stabilität
 
-- 25 neue Sprachen für Syntaxhervorhebung & Kommentar-Umschaltung (Strg+/):
-  Erweitert auf 49 Kategorien (über 120 Dateiendungen), darunter Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registry (.reg), Shader (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch und Log-Dateien (.log).
-- Pixelgenaue Zeilennummernausrichtung bei CJK-/Vollbreitenzeichen:
-  Einheitlicher DirectWrite-Zeilenabstand sorgt dafür, dass Zeilen mit Vollbreitenzeichen oder Emojis exakt mit den Zeilennummern übereinstimmen.
-- Präzise horizontale Bildlaufleiste & Editor-Verbesserungen:
-  Behebung einer unerwünschten horizontalen Bildlaufleiste nach Zeilenumbruch in neuen Dateien, sofortiges Ausblenden beim Kürzen langer Zeilen sowie Verbesserungen beim Zeilenduplizieren (Alt+Umschalt+Ab) und Rückgängig/Wiederholen.""",
+- Absturz beim Bearbeiten von Mermaid-Diagrammen in der Live-Vorschau behoben:
+  Behebung eines Fehlers, bei dem unvollständige Datumsangaben oder Syntax in Mermaid-Gantt-Diagrammen (z. B. 3-stellige Jahreszahlen wie 205-01-01) eine interne Ausnahme über eine noexcept-Grenze auslösten.
+- Erweiterter Mermaid-Gantt-Datumsparser:
+  Fallback-Unterstützung für 3-stellige Jahreszahlen (YYY-MM-DD) zusätzlich zu 4-stelligen Jahren hinzugefügt.
+- Erhöhte Ausnahmesicherheit der Live-Vorschau:
+  Mehrstufige Schutzmechanismen für alle 26 Mermaid-Diagrammtypen, KaTeX-Mathematik, SVG-Optimierung und HTML-Vorschaugenerierung implementiert.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.44
-🎨 Ajout de 25 langages de coloration syntaxique (49 catégories / 120+ extensions) + Alignement des numéros de ligne CJK et correctifs de la barre de défilement horizontale
+        "releaseNotes": """Notes de version miu v1.0.45
+🛡️ Correction de plantages de l’aperçu en direct (diagrammes Mermaid, formules KaTeX et Markdown) et stabilité renforcée
 
-- 25 nouveaux langages de coloration syntaxique et bascule de commentaires (Ctrl+/) :
-  Extension à 49 catégories (plus de 120 extensions), incluant Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registre Windows (.reg), Shaders (HLSL/GLSL/WGSL), Assembleur, Verilog/SystemVerilog, VHDL, Diff/Patch et fichiers journaux (.log).
-- Alignement parfait des numéros de ligne pour les caractères pleine chasse / CJK :
-  Espacement de ligne DirectWrite uniforme garantissant un alignement au pixel près sans perte de performance.
-- Précision de la barre de défilement horizontale et du moteur d'édition :
-  Correction de l'apparition inopinée de la barre horizontale après un saut de ligne sur un nouveau fichier, masquage immédiat lors du raccourcissement des lignes longues et amélioration de la duplication de ligne (Alt+Maj+Bas) et d'Annuler/Rétablir.""",
+- Correction d’un plantage lors de l’édition de diagrammes Mermaid en direct :
+  Résolution d’un problème où la saisie de dates ou d’une syntaxe incomplètes dans un diagramme de Gantt (ex. année à 3 chiffres comme 205-01-01) provoquait la fermeture de l’application.
+- Analyseur de dates Mermaid Gantt amélioré :
+  Prise en charge des années à 3 chiffres (YYY-MM-DD) en plus des années à 4 chiffres pour un rendu fluide pendant la frappe.
+- Sécurité renforcée du moteur d’aperçu :
+  Ajout de protections multi-niveaux sur les 26 moteurs de diagrammes Mermaid, le rendu mathématique KaTeX et la génération HTML.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.44
-🎨 25 nuevos lenguajes de resaltado de sintaxis (49 categorías / 120+ extensiones) + Alineación de números de línea CJK y mejoras en la barra de desplazamiento horizontal
+        "releaseNotes": """Notas de la versión miu v1.0.45
+🛡️ Corrección de cierres inesperados en la vista previa en vivo (diagramas Mermaid, fórmulas KaTeX y Markdown) y mayor estabilidad
 
-- 25 nuevos lenguajes de resaltado de sintaxis y alternancia de comentarios (Ctrl+/):
-  Ampliado a 49 categorías (más de 120 extensiones), incluyendo Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registro de Windows (.reg), Shaders (HLSL/GLSL/WGSL), Ensamblador, Verilog/SystemVerilog, VHDL, Diff/Patch y archivos de registro (.log).
-- Alineación precisa de números de línea con caracteres de ancho completo / CJK:
-  Interlineado uniforme en DirectWrite para mantener una alineación perfecta al píxel sin impacto en el rendimiento.
-- Precisión de la barra de desplazamiento horizontal y motor de edición:
-  Corregida la aparición prematura de la barra horizontal al pulsar Enter en un archivo nuevo, ocultación inmediata al acortar líneas largas y mejoras en duplicación de líneas (Alt+Mayús+Abajo) y Deshacer/Rehacer.""",
+- Corrección de cierre inesperado al editar diagramas Mermaid en vivo:
+  Se resolvió un problema por el cual escribir fechas o sintaxis incompletas en diagramas Gantt de Mermaid (p. ej., años de 3 dígitos como 205-01-01) cerraba la aplicación.
+- Analizador de fechas Gantt de Mermaid mejorado:
+  Soporte adicional para años de 3 dígitos (YYY-MM-DD) además de 4 dígitos para un renderizado fluido mientras se escribe.
+- Mayor seguridad ante excepciones en la vista previa:
+  Protección multicapa en los 26 renderizadores de diagramas Mermaid, fórmulas KaTeX, optimización SVG y generación HTML.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.44
-🎨 25 novas linguagens com realce de sintaxe (49 categorias / 120+ extensões) + Alinhamento de números de linha CJK e correções na barra de rolagem horizontal
+        "releaseNotes": """Notas de lançamento do miu v1.0.45
+🛡️ Correção de falhas na pré-visualização ao vivo (diagramas Mermaid, fórmulas KaTeX e Markdown) e maior estabilidade
 
-- 25 novas linguagens com realce de sintaxe e alternância de comentários (Ctrl+/):
-  Expandido para 49 categorias (mais de 120 extensões), incluindo Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registro do Windows (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch e arquivos de log (.log).
-- Alinhamento perfeito dos números de linha para caracteres de largura total / CJK:
-  Espaçamento de linha DirectWrite uniforme garantindo alinhamento preciso sem perda de desempenho.
-- Precisão da barra de rolagem horizontal e melhorias de edição:
-  Corrigida a exibição indevida da barra de rolagem horizontal ao pressionar Enter em um novo arquivo, ocultação imediata ao encurtar linhas longas e melhorias na duplicação de linhas (Alt+Shift+Baixo) e Desfazer/Refazer.""",
+- Correção de fechamento inesperado ao editar diagramas Mermaid ao vivo:
+  Resolvido um problema em que digitar datas ou sintaxe incompletas em gráficos Gantt do Mermaid (ex.: anos de 3 dígitos como 205-01-01) encerrava o aplicativo.
+- Analisador de datas Gantt do Mermaid aprimorado:
+  Adicionado suporte a anos de 3 dígitos (YYY-MM-DD) além de 4 dígitos para renderização contínua durante a digitação.
+- Segurança reforçada contra exceções na pré-visualização:
+  Proteções em várias camadas nos 26 renderizadores Mermaid, fórmulas KaTeX, otimização SVG e geração de HTML.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.44
-🎨 Добавлено 25 языков подсветки синтаксиса (всего 49 категорий / 120+ расширений) + выравнивание номеров строк CJK и исправления горизонтальной прокрутки
+        "releaseNotes": """Примечания к выпуску miu v1.0.45
+🛡️ Исправление сбоев живого предпросмотра (диаграммы Mermaid, формулы KaTeX и Markdown) и повышение стабильности
 
-- 25 новых языков подсветки синтаксиса и переключение комментариев (Ctrl+/):
-  Расширено до 49 категорий (более 120 расширений), включая Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, файлы реестра (.reg), шейдеры (HLSL/GLSL/WGSL), ассемблер, Verilog/SystemVerilog, VHDL, Diff/Patch и лог-файлы (.log).
-- Идеальное выравнивание номеров строк для полноширинных символов и эмодзи:
-  Равномерный межстрочный интервал DirectWrite обеспечивает попиксельное совпадение высоты строк и номеров без потери скорости.
-- Точность горизонтальной полосы прокрутки и улучшения редактора:
-  Исправлено ложное появление горизонтальной прокрутки после нажатия Enter в новом файле, мгновенное скрытие полосы при сокращении длинной строки, а также улучшено дублирование строк (Alt+Shift+Down) и отмена/повтор.""",
+- Исправлен сбой при редактировании диаграмм Mermaid в режиме предпросмотра:
+  Устранена ошибка, из-за которой ввод неполных дат или синтаксиса в диаграммах Ганта (например, 3-значного года 205-01-01) приводил к закрытию программы.
+- Улучшен парсер дат диаграмм Ганта Mermaid:
+  Добавлена поддержка 3-значных годов (YYY-MM-DD) наряду с 4-значными для плавной отрисовки во время ввода.
+- Усилена защита от исключений в движке предпросмотра:
+  Добавлены многоуровневые проверки во все 26 рендереров диаграмм Mermaid, математический движок KaTeX и генератор HTML.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.44
-🎨 Aggiunti 25 linguaggi di evidenziazione sintassi (49 categorie / 120+ estensioni) + Allineamento numeri di riga CJK e correzioni barra di scorrimento orizzontale
+        "releaseNotes": """Note di rilascio di miu v1.0.45
+🛡️ Correzione di arresti anomali nell’anteprima live (diagrammi Mermaid, formule KaTeX e Markdown) e maggiore stabilità
 
-- 25 nuovi linguaggi con evidenziazione della sintassi e commenti rapidi (Ctrl+/):
-  Esteso a 49 categorie (oltre 120 estensioni), tra cui Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registro di Windows (.reg), Shader (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch e file di log (.log).
-- Allineamento perfetto dei numeri di riga con caratteri a larghezza intera / CJK:
-  Interlinea uniforme DirectWrite per un allineamento preciso al pixel senza penalità sulle prestazioni.
-- Precisione della barra di scorrimento orizzontale e miglioramenti di modifica:
-  Risolta la comparsa prematura della barra orizzontale premendo Invio in un nuovo file, nascondimento immediato quando si accorciano righe lunghe e perfezionamenti a duplicazione riga (Alt+Maiusc+Giù) e Annulla/Ripeti.""",
+- Risolto un arresto anomalo durante la modifica di diagrammi Mermaid nell’anteprima live:
+  Risolto un problema per cui l’inserimento di date o sintassi incomplete nei diagrammi di Gantt (es. anni a 3 cifre come 205-01-01) causava la chiusura dell’app.
+- Parser delle date Gantt di Mermaid migliorato:
+  Aggiunto il supporto per gli anni a 3 cifre (YYY-MM-DD) oltre a quelli a 4 cifre per un rendering fluido durante la digitazione.
+- Maggiore sicurezza delle eccezioni nell’anteprima live:
+  Aggiunte protezioni multilivello per tutti i 26 diagrammi Mermaid, formule KaTeX, ottimizzazione SVG e generazione HTML.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.44
-🎨 Dodano 25 języków kolorowania składni (49 kategorii / 120+ rozszerzeń) + Wyrównanie numerów wierszy CJK i poprawki poziomego paska przewijania
+        "releaseNotes": """Informacje o wersji miu v1.0.45
+🛡️ Naprawa awarii podglądu na żywo (diagramy Mermaid, wzory KaTeX i Markdown) oraz zwiększona stabilność
 
-- 25 nowych języków kolorowania składni i przełączania komentarzy (Ctrl+/):
-  Rozszerzono do 49 kategorii (ponad 120 rozszerzeń), w tym Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, pliki rejestru (.reg), shadery (HLSL/GLSL/WGSL), Assembler, Verilog/SystemVerilog, VHDL, Diff/Patch oraz pliki dziennika (.log).
-- Idealne wyrównanie numerów wierszy dla znaków pełnej szerokości / CJK:
-  Jednolity odstęp między wierszami DirectWrite zapewnia dokładność co do piksela bez utraty wydajności.
-- Precyzja poziomego paska przewijania i silnika edycji:
-  Naprawiono przedwczesne pojawianie się poziomego paska przewijania po naciśnięciu Enter w nowym pliku, natychmiastowe ukrywanie po skróceniu długiego wiersza oraz ulepszono duplikowanie wierszy (Alt+Shift+Dół) i Cofnij/Ponów.""",
+- Naprawiono awarię podczas edycji diagramów Mermaid w podglądzie na żywo:
+  Rozwiązano problem, w którym wpisywanie niepełnych dat lub składni na wykresach Gantta (np. 3-cyfrowego roku jak 205-01-01) powodowało zamknięcie aplikacji.
+- Ulepszony parser dat wykresów Gantta w Mermaid:
+  Dodano obsługę 3-cyfrowych lat (YYY-MM-DD) oprócz 4-cyfrowych, zapewniając płynne renderowanie podczas pisania.
+- Wzmocniona odporność silnika podglądu na błędy:
+  Dodano wielowarstwowe zabezpieczenia we wszystkich 26 rendererach diagramów Mermaid, obsłudze KaTeX, optymalizacji SVG i generowaniu HTML.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.44
-🎨 25 nieuwe talen voor syntaxismarkering (49 categorieën / 120+ extensies) + CJK-regelnummeruitlijning & verbeteringen aan de horizontale schuifbalk
+        "releaseNotes": """Releaseopmerkingen miu v1.0.45
+🛡️ Crashes in live-voorbeeld (Mermaid-diagrammen, KaTeX-formules en Markdown) opgelost & verbeterde stabiliteit
 
-- 25 nieuwe talen voor syntaxismarkering en commentaar wisselen (Ctrl+/):
-  Uitgebreid naar 49 categorieën (meer dan 120 extensies), waaronder Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows-register (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch en logbestanden (.log).
-- Pixelperfecte uitlijning van regelnummers bij CJK- en volledige-breedtetekens:
-  Uniforme DirectWrite-regelafstand zorgt voor exacte uitlijning zonder snelheidsverlies.
-- Nauwkeurigheid van horizontale schuifbalk & tekstbewerking:
-  Onterecht verschijnen van de horizontale schuifbalk na Enter in een nieuw bestand verholpen, direct verbergen bij het inkorten van lange regels en verbeteringen in regels dupliceren (Alt+Shift+Omlaag) en Ongedaan maken/Opnieuw.""",
+- Crash bij het bewerken van Mermaid-diagrammen in live-voorbeeld opgelost:
+  Probleem verholpen waarbij onvolledige datums of syntaxis in Mermaid Gantt-diagrammen (zoals 3-cijferige jaartallen als 205-01-01) de app deden afsluiten.
+- Verbeterde Mermaid Gantt-datumparser:
+  Ondersteuning toegevoegd voor 3-cijferige jaartallen (YYY-MM-DD) naast 4-cijferige jaartallen voor vloeiende weergave tijdens het typen.
+- Versterkte foutafhandeling in live-voorbeeld:
+  Meerlaagse beveiliging toegevoegd aan alle 26 Mermaid-diagramrenderers, KaTeX-wiskunde, SVG-optimalisatie en HTML-generatie.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.44 Sürüm Notları
-🎨 25 Yeni Sözdizimi Vurgulama Dili (49 Kategori / 120+ Uzantı) + CJK Satır Numarası Hizalama ve Yatay Kaydırma Çubuğu Düzeltmeleri
+        "releaseNotes": """miu v1.0.45 Sürüm Notları
+🛡️ Canlı Önizleme (Mermaid Şemaları, KaTeX Formülleri ve Markdown) Çökme Düzeltmeleri ve Kararlılık İyileştirmeleri
 
-- 25 Yeni Sözdizimi Vurgulama Dili ve Ctrl+/ Yorum Satırı Geçişi:
-  Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Kayıt Defteri (.reg), Shader (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch ve günlük dosyaları (.log) dahil olmak üzere 49 kategoriye (120'den fazla uzantı) genişletildi.
-- Tam Genişlikli / CJK Karakterlerde Kusursuz Satır Numarası Hizalaması:
-  Tekdüze DirectWrite satır aralığı sayesinde tam genişlikli karakterler veya emojiler içeren satırlar, satır numaralarıyla piksel hassasiyetinde hizalanır.
-- Yatay Kaydırma Çubuğu ve Düzenleme Motoru İyileştirmeleri:
-  Yeni dosyada Enter'a basıldığında yatay kaydırma çubuğunun erken görünmesi sorunu giderildi, uzun satırlar kısaltıldığında anında gizlenmesi sağlandı ve satır çoğaltma (Alt+Shift+Aşağı) ile Geri Al/Yinele kararlılığı artırıldı.""",
+- Canlı Önizlemede Mermaid Şemalarını Düzenlerken Oluşan Çökme Düzeltildi:
+  Mermaid Gantt şemalarında eksik tarih veya sözdizimi (ör. 205-01-01 gibi 3 haneli yıllar) yazılırken uygulamanın kapanmasına neden olan sorun giderildi.
+- Geliştirilmiş Mermaid Gantt Tarih Ayrıştırıcısı:
+  Yazarken kesintisiz çizim için 4 haneli yıllara ek olarak 3 haneli yıl (YYY-AA-GG) desteği eklendi.
+- Güçlendirilmiş Canlı Önizleme İstisna Güvenliği:
+  26 Mermaid şema oluşturucusunun tamamına, KaTeX matematik motoruna, SVG iyileştirmesine ve HTML önizleme üretimine çok katmanlı koruma eklendi.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.44
-🎨 Thêm 25 ngôn ngữ tô sáng cú pháp (49 danh mục / 120+ phần mở rộng) + Căn chỉnh số dòng CJK & sửa lỗi thanh cuộn ngang
+        "releaseNotes": """Ghi chú phát hành miu v1.0.45
+🛡️ Khắc phục sự cố tự thoát khi xem trước trực tiếp (Sơ đồ Mermaid, Công thức KaTeX & Markdown) và tăng cường độ ổn định
 
-- Thêm 25 ngôn ngữ tô sáng cú pháp và bật/tắt ghi chú (Ctrl+/):
-  Mở rộng lên 49 danh mục (hơn 120 phần mở rộng tệp), bao gồm Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch và tệp nhật ký (.log).
-- Căn chỉnh hoàn hảo số dòng khi nhập ký tự全角 / CJK:
-  Áp dụng khoảng cách dòng đồng nhất của DirectWrite giúp số dòng và văn bản khớp chính xác từng pixel mà không giảm hiệu năng.
-- Tối ưu thanh cuộn ngang & bộ máy soạn thảo:
-  Khắc phục lỗi hiện thanh cuộn ngang ngay sau khi nhấn Enter ở tệp mới, tự động ẩn ngay khi xóa ngắn dòng dài, đồng thời cải thiện nhân bản dòng (Alt+Shift+Down) và Hoàn tác/Làm lại.""",
+- Khắc phục lỗi tự thoát khi đang nhập sơ đồ Mermaid trong Xem trước trực tiếp:
+  Đã sửa lỗi khi nhập ngày tháng hoặc cú pháp chưa hoàn chỉnh trong biểu đồ Gantt (ví dụ năm 3 chữ số như 205-01-01) làm ứng dụng bị đóng đột ngột.
+- Cải tiến bộ phân tích ngày tháng Gantt của Mermaid:
+  Hỗ trợ thêm định dạng năm 3 chữ số (YYY-MM-DD) bên cạnh năm 4 chữ số giúp hiển thị mượt mà ngay khi đang gõ.
+- Tăng cường an toàn ngoại lệ cho bộ máy xem trước:
+  Bổ sung lớp bảo vệ đa tầng cho toàn bộ 26 bộ kết xuất sơ đồ Mermaid, toán học KaTeX, tối ưu hóa SVG và tạo HTML.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.44
-🎨 Додано 25 мов підсвічування синтаксису (49 категорій / 120+ розширень) + вирівнювання номерів рядків CJK і виправлення горизонтальної прокрутки
+        "releaseNotes": """Примітки до випуску miu v1.0.45
+🛡️ Виправлення збоїв живого перегляду (діаграми Mermaid, формули KaTeX і Markdown) та підвищення стабільності
 
-- 25 нових мов підсвічування синтаксису та перемикання коментарів (Ctrl+/):
-  Розширено до 49 категорій (понад 120 розширень), включаючи Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, файли реєстру (.reg), шейдери (HLSL/GLSL/WGSL), асемблер, Verilog/SystemVerilog, VHDL, Diff/Patch і лог-файли (.log).
-- Ідеальне вирівнювання номерів рядків для повноширинних символів і емодзі:
-  Рівномірний міжрядковий інтервал DirectWrite забезпечує попіксельний збіг висоти рядків і номерів без втрати швидкодії.
-- Точність горизонтальної смуги прокрутки та покращення редактора:
-  Виправлено передчасну появу горизонтальної прокрутки після натискання Enter у новому файлі, миттєве приховування смуги під час скорочення довгого рядка, а також покращено дублювання рядків (Alt+Shift+Down) і скасування/повтор.""",
+- Виправлено аварійне завершення під час редагування діаграм Mermaid у живому перегляді:
+  Усунено проблему, через яку введення неповних дат або синтаксису в діаграмах Ганта (наприклад, 3-значного року 205-01-01) призводило до закриття програми.
+- Покращено парсер дат діаграм Ганта Mermaid:
+  Додано підтримку 3-значних років (YYY-MM-DD) разом із 4-значними для плавного рендерингу під час набору тексту.
+- Посилено захист від винятків у рушії перегляду:
+  Додано багаторівневий захист для всіх 26 рендерерів діаграм Mermaid, формул KaTeX, оптимізації SVG та генерації HTML.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.44
-🎨 Tambahan 25 Bahasa Sorotan Sintaks (49 Kategori / 120+ Ekstensi) + Perataan Nomor Baris CJK & Perbaikan Bilah Gulir Horizontal
+        "releaseNotes": """Catatan Rilis miu v1.0.45
+🛡️ Perbaikan Crash Pratinjau Langsung (Diagram Mermaid, Rumus KaTeX & Markdown) & Peningkatan Stabilitas
 
-- 25 Bahasa Baru untuk Sorotan Sintaks & Komentar Cepat (Ctrl+/):
-  Diperluas menjadi 49 kategori (120+ ekstensi file), termasuk Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch, dan file log (.log).
-- Perataan Nomor Baris Presisi untuk Karakter Lebar Penuh / CJK:
-  Spasi baris DirectWrite yang seragam memastikan baris dengan karakter CJK atau emoji sejajar sempurna dengan nomor baris tanpa penalti performa.
-- Akurasi Bilah Gulir Horizontal & Mesin Pengeditan:
-  Memperbaiki munculnya bilah gulir horizontal setelah menekan Enter pada file baru, menyembunyikan bilah gulir secara instan saat baris panjang dipendekkan, serta menyempurnakan duplikasi baris (Alt+Shift+Down) dan Undo/Redo.""",
+- Perbaikan Crash Saat Mengedit Diagram Mermaid di Pratinjau Langsung:
+  Memperbaiki masalah saat mengetik tanggal atau sintaks yang belum lengkap pada diagram Gantt Mermaid (misalnya tahun 3 digit seperti 205-01-01) yang menyebabkan aplikasi tertutup.
+- Peningkatan Pengurai Tanggal Gantt Mermaid:
+  Menambahkan dukungan fallback tahun 3 digit (YYY-MM-DD) selain tahun 4 digit agar diagram Gantt dirender dengan mulus saat mengetik.
+- Keamanan Eksepsi Pratinjau Langsung yang Diperkuat:
+  Menambahkan perlindungan berlapis di seluruh 26 perender diagram Mermaid, rumus KaTeX, optimasi SVG, dan pembuatan HTML.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.44
-🎨 Přidáno 25 jazyků zvýrazňování syntaxe (49 kategorií / 120+ přípon) + Zarovnání čísel řádků CJK a opravy vodorovného posuvníku
+        "releaseNotes": """Poznámky k verzi miu v1.0.45
+🛡️ Oprava pádů živého náhledu (diagramy Mermaid, vzorce KaTeX a Markdown) a zvýšení stability
 
-- 25 nových jazyků zvýrazňování syntaxe a přepínání komentářů (Ctrl+/):
-  Rozšířeno na 49 kategorií (přes 120 přípon), včetně Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, souborů registru (.reg), shaderů (HLSL/GLSL/WGSL), Assembleru, Verilog/SystemVerilog, VHDL, Diff/Patch a log souborů (.log).
-- Přesné zarovnání čísel řádků pro znaky plné šířky / CJK:
-  Jednotné řádkování DirectWrite zajišťuje na pixel přesné zarovnání čísel řádků bez ztráty výkonu.
-- Přesnost vodorovného posuvníku a vylepšení editoru:
-  Opraveno předčasné zobrazení vodorovného posuvníku po stisku Enter v novém souboru, okamžité skrytí při zkrácení dlouhého řádku a vylepšeno duplikování řádků (Alt+Shift+Dolů) i Zpět/Znovu.""",
+- Opraven pád při úpravách diagramů Mermaid v živém náhledu:
+  Vyřešen problém, kdy zadání neúplného data nebo syntaxe v Ganttových diagramech (např. 3místného roku jako 205-01-01) způsobilo ukončení aplikace.
+- Vylepšený analyzátor dat Ganttových diagramů Mermaid:
+  Přidána podpora pro 3místné roky (YYY-MM-DD) vedle 4místných pro plynulé vykreslování během psaní.
+- Posílená bezpečnost výjimek v živém náhledu:
+  Doplněna vícevrstvá ochrana pro všech 26 vykreslovačů diagramů Mermaid, matematiku KaTeX, optimalizaci SVG a generování HTML.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.44
-🎨 25 nya språk för syntaxmarkering (49 kategorier / 120+ filändelser) + CJK-radnummerjustering och korrigeringar av horisontell rullningslist
+        "releaseNotes": """Versionsinformation för miu v1.0.45
+🛡️ Åtgärdade krascher i live-förhandsgranskning (Mermaid-diagram, KaTeX-formler & Markdown) och förbättrad stabilitet
 
-- 25 nya språk för syntaxmarkering och kommentarsväxling (Ctrl+/):
-  Utökat till 49 kategorier (över 120 filändelser), inklusive Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows-register (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch och loggfiler (.log).
-- Exakt radnummerjustering för helbreddstecken / CJK:
-  Enhetligt DirectWrite-radavstånd ger exakt justering på pixelnivå utan prestandaförlust.
-- Förbättrad horisontell rullningslist och redigeringsmotor:
-  Åtgärdade att den horisontella rullningslisten visades i förtid efter Enter i en ny fil, omedelbar döljning när långa rader kortas ned samt förbättrad radduplicering (Alt+Skift+Pil ned) och Ångra/Gör om.""",
+- Åtgärdade krasch vid redigering av Mermaid-diagram i live-förhandsgranskning:
+  Löste ett problem där ofullständiga datum eller syntax i Mermaid Gantt-scheman (t.ex. 3-siffriga årtal som 205-01-01) fick appen att avslutas.
+- Förbättrad datumtolk för Mermaid Gantt:
+  Lade till stöd för 3-siffriga årtal (YYY-MM-DD) utöver 4-siffriga årtal för smidig rendering medan du skriver.
+- Förstärkt undantagssäkerhet i förhandsgranskningen:
+  Lade till flerskiktska skydd i alla 26 Mermaid-diagramrenderare, KaTeX-matematik, SVG-optimering och HTML-generering.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.44
-🎨 เพิ่มการเน้นไวยากรณ์ 25 ภาษาใหม่ (รวม 49 หมวดหมู่ / 120+ นามสกุลไฟล์) + แก้ไขการจัดแนวเลขบรรทัด CJK และแถบเลื่อนแนวนอน
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.45
+🛡️ แก้ไขปัญหาแอปปิดตัวลงขณะแสดงตัวอย่างสด (แผนภาพ Mermaid, สมการ KaTeX และ Markdown) และเพิ่มความเสถียร
 
-- เพิ่มการเน้นไวยากรณ์ 25 ภาษาใหม่และสลับคอมเมนต์ (Ctrl+/):
-  ขยายเป็น 49 หมวดหมู่ (มากกว่า 120 นามสกุลไฟล์) รวมถึง Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch และไฟล์บันทึก (.log)
-- แก้ไขตำแหน่งเลขบรรทัดให้ตรงกันทุกพิกเซลเมื่อพิมพ์อักษรเต็มความกว้าง / CJK:
-  ใช้ระยะห่างบรรทัดแบบสม่ำเสมอของ DirectWrite ทำให้เลขบรรทัดและเนื้อหาตรงกันอย่างแม่นยำโดยไม่ลดความเร็ว
-- ปรับปรุงความแม่นยำของแถบเลื่อนแนวนอนและระบบแก้ไขข้อความ:
-  แก้ไขปัญหาแถบเลื่อนแนวนอนแสดงขึ้นทันทีหลังกด Enter ในไฟล์ใหม่ ซ่อนแถบเลื่อนทันทีเมื่อลบข้อความบรรทัดยาวให้สั้นลง และปรับปรุงการทำซ้ำบรรทัด (Alt+Shift+Down) รวมถึง Undo/Redo""",
+- แก้ไขปัญหาแอปปิดตัวเองขณะแก้ไขแผนภาพ Mermaid ในโหมดแสดงตัวอย่างสด:
+  แก้ไขปัญหาการพิมพ์วันที่หรือไวยากรณ์ที่ยังไม่สมบูรณ์ในแผนภูมิ Gantt (เช่น ปี 3 หลักอย่าง 205-01-01) แล้วทำให้แอปปิดตัวลง
+- ปรับปรุงตัวแปลงวันที่ของแผนภูมิ Mermaid Gantt:
+  เพิ่มการรองรับปีแบบ 3 หลัก (YYY-MM-DD) นอกเหนือจากปี 4 หลัก เพื่อให้เรนเดอร์ได้อย่างราบรื่นขณะพิมพ์
+- ยกระดับความปลอดภัยในการจัดการข้อผิดพลาดของระบบแสดงตัวอย่าง:
+  เพิ่มการป้องกันหลายชั้นในตัวเรนเดอร์แผนภาพ Mermaid ทั้ง 26 รูปแบบ, สมการ KaTeX, การปรับแต่ง SVG และการสร้าง HTML""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.44 रिलीज़ नोट्स
-🎨 25 नई सिंटैक्स हाइलाइटिंग भाषाएँ (कुल 49 श्रेणियाँ / 120+ एक्सटेंशन) + CJK लाइन नंबर संरेखण और क्षैतिज स्क्रॉलबार सुधार
+        "releaseNotes": """miu v1.0.45 रिलीज़ नोट्स
+🛡️ लाइव प्रीव्यू (Mermaid डायग्राम, KaTeX गणित और Markdown) क्रैश सुधार और बेहतर स्थिरता
 
-- 25 नई सिंटैक्स हाइलाइटिंग भाषाएँ और Ctrl+/ कमेंट टॉगल:
-  Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch और लॉग फ़ाइलों (.log) सहित 49 श्रेणियों (120+ फ़ाइल एक्सटेंशन) तक विस्तार।
-- पूर्ण-चौड़ाई / CJK वर्णों के लिए सटीक लाइन नंबर संरेखण:
-  DirectWrite यूनिफ़ॉर्म लाइन स्पेसिंग से पूर्ण-चौड़ाई वाले वर्णों या इमोजी वाली पंक्तियाँ बिना किसी गति हानि के लाइन नंबरों के साथ पिक्सेल-सटीक संरेखित रहती हैं।
-- क्षैतिज स्क्रॉलबार और संपादन इंजन सुधार:
-  नई फ़ाइल में Enter दबाने पर क्षैतिज स्क्रॉलबार दिखने की समस्या हल की गई, लंबी पंक्तियों को छोटा करने पर स्क्रॉलबार तुरंत छिपता है, और पंक्ति डुप्लिकेशन (Alt+Shift+Down) व Undo/Redo को और सटीक बनाया गया।""",
+- लाइव प्रीव्यू में Mermaid डायग्राम संपादित करते समय क्रैश की समस्या हल की गई:
+  Mermaid Gantt चार्ट में अधूरी तारीख या सिंटैक्स (जैसे 205-01-01 जैसे 3-अंकीय वर्ष) टाइप करते समय ऐप बंद होने की समस्या को ठीक किया गया।
+- बेहतर Mermaid Gantt तिथि पार्सर:
+  टाइप करते समय सुचारू रेंडरिंग के लिए 4-अंकीय वर्षों के साथ 3-अंकीय वर्षों (YYY-MM-DD) का समर्थन जोड़ा गया।
+- लाइव प्रीव्यू इंजन की सुरक्षा को मजबूत किया गया:
+  सभी 26 Mermaid डायग्राम रेंडरर्स, KaTeX गणित, SVG अनुकूलन और HTML प्रीव्यू जनरेशन में बहु-स्तरीय सुरक्षा गार्ड जोड़े गए।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.44
-🎨 25 de limbaje noi pentru evidențierea sintaxei (49 de categorii / 120+ extensii) + Alinierea numerelor de rând CJK și corecții pentru bara de derulare orizontală
+        "releaseNotes": """Note de lansare miu v1.0.45
+🛡️ Remedierea opririlor neașteptate în previzualizarea live (diagrame Mermaid, formule KaTeX și Markdown) și stabilitate sporită
 
-- 25 de limbaje noi cu evidențierea sintaxei și comutare comentarii (Ctrl+/):
-  Extins la 49 de categorii (peste 120 de extensii), incluzând Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch și fișiere jurnal (.log).
-- Aliniere precisă a numerelor de rând pentru caractere cu lățime completă / CJK:
-  Spațierea uniformă a rândurilor DirectWrite asigură alinierea la nivel de pixel fără pierderi de performanță.
-- Precizia barei de derulare orizontale și îmbunătățiri de editare:
-  S-a corectat apariția prematură a barei orizontale după apăsarea tastei Enter într-un fișier nou, ascunderea imediată la scurtarea rândurilor lungi și s-au îmbunătățit duplicarea rândurilor (Alt+Shift+Jos) și Anulare/Refacere.""",
+- S-a remediat oprirea neașteptată la editarea diagramelor Mermaid în previzualizarea live:
+  S-a rezolvat o problemă în care introducerea unor date sau sintaxe incomplete în diagramele Gantt (de ex. ani din 3 cifre precum 205-01-01) ducea la închiderea aplicației.
+- Analizor de date Mermaid Gantt îmbunătățit:
+  S-a adăugat suport pentru ani din 3 cifre (YYY-MM-DD) pe lângă cei din 4 cifre pentru o redare fluentă în timpul tastării.
+- Siguranță sporită împotriva excepțiilor în previzualizarea live:
+  Protecții pe mai multe niveluri pentru toate cele 26 de tipuri de diagrame Mermaid, formule KaTeX, optimizare SVG și generare HTML.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.44 kiadási megjegyzések
-🎨 25 új szintaxiskiemelési nyelv (49 kategória / 120+ kiterjesztés) + CJK sorszám-igazítás és vízszintes görgetősáv javítások
+        "releaseNotes": """miu v1.0.45 kiadási megjegyzések
+🛡️ Élő előnézet (Mermaid diagramok, KaTeX képletek és Markdown) összeomlásának javítása és fokozott stabilitás
 
-- 25 új szintaxiskiemelési nyelv és megjegyzésváltás (Ctrl+/):
-  49 kategóriára (több mint 120 fájlkiterjesztésre) bővítve, beleértve: Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaderek (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch és naplófájlok (.log).
-- Pixelpontos sorszám-igazítás teljes szélességű / CJK karaktereknél:
-  Az egységes DirectWrite sorköz biztosítja a sorszámok és a szöveg pontos illeszkedését teljesítményveszteség nélkül.
-- Vízszintes görgetősáv és szerkesztőmotor fejlesztések:
-  Javítva a vízszintes görgetősáv idő előtti megjelenése új fájlban történő Enter leütése után, azonnali elrejtés hosszú sorok rövidítésekor, valamint pontosabb sorduplikálás (Alt+Shift+Le) és Visszavonás/Újra.""",
+- Javítva a Mermaid diagramok élő előnézetben történő szerkesztésekor fellépő összeomlás:
+  Megoldódott egy hiba, amelynél a hiányos dátumok vagy szintaxis (pl. 3 jegyű évszámok, mint a 205-01-01) beírása Gantt-diagramokban a program leállását okozta.
+- Fejlesztett Mermaid Gantt dátumelemző:
+  A 4 jegyű évszámok mellett 3 jegyű évszámok (YYY-MM-DD) támogatása a gépelés közbeni zökkenőmentes megjelenítéshez.
+- Megerősített kivételbiztonság az előnézeti motorban:
+  Többrétegű védelem mind a 26 Mermaid diagram-renderelőben, a KaTeX matematikai motorban, az SVG-optimalizálásban és a HTML-generálásban.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.44
-🎨 Προσθήκη 25 γλωσσών επισήμανσης σύνταξης (49 κατηγορίες / 120+ επεκτάσεις) + Ευθυγράμμιση αριθμών γραμμής CJK & διορθώσεις οριζόντιας γραμμής κύλισης
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.45
+🛡️ Διόρθωση τερματισμών στη Ζωντανή Προεπισκόπηση (διαγράμματα Mermaid, εξισώσεις KaTeX & Markdown) και ενισχυμένη σταθερότητα
 
-- 25 νέες γλώσσες επισήμανσης σύνταξης και εναλλαγή σχολίων (Ctrl+/):
-  Επέκταση σε 49 κατηγορίες (πάνω από 120 επεκτάσεις αρχείων), όπως Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Μητρώο Windows (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch και αρχεία καταγραφής (.log).
-- Ακριβής ευθυγράμμιση αριθμών γραμμής για χαρακτήρες πλήρους πλάτους / CJK:
-  Ομοιόμορφο διάστιχο DirectWrite για ευθυγράμμιση ακριβείας pixel χωρίς απώλεια απόδοσης.
-- Ακρίβεια οριζόντιας γραμμής κύλισης & βελτιώσεις επεξεργασίας:
-  Διορθώθηκε η πρόωρη εμφάνιση της οριζόντιας γραμμής κύλισης μετά το πάτημα Enter σε νέο αρχείο, η άμεση απόκρυψη κατά τη συντόμευση μεγάλων γραμμών και βελτιώθηκαν ο διπλασιασμός γραμμής (Alt+Shift+Κάτω) και η Αναίρεση/Επανάληψη.""",
+- Διορθώθηκε σφάλμα τερματισμού κατά την επεξεργασία διαγραμμάτων Mermaid στη Ζωντανή Προεπισκόπηση:
+  Επιλύθηκε πρόβλημα όπου η πληκτρολόγηση ημιτελών ημερομηνιών ή σύνταξης σε διαγράμματα Gantt (π.χ. 3ψήφια έτη όπως 205-01-01) προκαλούσε κλείσιμο της εφαρμογής.
+- Βελτιωμένος αναλυτής ημερομηνιών Mermaid Gantt:
+  Προστέθηκε υποστήριξη για 3ψήφια έτη (YYY-MM-DD) επιπλέον των 4ψήφιων για ομαλή απόδοση κατά την πληκτρολόγηση.
+- Ενισχυμένη ασφάλεια εξαιρέσεων στη Ζωντανή Προεπισκόπηση:
+  Προστέθηκαν δικλείδες ασφαλείας πολλαπλών επιπέδων και στους 26 τύπους διαγραμμάτων Mermaid, στα μαθηματικά KaTeX, στη βελτιστοποίηση SVG και στην παραγωγή HTML.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter til miu v1.0.44
-🎨 25 nye sprog til syntaksfremhævning (49 kategorier / 120+ filendelser) + CJK-linjenummerjustering og rettelser til vandret rullepanel
+        "releaseNotes": """Udgivelsesnoter til miu v1.0.45
+🛡️ Rettede nedbrud i live-forhåndsvisning (Mermaid-diagrammer, KaTeX-formler og Markdown) & forbedret stabilitet
 
-- 25 nye sprog til syntaksfremhævning og kommentarskift (Ctrl+/):
-  Udvidet til 49 kategorier (over 120 filendelser), herunder Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows-registreringsdatabase (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch og logfiler (.log).
-- Præcis linjenummerjustering ved fuldbreddetegn / CJK:
-  Ensartet DirectWrite-linjeafstand sikrer pixelpræcis justering uden tab af ydeevne.
-- Præcision af vandret rullepanel og redigeringsmotor:
-  Rettet at det vandrette rullepanel blev vist for tidligt efter Enter i en ny fil, øjeblikkelig skjulning ved afkortning af lange linjer samt forbedret linjeduplikering (Alt+Skift+Ned) og Fortryd/Annuller fortryd.""",
+- Rettet nedbrud ved redigering af Mermaid-diagrammer i live-forhåndsvisning:
+  Løst et problem, hvor ufuldstændige datoer eller syntaks i Mermaid Gantt-diagrammer (f.eks. 3-cifrede årstal som 205-01-01) fik appen til at lukke.
+- Forbedret Mermaid Gantt-datoparser:
+  Tilføjet understøttelse af 3-cifrede årstal (YYY-MM-DD) ud over 4-cifrede årstal for jævn gengivelse under indtastning.
+- Styrket fejlhåndtering i live-forhåndsvisning:
+  Tilføjet flerlagsbeskyttelse på tværs af alle 26 Mermaid-diagramtyper, KaTeX-matematik, SVG-optimering og HTML-generering.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.44 -julkaisutiedot
-🎨 25 uutta syntaksinkorotuskieltä (49 kategoriaa / 120+ tiedostopäätettä) + CJK-rivinumeroiden kohdistus ja vaakavierityspalkin korjaukset
+        "releaseNotes": """miu v1.0.45 -julkaisutiedot
+🛡️ Reaaliaikaisen esikatselun (Mermaid-kaaviot, KaTeX-kaavat ja Markdown) kaatumiskorjaukset ja parannettu vakaus
 
-- 25 uutta syntaksinkorotuskieltä ja kommenttien vaihto (Ctrl+/):
-  Laajennettu 49 kategoriaan (yli 120 tiedostopäätettä), mukaan lukien Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows-rekisteri (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch ja lokitiedostot (.log).
-- Pikselintarkka rivinumeroiden kohdistus täysleveiden / CJK-merkkien kanssa:
-  Yhtenäinen DirectWrite-riviväli varmistaa tarkan kohdistuksen ilman suorituskykyhäviötä.
-- Vaakavierityspalkin tarkkuus ja muokkausmoottorin parannukset:
-  Korjattu vaakavierityspalkin ennenaikainen näkyminen Enterin painamisen jälkeen uudessa tiedostossa, välitön piilotus pitkiä rivejä lyhennettäessä sekä parannettu rivien monistusta (Alt+Vaihto+Alas) ja Kumoa/Tee uudelleen -toimintoja.""",
+- Korjattu kaatuminen Mermaid-kaavioita muokattaessa reaaliaikaisessa esikatselussa:
+  Ratkaistu ongelma, jossa keskeneräisten päivämäärien tai syntaksin kirjoittaminen Mermaid Gantt -kaavioihin (esim. 3-numeroiset vuodet kuten 205-01-01) sulki sovelluksen.
+- Parannettu Mermaid Gantt -päivämääräjäsennin:
+  Lisätty tuki 3-numeroisille vuosille (YYY-MM-DD) 4-numeroisten vuosien lisäksi sujuvaa kirjoituksen aikaista piirtämistä varten.
+- Vahvistettu esikatselumoottorin poikkeusturvallisuus:
+  Lisätty monikerroksinen suojaus kaikkiin 26 Mermaid-kaaviorenderöijään, KaTeX-matematiikkaan, SVG-optimointiin ja HTML-esikatselun luontiin.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.44
-🎨 25 nye språk for syntaksutheving (49 kategorier / 120+ filtyper) + CJK-linjenummerjustering og rettelser for horisontalt rullefelt
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.45
+🛡️ Rettet krasj i sanntidsvisning (Mermaid-diagrammer, KaTeX-formler og Markdown) og forbedret stabilitet
 
-- 25 nye språk for syntaksutheving og kommentarbehandling (Ctrl+/):
-  Utvidet til 49 kategorier (over 120 filtyper), inkludert Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows-register (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch og loggfiler (.log).
-- Pikselpresis linjenummerjustering for fullbreddetegn / CJK:
-  Ensartet DirectWrite-linjeavstand sikrer nøyaktig justering uten ytelsestap.
-- Presisjon for horisontalt rullefelt og redigeringsmotor:
-  Rettet feil der horisontalt rullefelt dukket opp etter Enter i en ny fil, umiddelbar skjuling når lange linjer forkortes, samt forbedret linjeduplisering (Alt+Shift+Ned) og Angre/Gjør om.""",
+- Rettet krasj ved redigering av Mermaid-diagrammer i sanntidsvisning:
+  Løst et problem der ufullstendige datoer eller syntaks i Mermaid Gantt-diagrammer (f.eks. 3-sifrede årstall som 205-01-01) førte til at appen ble avsluttet.
+- Forbedret Mermaid Gantt-datoparser:
+  Lagt til støtte for 3-sifrede årstall (YYY-MM-DD) i tillegg til 4-sifrede årstall for jevn gjengivelse mens du skriver.
+- Styrket unntakssikkerhet i sanntidsvisningen:
+  Lagt til flerlagsbeskyttelse i alle 26 Mermaid-diagramtyper, KaTeX-matematikk, SVG-optimalisering og HTML-generering.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.44
-🎨 Tambahan 25 Bahasa Serlahan Sintaks (49 Kategori / 120+ Sambungan) + Penjajaran Nombor Baris CJK & Pembaikan Bar Skrol Mendatar
+        "releaseNotes": """Nota Keluaran miu v1.0.45
+🛡️ Pembaikan Runtuhan Pratonton Langsung (Rajah Mermaid, Formula KaTeX & Markdown) & Peningkatan Kestabilan
 
-- 25 Bahasa Baharu untuk Serlahan Sintaks & Togol Komen (Ctrl+/):
-  Diperluas kepada 49 kategori (lebih 120 sambungan fail), termasuk Dart, R, Zig, Scala, Perl, VB/VBA, F#, Julia, Haskell, Elixir, Dockerfile, Terraform/HCL, TOML/.env, GraphQL, Protobuf, CMake, Makefile, Windows Registry (.reg), Shaders (HLSL/GLSL/WGSL), Assembly, Verilog/SystemVerilog, VHDL, Diff/Patch dan fail log (.log).
-- Penjajaran Nombor Baris Tepat untuk Aksara Lebar Penuh / CJK:
-  Jarak baris DirectWrite yang seragam memastikan baris dengan aksara CJK atau emoji sejajar tepat dengan nombor baris tanpa kehilangan prestasi.
-- Ketepatan Bar Skrol Mendatar & Enjin Penyuntingan:
-  Membaiki bar skrol mendatar yang muncul terlalu awal selepas menekan Enter pada fail baharu, menyembunyikan bar skrol serta-merta apabila baris panjang dipendekkan, serta menambah baik penduaan baris (Alt+Shift+Bawah) dan Buat Asal/Buat Semula.""",
+- Membaiki Runtuhan Semasa Mengedit Rajah Mermaid dalam Pratonton Langsung:
+  Menyelesaikan masalah apabila menaip tarikh atau sintaks tidak lengkap dalam carta Gantt Mermaid (cth. tahun 3 digit seperti 205-01-01) menyebabkan aplikasi tertutup.
+- Penghurai Tarikh Gantt Mermaid Dipertingkatkan:
+  Menambah sokongan tahun 3 digit (YYY-MM-DD) selain tahun 4 digit supaya carta Gantt dipaparkan dengan lancar semasa menaip.
+- Keselamatan Pengecualian Pratonton Langsung Diperkukuh:
+  Menambah perlindungan berlapis merentasi kesemua 26 pemapar rajah Mermaid, matematik KaTeX, pengoptimuman SVG dan penjanaan HTML.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

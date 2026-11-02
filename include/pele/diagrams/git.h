@@ -83,11 +83,11 @@ struct TokStream {
   std::vector<std::string> texts;
 };
 
-inline bool isAsciiWordChar(char c) noexcept {
+inline bool isAsciiWordChar(char c) {
   return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
 }
 
-inline int matchReference(const std::string& src, int p) noexcept {
+inline int matchReference(const std::string& src, int p) {
   int n = static_cast<int>(src.size());
   if (p >= n || !isAsciiWordChar(src[p])) return -1;
   int e = p + 1;
@@ -100,7 +100,7 @@ inline int matchReference(const std::string& src, int p) noexcept {
   return e;
 }
 
-inline bool matchRefSuffix(const std::string& src, int p) noexcept {
+inline bool matchRefSuffix(const std::string& src, int p) {
   int n = static_cast<int>(src.size());
   int e = p;
   while (e < n && (isAsciiWordChar(src[e]) || src[e] == '-' || src[e] == '.' || src[e] == '/')) {
@@ -112,12 +112,12 @@ inline bool matchRefSuffix(const std::string& src, int p) noexcept {
   return e > p;
 }
 
-inline bool startsWithExact(const std::string& src, int p, const std::string& w) noexcept {
+inline bool startsWithExact(const std::string& src, int p, const std::string& w) {
   if (p + static_cast<int>(w.size()) > static_cast<int>(src.size())) return false;
   return src.compare(static_cast<size_t>(p), w.size(), w) == 0;
 }
 
-inline bool startsWithCaseless(const std::string& src, int p, const std::string& w) noexcept {
+inline bool startsWithCaseless(const std::string& src, int p, const std::string& w) {
   if (p + static_cast<int>(w.size()) > static_cast<int>(src.size())) return false;
   for (size_t i = 0; i < w.size(); ++i) {
     char c1 = src[static_cast<size_t>(p) + i];
@@ -129,7 +129,7 @@ inline bool startsWithCaseless(const std::string& src, int p, const std::string&
   return true;
 }
 
-inline int matchWordOrRef(const std::string& src, int p, const std::string& w, bool caseless, int wordKind, int& outKind) noexcept {
+inline int matchWordOrRef(const std::string& src, int p, const std::string& w, bool caseless, int wordKind, int& outKind) {
   bool ok = caseless ? startsWithCaseless(src, p, w) : startsWithExact(src, p, w);
   if (!ok) return -1;
   int wEnd = p + static_cast<int>(w.size());
@@ -290,7 +290,7 @@ inline TokStream tokenizeGit(const std::string& src) {
   return out;
 }
 
-inline std::string unescapeGitString(const std::string& tok) noexcept {
+inline std::string unescapeGitString(const std::string& tok) {
   if (tok.size() < 2) return "";
   std::string out;
   out.reserve(tok.size() - 2);
@@ -314,14 +314,14 @@ inline std::string unescapeGitString(const std::string& tok) noexcept {
   return out;
 }
 
-inline std::string extractTitleVal(const std::string& tok) noexcept {
+inline std::string extractTitleVal(const std::string& tok) {
   if (tok.size() <= 5) return "";
   size_t i = 5;
   while (i < tok.size() && (tok[i] == ' ' || tok[i] == '\t')) i++;
   return tok.substr(i);
 }
 
-inline std::string extractAccTitleVal(const std::string& tok) noexcept {
+inline std::string extractAccTitleVal(const std::string& tok) {
   size_t colon = tok.find(':');
   if (colon == std::string::npos) return "";
   size_t i = colon + 1;
@@ -329,7 +329,7 @@ inline std::string extractAccTitleVal(const std::string& tok) noexcept {
   return tok.substr(i);
 }
 
-inline std::string extractAccDescrVal(const std::string& tok) noexcept {
+inline std::string extractAccDescrVal(const std::string& tok) {
   size_t brace = tok.find('{');
   if (brace != std::string::npos && !tok.empty() && tok.back() == '}') {
     std::string inner = tok.substr(brace + 1, tok.size() - brace - 2);
@@ -507,13 +507,13 @@ inline GitGraphAst parseGit(const std::string& src) {
   return ast;
 }
 
-inline int typeCode(const std::string& name) noexcept {
+inline int typeCode(const std::string& name) {
   if (name == "REVERSE") return CommitType::REVERSE;
   if (name == "HIGHLIGHT") return CommitType::HIGHLIGHT;
   return CommitType::NORMAL;
 }
 
-inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std::string& title) noexcept {
+inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std::string& title) {
   const Config emptyObj = Config::makeMap();
   const Config* gc = config.isMap() ? config.get("gitGraph") : nullptr;
   const Config& git = (gc && gc->isMap()) ? *gc : emptyObj;
@@ -650,7 +650,7 @@ inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std
   return model;
 }
 
-inline bool isBrTagAt(const std::string& s, size_t pos) noexcept {
+inline bool isBrTagAt(const std::string& s, size_t pos) {
   size_t i = pos + 1;
   if (i + 1 >= s.size()) return false;
   char c1 = s[i];
@@ -662,7 +662,7 @@ inline bool isBrTagAt(const std::string& s, size_t pos) noexcept {
   return i < s.size() && s[i] == '>';
 }
 
-inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
+inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
   std::string text;
   text.reserve(raw.size());
   for (size_t i = 0; i < raw.size(); ++i) {
@@ -678,7 +678,7 @@ inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, do
   return layoutLabel(text, false, measurer, size, max, base);
 }
 
-inline bool flagOpt(const Config& config, const std::string& key, bool fallback) noexcept {
+inline bool flagOpt(const Config& config, const std::string& key, bool fallback) {
   if (!config.isMap()) return fallback;
   const Config* gc = config.get("gitGraph");
   if (!gc || !gc->isMap()) return fallback;
@@ -686,12 +686,12 @@ inline bool flagOpt(const Config& config, const std::string& key, bool fallback)
   return (v && v->isBool()) ? v->bVal : fallback;
 }
 
-inline double tagWidth(const Label& tag) noexcept {
+inline double tagWidth(const Label& tag) {
   constexpr double NOTCH = 7.0;
   return NOTCH + 4.0 + tag.width + 6.0;
 }
 
-inline std::string symbolSvg(int type, double x, double y, const std::string& color) noexcept {
+inline std::string symbolSvg(int type, double x, double y, const std::string& color) {
   constexpr double DOT = 7.0;
   std::string at = Pele::cat({"cx=\"", num(x), "\" cy=\"", num(y), "\""});
   if (type == CommitType::HIGHLIGHT) {
@@ -711,7 +711,7 @@ inline std::string symbolSvg(int type, double x, double y, const std::string& co
 }
 
 template <typename DrawFn>
-inline Rendered turnToFit(const RenderOptions& options, DrawFn&& drawFn) noexcept {
+inline Rendered turnToFit(const RenderOptions& options, DrawFn&& drawFn) {
   Rendered across = drawFn(false);
   double max = options.maxWidth;
   if (!(max > 0.0) || !std::isfinite(max) || across.width <= max) return across;
@@ -719,7 +719,7 @@ inline Rendered turnToFit(const RenderOptions& options, DrawFn&& drawFn) noexcep
   return down.width < across.width ? down : across;
 }
 
-inline Rendered drawGit(const GitModel& model, const Config& config, const RenderOptions& options, const std::string& direction) noexcept {
+inline Rendered drawGit(const GitModel& model, const Config& config, const RenderOptions& options, const std::string& direction) {
   constexpr double DOT = 7.0;
   constexpr double STEP = 44.0;
   constexpr double LANE = 44.0;
@@ -1061,7 +1061,7 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
   };
 }
 
-inline Rendered renderGitModel(const GitModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderGitModel(const GitModel& model, const Config& config, const RenderOptions& options) {
   if (model.direction != "LR") return drawGit(model, config, options, model.direction);
   return turnToFit(options, [&](bool down) {
     return drawGit(model, config, options, down ? "TB" : "LR");

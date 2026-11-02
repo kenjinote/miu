@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.45": {
+        "ja-jp": """miu v1.0.45 リリースノート
+🛡️ ライブプレビュー（Mermaid図表・KaTeX数式・Markdown）のクラッシュ修正と安定性強化
+
+・Mermaid 図表・数式プレビュー編集中に強制終了する不具合を修正:
+  ガントチャート（gantt）等で日付や構文の入力途中（例：205-01-01 等の3桁年号や未完了構文）に内部例外が発生した際、noexcept 境界によりアプリが強制終了していた問題を修正しました。
+・Mermaid ガントチャートの日付パーサ改善:
+  標準の4桁年号だけでなく3桁年号（YYY-MM-DD）のフォールバック解釈にも対応し、リアルタイム入力中でも途切れず描画されるようになりました。
+・プレビュー変換エンジンの例外安全性強化:
+  全26種の Mermaid 図表レンダラ・KaTeX 数式変換・SVG 最適化・プレビュー HTML 生成の各境界に安全ガードを追加し、作成途中の不完全な記法でもクラッシュせず安定して動作します。""",
+
+        "en-us": """miu v1.0.45 Release Notes
+🛡️ Fixed Live Preview Crashes (Mermaid Diagrams, KaTeX Math & Markdown) & Improved Stability
+
+- Fixed Crash While Editing Mermaid Diagrams in Live Preview:
+  Resolved an issue where typing incomplete dates or syntax in Mermaid Gantt charts (e.g., 3-digit years like 205-01-01) threw an internal exception across a noexcept boundary and terminated the app.
+- Enhanced Mermaid Gantt Date Parser:
+  Added fallback support for 3-digit years (YYY-MM-DD) in addition to 4-digit years so Gantt charts render smoothly while typing.
+- Hardened Live Preview Exception Safety:
+  Removed unsafe noexcept specifiers and added multi-layer exception guards across all 26 Mermaid diagram renderers, KaTeX math rendering, SVG tightening, and HTML preview generation.""",
+
+        "zh-hans": """miu v1.0.45 更新日志
+🛡️ 修复实时预览（Mermaid 图表、KaTeX 公式与 Markdown）崩溃问题并增强稳定性
+
+- 修复编辑 Mermaid 图表时实时预览闪退的问题：
+  修复了在甘特图（gantt）等图表中输入未完成日期或语法（如 205-01-01 等三位数年份）时触发内部异常穿过 noexcept 边界导致程序退出的问题。
+- 改进 Mermaid 甘特图日期解析器：
+  除标准四位数年份外新增对三位数年份（YYY-MM-DD）的兼容解析，输入过程中即可平滑渲染。
+- 全面加固实时预览异常安全性：
+  为全部 26 种 Mermaid 图表渲染器、KaTeX 数学公式转换、SVG 优化与预览 HTML 生成增加多层异常防护，在输入未闭合语法时依然稳定运行。""",
+
+        "ko": """miu v1.0.45 릴리스 노트
+🛡️ 실시간 미리보기(Mermaid 다이어그램·KaTeX 수식·Markdown) 충돌 수정 및 안정성 강화
+
+- Mermaid 다이어그램 실시간 미리보기 편집 중 강제 종료 오류 수정:
+  간트 차트(gantt) 등에서 날짜나 구문 입력 도중(예: 205-01-01 등 3자리 연도 또는 미완성 구문) 내부 예외 발생 시 noexcept 경계로 인해 앱이 종료되던 문제를 해결했습니다.
+- Mermaid 간트 차트 날짜 파서 개선:
+  표준 4자리 연도뿐만 아니라 3자리 연도(YYY-MM-DD) 폴백 파싱을 지원하여 입력 중에도 끊김 없이 렌더링됩니다.
+- 미리보기 엔진 예외 안전성 강화:
+  26종 Mermaid 다이어그램 렌더러, KaTeX 수식 변환, SVG 최적화 및 미리보기 HTML 생성 전반에 다중 예외 보호 가드를 적용했습니다."""
+    },
     "1.0.44": {
         "ja-jp": """miu v1.0.44 リリースノート
 🎨 25言語のシンタックスハイライト新規追加（全49カテゴリ・120種以上の拡張子対応）＆ 全角文字の行番号位置ズレ修正・水平スクロールバー＆編集精度向上

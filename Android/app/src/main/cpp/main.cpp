@@ -3536,11 +3536,54 @@ JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdIsDirty(JNIEnv* env,
     std::lock_guard<std::mutex> lock(g_imeMutex);
     return g_engine->isDirty ? JNI_TRUE : JNI_FALSE;
 }
+static jstring utf8ToJString(JNIEnv* env, const std::string& utf8) {
+    if (utf8.empty()) return env->NewStringUTF("");
+    std::vector<jchar> u16;
+    u16.reserve(utf8.size());
+    size_t i = 0, n = utf8.size();
+    while (i < n) {
+        unsigned char c = (unsigned char)utf8[i];
+        uint32_t cp = 0xFFFD;
+        if (c < 0x80) {
+            cp = c;
+            i += 1;
+        } else if ((c & 0xE0) == 0xC0 && i + 1 < n && ((unsigned char)utf8[i + 1] & 0xC0) == 0x80) {
+            cp = ((c & 0x1F) << 6) | ((unsigned char)utf8[i + 1] & 0x3F);
+            if (cp < 0x80) cp = 0xFFFD;
+            i += 2;
+        } else if ((c & 0xF0) == 0xE0 && i + 2 < n &&
+                   ((unsigned char)utf8[i + 1] & 0xC0) == 0x80 &&
+                   ((unsigned char)utf8[i + 2] & 0xC0) == 0x80) {
+            cp = ((c & 0x0F) << 12) | (((unsigned char)utf8[i + 1] & 0x3F) << 6) | ((unsigned char)utf8[i + 2] & 0x3F);
+            if (cp < 0x800 || (cp >= 0xD800 && cp <= 0xDFFF)) cp = 0xFFFD;
+            i += 3;
+        } else if ((c & 0xF8) == 0xF0 && i + 3 < n &&
+                   ((unsigned char)utf8[i + 1] & 0xC0) == 0x80 &&
+                   ((unsigned char)utf8[i + 2] & 0xC0) == 0x80 &&
+                   ((unsigned char)utf8[i + 3] & 0xC0) == 0x80) {
+            cp = ((c & 0x07) << 18) | (((unsigned char)utf8[i + 1] & 0x3F) << 12) |
+                 (((unsigned char)utf8[i + 2] & 0x3F) << 6) | ((unsigned char)utf8[i + 3] & 0x3F);
+            if (cp < 0x10000 || cp > 0x10FFFF) cp = 0xFFFD;
+            i += 4;
+        } else {
+            i += 1;
+        }
+        if (cp <= 0xFFFF) {
+            u16.push_back((jchar)cp);
+        } else {
+            cp -= 0x10000;
+            u16.push_back((jchar)(0xD800 + (cp >> 10)));
+            u16.push_back((jchar)(0xDC00 + (cp & 0x3FF)));
+        }
+    }
+    return env->NewString(u16.data(), (jsize)u16.size());
+}
+
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextContent(JNIEnv* env, jobject thiz) {
     if (!g_engine) return env->NewStringUTF("");
     std::lock_guard<std::mutex> lock(g_imeMutex);
     std::string text = g_engine->pt.getRange(0, g_engine->pt.length());
-    return env->NewStringUTF(text.c_str());
+    return utf8ToJString(env, text);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMarkSaved(JNIEnv* env, jobject thiz) {
     if (!g_engine) return;
@@ -3661,7 +3704,7 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdCopy(JNIEnv* env, job
     if (!g_engine) return env->NewStringUTF("");
     std::lock_guard<std::mutex> lock(g_imeMutex);
     std::string t = internalCopy(g_engine);
-    return env->NewStringUTF(t.c_str());
+    return utf8ToJString(env, t);
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdCut(JNIEnv* env, jobject thiz) {
     if (!g_engine) return env->NewStringUTF("");
@@ -3689,7 +3732,7 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdCut(JNIEnv* env, jobj
         g_engine->cursors = delRanges;
         insertAtCursors(g_engine, "");
     }
-    return env->NewStringUTF(t.c_str());
+    return utf8ToJString(env, t);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdPaste(JNIEnv* env, jobject thiz, jstring text) {
     if (!g_engine) return;
@@ -3772,7 +3815,7 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetAutoSearchText(JNI
         }
     }
     g_engine->searchQuery = result;
-    return env->NewStringUTF(result.c_str());
+    return utf8ToJString(env, result);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, jobject thiz, jint direction, jboolean isCtrl, jboolean keepAnchor) {
     if (!g_engine) return;
@@ -4282,18 +4325,20 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetHelpVisible(JNIEnv* e
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetPreviewHtml(JNIEnv* env, jobject thiz, jboolean isDark) {
     if (!g_engine) return env->NewStringUTF("");
     std::lock_guard<std::mutex> lock(g_imeMutex);
-    std::string text = g_engine->pt.getRange(0, g_engine->pt.length());
+    static constexpr size_t PREVIEW_MAX_BYTES = 524288;
+    std::string text = g_engine->pt.getRange(0, std::min(g_engine->pt.length(), PREVIEW_MAX_BYTES + 1));
     MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce);
-    return env->NewStringUTF(res.fullHtml.c_str());
+    return utf8ToJString(env, res.fullHtml);
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetPreviewDomUpdateJs(JNIEnv* env, jobject thiz, jboolean isDark) {
     if (!g_engine) return env->NewStringUTF("");
     std::lock_guard<std::mutex> lock(g_imeMutex);
-    std::string text = g_engine->pt.getRange(0, g_engine->pt.length());
+    static constexpr size_t PREVIEW_MAX_BYTES = 524288;
+    std::string text = g_engine->pt.getRange(0, std::min(g_engine->pt.length(), PREVIEW_MAX_BYTES + 1));
     MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce);
     if (!res.isMdOrMermaidShell) return env->NewStringUTF("");
     std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, isDark == JNI_TRUE);
-    return env->NewStringUTF(js.c_str());
+    return utf8ToJString(env, js);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdTogglePreviewTask(JNIEnv* env, jobject thiz, jint lineIdx) {
     if (!g_engine) return;
@@ -4350,7 +4395,7 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextBeforeCursor(J
     if (!g_engine->imeComp.empty()) {
         text += g_engine->imeComp;
     }
-    return env->NewStringUTF(text.c_str());
+    return utf8ToJString(env, text);
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextAfterCursor(JNIEnv* env, jobject thiz, jint length) {
     if (!g_engine || g_engine->cursors.empty()) return env->NewStringUTF("");
@@ -4371,7 +4416,7 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextAfterCursor(JN
     }
     if (end > docLen) end = docLen;
     std::string text = g_engine->pt.getRange(pos, end - pos);
-    return env->NewStringUTF(text.c_str());
+    return utf8ToJString(env, text);
 }
 }
 void cleanupVulkan(Engine* engine) {
@@ -5659,7 +5704,7 @@ void updateTitleBarIfNeeded(Engine* engine) {
         engine->lastTitleStr = titleStr; LOGI("Title changed to: %s", titleStr.c_str()); JNIEnv* env = nullptr; JavaVM* vm = engine->app->activity->vm; bool needDetach = false;
         if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) { if (vm->AttachCurrentThread(&env, nullptr) != 0) return; needDetach = true; }
         jclass clazz = env->GetObjectClass(engine->app->activity->clazz); jmethodID mid = env->GetMethodID(clazz, "setOverlayTitle", "(Ljava/lang/String;)V");
-        if (mid) { jstring jTitle = env->NewStringUTF(titleStr.c_str()); env->CallVoidMethod(engine->app->activity->clazz, mid, jTitle); env->DeleteLocalRef(jTitle); }
+        if (mid) { jstring jTitle = utf8ToJString(env, titleStr); env->CallVoidMethod(engine->app->activity->clazz, mid, jTitle); env->DeleteLocalRef(jTitle); }
         env->DeleteLocalRef(clazz); if (needDetach) vm->DetachCurrentThread();
     }
 }

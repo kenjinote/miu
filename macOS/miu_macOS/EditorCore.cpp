@@ -24,7 +24,7 @@
 #include <arm_neon.h>
 #endif
 
-const std::wstring APP_VERSION = L"v1.0.44";
+const std::wstring APP_VERSION = L"v1.0.45";
 const std::wstring APP_TITLE = L"miu";
 
 #if defined(__APPLE__)
@@ -2521,7 +2521,9 @@ MiuPreview::PreviewRenderResult Editor::getPreviewRenderResult() {
         oss << std::hex << std::setfill('0') << std::setw(16) << gen() << std::setw(16) << gen();
         previewNonce = oss.str();
     }
-    std::string content = pt.getRange(0, pt.length());
+    static constexpr size_t PREVIEW_MAX_BYTES = 524288;
+    size_t totalBytes = pt.length();
+    std::string content = pt.getRange(0, std::min(totalBytes, PREVIEW_MAX_BYTES + 1));
     return MiuPreview::renderPreview(content, currentFileExt, isDarkMode, previewNonce);
 }
 

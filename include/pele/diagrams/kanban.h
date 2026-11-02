@@ -23,7 +23,7 @@ struct KanbanModel : public DiagramMeta {
     std::vector<KanbanSection> sections;
 };
 
-inline bool yamlTruthy(const YamlValue* v) noexcept {
+inline bool yamlTruthy(const YamlValue* v) {
     if (!v || v->isNull()) return false;
     if (v->isBool()) return v->bVal;
     if (v->isNumber()) return v->nVal != 0.0 && !std::isnan(v->nVal);
@@ -106,7 +106,7 @@ constexpr double CARD_GAP = 8.0;
 constexpr double META_GAP = 4.0;
 constexpr double ICON_GAP = 6.0;
 
-inline std::string priorityStroke(const std::string& p) noexcept {
+inline std::string priorityStroke(const std::string& p) {
     if (p == "very high") return Pele::cat({"stroke=\"", CRITICAL, "\""});
     if (p == "high") return Pele::cat({"stroke=\"", CRITICAL, "\" opacity=\"0.5\""});
     if (p == "low") return "stroke=\"var(--_m)\" opacity=\"0.5\"";
@@ -114,7 +114,7 @@ inline std::string priorityStroke(const std::string& p) noexcept {
     return "";
 }
 
-inline Label fitKanbanLabel(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double max, int base = 0) noexcept {
+inline Label fitKanbanLabel(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double max, int base = 0) {
     Label label = layoutLabel(raw, markdown, measurer, size, max, base);
     if (label.width <= max) return label;
     std::vector<std::vector<Span>> lines;
@@ -184,7 +184,7 @@ inline Label fitKanbanLabel(const std::string& raw, bool markdown, const TextMea
     return label.hasHeights ? withHeights(std::move(fitted)) : fitted;
 }
 
-inline std::string textBlock(const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons, bool end = false) noexcept {
+inline std::string textBlock(const Label& label, double x, double y, const std::string& attrs, const IconResolver& icons, bool end = false) {
     std::string out;
     for (size_t i = 0; i < label.lines.size(); i++) {
         const auto& line = label.lines[i];
@@ -199,7 +199,7 @@ inline std::string textBlock(const Label& label, double x, double y, const std::
     return out;
 }
 
-inline double kanbanTitleRoom(const RenderOptions& options) noexcept {
+inline double kanbanTitleRoom(const RenderOptions& options) {
     double available = options.maxWidth;
     return available > 0.0 ? std::max(80.0, available - 2.0 * options.padding) : 4000.0;
 }
@@ -213,7 +213,7 @@ struct KanbanCard {
     double height = 0.0;
 };
 
-inline Rendered renderKanbanModel(const KanbanModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderKanbanModel(const KanbanModel& model, const Config& config, const RenderOptions& options) {
     double size = options.fontSize;
     double small = std::round(size * 0.875);
     double line = std::round(size * 1.5);

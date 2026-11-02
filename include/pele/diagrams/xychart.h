@@ -8,7 +8,7 @@ namespace XyChartDiagram {
 // Helpers
 // ============================================================================
 
-inline std::string jsNumberToString(double v) noexcept {
+inline std::string jsNumberToString(double v) {
     if (std::isnan(v)) return "NaN";
     if (!std::isfinite(v)) return v > 0 ? "Infinity" : "-Infinity";
     if (v == 0.0) v = 0.0;
@@ -25,11 +25,11 @@ inline std::string jsNumberToString(double v) noexcept {
     return s;
 }
 
-inline double jsRound(double x) noexcept {
+inline double jsRound(double x) {
     return std::floor(x + 0.5);
 }
 
-inline bool wordAtAscii(const std::string& src, size_t at, const std::string& word) noexcept {
+inline bool wordAtAscii(const std::string& src, size_t at, const std::string& word) {
     if (at + word.size() > src.size()) return false;
     for (size_t k = 0; k < word.size(); k++) {
         int c = static_cast<unsigned char>(src[at + k]);
@@ -39,7 +39,7 @@ inline bool wordAtAscii(const std::string& src, size_t at, const std::string& wo
     return true;
 }
 
-inline double capWidth(const RenderOptions& options, double natural, double least, double around = 0.0) noexcept {
+inline double capWidth(const RenderOptions& options, double natural, double least, double around = 0.0) {
     double available = options.maxWidth;
     if (!(available > 0.0)) return natural;
     return std::max(std::min(least, natural), std::min(natural, available - around));
@@ -49,7 +49,7 @@ inline double capWidth(const RenderOptions& options, double natural, double leas
 // src/diagrams/xychart/ticks.ts
 // ============================================================================
 
-inline double tickStep(double span, double count) noexcept {
+inline double tickStep(double span, double count) {
     double raw = span / std::max(count, 1.0);
     double power = std::floor(std::log10(raw));
     double unit = raw / std::pow(10.0, power);
@@ -57,16 +57,16 @@ inline double tickStep(double span, double count) noexcept {
     return power < 0.0 ? (-std::pow(10.0, -power) / factor) : (factor * std::pow(10.0, power));
 }
 
-inline double tickIndex(double step, double value) noexcept {
+inline double tickIndex(double step, double value) {
     return step > 0.0 ? (value / step) : (value * -step);
 }
 
-inline double tickValue(double step, double index) noexcept {
+inline double tickValue(double step, double index) {
     double v = step > 0.0 ? (index * step) : (index / -step);
     return v == 0.0 ? 0.0 : v;
 }
 
-inline std::vector<double> ticksBetween(double lo, double hi, double step) noexcept {
+inline std::vector<double> ticksBetween(double lo, double hi, double step) {
     double first = jsRound(tickIndex(step, lo));
     if (tickValue(step, first) < lo) first += 1.0;
     double last = jsRound(tickIndex(step, hi));
@@ -296,7 +296,7 @@ namespace T {
     };
 }
 
-inline const char* tokenName(int t) noexcept {
+inline const char* tokenName(int t) {
     static const char* NAMES[] = {
         "$end", "INVALID", "NEWLINE", "title", "acc_title", "acc_title_value",
         "acc_descr", "acc_descr_value", "acc_descr_multiline_value", "XYCHART",
@@ -726,34 +726,34 @@ struct Mark {
     Label label;
 };
 
-inline Config record(const YamlValue* value) noexcept {
+inline Config record(const YamlValue* value) {
     return (value && value->isMap()) ? *value : YamlValue::makeMap();
 }
 
-inline bool on(const Config& config, const std::string& key, bool fallback = true) noexcept {
+inline bool on(const Config& config, const std::string& key, bool fallback = true) {
     const auto* v = config.get(key);
     return (v && v->isBool()) ? v->bVal : fallback;
 }
 
-inline double dimension(const YamlValue* value, double fallback) noexcept {
+inline double dimension(const YamlValue* value, double fallback) {
     return (value && value->isNumber() && value->nVal > 0.0)
         ? std::round(std::min(std::max(value->nVal, 100.0), 4000.0))
         : fallback;
 }
 
-inline std::optional<double> finiteVal(double value, bool hasValue = true) noexcept {
+inline std::optional<double> finiteVal(double value, bool hasValue = true) {
     constexpr double LIMIT = 1e300;
     if (!hasValue || !std::isfinite(value)) return std::nullopt;
     return std::min(std::max(value, -LIMIT), LIMIT);
 }
 
-inline double widestMark(const std::vector<Mark>& marks) noexcept {
+inline double widestMark(const std::vector<Mark>& marks) {
     double w = 0.0;
     for (const auto& m : marks) w = std::max(w, m.label.width);
     return w;
 }
 
-inline std::string aligned(const Label& label, double x, double y, const std::string& anchor) noexcept {
+inline std::string aligned(const Label& label, double x, double y, const std::string& anchor) {
     if (label.lines.size() == 1 && label.lines[0].size() == 1 && !label.lines[0][0].hasIcon && label.lines[0][0].style == 0) {
         return Pele::cat({"<text x=\"", num(x), "\" y=\"", num(y + label.size * 0.35), "\" text-anchor=\"", anchor, "\">", esc(label.lines[0][0].text), "</text>"});
     }

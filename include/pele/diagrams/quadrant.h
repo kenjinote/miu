@@ -96,7 +96,7 @@ struct Tokens {
   std::vector<std::string> texts;
 };
 
-inline bool wordAtU16(const std::vector<uint16_t>& src, int p, const std::string& word) noexcept {
+inline bool wordAtU16(const std::vector<uint16_t>& src, int p, const std::string& word) {
   int n = static_cast<int>(src.size());
   int wl = static_cast<int>(word.size());
   if (p < 0 || p + wl > n) return false;
@@ -110,7 +110,7 @@ inline bool wordAtU16(const std::vector<uint16_t>& src, int p, const std::string
   return true;
 }
 
-inline int singleTok(uint16_t c) noexcept {
+inline int singleTok(uint16_t c) {
   if (c >= 128) return 0;
   switch (c) {
     case ':': return T_COLON;
@@ -446,7 +446,7 @@ inline Tokens tokenizeQuadrant(const std::string& rawSrc) {
   return out;
 }
 
-inline std::pair<std::string, std::string> keyValue(const std::string& style) noexcept {
+inline std::pair<std::string, std::string> keyValue(const std::string& style) {
   std::string s = trimStr(style);
   size_t colon = s.find(':');
   if (colon == std::string::npos) return {s, "undefined"};
@@ -476,30 +476,30 @@ inline PointStyle parseStyles(const std::vector<std::string>& styles) {
   return out;
 }
 
-inline QuadrantText trimmedText(const QuadrantText& label) noexcept {
+inline QuadrantText trimmedText(const QuadrantText& label) {
   return {trimStr(label.text), label.type};
 }
 
-inline bool isWordTok(int t) noexcept {
+inline bool isWordTok(int t) {
   return t == T_PUNCTUATION || t == T_AMP || t == T_NUM || t == T_ALPHA ||
          t == T_COMMA || t == T_PLUS || t == T_EQUALS || t == T_MULT ||
          t == T_DOT || t == T_BRKT || t == T_UNDERSCORE || t == T_UNICODE_TEXT;
 }
 
-inline bool isIdTok(int t) noexcept {
+inline bool isIdTok(int t) {
   return t == T_ALPHA || t == T_NUM || t == T_MINUS || t == T_COMMA ||
          t == T_COLON || t == T_AMP || t == T_BRKT || t == T_MULT || t == T_UNICODE_TEXT;
 }
 
-inline bool isStyleTok(int t) noexcept {
+inline bool isStyleTok(int t) {
   return t == T_ALPHA || t == T_NUM || t == T_COLON || t == T_SPACE || t == T_BRKT || t == T_MINUS;
 }
 
-inline bool isEolTok(int t) noexcept {
+inline bool isEolTok(int t) {
   return t == T_NEWLINE || t == T_SEMI || t == T_EOF;
 }
 
-inline bool isTextTok(int t) noexcept {
+inline bool isTextTok(int t) {
   return t == T_STR || t == T_MD_STR || isWordTok(t);
 }
 
@@ -609,29 +609,29 @@ inline void parseQuadrant(const std::string& src, QuadrantModel& db) {
   }
 }
 
-inline const Config* setting(const Config& config, const std::string& key) noexcept {
+inline const Config* setting(const Config& config, const std::string& key) {
   if (!config.isMap()) return nullptr;
   const Config* qc = config.get("quadrantChart");
   if (!qc || !qc->isMap()) return nullptr;
   return qc->get(key);
 }
 
-inline double lengthOpt(const Config& config, const std::string& key, double fallback, double maxVal) noexcept {
+inline double lengthOpt(const Config& config, const std::string& key, double fallback, double maxVal) {
   const Config* v = setting(config, key);
   if (v && v->isNumber() && v->nVal >= 0.0) return std::min(v->nVal, maxVal);
   return fallback;
 }
 
-inline std::string hexColor(const std::string& color) noexcept {
+inline std::string hexColor(const std::string& color) {
   return (!color.empty() && color[0] == '#') ? color : Pele::cat({"#", color});
 }
 
-inline double capWidth(const RenderOptions& options, double natural, double least) noexcept {
+inline double capWidth(const RenderOptions& options, double natural, double least) {
   double max = options.maxWidth;
   return (max > 0.0 && std::isfinite(max)) ? std::min(natural, std::max(least, max)) : natural;
 }
 
-inline Rendered renderQuadrantModel(const QuadrantModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderQuadrantModel(const QuadrantModel& model, const Config& config, const RenderOptions& options) {
   constexpr double GAP = 4.0;
   constexpr size_t CAREFUL = 300;
 

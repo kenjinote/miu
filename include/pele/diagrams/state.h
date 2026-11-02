@@ -52,11 +52,11 @@ enum class End : uint8_t {
     Arrives = 2,
 };
 
-inline bool isDummy(uint8_t kind) noexcept {
+inline bool isDummy(uint8_t kind) {
     return kind == static_cast<uint8_t>(LKind::Dummy) || kind == static_cast<uint8_t>(LKind::Label);
 }
 
-inline void sortRange(std::vector<int>& list, int from, int to, const std::vector<int>& key) noexcept {
+inline void sortRange(std::vector<int>& list, int from, int to, const std::vector<int>& key) {
     for (int i = from + 1; i < to; i++) {
         int item = list[i];
         int k = key[item];
@@ -147,11 +147,11 @@ struct Graph {
     std::vector<int>& groupParent;
 };
 
-inline double halfRoom(const Graph& g, const LayeredOptions& opt, int v) noexcept {
+inline double halfRoom(const Graph& g, const LayeredOptions& opt, int v) {
     return g.W[v] / 2.0 + (g.KIND[v] == static_cast<uint8_t>(LKind::Node) ? opt.nodeSep : opt.edgeSep) / 2.0;
 }
 
-inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) noexcept {
+inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) {
     int n = static_cast<int>(nodes.size());
     int m = static_cast<int>(edges.size());
     std::vector<int> start(n + 1, 0);
@@ -193,7 +193,7 @@ inline void orient(std::vector<LNode>& nodes, std::vector<LEdge>& edges) noexcep
     }
 }
 
-inline void rank(std::vector<LNode>& nodes, const std::vector<LEdge>& edges, int step = 1) noexcept {
+inline void rank(std::vector<LNode>& nodes, const std::vector<LEdge>& edges, int step = 1) {
     int n = static_cast<int>(nodes.size());
     int m = static_cast<int>(edges.size());
     std::vector<int> from(m, 0);
@@ -333,7 +333,7 @@ inline double sideEnds(
     return total * pitch;
 }
 
-inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) noexcept {
+inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) {
     const auto& real = g.real;
     const auto& W = g.W;
     auto& EFD = g.EFD;
@@ -356,7 +356,7 @@ inline void spread(Graph& g, const std::vector<LNode>& nodes, const std::vector<
     }
 }
 
-inline int follow(const Graph& g, const std::vector<uint8_t>& empty, int e, int side) noexcept {
+inline int follow(const Graph& g, const std::vector<uint8_t>& empty, int e, int side) {
     if (empty.empty()) return e;
     const auto& KIND = g.KIND;
     const auto& RANK = g.RANK;
@@ -374,7 +374,7 @@ inline int follow(const Graph& g, const std::vector<uint8_t>& empty, int e, int 
     return e;
 }
 
-inline std::array<std::vector<int>, 2> freeEnds(const Graph& g, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) noexcept {
+inline std::array<std::vector<int>, 2> freeEnds(const Graph& g, const std::vector<uint8_t>& EFK, const std::vector<uint8_t>& ETK) {
     std::array<std::vector<int>, 2> free{std::vector<int>(g.n, 0), std::vector<int>(g.n, 0)};
     for (size_t e = 0; e < g.EF.size(); e++) {
         if (ETK[e] != static_cast<uint8_t>(End::Held)) free[0][g.ET[e]]++;
@@ -383,7 +383,7 @@ inline std::array<std::vector<int>, 2> freeEnds(const Graph& g, const std::vecto
     return free;
 }
 
-inline double ease(double across, double along) noexcept {
+inline double ease(double across, double along) {
     double a = std::abs(across);
     return std::max(0.25, std::min(0.5, (4.0 * std::abs(along)) / (a != 0.0 ? a : 1.0)));
 }
@@ -611,7 +611,7 @@ inline void settle(
     }
 }
 
-inline void snap(Graph& g, std::vector<double>& xs, const std::vector<uint8_t>& empty, const LayeredOptions& opt) noexcept {
+inline void snap(Graph& g, std::vector<double>& xs, const std::vector<uint8_t>& empty, const LayeredOptions& opt) {
     const auto& n = g.n;
     const auto& KIND = g.KIND;
     const auto& RANK = g.RANK;
@@ -702,7 +702,7 @@ inline void snap(Graph& g, std::vector<double>& xs, const std::vector<uint8_t>& 
     }
 }
 
-inline std::vector<uint8_t> emptyRanks(const Graph& g) noexcept {
+inline std::vector<uint8_t> emptyRanks(const Graph& g) {
     const auto& maxRank = g.maxRank;
     const auto& KIND = g.KIND;
     const auto& layerStart = g.layerStart;
@@ -1149,7 +1149,7 @@ inline void pastLabels(
     }
 }
 
-inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& nodes) noexcept {
+inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& nodes) {
     const auto& n = g.n;
     const auto& real = g.real;
     const auto& maxRank = g.maxRank;
@@ -1502,7 +1502,7 @@ inline std::pair<int, int> reduceCrossings(Graph& g, const std::vector<LNode>& n
     return {best, declared};
 }
 
-inline std::vector<double> position(Graph& g, const LayeredOptions& opt) noexcept {
+inline std::vector<double> position(Graph& g, const LayeredOptions& opt) {
     const auto& n = g.n;
     const auto& maxRank = g.maxRank;
     const auto& W = g.W;
@@ -1709,7 +1709,7 @@ inline std::vector<double> position(Graph& g, const LayeredOptions& opt) noexcep
     return out;
 }
 
-inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt = {}) noexcept {
+inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt = {}) {
     int real = static_cast<int>(nodes.size());
     if (real == 0) return {0.0, 0.0, 0, 0};
     int m = static_cast<int>(edges.size());
@@ -2246,7 +2246,7 @@ using detail_layered_exact::layoutLayered;
 // src/layout/compound.ts (exact 1:1 port)
 // ============================================================================
 
-inline std::string direction(const std::string& dir) noexcept {
+inline std::string direction(const std::string& dir) {
     return (dir == "BT" || dir == "LR" || dir == "RL") ? dir : "TB";
 }
 
@@ -2408,11 +2408,11 @@ enum class RouteStyle : int {
     Linear = 2,
 };
 
-inline RouteStyle styleOf(const LayeredOptions& opt) noexcept {
+inline RouteStyle styleOf(const LayeredOptions& opt) {
     return opt.tracks ? RouteStyle::Stepped : opt.straight ? RouteStyle::Linear : RouteStyle::Curved;
 }
 
-inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, RouteStyle style = RouteStyle::Curved) noexcept {
+inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEdge>& edges, RouteStyle style = RouteStyle::Curved) {
     int size = 0;
     for (const auto& e : edges) {
         if (e.src != e.dst && e.route.size() > 3) {
@@ -2661,7 +2661,7 @@ inline int routeCrossings(const std::vector<CNode>& nodes, const std::vector<CEd
     return total;
 }
 
-inline CNode cnode(double w, double h, int parent = -1) noexcept {
+inline CNode cnode(double w, double h, int parent = -1) {
     CNode c;
     c.w = w;
     c.h = h;
@@ -2669,15 +2669,15 @@ inline CNode cnode(double w, double h, int parent = -1) noexcept {
     return c;
 }
 
-inline Side startSide(const std::string& dir) noexcept {
+inline Side startSide(const std::string& dir) {
     return dir == "TB" ? Side::Top : dir == "BT" ? Side::Bottom : dir == "LR" ? Side::Left : Side::Right;
 }
 
-inline Side opposite(Side side) noexcept {
+inline Side opposite(Side side) {
     return static_cast<Side>((static_cast<int>(side) + 2) & 3);
 }
 
-inline int endSide(const std::vector<double>& route, int at, const CNode& c) noexcept {
+inline int endSide(const std::vector<double>& route, int at, const CNode& c) {
     double dx = route[at] - c.x;
     double dy = route[at + 1] - c.y;
     if (std::abs(std::abs(dy) - c.h / 2.0) < 0.5) return dy < 0.0 ? 0 : 2;
@@ -2685,7 +2685,7 @@ inline int endSide(const std::vector<double>& route, int at, const CNode& c) noe
     return -1;
 }
 
-inline LNode lnode(double w, double h, LKind kind = LKind::Node) noexcept {
+inline LNode lnode(double w, double h, LKind kind = LKind::Node) {
     LNode n;
     n.w = w;
     n.h = h;
@@ -2693,7 +2693,7 @@ inline LNode lnode(double w, double h, LKind kind = LKind::Node) noexcept {
     return n;
 }
 
-inline LEdge ledge(int tail, int head, int minlen = 1, double labelW = 0.0, double labelH = 0.0) noexcept {
+inline LEdge ledge(int tail, int head, int minlen = 1, double labelW = 0.0, double labelH = 0.0) {
     LEdge e;
     e.tail = tail;
     e.head = head;
@@ -3327,12 +3327,12 @@ inline CompoundResult compoundLayout(
 // src/diagrams/common/fit-width.ts (runsAcross, turnToFit)
 // ============================================================================
 
-inline bool runsAcross(const std::string& dir) noexcept {
+inline bool runsAcross(const std::string& dir) {
     return dir == "LR" || dir == "RL";
 }
 
 template <typename DrawFn>
-inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) noexcept {
+inline Rendered turnToFit(const RenderOptions& options, DrawFn&& draw) {
     constexpr double BREAKPOINT = 640.0;
     Rendered across = draw(false);
     double available = options.maxWidth;
@@ -3394,14 +3394,14 @@ struct Stmt {
     std::string tooltip;
 };
 
-inline StmtPtr makeStringStmt(const std::string& s) noexcept {
+inline StmtPtr makeStringStmt(const std::string& s) {
     auto p = std::make_shared<Stmt>();
     p->kind = "string";
     p->strVal = s;
     return p;
 }
 
-inline StmtPtr makeStateStmtWrap(StateStmtPtr st) noexcept {
+inline StmtPtr makeStateStmtWrap(StateStmtPtr st) {
     auto p = std::make_shared<Stmt>();
     p->kind = "state";
     p->state = std::move(st);
@@ -3490,7 +3490,7 @@ struct Frame {
     bool alt = true;
 };
 
-inline std::string docDirection(const std::vector<StmtPtr>& doc) noexcept {
+inline std::string docDirection(const std::vector<StmtPtr>& doc) {
     std::string dir = "TB";
     for (const auto& item : doc) {
         if (item && item->kind == "dir") dir = item->value;
@@ -5165,7 +5165,7 @@ enum class K : int {
     Hidden = 10,
 };
 
-inline K kindOfShape(const std::string& shape) noexcept {
+inline K kindOfShape(const std::string& shape) {
     if (shape == "rectWithTitle") return K::Described;
     if (shape == "stateStart") return K::Start;
     if (shape == "stateEnd") return K::End;
@@ -5201,11 +5201,11 @@ struct View {
     double titleH = 0.0;
 };
 
-inline bool isVertical(const std::string& dir) noexcept {
+inline bool isVertical(const std::string& dir) {
     return dir == "TB" || dir == "BT";
 }
 
-inline double numberOption(const Config& config, const std::string& key, double fallback) noexcept {
+inline double numberOption(const Config& config, const std::string& key, double fallback) {
     const YamlValue* st = config.get("state");
     if (!st || !st->isMap()) return fallback;
     const YamlValue* v = st->get(key);
@@ -5215,7 +5215,7 @@ inline double numberOption(const Config& config, const std::string& key, double 
     return fallback;
 }
 
-inline std::string unquote(const std::string& text) noexcept {
+inline std::string unquote(const std::string& text) {
     size_t from = 0;
     size_t to = text.size();
     while (from < to && text[from] == '"') from++;
@@ -5223,15 +5223,15 @@ inline std::string unquote(const std::string& text) noexcept {
     return text.substr(from, to - from);
 }
 
-inline double clampVal(double value, double minV, double maxV) noexcept {
+inline double clampVal(double value, double minV, double maxV) {
     return value < minV ? minV : value > maxV ? maxV : value;
 }
 
-inline std::string rectSvg(double x, double y, double w, double h, const std::string& rest) noexcept {
+inline std::string rectSvg(double x, double y, double w, double h, const std::string& rest) {
     return Pele::cat({"<rect x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(w), "\" height=\"", num(h), "\"", rest, "/>"});
 }
 
-inline CNode makeGroup(const std::string& dir, double padX, double padTop, double padBottom) noexcept {
+inline CNode makeGroup(const std::string& dir, double padX, double padTop, double padBottom) {
     CNode c = cnode(0.0, 0.0);
     c.isGroup = true;
     c.dir = dir;
@@ -5241,7 +5241,7 @@ inline CNode makeGroup(const std::string& dir, double padX, double padTop, doubl
     return c;
 }
 
-inline std::string stripMermaidClasses(const std::string& s) noexcept {
+inline std::string stripMermaidClasses(const std::string& s) {
     std::string out;
     bool first = true;
     size_t i = 0;
@@ -5262,7 +5262,7 @@ inline std::string stripMermaidClasses(const std::string& s) noexcept {
     return out;
 }
 
-inline double titleX(const CNode& c, double width, const std::unordered_map<int, std::vector<double>>& crossings) noexcept {
+inline double titleX(const CNode& c, double width, const std::unordered_map<int, std::vector<double>>& crossings) {
     auto it = crossings.find(static_cast<int>(std::llround(c.y - c.h / 2.0)));
     if (it == crossings.end() || width == 0.0) return c.x;
     const auto& xs = it->second;
@@ -5285,7 +5285,7 @@ inline double titleX(const CNode& c, double width, const std::unordered_map<int,
     return best;
 }
 
-inline Rendered draw(const StateDb& db, const Config& config, const RenderOptions& options, bool turned) noexcept {
+inline Rendered draw(const StateDb& db, const Config& config, const RenderOptions& options, bool turned) {
     const auto& graph = db.graph;
     std::string curve;
     if (const YamlValue* fc = config.get("flowchart")) {
@@ -5867,7 +5867,7 @@ inline Rendered draw(const StateDb& db, const Config& config, const RenderOption
 
 } // namespace detail_render
 
-inline Rendered renderStateDiagram(const StateDb& db, const Config& config = {}, const RenderOptions& options = {}) noexcept {
+inline Rendered renderStateDiagram(const StateDb& db, const Config& config = {}, const RenderOptions& options = {}) {
     if (!runsAcross(db.direction())) return detail_render::draw(db, config, options, false);
     return turnToFit(options, [&](bool down) { return detail_render::draw(db, config, options, down); });
 }

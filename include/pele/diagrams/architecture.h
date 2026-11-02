@@ -19,7 +19,7 @@ namespace architecture_detail {
 // Safe single-space normalizer for title/accTitle/accDescr
 // ============================================================================
 
-inline std::string archSingle(const std::string& text) noexcept {
+inline std::string archSingle(const std::string& text) {
   std::string s = trimStr(text);
   std::string out;
   int spaces = 0;
@@ -37,19 +37,19 @@ inline std::string archSingle(const std::string& text) noexcept {
   return out;
 }
 
-inline std::string archTitleValue(const std::string& text) noexcept {
+inline std::string archTitleValue(const std::string& text) {
   size_t pos = text.find("title");
   if (pos == std::string::npos) return "";
   return archSingle(text.substr(pos + 5));
 }
 
-inline std::string archAccTitleValue(const std::string& text) noexcept {
+inline std::string archAccTitleValue(const std::string& text) {
   size_t pos = text.find(':');
   if (pos == std::string::npos) return "";
   return archSingle(text.substr(pos + 1));
 }
 
-inline std::string archAccDescrValue(const std::string& text) noexcept {
+inline std::string archAccDescrValue(const std::string& text) {
   size_t brace = text.find('{');
   size_t colon = text.find(':');
   if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
@@ -96,11 +96,11 @@ enum T {
   label
 };
 
-inline bool isWordChar(char c) noexcept {
+inline bool isWordChar(char c) {
   return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '_';
 }
 
-inline TokenType archWord(const std::string& text) noexcept {
+inline TokenType archWord(const std::string& text) {
   TokenType t;
   t.name = text;
   t.literal = text;
@@ -109,7 +109,7 @@ inline TokenType archWord(const std::string& text) noexcept {
   return t;
 }
 
-inline TokenType archLiteral(const std::string& text, std::vector<int> longer = {}) noexcept {
+inline TokenType archLiteral(const std::string& text, std::vector<int> longer = {}) {
   TokenType t;
   t.name = text;
   t.literal = text;
@@ -118,7 +118,7 @@ inline TokenType archLiteral(const std::string& text, std::vector<int> longer = 
   return t;
 }
 
-inline const std::vector<TokenType>& getTokens() noexcept {
+inline const std::vector<TokenType>& getTokens() {
   static const std::vector<TokenType> tokens = []() {
     std::vector<TokenType> v;
     v.push_back(archWord("architecture-beta")); // 0
@@ -305,7 +305,7 @@ struct ArchitectureAst {
   std::vector<AlignmentAst> alignments;
 };
 
-inline std::string labelValue(const std::string& text) noexcept {
+inline std::string labelValue(const std::string& text) {
   std::string result = trimStr(text.substr(1, text.size() - 2));
   if (result.size() >= 2 && ((result.front() == '"' && result.back() == '"') || (result.front() == '\'' && result.back() == '\''))) {
     result = result.substr(1, result.size() - 2);
@@ -529,7 +529,7 @@ public:
   }
 };
 
-inline void populate(const ArchitectureAst& ast, ArchitectureDb& db) noexcept {
+inline void populate(const ArchitectureAst& ast, ArchitectureDb& db) {
   if (ast.accDescr.has_value() && !ast.accDescr->empty()) db.accDescr = cleanAccDescr(*ast.accDescr);
   if (ast.accTitle.has_value() && !ast.accTitle->empty()) db.accTitle = trimStartStr(*ast.accTitle);
   if (ast.title.has_value() && !ast.title->empty()) db.title = *ast.title;
@@ -544,7 +544,7 @@ inline void populate(const ArchitectureAst& ast, ArchitectureDb& db) noexcept {
 // Built-in Icons (`src/diagrams/architecture/icons.ts`)
 // ============================================================================
 
-inline std::string builtinIcon(const std::string& name) noexcept {
+inline std::string builtinIcon(const std::string& name) {
   std::string d;
   if (name == "database") d = "M4 6a8 3 0 1 0 16 0a8 3 0 1 0-16 0M4 6v12a8 3 0 0 0 16 0V6M4 12a8 3 0 0 0 16 0";
   else if (name == "server") d = "M3 4h18v7H3zM3 13h18v7H3zM7 7.5h.01M7 16.5h.01M11 7.5h6M11 16.5h6";
@@ -573,7 +573,7 @@ struct Grid {
 constexpr int DX[4] = {-1, 1, 0, 0};
 constexpr int DY[4] = {0, 0, -1, 1};
 
-inline int sideIndex(char side) noexcept {
+inline int sideIndex(char side) {
   return side == 'L' ? 0 : side == 'R' ? 1 : side == 'T' ? 2 : 3;
 }
 
@@ -929,7 +929,7 @@ constexpr double CORNER = 6.0;
 constexpr double LABEL_GAP = 4.0;
 constexpr double DOT = 3.0;
 
-inline double setting(const Config& config, const std::string& key, double fallback, double minV, double maxV) noexcept {
+inline double setting(const Config& config, const std::string& key, double fallback, double minV, double maxV) {
   const auto* sec = config.get("architecture");
   if (sec && sec->isMap()) {
     const auto* v = sec->get(key);
@@ -940,7 +940,7 @@ inline double setting(const Config& config, const std::string& key, double fallb
   return fallback;
 }
 
-inline Pele::FlatMap<int, int> rankValues(std::vector<int> values) noexcept {
+inline Pele::FlatMap<int, int> rankValues(std::vector<int> values) {
   std::sort(values.begin(), values.end());
   Pele::FlatMap<int, int> out;
   for (int v : values) {
@@ -952,13 +952,13 @@ inline Pele::FlatMap<int, int> rankValues(std::vector<int> values) noexcept {
   return out;
 }
 
-inline std::string iconSlot(const std::string& name, double x, double y, double side, const IconResolver& icons) noexcept {
+inline std::string iconSlot(const std::string& name, double x, double y, double side, const IconResolver& icons) {
   std::string body = icons ? icons(name) : "";
   if (body.empty() && !icons) body = builtinIcon(name);
   return Pele::cat({"<svg class=\"pele-icon\" data-icon=\"", escText(name), "\" x=\"", num(x), "\" y=\"", num(y), "\" width=\"", num(side), "\" height=\"", num(side), "\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">", body, "</svg>"});
 }
 
-inline Label fitLabel(const Label& label, double maxWidth, size_t maxLines, const TextMeasurer& measurer) noexcept {
+inline Label fitLabel(const Label& label, double maxWidth, size_t maxLines, const TextMeasurer& measurer) {
   bool cut = label.lines.size() > maxLines;
   if (!cut && label.width <= maxWidth) return label;
   const std::string ellipsis = "\xE2\x80\xA6"; // …
@@ -1033,7 +1033,7 @@ struct Port {
   bool wire = false;
 };
 
-inline std::vector<double> routeEdge(const Port& s, const Port& e) noexcept {
+inline std::vector<double> routeEdge(const Port& s, const Port& e) {
   double sx = s.x, sy = s.y, sdx = s.dx, sdy = s.dy;
   double ex = e.x, ey = e.y, edx = e.dx, edy = e.dy;
   double s1x = sx + sdx * STUB;
@@ -1087,7 +1087,7 @@ inline std::vector<double> routeEdge(const Port& s, const Port& e) noexcept {
   return {sx, sy, sx, s1y, lane, s1y, lane, e1y, ex, e1y, ex, ey};
 }
 
-inline std::vector<double> simplifyPoints(const std::vector<double>& p) noexcept {
+inline std::vector<double> simplifyPoints(const std::vector<double>& p) {
   std::vector<double> out = {p[0], p[1]};
   for (size_t i = 2; i < p.size(); i += 2) {
     double x = p[i];
@@ -1107,7 +1107,7 @@ inline std::vector<double> simplifyPoints(const std::vector<double>& p) noexcept
   return out;
 }
 
-inline std::string pathData(const std::vector<double>& p, double startTrim, double endTrim) noexcept {
+inline std::string pathData(const std::vector<double>& p, double startTrim, double endTrim) {
   size_t n = p.size() / 2;
   std::vector<double> xs(n), ys(n);
   for (size_t i = 0; i < n; i++) {
@@ -1142,7 +1142,7 @@ inline std::string pathData(const std::vector<double>& p, double startTrim, doub
   return Pele::cat({d, "L", num(xs[n - 1]), ",", num(ys[n - 1])});
 }
 
-inline Rendered draw(const ArchitectureDb& model, const Config& config, const RenderOptions& options, bool tight) noexcept {
+inline Rendered draw(const ArchitectureDb& model, const Config& config, const RenderOptions& options, bool tight) {
   double iconSize = setting(config, "iconSize", 48.0, 8.0, 512.0);
   double size = setting(config, "fontSize", options.fontSize, 4.0, 128.0);
   double groupPad = std::min(setting(config, "padding", 20.0, 0.0, 256.0), tight ? 12.0 : std::numeric_limits<double>::infinity());
@@ -1487,7 +1487,7 @@ inline Rendered draw(const ArchitectureDb& model, const Config& config, const Re
   return {svg, width, height, {}};
 }
 
-inline Rendered renderArchitectureModel(const ArchitectureDb& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderArchitectureModel(const ArchitectureDb& model, const Config& config, const RenderOptions& options) {
   return tighten(options, [&](bool tight) {
     return draw(model, config, options, tight);
   });

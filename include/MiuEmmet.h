@@ -40,45 +40,45 @@ struct ExpandResult {
     std::vector<TabstopGroup> groups;
 };
 
-static inline char toLowerAscii(char c)  noexcept{
+static inline char toLowerAscii(char c){
     return (c >= 'A' && c <= 'Z') ? (char)(c + ('a' - 'A')) : c;
 }
 
-static inline std::string toLowerStr(const std::string& s)  noexcept{
+static inline std::string toLowerStr(const std::string& s){
     std::string r = s;
     for (char& c : r) c = toLowerAscii(c);
     return r;
 }
 
-static inline bool isAsciiAlpha(char c)  noexcept{
+static inline bool isAsciiAlpha(char c){
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-static inline bool isAsciiDigit(char c)  noexcept{
+static inline bool isAsciiDigit(char c){
     return (c >= '0' && c <= '9');
 }
 
-static inline bool isAsciiAlnum(char c)  noexcept{
+static inline bool isAsciiAlnum(char c){
     return isAsciiAlpha(c) || isAsciiDigit(c);
 }
 
-static inline bool isAsciiXdigit(char c)  noexcept{
+static inline bool isAsciiXdigit(char c){
     return isAsciiDigit(c) || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
 }
 
-static inline bool isAsciiUpper(char c)  noexcept{
+static inline bool isAsciiUpper(char c){
     return (c >= 'A' && c <= 'Z');
 }
 
-static inline bool isIdentChar(char c)  noexcept{
+static inline bool isIdentChar(char c){
     return isAsciiAlnum(c) || c == '_' || c == '-';
 }
 
-static inline bool isTagChar(char c)  noexcept{
+static inline bool isTagChar(char c){
     return isIdentChar(c) || c == ':' || c == '$' || c == '@' || c == '!';
 }
 
-static bool isInPipeList(const char* list, const std::string& s)  noexcept{
+static bool isInPipeList(const char* list, const std::string& s){
     if (s.empty()) return false;
     size_t len = s.size();
     const char* p = list;
@@ -89,37 +89,37 @@ static bool isInPipeList(const char* list, const std::string& s)  noexcept{
     return false;
 }
 
-static inline bool isVoidTag(const std::string& lowerTag)  noexcept{
+static inline bool isVoidTag(const std::string& lowerTag){
     static constexpr const char kVoidList[] =
         "|area|base|basefont|br|col|command|embed|frame|hr|img|input|isindex|keygen|link|meta|param|source|track|wbr|";
     return isInPipeList(kVoidList, lowerTag);
 }
 
-static inline bool isInlineTag(const std::string& lowerTag)  noexcept{
+static inline bool isInlineTag(const std::string& lowerTag){
     static constexpr const char kInlineList[] =
         "|a|abbr|acronym|b|basefont|bdi|bdo|big|br|button|cite|code|data|del|dfn|em|font|i|img|input|ins|kbd|label|mark|meter|output|progress|q|rp|rt|rtc|s|samp|slot|small|span|strike|strong|sub|sup|textarea|time|tt|u|var|wbr|";
     return isInPipeList(kInlineList, lowerTag);
 }
 
-static inline bool isStructuralContainerTag(const std::string& lowerTag)  noexcept{
+static inline bool isStructuralContainerTag(const std::string& lowerTag){
     static constexpr const char kStructList[] =
         "|html|head|body|div|ul|ol|dl|table|thead|tbody|tfoot|tr|section|article|header|footer|nav|main|aside|form|fieldset|select|optgroup|figure|details|dialog|blockquote|hgroup|menu|colgroup|picture|video|audio|canvas|map|datalist|template|svg|";
     return isInPipeList(kStructList, lowerTag);
 }
 
-static inline bool isBooleanAttr(const std::string& lowerAttr)  noexcept{
+static inline bool isBooleanAttr(const std::string& lowerAttr){
     static constexpr const char kBoolList[] =
         "|allowfullscreen|async|autofocus|autoplay|checked|compact|controls|declare|default|defaultchecked|defaultmuted|defaultselected|defer|disabled|enabled|formnovalidate|hidden|indeterminate|inert|ismap|itemscope|loop|multiple|muted|nohref|noresize|noshade|novalidate|nowrap|open|pauseonexit|readonly|required|reversed|scoped|seamless|selected|sortable|truespeed|typemustmatch|visible|";
     return isInPipeList(kBoolList, lowerAttr);
 }
 
-static inline bool isCompoundPlusTag(const std::string& lowerTag)  noexcept{
+static inline bool isCompoundPlusTag(const std::string& lowerTag){
     static constexpr const char kPlusList[] =
         "|ul|ol|dl|table|tr|thead|tbody|tfoot|select|optg|optgroup|map|colg|colgroup|pic|picture|";
     return isInPipeList(kPlusList, lowerTag);
 }
 
-static inline bool isKnownHtmlTagOrSnippet(const std::string& rawName)  noexcept{
+static inline bool isKnownHtmlTagOrSnippet(const std::string& rawName){
     if (rawName.empty()) return false;
     std::string lower = toLowerStr(rawName);
     if (lower == "!" || lower == "!!!" || lower == "!!!4t" || lower == "!!!4s" || lower == "!!!xt" || lower == "!!!xs" || lower == "!!!xxs") return true;
@@ -168,7 +168,7 @@ static inline bool isKnownHtmlTagOrSnippet(const std::string& rawName)  noexcept
         "time|title|tr|track|tt|u|ul|var|video|wbr|ri:d|ri:dpr|ri:v|ri:viewport|ri:a|ri:art|ri:t|ri:type|";
     return isInPipeList(kKnownList, normalized);
 }
-static std::string resolveNumbering(const std::string& input, int index, int total)  noexcept{
+static std::string resolveNumbering(const std::string& input, int index, int total){
     std::string out;
     out.reserve(input.size() + 8);
     for (size_t i = 0; i < input.size(); ) {
@@ -219,7 +219,7 @@ static std::string resolveNumbering(const std::string& input, int index, int tot
     return out;
 }
 
-static std::string generateLorem(int wordCount, int iterationIndex)  noexcept{
+static std::string generateLorem(int wordCount, int iterationIndex){
     static constexpr const char* kWords[] = {
         "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipisicing", "elit",
         "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore",
@@ -285,7 +285,7 @@ struct HtmlNode {
     std::string specialTemplate;
 };
 
-static std::string resolveImplicitTag(const std::string& parentLowerTag)  noexcept{
+static std::string resolveImplicitTag(const std::string& parentLowerTag){
     if (parentLowerTag == "ul" || parentLowerTag == "ol" || parentLowerTag == "menu") return "li";
     if (parentLowerTag == "table" || parentLowerTag == "tbody" || parentLowerTag == "thead" || parentLowerTag == "tfoot") return "tr";
     if (parentLowerTag == "tr") return "td";
@@ -302,7 +302,7 @@ static std::string resolveImplicitTag(const std::string& parentLowerTag)  noexce
     return "div";
 }
 
-static std::string findNearestElementTag(const std::vector<HtmlNode>& pool, int nodeIdx)  noexcept{
+static std::string findNearestElementTag(const std::vector<HtmlNode>& pool, int nodeIdx){
     int p = pool[nodeIdx].parent;
     while (p != -1) {
         if (!pool[p].isGroup && !pool[p].tag.empty()) {
@@ -313,7 +313,7 @@ static std::string findNearestElementTag(const std::vector<HtmlNode>& pool, int 
     return "";
 }
 
-static void applySnippetDefaults(std::vector<HtmlNode>& pool, int nodeIdx)  noexcept{
+static void applySnippetDefaults(std::vector<HtmlNode>& pool, int nodeIdx){
     std::string rawTag = pool[nodeIdx].tag;
     if (rawTag.empty()) return;
     std::string lower = toLowerStr(rawTag);
@@ -644,7 +644,7 @@ static void applySnippetDefaults(std::vector<HtmlNode>& pool, int nodeIdx)  noex
     }
 }
 
-static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>& pool)  noexcept{
+static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>& pool){
     pool.clear();
     HtmlNode root;
     root.isGroup = true;
@@ -931,7 +931,7 @@ static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>
     return !pool[0].children.empty();
 }
 
-static std::string getEffectiveTag(const std::vector<HtmlNode>& pool, int nodeIdx)  noexcept{
+static std::string getEffectiveTag(const std::vector<HtmlNode>& pool, int nodeIdx){
     const HtmlNode& node = pool[nodeIdx];
     if (node.isGroup || node.isTextOnly || node.isComment || !node.specialTemplate.empty()) return node.tag;
     if (node.isLorem && node.tag.empty()) return "";
@@ -939,7 +939,7 @@ static std::string getEffectiveTag(const std::vector<HtmlNode>& pool, int nodeId
     return resolveImplicitTag(findNearestElementTag(pool, nodeIdx));
 }
 
-static bool nodeHasBlockDescendant(const std::vector<HtmlNode>& pool, int nodeIdx)  noexcept{
+static bool nodeHasBlockDescendant(const std::vector<HtmlNode>& pool, int nodeIdx){
     for (int chIdx : pool[nodeIdx].children) {
         const HtmlNode& ch = pool[chIdx];
         if (ch.isGroup) {
@@ -953,7 +953,7 @@ static bool nodeHasBlockDescendant(const std::vector<HtmlNode>& pool, int nodeId
     return false;
 }
 
-static bool nodeShouldFormatChildrenMultiline(const std::vector<HtmlNode>& pool, int nodeIdx, const std::string& lowerTag)  noexcept{
+static bool nodeShouldFormatChildrenMultiline(const std::vector<HtmlNode>& pool, int nodeIdx, const std::string& lowerTag){
     const HtmlNode& node = pool[nodeIdx];
     if (node.children.empty()) return false;
     bool hasElementChild = false;
@@ -978,7 +978,7 @@ static bool nodeShouldFormatChildrenMultiline(const std::vector<HtmlNode>& pool,
     return false;
 }
 
-static void extractHtmlFilters(std::string& abbr, bool& outBem, bool& outComment, bool& outEscape)  noexcept{
+static void extractHtmlFilters(std::string& abbr, bool& outBem, bool& outComment, bool& outEscape){
     outBem = false;
     outComment = false;
     outEscape = false;
@@ -1002,7 +1002,7 @@ static void extractHtmlFilters(std::string& abbr, bool& outBem, bool& outComment
     }
 }
 
-static void applyBemFilter(std::vector<HtmlNode>& pool)  noexcept{
+static void applyBemFilter(std::vector<HtmlNode>& pool){
     std::vector<std::string> nodeBlock(pool.size());
     auto findAncestorBlock = [&](int idx, int depthUp) -> std::string {
         int p = pool[idx].parent;
@@ -1136,7 +1136,7 @@ static void renderHtmlTree(
     std::vector<Tabstop>& tabstops,
     bool filterComment = false,
     bool filterEscape = false
-)  noexcept{
+){
     auto addStop = [&](const std::string& placeholder = "") {
         size_t s = out.size();
         out += placeholder;
@@ -1937,14 +1937,14 @@ static constexpr CssPrefixProp kCssPrefixProps[] = {
     { "g", "gap", false, false, "px" }
 };
 
-static int hexVal(char c)  noexcept{
+static int hexVal(char c){
     if (c >= '0' && c <= '9') return c - '0';
     if (c >= 'a' && c <= 'f') return c - 'a' + 10;
     if (c >= 'A' && c <= 'F') return c - 'A' + 10;
     return 0;
 }
 
-static std::string expandHexColor(const std::string& rawHex, const std::string& alphaFrac = "")  noexcept{
+static std::string expandHexColor(const std::string& rawHex, const std::string& alphaFrac = ""){
     std::string h6;
     if (rawHex.size() == 1) {
         h6.append(6, rawHex[0]);
@@ -1970,7 +1970,7 @@ static std::string expandHexColor(const std::string& rawHex, const std::string& 
     return std::string("#") + rawHex;
 }
 
-static bool parseCssValueTokens(const std::string& valPart, const CssPrefixProp& propInfo, std::string& outVal)  noexcept{
+static bool parseCssValueTokens(const std::string& valPart, const CssPrefixProp& propInfo, std::string& outVal){
     if (valPart.empty()) return false;
     size_t i = 0;
     size_t n = valPart.size();
@@ -2136,7 +2136,7 @@ static bool expandSingleCssAbbreviation(
     bool inlineMode,
     std::string& out,
     std::vector<Tabstop>& tabstops
-)  noexcept{
+){
     if (rawPart.empty()) return false;
     if (rawPart.size() > 1 && rawPart[0] == '-' && isAsciiAlpha(rawPart[1])) {
         std::string subOut;
@@ -2306,7 +2306,7 @@ static bool tryExpandCss(
     const std::string& newlineStr,
     std::string& out,
     std::vector<Tabstop>& tabstops
-)  noexcept{
+){
     out.clear();
     tabstops.clear();
     std::vector<std::string> parts;
@@ -2339,7 +2339,7 @@ static bool tryExpandCss(
     return true;
 }
 
-static bool isValidHtmlPoolForMode(const std::vector<HtmlNode>& pool, const std::string& abbr, Mode mode)  noexcept{
+static bool isValidHtmlPoolForMode(const std::vector<HtmlNode>& pool, const std::string& abbr, Mode mode){
     if (pool.size() <= 1) return false;
     bool hasNonTextElement = false;
     for (size_t i = 1; i < pool.size(); ++i) {
@@ -2387,7 +2387,7 @@ static bool isValidHtmlPoolForMode(const std::vector<HtmlNode>& pool, const std:
     return true;
 }
 
-static inline bool decodeFullWidthAsciiAt(const std::string& s, size_t idx, char& outAscii)  noexcept{
+static inline bool decodeFullWidthAsciiAt(const std::string& s, size_t idx, char& outAscii){
     if (idx + 2 >= s.size()) return false;
     unsigned char b0 = (unsigned char)s[idx];
     unsigned char b1 = (unsigned char)s[idx + 1];
@@ -2405,7 +2405,7 @@ static inline bool decodeFullWidthAsciiAt(const std::string& s, size_t idx, char
     return false;
 }
 
-static std::string normalizeFullWidthAbbreviation(const std::string& rawAbbr)  noexcept{
+static std::string normalizeFullWidthAbbreviation(const std::string& rawAbbr){
     bool hasNonAscii = false;
     for (unsigned char ch : rawAbbr) {
         if (ch >= 0x80) { hasNonAscii = true; break; }
@@ -2498,7 +2498,7 @@ static bool extractAbbreviationFromLine(
     std::string& outAbbr,
     bool& outInsideTagQuotes,
     bool& outInsideStyleAttr
-)  noexcept{
+){
     outInsideTagQuotes = false;
     outInsideStyleAttr = false;
     if (caretCol == 0 || caretCol > lineText.size()) return false;

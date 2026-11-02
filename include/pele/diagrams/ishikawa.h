@@ -50,7 +50,7 @@ namespace T {
     };
 }
 
-inline const char* ishikawaTokenName(int t) noexcept {
+inline const char* ishikawaTokenName(int t) {
     static const char* NAMES[] = {"$end", "EOF", "SPACELINE", "NL", "ISHIKAWA", "SPACELIST", "TEXT"};
     return (t >= 0 && t <= 6) ? NAMES[t] : "$end";
 }
@@ -61,7 +61,7 @@ struct IshikawaTokens {
     std::vector<int> ends;
 };
 
-inline int matchIshikawaKeyword(const std::string& src, int at) noexcept {
+inline int matchIshikawaKeyword(const std::string& src, int at) {
     static const char* word = "ishikawa-beta";
     int k = 0;
     while (k < 13) {
@@ -225,7 +225,7 @@ struct Frame {
     int bone = -1;
 };
 
-inline Category arrangeCategory(const std::shared_ptr<IshikawaNode>& node, bool up, const TextMeasurer& measurer, double size, double small) noexcept {
+inline Category arrangeCategory(const std::shared_ptr<IshikawaNode>& node, bool up, const TextMeasurer& measurer, double size, double small) {
     Label label = layoutLabel(node->text, false, measurer, size, 180.0);
     double lineHeight = std::round(small * 1.5);
     std::vector<Bone> bones;
@@ -288,12 +288,12 @@ inline Category arrangeCategory(const std::shared_ptr<IshikawaNode>& node, bool 
     return {node, std::move(label), boxW, label.height + 2.0 * BOX_PAD_Y, std::move(bones), rise + BONE_END, reach};
 }
 
-inline double ishikawaTitleRoom(const RenderOptions& options) noexcept {
+inline double ishikawaTitleRoom(const RenderOptions& options) {
     double available = options.maxWidth;
     return available > 0.0 ? std::max(80.0, available - 2.0 * options.padding) : 4000.0;
 }
 
-inline Rendered verticalCauses(const IshikawaModel& model, const RenderOptions& options) noexcept {
+inline Rendered verticalCauses(const IshikawaModel& model, const RenderOptions& options) {
     double size = options.fontSize;
     double small = std::round(size * 0.875);
     const auto& measurer = getMeasurer(options);
@@ -364,7 +364,7 @@ inline Rendered verticalCauses(const IshikawaModel& model, const RenderOptions& 
     return {svgDocument("ishikawa", totalWidth, height, size, options, DiagramMeta{}, content), totalWidth, height, {}};
 }
 
-inline Rendered drawIshikawa(const IshikawaModel& model, const Config& /*config*/, const RenderOptions& options, bool down) noexcept {
+inline Rendered drawIshikawa(const IshikawaModel& model, const Config& /*config*/, const RenderOptions& options, bool down) {
     if (down) return verticalCauses(model, options);
     double size = options.fontSize;
     double small = std::round(size * 0.875);
@@ -466,7 +466,7 @@ inline Rendered drawIshikawa(const IshikawaModel& model, const Config& /*config*
     return {svg, width, height, {}};
 }
 
-inline Rendered renderIshikawaModel(const IshikawaModel& model, const Config& config, const RenderOptions& options) noexcept {
+inline Rendered renderIshikawaModel(const IshikawaModel& model, const Config& config, const RenderOptions& options) {
     Rendered across = drawIshikawa(model, config, options, false);
     double available = options.maxWidth;
     if (!(available > 0.0) || across.width <= available || available >= 640.0) return across;

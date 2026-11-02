@@ -30,18 +30,18 @@ inline std::string escapeHtmlBasic(const std::string& s) {
     return out;
 }
 
-    inline bool mdIsAsciiPunct(char c)  noexcept{
+    inline bool mdIsAsciiPunct(char c){
         return (c >= 0x21 && c <= 0x2F) || (c >= 0x3A && c <= 0x40) ||
                (c >= 0x5B && c <= 0x60) || (c >= 0x7B && c <= 0x7E);
     }
-    inline bool mdIsSpace(char c)  noexcept{
+    inline bool mdIsSpace(char c){
         return c == ' ' || c == '\t' || c == '\n' || c == '\r';
     }
-    inline bool mdIsAlnum(char c)  noexcept{
+    inline bool mdIsAlnum(char c){
         unsigned char u = (unsigned char)c;
         return (u >= '0' && u <= '9') || (u >= 'A' && u <= 'Z') || (u >= 'a' && u <= 'z');
     }
-    inline std::string mdUnescapeString(const std::string& s)  noexcept{
+    inline std::string mdUnescapeString(const std::string& s){
         std::string r; r.reserve(s.size());
         for (size_t i = 0; i < s.size(); ++i) {
             if (s[i] == '\\' && i + 1 < s.size() && mdIsAsciiPunct(s[i + 1])) {
@@ -52,7 +52,7 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         }
         return r;
     }
-    inline size_t mdFindMatchingBracket(const std::string& s, size_t openPos)  noexcept{
+    inline size_t mdFindMatchingBracket(const std::string& s, size_t openPos){
         size_t n = s.size();
         int depth = 1;
         size_t i = openPos + 1;
@@ -82,7 +82,7 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         }
         return std::string::npos;
     }
-    inline bool mdParseLinkDestAndTitle(const std::string& s, size_t openParen, size_t& closeParenOut, std::string& urlOut, std::string& titleOut)  noexcept{
+    inline bool mdParseLinkDestAndTitle(const std::string& s, size_t openParen, size_t& closeParenOut, std::string& urlOut, std::string& titleOut){
         size_t n = s.size();
         if (openParen >= n || s[openParen] != '(') return false;
         size_t i = openParen + 1;
@@ -134,7 +134,7 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         titleOut = mdUnescapeString(rawTitle);
         return true;
     }
-    inline bool mdIsSafeUrl(const std::string& rawUrl, bool isImage)  noexcept{
+    inline bool mdIsSafeUrl(const std::string& rawUrl, bool isImage){
         size_t a = 0, b = rawUrl.size();
         while (a < b && (unsigned char)rawUrl[a] <= 0x20) a++;
         while (b > a && (unsigned char)rawUrl[b - 1] <= 0x20) b--;
@@ -233,7 +233,7 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         }
         return false;
     }
-    inline bool mdIsSafeHtmlTag(const std::string& tagContent)  noexcept{
+    inline bool mdIsSafeHtmlTag(const std::string& tagContent){
         if (tagContent.empty()) return false;
         if (tagContent.compare(0, 3, "!--") == 0 && tagContent.size() >= 5 && tagContent.compare(tagContent.size() - 2, 2, "--") == 0) return true;
         size_t n = tagContent.size(), p = 0;
@@ -311,7 +311,7 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         }
         return true;
     }
-    inline size_t mdFindClosingEmphasis(const std::string& s, size_t start, char ch, size_t dlen)  noexcept{
+    inline size_t mdFindClosingEmphasis(const std::string& s, size_t start, char ch, size_t dlen){
         size_t n = s.size();
         size_t i = start;
         int innerSingle = 0;
@@ -388,7 +388,7 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         return std::string::npos;
     }
 
-    inline uint64_t fnv1a64(const char* data, size_t len, uint64_t seed = 14695981039346656037ULL)  noexcept{
+    inline uint64_t fnv1a64(const char* data, size_t len, uint64_t seed = 14695981039346656037ULL){
         uint64_t h = seed;
         for (size_t i = 0; i < len; ++i) {
             h ^= (unsigned char)data[i];
@@ -402,7 +402,7 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         std::string tex;
         std::string mml;
     };
-    inline const std::string& cachedLatexToMathML(const std::string& tex, bool displayMode)  noexcept{
+    inline const std::string& cachedLatexToMathML(const std::string& tex, bool displayMode) {
         static MathCacheSlot s_cache[512];
         uint64_t h = fnv1a64(tex.data(), tex.size(), displayMode ? 0x9E3779B97F4A7C15ULL : 14695981039346656037ULL);
         if (h == 0) h = 1;
@@ -413,7 +413,11 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         slot.hash = h;
         slot.displayMode = displayMode;
         slot.tex = tex;
-        slot.mml = Pele::latexToMathML(tex, displayMode);
+        try {
+            slot.mml = Pele::latexToMathML(tex, displayMode);
+        } catch (...) {
+            slot.mml.clear();
+        }
         return slot.mml;
     }
     struct MermaidCacheSlot {
@@ -421,7 +425,7 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         std::string code;
         std::string svg;
     };
-    inline const std::string& cachedMermaidRenderSvg(const std::string& code)  noexcept{
+    inline const std::string& cachedMermaidRenderSvg(const std::string& code) {
         static MermaidCacheSlot s_cache[128];
         uint64_t h = fnv1a64(code.data(), code.size());
         if (h == 0) h = 1;
@@ -431,7 +435,11 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         }
         slot.hash = h;
         slot.code = code;
-        slot.svg = Pele::render(code).svg;
+        try {
+            slot.svg = Pele::render(code).svg;
+        } catch (...) {
+            slot.svg.clear();
+        }
         return slot.svg;
     }
 
@@ -1319,7 +1327,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
     return out;
 }
 
-inline bool looksLikeMermaid(const std::string& s)  noexcept{
+inline bool looksLikeMermaid(const std::string& s){
     size_t n = s.size(), i = 0;
     if (n >= 3 && (unsigned char)s[0] == 0xEF && (unsigned char)s[1] == 0xBB && (unsigned char)s[2] == 0xBF) i = 3;
     while (i < n && (s[i] == ' ' || s[i] == '\t' || s[i] == '\r' || s[i] == '\n')) i++;
@@ -1398,7 +1406,7 @@ inline bool looksLikeMermaid(const std::string& s)  noexcept{
     return false;
 }
 
-    inline const char* getMdThemeStyle() noexcept {
+    inline const char* getMdThemeStyle() {
     static const char* const kMdThemeStyle =
         "<style>"
         ":root,html[data-theme=\"light\"]{"
@@ -1467,7 +1475,7 @@ inline bool looksLikeMermaid(const std::string& s)  noexcept{
     return kMdThemeStyle;
 }
 
-inline const char* getPreviewScrollbarJs() noexcept {
+inline const char* getPreviewScrollbarJs() {
     static const char* const kSbJs =
         "var vT,vTh,hT,hTh,vH=false,hH=false,vD=false,hD=false,vMS=1,vMO=0,vTL=28,hMS=1,hMO=0,hTL=28,dSC=0,dSS=0;"
         "function upd(){"
@@ -1511,7 +1519,7 @@ inline const char* getPreviewScrollbarJs() noexcept {
 }
 
 
-inline const std::string& getPreviewCspNonce() noexcept {
+inline const std::string& getPreviewCspNonce() {
     static std::string s_nonce;
     if (s_nonce.empty()) {
         std::random_device rd;
@@ -1683,12 +1691,38 @@ inline PreviewRenderResult renderPreview(
     bool isDarkMode,
     const std::string& /*customNonce*/ = "")
 {
-    std::wstring wext;
-    for (unsigned char c : currentFileExtUtf8) {
-        if (wext.empty() && c == '.') continue;
-        wext.push_back((wchar_t)std::tolower(c));
+    try {
+        std::wstring wext;
+        for (unsigned char c : currentFileExtUtf8) {
+            if (wext.empty() && c == '.') continue;
+            wext.push_back((wchar_t)std::tolower(c));
+        }
+        static constexpr size_t PREVIEW_MAX_BYTES = 524288;
+        if (rawInput.size() > PREVIEW_MAX_BYTES) {
+            std::string truncated = rawInput.substr(0, PREVIEW_MAX_BYTES);
+            size_t searchFrom = (truncated.size() > 4096) ? (truncated.size() - 4096) : 0;
+            size_t lastNl = truncated.rfind('\n');
+            if (lastNl != std::string::npos && lastNl >= searchFrom) {
+                truncated.erase(lastNl + 1);
+            } else {
+                size_t cut = truncated.size();
+                while (cut > 0 && ((unsigned char)truncated[cut - 1] & 0xC0) == 0x80) cut--;
+                if (cut > 0) {
+                    unsigned char lead = (unsigned char)truncated[cut - 1];
+                    size_t expLen = 1;
+                    if ((lead & 0xE0) == 0xC0) expLen = 2;
+                    else if ((lead & 0xF0) == 0xE0) expLen = 3;
+                    else if ((lead & 0xF8) == 0xF0) expLen = 4;
+                    if (cut - 1 + expLen > truncated.size()) cut--;
+                }
+                truncated.erase(cut);
+            }
+            return renderPreview(truncated, true, "Preview truncated (512 KB)", wext, isDarkMode, "");
+        }
+        return renderPreview(rawInput, false, "", wext, isDarkMode, "");
+    } catch (...) {
+        return PreviewRenderResult{};
     }
-    return renderPreview(rawInput, false, "", wext, isDarkMode, "");
 }
 
 } // namespace MiuPreview
