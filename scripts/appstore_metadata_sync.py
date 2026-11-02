@@ -1495,6 +1495,14 @@ def get_or_create_editable_versions(app_id, headers):
                                 v_state = "DEVELOPER_REJECTED"
 
             if v_str != TARGET_VERSION:
+                # Detach any existing build from the previous versionString first so App Store Connect allows changing versionString
+                detach_r = requests.patch(
+                    f"{BASE_URL}/appStoreVersions/{v_id}/relationships/build",
+                    headers=headers,
+                    json={"data": None},
+                )
+                print(f"[{plat}] Detached previous build before versionString update: HTTP {detach_r.status_code}")
+
                 patch_payload = {
                     "data": {
                         "type": "appStoreVersions",
@@ -1509,7 +1517,7 @@ def get_or_create_editable_versions(app_id, headers):
                     print(f"[{plat}] Updated versionString from {v_str} -> {TARGET_VERSION}")
                     v_str = TARGET_VERSION
                 else:
-                    print(f"[{plat}] Could not update versionString from {v_str} -> {TARGET_VERSION}: HTTP {pr.status_code} {pr.text[:240]}")
+                    print(f"[{plat}] Could not update versionString from {v_str} -> {TARGET_VERSION}: HTTP {pr.status_code} {pr.text[:500]}")
             targets.append((plat, v_id, v_str, v_state, has_live))
         else:
             # Only live/non-editable versions exist; create a new version for TARGET_VERSION
