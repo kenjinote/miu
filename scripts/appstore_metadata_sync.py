@@ -1469,7 +1469,32 @@ def get_or_create_editable_versions(app_id, headers):
             v_str = editable_v.get("attributes", {}).get("versionString", "")
             v_state = editable_v.get("attributes", {}).get("appStoreState", "")
             print(f"\n[{plat}] Found editable version {v_str} (ID: {v_id}, State: {v_state}, HasLive: {has_live})")
-            if v_str != TARGET_VERSION and v_state == "PREPARE_FOR_SUBMISSION":
+
+            if v_str != TARGET_VERSION and v_state in ("WAITING_FOR_REVIEW", "IN_REVIEW"):
+                print(f"[{plat}] Version {v_str} is currently {v_state}; attempting to cancel active reviewSubmission to upgrade to {TARGET_VERSION}...")
+                r_subs = requests.get(
+                    f"{BASE_URL}/apps/{app_id}/reviewSubmissions?filter[platform]={plat}&limit=50",
+                    headers=headers,
+                )
+                if r_subs.status_code == 200:
+                    for sub in r_subs.json().get("data", []):
+                        sub_id = sub["id"]
+                        sub_state = sub.get("attributes", {}).get("state", "")
+                        if sub_state in ("WAITING_FOR_REVIEW", "IN_REVIEW", "READY_FOR_REVIEW"):
+                            cancel_payload = {
+                                "data": {
+                                    "type": "reviewSubmissions",
+                                    "id": sub_id,
+                                    "attributes": {"canceled": True},
+                                }
+                            }
+                            cr = requests.patch(f"{BASE_URL}/reviewSubmissions/{sub_id}", headers=headers, json=cancel_payload)
+                            print(f"[{plat}] Cancel reviewSubmission {sub_id} ({sub_state}): HTTP {cr.status_code}")
+                            if cr.status_code in (200, 204):
+                                time.sleep(4)
+                                v_state = "DEVELOPER_REJECTED"
+
+            if v_str != TARGET_VERSION:
                 patch_payload = {
                     "data": {
                         "type": "appStoreVersions",
@@ -1483,6 +1508,8 @@ def get_or_create_editable_versions(app_id, headers):
                 if pr.status_code == 200:
                     print(f"[{plat}] Updated versionString from {v_str} -> {TARGET_VERSION}")
                     v_str = TARGET_VERSION
+                else:
+                    print(f"[{plat}] Could not update versionString from {v_str} -> {TARGET_VERSION}: HTTP {pr.status_code} {pr.text[:240]}")
             targets.append((plat, v_id, v_str, v_state, has_live))
         else:
             # Only live/non-editable versions exist; create a new version for TARGET_VERSION
@@ -1597,8 +1624,23 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                         updated_count += 1
                         print(f"  [OK] Updated {locale} (whatsNew + promotionalText + supportUrl)")
                     else:
-                        failed_count += 1
-                        print(f"  [ERR] Failed to update {locale}: HTTP {res2.status_code} {res2.text}")
+                        payload_wn_promo = {
+                            "data": {
+                                "type": "appStoreVersionLocalizations",
+                                "id": loc_id,
+                                "attributes": {
+                                    "whatsNew": whats_new,
+                                    "promotionalText": promo,
+                                },
+                            }
+                        }
+                        res4 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_wn_promo)
+                        if res4.status_code == 200:
+                            updated_count += 1
+                            print(f"  [OK] Updated {locale} (whatsNew + promotionalText)")
+                        else:
+                            failed_count += 1
+                            print(f"  [ERR] Failed to update {locale}: HTTP {res4.status_code} {res4.text[:240]}")
             else:
                 failed_count += 1
                 print(f"  [ERR] Failed to update {locale}: HTTP {res.status_code} {res.text}")
@@ -1666,6 +1708,144 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
     return updated_count + created_count, failed_count
 
 
+def attach_build_and_submit(app_id, targets):
+    print(f"\n=== Attaching Build & Submitting {TARGET_VERSION} for App Store Review ===")
+    for plat, v_id, v_str, state, _ in targets:
+        headers = get_headers()
+        print(f"\n[{plat}] Looking for VALID build for v{v_str} (version_id={v_id}, state={state})...")
+        chosen_build_id = None
+        chosen_build_ver = None
+        for attempt in range(20):
+            headers = get_headers()
+            r_b = requests.get(
+                f"{BASE_URL}/builds?filter[app]={app_id}&filter[preReleaseVersion.platform]={plat}&filter[preReleaseVersion.version]={v_str}&sort=-uploadedDate&limit=10",
+                headers=headers,
+            )
+            if r_b.status_code != 200:
+                print(f"[{plat}] Failed to query builds: HTTP {r_b.status_code} {r_b.text[:200]}")
+                break
+            builds = r_b.json().get("data", [])
+            if not builds:
+                print(f"[{plat}] Attempt {attempt+1}/20: No builds found yet for {v_str}; waiting 15s...")
+                time.sleep(15)
+                continue
+            b0 = builds[0]
+            b_id = b0["id"]
+            b_ver = b0.get("attributes", {}).get("version", "")
+            b_state = b0.get("attributes", {}).get("processingState", "")
+            print(f"[{plat}] Latest build: version={b_ver} (id={b_id}, processingState={b_state})")
+            if b_state == "VALID":
+                chosen_build_id = b_id
+                chosen_build_ver = b_ver
+                break
+            elif b_state == "PROCESSING":
+                print(f"[{plat}] Build {b_ver} is still PROCESSING; waiting 15s ({attempt+1}/20)...")
+                time.sleep(15)
+            else:
+                print(f"[{plat}] Build {b_ver} is in state {b_state}.")
+                break
+
+        if not chosen_build_id:
+            print(f"[{plat}] No VALID build available to attach for {v_str}.")
+            continue
+
+        # Ensure encryption declaration (usesNonExemptEncryption = False)
+        enc_payload = {
+            "data": {
+                "type": "builds",
+                "id": chosen_build_id,
+                "attributes": {"usesNonExemptEncryption": False},
+            }
+        }
+        requests.patch(f"{BASE_URL}/builds/{chosen_build_id}", headers=headers, json=enc_payload)
+
+        # Attach build to appStoreVersion
+        rel_payload = {
+            "data": {
+                "type": "builds",
+                "id": chosen_build_id,
+            }
+        }
+        r_rel = requests.patch(
+            f"{BASE_URL}/appStoreVersions/{v_id}/relationships/build",
+            headers=headers,
+            json=rel_payload,
+        )
+        if r_rel.status_code in (200, 204):
+            print(f"[{plat}] Attached build {chosen_build_ver} ({chosen_build_id}) to version {v_str} ({v_id})!")
+        else:
+            print(f"[{plat}] Could not attach build: HTTP {r_rel.status_code} {r_rel.text[:240]}")
+
+        # Submit for review via reviewSubmissions API
+        r_subs = requests.get(
+            f"{BASE_URL}/apps/{app_id}/reviewSubmissions?filter[platform]={plat}&limit=20",
+            headers=headers,
+        )
+        sub_id = None
+        if r_subs.status_code == 200:
+            for s in r_subs.json().get("data", []):
+                st = s.get("attributes", {}).get("state", "")
+                if st == "READY_FOR_REVIEW":
+                    sub_id = s["id"]
+                    break
+                elif st in ("WAITING_FOR_REVIEW", "IN_REVIEW"):
+                    print(f"[{plat}] Already in {st} (reviewSubmission {s['id']}).")
+                    sub_id = "ALREADY_SUBMITTED"
+                    break
+
+        if sub_id == "ALREADY_SUBMITTED":
+            continue
+
+        if not sub_id:
+            create_sub = {
+                "data": {
+                    "type": "reviewSubmissions",
+                    "attributes": {"platform": plat},
+                    "relationships": {
+                        "app": {"data": {"type": "apps", "id": app_id}}
+                    },
+                }
+            }
+            r_cs = requests.post(f"{BASE_URL}/reviewSubmissions", headers=headers, json=create_sub)
+            if r_cs.status_code in (200, 201):
+                sub_id = r_cs.json()["data"]["id"]
+                print(f"[{plat}] Created reviewSubmission {sub_id}")
+            else:
+                print(f"[{plat}] Could not create reviewSubmission: HTTP {r_cs.status_code} {r_cs.text[:240]}")
+                continue
+
+        # Add appStoreVersion item to reviewSubmission
+        item_payload = {
+            "data": {
+                "type": "reviewSubmissionItems",
+                "relationships": {
+                    "reviewSubmission": {"data": {"type": "reviewSubmissions", "id": sub_id}},
+                    "appStoreVersion": {"data": {"type": "appStoreVersions", "id": v_id}},
+                },
+            }
+        }
+        r_item = requests.post(f"{BASE_URL}/reviewSubmissionItems", headers=headers, json=item_payload)
+        if r_item.status_code in (200, 201, 409):
+            print(f"[{plat}] Added appStoreVersion {v_id} to reviewSubmission {sub_id} (HTTP {r_item.status_code})")
+        else:
+            print(f"[{plat}] Note on reviewSubmissionItem: HTTP {r_item.status_code} {r_item.text[:240]}")
+
+        # Submit reviewSubmission
+        submit_payload = {
+            "data": {
+                "type": "reviewSubmissions",
+                "id": sub_id,
+                "attributes": {"submitted": True},
+            }
+        }
+        r_sub_patch = requests.patch(f"{BASE_URL}/reviewSubmissions/{sub_id}", headers=headers, json=submit_payload)
+        if r_sub_patch.status_code == 200:
+            new_st = r_sub_patch.json().get("data", {}).get("attributes", {}).get("state", "")
+            print(f"[{plat}] Successfully submitted {v_str} (build {chosen_build_ver}) for App Review! State: {new_st}")
+        else:
+            print(f"[{plat}] Could not submit reviewSubmission {sub_id}: HTTP {r_sub_patch.status_code} {r_sub_patch.text[:300]}")
+
+
 def main():
     print("=== App Store Connect Metadata Synchronizer for miu ===")
     headers = get_headers()
@@ -1682,6 +1862,8 @@ def main():
         ok, fail = sync_version_localizations(plat, v_id, v_str, state, has_live, headers)
         total_ok += ok
         total_fail += fail
+
+    attach_build_and_submit(app_id, targets)
 
     print(f"\n=== Completed: {total_ok} localizations synced across {len(targets)} platform(s) (Failures: {total_fail}) ===")
     if total_ok == 0 and total_fail > 0:

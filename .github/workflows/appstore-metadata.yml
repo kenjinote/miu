@@ -2,6 +2,11 @@ name: App Store Metadata Sync
 
 on:
   workflow_dispatch:
+    inputs:
+      sync_screenshots:
+        description: "Also re-render and upload screenshots"
+        required: false
+        default: "false"
 
 jobs:
   sync-metadata:
@@ -11,6 +16,7 @@ jobs:
       APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
       APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
       APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      SYNC_SCREENSHOTS: ${{ github.event.inputs.sync_screenshots }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -20,4 +26,6 @@ jobs:
         run: |
           pip3 install --quiet --break-system-packages pyjwt cryptography requests pillow numpy || pip3 install --quiet pyjwt cryptography requests pillow numpy
           python3 scripts/appstore_metadata_sync.py
-          python3 scripts/appstore_screenshots_sync.py --out-dir /tmp/asc_screenshots
+          if [ "$SYNC_SCREENSHOTS" = "true" ]; then
+            python3 scripts/appstore_screenshots_sync.py --out-dir /tmp/asc_screenshots
+          fi
