@@ -20,7 +20,7 @@ BASE_URL = "https://api.appstoreconnect.apple.com/v1"
 # Localized App Store Metadata (Simple, polite, and likable tone)
 # ============================================================================
 
-JA_DESC = """miu（ミュウ）は、毎日のちょっとしたメモから、Markdownでの文章作成、プログラミングまで、心地よく使えるシンプルなテキストエディタです。
+JA_DESC = """miuは、毎日のちょっとしたメモから、Markdownでの文章作成、プログラミングまで、心地よく使えるシンプルなテキストエディタです。
 
 アプリを開いた瞬間にすぐ書き始められる軽快さと、長時間の作業でも目が疲れにくい、すっきりとしたデザインを大切にして作られました。iPhone、iPad、Macのどの端末でも、自然でなめらかな書き心地をお届けします。
 
@@ -1414,8 +1414,8 @@ def get_or_create_editable_versions(app_id, headers, target_platforms=None):
             v_state = editable_v.get("attributes", {}).get("appStoreState", "")
             print(f"\n[{plat}] Found editable version {v_str} (ID: {v_id}, State: {v_state}, HasLive: {has_live})")
 
-            if v_str != TARGET_VERSION and v_state in ("WAITING_FOR_REVIEW", "IN_REVIEW"):
-                print(f"[{plat}] Version {v_str} is currently {v_state}; attempting to cancel active reviewSubmission to upgrade to {TARGET_VERSION}...")
+            if v_state in ("WAITING_FOR_REVIEW", "IN_REVIEW"):
+                print(f"[{plat}] Version {v_str} is currently {v_state}; canceling active reviewSubmission to allow metadata update and re-submission...")
                 r_subs = requests.get(
                     f"{BASE_URL}/apps/{app_id}/reviewSubmissions?filter[platform]={plat}&limit=50",
                     headers=headers,
