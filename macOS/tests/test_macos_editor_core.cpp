@@ -766,6 +766,22 @@ static void testParityEdgeCases() {
         CHECK(ed.pt.getRange(0, 15) == "<!DOCTYPE html>",
               "Unlinking opened file on disk does not invalidate heap-backed MappedFile buffer");
     }
+
+    // 10. Off-screen caret visibility regression guard (scroll down past Line 1 & wrapped sub-line scrolled above viewport)
+    {
+        ed.newFile();
+        std::string doc;
+        for (int i = 0; i < 30; ++i) {
+            doc += "          Line " + std::to_string(i + 1) + "\n";
+        }
+        ed.pt.initFromFile(doc.data(), doc.size());
+        ed.rebuildLineStarts();
+        ed.cursors = { { 0, 0, 0.0f, 0.0f, false, false } };
+        ed.vScrollPos = 5;
+        ed.vScrollSubLine = 0;
+        CHECK(ed.getLineIdx(ed.cursors[0].head) == 0 && ed.vScrollPos == 5,
+              "macOS/iOS off-screen cursor on Line 1 is below start=vScrollPos(5) and remains at offset 0");
+    }
 }
 
 static void testPhase6EncodingsNewlinesRectCursorSearch() {

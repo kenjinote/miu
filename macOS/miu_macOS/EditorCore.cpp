@@ -4934,7 +4934,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             size_t subDocE = subDocS + subs[subIdx].byteLen;
             size_t ovS = std::max(spanStart, subDocS);
             size_t ovE = std::min(spanEnd, subDocE);
-            if (ovS < ovE || (spanStart == spanEnd && spanStart == ovS && subIdx == (int)subs.size() - 1)) {
+            if (ovS < ovE || (spanStart == spanEnd && spanStart >= subDocS && (spanStart < subDocE || (spanStart == subDocE && subIdx == (int)subs.size() - 1)))) {
                 float subOriginX = getXInLine(li, subDocS);
                 float x1 = getXInLine(li, ovS) - subOriginX;
                 float x2 = getXInLine(li, ovE) - subOriginX;
@@ -5306,7 +5306,10 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                     caretW = charWidth;
                 }
             }
-            CGContextFillRect(ctx, CGRectMake(gutterWidth - (wordWrapEnabled ? 0.0f : (float)hScrollPos) + drawX, drawY, caretW, lineHeight));
+            float caretScreenX = gutterWidth - (wordWrapEnabled ? 0.0f : (float)hScrollPos) + drawX;
+            if (drawY >= 0.0f && drawY < vh && caretScreenX + caretW > gutterWidth && caretScreenX < gutterWidth + vw) {
+                CGContextFillRect(ctx, CGRectMake(caretScreenX, drawY, caretW, lineHeight));
+            }
         }
     }
     if (overwriteColor) CGColorRelease(overwriteColor);
@@ -5315,7 +5318,9 @@ void Editor::render(CGContextRef ctx, float w, float h) {
         int dl = getLineIdx(dragDropTargetPos);
         if (dl >= start && dl < end) {
             forEachVisualSpanRect(dl, dragDropTargetPos, dragDropTargetPos, 0.0f, [&](CGRect r) {
-                CGContextFillRect(ctx, CGRectMake(r.origin.x, r.origin.y, 2.5f, lineHeight));
+                if (r.origin.y >= 0.0f && r.origin.y < vh && r.origin.x + 2.5f > gutterWidth && r.origin.x < gutterWidth + vw) {
+                    CGContextFillRect(ctx, CGRectMake(r.origin.x, r.origin.y, 2.5f, lineHeight));
+                }
             });
         }
     }

@@ -1752,6 +1752,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 
 - (void)setMarkedText:(id)s selectedRange:(NSRange)sr replacementRange:(NSRange)rr {
     editor->imeComp = [([s isKindOfClass:[NSAttributedString class]] ? [s string] : s) UTF8String];
+    if (!editor->imeComp.empty()) editor->ensureCaretVisible();
     [self setNeedsDisplay:YES];
 }
 - (void)unmarkText { editor->imeComp = ""; [self setNeedsDisplay:YES]; }

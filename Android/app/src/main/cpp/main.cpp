@@ -5269,7 +5269,10 @@ void updateTextVertices(Engine* engine) {
                 getVisualPosForDocPos(engine, vPos, cLine, cSub, cVisRow, cx);
                 float curY = engine->topMargin - engine->scrollY + cVisRow * engine->lineHeight;
                 float effScrollX = engine->wordWrapEnabled ? 0.0f : engine->scrollX;
-                addRect(cursorVertices, cx - effScrollX, curY, cursorWidth, engine->lineHeight, engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
+                float curX = cx - effScrollX;
+                if (curY >= engine->topMargin && curY < visibleH && curX + cursorWidth > engine->gutterWidth && curX < winW) {
+                    addRect(cursorVertices, curX, curY, cursorWidth, engine->lineHeight, engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], engine->caretColor[3]);
+                }
             }
         }
         if (engine->isDraggingSelection) {
@@ -5279,7 +5282,10 @@ void updateTextVertices(Engine* engine) {
                 getVisualPosForDocPos(engine, dPos, cLine, cSub, cVisRow, cx);
                 float curY = engine->topMargin - engine->scrollY + cVisRow * engine->lineHeight;
                 float effScrollX = engine->wordWrapEnabled ? 0.0f : engine->scrollX;
-                addRect(cursorVertices, cx - effScrollX, curY, cursorWidth, engine->lineHeight, engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], 0.6f);
+                float curX = cx - effScrollX;
+                if (curY >= engine->topMargin && curY < visibleH && curX + cursorWidth > engine->gutterWidth && curX < winW) {
+                    addRect(cursorVertices, curX, curY, cursorWidth, engine->lineHeight, engine->caretColor[0], engine->caretColor[1], engine->caretColor[2], 0.6f);
+                }
             }
         }
         currentVisRow += (int)numSegs;
@@ -5774,7 +5780,7 @@ void android_main(struct android_app* app) {
                 while (!g_imeQueue.empty()) {
                     ImeEvent ev = g_imeQueue.front(); g_imeQueue.pop_front();
                     if (ev.type == ImeEvent::Commit) { engine.imeComp.clear(); if (ev.text == "\n") insertNewlineWithAutoIndent(&engine); else insertAtCursors(&engine, ev.text); }
-                    else if (ev.type == ImeEvent::Composing) { engine.imeComp = ev.text; if (!engine.cursors.empty()) { int lineIdx = getLineIdx(&engine, engine.cursors.back().head); if (lineIdx >= 0 && lineIdx < (int)engine.lineCaches.size()) engine.lineCaches[lineIdx].isShaped = false; } }
+                    else if (ev.type == ImeEvent::Composing) { engine.imeComp = ev.text; if (!engine.cursors.empty()) { int lineIdx = getLineIdx(&engine, engine.cursors.back().head); if (lineIdx >= 0 && lineIdx < (int)engine.lineCaches.size()) engine.lineCaches[lineIdx].isShaped = false; if (!engine.imeComp.empty()) ensureCaretVisible(&engine); } }
                     else if (ev.type == ImeEvent::FinishComposing) { if (!engine.imeComp.empty()) { std::string textToCommit = engine.imeComp; engine.imeComp.clear(); insertAtCursors(&engine, textToCommit); } }
                     else if (ev.type == ImeEvent::Delete) backspaceAtCursors(&engine);
                     else if (ev.type == ImeEvent::DeleteForward) deleteForwardAtCursors(&engine);
