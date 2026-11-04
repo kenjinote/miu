@@ -764,7 +764,12 @@ inline void scanPieceTableLineStartsSIMD(const PieceTable& pt, std::vector<size_
             uint8x16_t eqLF = vceqq_u8(chunk, vLF);
             uint8x16_t eqCR = vceqq_u8(chunk, vCR);
             uint8x16_t eqAny = vorrq_u8(eqLF, eqCR);
+#if defined(__aarch64__) || defined(_M_ARM64)
             if (vmaxvq_u8(eqAny) == 0) {
+#else
+            uint8x8_t folded = vorr_u8(vget_low_u8(eqAny), vget_high_u8(eqAny));
+            if (vget_lane_u64(vreinterpret_u64_u8(folded), 0) == 0) {
+#endif
                 ptr += 16;
                 continue;
             }
