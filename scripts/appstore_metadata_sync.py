@@ -13,7 +13,7 @@ import jwt
 import requests
 
 BUNDLE_ID = "jp.hack.miu"
-TARGET_VERSION = "1.0.45"
+TARGET_VERSION = "1.0.46"
 BASE_URL = "https://api.appstoreconnect.apple.com/v1"
 
 # ============================================================================
@@ -1854,10 +1854,68 @@ def attach_build_and_submit(app_id, targets):
             print(f"[{plat}] Could not submit reviewSubmission {sub_id}: HTTP {r_sub_patch.status_code} {r_sub_patch.text[:300]}")
 
 
+def prepare_testflight_builds_only(app_id):
+    print(f"\n=== Preparing {TARGET_VERSION} Builds for TestFlight Only (No App Store Review Submission) ===")
+    for plat in ("IOS", "MAC_OS"):
+        print(f"\n[{plat}] Looking for uploaded build for v{TARGET_VERSION} on TestFlight...")
+        chosen_build_id = None
+        chosen_build_ver = None
+        for attempt in range(20):
+            headers = get_headers()
+            r_b = requests.get(
+                f"{BASE_URL}/builds?filter[app]={app_id}&filter[preReleaseVersion.platform]={plat}&filter[preReleaseVersion.version]={TARGET_VERSION}&sort=-uploadedDate&limit=10",
+                headers=headers,
+            )
+            if r_b.status_code != 200:
+                print(f"[{plat}] Failed to query builds: HTTP {r_b.status_code} {r_b.text[:200]}")
+                break
+            builds = r_b.json().get("data", [])
+            if not builds:
+                print(f"[{plat}] Attempt {attempt+1}/20: No builds found yet for {TARGET_VERSION}; waiting 15s...")
+                time.sleep(15)
+                continue
+            b0 = builds[0]
+            b_id = b0["id"]
+            b_ver = b0.get("attributes", {}).get("version", "")
+            b_state = b0.get("attributes", {}).get("processingState", "")
+            print(f"[{plat}] Latest build: version={b_ver} (id={b_id}, processingState={b_state})")
+            if b_state == "VALID":
+                chosen_build_id = b_id
+                chosen_build_ver = b_ver
+                break
+            elif b_state == "PROCESSING":
+                print(f"[{plat}] Build {b_ver} is still PROCESSING; waiting 15s ({attempt+1}/20)...")
+                time.sleep(15)
+            else:
+                print(f"[{plat}] Build {b_ver} is in state {b_state}.")
+                break
+
+        if not chosen_build_id:
+            print(f"[{plat}] Build for {TARGET_VERSION} is still processing on Apple servers; TestFlight will finish processing shortly.")
+            continue
+
+        headers = get_headers()
+        enc_payload = {
+            "data": {
+                "type": "builds",
+                "id": chosen_build_id,
+                "attributes": {"usesNonExemptEncryption": False},
+            }
+        }
+        r_enc = requests.patch(f"{BASE_URL}/builds/{chosen_build_id}", headers=headers, json=enc_payload)
+        print(f"[{plat}] Set usesNonExemptEncryption=False on TestFlight build {chosen_build_ver} ({chosen_build_id}): HTTP {r_enc.status_code}")
+
+
 def main():
+    testflight_only = "--testflight-only" in sys.argv
     print("=== App Store Connect Metadata Synchronizer for miu ===")
     headers = get_headers()
     app_id, app_name = get_app_id(headers)
+
+    if testflight_only:
+        prepare_testflight_builds_only(app_id)
+        print(f"\n=== Completed TestFlight build preparation for v{TARGET_VERSION} (No App Store submission, release notes untouched) ===")
+        return
 
     sync_app_info_localizations(app_id, app_name, headers)
     targets = get_or_create_editable_versions(app_id, headers)

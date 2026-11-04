@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.46": {
+        "ja-jp": """miu v1.0.46 リリースノート
+🇯🇵 検索・置換ダイアログの日本語 IME 入力位置修正 ＆ 文字コード・改行コード（CR / CRLF / LF）完全対応
+
+・検索・置換ダイアログ（Ctrl+F / Ctrl+H）での日本語 IME 入力位置ズレを修正:
+  検索・置換ダイアログのテキスト入力枠で IME を ON にして日本語を入力した際、変換前の文字が入力枠の先頭ではなく右にずれて表示される不具合を修正しました。
+・文字コード自動判別・変換保存の全面強化:
+  BOM なし UTF-16LE / UTF-16BE の自動判別、UTF-16 サロゲートペア（4バイト文字・絵文字）対応、64KB 超の大容量ファイルでの文字コード判別精度向上、および不正バイト列を含むファイルの安全保護を実装しました。
+・CR / CRLF / LF 全改行コードの完全対応:
+  CR 単体や混在改行を含むファイルでも、全49言語のシンタックスハイライト、箱型（矩形）選択、貼り付け時の改行自動統一、正規表現（^ / $）検索・置換、ライブプレビューがすべて正確に動作するよう改善しました。""",
+
+        "en-us": """miu v1.0.46 Release Notes
+🇯🇵 Fixed Find/Replace Dialog IME Input Position & Full Encoding / Line-Ending (CR / CRLF / LF) Support
+
+- Fixed IME Composition Position in Find & Replace Dialogs (Ctrl+F / Ctrl+H):
+  Resolved an issue where typing with an active IME (such as Japanese input) inside the Find or Replace text box displayed uncommitted composition text shifted to the right instead of at the start of the input field.
+- Comprehensive Character Encoding Detection & Conversion Improvements:
+  Added automatic detection for BOM-less UTF-16LE/BE files, full UTF-16 surrogate pair (4-byte character & emoji) support across codepage conversions, dynamic non-ASCII sampling for files over 64 KB, and safe fallback protection for malformed byte sequences.
+- Full CR / CRLF / LF Line-Ending Support Across All Features:
+  Improved syntax highlighting across all 49 languages, rectangular selection, clipboard paste newline normalization, multiline regex (^ / $) search/replace, and Live Preview for classic Mac (CR) and mixed line endings.""",
+
+        "zh-hans": """miu v1.0.46 更新日志
+🇯🇵 修复查找/替换对话框输入法（IME）候选字位置偏移 & 全面强化字符编码与换行符（CR / CRLF / LF）支持
+
+- 修复查找与替换对话框（Ctrl+F / Ctrl+H）中输入法组字位置右偏的问题：
+  修复了在查找或替换输入框中开启输入法输入中文/日文时，未确认的组字文本未显示在输入框开头而是向右偏移的问题。
+- 全面强化字符编码自动识别与转换保存：
+  新增无 BOM UTF-16LE / UTF-16BE 自动识别、UTF-16 代理对（4 字节字符与表情符号）完整转换支持、超过 64KB 大文件的动态多字节采样识别，以及针对损坏字节序列的安全保护机制。
+- 全面完善 CR / CRLF / LF 换行符支持：
+  无论是经典 Mac 换行（CR）还是混合换行文件，全部 49 种语言语法高亮、矩形（列）选择、粘贴换行符自动统一、多行正则表达式（^ / $）查找替换以及实时预览均能精准工作。""",
+
+        "ko": """miu v1.0.46 릴리스 노트
+🇯🇵 찾기/바꾸기 대화 상자 IME 입력 위치 오류 수정 & 문자 인코딩·줄바꿈(CR / CRLF / LF) 완벽 지원
+
+- 찾기 및 바꾸기 대화 상자(Ctrl+F / Ctrl+H)에서 IME 조합 문자 위치가 오른쪽으로 밀리던 문제 수정:
+  찾기/바꾸기 텍스트 입력창에서 IME를 켜고 입력할 때 조합 중인 문자가 입력창 맨 앞이 아닌 오른쪽으로 치우쳐 표시되던 문제를 해결했습니다.
+- 문자 인코딩 자동 감지 및 변환 저장 전면 강화:
+  BOM 없는 UTF-16LE / UTF-16BE 자동 감지, UTF-16 서로게이트 페어(4바이트 문자·이모지) 완벽 지원, 64KB 초과 대용량 파일의 인코딩 감지 정확도 향상 및 손상된 바이트 시퀀스 안전 보호를 구현했습니다.
+- CR / CRLF / LF 모든 줄바꿈 형식 완벽 지원:
+  고전 Mac 형식(CR) 및 혼합 줄바꿈 파일에서도 49개 언어 구문 강조, 열(박스) 선택, 붙여넣기 줄바꿈 자동 정규화, 정규식(^ / $) 검색·치환 및 실시간 미리보기가 정확하게 작동합니다."""
+    },
     "1.0.45": {
         "ja-jp": """miu v1.0.45 リリースノート
 🛡️ ライブプレビュー（Mermaid図表・KaTeX数式・Markdown）のクラッシュ修正と安定性強化

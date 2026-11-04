@@ -24,16 +24,141 @@
 #include <arm_neon.h>
 #endif
 
-const std::wstring APP_VERSION = L"v1.0.45";
+const std::wstring APP_VERSION = L"v1.0.46";
 const std::wstring APP_TITLE = L"miu";
+
+static std::string SanitizeUtf8(const char* buf, size_t len) {
+    if (!buf || len == 0) return "";
+    bool clean = true;
+    for (size_t i = 0; i < len; ) {
+        unsigned char c = (unsigned char)buf[i];
+        if (c == 0x00) { clean = false; break; }
+        if (c <= 0x7F) { i++; }
+        else if (c >= 0xC2 && c <= 0xDF) {
+            if (i + 1 >= len || ((unsigned char)buf[i + 1] & 0xC0) != 0x80) { clean = false; break; }
+            i += 2;
+        } else if (c >= 0xE0 && c <= 0xEF) {
+            if (i + 2 >= len) { clean = false; break; }
+            unsigned char b1 = (unsigned char)buf[i + 1], b2 = (unsigned char)buf[i + 2];
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (c == 0xE0 && b1 < 0xA0) || (c == 0xED && b1 >= 0xA0)) { clean = false; break; }
+            i += 3;
+        } else if (c >= 0xF0 && c <= 0xF4) {
+            if (i + 3 >= len) { clean = false; break; }
+            unsigned char b1 = (unsigned char)buf[i + 1], b2 = (unsigned char)buf[i + 2], b3 = (unsigned char)buf[i + 3];
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80 || (c == 0xF0 && b1 < 0x90) || (c == 0xF4 && b1 >= 0x90)) { clean = false; break; }
+            i += 4;
+        } else {
+            clean = false; break;
+        }
+    }
+    if (clean) return std::string(buf, len);
+
+    std::string out;
+    out.reserve(len);
+    for (size_t i = 0; i < len; ) {
+        unsigned char c = (unsigned char)buf[i];
+        if (c == 0x00) {
+            out.push_back('?');
+            i++;
+        } else if (c <= 0x7F) {
+            out.push_back((char)c);
+            i++;
+        } else if (c >= 0xC2 && c <= 0xDF && i + 1 < len && ((unsigned char)buf[i + 1] & 0xC0) == 0x80) {
+            out.append(buf + i, 2);
+            i += 2;
+        } else if (c >= 0xE0 && c <= 0xEF && i + 2 < len) {
+            unsigned char b1 = (unsigned char)buf[i + 1], b2 = (unsigned char)buf[i + 2];
+            if ((b1 & 0xC0) == 0x80 && (b2 & 0xC0) == 0x80 && !(c == 0xE0 && b1 < 0xA0) && !(c == 0xED && b1 >= 0xA0)) {
+                out.append(buf + i, 3);
+                i += 3;
+            } else {
+                out.append("\xEF\xBF\xBD", 3);
+                i++;
+            }
+        } else if (c >= 0xF0 && c <= 0xF4 && i + 3 < len) {
+            unsigned char b1 = (unsigned char)buf[i + 1], b2 = (unsigned char)buf[i + 2], b3 = (unsigned char)buf[i + 3];
+            if ((b1 & 0xC0) == 0x80 && (b2 & 0xC0) == 0x80 && (b3 & 0xC0) == 0x80 && !(c == 0xF0 && b1 < 0x90) && !(c == 0xF4 && b1 >= 0x90)) {
+                out.append(buf + i, 4);
+                i += 4;
+            } else {
+                out.append("\xEF\xBF\xBD", 3);
+                i++;
+            }
+        } else {
+            out.append("\xEF\xBF\xBD", 3);
+            i++;
+        }
+    }
+    return out;
+}
+
+static std::string DecodeUtf16BytesToUtf8(const char* data, size_t len, bool isBigEndian) {
+    if (!data || len < 2) return "";
+    size_t offset = 0;
+    if ((unsigned char)data[0] == 0xFF && (unsigned char)data[1] == 0xFE) offset = 2;
+    else if ((unsigned char)data[0] == 0xFE && (unsigned char)data[1] == 0xFF) offset = 2;
+    if (len <= offset) return "";
+    size_t u16Count = (len - offset) / 2;
+    const unsigned char* p = (const unsigned char*)(data + offset);
+    std::string out;
+    out.reserve(u16Count * 2);
+    auto readU16 = [&](size_t idx) -> uint16_t {
+        if (isBigEndian) return (uint16_t)((p[idx * 2] << 8) | p[idx * 2 + 1]);
+        return (uint16_t)(p[idx * 2] | (p[idx * 2 + 1] << 8));
+    };
+    auto appendCp = [&](uint32_t cp) {
+        if (cp == 0) {
+            out.push_back('?');
+        } else if (cp <= 0x7F) {
+            out.push_back((char)cp);
+        } else if (cp <= 0x7FF) {
+            out.push_back((char)(0xC0 | ((cp >> 6) & 0x1F)));
+            out.push_back((char)(0x80 | (cp & 0x3F)));
+        } else if (cp <= 0xFFFF) {
+            out.push_back((char)(0xE0 | ((cp >> 12) & 0x0F)));
+            out.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back((char)(0x80 | (cp & 0x3F)));
+        } else if (cp <= 0x10FFFF) {
+            out.push_back((char)(0xF0 | ((cp >> 18) & 0x07)));
+            out.push_back((char)(0x80 | ((cp >> 12) & 0x3F)));
+            out.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back((char)(0x80 | (cp & 0x3F)));
+        } else {
+            out.append("\xEF\xBF\xBD", 3);
+        }
+    };
+    for (size_t i = 0; i < u16Count; ++i) {
+        uint16_t w1 = readU16(i);
+        if (w1 >= 0xD800 && w1 <= 0xDBFF) {
+            if (i + 1 < u16Count) {
+                uint16_t w2 = readU16(i + 1);
+                if (w2 >= 0xDC00 && w2 <= 0xDFFF) {
+                    uint32_t cp = 0x10000 + (((uint32_t)(w1 - 0xD800) << 10) | (uint32_t)(w2 - 0xDC00));
+                    appendCp(cp);
+                    i++;
+                    continue;
+                }
+            }
+            appendCp(0xFFFD);
+        } else if (w1 >= 0xDC00 && w1 <= 0xDFFF) {
+            appendCp(0xFFFD);
+        } else {
+            appendCp(w1);
+        }
+    }
+    return out;
+}
 
 #if defined(__APPLE__)
 static std::string CFStringToStdString(CFStringRef cfStr) {
     if (!cfStr) return "";
     CFIndex len = CFStringGetLength(cfStr);
+    if (len <= 0) return "";
     CFIndex maxSize = CFStringGetMaximumSizeForEncoding(len, kCFStringEncodingUTF8) + 1;
     std::vector<char> buf(maxSize);
-    if (CFStringGetCString(cfStr, buf.data(), maxSize, kCFStringEncodingUTF8)) return std::string(buf.data());
+    CFIndex usedBufLen = 0;
+    CFStringGetBytes(cfStr, CFRangeMake(0, len), kCFStringEncodingUTF8, 0, false, (UInt8*)buf.data(), maxSize, &usedBufLen);
+    if (usedBufLen > 0) return std::string(buf.data(), (size_t)usedBufLen);
     return "";
 }
 
@@ -65,15 +190,7 @@ std::wstring UTF8ToW(const std::string& s) {
 }
 
 std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
-    if (len < 2) return "";
-    size_t offset = 0;
-    if ((unsigned char)data[0] == 0xFF && (unsigned char)data[1] == 0xFE) offset = 2;
-    else if ((unsigned char)data[0] == 0xFE && (unsigned char)data[1] == 0xFF) offset = 2;
-    if (len <= offset) return "";
-    CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)(data + offset), len - offset, isBigEndian ? kCFStringEncodingUTF16BE : kCFStringEncodingUTF16LE, false);
-    std::string res = CFStringToStdString(str);
-    if (str) CFRelease(str);
-    return res;
+    return DecodeUtf16BytesToUtf8(data, len, isBigEndian);
 }
 
 static CFStringEncoding MapCedEncodingToCFEncoding(Encoding enc) {
@@ -139,24 +256,77 @@ static std::string LocalToUtf8(const char* data, size_t len, CFStringEncoding en
         str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingShiftJIS, false);
         if (!str) str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingMacJapanese, false);
     }
-    if (!str) {
-        str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)data, len, kCFStringEncodingWindowsLatin1, false);
+    if (str) {
+        std::string res = CFStringToStdString(str);
+        CFRelease(str);
+        return SanitizeUtf8(res.data(), res.size());
     }
-    if (!str) return "";
-    std::string res = CFStringToStdString(str);
-    CFRelease(str);
-    return res;
+    // Line-by-line / sequence-by-sequence resilient fallback so a single corrupted byte does not mojibake the entire file
+    std::string res;
+    res.reserve(len);
+    size_t i = 0;
+    while (i < len) {
+        size_t lineEnd = i;
+        while (lineEnd < len && data[lineEnd] != '\n' && data[lineEnd] != '\r') lineEnd++;
+        if (lineEnd < len) {
+            if (data[lineEnd] == '\r' && lineEnd + 1 < len && data[lineEnd + 1] == '\n') lineEnd += 2;
+            else lineEnd += 1;
+        }
+        size_t chunkLen = lineEnd - i;
+        CFStringRef lineStr = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)(data + i), chunkLen, encoding, false);
+        if (!lineStr && encoding == kCFStringEncodingDOSJapanese) {
+            lineStr = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)(data + i), chunkLen, kCFStringEncodingShiftJIS, false);
+            if (!lineStr) lineStr = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)(data + i), chunkLen, kCFStringEncodingMacJapanese, false);
+        }
+        if (lineStr) {
+            res += CFStringToStdString(lineStr);
+            CFRelease(lineStr);
+        } else {
+            size_t j = i;
+            while (j < lineEnd) {
+                if ((unsigned char)data[j] < 0x80) {
+                    res.push_back(data[j] == '\0' ? '?' : data[j]);
+                    j++;
+                } else {
+                    bool decoded = false;
+                    for (size_t tryLen = 1; tryLen <= 4 && j + tryLen <= lineEnd; ++tryLen) {
+                        CFStringRef chStr = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)(data + j), tryLen, encoding, false);
+                        if (!chStr && encoding == kCFStringEncodingDOSJapanese) {
+                            chStr = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)(data + j), tryLen, kCFStringEncodingShiftJIS, false);
+                        }
+                        if (chStr) {
+                            res += CFStringToStdString(chStr);
+                            CFRelease(chStr);
+                            j += tryLen;
+                            decoded = true;
+                            break;
+                        }
+                    }
+                    if (!decoded) {
+                        res.append("\xEF\xBF\xBD", 3);
+                        j++;
+                    }
+                }
+            }
+        }
+        i = lineEnd;
+    }
+    return SanitizeUtf8(res.data(), res.size());
 }
 
 static std::string Utf8ToLocal(const std::string& utf8, CFStringEncoding encoding) {
     if (utf8.empty()) return "";
     CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)utf8.data(), utf8.size(), kCFStringEncodingUTF8, false);
+    if (!str) {
+        std::string clean = SanitizeUtf8(utf8.data(), utf8.size());
+        str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)clean.data(), clean.size(), kCFStringEncodingUTF8, false);
+    }
     if (!str) return "";
     CFIndex len = CFStringGetLength(str);
     CFIndex maxSize = CFStringGetMaximumSizeForEncoding(len, encoding) + 1;
     std::vector<char> buf(maxSize);
     CFIndex usedBufLen = 0;
-    CFStringGetBytes(str, CFRangeMake(0, len), encoding, 0, false, (UInt8*)buf.data(), maxSize, &usedBufLen);
+    CFStringGetBytes(str, CFRangeMake(0, len), encoding, '?', false, (UInt8*)buf.data(), maxSize, &usedBufLen);
     CFRelease(str);
     if (usedBufLen > 0) return std::string(buf.data(), usedBufLen);
     return "";
@@ -182,19 +352,7 @@ std::wstring UTF8ToW(const std::string& s) {
 }
 
 std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
-    if (len < 2) return "";
-    size_t offset = 0;
-    if ((unsigned char)data[0] == 0xFF && (unsigned char)data[1] == 0xFE) offset = 2;
-    else if ((unsigned char)data[0] == 0xFE && (unsigned char)data[1] == 0xFF) offset = 2;
-    if (len <= offset) return "";
-    size_t wlen = (len - offset) / 2;
-    std::wstring w(wlen, L'\0');
-    const unsigned char* p = (const unsigned char*)(data + offset);
-    for (size_t i = 0; i < wlen; ++i) {
-        if (isBigEndian) w[i] = (wchar_t)((p[i * 2] << 8) | p[i * 2 + 1]);
-        else w[i] = (wchar_t)(p[i * 2] | (p[i * 2 + 1] << 8));
-    }
-    return WToUTF8(w);
+    return DecodeUtf16BytesToUtf8(data, len, isBigEndian);
 }
 
 static uint32_t MapCedEncodingToWinCodePage(Encoding enc) {
@@ -251,11 +409,16 @@ static uint32_t MapCedEncodingToWinCodePage(Encoding enc) {
 
 static std::string LocalToUtf8(const char* data, size_t len, uint32_t codePage) {
     if (len == 0) return "";
+    if (codePage == CP_UTF8) return SanitizeUtf8(data, len);
     int wsz = MultiByteToWideChar(codePage, 0, data, (int)len, nullptr, 0);
-    if (wsz <= 0) return std::string(data, len);
+    if (wsz <= 0) return SanitizeUtf8(data, len);
     std::wstring w(wsz, L'\0');
     MultiByteToWideChar(codePage, 0, data, (int)len, w.data(), wsz);
-    return WToUTF8(w);
+    for (wchar_t& ch : w) {
+        if (ch == L'\0') ch = L'?';
+    }
+    std::string res = WToUTF8(w);
+    return SanitizeUtf8(res.data(), res.size());
 }
 
 static std::string Utf8ToLocal(const std::string& utf8, uint32_t codePage) {
@@ -411,18 +574,24 @@ void MappedFile::close() {
 
 bool IsValidUtf8(const char* buf, size_t len) {
     if (len == 0) return true;
-    size_t check_len = (len > 65536) ? 65536 : len;
     size_t i = 0;
-    while (i < check_len) {
+    while (i < len) {
         unsigned char c = (unsigned char)buf[i];
+        if (c == 0x00) return false;
+        if (c == 0x1B && i + 2 < len) {
+            unsigned char b1 = (unsigned char)buf[i + 1];
+            unsigned char b2 = (unsigned char)buf[i + 2];
+            if (b1 == '$' && (b2 == '@' || b2 == 'B' || b2 == '(')) return false;
+            if (b1 == '(' && (b2 == 'B' || b2 == 'J' || b2 == 'I')) return false;
+        }
         if (c <= 0x7F) {
             i++;
         } else if (c >= 0xC2 && c <= 0xDF) {
-            if (i + 1 >= check_len) break;
+            if (i + 1 >= len) return false;
             if (((unsigned char)buf[i + 1] & 0xC0) != 0x80) return false;
             i += 2;
         } else if (c >= 0xE0 && c <= 0xEF) {
-            if (i + 2 >= check_len) break;
+            if (i + 2 >= len) return false;
             unsigned char b1 = (unsigned char)buf[i + 1];
             unsigned char b2 = (unsigned char)buf[i + 2];
             if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80) return false;
@@ -430,7 +599,7 @@ bool IsValidUtf8(const char* buf, size_t len) {
             if (c == 0xED && b1 >= 0xA0) return false;
             i += 3;
         } else if (c >= 0xF0 && c <= 0xF4) {
-            if (i + 3 >= check_len) break;
+            if (i + 3 >= len) return false;
             unsigned char b1 = (unsigned char)buf[i + 1];
             unsigned char b2 = (unsigned char)buf[i + 2];
             unsigned char b3 = (unsigned char)buf[i + 3];
@@ -448,9 +617,22 @@ bool IsValidUtf8(const char* buf, size_t len) {
 Encoding DetectEncoding(const char* buf, size_t len) {
     int bytes_consumed = 0;
     bool is_reliable = false;
-    size_t ced_len = (len > 65536) ? 65536 : len;
+    size_t start_off = 0;
+    if (len > 65536) {
+        size_t first_special = 0;
+        while (first_special < len) {
+            unsigned char c = (unsigned char)buf[first_special];
+            if (c >= 0x80 || c == 0x1B || c == 0x00) break;
+            first_special++;
+        }
+        if (first_special < len && first_special > 4096) {
+            start_off = first_special - 4096;
+        }
+    }
+    size_t rem_len = len - start_off;
+    size_t ced_len = (rem_len > 65536) ? 65536 : rem_len;
     return CompactEncDet::DetectEncoding(
-        buf, static_cast<int>(ced_len),
+        buf + start_off, static_cast<int>(ced_len),
         nullptr, nullptr, nullptr,
         UNKNOWN_ENCODING,
         UNKNOWN_LANGUAGE,
@@ -479,7 +661,36 @@ DetectResult DetectEncodingEx(const char* buf, size_t len) {
         res.type = ENC_UTF8_NOBOM;
         return res;
     }
+    if (len >= 2 && (len % 2) == 0) {
+        size_t samplePairs = std::min(len, (size_t)4096) / 2;
+        size_t zeroEven = 0, zeroOdd = 0, doubleZero = 0;
+        for (size_t k = 0; k < samplePairs; ++k) {
+            unsigned char b0 = (unsigned char)buf[k * 2];
+            unsigned char b1 = (unsigned char)buf[k * 2 + 1];
+            if (b0 == 0 && b1 == 0) doubleZero++;
+            else if (b0 == 0) zeroEven++;
+            else if (b1 == 0) zeroOdd++;
+        }
+        if (doubleZero == 0) {
+            if (zeroOdd > 0 && zeroEven == 0 && zeroOdd * 4 >= samplePairs) {
+                res.type = ENC_UTF16LE;
+                return res;
+            }
+            if (zeroEven > 0 && zeroOdd == 0 && zeroEven * 4 >= samplePairs) {
+                res.type = ENC_UTF16BE;
+                return res;
+            }
+        }
+    }
     Encoding ced_enc = DetectEncoding(buf, len);
+    if (ced_enc == UTF16LE) {
+        res.type = ENC_UTF16LE;
+        return res;
+    }
+    if (ced_enc == UTF16BE) {
+        res.type = ENC_UTF16BE;
+        return res;
+    }
     res.type = ENC_LOCAL;
 #if defined(__APPLE__)
     res.codePage = MapCedEncodingToCFEncoding(ced_enc);
@@ -930,11 +1141,16 @@ void Editor::insertRectangularBlock(const std::string& text) {
     rollbackPadding();
     isRectSelecting = false;
     std::vector<std::string> lines;
-    std::stringstream ss(text);
-    std::string line;
-    while (std::getline(ss, line)) {
-        if (!line.empty() && line.back() == '\r') line.pop_back();
-        lines.push_back(line);
+    size_t scanIdx = 0;
+    while (scanIdx < text.size()) {
+        size_t next = scanIdx;
+        while (next < text.size() && text[next] != '\n' && text[next] != '\r') next++;
+        lines.push_back(text.substr(scanIdx, next - scanIdx));
+        if (next < text.size()) {
+            if (text[next] == '\r' && next + 1 < text.size() && text[next + 1] == '\n') next += 2;
+            else next += 1;
+        }
+        scanIdx = next;
     }
     if (lines.empty()) return;
     EditBatch batch;
@@ -2564,7 +2780,7 @@ std::pair<std::string, bool> Editor::getHighlightTarget() {
         size_t len = c.end() - c.start();
         if (len == 0 || len > 200) return { "", false };
         std::string s = pt.getRange(c.start(), len);
-        if (s.empty() || s.find('\n') != std::string::npos) return { "", false };
+        if (s.empty() || s.find('\n') != std::string::npos || s.find('\r') != std::string::npos) return { "", false };
         return { s, false };
     }
     size_t pos = c.head, len = pt.length();
@@ -2602,12 +2818,13 @@ std::string Editor::UnescapeString(const std::string& s, const std::string& newl
 std::string Editor::preprocessRegexQuery(const std::string& query) {
     std::string processed;
     processed.reserve(query.size() * 4);
+    bool inCharClass = false;
     for (size_t i = 0; i < query.size(); ++i) {
         char c = query[i];
         if (c == '\\') {
             if (i + 1 < query.size()) {
                 char next = query[i + 1];
-                if (next == 'n') {
+                if (!inCharClass && next == 'n') {
                     bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
                     if (!isPrecededByCR) {
                         processed += "(?:\\r\\n|[\\r\\n])";
@@ -2620,18 +2837,27 @@ std::string Editor::preprocessRegexQuery(const std::string& query) {
                 i++;
                 continue;
             }
-        } else if (c == '^') {
-            bool inClass = (i > 0 && query[i - 1] == '[');
-            if (!inClass) {
+        } else if (c == '[' && !inCharClass) {
+            inCharClass = true;
+            processed += c;
+            continue;
+        } else if (c == ']' && inCharClass) {
+            inCharClass = false;
+            processed += c;
+            continue;
+        } else if (!inCharClass && c == '^') {
+            if (i == 0) {
                 processed += "((?:^|(?:\\r\\n|\\r(?!\\n)|[\\n])))";
-                continue;
+            } else {
+                processed += "(?:^|(?:\\r\\n|\\r(?!\\n)|[\\n]))";
             }
-        } else if (c == '$') {
-            bool inClass = (i > 0 && query[i - 1] == '[');
-            if (!inClass) {
-                processed += "(?=(?:\\r\\n|[\\r\\n]|$))";
-                continue;
-            }
+            continue;
+        } else if (!inCharClass && c == '$') {
+            processed += "(?=(?:\\r\\n|[\\r\\n]|$))";
+            continue;
+        } else if (!inCharClass && c == '.') {
+            processed += "[^\\r\\n]";
+            continue;
         }
         processed += c;
     }
@@ -2798,6 +3024,14 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                     }
                     size_t contentStart = mPos + aLen;
                     size_t contentLen = mLen - aLen;
+                    if (endsWithDollar) {
+                        size_t checkPos = contentStart + contentLen;
+                        if (checkPos < fullText.size()) {
+                            char c = fullText[checkPos];
+                            if (c != '\r' && c != '\n') continue;
+                            if (contentLen == 0 && c == '\n' && checkPos > 0 && fullText[checkPos - 1] == '\r') continue;
+                        }
+                    }
                     if (contentStart < limit) {
                         bestPos = contentStart;
                         bestLen = contentLen;
@@ -2984,6 +3218,7 @@ void Editor::replaceNext() {
             if (!searchMatchCase) flags |= std::regex_constants::icase;
             std::regex re(actualQuery, flags);
             std::smatch m;
+            bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
             std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
             std::string fmt;
             for (size_t i = 0; i < rawFmt.size(); ++i) {
@@ -2999,7 +3234,7 @@ void Editor::replaceNext() {
                             }
                             i--;
                             int grp = std::stoi(numStr);
-                            if (grp > 0) grp++;
+                            if (startsWithCaret && grp > 0) grp++;
                             fmt += std::to_string(grp);
                         } else {
                             fmt += rawFmt[i + 1];
@@ -3077,6 +3312,8 @@ void Editor::replaceAll() {
         if (!isSafeUserRegex(searchQuery)) return;
         std::string actualQuery = preprocessRegexQuery(searchQuery);
         if (!isSafeUserRegex(actualQuery)) return;
+        bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
+        bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
         std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
         std::string fmt;
         for (size_t i = 0; i < rawFmt.size(); ++i) {
@@ -3092,7 +3329,7 @@ void Editor::replaceAll() {
                         }
                         i--;
                         int grp = std::stoi(numStr);
-                        if (grp > 0) grp++;
+                        if (startsWithCaret && grp > 0) grp++;
                         fmt += std::to_string(grp);
                     } else {
                         fmt += rawFmt[i + 1];
@@ -3104,8 +3341,6 @@ void Editor::replaceAll() {
             }
         }
         try {
-            bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
-            bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
             auto searchStart = fullText.cbegin();
             std::smatch m;
             size_t currentOffset = 0;
@@ -3124,6 +3359,8 @@ void Editor::replaceAll() {
                     if (fullText[contentPos + contentLen - 1] == '\n') {
                         contentLen--;
                         if (contentLen > 0 && fullText[contentPos + contentLen - 1] == '\r') contentLen--;
+                    } else if (fullText[contentPos + contentLen - 1] == '\r') {
+                        contentLen--;
                     }
                 }
                 bool isValid = true;
@@ -3336,23 +3573,58 @@ void Editor::rebuildLineStarts() {
     maxLineBytesIdx = 0;
     size_t go = 0;
     size_t curLineStart = 0;
+    bool prevEndedWithCR = false;
 
     for (const auto& p : pt.pieces) {
+        if (p.len == 0) continue;
         const char* b = p.isOriginal ? (pt.origPtr + p.start) : (pt.addBuf.data() + p.start);
         size_t i = 0;
-        while (i < p.len) {
-            const char* nl = (const char*)std::memchr(b + i, '\n', p.len - i);
-            if (!nl) break;
-            size_t idxInPiece = (size_t)(nl - b);
-            size_t nlDocPos = go + idxInPiece;
-            size_t bLen = nlDocPos - curLineStart;
-            if (bLen > maxLineBytes) {
-                maxLineBytes = bLen;
-                maxLineBytesIdx = (int)lineStarts.size() - 1;
+        if (prevEndedWithCR) {
+            prevEndedWithCR = false;
+            if (b[0] == '\n') {
+                curLineStart = go + 1;
+                lineStarts.back() = curLineStart;
+                i = 1;
             }
-            curLineStart = nlDocPos + 1;
-            lineStarts.push_back(curLineStart);
-            i = idxInPiece + 1;
+        }
+        while (i < p.len) {
+            char c = b[i];
+            if (c == '\r') {
+                size_t nlDocPos = go + i;
+                size_t bLen = (nlDocPos >= curLineStart) ? (nlDocPos - curLineStart) : 0;
+                if (bLen > maxLineBytes) {
+                    maxLineBytes = bLen;
+                    maxLineBytesIdx = (int)lineStarts.size() - 1;
+                }
+                if (i + 1 < p.len) {
+                    if (b[i + 1] == '\n') {
+                        curLineStart = nlDocPos + 2;
+                        lineStarts.push_back(curLineStart);
+                        i += 2;
+                    } else {
+                        curLineStart = nlDocPos + 1;
+                        lineStarts.push_back(curLineStart);
+                        i += 1;
+                    }
+                } else {
+                    curLineStart = nlDocPos + 1;
+                    lineStarts.push_back(curLineStart);
+                    prevEndedWithCR = true;
+                    i += 1;
+                }
+            } else if (c == '\n') {
+                size_t nlDocPos = go + i;
+                size_t bLen = (nlDocPos >= curLineStart) ? (nlDocPos - curLineStart) : 0;
+                if (bLen > maxLineBytes) {
+                    maxLineBytes = bLen;
+                    maxLineBytesIdx = (int)lineStarts.size() - 1;
+                }
+                curLineStart = nlDocPos + 1;
+                lineStarts.push_back(curLineStart);
+                i += 1;
+            } else {
+                i += 1;
+            }
         }
         go += p.len;
     }
@@ -3696,6 +3968,9 @@ size_t Editor::moveCaretVisual(size_t pos, bool f) {
         if (pt.charAt(pos) == '\r' && pos + 1 < len && pt.charAt(pos + 1) == '\n') {
             return pos + 2;
         }
+        if (pt.charAt(pos) == '\r' || pt.charAt(pos) == '\n') {
+            return pos + 1;
+        }
         size_t cpLen = 1;
         uint32_t cp = decodeUtf8CodePointAt(pt, pos, len, cpLen);
         size_t cur = std::min(len, pos + cpLen);
@@ -3732,6 +4007,9 @@ size_t Editor::moveCaretVisual(size_t pos, bool f) {
         if (pos >= 2 && pt.charAt(pos - 2) == '\r' && pt.charAt(pos - 1) == '\n') {
             return pos - 2;
         }
+        if (pt.charAt(pos - 1) == '\r' || pt.charAt(pos - 1) == '\n') {
+            return pos - 1;
+        }
         size_t cur = prevUtf8CodePointStart(pt, pos);
         while (cur > 0) {
             size_t cpLen = 1;
@@ -3767,6 +4045,9 @@ void Editor::insertAtCursors(const std::string& t) {
     b.beforeCursors = cursors;
     bool canFastSingle = (cursors.size() == 1 && !cursors[0].hasSelection() && canFastAdjustLineStarts(t));
     size_t singleEditPos = cursors[0].head;
+    if (canFastSingle && singleEditPos > 0 && pt.charAt(singleEditPos - 1) == '\r') {
+        canFastSingle = false;
+    }
 
     std::vector<size_t> indices(cursors.size());
     std::iota(indices.begin(), indices.end(), 0);
@@ -3901,6 +4182,9 @@ void Editor::backspaceAtCursors() {
         }
     }
     if (changed) {
+        if (allSingleLine && singleErasePos > 0 && pt.charAt(singleErasePos - 1) == '\r') {
+            allSingleLine = false;
+        }
         if (allSingleLine) {
             adjustLineStartsSingleLine(singleErasePos, singleEraseDelta);
         } else {
@@ -3964,6 +4248,9 @@ void Editor::deleteForwardAtCursors() {
         c.affinity = false;
     }
     if (changed) {
+        if (allSingleLine && singleErasePos > 0 && pt.charAt(singleErasePos - 1) == '\r') {
+            allSingleLine = false;
+        }
         if (allSingleLine) {
             adjustLineStartsSingleLine(singleErasePos, singleEraseDelta);
         } else {
@@ -4119,18 +4406,44 @@ void Editor::cutToClipboard() {
     else insertAtCursors("");
 }
 
+static std::string NormalizeNewlines(const std::string& s, const std::string& targetNl) {
+    if (s.empty() || targetNl.empty()) return s;
+    std::string out;
+    out.reserve(s.size());
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (s[i] == '\r') {
+            if (i + 1 < s.size() && s[i + 1] == '\n') i++;
+            out += targetNl;
+        } else if (s[i] == '\n') {
+            out += targetNl;
+        } else {
+            out += s[i];
+        }
+    }
+    return out;
+}
+
 void Editor::pasteFromClipboard() {
     if (!cbGetClipboard) return;
     bool isRectMarker = false;
-    std::string utf8 = cbGetClipboard(isRectMarker);
-    if (utf8.empty()) return;
+    std::string rawClip = cbGetClipboard(isRectMarker);
+    if (rawClip.empty()) return;
+    std::string utf8 = NormalizeNewlines(rawClip, newlineStr);
+    std::string normalizedLineCopy = NormalizeNewlines(lastLineCopyText, newlineStr);
     if (isRectMarker) {
         if (cursors.size() <= 1) {
             size_t basePos = cursors.empty() ? 0 : cursors[0].head;
             float baseX = getXFromPos(basePos);
             int startLine = getLineIdx(basePos);
             int lineCount = 1;
-            for (char c : utf8) if (c == '\n') lineCount++;
+            for (size_t i = 0; i < utf8.size(); ++i) {
+                if (utf8[i] == '\r') {
+                    if (i + 1 < utf8.size() && utf8[i + 1] == '\n') i++;
+                    lineCount++;
+                } else if (utf8[i] == '\n') {
+                    lineCount++;
+                }
+            }
             cursors.clear();
             for (int i = 0; i < lineCount; ++i) {
                 int targetLine = startLine + i;
@@ -4141,7 +4454,7 @@ void Editor::pasteFromClipboard() {
             }
         }
         insertRectangularBlock(utf8);
-    } else if (lastCopyWasLine && (lastLineCopyText.empty() || utf8 == lastLineCopyText)) {
+    } else if (lastCopyWasLine && (lastLineCopyText.empty() || rawClip == lastLineCopyText || utf8 == normalizedLineCopy)) {
         bool hasAnySelection = false;
         for (const auto& c : cursors) if (c.hasSelection()) { hasAnySelection = true; break; }
         if (hasAnySelection) {
@@ -4533,6 +4846,10 @@ bool Editor::openFileFromPath(const std::string& p) {
         usedDecodedBuffer = true;
     } else if (currentEncoding == ENC_UTF8_BOM) {
         if (sz >= 3) { ptr += 3; sz -= 3; }
+        if (!IsValidUtf8(ptr, sz)) {
+            decodedBuffer = SanitizeUtf8(ptr, sz);
+            usedDecodedBuffer = true;
+        }
     } else if (currentEncoding == ENC_LOCAL) {
         decodedBuffer = LocalToUtf8(ptr, sz, currentCodePage);
         if (!decodedBuffer.empty() || sz == 0) usedDecodedBuffer = true;
@@ -4625,6 +4942,9 @@ void Editor::getWordBoundaries(size_t pos, size_t& start, size_t& end) {
             end = pos + 2;
             return;
         }
+        start = pos;
+        end = pos + 1;
+        return;
     }
     bool targetType = isWordChar(c);
     if (c == '\n') { start = pos; end = pos + 1; return; }
@@ -4785,6 +5105,9 @@ size_t Editor::getPositionByUTF16Offset(size_t startPos, int offset) {
                 p += 1; count += 1;
             }
         }
+        if (p > 0 && p < docLen && pt.charAt(p - 1) == '\r' && pt.charAt(p) == '\n') {
+            p++;
+        }
         return std::min(p, docLen);
     } else {
         size_t p = startPos;
@@ -4801,6 +5124,9 @@ size_t Editor::getPositionByUTF16Offset(size_t startPos, int offset) {
             } else {
                 count += 1;
             }
+        }
+        if (p > 0 && p < docLen && pt.charAt(p - 1) == '\r' && pt.charAt(p) == '\n') {
+            p--;
         }
         return p;
     }

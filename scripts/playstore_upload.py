@@ -126,7 +126,7 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
                 break
 
     for target_track in tracks_to_update:
-        rel_name = f"{version_code} (1.0.45)" if target_track == "production" else "1.0.45"
+        rel_name = f"{version_code} (1.0.46)" if target_track == "production" else "1.0.46"
         print(f"Assigning versionCode {version_code} ({rel_name}) to track '{target_track}' (status={status})...")
         track_body = {
             "track": target_track,

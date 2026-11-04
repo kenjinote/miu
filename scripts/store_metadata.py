@@ -34,15 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.45 更新日誌
-🛡️ 修復即時預覽（Mermaid 圖表、KaTeX 公式與 Markdown）閃退問題並強化穩定性
+        "releaseNotes": """miu v1.0.46 更新日誌
+🇯🇵 修復尋找/取代對話方塊輸入法（IME）組字位置偏移 & 全面強化字元編碼與換行符號（CR / CRLF / LF）支援
 
-・修復編輯 Mermaid 圖表時即時預覽閃退的問題：
-  修復了在甘特圖（gantt）等圖表中輸入未完成日期或語法（如 205-01-01 等三位數年份）時觸發內部例外穿過 noexcept 邊界導致程式結束的問題。
-・改進 Mermaid 甘特圖日期解析器：
-  除標準四位數年份外新增對三位數年份（YYY-MM-DD）的相容解析，輸入過程中即可平滑渲染。
-・全面加固即時預覽例外安全性：
-  為全部 26 種 Mermaid 圖表渲染器、KaTeX 數學公式轉換、SVG 最佳化與預覽 HTML 產生增加多層例外防護，在輸入未閉合語法時依然穩定運作。""",
+・修復尋找與取代對話方塊（Ctrl+F / Ctrl+H）中輸入法組字位置右偏的問題：
+  修復了在尋找或取代輸入框中開啟輸入法輸入中文/日文時，未確認的組字文字未顯示在輸入框開頭而是向右偏移的問題。
+・全面強化字元編碼自動辨識與轉換儲存：
+  新增無 BOM UTF-16LE / UTF-16BE 自動辨識、UTF-16 代理對（4 位元組字元與表情符號）完整轉換支援、超過 64KB 大檔案的動態多位元組取樣辨識，以及損壞位元組序列的安全保護。
+・全面完善 CR / CRLF / LF 換行符號支援：
+  無論是經典 Mac 換行（CR）或混合換行檔案，全部 49 種語言語法突顯、矩形（列）選擇、貼上換行自動統一、正規表示式（^ / $）尋找取代與即時預覽皆能精準運作。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.45 Versionshinweise
-🛡️ Absturzbehebung in der Live-Vorschau (Mermaid-Diagramme, KaTeX-Formeln & Markdown) & verbesserte Stabilität
+        "releaseNotes": """miu v1.0.46 Versionshinweise
+🇯🇵 Korrektur der IME-Eingabeposition im Suchen/Ersetzen-Dialog & vollständige Unterstützung für Zeichenkodierungen und Zeilenumbrüche (CR / CRLF / LF)
 
-- Absturz beim Bearbeiten von Mermaid-Diagrammen in der Live-Vorschau behoben:
-  Behebung eines Fehlers, bei dem unvollständige Datumsangaben oder Syntax in Mermaid-Gantt-Diagrammen (z. B. 3-stellige Jahreszahlen wie 205-01-01) eine interne Ausnahme über eine noexcept-Grenze auslösten.
-- Erweiterter Mermaid-Gantt-Datumsparser:
-  Fallback-Unterstützung für 3-stellige Jahreszahlen (YYY-MM-DD) zusätzlich zu 4-stelligen Jahren hinzugefügt.
-- Erhöhte Ausnahmesicherheit der Live-Vorschau:
-  Mehrstufige Schutzmechanismen für alle 26 Mermaid-Diagrammtypen, KaTeX-Mathematik, SVG-Optimierung und HTML-Vorschaugenerierung implementiert.""",
+- IME-Eingabeposition im Suchen- und Ersetzen-Dialog (Strg+F / Strg+H) korrigiert:
+  Behebung eines Fehlers, bei dem die aktive IME- Texteingabe (z. B. Japanisch) im Textfeld nach rechts verschoben statt am Zeilenanfang angezeigt wurde.
+- Verbesserte automatische Zeichenkodierungserkennung & Konvertierung:
+  Automatische Erkennung für UTF-16LE/BE ohne BOM, volle Unterstützung für UTF-16-Surrogatpaare (4-Byte-Zeichen & Emojis), präzise Erkennung bei Dateien über 64 KB und Schutz vor beschädigten Bytefolgen.
+- Vollständige Unterstützung für CR / CRLF / LF-Zeilenumbrüche:
+  Syntaxhervorhebung für alle 49 Sprachen, Blockauswahl, automatische Zeilenumbruch-Normalisierung beim Einfügen, mehrzeilige Regex-Suche (^ / $) und Live-Vorschau unterstützen nun durchgängig CR-, CRLF- und LF-Zeilenumbrüche.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.45
-🛡️ Correction de plantages de l’aperçu en direct (diagrammes Mermaid, formules KaTeX et Markdown) et stabilité renforcée
+        "releaseNotes": """Notes de version miu v1.0.46
+🇯🇵 Correction de la position de saisie IME dans Rechercher/Remplacer et prise en charge complète des encodages et fins de ligne (CR / CRLF / LF)
 
-- Correction d’un plantage lors de l’édition de diagrammes Mermaid en direct :
-  Résolution d’un problème où la saisie de dates ou d’une syntaxe incomplètes dans un diagramme de Gantt (ex. année à 3 chiffres comme 205-01-01) provoquait la fermeture de l’application.
-- Analyseur de dates Mermaid Gantt amélioré :
-  Prise en charge des années à 3 chiffres (YYY-MM-DD) en plus des années à 4 chiffres pour un rendu fluide pendant la frappe.
-- Sécurité renforcée du moteur d’aperçu :
-  Ajout de protections multi-niveaux sur les 26 moteurs de diagrammes Mermaid, le rendu mathématique KaTeX et la génération HTML.""",
+- Correction du décalage de saisie IME dans les boîtes de dialogue Rechercher et Remplacer (Ctrl+F / Ctrl+H) :
+  Résolution d’un problème où le texte en cours de composition IME (comme le japonais) s’affichait décalé vers la droite au lieu du début du champ de saisie.
+- Amélioration complète de la détection et de la conversion d’encodage :
+  Détection automatique des fichiers UTF-16LE/BE sans BOM, prise en charge des paires de substitution UTF-16 (caractères sur 4 octets et émojis), échantillonnage dynamique au-delà de 64 Ko et protection contre les séquences d’octets corrompues.
+- Prise en charge intégrale des fins de ligne CR / CRLF / LF :
+  Coloration syntaxique des 49 langages, sélection rectangulaire, normalisation au collage, expressions régulières (^ / $) et aperçu en direct parfaitement compatibles avec les fins de ligne CR, CRLF et LF.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.45
-🛡️ Corrección de cierres inesperados en la vista previa en vivo (diagramas Mermaid, fórmulas KaTeX y Markdown) y mayor estabilidad
+        "releaseNotes": """Notas de la versión miu v1.0.46
+🇯🇵 Corrección de la posición de entrada IME en Buscar/Reemplazar y soporte completo de codificaciones y saltos de línea (CR / CRLF / LF)
 
-- Corrección de cierre inesperado al editar diagramas Mermaid en vivo:
-  Se resolvió un problema por el cual escribir fechas o sintaxis incompletas en diagramas Gantt de Mermaid (p. ej., años de 3 dígitos como 205-01-01) cerraba la aplicación.
-- Analizador de fechas Gantt de Mermaid mejorado:
-  Soporte adicional para años de 3 dígitos (YYY-MM-DD) además de 4 dígitos para un renderizado fluido mientras se escribe.
-- Mayor seguridad ante excepciones en la vista previa:
-  Protección multicapa en los 26 renderizadores de diagramas Mermaid, fórmulas KaTeX, optimización SVG y generación HTML.""",
+- Corrección de la posición del texto IME en Buscar y Reemplazar (Ctrl+F / Ctrl+H):
+  Se resolvió un problema por el cual al escribir con el IME activado (como entrada en japonés) el texto en composición aparecía desplazado a la derecha en lugar de al inicio del cuadro de texto.
+- Mejoras integrales en detección y conversión de codificación de caracteres:
+  Detección automática de UTF-16LE/BE sin BOM, soporte completo de pares sustitutos UTF-16 (caracteres de 4 bytes y emojis), muestreo dinámico para archivos mayores de 64 KB y protección ante secuencias de bytes dañadas.
+- Soporte completo para saltos de línea CR / CRLF / LF:
+  Resaltado de sintaxis en los 49 lenguajes, selección rectangular, normalización al pegar, búsqueda regex (^ / $) y vista previa en vivo totalmente compatibles con CR, CRLF y LF.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.45
-🛡️ Correção de falhas na pré-visualização ao vivo (diagramas Mermaid, fórmulas KaTeX e Markdown) e maior estabilidade
+        "releaseNotes": """Notas de lançamento do miu v1.0.46
+🇯🇵 Correção da posição de digitação IME em Localizar/Substituir e suporte completo a codificações e quebras de linha (CR / CRLF / LF)
 
-- Correção de fechamento inesperado ao editar diagramas Mermaid ao vivo:
-  Resolvido um problema em que digitar datas ou sintaxe incompletas em gráficos Gantt do Mermaid (ex.: anos de 3 dígitos como 205-01-01) encerrava o aplicativo.
-- Analisador de datas Gantt do Mermaid aprimorado:
-  Adicionado suporte a anos de 3 dígitos (YYY-MM-DD) além de 4 dígitos para renderização contínua durante a digitação.
-- Segurança reforçada contra exceções na pré-visualização:
-  Proteções em várias camadas nos 26 renderizadores Mermaid, fórmulas KaTeX, otimização SVG e geração de HTML.""",
+- Correção da posição do texto IME nas janelas Localizar e Substituir (Ctrl+F / Ctrl+H):
+  Resolvido um problema em que digitar com o IME ativo (como entrada em japonês) exibia o texto em composição deslocado para a direita em vez do início da caixa de texto.
+- Melhorias completas na detecção e conversão de codificação de caracteres:
+  Detecção automática de UTF-16LE/BE sem BOM, suporte completo a pares substitutos UTF-16 (caracteres de 4 bytes e emojis), amostragem dinâmica acima de 64 KB e proteção contra bytes corrompidos.
+- Suporte completo a quebras de linha CR / CRLF / LF:
+  Realce de sintaxe para os 49 idiomas, seleção retangular, normalização ao colar, busca regex (^ / $) e pré-visualização ao vivo totalmente compatíveis com CR, CRLF e LF.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.45
-🛡️ Исправление сбоев живого предпросмотра (диаграммы Mermaid, формулы KaTeX и Markdown) и повышение стабильности
+        "releaseNotes": """Примечания к выпуску miu v1.0.46
+🇯🇵 Исправление позиции ввода IME в окне поиска/замены и полная поддержка кодировок и переносов строк (CR / CRLF / LF)
 
-- Исправлен сбой при редактировании диаграмм Mermaid в режиме предпросмотра:
-  Устранена ошибка, из-за которой ввод неполных дат или синтаксиса в диаграммах Ганта (например, 3-значного года 205-01-01) приводил к закрытию программы.
-- Улучшен парсер дат диаграмм Ганта Mermaid:
-  Добавлена поддержка 3-значных годов (YYY-MM-DD) наряду с 4-значными для плавной отрисовки во время ввода.
-- Усилена защита от исключений в движке предпросмотра:
-  Добавлены многоуровневые проверки во все 26 рендереров диаграмм Mermaid, математический движок KaTeX и генератор HTML.""",
+- Исправлено смещение текста IME в диалогах поиска и замены (Ctrl+F / Ctrl+H):
+  Устранена проблема, из-за которой при вводе через IME (например, на японском языке) незавершенный текст отображался со смещением вправо, а не в начале поля ввода.
+- Комплексное улучшение определения и конвертации кодировок:
+  Добавлено автоопределение UTF-16LE/BE без BOM, полная поддержка суррогатных пар UTF-16 (4-байтовые символы и эмодзи), динамическая выборка для файлов более 64 КБ и защита от поврежденных байтов.
+- Полная поддержка переносов строк CR / CRLF / LF:
+  Подсветка синтаксиса для всех 49 языков, прямоугольное выделение, нормализация при вставке, регулярные выражения (^ / $) и живой предпросмотр корректно работают с CR, CRLF и LF.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.45
-🛡️ Correzione di arresti anomali nell’anteprima live (diagrammi Mermaid, formule KaTeX e Markdown) e maggiore stabilità
+        "releaseNotes": """Note di rilascio di miu v1.0.46
+🇯🇵 Correzione della posizione di inserimento IME in Trova/Sostituisci e supporto completo per codifiche e interruzioni di riga (CR / CRLF / LF)
 
-- Risolto un arresto anomalo durante la modifica di diagrammi Mermaid nell’anteprima live:
-  Risolto un problema per cui l’inserimento di date o sintassi incomplete nei diagrammi di Gantt (es. anni a 3 cifre come 205-01-01) causava la chiusura dell’app.
-- Parser delle date Gantt di Mermaid migliorato:
-  Aggiunto il supporto per gli anni a 3 cifre (YYY-MM-DD) oltre a quelli a 4 cifre per un rendering fluido durante la digitazione.
-- Maggiore sicurezza delle eccezioni nell’anteprima live:
-  Aggiunte protezioni multilivello per tutti i 26 diagrammi Mermaid, formule KaTeX, ottimizzazione SVG e generazione HTML.""",
+- Corretta la posizione del testo IME nelle finestre Trova e Sostituisci (Ctrl+F / Ctrl+H):
+  Risolto un problema per cui digitando con l’IME attivo (ad es. input giapponese) il testo in composizione appariva spostato a destra anziché all’inizio della casella di testo.
+- Miglioramenti completi al rilevamento e alla conversione della codifica:
+  Rilevamento automatico di file UTF-16LE/BE senza BOM, pieno supporto per le coppie di surrogati UTF-16 (caratteri a 4 byte ed emoji), campionamento dinamico oltre i 64 KB e protezione per sequenze di byte danneggiate.
+- Supporto completo per interruzioni di riga CR / CRLF / LF:
+  Evidenziazione della sintassi per tutti i 49 linguaggi, selezione rettangolare, normalizzazione all’incollaggio, ricerca regex (^ / $) e anteprima live perfettamente compatibili con CR, CRLF e LF.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.45
-🛡️ Naprawa awarii podglądu na żywo (diagramy Mermaid, wzory KaTeX i Markdown) oraz zwiększona stabilność
+        "releaseNotes": """Informacje o wersji miu v1.0.46
+🇯🇵 Poprawka pozycji wprowadzania IME w oknie Znajdź/Zamień oraz pełna obsługa kodowań i końców linii (CR / CRLF / LF)
 
-- Naprawiono awarię podczas edycji diagramów Mermaid w podglądzie na żywo:
-  Rozwiązano problem, w którym wpisywanie niepełnych dat lub składni na wykresach Gantta (np. 3-cyfrowego roku jak 205-01-01) powodowało zamknięcie aplikacji.
-- Ulepszony parser dat wykresów Gantta w Mermaid:
-  Dodano obsługę 3-cyfrowych lat (YYY-MM-DD) oprócz 4-cyfrowych, zapewniając płynne renderowanie podczas pisania.
-- Wzmocniona odporność silnika podglądu na błędy:
-  Dodano wielowarstwowe zabezpieczenia we wszystkich 26 rendererach diagramów Mermaid, obsłudze KaTeX, optymalizacji SVG i generowaniu HTML.""",
+- Naprawiono przesunięcie tekstu IME w oknach Znajdź i Zamień (Ctrl+F / Ctrl+H):
+  Rozwiązano problem, przez który podczas pisania z włączonym IME (np. japońskim) niezatwierdzony tekst wyświetlał się przesunięty w prawo zamiast na początku pola tekstowego.
+- Kompleksowe ulepszenia wykrywania i konwersji kodowania znaków:
+  Automatyczne wykrywanie plików UTF-16LE/BE bez BOM, pełna obsługa par surogatów UTF-16 (znaki 4-bajtowe i emoji), dynamiczne próbkowanie powyżej 64 KB oraz ochrona przed uszkodzonymi sekwencjami bajtów.
+- Pełna obsługa końców linii CR / CRLF / LF:
+  Kolorowanie składni dla 49 języków, zaznaczanie prostokątne, normalizacja przy wklejaniu, wyrażenia regularne (^ / $) oraz podgląd na żywo działają bezbłędnie z CR, CRLF i LF.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.45
-🛡️ Crashes in live-voorbeeld (Mermaid-diagrammen, KaTeX-formules en Markdown) opgelost & verbeterde stabiliteit
+        "releaseNotes": """Releaseopmerkingen miu v1.0.46
+🇯🇵 Correctie van IME-invoerpositie in Zoeken/Vervangen & volledige ondersteuning voor tekencoderingen en regeleinden (CR / CRLF / LF)
 
-- Crash bij het bewerken van Mermaid-diagrammen in live-voorbeeld opgelost:
-  Probleem verholpen waarbij onvolledige datums of syntaxis in Mermaid Gantt-diagrammen (zoals 3-cijferige jaartallen als 205-01-01) de app deden afsluiten.
-- Verbeterde Mermaid Gantt-datumparser:
-  Ondersteuning toegevoegd voor 3-cijferige jaartallen (YYY-MM-DD) naast 4-cijferige jaartallen voor vloeiende weergave tijdens het typen.
-- Versterkte foutafhandeling in live-voorbeeld:
-  Meerlaagse beveiliging toegevoegd aan alle 26 Mermaid-diagramrenderers, KaTeX-wiskunde, SVG-optimalisatie en HTML-generatie.""",
+- IME-invoerpositie in dialoogvensters Zoeken en Vervangen (Ctrl+F / Ctrl+H) gecorrigeerd:
+  Probleem verholpen waarbij tijdens het typen met een actieve IME (zoals Japanse invoer) de onbevestigde tekst naar rechts verschoven werd weergegeven in plaats van aan het begin van het tekstvak.
+- Uitgebreide verbeteringen in tekencodering-detectie en conversie:
+  Automatische detectie voor UTF-16LE/BE zonder BOM, volledige ondersteuning voor UTF-16-surrogaatparen (4-byte tekens & emoji's), dynamische detectie voor bestanden boven 64 KB en bescherming tegen beschadigde bytes.
+- Volledige ondersteuning voor CR / CRLF / LF-regeleinden:
+  Syntaxisaccentuering voor alle 49 talen, rechthoekige selectie, normalisatie bij plakken, regex-zoeken (^ / $) en live-voorbeeld werken nu naadloos met CR, CRLF en LF.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.45 Sürüm Notları
-🛡️ Canlı Önizleme (Mermaid Şemaları, KaTeX Formülleri ve Markdown) Çökme Düzeltmeleri ve Kararlılık İyileştirmeleri
+        "releaseNotes": """miu v1.0.46 Sürüm Notları
+🇯🇵 Bul/Değiştir İletişim Kutusunda IME Giriş Konumu Düzeltmesi ve Tam Karakter Kodlaması / Satır Sonu (CR / CRLF / LF) Desteği
 
-- Canlı Önizlemede Mermaid Şemalarını Düzenlerken Oluşan Çökme Düzeltildi:
-  Mermaid Gantt şemalarında eksik tarih veya sözdizimi (ör. 205-01-01 gibi 3 haneli yıllar) yazılırken uygulamanın kapanmasına neden olan sorun giderildi.
-- Geliştirilmiş Mermaid Gantt Tarih Ayrıştırıcısı:
-  Yazarken kesintisiz çizim için 4 haneli yıllara ek olarak 3 haneli yıl (YYY-AA-GG) desteği eklendi.
-- Güçlendirilmiş Canlı Önizleme İstisna Güvenliği:
-  26 Mermaid şema oluşturucusunun tamamına, KaTeX matematik motoruna, SVG iyileştirmesine ve HTML önizleme üretimine çok katmanlı koruma eklendi.""",
+- Bul ve Değiştir İletişim Kutularında (Ctrl+F / Ctrl+H) IME Yazım Konumu Düzeltildi:
+  Etkin bir IME (Japonca giriş gibi) ile yazarken dönüştürme öncesi metnin giriş kutusunun başı yerine sağa kaymış görünmesi sorunu giderildi.
+- Kapsamlı Karakter Kodlaması Algılama ve Dönüştürme İyileştirmeleri:
+  BOM'suz UTF-16LE/BE dosyaları için otomatik algılama, UTF-16 vekil çiftleri (4 baytlık karakterler ve emojiler) desteği, 64 KB üzeri dosyalar için dinamik örnekleme ve bozuk bayt dizilerine karşı güvenli koruma eklendi.
+- Tüm Özelliklerde Tam CR / CRLF / LF Satır Sonu Desteği:
+  49 dilde sözdizimi강조, dikdörtgen seçim, yapıştırma sırasında satır sonu eşitleme, çok satırlı regex (^ / $) arama/değiştirme ve Canlı Önizleme artık CR, CRLF ve LF ile kusursuz çalışır.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.45
-🛡️ Khắc phục sự cố tự thoát khi xem trước trực tiếp (Sơ đồ Mermaid, Công thức KaTeX & Markdown) và tăng cường độ ổn định
+        "releaseNotes": """Ghi chú phát hành miu v1.0.46
+🇯🇵 Sửa lỗi lệch vị trí gõ IME trong hộp thoại Tìm/Thay thế & Hỗ trợ toàn diện bảng mã và ký tự xuống dòng (CR / CRLF / LF)
 
-- Khắc phục lỗi tự thoát khi đang nhập sơ đồ Mermaid trong Xem trước trực tiếp:
-  Đã sửa lỗi khi nhập ngày tháng hoặc cú pháp chưa hoàn chỉnh trong biểu đồ Gantt (ví dụ năm 3 chữ số như 205-01-01) làm ứng dụng bị đóng đột ngột.
-- Cải tiến bộ phân tích ngày tháng Gantt của Mermaid:
-  Hỗ trợ thêm định dạng năm 3 chữ số (YYY-MM-DD) bên cạnh năm 4 chữ số giúp hiển thị mượt mà ngay khi đang gõ.
-- Tăng cường an toàn ngoại lệ cho bộ máy xem trước:
-  Bổ sung lớp bảo vệ đa tầng cho toàn bộ 26 bộ kết xuất sơ đồ Mermaid, toán học KaTeX, tối ưu hóa SVG và tạo HTML.""",
+- Sửa lỗi lệch vị trí chữ đang gõ IME trong hộp thoại Tìm kiếm và Thay thế (Ctrl+F / Ctrl+H):
+  Đã khắc phục sự cố khi bật bộ gõ IME (như tiếng Nhật) trong ô tìm kiếm khiến chữ chưa xác nhận bị lệch sang phải thay vì hiển thị ở đầu ô nhập.
+- Nâng cấp toàn diện nhận diện và chuyển đổi bảng mã:
+  Tự động nhận diện UTF-16LE/BE không có BOM, hỗ trợ đầy đủ cặp thay thế UTF-16 (ký tự 4 byte & emoji), lấy mẫu động cho tệp trên 64 KB và bảo vệ an toàn trước chuỗi byte lỗi.
+- Hỗ trợ hoàn chỉnh ký tự xuống dòng CR / CRLF / LF:
+  Tô sáng cú pháp 49 ngôn ngữ, chọn khối chữ nhật, chuẩn hóa dòng khi dán, tìm kiếm regex (^ / $) và Xem trước trực tiếp hoạt động chính xác với CR, CRLF và LF.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.45
-🛡️ Виправлення збоїв живого перегляду (діаграми Mermaid, формули KaTeX і Markdown) та підвищення стабільності
+        "releaseNotes": """Примітки до випуску miu v1.0.46
+🇯🇵 Виправлення позиції введення IME у вікні пошуку/заміни та повна підтримка кодувань і переносів рядків (CR / CRLF / LF)
 
-- Виправлено аварійне завершення під час редагування діаграм Mermaid у живому перегляді:
-  Усунено проблему, через яку введення неповних дат або синтаксису в діаграмах Ганта (наприклад, 3-значного року 205-01-01) призводило до закриття програми.
-- Покращено парсер дат діаграм Ганта Mermaid:
-  Додано підтримку 3-значних років (YYY-MM-DD) разом із 4-значними для плавного рендерингу під час набору тексту.
-- Посилено захист від винятків у рушії перегляду:
-  Додано багаторівневий захист для всіх 26 рендерерів діаграм Mermaid, формул KaTeX, оптимізації SVG та генерації HTML.""",
+- Виправлено зміщення тексту IME у діалогах пошуку та заміни (Ctrl+F / Ctrl+H):
+  Усунено проблему, через яку під час набору з увімкненим IME (наприклад, японською) непідтверджений текст відображався зміщеним праворуч замість початку поля введення.
+- Комплексне покращення розпізнавання та конвертації кодувань:
+  Додано автовизначення UTF-16LE/BE без BOM, повну підтримку сурогатних пар UTF-16 (4-байтові символи та емодзі), динамічну вибірку для файлів понад 64 КБ і захист від пошкоджених байтів.
+- Повна підтримка переносів рядків CR / CRLF / LF:
+  Підсвічування синтаксису для всіх 49 мов, прямокутне виділення, нормалізація під час вставлення, регулярні вирази (^ / $) та живий перегляд бездоганно працюють із CR, CRLF та LF.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.45
-🛡️ Perbaikan Crash Pratinjau Langsung (Diagram Mermaid, Rumus KaTeX & Markdown) & Peningkatan Stabilitas
+        "releaseNotes": """Catatan Rilis miu v1.0.46
+🇯🇵 Perbaikan Posisi Input IME pada Dialog Cari/Ganti & Dukungan Penuh Pengodean Karakter / Akhir Baris (CR / CRLF / LF)
 
-- Perbaikan Crash Saat Mengedit Diagram Mermaid di Pratinjau Langsung:
-  Memperbaiki masalah saat mengetik tanggal atau sintaks yang belum lengkap pada diagram Gantt Mermaid (misalnya tahun 3 digit seperti 205-01-01) yang menyebabkan aplikasi tertutup.
-- Peningkatan Pengurai Tanggal Gantt Mermaid:
-  Menambahkan dukungan fallback tahun 3 digit (YYY-MM-DD) selain tahun 4 digit agar diagram Gantt dirender dengan mulus saat mengetik.
-- Keamanan Eksepsi Pratinjau Langsung yang Diperkuat:
-  Menambahkan perlindungan berlapis di seluruh 26 perender diagram Mermaid, rumus KaTeX, optimasi SVG, dan pembuatan HTML.""",
+- Perbaikan Posisi Teks Komposisi IME di Dialog Cari & Ganti (Ctrl+F / Ctrl+H):
+  Memperbaiki masalah saat mengetik dengan IME aktif (seperti input bahasa Jepang) di kotak teks Cari atau Ganti yang menampilkan teks komposisi bergeser ke kanan alih-alih di awal kotak input.
+- Peningkatan Deteksi & Konversi Pengodean Karakter Secara Menyeluruh:
+  Deteksi otomatis untuk file UTF-16LE/BE tanpa BOM, dukungan penuh pasangan pengganti UTF-16 (karakter 4-byte & emoji), pengambilan sampel dinamis untuk file di atas 64 KB, serta perlindungan terhadap urutan byte yang rusak.
+- Dukungan Penuh Akhir Baris CR / CRLF / LF:
+  Penyorotan sintaks untuk 49 bahasa, seleksi persegi panjang, normalisasi baris saat menempel, pencarian regex (^ / $), dan Pratinjau Langsung kini bekerja akurat dengan CR, CRLF, dan LF.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.45
-🛡️ Oprava pádů živého náhledu (diagramy Mermaid, vzorce KaTeX a Markdown) a zvýšení stability
+        "releaseNotes": """Poznámky k verzi miu v1.0.46
+🇯🇵 Oprava pozice psaní IME v dialogu Najít/Nahradit a plná podpora kódování znaků i konců řádků (CR / CRLF / LF)
 
-- Opraven pád při úpravách diagramů Mermaid v živém náhledu:
-  Vyřešen problém, kdy zadání neúplného data nebo syntaxe v Ganttových diagramech (např. 3místného roku jako 205-01-01) způsobilo ukončení aplikace.
-- Vylepšený analyzátor dat Ganttových diagramů Mermaid:
-  Přidána podpora pro 3místné roky (YYY-MM-DD) vedle 4místných pro plynulé vykreslování během psaní.
-- Posílená bezpečnost výjimek v živém náhledu:
-  Doplněna vícevrstvá ochrana pro všech 26 vykreslovačů diagramů Mermaid, matematiku KaTeX, optimalizaci SVG a generování HTML.""",
+- Opraveno posunutí textu IME v dialozích Najít a Nahradit (Ctrl+F / Ctrl+H):
+  Vyřešen problém, kdy se při psaní se zapnutým IME (např. japonským) nepotvrzený text zobrazoval posunutý doprava místo na začátku vstupního pole.
+- Komplexní vylepšení detekce a převodu kódování znaků:
+  Automatická detekce UTF-16LE/BE bez BOM, plná podpora náhradních párů UTF-16 (4bajtové znaky a emoji), dynamické vzorkování u souborů nad 64 KB a ochrana proti poškozeným sekvencím bajtů.
+- Plná podpora konců řádků CR / CRLF / LF:
+  Zvýrazňování syntaxe pro 49 jazyků, obdélníkový výběr, normalizace při vkládání, regulární výrazy (^ / $) i živý náhled nyní bezchybně fungují s CR, CRLF a LF.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.45
-🛡️ Åtgärdade krascher i live-förhandsgranskning (Mermaid-diagram, KaTeX-formler & Markdown) och förbättrad stabilitet
+        "releaseNotes": """Versionsinformation för miu v1.0.46
+🇯🇵 Åtgärdad IME-inmatningsposition i Sök/Ersätt och fullt stöd för teckenkodningar & radbrytningar (CR / CRLF / LF)
 
-- Åtgärdade krasch vid redigering av Mermaid-diagram i live-förhandsgranskning:
-  Löste ett problem där ofullständiga datum eller syntax i Mermaid Gantt-scheman (t.ex. 3-siffriga årtal som 205-01-01) fick appen att avslutas.
-- Förbättrad datumtolk för Mermaid Gantt:
-  Lade till stöd för 3-siffriga årtal (YYY-MM-DD) utöver 4-siffriga årtal för smidig rendering medan du skriver.
-- Förstärkt undantagssäkerhet i förhandsgranskningen:
-  Lade till flerskiktska skydd i alla 26 Mermaid-diagramrenderare, KaTeX-matematik, SVG-optimering och HTML-generering.""",
+- Åtgärdad IME-textposition i dialogrutorna Sök och Ersätt (Ctrl+F / Ctrl+H):
+  Löste ett problem där inmatning med aktiv IME (t.ex. japanska) visade obekräftad text förskjuten åt höger i stället för i början av textrutan.
+- Omfattande förbättringar av teckenkodningsdetektering och konvertering:
+  Automatisk identifiering av UTF-16LE/BE utan BOM, fullt stöd för UTF-16-surrogatpar (4-bytetecken och emojis), dynamisk provtagning för filer över 64 KB samt skydd mot skadade bytesekvenser.
+- Fullt stöd för CR / CRLF / LF-radbrytningar:
+  Syntaxmarkering för alla 49 språk, rektangulär markering, radbrytningsnormalisering vid inklistring, regex-sökning (^ / $) och live-förhandsgranskning fungerar nu felfritt med CR, CRLF och LF.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.45
-🛡️ แก้ไขปัญหาแอปปิดตัวลงขณะแสดงตัวอย่างสด (แผนภาพ Mermaid, สมการ KaTeX และ Markdown) และเพิ่มความเสถียร
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.46
+🇯🇵 แก้ไขตำแหน่งการพิมพ์ IME ในหน้าต่างค้นหา/แทนที่ และรองรับรหัสอักขระกับรูปแบบการขึ้นบรรทัดใหม่ (CR / CRLF / LF) อย่างสมบูรณ์
 
-- แก้ไขปัญหาแอปปิดตัวเองขณะแก้ไขแผนภาพ Mermaid ในโหมดแสดงตัวอย่างสด:
-  แก้ไขปัญหาการพิมพ์วันที่หรือไวยากรณ์ที่ยังไม่สมบูรณ์ในแผนภูมิ Gantt (เช่น ปี 3 หลักอย่าง 205-01-01) แล้วทำให้แอปปิดตัวลง
-- ปรับปรุงตัวแปลงวันที่ของแผนภูมิ Mermaid Gantt:
-  เพิ่มการรองรับปีแบบ 3 หลัก (YYY-MM-DD) นอกเหนือจากปี 4 หลัก เพื่อให้เรนเดอร์ได้อย่างราบรื่นขณะพิมพ์
-- ยกระดับความปลอดภัยในการจัดการข้อผิดพลาดของระบบแสดงตัวอย่าง:
-  เพิ่มการป้องกันหลายชั้นในตัวเรนเดอร์แผนภาพ Mermaid ทั้ง 26 รูปแบบ, สมการ KaTeX, การปรับแต่ง SVG และการสร้าง HTML""",
+- แก้ไขตำแหน่งข้อความระหว่างพิมพ์ด้วย IME ในหน้าต่างค้นหาและแทนที่ (Ctrl+F / Ctrl+H):
+  แก้ไขปัญหาการเปิด IME (เช่น การพิมพ์ภาษาญี่ปุ่น) ในช่องค้นหาแล้วข้อความที่ยังไม่ยืนยันเลื่อนไปทางขวาแทนที่จะแสดงที่ต้นช่องข้อความ
+- ยกระดับการตรวจจับและแปลงรหัสอักขระอย่างครบวงจร:
+  รองรับการตรวจจับ UTF-16LE/BE แบบไม่มี BOM อัตโนมัติ, รองรับ UTF-16 Surrogate Pairs (อักขระ 4 ไบต์และอีโมจิ), การสุ่มตรวจไฟล์ขนาดเกิน 64 KB อย่างแม่นยำ และการป้องกันข้อมูลสูญหายจากไบต์ที่เสียหาย
+- รองรับการขึ้นบรรทัดใหม่ทั้ง CR / CRLF / LF อย่างสมบูรณ์:
+  การไฮไลต์ไวยากรณ์ทั้ง 49 ภาษา, การเลือกแบบคอลัมน์, การจัดรูปแบบบรรทัดเมื่อวาง, การค้นหาด้วย Regex (^ / $) และการแสดงตัวอย่างสดทำงานได้อย่างถูกต้องครบถ้วน""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.45 रिलीज़ नोट्स
-🛡️ लाइव प्रीव्यू (Mermaid डायग्राम, KaTeX गणित और Markdown) क्रैश सुधार और बेहतर स्थिरता
+        "releaseNotes": """miu v1.0.46 रिलीज़ नोट्स
+🇯🇵 खोजें/बदलें संवाद में IME इनपुट स्थिति सुधार और पूर्ण कैरेक्टर एनकोडिंग व लाइन-एंडिंग (CR / CRLF / LF) समर्थन
 
-- लाइव प्रीव्यू में Mermaid डायग्राम संपादित करते समय क्रैश की समस्या हल की गई:
-  Mermaid Gantt चार्ट में अधूरी तारीख या सिंटैक्स (जैसे 205-01-01 जैसे 3-अंकीय वर्ष) टाइप करते समय ऐप बंद होने की समस्या को ठीक किया गया।
-- बेहतर Mermaid Gantt तिथि पार्सर:
-  टाइप करते समय सुचारू रेंडरिंग के लिए 4-अंकीय वर्षों के साथ 3-अंकीय वर्षों (YYY-MM-DD) का समर्थन जोड़ा गया।
-- लाइव प्रीव्यू इंजन की सुरक्षा को मजबूत किया गया:
-  सभी 26 Mermaid डायग्राम रेंडरर्स, KaTeX गणित, SVG अनुकूलन और HTML प्रीव्यू जनरेशन में बहु-स्तरीय सुरक्षा गार्ड जोड़े गए।""",
+- खोजें और बदलें संवाद (Ctrl+F / Ctrl+H) में IME इनपुट स्थिति को ठीक किया गया:
+  खोज या बदलें टेक्स्ट बॉक्स में सक्रिय IME (जैसे जापानी इनपुट) के साथ टाइप करते समय अनकन्फर्म्ड अक्षरों के दाईं ओर खिसकने की समस्या को हल किया गया।
+- कैरेक्टर एनकोडिंग पहचान और रूपांतरण में व्यापक सुधार:
+  बिना BOM वाली UTF-16LE/BE फ़ाइलों की स्वतः पहचान, UTF-16 सरोगेट पेयर (4-बाइट अक्षर और इमोजी) का पूर्ण समर्थन, 64 KB से बड़ी फ़ाइलों के लिए सटीक पहचान और खराब बाइट अनुक्रमों से सुरक्षा जोड़ी गई।
+- सभी सुविधाओं में पूर्ण CR / CRLF / LF लाइन-एंडिंग समर्थन:
+  सभी 49 भाषाओं में सिंटैक्स हाइलाइटिंग, आयताकार चयन, पेस्ट लाइन सामान्यीकरण, रेगेक्स (^ / $) खोज/बदलाव और लाइव प्रीव्यू अब CR, CRLF और LF के साथ सटीक काम करते हैं।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.45
-🛡️ Remedierea opririlor neașteptate în previzualizarea live (diagrame Mermaid, formule KaTeX și Markdown) și stabilitate sporită
+        "releaseNotes": """Note de lansare miu v1.0.46
+🇯🇵 Corectarea poziției de introducere IME în Căutare/Înlocuire și suport complet pentru codificări și sfârșituri de linie (CR / CRLF / LF)
 
-- S-a remediat oprirea neașteptată la editarea diagramelor Mermaid în previzualizarea live:
-  S-a rezolvat o problemă în care introducerea unor date sau sintaxe incomplete în diagramele Gantt (de ex. ani din 3 cifre precum 205-01-01) ducea la închiderea aplicației.
-- Analizor de date Mermaid Gantt îmbunătățit:
-  S-a adăugat suport pentru ani din 3 cifre (YYY-MM-DD) pe lângă cei din 4 cifre pentru o redare fluentă în timpul tastării.
-- Siguranță sporită împotriva excepțiilor în previzualizarea live:
-  Protecții pe mai multe niveluri pentru toate cele 26 de tipuri de diagrame Mermaid, formule KaTeX, optimizare SVG și generare HTML.""",
+- S-a corectat poziția textului IME în ferestrele Căutare și Înlocuire (Ctrl+F / Ctrl+H):
+  S-a rezolvat o problemă în care tastarea cu un IME activ (precum introducerea în japoneză) afișa textul neconfirmat deplasat spre dreapta în loc de începutul câmpului de text.
+- Îmbunătățiri complete pentru detectarea și conversia codificării caracterelor:
+  Detectare automată pentru UTF-16LE/BE fără BOM, suport complet pentru perechi surogat UTF-16 (caractere pe 4 octeți și emoji), eșantionare dinamică peste 64 KB și protecție pentru secvențe de octeți deteriorate.
+- Suport complet pentru sfârșituri de linie CR / CRLF / LF:
+  Evidențierea sintaxei pentru cele 49 de limbaje, selecția dreptunghiulară, normalizarea la lipire, căutarea regex (^ / $) și previzualizarea live funcționează impecabil cu CR, CRLF și LF.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.45 kiadási megjegyzések
-🛡️ Élő előnézet (Mermaid diagramok, KaTeX képletek és Markdown) összeomlásának javítása és fokozott stabilitás
+        "releaseNotes": """miu v1.0.46 kiadási megjegyzések
+🇯🇵 IME beviteli pozíció javítása a Keresés/Csere ablakban és teljes karakterkódolási /พิกัด-sortörési (CR / CRLF / LF) támogatás
 
-- Javítva a Mermaid diagramok élő előnézetben történő szerkesztésekor fellépő összeomlás:
-  Megoldódott egy hiba, amelynél a hiányos dátumok vagy szintaxis (pl. 3 jegyű évszámok, mint a 205-01-01) beírása Gantt-diagramokban a program leállását okozta.
-- Fejlesztett Mermaid Gantt dátumelemző:
-  A 4 jegyű évszámok mellett 3 jegyű évszámok (YYY-MM-DD) támogatása a gépelés közbeni zökkenőmentes megjelenítéshez.
-- Megerősített kivételbiztonság az előnézeti motorban:
-  Többrétegű védelem mind a 26 Mermaid diagram-renderelőben, a KaTeX matematikai motorban, az SVG-optimalizálásban és a HTML-generálásban.""",
+- Javítva az IME szövegpozíció a Keresés és Csere párbeszédpanelekben (Ctrl+F / Ctrl+H):
+  Megoldódott egy hiba, amelynél aktív IME (pl. japán bevitel) használatakor az átalakítás előtti szöveg a szövegmező eleje helyett jobbra eltolva jelent meg.
+- Átfogó karakterkódolás-felismerési és konvertálási fejlesztések:
+  Automatikus felismerés BOM nélküli UTF-16LE/BE fájlokhoz, teljes UTF-16 helyettesítő pár (4 bájtos karakterek és emojik) támogatás, dinamikus mintavételezés 64 KB feletti fájloknál és védelem a sérült bájtsorozatok ellen.
+- Teljes CR / CRLF / LF sortörés-támogatás:
+  Mind a 49 nyelv szintaxiskiemelése, a téglalap alakú kijelölés, a beillesztési normalizálás, a regex (^ / $) keresés és az élő előnézet pontosan működik CR, CRLF és LF sortörésekkel.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.45
-🛡️ Διόρθωση τερματισμών στη Ζωντανή Προεπισκόπηση (διαγράμματα Mermaid, εξισώσεις KaTeX & Markdown) και ενισχυμένη σταθερότητα
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.46
+🇯🇵 Διόρθωση θέσης εισαγωγής IME στο παράθυρο Εύρεση/Αντικατάσταση & πλήρης υποστήριξη κωδικοποιήσεων και αλλαγών γραμμής (CR / CRLF / LF)
 
-- Διορθώθηκε σφάλμα τερματισμού κατά την επεξεργασία διαγραμμάτων Mermaid στη Ζωντανή Προεπισκόπηση:
-  Επιλύθηκε πρόβλημα όπου η πληκτρολόγηση ημιτελών ημερομηνιών ή σύνταξης σε διαγράμματα Gantt (π.χ. 3ψήφια έτη όπως 205-01-01) προκαλούσε κλείσιμο της εφαρμογής.
-- Βελτιωμένος αναλυτής ημερομηνιών Mermaid Gantt:
-  Προστέθηκε υποστήριξη για 3ψήφια έτη (YYY-MM-DD) επιπλέον των 4ψήφιων για ομαλή απόδοση κατά την πληκτρολόγηση.
-- Ενισχυμένη ασφάλεια εξαιρέσεων στη Ζωντανή Προεπισκόπηση:
-  Προστέθηκαν δικλείδες ασφαλείας πολλαπλών επιπέδων και στους 26 τύπους διαγραμμάτων Mermaid, στα μαθηματικά KaTeX, στη βελτιστοποίηση SVG και στην παραγωγή HTML.""",
+- Διορθώθηκε η μετατόπιση κειμένου IME στα παράθυρα Εύρεσης και Αντικατάστασης (Ctrl+F / Ctrl+H):
+  Επιλύθηκε πρόβλημα όπου κατά την πληκτρολόγηση με ενεργό IME (π.χ. ιαπωνικά) το κείμενο σύνθεσης εμφανιζόταν μετατοπισμένο προς τα δεξιά αντί στην αρχή του πεδίου.
+- Ολοκληρωμένες βελτιώσεις ανίχνευσης και μετατροπής κωδικοποίησης χαρακτήρων:
+  Αυτόματη ανίχνευση UTF-16LE/BE χωρίς BOM, πλήρης υποστήριξη ζευγών υποκατάστασης UTF-16 (χαρακτήρες 4 byte & emoji), δυναμική δειγματοληψία άνω των 64 KB και προστασία από κατεστραμμένες ακολουθίες byte.
+- Πλήρης υποστήριξη αλλαγών γραμμής CR / CRLF / LF:
+  Ο τονισμός σύνταξης και στις 49 γλώσσες, η ορθογώνια επιλογή, η κανονικοποίηση επικόλλησης, η αναζήτηση regex (^ / $) και η Ζωντανή Προεπισκόπηση λειτουργούν άψογα με CR, CRLF και LF.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter til miu v1.0.45
-🛡️ Rettede nedbrud i live-forhåndsvisning (Mermaid-diagrammer, KaTeX-formler og Markdown) & forbedret stabilitet
+        "releaseNotes": """Udgivelsesnoter til miu v1.0.46
+🇯🇵 Rettet IME-indtastningsposition i Søg/Erstat og fuld understøttelse af tegnkodninger & linjeskift (CR / CRLF / LF)
 
-- Rettet nedbrud ved redigering af Mermaid-diagrammer i live-forhåndsvisning:
-  Løst et problem, hvor ufuldstændige datoer eller syntaks i Mermaid Gantt-diagrammer (f.eks. 3-cifrede årstal som 205-01-01) fik appen til at lukke.
-- Forbedret Mermaid Gantt-datoparser:
-  Tilføjet understøttelse af 3-cifrede årstal (YYY-MM-DD) ud over 4-cifrede årstal for jævn gengivelse under indtastning.
-- Styrket fejlhåndtering i live-forhåndsvisning:
-  Tilføjet flerlagsbeskyttelse på tværs af alle 26 Mermaid-diagramtyper, KaTeX-matematik, SVG-optimering og HTML-generering.""",
+- Rettet IME-tekstposition i dialogboksene Søg og Erstat (Ctrl+F / Ctrl+H):
+  Løst et problem, hvor indtastning med aktiv IME (f.eks. japansk) viste ubekræftet tekst forskudt mod højre i stedet for i starten af tekstfeltet.
+- Omfattende forbedringer af tegnkodningsregistrering og konvertering:
+  Automatisk registrering af UTF-16LE/BE uden BOM, fuld understøttelse af UTF-16-surrogatpar (4-byte tegn og emojis), dynamisk prøveudtagning for filer over 64 KB og beskyttelse mod beskadigede bytesekvenser.
+- Fuld understøttelse af CR / CRLF / LF-linjeskift:
+  Syntaksfremhævning for alle 49 sprog, rektangulær markering, normalisering ved indsætning, regex-søgning (^ / $) og live-forhåndsvisning fungerer nu fejlfrit med CR, CRLF og LF.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.45 -julkaisutiedot
-🛡️ Reaaliaikaisen esikatselun (Mermaid-kaaviot, KaTeX-kaavat ja Markdown) kaatumiskorjaukset ja parannettu vakaus
+        "releaseNotes": """miu v1.0.46 -julkaisutiedot
+🇯🇵 Korjattu IME-syöttösijainti Etsi/Korvaa-valintaikkunassa sekä täysi merkistökoodausten ja rivinvaihtojen (CR / CRLF / LF) tuki
 
-- Korjattu kaatuminen Mermaid-kaavioita muokattaessa reaaliaikaisessa esikatselussa:
-  Ratkaistu ongelma, jossa keskeneräisten päivämäärien tai syntaksin kirjoittaminen Mermaid Gantt -kaavioihin (esim. 3-numeroiset vuodet kuten 205-01-01) sulki sovelluksen.
-- Parannettu Mermaid Gantt -päivämääräjäsennin:
-  Lisätty tuki 3-numeroisille vuosille (YYY-MM-DD) 4-numeroisten vuosien lisäksi sujuvaa kirjoituksen aikaista piirtämistä varten.
-- Vahvistettu esikatselumoottorin poikkeusturvallisuus:
-  Lisätty monikerroksinen suojaus kaikkiin 26 Mermaid-kaaviorenderöijään, KaTeX-matematiikkaan, SVG-optimointiin ja HTML-esikatselun luontiin.""",
+- Korjattu IME-tekstin sijainti Etsi- ja Korvaa-valintaikkunoissa (Ctrl+F / Ctrl+H):
+  Ratkaistu ongelma, jossa aktiivisella IME-syötöllä (kuten japani) kirjoitettaessa vahvistamaton teksti näkyi oikealle siirtyneenä tekstikentän alun sijaan.
+- Kattavat parannukset merkistökoodauksen tunnistukseen ja muunnokseen:
+  Automaattinen tunnistus BOM-merkittömille UTF-16LE/BE-tiedostoille, täysi UTF-16-sijaisparien (4-tavuiset merkit ja emojit) tuki, dynaaminen näytteenotto yli 64 kt:n tiedostoille ja suojaus vioittuneille tavusarjoille.
+- Täysi CR / CRLF / LF -rivinvaihtojen tuki:
+  Kaikkien 49 kielen syntaksinkorostus, suorakulmainen valinta, liittämisen normalisointi, säännöllisten lausekkeiden (^ / $) haku ja reaaliaikainen esikatselu toimivat nyt virheettömästi CR-, CRLF- ja LF-rivinvaihdoilla.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.45
-🛡️ Rettet krasj i sanntidsvisning (Mermaid-diagrammer, KaTeX-formler og Markdown) og forbedret stabilitet
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.46
+🇯🇵 Rettet IME-inndataposisjon i Søk/Erstatt og full støtte for tegnkodinger og linjeskift (CR / CRLF / LF)
 
-- Rettet krasj ved redigering av Mermaid-diagrammer i sanntidsvisning:
-  Løst et problem der ufullstendige datoer eller syntaks i Mermaid Gantt-diagrammer (f.eks. 3-sifrede årstall som 205-01-01) førte til at appen ble avsluttet.
-- Forbedret Mermaid Gantt-datoparser:
-  Lagt til støtte for 3-sifrede årstall (YYY-MM-DD) i tillegg til 4-sifrede årstall for jevn gjengivelse mens du skriver.
-- Styrket unntakssikkerhet i sanntidsvisningen:
-  Lagt til flerlagsbeskyttelse i alle 26 Mermaid-diagramtyper, KaTeX-matematikk, SVG-optimalisering og HTML-generering.""",
+- Rettet IME-tekstposisjon i dialogboksene Søk og Erstatt (Ctrl+F / Ctrl+H):
+  Løst et problem der skriving med aktiv IME (f.eks. japansk) viste ubekreftet tekst forskjøvet mot høyre i stedet for i starten av tekstfeltet.
+- Omfattende forbedringer av tegnkodingsgjenkjenning og konvertering:
+  Automatisk gjenkjenning av UTF-16LE/BE uten BOM, full støtte for UTF-16-surrogatpar (4-byte tegn og emojier), dynamisk prøvetaking for filer over 64 KB og beskyttelse mot skadede bytesekvenser.
+- Full støtte for CR / CRLF / LF-linjeskift:
+  Syntaksutheving for alle 49 språk, rektangulær markering, normalisering ved innliming, regex-søk (^ / $) og sanntidsvisning fungerer nå feilfritt med CR, CRLF og LF.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.45
-🛡️ Pembaikan Runtuhan Pratonton Langsung (Rajah Mermaid, Formula KaTeX & Markdown) & Peningkatan Kestabilan
+        "releaseNotes": """Nota Keluaran miu v1.0.46
+🇯🇵 Pembaikan Kedudukan Input IME dalam Dialog Cari/Ganti & Sokongan Penuh Pengekodan Aksara / Hujung Baris (CR / CRLF / LF)
 
-- Membaiki Runtuhan Semasa Mengedit Rajah Mermaid dalam Pratonton Langsung:
-  Menyelesaikan masalah apabila menaip tarikh atau sintaks tidak lengkap dalam carta Gantt Mermaid (cth. tahun 3 digit seperti 205-01-01) menyebabkan aplikasi tertutup.
-- Penghurai Tarikh Gantt Mermaid Dipertingkatkan:
-  Menambah sokongan tahun 3 digit (YYY-MM-DD) selain tahun 4 digit supaya carta Gantt dipaparkan dengan lancar semasa menaip.
-- Keselamatan Pengecualian Pratonton Langsung Diperkukuh:
-  Menambah perlindungan berlapis merentasi kesemua 26 pemapar rajah Mermaid, matematik KaTeX, pengoptimuman SVG dan penjanaan HTML.""",
+- Membaiki Kedudukan Teks IME dalam Dialog Cari dan Ganti (Ctrl+F / Ctrl+H):
+  Menyelesaikan masalah apabila menaip dengan IME aktif (seperti input bahasa Jepun) memaparkan teks belum disahkan teranjak ke kanan bukannya di permulaan kotak teks.
+- Penambahbaikan Menyeluruh Pengesanan & Penukaran Pengekodan Aksara:
+  Pengesanan automatik untuk fail UTF-16LE/BE tanpa BOM, sokongan penuh pasangan pengganti UTF-16 (aksara 4-bait & emoji), pensampelan dinamik untuk fail melebihi 64 KB, dan perlindungan daripada jujukan bait rosak.
+- Sokongan Penuh Hujung Baris CR / CRLF / LF:
+  Penyerlahan sintaks bagi 49 bahasa, pemilihan segi empat tepat, penormalan baris semasa menampal, carian regex (^ / $) dan Pratonton Langsung kini berfungsi dengan tepat untuk CR, CRLF dan LF.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

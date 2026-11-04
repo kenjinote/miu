@@ -118,10 +118,10 @@ static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) {
         else if (pat.find(R"(\[<)") == 0) { m.reqChar1 = '['; m.reqChar2 = '<'; }
         else if (pat.find(R"(\.[a-zA-Z_])") == 0) m.reqChar1 = '.';
         else if (pat.find("--[") == 0) m.reqChar1 = '-';
-        else if (pat.find("(?:^|\\n)[ \\t]*\\[") == 0) { m.reqChar1 = '['; m.reqChar2 = ']'; }
-        else if (pat.find("(?:^|\\n)\\+") == 0) m.reqChar1 = '+';
-        else if (pat.find("(?:^|\\n)-") == 0) m.reqChar1 = '-';
-        else if (pat.find("(?:^|\\n)@@") == 0) m.reqChar1 = '@';
+        else if (pat.find("(?:^|[\\r\\n])[ \\t]*\\[") == 0) { m.reqChar1 = '['; m.reqChar2 = ']'; }
+        else if (pat.find("(?:^|[\\r\\n])\\+") == 0) m.reqChar1 = '+';
+        else if (pat.find("(?:^|[\\r\\n])-") == 0) m.reqChar1 = '-';
+        else if (pat.find("(?:^|[\\r\\n])@@") == 0) m.reqChar1 = '@';
         else if (pat.find("(?=[ \\t]*=)") != std::string::npos) m.reqChar1 = '=';
         else if (pat.find("(?=[ \\t]*:") != std::string::npos) m.reqChar1 = ':';
     }
@@ -282,11 +282,11 @@ regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax7 = R"([markdown]
 comment_block: <!-- -->
-regex: (?:^|\n)[ \t]*#{1,6}[ \t]+[^\r\n]*
+regex: (?:^|[\r\n])[ \t]*#{1,6}[ \t]+[^\r\n]*
 regex_color: 0.3 0.7 0.9 1.0
 regex: (\*\*\*|___)[^*_\r\n\\]+(\*\*\*|___)|(\*\*|__)(?:[^*_\r\n\\]|\\.|[*][^*\r\n]|_[^_\r\n])+(\*\*|__)
 regex_color: 0.9 0.5 0.3 1.0
-regex: (?:^|\n)[ \t]*`{3,}[^\r\n]*\r?\n(?:[^\r\n]*\r?\n){0,120}?[ \t]*`{3,}[ \t]*(?=\r|\n|$)|(?:^|\n)[ \t]*~{3,}[^\r\n]*\r?\n(?:[^\r\n]*\r?\n){0,120}?[ \t]*~{3,}[ \t]*(?=\r|\n|$)|(?:^|\n)[ \t]*(?:`{3,}|~{3,})[^\r\n]*|``+(?:[^`\r\n]|`[^`\r\n])+``+|`[^`\r\n\\]*(?:\\.[^`\r\n\\]*)*`
+regex: (?:^|[\r\n])[ \t]*`{3,}[^\r\n]*(?:\r\n|[\r\n])(?:[^\r\n]*(?:\r\n|[\r\n])){0,120}?[ \t]*`{3,}[ \t]*(?=\r|\n|$)|(?:^|[\r\n])[ \t]*~{3,}[^\r\n]*(?:\r\n|[\r\n])(?:[^\r\n]*(?:\r\n|[\r\n])){0,120}?[ \t]*~{3,}[ \t]*(?=\r|\n|$)|(?:^|[\r\n])[ \t]*(?:`{3,}|~{3,})[^\r\n]*|``+(?:[^`\r\n]|`[^`\r\n])+``+|`[^`\r\n\\]*(?:\\.[^`\r\n\\]*)*`
 regex_color: 0.5 0.7 0.5 1.0
 regex: (https?|ftp)://[^\s<>")\]]+
 regex_color: 0.2 0.6 0.8 1.0
@@ -336,11 +336,11 @@ regex_color: 0.4 0.7 0.9 1.0
         static constexpr const char* kSyntax12 = R"([batch]
 comment_line: REM
 keyword: call cd chdir choice cls color copy date del dir echo endlocal erase exit find findstr for goto if md mkdir move path pause popd prompt pushd rd rem ren rename rmdir set setlocal shift start time title type ver verify vol CALL CD CHDIR CHOICE CLS COLOR COPY DATE DEL DIR ECHO ENDLOCAL ERASE EXIT FIND FINDSTR FOR GOTO IF MD MKDIR MOVE PATH PAUSE POPD PROMPT PUSHD RD REM REN RENAME RMDIR SET SETLOCAL SHIFT START TIME TITLE TYPE VER VERIFY VOL
-regex: (?:^|\n)[ \t]*([rR][eE][mM]\b|::)[^\r\n]*
+regex: (?:^|[\r\n])[ \t]*([rR][eE][mM]\b|::)[^\r\n]*
 regex_color: 0.38 0.62 0.38 1.0
 regex: %[a-zA-Z0-9_]+%
 regex_color: 0.8 0.5 0.3 1.0
-regex: (?:^|\n)[ \t]*:[a-zA-Z0-9_]+
+regex: (?:^|[\r\n])[ \t]*:[a-zA-Z0-9_]+
 regex_color: 0.6 0.4 0.7 1.0
 )";
         static constexpr const char* kSyntax13 = R"([bash]
@@ -407,14 +407,14 @@ regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax20 = R"([ini]
 comment_line: ;
-regex: (?:^|\n)[ \t]*\[[^\r\n\]]+\]
+regex: (?:^|[\r\n])[ \t]*\[[^\r\n\]]+\]
 regex_color: 0.3 0.65 0.9 1.0
-regex: (?:^|\n)[ \t]*[a-zA-Z0-9_.-]+(?=[ \t]*=)
+regex: (?:^|[\r\n])[ \t]*[a-zA-Z0-9_.-]+(?=[ \t]*=)
 regex_color: 0.8 0.5 0.3 1.0
 )";
         static constexpr const char* kSyntax21 = R"([yaml]
 comment_line: #
-regex: (?:^|\n)[ \t]*[a-zA-Z0-9_.-]+:
+regex: (?:^|[\r\n])[ \t]*[a-zA-Z0-9_.-]+:
 regex_color: 0.3 0.6 0.8 1.0
 regex: \b(true|false|null|yes|no|on|off)\b
 regex_color: 0.8 0.4 0.2 1.0
@@ -563,7 +563,7 @@ keyword: resource data variable output locals module provider terraform moved im
 literal: true false null
 comment_line: #
 comment_block: /* */
-regex: (?:^|\n)[ \t]*[a-zA-Z0-9_-]+(?=[ \t]*=)
+regex: (?:^|[\r\n])[ \t]*[a-zA-Z0-9_-]+(?=[ \t]*=)
 regex_color: 0.3 0.65 0.9 1.0
 regex: \$\{[^}]+\}
 regex_color: 0.8 0.5 0.3 1.0
@@ -573,9 +573,9 @@ regex_color: 0.4 0.7 0.6 1.0
         static constexpr const char* kSyntax37 = R"([toml]
 literal: true false TRUE FALSE inf nan
 comment_line: #
-regex: (?:^|\n)[ \t]*\[\[(?:[^\r\n\]]+)\]\]|(?:^|\n)[ \t]*\[(?:[^\r\n\]]+)\]
+regex: (?:^|[\r\n])[ \t]*\[\[(?:[^\r\n\]]+)\]\]|(?:^|[\r\n])[ \t]*\[(?:[^\r\n\]]+)\]
 regex_color: 0.3 0.65 0.9 1.0
-regex: (?:^|\n)[ \t]*[a-zA-Z0-9_.-]+(?=[ \t]*=)
+regex: (?:^|[\r\n])[ \t]*[a-zA-Z0-9_.-]+(?=[ \t]*=)
 regex_color: 0.8 0.5 0.3 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([a-zA-Z0-9_]*))\b
 regex_color: 0.4 0.7 0.6 1.0
@@ -614,7 +614,7 @@ regex_color: 0.4 0.7 0.6 1.0
         static constexpr const char* kSyntax41 = R"([makefile]
 keyword: include sinclude ifeq ifneq ifdef ifndef else endif define endef export unexport override private vpath subst patsubst strip findstring filter filter-out sort word wordlist words firstword lastword dir notdir suffix basename addprefix addsuffix join wildcard realpath abspath error warning info shell origin flavor foreach if or and call eval file value PHONY DEFAULT PRECIOUS INTERMEDIATE SECONDARY SECONDEXPANSION DELETE_ON_ERROR IGNORE LOW_RESOLUTION_TIME SILENT EXPORT_ALL_VARIABLES NOTPARALLEL ONESHELL POSIX
 comment_line: #
-regex: (?:^|\n)[a-zA-Z0-9_./-]+(?=[ \t]*:(?!=))
+regex: (?:^|[\r\n])[a-zA-Z0-9_./-]+(?=[ \t]*:(?!=))
 regex_color: 0.3 0.65 0.9 1.0
 regex: \$(?:\([^)]+\)|\{[^}]+\}|[@%<?^+|*])
 regex_color: 0.8 0.5 0.3 1.0
@@ -624,7 +624,7 @@ keyword: REGEDIT4
 comment_line: ;
 regex: Windows Registry Editor Version [0-9.]+
 regex_color: 0.6 0.4 0.7 1.0
-regex: (?:^|\n)[ \t]*\[-?HKEY_[A-Z_]+[^\r\n\]]*\]
+regex: (?:^|[\r\n])[ \t]*\[-?HKEY_[A-Z_]+[^\r\n\]]*\]
 regex_color: 0.3 0.65 0.9 1.0
 regex: =(?:dword|qword|hex(?:\([0-9a-fA-F]+\))?):[0-9a-fA-F,\\\t ]*
 regex_color: 0.4 0.7 0.6 1.0
@@ -645,7 +645,7 @@ regex_color: 0.4 0.7 0.6 1.0
 keyword: mov movzx movsx lea push pop call ret jmp je jz jne jnz jg jge jl jle ja jae jb jbe jc jnc jo jno js jns add sub mul imul div idiv inc dec neg and or xor not shl shr sal sar rol ror cmp test nop int syscall sysenter sysexit cpuid rdtsc cld std cli sti rep repe repz repne repnz cmpsb movsb stosb lodsb scasb xchg cmpxchg lock wait hlt leave enter cbw cwd cdq cqo movaps movups movdqa movdqu movss movsd addps addpd subps subpd mulps mulpd divps divpd xorps xorpd pxor por pand paddd psubd vmovaps vmovups vaddps vmulps vfma231ps ldr str ldp stp bl br b cbz cbnz adr adrp mrs msr svc db dw dd dq dt resb resw resd resq equ section segment global extern PUBLIC EXTRN PROC ENDP SEGMENT ENDS ASSUME MACRO ENDM ALIGN ORG BITS USE16 USE32 USE64 BYTE WORD DWORD QWORD XMMWORD YMMWORD ZMMWORD PTR OFFSET FLAT SHORT NEAR FAR
 literal: rax rbx rcx rdx rsi rdi rbp rsp r8 r9 r10 r11 r12 r13 r14 r15 rip eax ebx ecx edx esi edi ebp esp r8d r9d r10d r11d r12d r13d r14d r15d ax bx cx dx si di bp sp al bl cl dl ah bh ch dh sil dil bpl spl xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7 xmm8 xmm9 xmm10 xmm11 xmm12 xmm13 xmm14 xmm15 ymm0 ymm1 ymm2 ymm3 ymm4 ymm5 ymm6 ymm7 zmm0 zmm1 cs ds es fs gs ss x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 lr pc w0 w1 w2 w3 w4 w5 w6 w7
 comment_line: ;
-regex: (?:^|\n)[ \t]*[a-zA-Z_.][a-zA-Z0-9_.$@]*(?=[ \t]*:)
+regex: (?:^|[\r\n])[ \t]*[a-zA-Z_.][a-zA-Z0-9_.$@]*(?=[ \t]*:)
 regex_color: 0.6 0.4 0.7 1.0
 regex: \.[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.3 0.65 0.9 1.0
@@ -673,13 +673,13 @@ regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax47 = R"([diff]
 no_strings: 1
-regex: (?:^|\n)@@[^\r\n]*@@[^\r\n]*
+regex: (?:^|[\r\n])@@[^\r\n]*@@[^\r\n]*
 regex_color: 0.3 0.7 0.9 1.0
-regex: (?:^|\n)(?:diff --git|index [0-9a-fA-F]+|\+\+\+ |--- )[^\r\n]*
+regex: (?:^|[\r\n])(?:diff --git|index [0-9a-fA-F]+|\+\+\+ |--- )[^\r\n]*
 regex_color: 0.7 0.5 0.85 1.0
-regex: (?:^|\n)\+(?!\+\+)[^\r\n]*
+regex: (?:^|[\r\n])\+(?!\+\+)[^\r\n]*
 regex_color: 0.35 0.75 0.45 1.0
-regex: (?:^|\n)-(?!--)[^\r\n]*
+regex: (?:^|[\r\n])-(?!--)[^\r\n]*
 regex_color: 0.9 0.4 0.4 1.0
 )";
         static constexpr const char* kSyntax48 = R"([log]
@@ -1021,7 +1021,7 @@ inline void scanSyntaxHighlighting(
             }
             if (!currentSyntax.commentLine.empty() && visibleText.compare(i, currentSyntax.commentLine.length(), currentSyntax.commentLine) == 0) {
                 size_t startStr = i;
-                size_t eol = visibleText.find('\n', i);
+                size_t eol = visibleText.find_first_of("\r\n", i);
                 if (eol == std::string::npos) eol = len;
                 i = eol;
                 applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::Comment);
@@ -1037,7 +1037,7 @@ inline void scanSyntaxHighlighting(
                     } else if (visibleText[i] == quote) {
                         i++;
                         break;
-                    } else if (visibleText[i] == '\n') {
+                    } else if (visibleText[i] == '\n' || visibleText[i] == '\r') {
                         break;
                     } else {
                         i++;

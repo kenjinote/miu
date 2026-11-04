@@ -1042,6 +1042,19 @@
         }
     } else {
         self.editor->imeComp = "";
+        std::string raw = [text UTF8String] ? [text UTF8String] : "";
+        std::string norm;
+        norm.reserve(raw.size());
+        for (size_t i = 0; i < raw.size(); ++i) {
+            if (raw[i] == '\r') {
+                if (i + 1 < raw.size() && raw[i + 1] == '\n') i++;
+                norm += self.editor->newlineStr;
+            } else if (raw[i] == '\n') {
+                norm += self.editor->newlineStr;
+            } else {
+                norm += raw[i];
+            }
+        }
         bool usePadding = false;
         for (const auto& c : self.editor->cursors) {
             if (c.isVirtual) {
@@ -1050,9 +1063,9 @@
             }
         }
         if (usePadding) {
-            self.editor->insertAtCursorsWithPadding([text UTF8String]);
+            self.editor->insertAtCursorsWithPadding(norm);
         } else {
-            self.editor->insertAtCursors([text UTF8String]);
+            self.editor->insertAtCursors(norm);
         }
     }
     self.editor->ensureCaretVisible();
@@ -1772,7 +1785,7 @@
         size_t p = c.head;
         int li = self.editor->getLineIdx(p);
         size_t lineStart = self.editor->lineStarts[li];
-        if (p == lineStart && p > 0) p--;
+        if (p == lineStart && p > 0) p = self.editor->moveCaretVisual(p, false);
         else {
             while (p > lineStart && !self.editor->isWordChar(self.editor->pt.charAt(p - 1))) p--;
             while (p > lineStart && self.editor->isWordChar(self.editor->pt.charAt(p - 1))) p--;
@@ -3455,7 +3468,7 @@ static NSString *s_iosClipboardSnapshot = nil;
     _editorEngine = std::make_shared<Editor>();
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
     NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
-    if (!appVersion) appVersion = @"1.0.45";
+    if (!appVersion) appVersion = @"1.0.46";
     NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
     _editorEngine->appVersionStr = UTF8ToW([versionString UTF8String]);
     NSString *localizedHelp = NSLocalizedString(@"HelpText_iOS", nil);

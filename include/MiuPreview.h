@@ -94,7 +94,7 @@ inline std::string escapeHtmlBasic(const std::string& s) {
         std::string rawUrl;
         if (s[i] == '<') {
             i++;
-            while (i < n && s[i] != '>' && s[i] != '\n' && s[i] != '<') {
+            while (i < n && s[i] != '>' && s[i] != '\n' && s[i] != '\r' && s[i] != '<') {
                 if (s[i] == '\\' && i + 1 < n) { rawUrl += s[i]; rawUrl += s[i + 1]; i += 2; continue; }
                 rawUrl += s[i++];
             }
@@ -451,6 +451,11 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
         if (s[i] == '\\' && i + 1 < n) {
             char nx = s[i + 1];
             if (nx == '\n') { r += "<br>\n"; i += 2; continue; }
+            if (nx == '\r') {
+                r += "<br>\n";
+                i += (i + 2 < n && s[i + 2] == '\n') ? 3 : 2;
+                continue;
+            }
             if (mdIsAsciiPunct(nx)) {
                 if (nx == '&') r += "&amp;";
                 else if (nx == '<') r += "&lt;";
@@ -509,7 +514,7 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
             size_t closeMath = i + 1;
             while (closeMath < n) {
                 if (s[closeMath] == '$' && s[closeMath - 1] != '\\') break;
-                if (s[closeMath] == '\n') { closeMath = n; break; }
+                if (s[closeMath] == '\n' || s[closeMath] == '\r') { closeMath = n; break; }
                 closeMath++;
             }
             if (closeMath < n && closeMath > i + 1) {
@@ -560,7 +565,7 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
                 if (ce != std::string::npos) { i = ce + 3; continue; }
             }
             size_t gt = s.find('>', i + 1);
-            if (gt != std::string::npos && gt > i + 1 && gt - i <= 512 && s.find('\n', i + 1) > gt) {
+            if (gt != std::string::npos && gt > i + 1 && gt - i <= 512 && s.find_first_of("\r\n", i + 1) > gt) {
                 std::string inner = s.substr(i + 1, gt - i - 1);
                 if ((inner.compare(0, 7, "http://") == 0 || inner.compare(0, 8, "https://") == 0 || inner.compare(0, 6, "ftp://") == 0) && inner.find(' ') == std::string::npos) {
                     r += "<a href=\""; r += escapeHtmlBasic(inner); r += "\">"; r += escapeHtmlBasic(inner); r += "</a>";
@@ -904,12 +909,15 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
     {
         size_t pos = 0, len = md.size();
         while (pos < len) {
-            size_t eol = md.find('\n', pos);
-            if (eol == std::string::npos) eol = len;
-            std::string l = md.substr(pos, eol - pos);
-            if (!l.empty() && l.back() == '\r') l.pop_back();
-            lines.push_back(std::move(l));
-            pos = eol + 1;
+            size_t eol = pos;
+            while (eol < len && md[eol] != '\n' && md[eol] != '\r') eol++;
+            lines.push_back(md.substr(pos, eol - pos));
+            if (eol < len) {
+                if (md[eol] == '\r' && eol + 1 < len && md[eol + 1] == '\n') pos = eol + 2;
+                else pos = eol + 1;
+            } else {
+                pos = len;
+            }
         }
     }
 
@@ -1335,13 +1343,16 @@ inline bool looksLikeMermaid(const std::string& s){
         size_t p = i + 3;
         while (p < n && (s[p] == ' ' || s[p] == '\t')) p++;
         if (p < n && (s[p] == '\r' || s[p] == '\n')) {
-            while (p < n && s[p] != '\n') p++;
-            if (p < n) p++;
+            if (s[p] == '\r' && p + 1 < n && s[p + 1] == '\n') p += 2;
+            else p += 1;
             while (p < n) {
                 size_t ls = p;
-                while (p < n && s[p] != '\n') p++;
+                while (p < n && s[p] != '\n' && s[p] != '\r') p++;
                 size_t le = p;
-                if (p < n) p++;
+                if (p < n) {
+                    if (s[p] == '\r' && p + 1 < n && s[p + 1] == '\n') p += 2;
+                    else p += 1;
+                }
                 while (ls < le && (s[ls] == ' ' || s[ls] == '\t')) ls++;
                 while (le > ls && (s[le - 1] == ' ' || s[le - 1] == '\t' || s[le - 1] == '\r')) le--;
                 if (le - ls == 3 && s[ls] == '-' && s[ls + 1] == '-' && s[ls + 2] == '-') { i = p; break; }
@@ -1353,7 +1364,7 @@ inline bool looksLikeMermaid(const std::string& s){
         if (i >= n) return false;
         if (s[i] == '\r' || s[i] == '\n') { i++; continue; }
         if (i + 1 < n && s[i] == '%' && s[i + 1] == '%') {
-            while (i < n && s[i] != '\n') i++;
+            while (i < n && s[i] != '\n' && s[i] != '\r') i++;
             continue;
         }
         size_t ts = i;
@@ -1701,7 +1712,7 @@ inline PreviewRenderResult renderPreview(
         if (rawInput.size() > PREVIEW_MAX_BYTES) {
             std::string truncated = rawInput.substr(0, PREVIEW_MAX_BYTES);
             size_t searchFrom = (truncated.size() > 4096) ? (truncated.size() - 4096) : 0;
-            size_t lastNl = truncated.rfind('\n');
+            size_t lastNl = truncated.find_last_of("\r\n");
             if (lastNl != std::string::npos && lastNl >= searchFrom) {
                 truncated.erase(lastNl + 1);
             } else {

@@ -829,7 +829,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     if (![self window]) return;
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
     NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
-    if (!appVersion) appVersion = @"1.0.45";
+    if (!appVersion) appVersion = @"1.0.46";
     NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
     editor->appVersionStr = UTF8ToW([versionString UTF8String]);
     NSString *localizedHelp = NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧");
@@ -1483,10 +1483,8 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             } else {
                 int li = editor->getLineIdx(c.head);
                 size_t nextLineStart = (li + 1 < (int)editor->lineStarts.size()) ? editor->lineStarts[li + 1] : editor->pt.length();
-                if (nextLineStart > editor->lineStarts[li] && editor->pt.charAt(nextLineStart - 1) == '\n') {
-                    nextLineStart--;
-                    if (nextLineStart > editor->lineStarts[li] && editor->pt.charAt(nextLineStart - 1) == '\r') nextLineStart--;
-                }
+                if (nextLineStart > editor->lineStarts[li] && editor->pt.charAt(nextLineStart - 1) == '\n') nextLineStart--;
+                if (nextLineStart > editor->lineStarts[li] && editor->pt.charAt(nextLineStart - 1) == '\r') nextLineStart--;
                 c.head = nextLineStart;
             }
             c.desiredX = editor->getXFromPos(c.head);
@@ -1610,7 +1608,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
                     if (cmd) {
                         c.head = lineStart;
                     } else if (opt) {
-                        if (p == lineStart && p > 0) p--;
+                        if (p == lineStart && p > 0) p = editor->moveCaretVisual(p, false);
                         else {
                             while (p > lineStart && !editor->isWordChar(editor->pt.charAt(p - 1))) p--;
                             while (p > lineStart && editor->isWordChar(editor->pt.charAt(p - 1))) p--;
@@ -1719,9 +1717,22 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 
 - (void)insertText:(id)s replacementRange:(NSRange)r {
     NSString* t = [s isKindOfClass:[NSAttributedString class]] ? [s string] : s;
-    if ([t isEqualToString:@"\r"] || [t isEqualToString:@"\n"]) {
+    if ([t isEqualToString:@"\r"] || [t isEqualToString:@"\n"] || [t isEqualToString:@"\r\n"]) {
         editor->insertNewlineWithAutoIndent();
     } else {
+        std::string raw = [t UTF8String] ? [t UTF8String] : "";
+        std::string norm;
+        norm.reserve(raw.size());
+        for (size_t i = 0; i < raw.size(); ++i) {
+            if (raw[i] == '\r') {
+                if (i + 1 < raw.size() && raw[i + 1] == '\n') i++;
+                norm += editor->newlineStr;
+            } else if (raw[i] == '\n') {
+                norm += editor->newlineStr;
+            } else {
+                norm += raw[i];
+            }
+        }
         bool usePadding = false;
         for (const auto& c : editor->cursors) {
             if (c.isVirtual) {
@@ -1730,9 +1741,9 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             }
         }
         if (usePadding) {
-            editor->insertAtCursorsWithPadding([t UTF8String]);
+            editor->insertAtCursorsWithPadding(norm);
         } else {
-            editor->insertAtCursors([t UTF8String]);
+            editor->insertAtCursors(norm);
         }
     }
     editor->imeComp = "";

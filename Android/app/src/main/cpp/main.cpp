@@ -760,21 +760,43 @@ std::string UnescapeString(const std::string& s, const std::string& newline) {
 }
 std::string preprocessRegexQuery(const std::string& query) {
     std::string processed; processed.reserve(query.size() * 4);
+    bool inCharClass = false;
+    size_t charClassStart = 0;
     for (size_t i = 0; i < query.size(); ++i) {
         char c = query[i];
         if (c == '\\' && i + 1 < query.size()) {
             char next = query[i + 1];
-            if (next == 'n') {
+            if (!inCharClass && next == 'n') {
                 bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
                 if (!isPrecededByCR) { processed += "(?:\\r\\n|[\\r\\n])"; i++; continue; }
             }
             processed += c; processed += next; i++; continue;
+        }
+        if (inCharClass) {
+            if (c == ']' && !(i == charClassStart + 1 || (i == charClassStart + 2 && query[charClassStart + 1] == '^'))) {
+                inCharClass = false;
+            }
+            processed += c;
+            continue;
+        }
+        if (c == '[') {
+            inCharClass = true;
+            charClassStart = i;
+            processed += c;
+            continue;
         } else if (c == '^') {
-            bool inClass = (i > 0 && query[i - 1] == '[');
-            if (!inClass) { processed += "((?:^|(?:\\r\\n|\\r(?!\\n)|[\\n])))"; continue; }
+            if (i == 0) {
+                processed += "((?:^|(?:\\r\\n|\\r(?!\\n)|[\\n])))";
+            } else {
+                processed += "(?:^|(?:\\r\\n|\\r(?!\\n)|[\\n]))";
+            }
+            continue;
         } else if (c == '$') {
-            bool inClass = (i > 0 && query[i - 1] == '[');
-            if (!inClass) { processed += "(?=(?:\\r\\n|[\\r\\n]|$))"; continue; }
+            processed += "(?=(?:\\r\\n|[\\r\\n]|$))";
+            continue;
+        } else if (c == '.') {
+            processed += "[^\\r\\n]";
+            continue;
         }
         processed += c;
     }
@@ -1023,6 +1045,7 @@ void replaceNextCommand(Engine* engine) {
             if (!engine->searchMatchCase) flags |= std::regex_constants::icase;
             std::regex re(actualQuery, flags);
             std::smatch m;
+            bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^');
             std::string rawFmt = UnescapeString(engine->replaceQuery, engine->newlineStr);
             std::string fmt;
             for (size_t i = 0; i < rawFmt.size(); ++i) {
@@ -1038,7 +1061,7 @@ void replaceNextCommand(Engine* engine) {
                             }
                             i--;
                             int grp = std::stoi(numStr);
-                            if (grp > 0) grp++;
+                            if (startsWithCaret && grp > 0) grp++;
                             fmt += std::to_string(grp);
                         } else {
                             fmt += rawFmt[i + 1];
@@ -1100,6 +1123,8 @@ int replaceAllCommand(Engine* engine) {
             if (!engine->searchMatchCase) rxFlags |= std::regex_constants::icase;
             std::regex re(actualQuery, rxFlags);
             std::string fullText = engine->pt.getRange(0, docLen);
+            bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^');
+            bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
             std::string rawFmt = UnescapeString(engine->replaceQuery, engine->newlineStr);
             std::string fmt;
             for (size_t i = 0; i < rawFmt.size(); ++i) {
@@ -1115,7 +1140,7 @@ int replaceAllCommand(Engine* engine) {
                             }
                             i--;
                             int grp = std::stoi(numStr);
-                            if (grp > 0) grp++;
+                            if (startsWithCaret && grp > 0) grp++;
                             fmt += std::to_string(grp);
                         } else {
                             fmt += rawFmt[i + 1];
@@ -1126,8 +1151,6 @@ int replaceAllCommand(Engine* engine) {
                     fmt += rawFmt[i];
                 }
             }
-            bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^');
-            bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
             auto searchStart = fullText.cbegin();
             std::smatch m;
             size_t currentOffset = 0;
@@ -1143,6 +1166,16 @@ int replaceAllCommand(Engine* engine) {
                 size_t contentLen = matchLen - anchorLen;
                 bool shouldHighlight = true;
                 if (endsWithDollar) {
+                    if (contentLen > 0) {
+                        if (fullText[contentPos + contentLen - 1] == '\n') {
+                            contentLen--;
+                            if (contentLen > 0 && fullText[contentPos + contentLen - 1] == '\r') {
+                                contentLen--;
+                            }
+                        } else if (fullText[contentPos + contentLen - 1] == '\r') {
+                            contentLen--;
+                        }
+                    }
                     bool isAtLineEnd = false;
                     if (contentPos + contentLen >= fullText.size()) {
                         isAtLineEnd = true;
@@ -1298,20 +1331,190 @@ static std::string MapCedEncodingToCharset(Encoding enc) {
         default:                   return "UTF-8";
     }
 }
+static std::string SanitizeUtf8(const std::string& input) {
+    bool needsFix = false;
+    size_t n = input.size();
+    size_t i = 0;
+    while (i < n) {
+        unsigned char c = (unsigned char)input[i];
+        if (c == 0x00) { needsFix = true; break; }
+        else if (c <= 0x7F) { i += 1; }
+        else if (c >= 0xC2 && c <= 0xDF) {
+            if (i + 1 >= n || ((unsigned char)input[i + 1] & 0xC0) != 0x80) { needsFix = true; break; }
+            i += 2;
+        } else if (c >= 0xE0 && c <= 0xEF) {
+            if (i + 2 >= n) { needsFix = true; break; }
+            unsigned char b1 = (unsigned char)input[i + 1];
+            unsigned char b2 = (unsigned char)input[i + 2];
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (c == 0xE0 && b1 < 0xA0) || (c == 0xED && b1 >= 0xA0)) { needsFix = true; break; }
+            i += 3;
+        } else if (c >= 0xF0 && c <= 0xF4) {
+            if (i + 3 >= n) { needsFix = true; break; }
+            unsigned char b1 = (unsigned char)input[i + 1];
+            unsigned char b2 = (unsigned char)input[i + 2];
+            unsigned char b3 = (unsigned char)input[i + 3];
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80 || (c == 0xF0 && b1 < 0x90) || (c == 0xF4 && b1 >= 0x90)) { needsFix = true; break; }
+            i += 4;
+        } else {
+            needsFix = true; break;
+        }
+    }
+    if (!needsFix) return input;
+    std::string out;
+    out.reserve(n + 16);
+    i = 0;
+    while (i < n) {
+        unsigned char c = (unsigned char)input[i];
+        if (c == 0x00) { out.push_back('?'); i += 1; }
+        else if (c <= 0x7F) { out.push_back((char)c); i += 1; }
+        else if (c >= 0xC2 && c <= 0xDF && i + 1 < n && ((unsigned char)input[i + 1] & 0xC0) == 0x80) {
+            out.append(input, i, 2); i += 2;
+        } else if (c >= 0xE0 && c <= 0xEF && i + 2 < n) {
+            unsigned char b1 = (unsigned char)input[i + 1];
+            unsigned char b2 = (unsigned char)input[i + 2];
+            if ((b1 & 0xC0) == 0x80 && (b2 & 0xC0) == 0x80 && !(c == 0xE0 && b1 < 0xA0) && !(c == 0xED && b1 >= 0xA0)) {
+                out.append(input, i, 3); i += 3;
+            } else {
+                out.append("\xEF\xBF\xBD", 3); i += 1;
+            }
+        } else if (c >= 0xF0 && c <= 0xF4 && i + 3 < n) {
+            unsigned char b1 = (unsigned char)input[i + 1];
+            unsigned char b2 = (unsigned char)input[i + 2];
+            unsigned char b3 = (unsigned char)input[i + 3];
+            if ((b1 & 0xC0) == 0x80 && (b2 & 0xC0) == 0x80 && (b3 & 0xC0) == 0x80 && !(c == 0xF0 && b1 < 0x90) && !(c == 0xF4 && b1 >= 0x90)) {
+                out.append(input, i, 4); i += 4;
+            } else {
+                out.append("\xEF\xBF\xBD", 3); i += 1;
+            }
+        } else {
+            out.append("\xEF\xBF\xBD", 3); i += 1;
+        }
+    }
+    return out;
+}
+static std::string DecodeUtf16BytesToUtf8(const char* data, size_t len, bool bigEndian) {
+    if (!data || len == 0) return "";
+    size_t offset = 0;
+    if (len >= 2) {
+        unsigned char b0 = (unsigned char)data[0];
+        unsigned char b1 = (unsigned char)data[1];
+        if (!bigEndian && b0 == 0xFF && b1 == 0xFE) offset = 2;
+        else if (bigEndian && b0 == 0xFE && b1 == 0xFF) offset = 2;
+    }
+    std::string out;
+    out.reserve((len - offset) + 8);
+    auto readU16 = [&](size_t pos) -> uint16_t {
+        unsigned char b0 = (unsigned char)data[pos];
+        unsigned char b1 = (unsigned char)data[pos + 1];
+        return bigEndian ? (uint16_t)((b0 << 8) | b1) : (uint16_t)(b0 | (b1 << 8));
+    };
+    auto appendCodepoint = [&](uint32_t cp) {
+        if (cp == 0) { out.push_back('?'); }
+        else if (cp <= 0x7F) { out.push_back((char)cp); }
+        else if (cp <= 0x7FF) {
+            out.push_back((char)(0xC0 | ((cp >> 6) & 0x1F)));
+            out.push_back((char)(0x80 | (cp & 0x3F)));
+        } else if (cp <= 0xFFFF) {
+            out.push_back((char)(0xE0 | ((cp >> 12) & 0x0F)));
+            out.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back((char)(0x80 | (cp & 0x3F)));
+        } else if (cp <= 0x10FFFF) {
+            out.push_back((char)(0xF0 | ((cp >> 18) & 0x07)));
+            out.push_back((char)(0x80 | ((cp >> 12) & 0x3F)));
+            out.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back((char)(0x80 | (cp & 0x3F)));
+        } else {
+            out.append("\xEF\xBF\xBD", 3);
+        }
+    };
+    size_t i = offset;
+    while (i + 1 < len) {
+        uint16_t w1 = readU16(i);
+        i += 2;
+        if (w1 >= 0xD800 && w1 <= 0xDBFF) {
+            if (i + 1 < len) {
+                uint16_t w2 = readU16(i);
+                if (w2 >= 0xDC00 && w2 <= 0xDFFF) {
+                    i += 2;
+                    uint32_t cp = 0x10000 + (((uint32_t)(w1 - 0xD800) << 10) | (uint32_t)(w2 - 0xDC00));
+                    appendCodepoint(cp);
+                    continue;
+                }
+            }
+            appendCodepoint(0xFFFD);
+        } else if (w1 >= 0xDC00 && w1 <= 0xDFFF) {
+            appendCodepoint(0xFFFD);
+        } else {
+            appendCodepoint(w1);
+        }
+    }
+    if (i < len) {
+        appendCodepoint(0xFFFD);
+    }
+    return out;
+}
+static std::string jstringToUtf8(JNIEnv* env, jstring jstr) {
+    if (!env || !jstr) return "";
+    jsize len = env->GetStringLength(jstr);
+    if (len <= 0) return "";
+    const jchar* chars = env->GetStringChars(jstr, nullptr);
+    if (!chars) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        return "";
+    }
+    std::string out;
+    out.reserve((size_t)len * 3);
+    for (jsize i = 0; i < len; ++i) {
+        uint32_t cp = chars[i];
+        if (cp >= 0xD800 && cp <= 0xDBFF) {
+            if (i + 1 < len && chars[i + 1] >= 0xDC00 && chars[i + 1] <= 0xDFFF) {
+                cp = 0x10000 + (((cp - 0xD800) << 10) | (uint32_t)(chars[i + 1] - 0xDC00));
+                i++;
+            } else {
+                cp = 0xFFFD;
+            }
+        } else if (cp >= 0xDC00 && cp <= 0xDFFF) {
+            cp = 0xFFFD;
+        }
+        if (cp == 0) {
+            out.push_back('?');
+        } else if (cp <= 0x7F) {
+            out.push_back((char)cp);
+        } else if (cp <= 0x7FF) {
+            out.push_back((char)(0xC0 | ((cp >> 6) & 0x1F)));
+            out.push_back((char)(0x80 | (cp & 0x3F)));
+        } else if (cp <= 0xFFFF) {
+            out.push_back((char)(0xE0 | ((cp >> 12) & 0x0F)));
+            out.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back((char)(0x80 | (cp & 0x3F)));
+        } else {
+            out.push_back((char)(0xF0 | ((cp >> 18) & 0x07)));
+            out.push_back((char)(0x80 | ((cp >> 12) & 0x3F)));
+            out.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back((char)(0x80 | (cp & 0x3F)));
+        }
+    }
+    env->ReleaseStringChars(jstr, chars);
+    return out;
+}
 static bool IsValidUtf8(const char* buf, size_t len) {
     if (len == 0) return true;
-    size_t check_len = (len > 65536) ? 65536 : len;
     size_t i = 0;
-    while (i < check_len) {
+    while (i < len) {
         unsigned char c = (unsigned char)buf[i];
-        if (c <= 0x7F) {
+        if (c == 0x00) {
+            return false;
+        } else if (c == 0x1B) {
+            if (i + 2 < len && (buf[i + 1] == '$' || buf[i + 1] == '(')) return false;
+            i++;
+        } else if (c <= 0x7F) {
             i++;
         } else if (c >= 0xC2 && c <= 0xDF) {
-            if (i + 1 >= check_len) break;
+            if (i + 1 >= len) return false;
             if (((unsigned char)buf[i + 1] & 0xC0) != 0x80) return false;
             i += 2;
         } else if (c >= 0xE0 && c <= 0xEF) {
-            if (i + 2 >= check_len) break;
+            if (i + 2 >= len) return false;
             unsigned char b1 = (unsigned char)buf[i + 1];
             unsigned char b2 = (unsigned char)buf[i + 2];
             if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80) return false;
@@ -1319,7 +1522,7 @@ static bool IsValidUtf8(const char* buf, size_t len) {
             if (c == 0xED && b1 >= 0xA0) return false;
             i += 3;
         } else if (c >= 0xF0 && c <= 0xF4) {
-            if (i + 3 >= check_len) break;
+            if (i + 3 >= len) return false;
             unsigned char b1 = (unsigned char)buf[i + 1];
             unsigned char b2 = (unsigned char)buf[i + 2];
             unsigned char b3 = (unsigned char)buf[i + 3];
@@ -1345,11 +1548,38 @@ static DetectResult DetectEncodingEx(const char* buf, size_t len) {
     if (IsValidUtf8(buf, len)) {
         res.type = ENC_UTF8_NOBOM; return res;
     }
+    if (len >= 4 && (len % 2 == 0)) {
+        size_t samplePairs = std::min(len / 2, (size_t)2048);
+        size_t evenZeros = 0, oddZeros = 0;
+        for (size_t p = 0; p < samplePairs; ++p) {
+            if ((unsigned char)buf[p * 2] == 0x00) evenZeros++;
+            if ((unsigned char)buf[p * 2 + 1] == 0x00) oddZeros++;
+        }
+        if (oddZeros * 2 >= samplePairs && evenZeros * 10 <= samplePairs) {
+            res.type = ENC_UTF16LE; res.charsetName = "UTF-16LE"; return res;
+        }
+        if (evenZeros * 2 >= samplePairs && oddZeros * 10 <= samplePairs) {
+            res.type = ENC_UTF16BE; res.charsetName = "UTF-16BE"; return res;
+        }
+    }
+    const char* sampleBuf = buf;
+    size_t ced_len = (len > 65536) ? 65536 : len;
+    if (len > 65536) {
+        size_t firstSpecial = 0;
+        for (size_t i = 0; i < len; ++i) {
+            unsigned char c = (unsigned char)buf[i];
+            if (c >= 0x80 || c == 0x1B || c == 0x00) { firstSpecial = i; break; }
+        }
+        if (firstSpecial > 4096) {
+            size_t start = firstSpecial - 4096;
+            sampleBuf = buf + start;
+            ced_len = std::min(len - start, (size_t)65536);
+        }
+    }
     int bytes_consumed = 0;
     bool is_reliable = false;
-    size_t ced_len = (len > 65536) ? 65536 : len;
     Encoding ced_enc = CompactEncDet::DetectEncoding(
-            buf, static_cast<int>(ced_len),
+            sampleBuf, static_cast<int>(ced_len),
             nullptr, nullptr, nullptr,
             UNKNOWN_ENCODING,
             UNKNOWN_LANGUAGE,
@@ -1358,12 +1588,15 @@ static DetectResult DetectEncodingEx(const char* buf, size_t len) {
             &bytes_consumed,
             &is_reliable
     );
+    if (ced_enc == UTF16LE) { res.type = ENC_UTF16LE; res.charsetName = "UTF-16LE"; return res; }
+    if (ced_enc == UTF16BE) { res.type = ENC_UTF16BE; res.charsetName = "UTF-16BE"; return res; }
     res.type = ENC_LOCAL;
     res.charsetName = MapCedEncodingToCharset(ced_enc);
     return res;
 }
 static std::string ConvertToUtf8(JNIEnv* env, const char* data, size_t len, const std::string& charsetName) {
     if (len == 0) return "";
+    if (!env) return SanitizeUtf8(std::string(data, len));
     jbyteArray bytes = env->NewByteArray(len);
     if (env->ExceptionCheck()) {
         env->ExceptionClear();
@@ -1381,18 +1614,12 @@ static std::string ConvertToUtf8(JNIEnv* env, const char* data, size_t len, cons
         env->DeleteLocalRef(stringClass);
         return "Error: File is too large to open (String Conversion Failed).";
     }
-    const char* utf8Str = env->GetStringUTFChars(jstr, nullptr);
-    if (!utf8Str) {
-        if (env->ExceptionCheck()) env->ExceptionClear();
-        return "Error: Failed to read file content.";
-    }
-    std::string result(utf8Str);
-    env->ReleaseStringUTFChars(jstr, utf8Str);
+    std::string result = jstringToUtf8(env, jstr);
     env->DeleteLocalRef(bytes);
     env->DeleteLocalRef(charset);
     env->DeleteLocalRef(jstr);
     env->DeleteLocalRef(stringClass);
-    return result;
+    return SanitizeUtf8(result);
 }
 bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) {
     if (!engine) return false;
@@ -1427,15 +1654,19 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
             std::string contentUtf8;
             switch (engine->currentEncoding) {
                 case ENC_UTF8_BOM:
-                    contentUtf8 = std::string(ptr + 3, size - 3);
+                    contentUtf8 = SanitizeUtf8(std::string(ptr + 3, size - 3));
                     break;
                 case ENC_UTF16LE:
+                    contentUtf8 = DecodeUtf16BytesToUtf8(ptr, size, false);
+                    break;
                 case ENC_UTF16BE:
+                    contentUtf8 = DecodeUtf16BytesToUtf8(ptr, size, true);
+                    break;
                 case ENC_LOCAL:
                     contentUtf8 = ConvertToUtf8(env, ptr, size, engine->currentCharset);
                     break;
                 default:
-                    contentUtf8 = std::string(ptr, size);
+                    contentUtf8 = SanitizeUtf8(std::string(ptr, size));
                     break;
             }
             engine->fileMap.close();
@@ -1653,6 +1884,7 @@ void startAsyncLineParsing(Engine* engine, const char* buffer, size_t size) {
     size_t actualOffset = ptr - buffer;
     if (actualOffset < size) {
         engine->cancelParse = false;
+        engine->isAsyncParsing = true;
         engine->asyncParseThread = std::thread(asyncParseWorker, engine, buffer, size, actualOffset, currentPos);
     }
 }
@@ -1674,12 +1906,21 @@ void rebuildLineStarts(Engine* engine) {
     engine->lineStarts.clear();
     engine->lineStarts.push_back(0);
     size_t currentPos = 0;
+    bool prevEndedWithCR = false;
     for (const auto& p : engine->pt.pieces) {
+        if (p.len == 0) continue;
         const char* buf = p.isOriginal ? engine->pt.origPtr : engine->pt.addBuf.data();
         size_t startIdx = p.start;
         size_t len = p.len;
         const char* ptr = buf + startIdx;
         const char* end = ptr + len;
+        if (prevEndedWithCR) {
+            if (*ptr == '\n') {
+                if (!engine->lineStarts.empty()) engine->lineStarts.back() = currentPos + 1;
+                ptr++;
+            }
+            prevEndedWithCR = false;
+        }
         while (ptr < end) {
             char c = *ptr;
             if (c == '\n') {
@@ -1688,16 +1929,19 @@ void rebuildLineStarts(Engine* engine) {
                 ptr++;
             } else if (c == '\r') {
                 size_t offsetInPiece = ptr - (buf + startIdx);
-                size_t globalPos = currentPos + offsetInPiece;
-                size_t totalLen = engine->pt.length();
-                size_t step = 1;
                 if (ptr + 1 < end) {
-                    if (*(ptr + 1) == '\n') step = 2;
-                } else if (globalPos + 1 < totalLen) {
-                    if (engine->pt.charAt(globalPos + 1) == '\n') step = 2;
+                    if (*(ptr + 1) == '\n') {
+                        engine->lineStarts.push_back(currentPos + offsetInPiece + 2);
+                        ptr += 2;
+                    } else {
+                        engine->lineStarts.push_back(currentPos + offsetInPiece + 1);
+                        ptr++;
+                    }
+                } else {
+                    engine->lineStarts.push_back(currentPos + offsetInPiece + 1);
+                    prevEndedWithCR = true;
+                    ptr++;
                 }
-                engine->lineStarts.push_back(globalPos + step);
-                ptr += step;
             } else {
                 ptr++;
             }
@@ -1717,21 +1961,46 @@ int getLineIdx(Engine* engine, size_t pos) {
 }
 void ensureLineShaped(Engine* engine, int lineIdx) {
     if (lineIdx < 0 || lineIdx >= engine->lineCaches.size()) return;
-    if (!engine->isWindowReady || engine->fallbackHbFonts.empty() || engine->fallbackFaces.empty()) {
-        return;
-    }
     LineCache& cache = engine->lineCaches[lineIdx];
     if (cache.isShaped) return;
-    cache.glyphs.clear();
-    cache.wrapSegments.clear();
-    cache.isWrapped = false;
-    cache.isShaped = true;
     size_t start = engine->lineStarts[lineIdx];
     size_t end = (lineIdx + 1 < engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
     size_t textEnd = end;
     if (textEnd > start && engine->pt.charAt(textEnd - 1) == '\n') textEnd--;
     if (textEnd > start && engine->pt.charAt(textEnd - 1) == '\r') textEnd--;
     std::string text = engine->pt.getRange(start, textEnd - start);
+    if (!engine->isWindowReady || engine->fallbackHbFonts.empty() || engine->fallbackFaces.empty()) {
+        cache.glyphs.clear();
+        cache.wrapSegments.clear();
+        cache.isWrapped = false;
+        cache.isShaped = true;
+        float current_line_x = 0.0f;
+        const char* ptr = text.data();
+        const char* end_ptr = ptr + text.size();
+        while (ptr < end_ptr) {
+            size_t rawCluster = (size_t)(ptr - text.data());
+            uint32_t cp = decodeUtf8(&ptr, end_ptr);
+            ShapedGlyph sg = {};
+            sg.cluster = start + rawCluster;
+            if (cp == '\t') {
+                float tabWidthUnscaled = 24.0f * 4.0f;
+                float nextStop = std::floor(current_line_x / tabWidthUnscaled + 1.0f) * tabWidthUnscaled;
+                sg.xAdvance = nextStop - current_line_x;
+                if (sg.xAdvance < 1.0f) sg.xAdvance += tabWidthUnscaled;
+            } else if (cp >= 0x80) {
+                sg.xAdvance = 48.0f;
+            } else {
+                sg.xAdvance = 24.0f;
+            }
+            current_line_x += sg.xAdvance;
+            cache.glyphs.push_back(sg);
+        }
+        return;
+    }
+    cache.glyphs.clear();
+    cache.wrapSegments.clear();
+    cache.isWrapped = false;
+    cache.isShaped = true;
     bool hasIME = !engine->imeComp.empty() && !engine->cursors.empty();
     size_t imeInsertPos = 0;
     if (hasIME) {
@@ -2087,12 +2356,8 @@ void selectLineAt(Engine* engine, size_t pos) {
     int lineIdx = getLineIdx(engine, pos);
     size_t start = engine->lineStarts[lineIdx];
     size_t end = (lineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
-    if (end > start && engine->pt.charAt(end - 1) == '\n') {
-        end--;
-        if (end > start && engine->pt.charAt(end - 1) == '\r') {
-            end--;
-        }
-    }
+    if (end > start && engine->pt.charAt(end - 1) == '\n') end--;
+    if (end > start && engine->pt.charAt(end - 1) == '\r') end--;
     engine->cursors.clear();
     engine->cursors.push_back({ end, start, getXFromPos(engine, end) });
 }
@@ -2201,6 +2466,18 @@ void insertAtCursors(Engine* engine, const std::string& text) {
         size_t l = c.end() - st;
 
         if (l > 0) {
+            if (text.empty()) {
+                if (st > 0 && st + l < engine->pt.length() && engine->pt.charAt(st - 1) == '\r' && engine->pt.charAt(st + l) == '\n') {
+                    l++;
+                }
+            } else {
+                if (st > 0 && engine->pt.charAt(st - 1) == '\r' && engine->pt.charAt(st) == '\n') {
+                    st--; l++;
+                }
+                if (st + l < engine->pt.length() && l > 0 && engine->pt.charAt(st + l - 1) == '\r' && engine->pt.charAt(st + l) == '\n') {
+                    l++;
+                }
+            }
             std::string d = engine->pt.getRange(st, l);
             engine->pt.erase(st, l);
             batch.ops.push_back({ EditOp::Erase, st, d });
@@ -2212,6 +2489,10 @@ void insertAtCursors(Engine* engine, const std::string& text) {
         }
 
         if (!text.empty()) {
+            if (st > 0 && st < engine->pt.length() && engine->pt.charAt(st - 1) == '\r' && engine->pt.charAt(st) == '\n') {
+                st--;
+                c.head = st; c.anchor = st;
+            }
             engine->pt.insert(st, text);
             batch.ops.push_back({ EditOp::Insert, st, text });
             for (auto& o : engine->cursors) {
@@ -2442,7 +2723,13 @@ void backspaceAtCursors(Engine* engine) {
                 }
             }
 
+            if (eraseStart > 0 && eraseStart < engine->pt.length() && engine->pt.charAt(eraseStart - 1) == '\r' && engine->pt.charAt(eraseStart) == '\n') {
+                eraseStart--;
+            }
             size_t eraseLen = c.head - eraseStart;
+            if (eraseStart > 0 && c.head < engine->pt.length() && engine->pt.charAt(eraseStart - 1) == '\r' && engine->pt.charAt(c.head) == '\n') {
+                eraseLen++;
+            }
             std::string d = engine->pt.getRange(eraseStart, eraseLen);
             engine->pt.erase(eraseStart, eraseLen);
             batch.ops.push_back({ EditOp::Erase, eraseStart, d });
@@ -2527,6 +2814,12 @@ void deleteForwardAtCursors(Engine* engine) {
                     }
                 }
             }
+            if (eraseEnd > 0 && eraseEnd < len && engine->pt.charAt(eraseEnd - 1) == '\r' && engine->pt.charAt(eraseEnd) == '\n') {
+                eraseEnd++;
+            }
+            if (eraseStart > 0 && eraseEnd < len && engine->pt.charAt(eraseStart - 1) == '\r' && engine->pt.charAt(eraseEnd) == '\n') {
+                eraseEnd++;
+            }
         }
 
         size_t eraseLen = eraseEnd - eraseStart;
@@ -2586,7 +2879,7 @@ std::string internalCopy(Engine* engine) {
             std::string lineText = engine->pt.getRange(start, end - start);
             t += lineText;
             if (lineIdx == (int)engine->lineStarts.size() - 1) {
-                if (lineText.empty() || lineText.back() != '\n') t += engine->newlineStr;
+                if (lineText.empty() || (lineText.back() != '\n' && lineText.back() != '\r')) t += engine->newlineStr;
             }
         }
     }
@@ -2600,6 +2893,7 @@ void getWordBoundaries(Engine* engine, size_t pos, size_t& start, size_t& end) {
         if (pos + 1 < len && engine->pt.charAt(pos + 1) == '\n') {
             start = pos; end = pos + 2; return;
         }
+        start = pos; end = pos + 1; return;
     }
     bool targetType = isWordChar(c);
     if (c == '\n') { start = pos; end = pos + 1; return; }
@@ -3465,24 +3759,38 @@ bool handlePreviewTaskToggleCommand(Engine* engine, int targetLineIdx) {
     notifyPreviewUpdateIfNeeded(engine);
     return true;
 }
+static std::string NormalizeNewlines(const std::string& input, const std::string& targetNewline) {
+    const std::string& nl = targetNewline.empty() ? std::string("\n") : targetNewline;
+    std::string out;
+    out.reserve(input.size() + 16);
+    for (size_t i = 0; i < input.size(); ++i) {
+        if (input[i] == '\r') {
+            if (i + 1 < input.size() && input[i + 1] == '\n') i++;
+            out += nl;
+        } else if (input[i] == '\n') {
+            out += nl;
+        } else {
+            out += input[i];
+        }
+    }
+    return out;
+}
 extern "C" {
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_commitText(JNIEnv* env, jobject thiz, jstring text) {
-    if (!g_engine) return;
-    const char* str = env->GetStringUTFChars(text, nullptr);
-    if (str) {
-        std::lock_guard<std::mutex> lock(g_imeMutex);
-        g_imeQueue.push_back({ ImeEvent::Commit, str });
-        env->ReleaseStringUTFChars(text, str);
+    if (!g_engine || !text) return;
+    std::string raw = jstringToUtf8(env, text);
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (raw == "\n" || raw == "\r" || raw == "\r\n") {
+        g_imeQueue.push_back({ ImeEvent::Commit, "\n" });
+    } else {
+        g_imeQueue.push_back({ ImeEvent::Commit, NormalizeNewlines(raw, g_engine->newlineStr) });
     }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_setComposingText(JNIEnv* env, jobject thiz, jstring text) {
-    if (!g_engine) return;
-    const char* str = env->GetStringUTFChars(text, nullptr);
-    if (str) {
-        std::lock_guard<std::mutex> lock(g_imeMutex);
-        g_imeQueue.push_back({ ImeEvent::Composing, str });
-        env->ReleaseStringUTFChars(text, str);
-    }
+    if (!g_engine || !text) return;
+    std::string raw = jstringToUtf8(env, text);
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_imeQueue.push_back({ ImeEvent::Composing, raw });
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteSurroundingText(JNIEnv* env, jobject thiz) {
     if (!g_engine) return;
@@ -3513,13 +3821,12 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdNewDocument(JNIEnv* env,
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdOpenDocument(JNIEnv* env, jobject thiz, jstring path) {
-    if (!g_engine) return JNI_FALSE;
-    const char* strPath = env->GetStringUTFChars(path, nullptr);
+    if (!g_engine || !path) return JNI_FALSE;
+    std::string strPath = jstringToUtf8(env, path);
     bool success = false;
-    if (strPath) {
+    if (!strPath.empty()) {
         std::lock_guard<std::mutex> lock(g_imeMutex);
         success = openDocumentFromFile(g_engine, strPath, env);
-        env->ReleaseStringUTFChars(path, strPath);
         if (success) {
             ensureCaretVisible(g_engine);
         }
@@ -3595,17 +3902,11 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMarkSaved(JNIEnv* env, j
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetSearchOptions(JNIEnv* env, jobject thiz, jstring query, jstring replace, jboolean matchCase, jboolean wholeWord, jboolean regex) {
     if (!g_engine) return;
+    std::string qStr = query ? jstringToUtf8(env, query) : "";
+    std::string rStr = replace ? jstringToUtf8(env, replace) : "";
     std::lock_guard<std::mutex> lock(g_imeMutex);
-    if (query) {
-        const char* q = env->GetStringUTFChars(query, nullptr);
-        g_engine->searchQuery = q ? q : "";
-        env->ReleaseStringUTFChars(query, q);
-    } else g_engine->searchQuery = "";
-    if (replace) {
-        const char* r = env->GetStringUTFChars(replace, nullptr);
-        g_engine->replaceQuery = r ? r : "";
-        env->ReleaseStringUTFChars(replace, r);
-    } else g_engine->replaceQuery = "";
+    g_engine->searchQuery = std::move(qStr);
+    g_engine->replaceQuery = std::move(rStr);
     g_engine->searchMatchCase = matchCase;
     g_engine->searchWholeWord = wholeWord;
     g_engine->searchRegex = regex;
@@ -3631,16 +3932,13 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_finishComposingTextNative(J
     g_imeQueue.push_back({ ImeEvent::FinishComposing, "" });
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetDisplayFileName(JNIEnv* env, jobject thiz, jstring name) {
-    if (!g_engine) return;
-    const char* strName = env->GetStringUTFChars(name, nullptr);
-    if (strName) {
-        std::lock_guard<std::mutex> lock(g_imeMutex);
-        g_engine->displayFileName = strName;
-        env->ReleaseStringUTFChars(name, strName);
-        loadSyntaxForEngine(g_engine, g_engine->displayFileName);
-        updateTitleBarIfNeeded(g_engine);
-        notifyPreviewUpdateIfNeeded(g_engine);
-    }
+    if (!g_engine || !name) return;
+    std::string strName = jstringToUtf8(env, name);
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    g_engine->displayFileName = std::move(strName);
+    loadSyntaxForEngine(g_engine, g_engine->displayFileName);
+    updateTitleBarIfNeeded(g_engine);
+    notifyPreviewUpdateIfNeeded(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdTop(JNIEnv* env, jobject thiz) {
     if (!g_engine) return;
@@ -3735,62 +4033,89 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdCut(JNIEnv* env, jobj
     return utf8ToJString(env, t);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdPaste(JNIEnv* env, jobject thiz, jstring text) {
-    if (!g_engine) return;
-    const char* str = env->GetStringUTFChars(text, nullptr);
-    if (str) {
-        std::lock_guard<std::mutex> lock(g_imeMutex);
-        std::string rawStr(str);
-        std::string normalizedStr;
-        normalizedStr.reserve(rawStr.size());
-        for (size_t i = 0; i < rawStr.size(); ++i) {
-            if (rawStr[i] == '\r') {
-                normalizedStr += g_engine->newlineStr;
-                if (i + 1 < rawStr.size() && rawStr[i + 1] == '\n') {
-                    i++;
-                }
-            } else if (rawStr[i] == '\n') {
-                normalizedStr += g_engine->newlineStr;
-            } else {
-                normalizedStr += rawStr[i];
-            }
-        }
-        insertAtCursors(g_engine, normalizedStr);
-        env->ReleaseStringUTFChars(text, str);
-    }
+    if (!g_engine || !text) return;
+    std::string rawStr = jstringToUtf8(env, text);
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    std::string normalizedStr = NormalizeNewlines(rawStr, g_engine->newlineStr);
+    insertAtCursors(g_engine, normalizedStr);
 }
 JNIEXPORT jbyteArray JNICALL Java_jp_hack_miu_MainActivity_cmdGetSaveData(JNIEnv* env, jobject thiz) {
     if (!g_engine) return nullptr;
     std::lock_guard<std::mutex> lock(g_imeMutex);
     std::string utf8Text = g_engine->pt.getRange(0, g_engine->pt.length());
-    jbyteArray utf8Array = env->NewByteArray(utf8Text.size());
-    env->SetByteArrayRegion(utf8Array, 0, utf8Text.size(), (const jbyte*)utf8Text.data());
-    jstring utf8CharsetStr = env->NewStringUTF("UTF-8");
+    if (g_engine->currentEncoding == ENC_UTF8_NOBOM || g_engine->currentEncoding == ENC_UTF8_BOM) {
+        size_t bomSize = (g_engine->currentEncoding == ENC_UTF8_BOM) ? 3 : 0;
+        jbyteArray finalArray = env->NewByteArray((jsize)(bomSize + utf8Text.size()));
+        if (bomSize == 3) {
+            const uint8_t bom[3] = { 0xEF, 0xBB, 0xBF };
+            env->SetByteArrayRegion(finalArray, 0, 3, (const jbyte*)bom);
+        }
+        if (!utf8Text.empty()) {
+            env->SetByteArrayRegion(finalArray, (jsize)bomSize, (jsize)utf8Text.size(), (const jbyte*)utf8Text.data());
+        }
+        return finalArray;
+    }
+    if (g_engine->currentEncoding == ENC_UTF16LE || g_engine->currentEncoding == ENC_UTF16BE) {
+        bool be = (g_engine->currentEncoding == ENC_UTF16BE);
+        std::vector<uint8_t> out;
+        out.reserve(2 + utf8Text.size() * 2);
+        out.push_back(be ? 0xFE : 0xFF);
+        out.push_back(be ? 0xFF : 0xFE);
+        auto pushU16 = [&](uint16_t w) {
+            if (be) {
+                out.push_back((uint8_t)((w >> 8) & 0xFF));
+                out.push_back((uint8_t)(w & 0xFF));
+            } else {
+                out.push_back((uint8_t)(w & 0xFF));
+                out.push_back((uint8_t)((w >> 8) & 0xFF));
+            }
+        };
+        const char* p = utf8Text.data();
+        const char* e = p + utf8Text.size();
+        while (p < e) {
+            uint32_t cp = decodeUtf8(&p, e);
+            if (cp <= 0xFFFF) {
+                pushU16((uint16_t)cp);
+            } else if (cp <= 0x10FFFF) {
+                cp -= 0x10000;
+                pushU16((uint16_t)(0xD800 + (cp >> 10)));
+                pushU16((uint16_t)(0xDC00 + (cp & 0x3FF)));
+            } else {
+                pushU16(0xFFFD);
+            }
+        }
+        jbyteArray finalArray = env->NewByteArray((jsize)out.size());
+        env->SetByteArrayRegion(finalArray, 0, (jsize)out.size(), (const jbyte*)out.data());
+        return finalArray;
+    }
+    jstring javaStr = utf8ToJString(env, utf8Text);
     jclass stringClass = env->FindClass("java/lang/String");
-    jmethodID strCtor = env->GetMethodID(stringClass, "<init>", "([BLjava/lang/String;)V");
-    jstring javaStr = (jstring)env->NewObject(stringClass, strCtor, utf8Array, utf8CharsetStr);
     jmethodID getBytesMid = env->GetMethodID(stringClass, "getBytes", "(Ljava/lang/String;)[B");
     jstring targetCharsetStr = env->NewStringUTF(g_engine->currentCharset.c_str());
     jbyteArray targetBytes = (jbyteArray)env->CallObjectMethod(javaStr, getBytesMid, targetCharsetStr);
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        targetBytes = nullptr;
+    }
+    if (!targetBytes) {
+        env->DeleteLocalRef(stringClass);
+        env->DeleteLocalRef(javaStr);
+        env->DeleteLocalRef(targetCharsetStr);
+        jbyteArray fallbackArray = env->NewByteArray((jsize)utf8Text.size());
+        if (!utf8Text.empty()) {
+            env->SetByteArrayRegion(fallbackArray, 0, (jsize)utf8Text.size(), (const jbyte*)utf8Text.data());
+        }
+        return fallbackArray;
+    }
     jsize targetLen = env->GetArrayLength(targetBytes);
     jbyte* targetElements = env->GetByteArrayElements(targetBytes, nullptr);
-    std::vector<uint8_t> bom;
-    if (g_engine->currentEncoding == ENC_UTF8_BOM) {
-        bom = { 0xEF, 0xBB, 0xBF };
-    } else if (g_engine->currentEncoding == ENC_UTF16LE) {
-        bom = { 0xFF, 0xFE };
-    } else if (g_engine->currentEncoding == ENC_UTF16BE) {
-        bom = { 0xFE, 0xFF };
+    jbyteArray finalArray = env->NewByteArray(targetLen);
+    if (targetLen > 0 && targetElements) {
+        env->SetByteArrayRegion(finalArray, 0, targetLen, targetElements);
     }
-    jbyteArray finalArray = env->NewByteArray(bom.size() + targetLen);
-    if (!bom.empty()) {
-        env->SetByteArrayRegion(finalArray, 0, bom.size(), (const jbyte*)bom.data());
+    if (targetElements) {
+        env->ReleaseByteArrayElements(targetBytes, targetElements, JNI_ABORT);
     }
-    if (targetLen > 0) {
-        env->SetByteArrayRegion(finalArray, bom.size(), targetLen, targetElements);
-    }
-    env->ReleaseByteArrayElements(targetBytes, targetElements, JNI_ABORT);
-    env->DeleteLocalRef(utf8Array);
-    env->DeleteLocalRef(utf8CharsetStr);
     env->DeleteLocalRef(stringClass);
     env->DeleteLocalRef(javaStr);
     env->DeleteLocalRef(targetCharsetStr);
@@ -4983,7 +5308,7 @@ std::string GetResString(Engine* engine, const char* resName) {
     std::string result = resName;
     if (getStrMethod) {
         jstring jResName = env->NewStringUTF(resName); jstring jResult = (jstring)env->CallObjectMethod(engine->app->activity->clazz, getStrMethod, jResName);
-        if (jResult) { const char* utf8Str = env->GetStringUTFChars(jResult, nullptr); if (utf8Str) { result = utf8Str; env->ReleaseStringUTFChars(jResult, utf8Str); } env->DeleteLocalRef(jResult); }
+        if (jResult) { result = jstringToUtf8(env, jResult); env->DeleteLocalRef(jResult); }
         env->DeleteLocalRef(jResName);
     }
     env->DeleteLocalRef(activityClass);
@@ -5100,7 +5425,7 @@ void updateTextVertices(Engine* engine) {
         }
 
         // Draw gutter line number at the first visual row of this logical line
-        if (firstLineTop + engine->lineHeight >= 0.0f && firstLineTop <= winH) {
+        if (firstLineTop + engine->lineHeight >= 0.0f && firstLineTop <= winH && !engine->fallbackFaces.empty()) {
             std::string lineNumStr = std::to_string(lineIdx + 1); float numWidth = 0.0f;
             for (char c : lineNumStr) {
                 uint32_t cp = c; int fontIdx = getFontIndexForChar(engine, cp, 0); uint32_t glyphIdx = FT_Get_Char_Index(engine->fallbackFaces[fontIdx], cp); uint64_t key = ((uint64_t)fontIdx << 32) | glyphIdx;
@@ -5701,7 +6026,9 @@ void updateTitleBarIfNeeded(Engine* engine) {
     else titleStr = cachedUntitled;
     if (engine->isDirty) titleStr = "*" + titleStr;
     if (engine->lastTitleStr != titleStr) {
-        engine->lastTitleStr = titleStr; LOGI("Title changed to: %s", titleStr.c_str()); JNIEnv* env = nullptr; JavaVM* vm = engine->app->activity->vm; bool needDetach = false;
+        engine->lastTitleStr = titleStr; LOGI("Title changed to: %s", titleStr.c_str());
+        if (!engine->app || !engine->app->activity || !engine->app->activity->vm) return;
+        JNIEnv* env = nullptr; JavaVM* vm = engine->app->activity->vm; bool needDetach = false;
         if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) { if (vm->AttachCurrentThread(&env, nullptr) != 0) return; needDetach = true; }
         jclass clazz = env->GetObjectClass(engine->app->activity->clazz); jmethodID mid = env->GetMethodID(clazz, "setOverlayTitle", "(Ljava/lang/String;)V");
         if (mid) { jstring jTitle = utf8ToJString(env, titleStr); env->CallVoidMethod(engine->app->activity->clazz, mid, jTitle); env->DeleteLocalRef(jTitle); }
