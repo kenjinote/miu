@@ -1167,6 +1167,44 @@ static void testPhase6EncodingsNewlinesRectCursorSearch() {
             CHECK(toggled2 && ed.pt.getRange(0, ed.pt.totalLength).find("- [x] Task A" + nl + "- [ ] Task B") != std::string::npos,
                   "handlePreviewTaskToggle toggles line 2 from [x] to [ ] across CR/CRLF/LF");
         }
+
+        // Multi-language UTF-8 Regex Search & Replace (Japanese, Korean, Chinese, European 2-byte, Emoji 4-byte)
+        {
+            std::string doc = "あいう" + nl + "한글A" + nl + "中文😀é";
+            ed.newFile();
+            ed.newlineStr = nl;
+            ed.pt.initFromFile(doc.data(), doc.size());
+            ed.rebuildLineStarts();
+            ed.searchQuery = ".";
+            ed.replaceQuery = "*";
+            ed.searchRegex = true;
+            ed.searchMatchCase = true;
+            ed.replaceAll();
+            verifyLineStartsInvariant(ed);
+            CHECK(ed.pt.getRange(0, ed.pt.totalLength) == "***" + nl + "***" + nl + "****",
+                  "macOS/iOS Regex '.' replaces Japanese/Korean/Chinese/Emoji/European 1 char -> 1 '*' across CR/CRLF/LF");
+
+            std::string doc2 = "あいうABC가나다中文";
+            ed.pt.initFromFile(doc2.data(), doc2.size());
+            ed.rebuildLineStarts();
+            ed.searchQuery = "[あ-ん]";
+            ed.replaceQuery = "H";
+            ed.replaceAll();
+            CHECK(ed.pt.getRange(0, ed.pt.totalLength) == "HHHABC가나다中文",
+                  "macOS/iOS Regex '[あ-ん]' matches Hiragana range only");
+
+            ed.searchQuery = "[가-힣]";
+            ed.replaceQuery = "K";
+            ed.replaceAll();
+            CHECK(ed.pt.getRange(0, ed.pt.totalLength) == "HHHABCKKK中文",
+                  "macOS/iOS Regex '[가-힣]' matches Korean Hangul range only");
+
+            ed.searchQuery = "[一-龥]";
+            ed.replaceQuery = "C";
+            ed.replaceAll();
+            CHECK(ed.pt.getRange(0, ed.pt.totalLength) == "HHHABCKKKCC",
+                  "macOS/iOS Regex '[一-龥]' matches CJK Unified Ideographs range only");
+        }
     }
 }
 

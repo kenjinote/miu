@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.48": {
+        "ja-jp": """miu v1.0.48 リリースノート
+🔍 全角文字・多言語テキストの正規表現検索・置換の改善とスクロール表示の修正
+
+・全角文字・多言語文字の正規表現検索・置換を改善:
+  日本語・韓国語・中国語・絵文字などの全角文字を正規表現「.」や文字範囲（[あ-ん] など）で検索・置換した際、1文字が複数文字分に変換されてしまう問題を修正し、正確に1文字単位で置換できるようになりました。
+・スクロール時のカーソル表示を改善:
+  下スクロールなどでカーソル位置が画面外に見切れた際、表示されている一番上の行先頭にカーソルが表示される問題を修正しました。
+・高速な編集・一括置換・リアルタイムプレビュー:
+  大容量ファイルの編集や一括置換、Markdown / LaTeX数式 / Mermaid図表プレビューが軽快に動作します。""",
+
+        "en-us": """miu v1.0.48 Release Notes
+🔍 Accurate Multi-Language Regex Search & Replace and Scroll Cursor Fix
+
+- Accurate Regular Expression Matching for Full-Width & Multi-Language Characters:
+  Fixed an issue where using "." or character ranges/quantifiers in regular expression search and replace matched individual UTF-8 bytes instead of whole characters, ensuring Japanese, Korean, Chinese, accented characters, and emoji are matched and replaced accurately one character at a time.
+- Improved Cursor Visibility When Scrolling:
+  Fixed an issue where scrolling the active cursor line out of view could display a cursor at the start of the top visible line.
+- Fast Editing, Bulk Replace & Live Preview:
+  Continued high-speed typing, instant "Replace All", and smooth Markdown, LaTeX math, and Mermaid diagram Live Preview.""",
+
+        "zh-hans": """miu v1.0.48 更新日志
+🔍 修复全角与多语言字符的正则表达式查找替换问题及滚动光标显示
+
+- 完善中文、日文、韩文及全角字符的正则表达式查找与替换：
+  修复了使用正则表达式“.”、字符范围（如 [一-龥]）或量词替换全角字符时，1 个字符被重复替换多次的问题，现在所有多语言字符与表情符号均按单个字符精准匹配和替换。
+- 优化滚动时的光标显示：
+  修复了当光标所在行滚出屏幕可视区域时，可视区域第一行行首仍会显示光标的问题。
+- 高速编辑、全部替换与实时预览：
+  大文件编辑、大批量“全部替换”以及 Markdown / LaTeX 数学公式 / Mermaid 图表实时预览保持流畅高速。""",
+
+        "ko": """miu v1.0.48 릴리스 노트
+🔍 한글·전각 문자 정규식 찾기/바꾸기 정확도 개선 및 스크롤 커서 표시 수정
+
+- 한글·전각 문자 및 다국어 정규식 찾기/바꾸기 개선:
+  정규식 '.' 또는 문자 범위([가-힣] 등)로 전각 문자를 변환할 때 1글자가 여러 글자 분량으로 중복 변환되던 문제를 수정하여, 한글·일본어·중국어·이모지 등이 정확히 1글자 단위로 매칭 및 치환되도록 개선했습니다.
+- 스크롤 시 화면 밖 커서 표시 수정:
+  스크롤하여 실제 커서 위치가 화면 밖으로 벗어났을 때 화면 맨 위 줄의 맨 앞에 커서가 표시되던 현상을 수정했습니다.
+- 빠른 편집·모두 바꾸기·실시간 미리보기:
+  대용량 파일 편집, 초고속 '모두 바꾸기' 및 Markdown / LaTeX 수식 / Mermaid 다이어그램 실시간 미리보기를 쾌적하게 이용할 수 있습니다."""
+    },
     "1.0.47": {
         "ja-jp": """miu v1.0.47 リリースノート
 ⚡ 編集・スクロール・検索置換・リアルタイムプレビューの全面的な高速化

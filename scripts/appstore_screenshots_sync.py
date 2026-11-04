@@ -23,7 +23,7 @@ MACOS_DIR = os.path.join(REPO_ROOT, "macOS")
 ASSETS_DIR = os.path.join(MACOS_DIR, "store_assets")
 
 BUNDLE_ID = "jp.hack.miu"
-TARGET_VERSION = "1.0.47"
+TARGET_VERSION = "1.0.48"
 BASE_URL = "https://api.appstoreconnect.apple.com/v1"
 
 # ============================================================================

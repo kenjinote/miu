@@ -781,9 +781,9 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
                     if (step == 0) {
                         bool isBolCaret = (startsWithCaret && !(searchFlags & std::regex_constants::match_not_bol));
                         if (isBolCaret) step = 0;
-                        else step = 1;
+                        else step = MiuCore::utf8CharLenAt(fullText, currentMatchPos);
                     }
-                    if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = 1;
+                    if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = MiuCore::utf8CharLenAt(fullText, currentMatchPos);
                     size_t dist = std::distance(searchStartIter, fullText.cend());
                     if ((size_t)m.position() + step > dist) break;
                     size_t advance = m.position() + step;
@@ -853,6 +853,7 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
                     }
                     size_t contentStart = mPos + aLen;
                     size_t contentLen = mLen - aLen;
+                    if (!MiuCore::isUtf8CharBoundary(fullText, mPos) || !MiuCore::isUtf8CharBoundary(fullText, contentStart)) continue;
                     if (endsWithDollar) {
                         bool isAtEnd = (contentStart + contentLen >= fullText.size());
                         if (!isAtEnd) {
@@ -1041,9 +1042,9 @@ int replaceAllCommand(Engine* engine) {
                 if (step == 0) {
                     bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
                     if (isBolCaret) step = 0;
-                    else step = 1;
+                    else step = MiuCore::utf8CharLenAt(fullText, matchPos);
                 }
-                if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
+                if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = MiuCore::utf8CharLenAt(fullText, matchPos);
                 size_t relativeAdvance = m.position() + step;
                 size_t remaining = std::distance(searchStart, fullText.cend());
                 if (relativeAdvance > remaining) break;
@@ -5063,8 +5064,8 @@ void updateTextVertices(Engine* engine) {
                         if (shouldHighlight && !searchMatches.empty()) { const auto& last = searchMatches.back(); if (last.first == contentPos && (last.second - last.first) == 0 && contentLen == 0) shouldHighlight = false; }
                         if (shouldHighlight) searchMatches.push_back({ contentPos, contentPos + contentLen });
                         size_t step = matchLen;
-                        if (step == 0) { bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol)); if (isBolCaret) step = 0; else step = 1; }
-                        if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
+                        if (step == 0) { bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol)); if (isBolCaret) step = 0; else step = MiuCore::utf8CharLenAt(fullText, matchPos); }
+                        if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = MiuCore::utf8CharLenAt(fullText, matchPos);
                         size_t relativeAdvance = m.position() + step; size_t remaining = std::distance(searchStart, fullText.cend());
                         if (relativeAdvance > remaining) break;
                         std::advance(searchStart, relativeAdvance); currentOffset += relativeAdvance; flags |= std::regex_constants::match_not_bol;

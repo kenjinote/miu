@@ -115,10 +115,10 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
     except Exception:
         pass
 
-    print(f"Using {len(release_notes)} localized v1.0.47 releaseNotes for '{track}' track.")
+    print(f"Using {len(release_notes)} localized v1.0.48 releaseNotes for '{track}' track.")
 
     for target_track in tracks_to_update:
-        rel_name = f"{version_code} (1.0.47)" if target_track == "production" else "1.0.47"
+        rel_name = f"{version_code} (1.0.48)" if target_track == "production" else "1.0.48"
         print(f"Assigning versionCode {version_code} ({rel_name}) to track '{target_track}' (status={status})...")
         track_body = {
             "track": target_track,

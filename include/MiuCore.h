@@ -832,8 +832,8 @@ inline bool isWordChar(char c) noexcept {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || (unsigned char)c >= 0x80;
 }
 
-inline bool isSafeUserRegex(const std::string& q) noexcept {
-    if (q.empty() || q.size() > 1024) return false;
+inline bool isSafeUserRegex(const std::string& q, size_t maxLen = 1024) noexcept {
+    if (q.empty() || q.size() > maxLen) return false;
     int parenDepth = 0;
     bool groupHasQuantifier[64] = {};
     bool inBracket = false;
@@ -867,16 +867,191 @@ inline bool isSafeUserRegex(const std::string& q) noexcept {
     return parenDepth == 0 && !inBracket;
 }
 
+inline bool isUtf8CharBoundary(const std::string& s, size_t pos) noexcept {
+    if (pos >= s.size()) return true;
+    return (((unsigned char)s[pos]) & 0xC0) != 0x80;
+}
+
+inline size_t utf8CharLenAt(const std::string& s, size_t pos) noexcept {
+    if (pos >= s.size()) return 1;
+    unsigned char c = (unsigned char)s[pos];
+    if (c < 0x80) return 1;
+    if ((c & 0xE0) == 0xC0 && pos + 1 < s.size() && ((unsigned char)s[pos + 1] & 0xC0) == 0x80) return 2;
+    if ((c & 0xF0) == 0xE0 && pos + 2 < s.size() &&
+        ((unsigned char)s[pos + 1] & 0xC0) == 0x80 && ((unsigned char)s[pos + 2] & 0xC0) == 0x80) return 3;
+    if ((c & 0xF8) == 0xF0 && pos + 3 < s.size() &&
+        ((unsigned char)s[pos + 1] & 0xC0) == 0x80 && ((unsigned char)s[pos + 2] & 0xC0) == 0x80 &&
+        ((unsigned char)s[pos + 3] & 0xC0) == 0x80) return 4;
+    return 1;
+}
+
+inline size_t utf8CharLenAt(const PieceTable& pt, size_t pos) noexcept {
+    size_t len = pt.length();
+    if (pos >= len) return 1;
+    unsigned char c = (unsigned char)pt.charAt(pos);
+    if (c < 0x80) return 1;
+    if ((c & 0xE0) == 0xC0 && pos + 1 < len && ((unsigned char)pt.charAt(pos + 1) & 0xC0) == 0x80) return 2;
+    if ((c & 0xF0) == 0xE0 && pos + 2 < len &&
+        ((unsigned char)pt.charAt(pos + 1) & 0xC0) == 0x80 && ((unsigned char)pt.charAt(pos + 2) & 0xC0) == 0x80) return 3;
+    if ((c & 0xF8) == 0xF0 && pos + 3 < len &&
+        ((unsigned char)pt.charAt(pos + 1) & 0xC0) == 0x80 && ((unsigned char)pt.charAt(pos + 2) & 0xC0) == 0x80 &&
+        ((unsigned char)pt.charAt(pos + 3) & 0xC0) == 0x80) return 4;
+    return 1;
+}
+
+inline uint32_t decodeUtf8CodePointAt(const std::string& s, size_t pos, size_t& outLen) noexcept {
+    if (pos >= s.size()) { outLen = 1; return 0; }
+    unsigned char c = (unsigned char)s[pos];
+    if (c < 0x80) { outLen = 1; return c; }
+    if ((c & 0xE0) == 0xC0 && pos + 1 < s.size() && ((unsigned char)s[pos + 1] & 0xC0) == 0x80) {
+        outLen = 2;
+        return ((uint32_t)(c & 0x1F) << 6) | (uint32_t)((unsigned char)s[pos + 1] & 0x3F);
+    }
+    if ((c & 0xF0) == 0xE0 && pos + 2 < s.size() &&
+        ((unsigned char)s[pos + 1] & 0xC0) == 0x80 && ((unsigned char)s[pos + 2] & 0xC0) == 0x80) {
+        outLen = 3;
+        return ((uint32_t)(c & 0x0F) << 12) |
+               ((uint32_t)((unsigned char)s[pos + 1] & 0x3F) << 6) |
+               (uint32_t)((unsigned char)s[pos + 2] & 0x3F);
+    }
+    if ((c & 0xF8) == 0xF0 && pos + 3 < s.size() &&
+        ((unsigned char)s[pos + 1] & 0xC0) == 0x80 && ((unsigned char)s[pos + 2] & 0xC0) == 0x80 &&
+        ((unsigned char)s[pos + 3] & 0xC0) == 0x80) {
+        outLen = 4;
+        return ((uint32_t)(c & 0x07) << 18) |
+               ((uint32_t)((unsigned char)s[pos + 1] & 0x3F) << 12) |
+               ((uint32_t)((unsigned char)s[pos + 2] & 0x3F) << 6) |
+               (uint32_t)((unsigned char)s[pos + 3] & 0x3F);
+    }
+    outLen = 1;
+    return c;
+}
+
+inline void appendRegexHexByte(std::string& out, unsigned char b) {
+    static const char hex[] = "0123456789ABCDEF";
+    out += "\\x";
+    out += hex[(b >> 4) & 0xF];
+    out += hex[b & 0xF];
+}
+
+inline void appendRegexByteRange(std::string& out, unsigned char b1, unsigned char b2) {
+    if (b1 == b2) {
+        appendRegexHexByte(out, b1);
+    } else {
+        out += '[';
+        appendRegexHexByte(out, b1);
+        out += '-';
+        appendRegexHexByte(out, b2);
+        out += ']';
+    }
+}
+
+inline int encodeCodePointUtf8Bytes(uint32_t cp, unsigned char out[4]) noexcept {
+    if (cp <= 0x7F) {
+        out[0] = (unsigned char)cp;
+        return 1;
+    } else if (cp <= 0x7FF) {
+        out[0] = (unsigned char)(0xC0 | (cp >> 6));
+        out[1] = (unsigned char)(0x80 | (cp & 0x3F));
+        return 2;
+    } else if (cp <= 0xFFFF) {
+        out[0] = (unsigned char)(0xE0 | (cp >> 12));
+        out[1] = (unsigned char)(0x80 | ((cp >> 6) & 0x3F));
+        out[2] = (unsigned char)(0x80 | (cp & 0x3F));
+        return 3;
+    } else {
+        out[0] = (unsigned char)(0xF0 | (cp >> 18));
+        out[1] = (unsigned char)(0x80 | ((cp >> 12) & 0x3F));
+        out[2] = (unsigned char)(0x80 | ((cp >> 6) & 0x3F));
+        out[3] = (unsigned char)(0x80 | (cp & 0x3F));
+        return 4;
+    }
+}
+
+inline void decomposeUtf8TupleRange(const unsigned char* s, const unsigned char* e, int depth, int len,
+                                    std::vector<std::string>& alts, const std::string& prefix = "") {
+    if (depth == len - 1) {
+        std::string pat = prefix;
+        appendRegexByteRange(pat, s[depth], e[depth]);
+        alts.push_back(pat);
+        return;
+    }
+    if (s[depth] == e[depth]) {
+        std::string nextPrefix = prefix;
+        appendRegexHexByte(nextPrefix, s[depth]);
+        decomposeUtf8TupleRange(s, e, depth + 1, len, alts, nextPrefix);
+        return;
+    }
+    bool sAllMin = true;
+    bool eAllMax = true;
+    for (int k = depth + 1; k < len; ++k) {
+        if (s[k] != 0x80) sAllMin = false;
+        if (e[k] != 0xBF) eAllMax = false;
+    }
+    unsigned char midStart = s[depth];
+    unsigned char midEnd = e[depth];
+    if (!sAllMin) {
+        unsigned char hi[4] = { 0xBF, 0xBF, 0xBF, 0xBF };
+        std::string p = prefix;
+        appendRegexHexByte(p, s[depth]);
+        decomposeUtf8TupleRange(s, hi, depth + 1, len, alts, p);
+        midStart++;
+    }
+    if (!eAllMax) {
+        midEnd--;
+    }
+    if (midStart <= midEnd) {
+        std::string p = prefix;
+        appendRegexByteRange(p, midStart, midEnd);
+        for (int k = depth + 1; k < len; ++k) {
+            p += "[\\x80-\\xBF]";
+        }
+        alts.push_back(p);
+    }
+    if (!eAllMax) {
+        unsigned char lo[4] = { 0x80, 0x80, 0x80, 0x80 };
+        std::string p = prefix;
+        appendRegexHexByte(p, e[depth]);
+        decomposeUtf8TupleRange(lo, e, depth + 1, len, alts, p);
+    }
+}
+
+inline void appendCodePointRangeAlternates(uint32_t cp1, uint32_t cp2, std::vector<std::string>& alts) {
+    if (cp1 > cp2) std::swap(cp1, cp2);
+    const uint32_t bounds[4][2] = {
+        { 0x0000, 0x007F },
+        { 0x0080, 0x07FF },
+        { 0x0800, 0xFFFF },
+        { 0x10000, 0x10FFFF }
+    };
+    for (int i = 0; i < 4; ++i) {
+        uint32_t lo = std::max(cp1, bounds[i][0]);
+        uint32_t hi = std::min(cp2, bounds[i][1]);
+        if (lo <= hi) {
+            unsigned char bLo[4], bHi[4];
+            int len = encodeCodePointUtf8Bytes(lo, bLo);
+            encodeCodePointUtf8Bytes(hi, bHi);
+            decomposeUtf8TupleRange(bLo, bHi, 0, len, alts);
+        }
+    }
+}
+
 inline std::string preprocessRegexQuery(const std::string& query) {
+    static const char* kUtf8NonNewlineChar =
+        "(?:[^\\r\\n\\x80-\\xFF]|[\\xC0-\\xDF][\\x80-\\xBF]|[\\xE0-\\xEF][\\x80-\\xBF][\\x80-\\xBF]|[\\xF0-\\xF7][\\x80-\\xBF][\\x80-\\xBF][\\x80-\\xBF])";
+    static const char* kUtf8AnyChar =
+        "(?:[^\\x80-\\xFF]|[\\xC0-\\xDF][\\x80-\\xBF]|[\\xE0-\\xEF][\\x80-\\xBF][\\x80-\\xBF]|[\\xF0-\\xF7][\\x80-\\xBF][\\x80-\\xBF][\\x80-\\xBF])";
+    static const char* kUtf8MultiByteOnly =
+        "[\\xC0-\\xDF][\\x80-\\xBF]|[\\xE0-\\xEF][\\x80-\\xBF][\\x80-\\xBF]|[\\xF0-\\xF7][\\x80-\\xBF][\\x80-\\xBF][\\x80-\\xBF]";
+
     std::string processed;
-    processed.reserve(query.size() * 4);
-    bool inCharClass = false;
-    size_t charClassStart = 0;
+    processed.reserve(query.size() * 6);
     for (size_t i = 0; i < query.size(); ++i) {
+        unsigned char uc = (unsigned char)query[i];
         char c = query[i];
         if (c == '\\' && i + 1 < query.size()) {
             char next = query[i + 1];
-            if (!inCharClass && next == 'n') {
+            if (next == 'n') {
                 bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
                 if (!isPrecededByCR) {
                     processed += "(?:\\r\\n|[\\r\\n])";
@@ -884,22 +1059,114 @@ inline std::string preprocessRegexQuery(const std::string& query) {
                     continue;
                 }
             }
-            processed += c;
-            processed += next;
-            i++;
-            continue;
-        }
-        if (inCharClass) {
-            if (c == ']' && !(i == charClassStart + 1 || (i == charClassStart + 2 && query[charClassStart + 1] == '^'))) {
-                inCharClass = false;
+            size_t escLen = 1;
+            if ((unsigned char)next >= 0x80) {
+                escLen = utf8CharLenAt(query, i + 1);
             }
             processed += c;
+            processed.append(query, i + 1, escLen);
+            i += escLen;
             continue;
         }
         if (c == '[') {
-            inCharClass = true;
-            charClassStart = i;
-            processed += c;
+            // Find matching closing ']'
+            size_t closeIdx = std::string::npos;
+            for (size_t j = i + 1; j < query.size(); ++j) {
+                if (query[j] == '\\' && j + 1 < query.size()) {
+                    j++;
+                    continue;
+                }
+                if (query[j] == ']' && !(j == i + 1 || (j == i + 2 && query[i + 1] == '^'))) {
+                    closeIdx = j;
+                    break;
+                }
+            }
+            if (closeIdx == std::string::npos) {
+                processed += c;
+                continue;
+            }
+            bool negated = (i + 1 < closeIdx && query[i + 1] == '^');
+            size_t contentStart = negated ? (i + 2) : (i + 1);
+            bool hasMultiByte = false;
+            bool hasRawHexEscape = false;
+            for (size_t j = contentStart; j < closeIdx; ++j) {
+                if ((unsigned char)query[j] >= 0x80) hasMultiByte = true;
+                if (query[j] == '\\' && j + 1 < closeIdx && (query[j + 1] == 'x' || query[j + 1] == 'u')) hasRawHexEscape = true;
+            }
+            if (!hasMultiByte) {
+                if (negated && !hasRawHexEscape) {
+                    processed += "(?:[^";
+                    processed.append(query, contentStart, closeIdx - contentStart);
+                    processed += "\\x80-\\xFF]|";
+                    processed += kUtf8MultiByteOnly;
+                    processed += ')';
+                } else {
+                    processed.append(query, i, closeIdx - i + 1);
+                }
+                i = closeIdx;
+                continue;
+            }
+            // Multi-byte UTF-8 character class: decompose into ASCII bracket part + UTF-8 alternatives
+            std::string asciiPart;
+            std::vector<std::string> mbAlts;
+            size_t p = contentStart;
+            while (p < closeIdx) {
+                if (query[p] == '\\' && p + 1 < closeIdx) {
+                    size_t nextLen = utf8CharLenAt(query, p + 1);
+                    if (nextLen == 1) {
+                        asciiPart.append(query, p, 2);
+                    } else {
+                        mbAlts.push_back(query.substr(p + 1, nextLen));
+                    }
+                    p += 1 + nextLen;
+                    continue;
+                }
+                size_t len1 = 1;
+                uint32_t cp1 = decodeUtf8CodePointAt(query, p, len1);
+                if (p + len1 + 1 < closeIdx && query[p + len1] == '-' && query[p + len1 + 1] != '\\') {
+                    size_t len2 = 1;
+                    uint32_t cp2 = decodeUtf8CodePointAt(query, p + len1 + 1, len2);
+                    if (cp1 < 0x80 && cp2 < 0x80) {
+                        asciiPart.append(query, p, len1 + 1 + len2);
+                    } else {
+                        appendCodePointRangeAlternates(cp1, cp2, mbAlts);
+                    }
+                    p += len1 + 1 + len2;
+                    continue;
+                }
+                if (len1 == 1) {
+                    asciiPart += query[p];
+                } else {
+                    std::string seq;
+                    for (size_t k = 0; k < len1; ++k) appendRegexHexByte(seq, (unsigned char)query[p + k]);
+                    mbAlts.push_back(seq);
+                }
+                p += len1;
+            }
+            std::string posGroup = "(?:";
+            bool firstAlt = true;
+            if (!asciiPart.empty()) {
+                posGroup += '[';
+                posGroup += asciiPart;
+                posGroup += ']';
+                firstAlt = false;
+            }
+            for (const auto& alt : mbAlts) {
+                if (!firstAlt) posGroup += '|';
+                posGroup += alt;
+                firstAlt = false;
+            }
+            posGroup += ')';
+            if (!negated) {
+                processed += posGroup;
+            } else {
+                processed += "(?:(?!";
+                processed += posGroup;
+                processed += ')';
+                processed += kUtf8AnyChar;
+                processed += ')';
+            }
+            i = closeIdx;
             continue;
         }
         if (c == '^') {
@@ -912,7 +1179,23 @@ inline std::string preprocessRegexQuery(const std::string& query) {
             continue;
         }
         if (c == '.') {
-            processed += "[^\\r\\n]";
+            processed += kUtf8NonNewlineChar;
+            continue;
+        }
+        if (uc >= 0x80) {
+            size_t uLen = utf8CharLenAt(query, i);
+            if (uLen > 1 && i + uLen < query.size()) {
+                char next = query[i + uLen];
+                if (next == '*' || next == '+' || next == '?' || next == '{') {
+                    processed += "(?:";
+                    processed.append(query, i, uLen);
+                    processed += ')';
+                    i += uLen - 1;
+                    continue;
+                }
+            }
+            processed.append(query, i, uLen);
+            i += uLen - 1;
             continue;
         }
         processed += c;

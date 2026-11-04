@@ -24,7 +24,7 @@
 #include <arm_neon.h>
 #endif
 
-const std::wstring APP_VERSION = L"v1.0.47";
+const std::wstring APP_VERSION = L"v1.0.48";
 const std::wstring APP_TITLE = L"miu";
 
 using MiuCore::SanitizeUtf8;
@@ -2550,7 +2550,7 @@ const std::regex* Editor::getCompiledSearchRegex(const std::string& rawQuery, bo
         return &cachedSearchRegex;
     }
     std::string actualQuery = MiuCore::preprocessRegexQuery(rawQuery);
-    if (!isSafeUserRegex(actualQuery)) {
+    if (!isSafeUserRegex(actualQuery, 32768)) {
         cachedSearchRegexValid = false;
         return nullptr;
     }
@@ -2638,9 +2638,9 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                     size_t step = currentMatchLen;
                     if (step == 0) {
                         bool isBolCaret = (startsWithCaret && !(searchFlags & std::regex_constants::match_not_bol));
-                        step = isBolCaret ? 0 : 1;
+                        step = isBolCaret ? 0 : MiuCore::utf8CharLenAt(fullText, currentMatchPos);
                     }
-                    if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = 1;
+                    if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = MiuCore::utf8CharLenAt(fullText, currentMatchPos);
                     size_t dist = std::distance(searchStartIter, fullText.cend());
                     if ((size_t)m.position() + step > dist) break;
                     size_t advance = m.position() + step;
@@ -2661,6 +2661,7 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                     }
                     size_t contentStart = mPos + aLen;
                     size_t contentLen = mLen - aLen;
+                    if (!MiuCore::isUtf8CharBoundary(fullText, mPos) || !MiuCore::isUtf8CharBoundary(fullText, contentStart)) continue;
                     if (endsWithDollar) {
                         size_t checkPos = contentStart + contentLen;
                         if (checkPos < fullText.size()) {
@@ -2816,9 +2817,9 @@ void Editor::findNext(bool forward) {
         }
         size_t matchEnd = pos + matchLen;
         if (forward && !hasWrapped && matchEnd <= currentCursorPos) {
-            size_t nextStart = searchStart + 1;
+            size_t nextStart = searchStart + MiuCore::utf8CharLenAt(pt, searchStart);
             if (searchStart + 1 < pt.length() && pt.charAt(searchStart) == '\r' && pt.charAt(searchStart + 1) == '\n') {
-                nextStart++;
+                nextStart = searchStart + 2;
             }
             searchStart = nextStart;
             if (searchStart > pt.length()) {
@@ -2974,9 +2975,9 @@ void Editor::replaceAll() {
                 size_t step = matchLen;
                 if (step == 0) {
                     bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
-                    step = isBolCaret ? 0 : 1;
+                    step = isBolCaret ? 0 : MiuCore::utf8CharLenAt(fullText, matchPos);
                 }
-                if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = 1;
+                if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = MiuCore::utf8CharLenAt(fullText, matchPos);
                 size_t relativeAdvance = m.position() + step;
                 size_t remaining = std::distance(searchStart, fullText.cend());
                 if (relativeAdvance > remaining) break;
@@ -4996,7 +4997,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                                 CGContextFillRect(ctx, r);
                             });
                         }
-                        size_t step = std::max((size_t)1, matchLen);
+                        size_t step = (matchLen > 0) ? matchLen : MiuCore::utf8CharLenAt(visibleText, matchPos);
                         size_t advance = m.position() + step;
                         if (std::distance(searchStartIter, visibleText.cend()) < (ptrdiff_t)advance) break;
                         std::advance(searchStartIter, advance);

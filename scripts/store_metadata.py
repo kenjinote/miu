@@ -34,15 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.47 更新日誌
-⚡ 全面提升文字編輯、尋找取代與即時預覽的執行速度
+        "releaseNotes": """miu v1.0.48 更新日誌
+🔍 修復全形與多語言字元的正規表示式尋找取代問題及捲動游標顯示
 
-・大幅提升輸入、捲動與大檔案編輯速度：
-  深度最佳化文字處理速度，即使是超大檔案或長時間連續編輯，打字輸入、游標移動與頁面捲動都更加輕快流暢。
-・尋找與「全部取代」速度大幅躍升：
-  顯著加速關鍵字尋找、正規表示式比對以及大批量「全部取代」的處理速度，成千上萬處取代也能瞬間完成。
-・Markdown / LaTeX 數學公式 / Mermaid 圖表即時預覽提速：
-  最佳化即時預覽的轉換與繪製速度，在撰寫長篇文件或複雜圖表公式時預覽反應更加迅速。""",
+・完善中文、日文、韓文及全形字元的正規表示式尋找與取代：
+  修復了使用正規表示式「.」、字元範圍（如 [一-龥]）或量詞取代全形字元時，1 個字元被重複取代多次的問題，現在所有多語言字元與表情符號均按單一字元精準比對與取代。
+・最佳化捲動時的游標顯示：
+  修復了當游標所在行捲出畫面可視區域時，可視區域第一行行首仍會顯示游標的問題。
+・高速編輯、全部取代與即時預覽：
+  大檔案編輯、大批量「全部取代」以及 Markdown / LaTeX 數學公式 / Mermaid 圖表即時預覽保持流暢高速。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +81,14 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.47 Versionshinweise
-⚡ Deutlich höhere Geschwindigkeit beim Bearbeiten, Suchen/Ersetzen und in der Live-Vorschau
+        "releaseNotes": """miu v1.0.48 Versionshinweise
+🔍 Präzise Regex-Suche/Ersetzung für mehrsprachige Zeichen & Korrektur der Cursoranzeige
 
-- Schnelleres Tippen, Scrollen und Bearbeiten großer Dateien:
-  Texteingabe, Cursorbewegung und Bildlauf wurden spürbar beschleunigt, sodass auch große Dateien und lange Arbeitssitzungen jederzeit flüssig reagieren.
-- Ultraschnelles Suchen & „Alle ersetzen“:
-  Stichwortsuche, reguläre Ausdrücke und „Alle ersetzen“ bei tausenden Treffern werden nun nahezu verzögerungsfrei ausgeführt.
-- Schnellere Live-Vorschau für Markdown, LaTeX & Mermaid:
-  Die Vorschau-Darstellung für lange Markdown-Dokumente, LaTeX-Formeln und Mermaid-Diagramme reagiert während des Schreibens noch schneller.""",
+- Präzise reguläre Ausdrücke für CJK-, Vollbreiten- und Unicode-Zeichen:
+  Ein Problem wurde behoben, bei dem „.“ oder Zeichenbereiche in regulären Ausdrücken mehrbytige UTF-8-Zeichen mehrfach ersetzten. Japanische, koreanische, chinesische Zeichen, Umlaute und Emojis werden nun exakt zeichenweise erkannt und ersetzt.
+- Verbesserte Cursoranzeige beim Scrollen:
+  Wenn die Zeile mit dem Cursor aus dem sichtbaren Bereich gescrollt wird, wird der Cursor nicht mehr fälschlich am Anfang der obersten sichtbaren Zeile eingeblendet.
+- Schnelles Bearbeiten, „Alle ersetzen“ & Live-Vorschau für Markdown, LaTeX und Mermaid.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +127,14 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.47
-⚡ Accélération majeure de l’édition, de la recherche/remplacement et de l’aperçu en direct
+        "releaseNotes": """Notes de version miu v1.0.48
+🔍 Précision accrue des expressions régulières multilingues et correction de l’affichage du curseur
 
-- Frappe, défilement et édition de gros fichiers plus rapides :
-  La saisie de texte, le déplacement du curseur et le défilement ont été considérablement accélérés pour offrir une fluidité optimale, même sur de très grands fichiers.
-- Recherche et « Tout remplacer » ultra-rapides :
-  Les recherches par mot-clé ou expression régulière ainsi que le remplacement massif de milliers d’occurrences s’exécutent désormais instantanément.
-- Aperçu en direct Markdown, LaTeX et Mermaid plus réactif :
-  Le rendu en temps réel des longs documents Markdown, formules LaTeX et diagrammes Mermaid est encore plus rapide pendant la frappe.""",
+- Expressions régulières précises pour les caractères pleine chasse et Unicode :
+  Correction d’un problème où le motif « . » ou les plages de caractères remplaçaient plusieurs fois un même caractère UTF-8 multi-octets (japonais, coréen, chinois, caractères accentués et émojis). Chaque caractère est désormais traité avec précision.
+- Affichage du curseur lors du défilement :
+  Le curseur ne s’affiche plus au début de la première ligne visible lorsqu’il se trouve hors de l’écran.
+- Édition, « Tout remplacer » et aperçu en direct Markdown, LaTeX et Mermaid ultra-rapides.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +173,14 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.47
-⚡ Gran mejora de velocidad en edición, búsqueda/reemplazo y vista previa en vivo
+        "releaseNotes": """Notas de la versión miu v1.0.48
+🔍 Búsqueda y reemplazo Regex precisos para caracteres multilingües y mejora del cursor al desplazar
 
-- Escritura, desplazamiento y edición de archivos grandes más rápidos:
-  Se aceleró notablemente la entrada de texto, el movimiento del cursor y el desplazamiento para que incluso los archivos grandes respondan con total fluidez.
-- Búsqueda y «Reemplazar todo» ultrarrápidos:
-  La búsqueda de texto, expresiones regulares y el reemplazo masivo de miles de coincidencias ahora se completan al instante.
-- Vista previa en vivo más rápida para Markdown, LaTeX y Mermaid:
-  Se optimizó la visualización en tiempo real de documentos Markdown extensos, fórmulas LaTeX y diagramas Mermaid.""",
+- Expresiones regulares precisas para caracteres de ancho completo y Unicode:
+  Se corrigió un problema por el cual «.» o los rangos de caracteres en expresiones regulares reemplazaban varias veces un mismo carácter multibyte (japonés, coreano, chino, caracteres acentuados y emojis). Ahora cada carácter se busca y reemplaza exactamente una vez.
+- Visualización mejorada del cursor al desplazar:
+  El cursor ya no aparece al inicio de la primera línea visible cuando la línea real del cursor queda fuera de la pantalla.
+- Edición rápida, «Reemplazar todo» instantáneo y vista previa en vivo para Markdown, LaTeX y Mermaid.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +219,14 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.47
-⚡ Grande ganho de velocidade na edição, localização/substituição e pré-visualização ao vivo
+        "releaseNotes": """Notas de lançamento do miu v1.0.48
+🔍 Busca e substituição Regex precisas para caracteres multilíngues e ajuste do cursor na rolagem
 
-- Digitação, rolagem e edição de arquivos grandes mais rápidas:
-  A entrada de texto, a movimentação do cursor e a rolagem foram aceleradas para garantir máxima fluidez mesmo em arquivos extensos.
-- Localizar e «Substituir tudo» ultrarrápidos:
-  A busca por palavras-chave, expressões regulares e a substituição em massa de milhares de ocorrências agora são concluídas instantaneamente.
-- Pré-visualização ao vivo mais rápida para Markdown, LaTeX e Mermaid:
-  Renderização em tempo real ainda mais ágil para documentos Markdown longos, fórmulas LaTeX e diagramas Mermaid.""",
+- Expressões regulares precisas para caracteres de largura total e Unicode:
+  Corrigido um problema em que «.» ou intervalos de caracteres em expressões regulares substituíam um único caractere multibyte várias vezes (japonês, coreano, chinês, caracteres acentuados e emojis).
+- Exibição aprimorada do cursor ao rolar a página:
+  O cursor não é mais exibido no início da primeira linha visível quando a posição real do cursor sai da tela.
+- Edição rápida, «Substituir tudo» instantâneo e pré-visualização ao vivo para Markdown, LaTeX e Mermaid.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +265,14 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.47
-⚡ Значительное ускорение редактирования, поиска с заменой и живого предпросмотра
+        "releaseNotes": """Примечания к выпуску miu v1.0.48
+🔍 Точный поиск и замена по регулярным выражениям для многобайтовых символов и исправление курсора
 
-- Более быстрый ввод, прокрутка и работа с большими файлами:
-  Ускорены набор текста, перемещение курсора и прокрутка — даже большие файлы и длительные сессии редактирования работают максимально плавно.
-- Мгновенный поиск и «Заменить все»:
-  Поиск по тексту, регулярным выражениям и массовая замена тысяч совпадений теперь выполняются мгновенно.
-- Ускоренный предпросмотр Markdown, формул LaTeX и диаграмм Mermaid:
-  Оптимизирована отрисовка предпросмотра в реальном времени для длинных документов Markdown, математических формул и диаграмм.""",
+- Точная работа регулярных выражений с полноширинными и многоязычными символами:
+  Исправлена ошибка, из-за которой шаблон «.» и диапазоны символов в регулярных выражениях заменяли один символ UTF-8 несколько раз. Теперь символы японского, корейского, китайского, русского языков и эмодзи обрабатываются строго по одному символу.
+- Улучшено отображение курсора при прокрутке:
+  Курсор больше не отображается в начале верхней видимой строки, когда строка с курсором прокручена за пределы экрана.
+- Быстрое редактирование, мгновенная «Заменить все» и живой предпросмотр Markdown, LaTeX и Mermaid.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +311,14 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.47
-⚡ Notevole aumento di velocità per modifica, trova/sostituisci e anteprima dal vivo
+        "releaseNotes": """Note di rilascio di miu v1.0.48
+🔍 Ricerca e sostituzione Regex precise per caratteri multilingua e correzione del cursore
 
-- Digitazione, scorrimento e modifica di file grandi più veloci:
-  L’inserimento del testo, il movimento del cursore e lo scorrimento sono stati velocizzati per offrire la massima fluidità anche sui file più grandi.
-- Ricerca e «Sostituisci tutto» ultraveloci:
-  La ricerca per parola chiave o espressione regolare e la sostituzione simultanea di migliaia di occorrenze vengono ora completate all’istante.
-- Anteprima live più rapida per Markdown, LaTeX e Mermaid:
-  Rendering in tempo reale ancora più reattivo per lunghi documenti Markdown, formule LaTeX e diagrammi Mermaid.""",
+- Espressioni regolari precise per caratteri a larghezza intera e Unicode:
+  Risolto un problema per cui «.» o gli intervalli di caratteri nelle espressioni regolari sostituivano più volte un singolo carattere multi-byte (giapponese, coreano, cinese, caratteri accentati ed emoji).
+- Visualizzazione migliorata del cursore durante lo scorrimento:
+  Il cursore non appare più all’inizio della prima riga visibile quando la riga effettiva del cursore scorre fuori dallo schermo.
+- Modifica rapida, «Sostituisci tutto» istantaneo e anteprima live per Markdown, LaTeX e Mermaid.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +357,14 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.47
-⚡ Znaczące przyspieszenie edycji, wyszukiwania/zamiany oraz podglądu na żywo
+        "releaseNotes": """Informacje o wersji miu v1.0.48
+🔍 Precyzyjne wyrażenia regularne dla znaków wielobajtowych oraz poprawka wyświetlania kursora
 
-- Szybsze pisanie, przewijanie i edycja dużych plików:
-  Przyspieszono wprowadzanie tekstu, ruch kursora oraz przewijanie, dzięki czemu nawet duże pliki działają wyjątkowo płynnie.
-- Błyskawiczne wyszukiwanie i „Zamień wszystko”:
-  Wyszukiwanie słów kluczowych, wyrażeń regularnych oraz masowa zamiana tysięcy wystąpień wykonują się teraz natychmiastowo.
-- Szybszy podgląd na żywo dla Markdown, LaTeX i Mermaid:
-  Zoptymalizowano renderowanie długich dokumentów Markdown, wzorów LaTeX oraz diagramów Mermaid podczas pisania.""",
+- Dokładne dopasowywanie wyrażeń regularnych dla znaków pełnej szerokości i Unicode:
+  Naprawiono błąd, przez który wzorzec „.” lub zakresy znaków w wyrażeniach regularnych zamieniały pojedynczy znak wielobajtowy (japoński, koreański, chiński, polskie znaki diakrytyczne i emoji) wielokrotnie.
+- Poprawione wyświetlanie kursora podczas przewijania:
+  Kursor nie jest już wyświetlany na początku pierwszego widocznego wiersza, gdy wiersz z kursorem znajduje się poza ekranem.
+- Szybka edycja, błyskawiczne „Zamień wszystko” i podgląd na żywo dla Markdown, LaTeX oraz Mermaid.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +403,14 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.47
-⚡ Grote snelheidsverbeteringen voor bewerken, zoeken/vervangen en live-voorbeeld
+        "releaseNotes": """Releaseopmerkingen miu v1.0.48
+🔍 Nauwkeurige regex-zoek/vervangfunctie voor meertalige tekens en verbeterde cursorweergave
 
-- Sneller typen, scrollen en grote bestanden bewerken:
-  Tekstinvoer, cursorbeweging en scrollen zijn aanzienlijk versneld voor een vloeiende ervaring, zelfs in grote bestanden.
-- Razendsnel zoeken en ‘Alles vervangen’:
-  Zoekopdrachten, reguliere expressies en het in één keer vervangen van duizenden overeenkomsten worden nu direct uitgevoerd.
-- Sneller live-voorbeeld voor Markdown, LaTeX en Mermaid:
-  De weergave van lange Markdown-documenten, LaTeX-formules en Mermaid-diagrammen reageert nog sneller tijdens het typen.""",
+- Nauwkeurige reguliere expressies voor volledige-breedte- en Unicode-tekens:
+  Probleem opgelost waarbij ‘.’ of tekenbereiken in reguliere expressies één multi-byte UTF-8-teken meerdere keren vervingen (zoals Japans, Koreaans, Chinees, tekens met accenten en emoji’s).
+- Verbeterde cursorweergave tijdens scrollen:
+  De cursor wordt niet langer aan het begin van de bovenste zichtbare regel getoond wanneer de daadwerkelijke cursorregel buiten beeld is gescrold.
+- Snel bewerken, direct ‘Alles vervangen’ en vloeiende live-weergave voor Markdown, LaTeX en Mermaid.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +449,14 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.47 Sürüm Notları
-⚡ Düzenleme, Arama/Değiştirme ve Canlı Önizlemede Büyük Hız Artışı
+        "releaseNotes": """miu v1.0.48 Sürüm Notları
+🔍 Çok Dilli Karakterler İçin Hassas Regex Arama/Değiştirme ve Kaydırma İmleci Düzeltmesi
 
-- Daha Hızlı Yazma, Kaydırma ve Büyük Dosya Düzenleme:
-  Metin girişi, imleç hareketi ve kaydırma önemli ölçüde hızlandırıldı; büyük dosyalarda bile akıcı ve hızlı yanıt verir.
-- Ultra Hızlı Arama ve "Tümünü Değiştir":
-  Anahtar kelime araması, düzenli ifadeler (regex) ve binlerce eşleşmeyi kapsayan "Tümünü Değiştir" işlemleri artık anında tamamlanır.
-- Daha Hızlı Markdown, LaTeX ve Mermaid Canlı Önizlemesi:
-  Uzun Markdown belgeleri, LaTeX formülleri ve Mermaid diyagramları siz yazarken çok daha hızlı görüntülenir.""",
+- Tam Genişlikli ve Çok Dilli Karakterlerde Doğru Regex Eşleşmesi:
+  Düzenli ifadelerde (Regex) "." veya karakter aralıkları kullanıldığında tek bir UTF-8 karakterinin birden fazla kez değiştirilmesine neden olan sorun giderildi (Japonca, Korece, Çince, Türkçe karakterler ve emojiler).
+- Kaydırma Sırasında İmleç Görünümü İyileştirildi:
+  İmlecin bulunduğu satır ekran dışına kaydırıldığında en üstteki görünür satırın başında imleç görünmesi sorunu düzeltildi.
+- Hızlı düzenleme, anında "Tümünü Değiştir" ve akıcı Markdown, LaTeX ve Mermaid Canlı Önizlemesi.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +494,14 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.47
-⚡ Tăng tốc toàn diện cho chỉnh sửa văn bản, Tìm kiếm/Thay thế và Xem trước trực tiếp
+        "releaseNotes": """Ghi chú phát hành miu v1.0.48
+🔍 Cải thiện độ chính xác Tìm kiếm/Thay thế Regex đa ngôn ngữ & sửa hiển thị con trỏ khi cuộn
 
-- Gõ phím, cuộn trang và chỉnh sửa tệp lớn nhanh hơn:
-  Tăng tốc đáng kể thao tác nhập liệu, di chuyển con trỏ và cuộn trang, giúp chỉnh sửa mượt mà ngay cả với các tệp dung lượng lớn.
-- Tìm kiếm & "Thay thế tất cả" siêu tốc:
-  Tối ưu hóa tốc độ tìm kiếm từ khóa, biểu thức chính quy (regex) và "Thay thế tất cả" hàng nghìn vị trí chỉ trong chớp mắt.
-- Xem trước trực tiếp Markdown, LaTeX & Mermaid nhanh hơn:
-  Hiển thị thời gian thực các tài liệu Markdown dài, công thức LaTeX và sơ đồ Mermaid nhanh và mượt hơn khi đang gõ.""",
+- Khớp biểu thức chính quy (Regex) chính xác cho ký tự全角 và đa ngôn ngữ:
+  Đã khắc phục lỗi khi dùng "." hoặc phạm vi ký tự trong Regex khiến 1 ký tự UTF-8 nhiều byte (tiếng Việt, Nhật, Hàn, Trung và emoji) bị thay thế lặp lại nhiều lần.
+- Cải thiện hiển thị con trỏ khi cuộn trang:
+  Đã sửa lỗi con trỏ hiển thị ở đầu dòng đầu tiên đang thấy khi dòng chứa con trỏ thực tế đã cuộn ra ngoài màn hình.
+- Chỉnh sửa tốc độ cao, "Thay thế tất cả" tức thì và Xem trước trực tiếp Markdown, LaTeX, Mermaid mượt mà.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +540,14 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.47
-⚡ Значне прискорення редагування, пошуку із заміною та живого перегляду
+        "releaseNotes": """Примітки до випуску miu v1.0.48
+🔍 Точний пошук і заміна за регулярними виразами для багатобайтових символів і виправлення курсора
 
-- Швидше введення тексту, прокручування та робота з великими файлами:
-  Прискорено набір тексту, переміщення курсора та прокручування для максимально плавної роботи навіть із великими файлами.
-- Миттєвий пошук і «Замінити все»:
-  Пошук ключових слів, регулярних виразів і масова заміна тисяч збігів тепер виконуються миттєво.
-- Швидший живий перегляд Markdown, LaTeX і Mermaid:
-  Оптимізовано відображення довгих документів Markdown, формул LaTeX і діаграм Mermaid під час набору тексту.""",
+- Точна робота регулярних виразів із повноширинними та багатомовними символами:
+  Виправлено помилку, через яку шаблон «.» або діапазони символів у регулярних виразах замінювали один символ UTF-8 декілька разів (українські, японські, корейські, китайські символи та емодзі).
+- Покращено відображення курсора під час прокручування:
+  Курсор більше не з’являється на початку верхнього видимого рядка, коли рядок із курсором прокручено за межі екрана.
+- Швидке редагування, миттєва «Замінити все» та живий перегляд Markdown, LaTeX і Mermaid.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +586,14 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.47
-⚡ Peningkatan Kecepatan Besar pada Pengeditan, Cari/Ganti & Pratinjau Langsung
+        "releaseNotes": """Catatan Rilis miu v1.0.48
+🔍 Pencarian & Penggantian Regex Multibahasa yang Akurat serta Perbaikan Kursor Saat Menggulir
 
-- Pengetikan, Pengguliran & Pengeditan File Besar Lebih Cepat:
-  Mempercepat input teks, pergerakan kursor, dan pengguliran secara signifikan sehingga file berukuran besar sekalipun terasa sangat mulus dan responsif.
-- Pencarian & "Ganti Semua" Super Cepat:
-  Pencarian kata kunci, ekspresi reguler (regex), serta operasi "Ganti Semua" untuk ribuan kecocokan kini selesai secara instan.
-- Pratinjau Langsung Markdown, LaTeX & Mermaid Lebih Cepat:
-  Menampilkan dokumen Markdown panjang, rumus LaTeX, dan diagram Mermaid lebih cepat saat Anda mengetik.""",
+- Pencocokan Ekspresi Reguler (Regex) yang Akurat untuk Karakter Lebar Penuh & Unicode:
+  Memperbaiki masalah saat menggunakan "." atau rentang karakter dalam Regex yang sebelumnya mengganti satu karakter UTF-8 multibyte (Jepang, Korea, Mandarin, aksen, dan emoji) beberapa kali.
+- Tampilan Kursor Lebih Baik Saat Menggulir:
+  Memperbaiki masalah kursor yang muncul di awal baris teratas yang terlihat saat baris kursor sebenarnya digulir ke luar layar.
+- Pengeditan cepat, "Ganti Semua" instan, dan Pratinjau Langsung Markdown, LaTeX & Mermaid yang mulus.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +632,14 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.47
-⚡ Výrazné zrychlení úprav, vyhledávání/nahrazování a živého náhledu
+        "releaseNotes": """Poznámky k verzi miu v1.0.48
+🔍 Přesné vyhledávání a nahrazování regulárními výrazy pro vícejazyčné znaky a oprava kurzoru
 
-- Rychlejší psaní, posouvání a úpravy velkých souborů:
-  Zadávání textu, pohyb kurzoru a posouvání byly výrazně zrychleny pro maximálně plynulou práci i s velkými soubory.
-- Bleskové vyhledávání a „Nahradit vše“:
-  Vyhledávání textu, regulárních výrazů i hromadné nahrazení tisíců výskytů nyní proběhne okamžitě.
-- Rychlejší živý náhled pro Markdown, LaTeX a Mermaid:
-  Zrychlené vykreslování dlouhých dokumentů Markdown, vzorců LaTeX a diagramů Mermaid v reálném čase.""",
+- Přesné regulární výrazy pro znaky s plnou šířkou a Unicode:
+  Opraven problém, kdy vzor „.“ nebo rozsahy znaků v regulárních výrazech nahrazovaly jeden vícebajtový znak UTF-8 (české znaky s diakritikou, japonština, korejština, čínština a emoji) vícekrát.
+- Vylepšené zobrazení kurzoru při posouvání:
+  Kurzor se již nezobrazuje na začátku prvního viditelného řádku, pokud je řádek s kurzorem posunut mimo obrazovku.
+- Rychlé úpravy, okamžité „Nahradit vše“ a plynulý živý náhled pro Markdown, LaTeX a Mermaid.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +678,14 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.47
-⚡ Stora hastighetsförbättringar för redigering, Sök/Ersätt och live-förhandsgranskning
+        "releaseNotes": """Versionsinformation för miu v1.0.48
+🔍 Exakt Regex-sökning/ersättning för flerspråkiga tecken samt förbättrad markörvisning vid rullning
 
-- Snabbare skrivning, rullning och redigering av stora filer:
-  Textinmatning, markörförflyttning och rullning har snabbats upp rejält så att även stora filer känns följsamma och snabba.
-- Blixtsnabb sökning och ”Ersätt alla”:
-  Sökning med sökord eller reguljära uttryck samt ”Ersätt alla” för tusentals träffar slutförs nu omedelbart.
-- Snabbare live-förhandsgranskning för Markdown, LaTeX och Mermaid:
-  Långa Markdown-dokument, LaTeX-formler och Mermaid-diagram ritas upp ännu snabbare medan du skriver.""",
+- Exakta reguljära uttryck för helbredds- och Unicode-tecken:
+  Åtgärdade ett problem där ”.” eller teckenintervall i reguljära uttryck ersatte ett enskilt flerbytes UTF-8-tecken (japanska, koreanska, kinesiska, å/ä/ö och emojis) flera gånger.
+- Förbättrad markörvisning vid rullning:
+  Markören visas inte längre i början av den översta synliga raden när den faktiska markörraden har rullats utanför skärmen.
+- Snabb redigering, omedelbar ”Ersätt alla” och smidig live-förhandsgranskning för Markdown, LaTeX och Mermaid.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +724,14 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.47
-⚡ เพิ่มความเร็วครั้งใหญ่ทั้งการแก้ไขข้อความ การค้นหา/แทนที่ และโหมดพรีวิวสด
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.48
+🔍 ปรับปรุงความแม่นยำการค้นหา/แทนที่ด้วย Regex สำหรับอักขระหลายภาษา และแก้ไขการแสดงเคอร์เซอร์ขณะเลื่อนหน้าจอ
 
-- พิมพ์ เลื่อนหน้าจอ และแก้ไขไฟล์ขนาดใหญ่ได้เร็วขึ้น:
-  เร่งความเร็วการพิมพ์ การเลื่อนเคอร์เซอร์ และการเลื่อนหน้าจอให้ลื่นไหลและตอบสนองทันใจแม้เปิดไฟล์ขนาดใหญ่
-- ค้นหาและ "แทนที่ทั้งหมด" เร็วทันใจ:
-  ค้นหาคำสำคัญนิพจน์ทั่วไป (Regex) และสั่ง "แทนที่ทั้งหมด" นับพันรายการได้เสร็จสิ้นในพริบตา
-- พรีวิวสด Markdown, สมการ LaTeX และแผนภาพ Mermaid เร็วขึ้น:
-  แสดงผลเอกสาร Markdown ขนาดยาว สมการ LaTeX และแผนภาพ Mermaid ได้รวดเร็วขึ้นขณะพิมพ์""",
+- จับคู่และแทนที่ด้วยนิพจน์ทั่วไป (Regex) อย่างแม่นยำทุกภาษา:
+  แก้ไขปัญหาการใช้ "." หรือช่วงอักขระใน Regex ที่เคยแปลงอักขระ UTF-8 แบบหลายไบต์ (ภาษาไทย ญี่ปุ่น เกาหลี จีน และอิโมจิ) ซ้ำหลายครั้งต่อ 1 ตัวอักษร ให้แทนที่ทีละ 1 ตัวอักษรอย่างถูกต้อง
+- ปรับปรุงการแสดงเคอร์เซอร์เมื่อเลื่อนหน้าจอ:
+  แก้ไขปัญหาเคอร์เซอร์ไปแสดงที่ต้นบรรทัดแรกของหน้าจอเมื่อเลื่อนบรรทัดที่มีเคอร์เซอร์จริงออกไปนอกหน้าจอ
+- แก้ไขข้อความรวดเร็ว "แทนที่ทั้งหมด" ทันใจ พร้อมพรีวิวสด Markdown, LaTeX และ Mermaid""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +770,14 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.47 रिलीज़ नोट्स
-⚡ संपादन, खोजें/बदलें और लाइव प्रीव्यू की गति में बड़ा सुधार
+        "releaseNotes": """miu v1.0.48 रिलीज़ नोट्स
+🔍 बहुभाषी अक्षरों के लिए सटीक रेगेक्स (Regex) खोज/बदलाव और स्क्रॉल करते समय कर्सर सुधार
 
-- तेज़ टाइपिंग, स्क्रॉलिंग और बड़ी फ़ाइलों का संपादन:
-  टेक्स्ट इनपुट, कर्सर मूवमेंट और स्क्रॉलिंग को काफी तेज़ किया गया है ताकि बड़ी फ़ाइलों में भी काम करना बेहद सहज और तेज़ रहे।
-- अल्ट्रा-फ़ास्ट खोज और "सभी बदलें" (Replace All):
-  कीवर्ड खोज, रेगेक्स (Regex) मिलान और हज़ारों स्थानों पर एक साथ "सभी बदलें" अब पलक झपकते ही पूरा हो जाता है।
-- तेज़ Markdown, LaTeX और Mermaid लाइव प्रीव्यू:
-  लंबे Markdown दस्तावेज़ों, LaTeX सूत्रों और Mermaid आरेखों का लाइव प्रीव्यू टाइप करते समय और भी तेज़ी से अपडेट होता है।""",
+- पूर्ण-चौड़ाई और बहुभाषी यूनिकोड अक्षरों के लिए सटीक रेगेक्स मिलान:
+  रेगेक्स में "." या अक्षर श्रेणियों का उपयोग करने पर एक मल्टी-बाइट अक्षर (हिंदी, जापानी, कोरियाई, चीनी और इमोजी) के कई बार बदलने की समस्या को ठीक किया गया है।
+- स्क्रॉल करते समय कर्सर दृश्यता में सुधार:
+  कर्सर वाली पंक्ति के स्क्रीन से बाहर स्क्रॉल होने पर सबसे ऊपर दिखने वाली पंक्ति की शुरुआत में कर्सर दिखने की समस्या को ठीक किया गया है।
+- तेज़ संपादन, तुरंत "सभी बदलें" और सहज Markdown, LaTeX व Mermaid लाइव प्रीव्यू।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +816,14 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.47
-⚡ Creștere majoră a vitezei pentru editare, Căutare/Înlocuire și previzualizare live
+        "releaseNotes": """Note de lansare miu v1.0.48
+🔍 Căutare și înlocuire Regex precise pentru caractere multilingve și afișare îmbunătățită a cursorului
 
-- Tastare, derulare și editare mai rapidă a fișierelor mari:
-  Introducerea textului, mișcarea cursorului și derularea au fost accelerate semnificativ pentru o experiență fluidă chiar și în fișierele mari.
-- Căutare și „Înlocuiește tot” ultra-rapide:
-  Căutarea cuvintelor cheie, expresiilor regulate și înlocuirea în masă a mii de apariții se finalizează acum instantaneu.
-- Previzualizare live mai rapidă pentru Markdown, LaTeX și Mermaid:
-  Redarea în timp real a documentelor Markdown lungi, formulelor LaTeX și diagramelor Mermaid este și mai rapidă în timp ce tastați.""",
+- Expresii regulate precise pentru caractere Unicode și cu lățime completă:
+  S-a rezolvat o problemă prin care „.” sau intervalele de caractere din expresiile regulate înlocuiau de mai multe ori un singur caracter UTF-8 multi-byte (diacritice românești, japoneză, coreeană, chineză și emoji).
+- Afișare îmbunătățită a cursorului la derulare:
+  Cursorul nu mai este afișat la începutul primei linii vizibile atunci când linia reală a cursorului este derulată în afara ecranului.
+- Editare rapidă, „Înlocuiește tot” instantaneu și previzualizare live pentru Markdown, LaTeX și Mermaid.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +862,14 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.47 kiadási megjegyzések
-⚡ Jelentős sebességnövekedés a szerkesztés, a Keresés/Csere és az élő előnézet terén
+        "releaseNotes": """miu v1.0.48 kiadási megjegyzések
+🔍 Pontos többnyelvű Regex keresés/csere és javított kurzormegjelenítés görgetéskor
 
-- Gyorsabb gépelés, görgetés és nagy fájlok szerkesztése:
-  A szövegbevitel, a kurzormozgatás és a görgetés sokkal gyorsabb lett, így a nagy fájlok szerkesztése is rendkívül folyamatos.
-- Villámgyors keresés és „Összes cseréje”:
-  A kulcsszavas és reguláris kifejezéses keresés, valamint több ezer találat egyidejű cseréje mostantól pillanatok alatt elkészül.
-- Gyorsabb Markdown, LaTeX és Mermaid élő előnézet:
-  A hosszú Markdown-dokumentumok, LaTeX-képletek és Mermaid-diagramok valós idejű megjelenítése még gyorsabb gépelés közben.""",
+- Pontos reguláris kifejezések teljes szélességű és Unicode karakterekhez:
+  Javítottuk azt a hibát, amelynél a „.” vagy a karaktertartományok használata többször cserélt le egyetlen többbájtos UTF-8 karaktert (magyar ékezetes betűk, japán, koreai, kínai karakterek és emojik).
+- Javított kurzormegjelenítés görgetés közben:
+  A kurzor többé nem jelenik meg a legfelső látható sor elején, amikor a tényleges kurzorsor a képernyőn kívülre kerül.
+- Gyors szerkesztés, azonnali „Összes cseréje” és folyamatos Markdown, LaTeX és Mermaid élő előnézet.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +908,14 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.47
-⚡ Μεγάλη αύξηση ταχύτητας στην επεξεργασία, την Εύρεση/Αντικατάσταση και τη Ζωντανή Προεπισκόπηση
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.48
+🔍 Ακριβής αναζήτηση/αντικατάσταση Regex για πολυγλωσσικούς χαρακτήρες & διόρθωση δρομέα
 
-- Ταχύτερη πληκτρολόγηση, κύλιση και επεξεργασία μεγάλων αρχείων:
-  Η εισαγωγή κειμένου, η κίνηση του δρομέα και η κύλιση επιταχύνθηκαν σημαντικά ώστε ακόμη και τα μεγάλα αρχεία να αποκρίνονται άμεσα.
-- Εξαιρετικά γρήγορη αναζήτηση και «Αντικατάσταση όλων»:
-  Η αναζήτηση λέξεων-κλειδιών, εκφράσεων regex και η μαζική αντικατάσταση χιλιάδων αποτελεσμάτων ολοκληρώνονται πλέον ακαριαία.
-- Ταχύτερη Ζωντανή Προεπισκόπηση για Markdown, LaTeX και Mermaid:
-  Η απόδοση μεγάλων εγγράφων Markdown, εξισώσεων LaTeX και διαγραμμάτων Mermaid ενημερώνεται ακόμη πιο γρήγορα καθώς πληκτρολογείτε.""",
+- Ακριβείς κανονικές εκφράσεις (Regex) για χαρακτήρες πλήρους πλάτους και Unicode:
+  Διορθώθηκε ένα ζήτημα όπου το «.» ή τα εύρη χαρακτήρων σε εκφράσεις regex αντικαθιστούσαν πολλαπλές φορές έναν χαρακτήρα UTF-8 (ελληνικά, ιαπωνικά, κορεατικά, κινεζικά και emoji).
+- Βελτιωμένη εμφάνιση δρομέα κατά την κύλιση:
+  Ο δρομέας δεν εμφανίζεται πλέον στην αρχή της πρώτης ορατής γραμμής όταν η πραγματική γραμμή του δρομέα βρίσκεται εκτός οθόνης.
+- Γρήγορη επεξεργασία, ακαριαία «Αντικατάσταση όλων» και ζωντανή προεπισκόπηση Markdown, LaTeX & Mermaid.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +954,14 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter til miu v1.0.47
-⚡ Markant højere hastighed ved redigering, Søg/Erstat og live-forhåndsvisning
+        "releaseNotes": """Udgivelsesnoter til miu v1.0.48
+🔍 Præcis Regex-søgning/erstatning for flersprogede tegn og forbedret markørvisning ved rulning
 
-- Hurtigere indtastning, rulning og redigering af store filer:
-  Tekstindtastning, markørbevægelse og rulning er optimeret, så selv store filer føles hurtige og flydende.
-- Lynhurtig søgning og "Erstat alle":
-  Søgning med søgeord eller regulære udtryk samt "Erstat alle" på tværs af tusindvis af forekomster udføres nu øjeblikkeligt.
-- Hurtigere live-forhåndsvisning af Markdown, LaTeX og Mermaid:
-  Lange Markdown-dokumenter, LaTeX-formler og Mermaid-diagrammer opdateres endnu hurtigere, mens du skriver.""",
+- Præcise regulære udtryk for fuldbredde- og Unicode-tegn:
+  Rettet en fejl, hvor "." eller tegnintervaller i regulære udtryk erstattede et enkelt multi-byte UTF-8-tegn (japansk, koreansk, kinesisk, æ/ø/å og emojis) flere gange.
+- Forbedret markørvisning under rulning:
+  Markøren vises ikke længere i starten af den øverste synlige linje, når den faktiske markørlinje er rullet ud af skærmen.
+- Hurtig redigering, øjeblikkelig "Erstat alle" og flydende live-forhåndsvisning af Markdown, LaTeX og Mermaid.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +1000,14 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.47 -julkaisutiedot
-⚡ Merkittävästi nopeampi muokkaus, Etsi/Korvaa ja reaaliaikainen esikatselu
+        "releaseNotes": """miu v1.0.48 -julkaisutiedot
+🔍 Tarkka monikielinen Regex-haku/korvaus ja kohdistimen näytön korjaus vieritettäessä
 
-- Nopeampi kirjoitus, vieritys ja suurten tiedostojen muokkaus:
-  Tekstinsyöttöä, kohdistimen liikettä ja vieritystä on nopeutettu huomattavasti, jotta suuretkin tiedostot toimivat sulavasti.
-- Salamannopea haku ja ”Korvaa kaikki”:
-  Avainsana- ja regex-haku sekä tuhansien osumien ”Korvaa kaikki” -toiminto valmistuvat nyt välittömästi.
-- Nopeampi Markdown-, LaTeX- ja Mermaid-esikatselu:
-  Pitkien Markdown-asiakirjojen, LaTeX-kaavojen ja Mermaid-kaavioiden reaaliaikainen esikatselu päivittyy entistä nopeammin kirjoittaessasi.""",
+- Tarkat säännölliset lausekkeet täyden leveyden ja Unicode-merkeille:
+  Korjattu ongelma, jossa ”.” tai merkkivälit säännöllisissä lausekkeissa korvasivat yhden monimuotoisen UTF-8-merkin (suomen ä/ö, japani, korea, kiina ja emojit) useaan kertaan.
+- Parannettu kohdistimen näkyvyys vierityksen aikana:
+  Kohdistinta ei enää näytetä ylimmän näkyvän rivin alussa, kun varsinainen kohdistinrivi on vieritetty näytön ulkopuolelle.
+- Nopea muokkaus, välitön ”Korvaa kaikki” ja sulava Markdown-, LaTeX- ja Mermaid-esikatselu.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1046,14 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.47
-⚡ Betydelig høyere hastighet for redigering, Søk/Erstatt og sanntidsvisning
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.48
+🔍 Presis Regex-søk/erstatt for flerspråklige tegn og forbedret markørvisning ved rulling
 
-- Raskere skriving, rulling og redigering av store filer:
-  Tekstinnlasting, markørbevegelse og rulling er kraftig akselerert slik at selv store filer oppleves raske og jevne.
-- Lynraskt søk og «Erstatt alle»:
-  Nøkkelordsøk, regulære uttrykk og «Erstatt alle» for tusenvis av treff fullføres nå umiddelbart.
-- Raskere sanntidsvisning for Markdown, LaTeX og Mermaid:
-  Lange Markdown-dokumenter, LaTeX-formler og Mermaid-diagrammer oppdateres enda raskere mens du skriver.""",
+- Presise regulære uttrykk for fullbredde- og Unicode-tegn:
+  Rettet en feil der «.» eller tegnintervaller i regulære uttrykk erstattet et enkelt flerbytes UTF-8-tegn (japansk, koreansk, kinesisk, æ/ø/å og emojier) flere ganger.
+- Forbedret markørvisning ved rulling:
+  Markøren vises ikke lenger i starten av den øverste synlige linjen når den faktiske markørlinjen er rullet utenfor skjermen.
+- Rask redigering, umiddelbar «Erstatt alle» og jevn sanntidsvisning for Markdown, LaTeX og Mermaid.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1092,14 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.47
-⚡ Peningkatan Kelajuan Besar untuk Penyuntingan, Cari/Ganti & Pratonton Langsung
+        "releaseNotes": """Nota Keluaran miu v1.0.48
+🔍 Carian & Penggantian Regex Berbilang Bahasa yang Tepat serta Pembaikan Kursor Semasa Menatal
 
-- Penaipan, Penatalan & Penyuntingan Fail Besar Lebih Pantas:
-  Input teks, pergerakan kursor dan penatalan dipercepatkan dengan ketara supaya fail besar sekalipun kekal lancar dan responsif.
-- Carian & "Ganti Semua" Ultra-Pantas:
-  Carian kata kunci, ungkapan biasa (regex) dan operasi "Ganti Semua" untuk ribuan padanan kini selesai serta-merta.
-- Pratonton Langsung Markdown, LaTeX & Mermaid Lebih Pantas:
-  Dokumen Markdown yang panjang, formula LaTeX dan rajah Mermaid dipaparkan dengan lebih pantas semasa anda menaip.""",
+- Padanan Ungkapan Biasa (Regex) yang Tepat untuk Aksara Lebar Penuh & Unicode:
+  Memperbaiki masalah apabila menggunakan "." atau julat aksara dalam Regex yang sebelum ini menggantikan satu aksara UTF-8 berbilang bait (Jepun, Korea, Cina, aksara beraksen dan emoji) beberapa kali.
+- Paparan Kursor Lebih Baik Semasa Menatal:
+  Memperbaiki masalah kursor yang muncul pada permulaan baris teratas yang kelihatan apabila baris kursor sebenar ditatal keluar dari skrin.
+- Penyuntingan pantas, "Ganti Semua" serta-merta dan Pratonton Langsung Markdown, LaTeX & Mermaid yang lancar.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",
