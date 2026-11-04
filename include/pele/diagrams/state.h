@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../svg.h"
 #include "../layout.h"
 #include "../common_parse.h"
@@ -5205,16 +5205,6 @@ inline bool isVertical(const std::string& dir) {
     return dir == "TB" || dir == "BT";
 }
 
-inline double numberOption(const Config& config, const std::string& key, double fallback) {
-    const YamlValue* st = config.get("state");
-    if (!st || !st->isMap()) return fallback;
-    const YamlValue* v = st->get(key);
-    if (v && v->isNumber() && v->nVal > 0.0) {
-        return std::min(v->nVal, 2000.0);
-    }
-    return fallback;
-}
-
 inline std::string unquote(const std::string& text) {
     size_t from = 0;
     size_t to = text.size();
@@ -5298,7 +5288,7 @@ inline Rendered draw(const StateDb& db, const Config& config, const RenderOption
     double size = options.fontSize > 0.0 ? options.fontSize : 16.0;
     double small = std::round(size * 0.875);
     const TextMeasurer& measurer = getMeasurer(options);
-    double wrapWidth = numberOption(config, "wrappingWidth", 200.0);
+    double wrapWidth = numberOption(config, "state", "wrappingWidth", 200.0);
     double pad = options.hasPadding ? options.padding : 8.0;
     const auto& icons = options.icons;
     std::string rootDir = turned ? "TB" : direction(db.direction());
@@ -5593,9 +5583,9 @@ inline Rendered draw(const StateDb& db, const Config& config, const RenderOption
     }
 
     LayeredOptions lopt;
-    lopt.nodeSep = numberOption(config, "nodeSpacing", NODE_SEP);
+    lopt.nodeSep = numberOption(config, "state", "nodeSpacing", NODE_SEP);
     lopt.edgeSep = EDGE_SEP;
-    lopt.rankSep = numberOption(config, "rankSpacing", RANK_SEP);
+    lopt.rankSep = numberOption(config, "state", "rankSpacing", RANK_SEP);
     lopt.portSep = 20.0;
     lopt.tracks = (curve == "step" || curve == "stepBefore" || curve == "stepAfter");
     lopt.straight = (curve == "linear");

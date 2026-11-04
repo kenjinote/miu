@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "../foundation.h"
 #include <algorithm>
@@ -648,34 +648,6 @@ inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std
   if (ast.accTitle.has_value()) model.accTitle = *ast.accTitle;
   if (ast.accDescr.has_value()) model.accDescr = *ast.accDescr;
   return model;
-}
-
-inline bool isBrTagAt(const std::string& s, size_t pos) {
-  size_t i = pos + 1;
-  if (i + 1 >= s.size()) return false;
-  char c1 = s[i];
-  char c2 = s[i + 1];
-  if ((c1 != 'b' && c1 != 'B') || (c2 != 'r' && c2 != 'R')) return false;
-  i += 2;
-  while (i < s.size() && (s[i] == ' ' || s[i] == '\t' || s[i] == '\r' || s[i] == '\n')) i++;
-  if (i < s.size() && s[i] == '/') i++;
-  return i < s.size() && s[i] == '>';
-}
-
-inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
-  std::string text;
-  text.reserve(raw.size());
-  for (size_t i = 0; i < raw.size(); ++i) {
-    if (raw[i] == '<' && !isBrTagAt(raw, i)) {
-      text += "&lt;";
-    } else if (raw[i] == ':' && i + 4 <= raw.size() && raw.compare(i, 4, ":fa-") == 0) {
-      text += "&colon;fa-";
-      i += 3;
-    } else {
-      text.push_back(raw[i]);
-    }
-  }
-  return layoutLabel(text, false, measurer, size, max, base);
 }
 
 inline bool flagOpt(const Config& config, const std::string& key, bool fallback) {

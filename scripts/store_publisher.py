@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.47": {
+        "ja-jp": """miu v1.0.47 リリースノート
+⚡ 編集・スクロール・検索置換・リアルタイムプレビューの全面的な高速化
+
+・文字入力・スクロール・大容量ファイル編集の高速化:
+  大きなファイルや長時間の編集作業でも、文字入力・カーソル移動・スクロールがこれまで以上に軽快でなめらかに動作するよう高速化しました。
+・検索・一括置換（すべて置換）の劇的な高速化:
+  ファイル内のキーワード検索や正規表現検索、および数千〜数万箇所におよぶ「すべて置換」の処理速度を大幅に向上させ、大きな文書でも瞬時に完了するようになりました。
+・Markdown / LaTeX数式 / Mermaid図表 プレビューの高速化:
+  リアルタイムプレビューの変換・描画処理を高速化し、長文ドキュメントや図表・数式も待たされることなく快適に確認できるよう改善しました。""",
+
+        "en-us": """miu v1.0.47 Release Notes
+⚡ Major Speed & Responsiveness Improvements Across Editing, Search & Live Preview
+
+- Faster Typing, Scrolling & Large File Editing:
+  Significantly accelerated text editing, cursor movement, and scrolling so even large files and long editing sessions feel effortlessly smooth and responsive.
+- Ultra-Fast Search & Replace All:
+  Dramatically boosted keyword search, regular expression matching, and bulk "Replace All" operations—replacing thousands of matches across large documents now completes instantaneously.
+- Faster Markdown, LaTeX Math & Mermaid Live Preview:
+  Optimized the Live Preview rendering pipeline so long Markdown documents, complex LaTeX equations, and Mermaid diagrams update faster than ever while you type.""",
+
+        "zh-hans": """miu v1.0.47 更新日志
+⚡ 全面提升文字编辑、查找替换与实时预览的运行速度
+
+- 大幅提升输入、滚动与大文件编辑速度：
+  深度优化了文本处理速度，即使是超大文件或长时间连续编辑，打字输入、光标移动与页面滚动都更加轻快流畅。
+- 查找与“全部替换”速度大幅飞跃：
+  显著加速了关键词查找、正则表达式匹配以及大批量“全部替换”的处理速度，成千上万处替换也能瞬间完成。
+- Markdown / LaTeX 数学公式 / Mermaid 图表实时预览提速：
+  优化了实时预览的转换与渲染速度，在编写长篇文档或复杂图表公式时预览响应更加迅速。""",
+
+        "ko": """miu v1.0.47 릴리스 노트
+⚡ 텍스트 편집·스크롤·검색 및 바꾸기·실시간 미리보기 속도 대폭 향상
+
+- 문자 입력·스크롤 및 대용량 파일 편집 고속화:
+  대용량 파일이나 장시간 편집 작업에서도 타이핑, 커서 이동, 스크롤이 그 어느 때보다 가볍고 부드럽게 반응하도록 속도를 높였습니다.
+- 검색 및 '모두 바꾸기' 속도 비약적 향상:
+  키워드 검색, 정규식 검색 및 수천~수만 건에 달하는 '모두 바꾸기' 처리 속도를 대폭 단축하여 큰 문서에서도 즉시 완료됩니다.
+- Markdown / LaTeX 수식 / Mermaid 다이어그램 실시간 미리보기 고속화:
+  실시간 미리보기 변환 및 렌더링 속도를 개선하여 긴 문서나 복잡한 수식·다이어그램도 지연 없이 쾌적하게 확인할 수 있습니다."""
+    },
     "1.0.46": {
         "ja-jp": """miu v1.0.46 リリースノート
 🇯🇵 検索・置換ダイアログの日本語 IME 入力位置修正 ＆ 文字コード・改行コード（CR / CRLF / LF）完全対応

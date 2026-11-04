@@ -56,11 +56,10 @@ AR_DESC = """miu هو محرر نصوص وأكواد بسيط وخفيف، مص�
 • خصوصية تامة
 بدون إعلانات، وبدون تتبع، وبدون جمع بيانات. جميع الميزات تعمل بنسبة 100% دون اتصال بالإنترنت على جهازك."""
 
-AR_WHATS_NEW = """شكراً لاستخدامك miu. يتضمن هذا التحديث الميزات والتحسينات التالية:
-• دعم 49 فئة من لغات تمييز الصياغة البرمجية (أكثر من 120 امتداد ملف) وتوسيع اختصارات Emmet.
-• معاينة مباشرة منقسمة لمستندات Markdown وHTML وSVG ومخططات Mermaid ومعادلات LaTeX (تقسيم علوي/سفلي في الوضع العمودي ويمين/يسار في الوضع الأفقي).
-• دعم التكبير والتصغير بالإصبعين (Pinch Zoom) في شاشة المعاينة وتوحيد شكل شريط التمرير مع المحرر.
-• تحسين محاذاة أرقام الأسطر ودعم المؤشرات المتعددة والكشف التلقائي عن الترميز."""
+AR_WHATS_NEW = """شكراً لاستخدامك miu. يقدم الإصدار 1.0.47 تحسينات كبيرة في السرعة وسلاسة الأداء:
+• كتابة وتمرير وتحرير أسرع للملفات الكبيرة: تسريع إدخال النص وحركة المؤشر والتمرير ليبقى الأداء سلساً وسريع الاستجابة حتى مع الملفات الكبيرة.
+• بحث و«استبدال الكل» فائق السرعة: تسريع البحث عن الكلمات والتعبيرات النمطية (Regex) واستبدال آلاف النتائج دفعة واحدة في لحظة.
+• معاينة مباشرة أسرع لـ Markdown ومعادلات LaTeX ومخططات Mermaid أثناء الكتابة."""
 
 HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנועד להפוך כל משימה – מרישום הערות יומיות מהירות ועד כתיבת מסמכי Markdown ותכנות – לנוחה ונעימה.
 
@@ -86,11 +85,10 @@ HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנוע
 • פרטיות מלאה
 ללא פרסומות, ללא מעקב וללא איסוף נתונים. הכל פועל 100% אופליין במכשיר שלכם."""
 
-HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. עדכון זה כולל:
-• תמיכה ב-49 קטגוריות של הדגשת תחביר (מעל 120 סיומות קבצים) והרחבת קיצורי Emmet.
-• תצוגה מקדימה חיה במסך מפוצל עבור Markdown, HTML, SVG, דיאגרמות Mermaid ונוסחאות LaTeX (פיצול עליון/תחתון במצב אנכי ושמאל/ימין במצב אופקי).
-• תמיכה בזום בצביטה (Pinch Zoom) בחלון התצוגה המקדימה ואיחוד עיצוב פס הגלילה עם העורך.
-• שיפור יישור מספרי שורות, עריכה מרובת סמנים וזיהוי קידוד אוטומטי."""
+HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.47 מביאה שיפורי מהירות משמעותיים בעריכה, בחיפוש ובתצוגה המקדימה:
+• הקלדה, גלילה ועריכת קבצים גדולים מהירות יותר: האצת הזנת הטקסט, תנועת הסמן והגלילה לעבודה חלקה ומהירה גם בקבצים גדולים.
+• חיפוש ו"החלף הכל" מהירים במיוחד: האצה דרמטית של חיפוש מילות מפתח, ביטויים רגולריים (Regex) והחלפה מרובה של אלפי תוצאות ברגע.
+• תצוגה מקדימה חיה מהירה יותר עבור Markdown, נוסחאות LaTeX ודיאגרמות Mermaid בזמן ההקלדה."""
 
 SK_DESC = """miu je jednoduchý a ľahký textový a kódový editor, s ktorým je písanie každodenných poznámok, textov v Markdowne aj programovanie pohodlné a príjemné.
 
@@ -116,10 +114,10 @@ Hľadanie a nahrádzanie (s regulárnymi výrazmi), viac kurzorov, čísla riadk
 • Súkromie na prvom mieste
 Žiadne reklamy, žiadne sledovanie a žiadny zber dát. Všetko funguje 100 % offline priamo vo vašom zariadení."""
 
-SK_WHATS_NEW = """Ďakujeme, že používate miu.
-• Zvýrazňovanie syntaxe pre 49 kategórií (120+ prípon), Emmet, viac kurzorov a automatické rozpoznanie kódovania.
-• Živý náhľad na rozdelenej obrazovke pre Markdown, HTML, SVG, 33 typov diagramov Mermaid a vzorce LaTeX offline (hore/dole na výšku, vľavo/vpravo na šírku).
-• Priblíženie gestom pinch-to-zoom v náhľade a zjednotený posuvník s editorom."""
+SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.47 prináša výrazné zrýchlenie:
+• Rýchlejšie písanie, posúvanie a veľké súbory: zrýchlené zadávanie textu, pohyb kurzora a posúvanie pre plynulú prácu aj s veľkými súbormi.
+• Bleskové vyhľadávanie a „Nahradiť všetko“: rýchlejšie vyhľadávanie kľúčových slov i regulárnych výrazov a okamžité nahradenie tisícok výskytov.
+• Rýchlejší živý náhľad pre Markdown, vzorce LaTeX a diagramy Mermaid počas písania."""
 
 # ============================================================================
 # Short Descriptions (Strictly <= 80 characters for Google Play)
@@ -212,154 +210,149 @@ def adapt_desc_for_android(text: str) -> str:
     return out
 
 
-# Localized Android Release Notes for v1.0.45 (versionCode 47), strictly <= 500 chars each
+# Localized Android Release Notes for v1.0.47 (versionCode 54), strictly <= 500 chars each
 ANDROID_RELEASE_NOTES = {
-    "ja-JP": """いつも miu をご利用いただきありがとうございます。
-・49言語カテゴリのシンタックスハイライト、Emmet展開、マルチカーソル・矩形選択、文字コード自動判別に対応しました。
-・Markdown / HTML / SVG / 33種Mermaid図表 / LaTeX数式の分割ライブプレビューを搭載しました（縦画面では上下分割、横画面では左右分割に自動対応）。
-・プレビュー画面でのピンチイン・ピンチアウトによる拡大縮小に対応し、スクロールバーの表示をエディタと統一しました。
-・ヘルプ表示時のキーボード自動収納やタップで閉じる操作など、使い勝手を改善しました。""",
+    "ja-JP": """いつも miu をご利用いただきありがとうございます。v1.0.47 では全体の動作速度を大幅に向上しました。
+・文字入力・スクロール・大容量ファイル編集の高速化：大きなファイルや長時間の編集でも、入力・カーソル移動・スクロールがいっそう軽快でなめらかに反応します。
+・検索・「すべて置換」の劇的な高速化：キーワード検索・正規表現検索および数千〜数万件の一括置換を大幅に高速化し、待ち時間なく瞬時に完了します。
+・Markdown / LaTeX数式 / Mermaid図表の分割ライブプレビュー描画を高速化しました。""",
 
-    "en-US": """Thank you for using miu.
-• Added syntax highlighting for 49 language categories (120+ extensions), Emmet expansion, multi-cursor & rectangular selection, and 40+ encoding auto-detection.
-• Added split-screen Live Preview for Markdown, HTML, SVG, 33 Mermaid diagram types, and offline LaTeX math (top/bottom split in portrait, left/right in landscape).
-• Added pinch-to-zoom in the Live Preview pane and unified the preview scrollbar with the editor.
-• Improved help overlay & keyboard handling.""",
+    "en-US": """Thank you for using miu. Version 1.0.47 brings major speed improvements across the app:
+• Faster Typing, Scrolling & Large-File Editing: Accelerated text input, cursor movement, and scrolling for smooth responsiveness even in large files.
+• Ultra-Fast Find & "Replace All": Dramatically faster keyword search, regex matching, and bulk "Replace All" across thousands of matches.
+• Faster Live Preview: Improved real-time rendering speed for Markdown, LaTeX math, and Mermaid diagrams.""",
 
-    "zh-CN": """感谢您使用 miu。
-・支持 49 大类（120+ 扩展名）语法高亮、Emmet 缩写展开、多光标与矩形块选择，以及 40+ 字符编码自动识别。
-・新增 Markdown、HTML、SVG、33 种 Mermaid 图表与离线 LaTeX 数学公式的分屏实时预览（竖屏上下分屏、横屏左右分屏）。
-・支持在预览窗口中双指捏合缩放，并将预览滚动条样式与编辑器统一。
-・优化了帮助弹窗自动收起软键盘及点击关闭等交互细节。""",
+    "zh-CN": """感谢您使用 miu。v1.0.47 全面提升了编辑、查找替换与实时预览的速度：
+・大幅提升输入、滚动与大文件编辑速度：深度优化文本处理性能，即使面对超大文件或长时间编辑，打字输入、光标移动与滚动都更加轻快流畅。
+・查找与“全部替换”速度大幅跃升：显著加速关键词查找、正则表达式匹配及成千上万处大批量“全部替换”，瞬间即可完成。
+・Markdown、LaTeX 数学公式与 Mermaid 图表分屏实时预览渲染更加迅速。""",
 
-    "zh-TW": """感謝您使用 miu。
-・支援 49 大類（120+ 副檔名）語法突顯、Emmet 縮寫展開、多游標與矩形區塊選取，以及 40+ 字元編碼自動辨識。
-・新增 Markdown、HTML、SVG、33 種 Mermaid 圖表與離線 LaTeX 數學公式的分割畫面即時預覽（直向時上下分割、橫向時左右分割）。
-・支援於預覽視窗中雙指縮放，並將預覽捲軸樣式與編輯器統一。
-・最佳化說明視窗自動收起鍵盤及點選關閉等操作體驗。""",
+    "zh-TW": """感謝您使用 miu。v1.0.47 全面提升了編輯、尋找取代與即時預覽的速度：
+・大幅提升輸入、捲動與大檔案編輯速度：深度最佳化文字處理效能，即使面對超大檔案或長時間編輯，打字輸入、游標移動與捲動都更加輕快流暢。
+・尋找與「全部取代」速度大幅躍升：顯著加速關鍵字尋找、正規表示式比對及成千上萬處大批量「全部取代」，瞬間即可完成。
+・Markdown、LaTeX 數學公式與 Mermaid 圖表分割畫面即時預覽繪製更加迅速。""",
 
-    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다.
-・49개 카테고리(120종 이상 확장자) 구문 강조, Emmet 약어 전개, 다중 커서·사각형 선택 및 40종 이상의 문자 인코딩 자동 감지를 지원합니다.
-・Markdown, HTML, SVG, 33종 Mermaid 다이어그램 및 오프라인 LaTeX 수식의 화면 분할 실시간 미리보기를 탑재했습니다(세로 화면 상하 분할, 가로 화면 좌우 분할).
-・미리보기 화면의 두 손가락 핀치 줌(확대/축소)을 지원하고 스크롤바 모양을 에디터와 통일했습니다.
-・도움말 표시 시 키보드 자동 닫기 등 조작성을 개선했습니다.""",
+    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다. v1.0.47에서는 전반적인 실행 속도를 대폭 향상했습니다.
+・타이핑, 스크롤 및 대용량 파일 편집 속도 향상: 큰 파일이나 장시간 편집 시에도 글자 입력, 커서 이동, 스크롤이 더욱 가볍고 매끄럽게 반응합니다.
+・찾기 및 '모두 바꾸기' 초고속화: 키워드·정규식 검색과 수천~수만 건의 일괄 바꾸기 속도를 비약적으로 높여 즉시 완료됩니다.
+・Markdown, LaTeX 수식, Mermaid 다이어그램 실시간 미리보기 렌더링 속도를 높였습니다.""",
 
-    "de-DE": """Vielen Dank, dass Sie miu nutzen.
-• Syntaxhervorhebung für 49 Sprachkategorien (120+ Endungen), Emmet-Erweiterung, Multi-Cursor- & Blockauswahl sowie automatische Zeichenkodierung.
-• Geteilte Live-Vorschau für Markdown, HTML, SVG, 33 Mermaid-Diagrammtypen und Offline-LaTeX-Formeln (Hochformat oben/unten, Querformat links/rechts).
-• Pinch-to-Zoom in der Live-Vorschau hinzugefügt und Bildlaufleiste mit dem Editor vereinheitlicht.""",
+    "de-DE": """Vielen Dank, dass Sie miu nutzen. Version 1.0.47 bringt deutliche Geschwindigkeitssteigerungen:
+• Schnelleres Tippen, Scrollen & Bearbeiten großer Dateien: Beschleunigte Texteingabe, Cursorbewegung und flüssiger Bildlauf auch bei großen Dateien.
+• Ultraschnelles Suchen & „Alle ersetzen“: Deutlich schnellere Stichwort- und Regex-Suche sowie sofortiges „Alle ersetzen“ bei tausenden Treffern.
+• Schnellere Live-Vorschau für Markdown, LaTeX-Formeln und Mermaid-Diagramme beim Schreiben.""",
 
-    "fr-FR": """Merci d’utiliser miu.
-• Coloration syntaxique pour 49 catégories (120+ extensions), développement Emmet, multi-curseurs et détection automatique de l’encodage.
-• Aperçu en direct en écran partagé pour Markdown, HTML, SVG, 33 types de diagrammes Mermaid et formules LaTeX hors ligne (haut/bas en portrait, gauche/droite en paysage).
-• Zoom par pincement dans l’aperçu en direct et barre de défilement unifiée avec l’éditeur.""",
+    "fr-FR": """Merci d’utiliser miu. La version 1.0.47 accélère nettement l’édition, la recherche et l’aperçu :
+• Frappe, défilement et gros fichiers plus rapides : saisie, curseur et défilement accélérés pour une fluidité optimale même sur les grands fichiers.
+• Recherche et « Tout remplacer » ultra-rapides : recherche par mot-clé ou regex et remplacement massif de milliers d’occurrences quasi instantanés.
+• Aperçu en direct plus rapide pour Markdown, formules LaTeX et diagrammes Mermaid.""",
 
-    "es-ES": """Gracias por usar miu.
-• Resaltado de sintaxis para 49 categorías (120+ extensiones), expansión Emmet, multicursor y detección automática de codificación.
-• Vista previa en vivo en pantalla dividida para Markdown, HTML, SVG, 33 tipos de diagramas Mermaid y fórmulas LaTeX sin conexión (arriba/abajo en vertical, izquierda/derecha en horizontal).
-• Zoom con dos dedos en la vista previa y barra de desplazamiento unificada con el editor.""",
+    "es-ES": """Gracias por usar miu. La versión 1.0.47 ofrece grandes mejoras de velocidad:
+• Escritura, desplazamiento y archivos grandes más rápidos: entrada de texto, movimiento del cursor y desplazamiento más ágiles incluso en archivos extensos.
+• Búsqueda y «Reemplazar todo» ultrarrápidos: búsqueda por palabras clave o regex y reemplazo masivo de miles de coincidencias al instante.
+• Vista previa en vivo más rápida para documentos Markdown, fórmulas LaTeX y diagramas Mermaid.""",
 
-    "it-IT": """Grazie per aver scelto miu.
-• Evidenziazione della sintassi per 49 categorie (120+ estensioni), espansione Emmet, multi-cursore e rilevamento automatico della codifica.
-• Anteprima live a schermo diviso per Markdown, HTML, SVG, 33 tipi di diagrammi Mermaid e formule LaTeX offline (sopra/sotto in verticale, sinistra/destra in orizzontale).
-• Zoom con pizzico nell’anteprima e barra di scorrimento unificata con l’editor.""",
+    "it-IT": """Grazie per aver scelto miu. La versione 1.0.47 offre un notevole aumento di velocità:
+• Digitazione, scorrimento e file grandi più veloci: inserimento testo, movimento del cursore e scorrimento velocizzati anche nei file più grandi.
+• Ricerca e «Sostituisci tutto» ultraveloci: ricerca per parola chiave o regex e sostituzione di migliaia di occorrenze completate all’istante.
+• Anteprima live più rapida per Markdown, formule LaTeX e diagrammi Mermaid durante la scrittura.""",
 
-    "pt-BR": """Obrigado por usar o miu.
-• Destaque de sintaxe para 49 categorias (120+ extensões), expansão Emmet, multicursor e detecção automática de codificação.
-• Pré-visualização ao vivo em tela dividida para Markdown, HTML, SVG, 33 tipos de diagramas Mermaid e fórmulas LaTeX offline (acima/abaixo no modo retrato, esquerda/direita no modo paisagem).
-• Zoom de pinça na pré-visualização e barra de rolagem unificada com o editor.""",
+    "pt-BR": """Obrigado por usar o miu. A versão 1.0.47 traz grandes melhorias de velocidade:
+• Digitação, rolagem e arquivos grandes mais rápidos: entrada de texto, cursor e rolagem acelerados para máxima fluidez mesmo em arquivos extensos.
+• Localizar e «Substituir tudo» ultrarrápidos: busca por palavra-chave ou regex e substituição em massa de milhares de ocorrências concluídas instantaneamente.
+• Pré-visualização ao vivo mais rápida para Markdown, fórmulas LaTeX e diagramas Mermaid.""",
 
-    "ru-RU": """Спасибо, что пользуетесь miu.
-• Подсветка синтаксиса для 49 категорий (120+ расширений), Emmet, мультикурсор и автоопределение кодировки.
-• Разделённый экран живого предпросмотра для Markdown, HTML, SVG, 33 типов диаграмм Mermaid и формул LaTeX офлайн (сверху/снизу в портретном режиме, слева/справа в альбомном).
-• Масштабирование щипком (pinch-to-zoom) в окне предпросмотра и единый стиль полосы прокрутки с редактором.""",
+    "ru-RU": """Спасибо, что пользуетесь miu. В версии 1.0.47 значительно повышена скорость работы:
+• Быстрый ввод, прокрутка и работа с большими файлами: ускорены набор текста, движение курсора и прокрутка даже в больших файлах.
+• Мгновенный поиск и «Заменить все»: поиск по ключевым словам и регулярным выражениям, а также замена тысяч совпадений выполняются мгновенно.
+• Ускорен живой предпросмотр Markdown, формул LaTeX и диаграмм Mermaid во время набора текста.""",
 
-    "nl-NL": """Bedankt voor het gebruiken van miu.
-• Syntaxisaccentuering voor 49 categorieën (120+ extensies), Emmet, multi-cursor en automatische tekensetherkenning.
-• Gesplitste live-weergave voor Markdown, HTML, SVG, 33 Mermaid-diagramtypen en offline LaTeX-formules (boven/onder in portretstand, links/rechts in liggende stand).
-• Knijp-om-te-zoomen in het voorbeeldvenster en uniforme schuifbalk met de editor.""",
+    "nl-NL": """Bedankt voor het gebruiken van miu. Versie 1.0.47 biedt grote snelheidsverbeteringen:
+• Sneller typen, scrollen en grote bestanden bewerken: versnelde tekstinvoer, cursorbeweging en scrollen voor optimale souplesse.
+• Razendsnel zoeken en ‘Alles vervangen’: woord- en regex-zoekopdrachten en het vervangen van duizenden treffers worden direct uitgevoerd.
+• Snellere live-weergave voor Markdown, LaTeX-formules en Mermaid-diagrammen tijdens het typen.""",
 
-    "sv-SE": """Tack för att du använder miu.
-• Syntaxmarkering för 49 kategorier (120+ filändelser), Emmet, multimarkör och automatisk teckenkodning.
-• Delad live-förhandsgranskning för Markdown, HTML, SVG, 33 Mermaid-diagramtyper och LaTeX-formler offline (uppe/nere i stående läge, vänster/höger i liggande läge).
-• Nyp-för-att-zooma i förhandsgranskningen och enhetlig rullningslist med redigeraren.""",
+    "sv-SE": """Tack för att du använder miu. Version 1.0.47 ger stora hastighetsförbättringar:
+• Snabbare skrivning, rullning och stora filer: textinmatning, markör och rullning har snabbats upp för mjuk respons även i stora filer.
+• Blixtsnabb sökning och ”Ersätt alla”: sökord, reguljära uttryck och ”Ersätt alla” för tusentals träffar slutförs nu omedelbart.
+• Snabbare live-förhandsgranskning för Markdown, LaTeX-formler och Mermaid-diagram medan du skriver.""",
 
-    "da-DK": """Tak fordi du bruger miu.
-• Syntaksfremhævning for 49 kategorier (120+ filendelser), Emmet, multimarkør og automatisk tegnsætregistrering.
-• Delt live-visning for Markdown, HTML, SVG, 33 Mermaid-diagramtyper og LaTeX-formler offline (oppe/nede i stående format, venstre/højre i liggende format).
-• Knib-for-at-zoome i forhåndsvisningen og ensartet rullepanel med editoren.""",
+    "da-DK": """Tak fordi du bruger miu. Version 1.0.47 giver markant højere hastighed:
+• Hurtigere indtastning, rulning og store filer: tekstindtastning, markørbevægelse og rulning er optimeret til hurtig og flydende brug.
+• Lynhurtig søgning og "Erstat alle": søgeord, regulære udtryk og "Erstat alle" på tværs af tusindvis af forekomster udføres øjeblikkeligt.
+• Hurtigere live-visning af Markdown, LaTeX-formler og Mermaid-diagrammer, mens du skriver.""",
 
-    "no-NO": """Takk for at du bruker miu.
-• Syntaksutheving for 49 kategorier (120+ filtyper), Emmet, multimarkør og automatisk tegnsettgjenkjenning.
-• Delt sanntidsvisning for Markdown, HTML, SVG, 33 Mermaid-diagramtyper og LaTeX-formler offline (oppe/nede i stående, venstre/højre i liggende).
-• Klyp-for-å-zoome i forhåndsvisningen og enhetlig rullefelt med redigereren.""",
+    "no-NO": """Takk for at du bruker miu. Versjon 1.0.47 gir betydelig høyere hastighet:
+• Raskere skriving, rulling og store filer: tekstinnlasting, markørbevegelse og rulling er akselerert slik at selv store filer føles raske og jevne.
+• Lynraskt søk og «Erstatt alle»: nøkkelordsøk, regulære uttrykk og «Erstatt alle» for tusenvis av treff fullføres nå umiddelbart.
+• Raskere sanntidsvisning for Markdown, LaTeX-formler og Mermaid-diagrammer mens du skriver.""",
 
-    "fi-FI": """Kiitos, että käytät miuta.
-• 49 kategorian syntaksinkorostus (yli 120 tiedostopäätettä), Emmet, monikohdistin ja automaattinen merkistöntunnistus.
-• Jaetun näytön reaaliaikainen esikatselu Markdown-, HTML-, SVG-, 33 Mermaid-kaavio- ja LaTeX-kaavoille offline-tilassa (pystysuunnassa ylä/ala, vaakasuunnassa vasen/oikea).
-• Nipistyszoomaus esikatselussa ja yhtenäinen vierityspalkki editorin kanssa.""",
+    "fi-FI": """Kiitos, että käytät miuta. Versio 1.0.47 tuo merkittävästi lisää nopeutta:
+• Nopeampi kirjoitus, vieritys ja suuret tiedostot: tekstinsyöttöä, kohdistinta ja vieritystä on nopeutettu, jotta suuretkin tiedostot toimivat sulavasti.
+• Salamannopea haku ja ”Korvaa kaikki”: avainsana- ja regex-haku sekä tuhansien osumien korvaaminen valmistuvat nyt välittömästi.
+• Nopeampi reaaliaikainen esikatselu Markdownille, LaTeX-kaavoille ja Mermaid-kaavioille.""",
 
-    "pl-PL": """Dziękujemy za korzystanie z miu.
-• Kolorowanie składni dla 49 kategorii (120+ rozszerzeń), Emmet, wielokursor i automatyczne wykrywanie kodowania.
-• Podgląd na żywo na podzielonym ekranie dla Markdown, HTML, SVG, 33 typów diagramów Mermaid i wzorów LaTeX offline (góra/dół w pionie, lewo/prawo w poziomie).
-• Powiększanie gestem uszczypnięcia w podglądzie oraz ujednolicony pasek przewijania z edytorem.""",
+    "pl-PL": """Dziękujemy za korzystanie z miu. Wersja 1.0.47 przynosi znaczące przyspieszenie działania:
+• Szybsze pisanie, przewijanie i duże pliki: przyspieszono wprowadzanie tekstu, ruch kursora i przewijanie nawet w bardzo dużych plikach.
+• Błyskawiczne wyszukiwanie i „Zamień wszystko”: wyszukiwanie słów i wyrażeń regularnych oraz zamiana tysięcy wystąpień działają natychmiastowo.
+• Szybszy podgląd na żywo dla dokumentów Markdown, wzorów LaTeX i diagramów Mermaid.""",
 
-    "cs-CZ": """Děkujeme, že používáte miu.
-• Zvýrazňování syntaxe pro 49 kategorií (120+ přípon), Emmet, více kurzorů a automatické rozpoznání kódování.
-• Živý náhled na rozdělené obrazovce pro Markdown, HTML, SVG, 33 typů diagramů Mermaid a vzorce LaTeX offline (nahoře/dole na výšku, vlevo/vpravo na šířku).
-• Přiblížení gestem štípnutí v náhledu a sjednocený posuvník s editorem.""",
+    "cs-CZ": """Děkujeme, že používáte miu. Verze 1.0.47 přináší výrazné zrychlení:
+• Rychlejší psaní, posouvání a velké soubory: zrychlené zadávání textu, pohyb kurzoru a posouvání pro plynulou práci i s velkými soubory.
+• Bleskové vyhledávání a „Nahradit vše“: vyhledávání klíčových slov i regulárních výrazů a hromadné nahrazení tisíců výskytů proběhne okamžitě.
+• Rychlejší živý náhled pro Markdown, vzorce LaTeX a diagramy Mermaid během psaní.""",
 
     "sk": SK_WHATS_NEW,
 
-    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja.
-• Szintaxiskiemelés 49 kategóriában (120+ kiterjesztés), Emmet, több kurzor és automatikus karakterkódolás-felismerés.
-• Osztott képernyős élő előnézet Markdown, HTML, SVG, 33 Mermaid diagramtípus és offline LaTeX képletek számára (álló módban fent/lent, fekvőben bal/jobb).
-• Kétujjas nagyítás/kicsinyítés az előnézetben és egységesített görgetősáv a szerkesztővel.""",
+    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja. Az 1.0.47-es verzió jelentős gyorsulást hoz:
+• Gyorsabb gépelés, görgetés és nagy fájlok szerkesztése: felgyorsított szövegbevitel, kurzormozgatás és görgetés a nagy fájlokban is.
+• Villámgyors keresés és „Összes cseréje”: a kulcsszavas és regex keresés, valamint több ezer találat cseréje pillanatok alatt elkészül.
+• Gyorsabb élő előnézet a Markdown-dokumentumokhoz, LaTeX-képletekhez és Mermaid-diagramokhoz.""",
 
-    "ro": """Vă mulțumim că folosiți miu.
-• Evidențierea sintaxei pentru 49 de categorii (120+ extensii), Emmet, cursoare multiple și detectarea automată a codificării.
-• Previzualizare live pe ecran divizat pentru Markdown, HTML, SVG, 33 de tipuri de diagrame Mermaid și formule LaTeX offline (sus/jos în portret, stânga/dreapta în peisaj).
-• Zoom prin ciupire în previzualizare și bară de derulare unificată cu editorul.""",
+    "ro": """Vă mulțumim că folosiți miu. Versiunea 1.0.47 aduce o creștere majoră a vitezei:
+• Tastare, derulare și fișiere mari mai rapide: introducerea textului, mișcarea cursorului și derularea au fost accelerate chiar și pentru fișierele mari.
+• Căutare și „Înlocuiește tot” ultra-rapide: căutarea cuvintelor cheie sau regex și înlocuirea a mii de apariții se finalizează instantaneu.
+• Previzualizare live mai rapidă pentru Markdown, formule LaTeX și diagrame Mermaid.""",
 
-    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu.
-• Επισήμανση σύνταξης για 49 κατηγορίες (120+ επεκτάσεις), Emmet, πολλαπλοί δρομείς και αυτόματη αναγνώριση κωδικοποίησης.
-• Ζωντανή προεπισκόπηση σε διαιρεμένη οθόνη για Markdown, HTML, SVG, 33 τύπους διαγραμμάτων Mermaid και τύπους LaTeX εκτός σύνδεσης.
-• Ζουμ με δύο δάχτυλα στην προεπισκόπηση και ενοποιημένη γραμμή κύλισης με τον επεξεργαστή.""",
+    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu. Η έκδοση 1.0.47 προσφέρει μεγάλη αύξηση ταχύτητας:
+• Ταχύτερη πληκτρολόγηση, κύλιση και μεγάλα αρχεία: επιταχύνθηκαν η εισαγωγή κειμένου, η κίνηση δρομέα και η κύλιση ακόμη και σε μεγάλα αρχεία.
+• Εξαιρετικά γρήγορη αναζήτηση και «Αντικατάσταση όλων»: η αναζήτηση λέξεων ή regex και η αντικατάσταση χιλιάδων αποτελεσμάτων ολοκληρώνονται ακαριαία.
+• Ταχύτερη ζωντανή προεπισκόπηση για Markdown, εξισώσεις LaTeX και διαγράμματα Mermaid.""",
 
-    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz.
-• 49 dil kategorisinde (120+ uzantı) sözdizimi vurgulama, Emmet, çoklu imleç ve otomatik karakter kodlaması algılama.
-• Markdown, HTML, SVG, 33 Mermaid diyagram türü ve çevrimdışı LaTeX formülleri için bölünmüş ekran canlı önizleme (dikeyde üst/alt, yatayda sol/sağ).
-• Önizleme ekranında iki parmakla yakınlaştırma/uzaklaştırma ve düzenleyiciyle birleştirilmiş kaydırma çubuğu.""",
+    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz. 1.0.47 sürümü büyük hız artışları sunar:
+• Daha Hızlı Yazma, Kaydırma ve Büyük Dosyalar: Metin girişi, imleç hareketi ve kaydırma hızlandırıldı; büyük dosyalarda bile akıcı yanıt verir.
+• Ultra Hızlı Arama ve "Tümünü Değiştir": Anahtar kelime ve regex araması ile binlerce eşleşmeyi kapsayan "Tümünü Değiştir" anında tamamlanır.
+• Markdown, LaTeX formülleri ve Mermaid diyagramları için daha hızlı Canlı Önizleme.""",
 
-    "uk": """Дякуємо, що користуєтеся miu.
-• Підсвічування синтаксису для 49 категорій (120+ розширень), Emmet, мультикурсор і автовизначення кодування.
-• Живий попередній перегляд на розділеному екрані для Markdown, HTML, SVG, 33 типів діаграм Mermaid і формул LaTeX офлайн (зверху/знизу у книжковій, зліва/справа в альбомній орієнтації).
-• Масштабування двома пальцями в перегляді та єдиний стиль смуги прокрутки з редактором.""",
+    "uk": """Дякуємо, що користуєтеся miu. У версії 1.0.47 значно прискорено роботу програми:
+• Швидше введення, прокручування та великі файли: прискорено набір тексту, рух курсора та прокручування для плавної роботи з великими файлами.
+• Миттєвий пошук і «Замінити все»: пошук слів і регулярних виразів та масова заміна тисяч збігів виконуються миттєво.
+• Швидший живий перегляд для Markdown, формул LaTeX і діаграм Mermaid під час набору тексту.""",
 
-    "vi": """Cảm ơn bạn đã sử dụng miu.
-• Tô màu cú pháp cho 49 danh mục (120+ phần mở rộng), gõ tắt Emmet, đa con trỏ và tự động nhận diện bảng mã.
-• Xem trước trực tiếp chia đôi màn hình cho Markdown, HTML, SVG, 33 loại sơ đồ Mermaid và công thức LaTeX ngoại tuyến (chia trên/dưới khi xoay dọc, trái/phải khi xoay ngang).
-• Hỗ trợ phóng to/thu nhỏ bằng hai ngón tay trong cửa sổ xem trước và đồng bộ thanh cuộn với trình soạn thảo.""",
+    "vi": """Cảm ơn bạn đã sử dụng miu. Phiên bản 1.0.47 tăng tốc toàn diện ứng dụng:
+• Gõ phím, cuộn trang & sửa tệp lớn nhanh hơn: Tăng tốc nhập liệu, di chuyển con trỏ và cuộn trang mượt mà ngay cả với tệp dung lượng lớn.
+• Tìm kiếm & "Thay thế tất cả" siêu tốc: Tìm từ khóa, biểu thức chính quy (regex) và thay thế hàng nghìn vị trí chỉ trong chớp mắt.
+• Xem trước trực tiếp Markdown, công thức LaTeX và sơ đồ Mermaid hiển thị nhanh hơn khi đang gõ.""",
 
-    "th": """ขอบคุณที่ใช้บริการ miu
-• ไฮไลต์ไวยากรณ์ 49 หมวดหมู่ (120+ นามสกุลไฟล์), ขยายตัวย่อ Emmet, มัลติเคอร์เซอร์ และตรวจจับรหัสอักขระอัตโนมัติ
-• พรีวิวแบบแบ่งหน้าจอสำหรับ Markdown, HTML, SVG, แผนภาพ Mermaid 33 รูปแบบ และสมการ LaTeX แบบออฟไลน์ (แบ่งบน/ล่างในแนวตั้ง และซ้าย/ขวาในแนวนอน)
-• รองรับการจีบนิ้วซูมเข้า/ออกในหน้าต่างพรีวิว และปรับแถบเลื่อนให้เป็นรูปแบบเดียวกับเอดิเตอร์""",
+    "th": """ขอบคุณที่ใช้บริการ miu เวอร์ชัน 1.0.47 เพิ่มความเร็วการทำงานครั้งใหญ่:
+• พิมพ์ เลื่อนหน้าจอ และแก้ไขไฟล์ใหญ่ได้เร็วขึ้น: เร่งความเร็วการพิมพ์ การเลื่อนเคอร์เซอร์ และการเลื่อนหน้าจอให้ลื่นไหลแม้เปิดไฟล์ขนาดใหญ่
+• ค้นหาและ "แทนที่ทั้งหมด" เร็วทันใจ: ค้นหาคำสำคัญ Regex และสั่ง "แทนที่ทั้งหมด" นับพันรายการได้เสร็จสิ้นในพริบตา
+• พรีวิวสด Markdown, สมการ LaTeX และแผนภาพ Mermaid แสดงผลได้รวดเร็วขึ้นขณะพิมพ์""",
 
-    "id": """Terima kasih telah menggunakan miu.
-• Sorotan sintaks untuk 49 kategori bahasa (120+ ekstensi), ekspansi Emmet, multi-kursor, dan deteksi pengkodean otomatis.
-• Pratinjau Langsung layar terpisah untuk Markdown, HTML, SVG, 33 jenis diagram Mermaid, dan rumus LaTeX offline (atas/bawah saat vertikal, kiri/kanan saat horizontal).
-• Dukungan cubit untuk zoom (pinch-to-zoom) pada pratinjau dan tampilan bilah gulir yang disatukan dengan editor.""",
+    "id": """Terima kasih telah menggunakan miu. Versi 1.0.47 menghadirkan peningkatan kecepatan besar:
+• Pengetikan, Pengguliran & File Besar Lebih Cepat: Input teks, kursor, dan pengguliran dipercepat sehingga file besar tetap mulus dan responsif.
+• Pencarian & "Ganti Semua" Super Cepat: Pencarian kata kunci, regex, serta "Ganti Semua" untuk ribuan kecocokan selesai secara instan.
+• Pratinjau Langsung Markdown, rumus LaTeX, dan diagram Mermaid tampil lebih cepat saat mengetik.""",
 
-    "ms": """Terima kasih kerana menggunakan miu.
-• Penyerlahan sintaks untuk 49 kategori bahasa (120+ sambungan), Emmet, berbilang kursor dan pengesanan pengekodan automatik.
-• Pratonton Langsung skrin pisah untuk Markdown, HTML, SVG, 33 jenis rajah Mermaid dan formula LaTeX luar talian (atas/bawah dalam mod potret, kiri/kanan dalam mod landskap).
-• Sokongan cubit untuk zum pada pratonton dan bar skrol yang diseragamkan dengan penyunting.""",
+    "ms": """Terima kasih kerana menggunakan miu. Versi 1.0.47 membawakan peningkatan kelajuan besar:
+• Penaipan, Penatalan & Fail Besar Lebih Pantas: Input teks, kursor dan penatalan dipercepatkan supaya fail besar kekal lancar dan responsif.
+• Carian & "Ganti Semua" Ultra-Pantas: Carian kata kunci, regex dan "Ganti Semua" untuk ribuan padanan kini selesai serta-merta.
+• Pratonton Langsung Markdown, formula LaTeX dan rajah Mermaid dipaparkan lebih pantas semasa menaip.""",
 
-    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद।
-• 49 भाषा श्रेणियों (120+ एक्सटेंशन) के लिए सिंटैक्स हाइलाइटिंग, Emmet विस्तार, मल्टी-कर्सर और स्वचालित एन्कोडिंग पहचान।
-• Markdown, HTML, SVG, 33 Mermaid डायग्राम और ऑफ़लाइन LaTeX सूत्रों के लिए स्प्लिट-स्क्रीन लाइव प्रीव्यू (पोर्ट्रेट में ऊपर/नीचे, लैंडस्केप में बाएँ/दाएँ)।
-• प्रीव्यू में पिंच-टू-ज़ूम समर्थन और एडिटर के समान एकीकृत स्क्रॉलबार।""",
+    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद। संस्करण 1.0.47 में गति में बड़ा सुधार किया गया है:
+• तेज़ टाइपिंग, स्क्रॉलिंग और बड़ी फ़ाइलें: टेक्स्ट इनपुट, कर्सर मूवमेंट और स्क्रॉलिंग को तेज़ किया गया है ताकि बड़ी फ़ाइलों में भी काम सहज रहे।
+• अल्ट्रा-फ़ास्ट खोज और "सभी बदलें": कीवर्ड व रेगेक्स (Regex) खोज और हज़ारों स्थानों पर "सभी बदलें" अब पलक झपकते ही पूरा हो जाता है।
+• Markdown, LaTeX सूत्रों और Mermaid आरेखों का लाइव प्रीव्यू अब और तेज़ी से अपडेट होता है।""",
 
     "ar": AR_WHATS_NEW,
     "iw-IL": HE_WHATS_NEW,

@@ -34,15 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.46 更新日誌
-🇯🇵 修復尋找/取代對話方塊輸入法（IME）組字位置偏移 & 全面強化字元編碼與換行符號（CR / CRLF / LF）支援
+        "releaseNotes": """miu v1.0.47 更新日誌
+⚡ 全面提升文字編輯、尋找取代與即時預覽的執行速度
 
-・修復尋找與取代對話方塊（Ctrl+F / Ctrl+H）中輸入法組字位置右偏的問題：
-  修復了在尋找或取代輸入框中開啟輸入法輸入中文/日文時，未確認的組字文字未顯示在輸入框開頭而是向右偏移的問題。
-・全面強化字元編碼自動辨識與轉換儲存：
-  新增無 BOM UTF-16LE / UTF-16BE 自動辨識、UTF-16 代理對（4 位元組字元與表情符號）完整轉換支援、超過 64KB 大檔案的動態多位元組取樣辨識，以及損壞位元組序列的安全保護。
-・全面完善 CR / CRLF / LF 換行符號支援：
-  無論是經典 Mac 換行（CR）或混合換行檔案，全部 49 種語言語法突顯、矩形（列）選擇、貼上換行自動統一、正規表示式（^ / $）尋找取代與即時預覽皆能精準運作。""",
+・大幅提升輸入、捲動與大檔案編輯速度：
+  深度最佳化文字處理速度，即使是超大檔案或長時間連續編輯，打字輸入、游標移動與頁面捲動都更加輕快流暢。
+・尋找與「全部取代」速度大幅躍升：
+  顯著加速關鍵字尋找、正規表示式比對以及大批量「全部取代」的處理速度，成千上萬處取代也能瞬間完成。
+・Markdown / LaTeX 數學公式 / Mermaid 圖表即時預覽提速：
+  最佳化即時預覽的轉換與繪製速度，在撰寫長篇文件或複雜圖表公式時預覽反應更加迅速。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.46 Versionshinweise
-🇯🇵 Korrektur der IME-Eingabeposition im Suchen/Ersetzen-Dialog & vollständige Unterstützung für Zeichenkodierungen und Zeilenumbrüche (CR / CRLF / LF)
+        "releaseNotes": """miu v1.0.47 Versionshinweise
+⚡ Deutlich höhere Geschwindigkeit beim Bearbeiten, Suchen/Ersetzen und in der Live-Vorschau
 
-- IME-Eingabeposition im Suchen- und Ersetzen-Dialog (Strg+F / Strg+H) korrigiert:
-  Behebung eines Fehlers, bei dem die aktive IME- Texteingabe (z. B. Japanisch) im Textfeld nach rechts verschoben statt am Zeilenanfang angezeigt wurde.
-- Verbesserte automatische Zeichenkodierungserkennung & Konvertierung:
-  Automatische Erkennung für UTF-16LE/BE ohne BOM, volle Unterstützung für UTF-16-Surrogatpaare (4-Byte-Zeichen & Emojis), präzise Erkennung bei Dateien über 64 KB und Schutz vor beschädigten Bytefolgen.
-- Vollständige Unterstützung für CR / CRLF / LF-Zeilenumbrüche:
-  Syntaxhervorhebung für alle 49 Sprachen, Blockauswahl, automatische Zeilenumbruch-Normalisierung beim Einfügen, mehrzeilige Regex-Suche (^ / $) und Live-Vorschau unterstützen nun durchgängig CR-, CRLF- und LF-Zeilenumbrüche.""",
+- Schnelleres Tippen, Scrollen und Bearbeiten großer Dateien:
+  Texteingabe, Cursorbewegung und Bildlauf wurden spürbar beschleunigt, sodass auch große Dateien und lange Arbeitssitzungen jederzeit flüssig reagieren.
+- Ultraschnelles Suchen & „Alle ersetzen“:
+  Stichwortsuche, reguläre Ausdrücke und „Alle ersetzen“ bei tausenden Treffern werden nun nahezu verzögerungsfrei ausgeführt.
+- Schnellere Live-Vorschau für Markdown, LaTeX & Mermaid:
+  Die Vorschau-Darstellung für lange Markdown-Dokumente, LaTeX-Formeln und Mermaid-Diagramme reagiert während des Schreibens noch schneller.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.46
-🇯🇵 Correction de la position de saisie IME dans Rechercher/Remplacer et prise en charge complète des encodages et fins de ligne (CR / CRLF / LF)
+        "releaseNotes": """Notes de version miu v1.0.47
+⚡ Accélération majeure de l’édition, de la recherche/remplacement et de l’aperçu en direct
 
-- Correction du décalage de saisie IME dans les boîtes de dialogue Rechercher et Remplacer (Ctrl+F / Ctrl+H) :
-  Résolution d’un problème où le texte en cours de composition IME (comme le japonais) s’affichait décalé vers la droite au lieu du début du champ de saisie.
-- Amélioration complète de la détection et de la conversion d’encodage :
-  Détection automatique des fichiers UTF-16LE/BE sans BOM, prise en charge des paires de substitution UTF-16 (caractères sur 4 octets et émojis), échantillonnage dynamique au-delà de 64 Ko et protection contre les séquences d’octets corrompues.
-- Prise en charge intégrale des fins de ligne CR / CRLF / LF :
-  Coloration syntaxique des 49 langages, sélection rectangulaire, normalisation au collage, expressions régulières (^ / $) et aperçu en direct parfaitement compatibles avec les fins de ligne CR, CRLF et LF.""",
+- Frappe, défilement et édition de gros fichiers plus rapides :
+  La saisie de texte, le déplacement du curseur et le défilement ont été considérablement accélérés pour offrir une fluidité optimale, même sur de très grands fichiers.
+- Recherche et « Tout remplacer » ultra-rapides :
+  Les recherches par mot-clé ou expression régulière ainsi que le remplacement massif de milliers d’occurrences s’exécutent désormais instantanément.
+- Aperçu en direct Markdown, LaTeX et Mermaid plus réactif :
+  Le rendu en temps réel des longs documents Markdown, formules LaTeX et diagrammes Mermaid est encore plus rapide pendant la frappe.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.46
-🇯🇵 Corrección de la posición de entrada IME en Buscar/Reemplazar y soporte completo de codificaciones y saltos de línea (CR / CRLF / LF)
+        "releaseNotes": """Notas de la versión miu v1.0.47
+⚡ Gran mejora de velocidad en edición, búsqueda/reemplazo y vista previa en vivo
 
-- Corrección de la posición del texto IME en Buscar y Reemplazar (Ctrl+F / Ctrl+H):
-  Se resolvió un problema por el cual al escribir con el IME activado (como entrada en japonés) el texto en composición aparecía desplazado a la derecha en lugar de al inicio del cuadro de texto.
-- Mejoras integrales en detección y conversión de codificación de caracteres:
-  Detección automática de UTF-16LE/BE sin BOM, soporte completo de pares sustitutos UTF-16 (caracteres de 4 bytes y emojis), muestreo dinámico para archivos mayores de 64 KB y protección ante secuencias de bytes dañadas.
-- Soporte completo para saltos de línea CR / CRLF / LF:
-  Resaltado de sintaxis en los 49 lenguajes, selección rectangular, normalización al pegar, búsqueda regex (^ / $) y vista previa en vivo totalmente compatibles con CR, CRLF y LF.""",
+- Escritura, desplazamiento y edición de archivos grandes más rápidos:
+  Se aceleró notablemente la entrada de texto, el movimiento del cursor y el desplazamiento para que incluso los archivos grandes respondan con total fluidez.
+- Búsqueda y «Reemplazar todo» ultrarrápidos:
+  La búsqueda de texto, expresiones regulares y el reemplazo masivo de miles de coincidencias ahora se completan al instante.
+- Vista previa en vivo más rápida para Markdown, LaTeX y Mermaid:
+  Se optimizó la visualización en tiempo real de documentos Markdown extensos, fórmulas LaTeX y diagramas Mermaid.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.46
-🇯🇵 Correção da posição de digitação IME em Localizar/Substituir e suporte completo a codificações e quebras de linha (CR / CRLF / LF)
+        "releaseNotes": """Notas de lançamento do miu v1.0.47
+⚡ Grande ganho de velocidade na edição, localização/substituição e pré-visualização ao vivo
 
-- Correção da posição do texto IME nas janelas Localizar e Substituir (Ctrl+F / Ctrl+H):
-  Resolvido um problema em que digitar com o IME ativo (como entrada em japonês) exibia o texto em composição deslocado para a direita em vez do início da caixa de texto.
-- Melhorias completas na detecção e conversão de codificação de caracteres:
-  Detecção automática de UTF-16LE/BE sem BOM, suporte completo a pares substitutos UTF-16 (caracteres de 4 bytes e emojis), amostragem dinâmica acima de 64 KB e proteção contra bytes corrompidos.
-- Suporte completo a quebras de linha CR / CRLF / LF:
-  Realce de sintaxe para os 49 idiomas, seleção retangular, normalização ao colar, busca regex (^ / $) e pré-visualização ao vivo totalmente compatíveis com CR, CRLF e LF.""",
+- Digitação, rolagem e edição de arquivos grandes mais rápidas:
+  A entrada de texto, a movimentação do cursor e a rolagem foram aceleradas para garantir máxima fluidez mesmo em arquivos extensos.
+- Localizar e «Substituir tudo» ultrarrápidos:
+  A busca por palavras-chave, expressões regulares e a substituição em massa de milhares de ocorrências agora são concluídas instantaneamente.
+- Pré-visualização ao vivo mais rápida para Markdown, LaTeX e Mermaid:
+  Renderização em tempo real ainda mais ágil para documentos Markdown longos, fórmulas LaTeX e diagramas Mermaid.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.46
-🇯🇵 Исправление позиции ввода IME в окне поиска/замены и полная поддержка кодировок и переносов строк (CR / CRLF / LF)
+        "releaseNotes": """Примечания к выпуску miu v1.0.47
+⚡ Значительное ускорение редактирования, поиска с заменой и живого предпросмотра
 
-- Исправлено смещение текста IME в диалогах поиска и замены (Ctrl+F / Ctrl+H):
-  Устранена проблема, из-за которой при вводе через IME (например, на японском языке) незавершенный текст отображался со смещением вправо, а не в начале поля ввода.
-- Комплексное улучшение определения и конвертации кодировок:
-  Добавлено автоопределение UTF-16LE/BE без BOM, полная поддержка суррогатных пар UTF-16 (4-байтовые символы и эмодзи), динамическая выборка для файлов более 64 КБ и защита от поврежденных байтов.
-- Полная поддержка переносов строк CR / CRLF / LF:
-  Подсветка синтаксиса для всех 49 языков, прямоугольное выделение, нормализация при вставке, регулярные выражения (^ / $) и живой предпросмотр корректно работают с CR, CRLF и LF.""",
+- Более быстрый ввод, прокрутка и работа с большими файлами:
+  Ускорены набор текста, перемещение курсора и прокрутка — даже большие файлы и длительные сессии редактирования работают максимально плавно.
+- Мгновенный поиск и «Заменить все»:
+  Поиск по тексту, регулярным выражениям и массовая замена тысяч совпадений теперь выполняются мгновенно.
+- Ускоренный предпросмотр Markdown, формул LaTeX и диаграмм Mermaid:
+  Оптимизирована отрисовка предпросмотра в реальном времени для длинных документов Markdown, математических формул и диаграмм.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.46
-🇯🇵 Correzione della posizione di inserimento IME in Trova/Sostituisci e supporto completo per codifiche e interruzioni di riga (CR / CRLF / LF)
+        "releaseNotes": """Note di rilascio di miu v1.0.47
+⚡ Notevole aumento di velocità per modifica, trova/sostituisci e anteprima dal vivo
 
-- Corretta la posizione del testo IME nelle finestre Trova e Sostituisci (Ctrl+F / Ctrl+H):
-  Risolto un problema per cui digitando con l’IME attivo (ad es. input giapponese) il testo in composizione appariva spostato a destra anziché all’inizio della casella di testo.
-- Miglioramenti completi al rilevamento e alla conversione della codifica:
-  Rilevamento automatico di file UTF-16LE/BE senza BOM, pieno supporto per le coppie di surrogati UTF-16 (caratteri a 4 byte ed emoji), campionamento dinamico oltre i 64 KB e protezione per sequenze di byte danneggiate.
-- Supporto completo per interruzioni di riga CR / CRLF / LF:
-  Evidenziazione della sintassi per tutti i 49 linguaggi, selezione rettangolare, normalizzazione all’incollaggio, ricerca regex (^ / $) e anteprima live perfettamente compatibili con CR, CRLF e LF.""",
+- Digitazione, scorrimento e modifica di file grandi più veloci:
+  L’inserimento del testo, il movimento del cursore e lo scorrimento sono stati velocizzati per offrire la massima fluidità anche sui file più grandi.
+- Ricerca e «Sostituisci tutto» ultraveloci:
+  La ricerca per parola chiave o espressione regolare e la sostituzione simultanea di migliaia di occorrenze vengono ora completate all’istante.
+- Anteprima live più rapida per Markdown, LaTeX e Mermaid:
+  Rendering in tempo reale ancora più reattivo per lunghi documenti Markdown, formule LaTeX e diagrammi Mermaid.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.46
-🇯🇵 Poprawka pozycji wprowadzania IME w oknie Znajdź/Zamień oraz pełna obsługa kodowań i końców linii (CR / CRLF / LF)
+        "releaseNotes": """Informacje o wersji miu v1.0.47
+⚡ Znaczące przyspieszenie edycji, wyszukiwania/zamiany oraz podglądu na żywo
 
-- Naprawiono przesunięcie tekstu IME w oknach Znajdź i Zamień (Ctrl+F / Ctrl+H):
-  Rozwiązano problem, przez który podczas pisania z włączonym IME (np. japońskim) niezatwierdzony tekst wyświetlał się przesunięty w prawo zamiast na początku pola tekstowego.
-- Kompleksowe ulepszenia wykrywania i konwersji kodowania znaków:
-  Automatyczne wykrywanie plików UTF-16LE/BE bez BOM, pełna obsługa par surogatów UTF-16 (znaki 4-bajtowe i emoji), dynamiczne próbkowanie powyżej 64 KB oraz ochrona przed uszkodzonymi sekwencjami bajtów.
-- Pełna obsługa końców linii CR / CRLF / LF:
-  Kolorowanie składni dla 49 języków, zaznaczanie prostokątne, normalizacja przy wklejaniu, wyrażenia regularne (^ / $) oraz podgląd na żywo działają bezbłędnie z CR, CRLF i LF.""",
+- Szybsze pisanie, przewijanie i edycja dużych plików:
+  Przyspieszono wprowadzanie tekstu, ruch kursora oraz przewijanie, dzięki czemu nawet duże pliki działają wyjątkowo płynnie.
+- Błyskawiczne wyszukiwanie i „Zamień wszystko”:
+  Wyszukiwanie słów kluczowych, wyrażeń regularnych oraz masowa zamiana tysięcy wystąpień wykonują się teraz natychmiastowo.
+- Szybszy podgląd na żywo dla Markdown, LaTeX i Mermaid:
+  Zoptymalizowano renderowanie długich dokumentów Markdown, wzorów LaTeX oraz diagramów Mermaid podczas pisania.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.46
-🇯🇵 Correctie van IME-invoerpositie in Zoeken/Vervangen & volledige ondersteuning voor tekencoderingen en regeleinden (CR / CRLF / LF)
+        "releaseNotes": """Releaseopmerkingen miu v1.0.47
+⚡ Grote snelheidsverbeteringen voor bewerken, zoeken/vervangen en live-voorbeeld
 
-- IME-invoerpositie in dialoogvensters Zoeken en Vervangen (Ctrl+F / Ctrl+H) gecorrigeerd:
-  Probleem verholpen waarbij tijdens het typen met een actieve IME (zoals Japanse invoer) de onbevestigde tekst naar rechts verschoven werd weergegeven in plaats van aan het begin van het tekstvak.
-- Uitgebreide verbeteringen in tekencodering-detectie en conversie:
-  Automatische detectie voor UTF-16LE/BE zonder BOM, volledige ondersteuning voor UTF-16-surrogaatparen (4-byte tekens & emoji's), dynamische detectie voor bestanden boven 64 KB en bescherming tegen beschadigde bytes.
-- Volledige ondersteuning voor CR / CRLF / LF-regeleinden:
-  Syntaxisaccentuering voor alle 49 talen, rechthoekige selectie, normalisatie bij plakken, regex-zoeken (^ / $) en live-voorbeeld werken nu naadloos met CR, CRLF en LF.""",
+- Sneller typen, scrollen en grote bestanden bewerken:
+  Tekstinvoer, cursorbeweging en scrollen zijn aanzienlijk versneld voor een vloeiende ervaring, zelfs in grote bestanden.
+- Razendsnel zoeken en ‘Alles vervangen’:
+  Zoekopdrachten, reguliere expressies en het in één keer vervangen van duizenden overeenkomsten worden nu direct uitgevoerd.
+- Sneller live-voorbeeld voor Markdown, LaTeX en Mermaid:
+  De weergave van lange Markdown-documenten, LaTeX-formules en Mermaid-diagrammen reageert nog sneller tijdens het typen.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.46 Sürüm Notları
-🇯🇵 Bul/Değiştir İletişim Kutusunda IME Giriş Konumu Düzeltmesi ve Tam Karakter Kodlaması / Satır Sonu (CR / CRLF / LF) Desteği
+        "releaseNotes": """miu v1.0.47 Sürüm Notları
+⚡ Düzenleme, Arama/Değiştirme ve Canlı Önizlemede Büyük Hız Artışı
 
-- Bul ve Değiştir İletişim Kutularında (Ctrl+F / Ctrl+H) IME Yazım Konumu Düzeltildi:
-  Etkin bir IME (Japonca giriş gibi) ile yazarken dönüştürme öncesi metnin giriş kutusunun başı yerine sağa kaymış görünmesi sorunu giderildi.
-- Kapsamlı Karakter Kodlaması Algılama ve Dönüştürme İyileştirmeleri:
-  BOM'suz UTF-16LE/BE dosyaları için otomatik algılama, UTF-16 vekil çiftleri (4 baytlık karakterler ve emojiler) desteği, 64 KB üzeri dosyalar için dinamik örnekleme ve bozuk bayt dizilerine karşı güvenli koruma eklendi.
-- Tüm Özelliklerde Tam CR / CRLF / LF Satır Sonu Desteği:
-  49 dilde sözdizimi강조, dikdörtgen seçim, yapıştırma sırasında satır sonu eşitleme, çok satırlı regex (^ / $) arama/değiştirme ve Canlı Önizleme artık CR, CRLF ve LF ile kusursuz çalışır.""",
+- Daha Hızlı Yazma, Kaydırma ve Büyük Dosya Düzenleme:
+  Metin girişi, imleç hareketi ve kaydırma önemli ölçüde hızlandırıldı; büyük dosyalarda bile akıcı ve hızlı yanıt verir.
+- Ultra Hızlı Arama ve "Tümünü Değiştir":
+  Anahtar kelime araması, düzenli ifadeler (regex) ve binlerce eşleşmeyi kapsayan "Tümünü Değiştir" işlemleri artık anında tamamlanır.
+- Daha Hızlı Markdown, LaTeX ve Mermaid Canlı Önizlemesi:
+  Uzun Markdown belgeleri, LaTeX formülleri ve Mermaid diyagramları siz yazarken çok daha hızlı görüntülenir.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.46
-🇯🇵 Sửa lỗi lệch vị trí gõ IME trong hộp thoại Tìm/Thay thế & Hỗ trợ toàn diện bảng mã và ký tự xuống dòng (CR / CRLF / LF)
+        "releaseNotes": """Ghi chú phát hành miu v1.0.47
+⚡ Tăng tốc toàn diện cho chỉnh sửa văn bản, Tìm kiếm/Thay thế và Xem trước trực tiếp
 
-- Sửa lỗi lệch vị trí chữ đang gõ IME trong hộp thoại Tìm kiếm và Thay thế (Ctrl+F / Ctrl+H):
-  Đã khắc phục sự cố khi bật bộ gõ IME (như tiếng Nhật) trong ô tìm kiếm khiến chữ chưa xác nhận bị lệch sang phải thay vì hiển thị ở đầu ô nhập.
-- Nâng cấp toàn diện nhận diện và chuyển đổi bảng mã:
-  Tự động nhận diện UTF-16LE/BE không có BOM, hỗ trợ đầy đủ cặp thay thế UTF-16 (ký tự 4 byte & emoji), lấy mẫu động cho tệp trên 64 KB và bảo vệ an toàn trước chuỗi byte lỗi.
-- Hỗ trợ hoàn chỉnh ký tự xuống dòng CR / CRLF / LF:
-  Tô sáng cú pháp 49 ngôn ngữ, chọn khối chữ nhật, chuẩn hóa dòng khi dán, tìm kiếm regex (^ / $) và Xem trước trực tiếp hoạt động chính xác với CR, CRLF và LF.""",
+- Gõ phím, cuộn trang và chỉnh sửa tệp lớn nhanh hơn:
+  Tăng tốc đáng kể thao tác nhập liệu, di chuyển con trỏ và cuộn trang, giúp chỉnh sửa mượt mà ngay cả với các tệp dung lượng lớn.
+- Tìm kiếm & "Thay thế tất cả" siêu tốc:
+  Tối ưu hóa tốc độ tìm kiếm từ khóa, biểu thức chính quy (regex) và "Thay thế tất cả" hàng nghìn vị trí chỉ trong chớp mắt.
+- Xem trước trực tiếp Markdown, LaTeX & Mermaid nhanh hơn:
+  Hiển thị thời gian thực các tài liệu Markdown dài, công thức LaTeX và sơ đồ Mermaid nhanh và mượt hơn khi đang gõ.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.46
-🇯🇵 Виправлення позиції введення IME у вікні пошуку/заміни та повна підтримка кодувань і переносів рядків (CR / CRLF / LF)
+        "releaseNotes": """Примітки до випуску miu v1.0.47
+⚡ Значне прискорення редагування, пошуку із заміною та живого перегляду
 
-- Виправлено зміщення тексту IME у діалогах пошуку та заміни (Ctrl+F / Ctrl+H):
-  Усунено проблему, через яку під час набору з увімкненим IME (наприклад, японською) непідтверджений текст відображався зміщеним праворуч замість початку поля введення.
-- Комплексне покращення розпізнавання та конвертації кодувань:
-  Додано автовизначення UTF-16LE/BE без BOM, повну підтримку сурогатних пар UTF-16 (4-байтові символи та емодзі), динамічну вибірку для файлів понад 64 КБ і захист від пошкоджених байтів.
-- Повна підтримка переносів рядків CR / CRLF / LF:
-  Підсвічування синтаксису для всіх 49 мов, прямокутне виділення, нормалізація під час вставлення, регулярні вирази (^ / $) та живий перегляд бездоганно працюють із CR, CRLF та LF.""",
+- Швидше введення тексту, прокручування та робота з великими файлами:
+  Прискорено набір тексту, переміщення курсора та прокручування для максимально плавної роботи навіть із великими файлами.
+- Миттєвий пошук і «Замінити все»:
+  Пошук ключових слів, регулярних виразів і масова заміна тисяч збігів тепер виконуються миттєво.
+- Швидший живий перегляд Markdown, LaTeX і Mermaid:
+  Оптимізовано відображення довгих документів Markdown, формул LaTeX і діаграм Mermaid під час набору тексту.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.46
-🇯🇵 Perbaikan Posisi Input IME pada Dialog Cari/Ganti & Dukungan Penuh Pengodean Karakter / Akhir Baris (CR / CRLF / LF)
+        "releaseNotes": """Catatan Rilis miu v1.0.47
+⚡ Peningkatan Kecepatan Besar pada Pengeditan, Cari/Ganti & Pratinjau Langsung
 
-- Perbaikan Posisi Teks Komposisi IME di Dialog Cari & Ganti (Ctrl+F / Ctrl+H):
-  Memperbaiki masalah saat mengetik dengan IME aktif (seperti input bahasa Jepang) di kotak teks Cari atau Ganti yang menampilkan teks komposisi bergeser ke kanan alih-alih di awal kotak input.
-- Peningkatan Deteksi & Konversi Pengodean Karakter Secara Menyeluruh:
-  Deteksi otomatis untuk file UTF-16LE/BE tanpa BOM, dukungan penuh pasangan pengganti UTF-16 (karakter 4-byte & emoji), pengambilan sampel dinamis untuk file di atas 64 KB, serta perlindungan terhadap urutan byte yang rusak.
-- Dukungan Penuh Akhir Baris CR / CRLF / LF:
-  Penyorotan sintaks untuk 49 bahasa, seleksi persegi panjang, normalisasi baris saat menempel, pencarian regex (^ / $), dan Pratinjau Langsung kini bekerja akurat dengan CR, CRLF, dan LF.""",
+- Pengetikan, Pengguliran & Pengeditan File Besar Lebih Cepat:
+  Mempercepat input teks, pergerakan kursor, dan pengguliran secara signifikan sehingga file berukuran besar sekalipun terasa sangat mulus dan responsif.
+- Pencarian & "Ganti Semua" Super Cepat:
+  Pencarian kata kunci, ekspresi reguler (regex), serta operasi "Ganti Semua" untuk ribuan kecocokan kini selesai secara instan.
+- Pratinjau Langsung Markdown, LaTeX & Mermaid Lebih Cepat:
+  Menampilkan dokumen Markdown panjang, rumus LaTeX, dan diagram Mermaid lebih cepat saat Anda mengetik.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.46
-🇯🇵 Oprava pozice psaní IME v dialogu Najít/Nahradit a plná podpora kódování znaků i konců řádků (CR / CRLF / LF)
+        "releaseNotes": """Poznámky k verzi miu v1.0.47
+⚡ Výrazné zrychlení úprav, vyhledávání/nahrazování a živého náhledu
 
-- Opraveno posunutí textu IME v dialozích Najít a Nahradit (Ctrl+F / Ctrl+H):
-  Vyřešen problém, kdy se při psaní se zapnutým IME (např. japonským) nepotvrzený text zobrazoval posunutý doprava místo na začátku vstupního pole.
-- Komplexní vylepšení detekce a převodu kódování znaků:
-  Automatická detekce UTF-16LE/BE bez BOM, plná podpora náhradních párů UTF-16 (4bajtové znaky a emoji), dynamické vzorkování u souborů nad 64 KB a ochrana proti poškozeným sekvencím bajtů.
-- Plná podpora konců řádků CR / CRLF / LF:
-  Zvýrazňování syntaxe pro 49 jazyků, obdélníkový výběr, normalizace při vkládání, regulární výrazy (^ / $) i živý náhled nyní bezchybně fungují s CR, CRLF a LF.""",
+- Rychlejší psaní, posouvání a úpravy velkých souborů:
+  Zadávání textu, pohyb kurzoru a posouvání byly výrazně zrychleny pro maximálně plynulou práci i s velkými soubory.
+- Bleskové vyhledávání a „Nahradit vše“:
+  Vyhledávání textu, regulárních výrazů i hromadné nahrazení tisíců výskytů nyní proběhne okamžitě.
+- Rychlejší živý náhled pro Markdown, LaTeX a Mermaid:
+  Zrychlené vykreslování dlouhých dokumentů Markdown, vzorců LaTeX a diagramů Mermaid v reálném čase.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.46
-🇯🇵 Åtgärdad IME-inmatningsposition i Sök/Ersätt och fullt stöd för teckenkodningar & radbrytningar (CR / CRLF / LF)
+        "releaseNotes": """Versionsinformation för miu v1.0.47
+⚡ Stora hastighetsförbättringar för redigering, Sök/Ersätt och live-förhandsgranskning
 
-- Åtgärdad IME-textposition i dialogrutorna Sök och Ersätt (Ctrl+F / Ctrl+H):
-  Löste ett problem där inmatning med aktiv IME (t.ex. japanska) visade obekräftad text förskjuten åt höger i stället för i början av textrutan.
-- Omfattande förbättringar av teckenkodningsdetektering och konvertering:
-  Automatisk identifiering av UTF-16LE/BE utan BOM, fullt stöd för UTF-16-surrogatpar (4-bytetecken och emojis), dynamisk provtagning för filer över 64 KB samt skydd mot skadade bytesekvenser.
-- Fullt stöd för CR / CRLF / LF-radbrytningar:
-  Syntaxmarkering för alla 49 språk, rektangulär markering, radbrytningsnormalisering vid inklistring, regex-sökning (^ / $) och live-förhandsgranskning fungerar nu felfritt med CR, CRLF och LF.""",
+- Snabbare skrivning, rullning och redigering av stora filer:
+  Textinmatning, markörförflyttning och rullning har snabbats upp rejält så att även stora filer känns följsamma och snabba.
+- Blixtsnabb sökning och ”Ersätt alla”:
+  Sökning med sökord eller reguljära uttryck samt ”Ersätt alla” för tusentals träffar slutförs nu omedelbart.
+- Snabbare live-förhandsgranskning för Markdown, LaTeX och Mermaid:
+  Långa Markdown-dokument, LaTeX-formler och Mermaid-diagram ritas upp ännu snabbare medan du skriver.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.46
-🇯🇵 แก้ไขตำแหน่งการพิมพ์ IME ในหน้าต่างค้นหา/แทนที่ และรองรับรหัสอักขระกับรูปแบบการขึ้นบรรทัดใหม่ (CR / CRLF / LF) อย่างสมบูรณ์
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.47
+⚡ เพิ่มความเร็วครั้งใหญ่ทั้งการแก้ไขข้อความ การค้นหา/แทนที่ และโหมดพรีวิวสด
 
-- แก้ไขตำแหน่งข้อความระหว่างพิมพ์ด้วย IME ในหน้าต่างค้นหาและแทนที่ (Ctrl+F / Ctrl+H):
-  แก้ไขปัญหาการเปิด IME (เช่น การพิมพ์ภาษาญี่ปุ่น) ในช่องค้นหาแล้วข้อความที่ยังไม่ยืนยันเลื่อนไปทางขวาแทนที่จะแสดงที่ต้นช่องข้อความ
-- ยกระดับการตรวจจับและแปลงรหัสอักขระอย่างครบวงจร:
-  รองรับการตรวจจับ UTF-16LE/BE แบบไม่มี BOM อัตโนมัติ, รองรับ UTF-16 Surrogate Pairs (อักขระ 4 ไบต์และอีโมจิ), การสุ่มตรวจไฟล์ขนาดเกิน 64 KB อย่างแม่นยำ และการป้องกันข้อมูลสูญหายจากไบต์ที่เสียหาย
-- รองรับการขึ้นบรรทัดใหม่ทั้ง CR / CRLF / LF อย่างสมบูรณ์:
-  การไฮไลต์ไวยากรณ์ทั้ง 49 ภาษา, การเลือกแบบคอลัมน์, การจัดรูปแบบบรรทัดเมื่อวาง, การค้นหาด้วย Regex (^ / $) และการแสดงตัวอย่างสดทำงานได้อย่างถูกต้องครบถ้วน""",
+- พิมพ์ เลื่อนหน้าจอ และแก้ไขไฟล์ขนาดใหญ่ได้เร็วขึ้น:
+  เร่งความเร็วการพิมพ์ การเลื่อนเคอร์เซอร์ และการเลื่อนหน้าจอให้ลื่นไหลและตอบสนองทันใจแม้เปิดไฟล์ขนาดใหญ่
+- ค้นหาและ "แทนที่ทั้งหมด" เร็วทันใจ:
+  ค้นหาคำสำคัญนิพจน์ทั่วไป (Regex) และสั่ง "แทนที่ทั้งหมด" นับพันรายการได้เสร็จสิ้นในพริบตา
+- พรีวิวสด Markdown, สมการ LaTeX และแผนภาพ Mermaid เร็วขึ้น:
+  แสดงผลเอกสาร Markdown ขนาดยาว สมการ LaTeX และแผนภาพ Mermaid ได้รวดเร็วขึ้นขณะพิมพ์""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.46 रिलीज़ नोट्स
-🇯🇵 खोजें/बदलें संवाद में IME इनपुट स्थिति सुधार और पूर्ण कैरेक्टर एनकोडिंग व लाइन-एंडिंग (CR / CRLF / LF) समर्थन
+        "releaseNotes": """miu v1.0.47 रिलीज़ नोट्स
+⚡ संपादन, खोजें/बदलें और लाइव प्रीव्यू की गति में बड़ा सुधार
 
-- खोजें और बदलें संवाद (Ctrl+F / Ctrl+H) में IME इनपुट स्थिति को ठीक किया गया:
-  खोज या बदलें टेक्स्ट बॉक्स में सक्रिय IME (जैसे जापानी इनपुट) के साथ टाइप करते समय अनकन्फर्म्ड अक्षरों के दाईं ओर खिसकने की समस्या को हल किया गया।
-- कैरेक्टर एनकोडिंग पहचान और रूपांतरण में व्यापक सुधार:
-  बिना BOM वाली UTF-16LE/BE फ़ाइलों की स्वतः पहचान, UTF-16 सरोगेट पेयर (4-बाइट अक्षर और इमोजी) का पूर्ण समर्थन, 64 KB से बड़ी फ़ाइलों के लिए सटीक पहचान और खराब बाइट अनुक्रमों से सुरक्षा जोड़ी गई।
-- सभी सुविधाओं में पूर्ण CR / CRLF / LF लाइन-एंडिंग समर्थन:
-  सभी 49 भाषाओं में सिंटैक्स हाइलाइटिंग, आयताकार चयन, पेस्ट लाइन सामान्यीकरण, रेगेक्स (^ / $) खोज/बदलाव और लाइव प्रीव्यू अब CR, CRLF और LF के साथ सटीक काम करते हैं।""",
+- तेज़ टाइपिंग, स्क्रॉलिंग और बड़ी फ़ाइलों का संपादन:
+  टेक्स्ट इनपुट, कर्सर मूवमेंट और स्क्रॉलिंग को काफी तेज़ किया गया है ताकि बड़ी फ़ाइलों में भी काम करना बेहद सहज और तेज़ रहे।
+- अल्ट्रा-फ़ास्ट खोज और "सभी बदलें" (Replace All):
+  कीवर्ड खोज, रेगेक्स (Regex) मिलान और हज़ारों स्थानों पर एक साथ "सभी बदलें" अब पलक झपकते ही पूरा हो जाता है।
+- तेज़ Markdown, LaTeX और Mermaid लाइव प्रीव्यू:
+  लंबे Markdown दस्तावेज़ों, LaTeX सूत्रों और Mermaid आरेखों का लाइव प्रीव्यू टाइप करते समय और भी तेज़ी से अपडेट होता है।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.46
-🇯🇵 Corectarea poziției de introducere IME în Căutare/Înlocuire și suport complet pentru codificări și sfârșituri de linie (CR / CRLF / LF)
+        "releaseNotes": """Note de lansare miu v1.0.47
+⚡ Creștere majoră a vitezei pentru editare, Căutare/Înlocuire și previzualizare live
 
-- S-a corectat poziția textului IME în ferestrele Căutare și Înlocuire (Ctrl+F / Ctrl+H):
-  S-a rezolvat o problemă în care tastarea cu un IME activ (precum introducerea în japoneză) afișa textul neconfirmat deplasat spre dreapta în loc de începutul câmpului de text.
-- Îmbunătățiri complete pentru detectarea și conversia codificării caracterelor:
-  Detectare automată pentru UTF-16LE/BE fără BOM, suport complet pentru perechi surogat UTF-16 (caractere pe 4 octeți și emoji), eșantionare dinamică peste 64 KB și protecție pentru secvențe de octeți deteriorate.
-- Suport complet pentru sfârșituri de linie CR / CRLF / LF:
-  Evidențierea sintaxei pentru cele 49 de limbaje, selecția dreptunghiulară, normalizarea la lipire, căutarea regex (^ / $) și previzualizarea live funcționează impecabil cu CR, CRLF și LF.""",
+- Tastare, derulare și editare mai rapidă a fișierelor mari:
+  Introducerea textului, mișcarea cursorului și derularea au fost accelerate semnificativ pentru o experiență fluidă chiar și în fișierele mari.
+- Căutare și „Înlocuiește tot” ultra-rapide:
+  Căutarea cuvintelor cheie, expresiilor regulate și înlocuirea în masă a mii de apariții se finalizează acum instantaneu.
+- Previzualizare live mai rapidă pentru Markdown, LaTeX și Mermaid:
+  Redarea în timp real a documentelor Markdown lungi, formulelor LaTeX și diagramelor Mermaid este și mai rapidă în timp ce tastați.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.46 kiadási megjegyzések
-🇯🇵 IME beviteli pozíció javítása a Keresés/Csere ablakban és teljes karakterkódolási /พิกัด-sortörési (CR / CRLF / LF) támogatás
+        "releaseNotes": """miu v1.0.47 kiadási megjegyzések
+⚡ Jelentős sebességnövekedés a szerkesztés, a Keresés/Csere és az élő előnézet terén
 
-- Javítva az IME szövegpozíció a Keresés és Csere párbeszédpanelekben (Ctrl+F / Ctrl+H):
-  Megoldódott egy hiba, amelynél aktív IME (pl. japán bevitel) használatakor az átalakítás előtti szöveg a szövegmező eleje helyett jobbra eltolva jelent meg.
-- Átfogó karakterkódolás-felismerési és konvertálási fejlesztések:
-  Automatikus felismerés BOM nélküli UTF-16LE/BE fájlokhoz, teljes UTF-16 helyettesítő pár (4 bájtos karakterek és emojik) támogatás, dinamikus mintavételezés 64 KB feletti fájloknál és védelem a sérült bájtsorozatok ellen.
-- Teljes CR / CRLF / LF sortörés-támogatás:
-  Mind a 49 nyelv szintaxiskiemelése, a téglalap alakú kijelölés, a beillesztési normalizálás, a regex (^ / $) keresés és az élő előnézet pontosan működik CR, CRLF és LF sortörésekkel.""",
+- Gyorsabb gépelés, görgetés és nagy fájlok szerkesztése:
+  A szövegbevitel, a kurzormozgatás és a görgetés sokkal gyorsabb lett, így a nagy fájlok szerkesztése is rendkívül folyamatos.
+- Villámgyors keresés és „Összes cseréje”:
+  A kulcsszavas és reguláris kifejezéses keresés, valamint több ezer találat egyidejű cseréje mostantól pillanatok alatt elkészül.
+- Gyorsabb Markdown, LaTeX és Mermaid élő előnézet:
+  A hosszú Markdown-dokumentumok, LaTeX-képletek és Mermaid-diagramok valós idejű megjelenítése még gyorsabb gépelés közben.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.46
-🇯🇵 Διόρθωση θέσης εισαγωγής IME στο παράθυρο Εύρεση/Αντικατάσταση & πλήρης υποστήριξη κωδικοποιήσεων και αλλαγών γραμμής (CR / CRLF / LF)
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.47
+⚡ Μεγάλη αύξηση ταχύτητας στην επεξεργασία, την Εύρεση/Αντικατάσταση και τη Ζωντανή Προεπισκόπηση
 
-- Διορθώθηκε η μετατόπιση κειμένου IME στα παράθυρα Εύρεσης και Αντικατάστασης (Ctrl+F / Ctrl+H):
-  Επιλύθηκε πρόβλημα όπου κατά την πληκτρολόγηση με ενεργό IME (π.χ. ιαπωνικά) το κείμενο σύνθεσης εμφανιζόταν μετατοπισμένο προς τα δεξιά αντί στην αρχή του πεδίου.
-- Ολοκληρωμένες βελτιώσεις ανίχνευσης και μετατροπής κωδικοποίησης χαρακτήρων:
-  Αυτόματη ανίχνευση UTF-16LE/BE χωρίς BOM, πλήρης υποστήριξη ζευγών υποκατάστασης UTF-16 (χαρακτήρες 4 byte & emoji), δυναμική δειγματοληψία άνω των 64 KB και προστασία από κατεστραμμένες ακολουθίες byte.
-- Πλήρης υποστήριξη αλλαγών γραμμής CR / CRLF / LF:
-  Ο τονισμός σύνταξης και στις 49 γλώσσες, η ορθογώνια επιλογή, η κανονικοποίηση επικόλλησης, η αναζήτηση regex (^ / $) και η Ζωντανή Προεπισκόπηση λειτουργούν άψογα με CR, CRLF και LF.""",
+- Ταχύτερη πληκτρολόγηση, κύλιση και επεξεργασία μεγάλων αρχείων:
+  Η εισαγωγή κειμένου, η κίνηση του δρομέα και η κύλιση επιταχύνθηκαν σημαντικά ώστε ακόμη και τα μεγάλα αρχεία να αποκρίνονται άμεσα.
+- Εξαιρετικά γρήγορη αναζήτηση και «Αντικατάσταση όλων»:
+  Η αναζήτηση λέξεων-κλειδιών, εκφράσεων regex και η μαζική αντικατάσταση χιλιάδων αποτελεσμάτων ολοκληρώνονται πλέον ακαριαία.
+- Ταχύτερη Ζωντανή Προεπισκόπηση για Markdown, LaTeX και Mermaid:
+  Η απόδοση μεγάλων εγγράφων Markdown, εξισώσεων LaTeX και διαγραμμάτων Mermaid ενημερώνεται ακόμη πιο γρήγορα καθώς πληκτρολογείτε.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter til miu v1.0.46
-🇯🇵 Rettet IME-indtastningsposition i Søg/Erstat og fuld understøttelse af tegnkodninger & linjeskift (CR / CRLF / LF)
+        "releaseNotes": """Udgivelsesnoter til miu v1.0.47
+⚡ Markant højere hastighed ved redigering, Søg/Erstat og live-forhåndsvisning
 
-- Rettet IME-tekstposition i dialogboksene Søg og Erstat (Ctrl+F / Ctrl+H):
-  Løst et problem, hvor indtastning med aktiv IME (f.eks. japansk) viste ubekræftet tekst forskudt mod højre i stedet for i starten af tekstfeltet.
-- Omfattende forbedringer af tegnkodningsregistrering og konvertering:
-  Automatisk registrering af UTF-16LE/BE uden BOM, fuld understøttelse af UTF-16-surrogatpar (4-byte tegn og emojis), dynamisk prøveudtagning for filer over 64 KB og beskyttelse mod beskadigede bytesekvenser.
-- Fuld understøttelse af CR / CRLF / LF-linjeskift:
-  Syntaksfremhævning for alle 49 sprog, rektangulær markering, normalisering ved indsætning, regex-søgning (^ / $) og live-forhåndsvisning fungerer nu fejlfrit med CR, CRLF og LF.""",
+- Hurtigere indtastning, rulning og redigering af store filer:
+  Tekstindtastning, markørbevægelse og rulning er optimeret, så selv store filer føles hurtige og flydende.
+- Lynhurtig søgning og "Erstat alle":
+  Søgning med søgeord eller regulære udtryk samt "Erstat alle" på tværs af tusindvis af forekomster udføres nu øjeblikkeligt.
+- Hurtigere live-forhåndsvisning af Markdown, LaTeX og Mermaid:
+  Lange Markdown-dokumenter, LaTeX-formler og Mermaid-diagrammer opdateres endnu hurtigere, mens du skriver.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.46 -julkaisutiedot
-🇯🇵 Korjattu IME-syöttösijainti Etsi/Korvaa-valintaikkunassa sekä täysi merkistökoodausten ja rivinvaihtojen (CR / CRLF / LF) tuki
+        "releaseNotes": """miu v1.0.47 -julkaisutiedot
+⚡ Merkittävästi nopeampi muokkaus, Etsi/Korvaa ja reaaliaikainen esikatselu
 
-- Korjattu IME-tekstin sijainti Etsi- ja Korvaa-valintaikkunoissa (Ctrl+F / Ctrl+H):
-  Ratkaistu ongelma, jossa aktiivisella IME-syötöllä (kuten japani) kirjoitettaessa vahvistamaton teksti näkyi oikealle siirtyneenä tekstikentän alun sijaan.
-- Kattavat parannukset merkistökoodauksen tunnistukseen ja muunnokseen:
-  Automaattinen tunnistus BOM-merkittömille UTF-16LE/BE-tiedostoille, täysi UTF-16-sijaisparien (4-tavuiset merkit ja emojit) tuki, dynaaminen näytteenotto yli 64 kt:n tiedostoille ja suojaus vioittuneille tavusarjoille.
-- Täysi CR / CRLF / LF -rivinvaihtojen tuki:
-  Kaikkien 49 kielen syntaksinkorostus, suorakulmainen valinta, liittämisen normalisointi, säännöllisten lausekkeiden (^ / $) haku ja reaaliaikainen esikatselu toimivat nyt virheettömästi CR-, CRLF- ja LF-rivinvaihdoilla.""",
+- Nopeampi kirjoitus, vieritys ja suurten tiedostojen muokkaus:
+  Tekstinsyöttöä, kohdistimen liikettä ja vieritystä on nopeutettu huomattavasti, jotta suuretkin tiedostot toimivat sulavasti.
+- Salamannopea haku ja ”Korvaa kaikki”:
+  Avainsana- ja regex-haku sekä tuhansien osumien ”Korvaa kaikki” -toiminto valmistuvat nyt välittömästi.
+- Nopeampi Markdown-, LaTeX- ja Mermaid-esikatselu:
+  Pitkien Markdown-asiakirjojen, LaTeX-kaavojen ja Mermaid-kaavioiden reaaliaikainen esikatselu päivittyy entistä nopeammin kirjoittaessasi.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.46
-🇯🇵 Rettet IME-inndataposisjon i Søk/Erstatt og full støtte for tegnkodinger og linjeskift (CR / CRLF / LF)
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.47
+⚡ Betydelig høyere hastighet for redigering, Søk/Erstatt og sanntidsvisning
 
-- Rettet IME-tekstposisjon i dialogboksene Søk og Erstatt (Ctrl+F / Ctrl+H):
-  Løst et problem der skriving med aktiv IME (f.eks. japansk) viste ubekreftet tekst forskjøvet mot høyre i stedet for i starten av tekstfeltet.
-- Omfattende forbedringer av tegnkodingsgjenkjenning og konvertering:
-  Automatisk gjenkjenning av UTF-16LE/BE uten BOM, full støtte for UTF-16-surrogatpar (4-byte tegn og emojier), dynamisk prøvetaking for filer over 64 KB og beskyttelse mot skadede bytesekvenser.
-- Full støtte for CR / CRLF / LF-linjeskift:
-  Syntaksutheving for alle 49 språk, rektangulær markering, normalisering ved innliming, regex-søk (^ / $) og sanntidsvisning fungerer nå feilfritt med CR, CRLF og LF.""",
+- Raskere skriving, rulling og redigering av store filer:
+  Tekstinnlasting, markørbevegelse og rulling er kraftig akselerert slik at selv store filer oppleves raske og jevne.
+- Lynraskt søk og «Erstatt alle»:
+  Nøkkelordsøk, regulære uttrykk og «Erstatt alle» for tusenvis av treff fullføres nå umiddelbart.
+- Raskere sanntidsvisning for Markdown, LaTeX og Mermaid:
+  Lange Markdown-dokumenter, LaTeX-formler og Mermaid-diagrammer oppdateres enda raskere mens du skriver.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.46
-🇯🇵 Pembaikan Kedudukan Input IME dalam Dialog Cari/Ganti & Sokongan Penuh Pengekodan Aksara / Hujung Baris (CR / CRLF / LF)
+        "releaseNotes": """Nota Keluaran miu v1.0.47
+⚡ Peningkatan Kelajuan Besar untuk Penyuntingan, Cari/Ganti & Pratonton Langsung
 
-- Membaiki Kedudukan Teks IME dalam Dialog Cari dan Ganti (Ctrl+F / Ctrl+H):
-  Menyelesaikan masalah apabila menaip dengan IME aktif (seperti input bahasa Jepun) memaparkan teks belum disahkan teranjak ke kanan bukannya di permulaan kotak teks.
-- Penambahbaikan Menyeluruh Pengesanan & Penukaran Pengekodan Aksara:
-  Pengesanan automatik untuk fail UTF-16LE/BE tanpa BOM, sokongan penuh pasangan pengganti UTF-16 (aksara 4-bait & emoji), pensampelan dinamik untuk fail melebihi 64 KB, dan perlindungan daripada jujukan bait rosak.
-- Sokongan Penuh Hujung Baris CR / CRLF / LF:
-  Penyerlahan sintaks bagi 49 bahasa, pemilihan segi empat tepat, penormalan baris semasa menampal, carian regex (^ / $) dan Pratonton Langsung kini berfungsi dengan tepat untuk CR, CRLF dan LF.""",
+- Penaipan, Penatalan & Penyuntingan Fail Besar Lebih Pantas:
+  Input teks, pergerakan kursor dan penatalan dipercepatkan dengan ketara supaya fail besar sekalipun kekal lancar dan responsif.
+- Carian & "Ganti Semua" Ultra-Pantas:
+  Carian kata kunci, ungkapan biasa (regex) dan operasi "Ganti Semua" untuk ribuan padanan kini selesai serta-merta.
+- Pratonton Langsung Markdown, LaTeX & Mermaid Lebih Pantas:
+  Dokumen Markdown yang panjang, formula LaTeX dan rajah Mermaid dipaparkan dengan lebih pantas semasa anda menaip.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

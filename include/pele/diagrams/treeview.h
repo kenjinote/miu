@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../foundation.h"
 
 namespace Pele {
@@ -367,52 +367,6 @@ struct TreeViewAst {
     std::vector<TreeNodeAst> nodes;
 };
 
-inline std::string fixSingle(const std::string& text) {
-    std::string s = trimStr(text);
-    std::string out;
-    int spaces = 0;
-    char firstSpace = ' ';
-    for (size_t i = 0; i < s.size(); ++i) {
-        char c = s[i];
-        if (c == '\t' || c == ' ') {
-            if (spaces == 0) firstSpace = c;
-            spaces++;
-        } else {
-            if (spaces == 1) out.push_back(firstSpace);
-            else if (spaces >= 2) out.push_back(' ');
-            spaces = 0;
-            out.push_back(c);
-        }
-    }
-    return out;
-}
-
-inline std::string fixTitleValue(const std::string& text) {
-    size_t pos = text.find("title");
-    if (pos == std::string::npos) return "";
-    return fixSingle(text.substr(pos + 5));
-}
-
-inline std::string fixAccTitleValue(const std::string& text) {
-    size_t pos = text.find(':');
-    if (pos == std::string::npos) return "";
-    return fixSingle(text.substr(pos + 1));
-}
-
-inline std::string fixAccDescrValue(const std::string& text) {
-    size_t brace = text.find('{');
-    size_t colon = text.find(':');
-    if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
-        return fixSingle(text.substr(colon + 1));
-    }
-    if (brace != std::string::npos) {
-        size_t close = text.find('}', brace + 1);
-        std::string body = text.substr(brace + 1, close == std::string::npos ? std::string::npos : close - brace - 1);
-        return cleanAccDescr(body);
-    }
-    return "";
-}
-
 inline TreeViewAst parseTreeView(const std::string& src) {
     const auto& types = treeViewTokens();
     Tokens toks = tokenize(src, types, "treeView");
@@ -420,9 +374,9 @@ inline TreeViewAst parseTreeView(const std::string& src) {
     TreeViewAst ast;
     r.expect(T::keyword);
     for (;;) {
-        if (r.kind() == T::accDescr) ast.accDescr = fixAccDescrValue(r.take());
-        else if (r.kind() == T::accTitle) ast.accTitle = fixAccTitleValue(r.take());
-        else if (r.kind() == T::title) ast.title = fixTitleValue(r.take());
+        if (r.kind() == T::accDescr) ast.accDescr = common_tokens::accDescrValue(r.take());
+        else if (r.kind() == T::accTitle) ast.accTitle = common_tokens::accTitleValue(r.take());
+        else if (r.kind() == T::title) ast.title = common_tokens::titleValue(r.take());
         else break;
     }
     while (r.kind() != -1) {

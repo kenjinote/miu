@@ -829,7 +829,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     if (![self window]) return;
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
     NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
-    if (!appVersion) appVersion = @"1.0.46";
+    if (!appVersion) appVersion = @"1.0.47";
     NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
     editor->appVersionStr = UTF8ToW([versionString UTF8String]);
     NSString *localizedHelp = NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧");

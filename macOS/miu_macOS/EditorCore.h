@@ -29,6 +29,12 @@
 #include "../../macOS/third_party/ced/compact_enc_det/compact_enc_det.h"
 #endif
 
+#if __has_include("MiuCore.h")
+#include "MiuCore.h"
+#else
+#include "../../include/MiuCore.h"
+#endif
+
 #if __has_include("MiuEmmet.h")
 #include "MiuEmmet.h"
 #else
@@ -79,172 +85,8 @@ std::string MiuResolveDisplayFileName(const std::vector<std::string>& candidates
                                       const std::string& fallbackNameUtf8,
                                       const std::string& localizedUntitledUtf8 = "Untitled");
 
-struct Piece {
-    bool isOriginal;
-    size_t start;
-    size_t len;
-};
-
-struct PieceTable {
-    const char* origPtr = nullptr;
-    size_t origSize = 0;
-    std::string addBuf;
-    std::vector<Piece> pieces;
-    size_t totalLength = 0;
-    mutable size_t cachedIdx = 0;
-    mutable size_t cachedStart = 0;
-
-    void initFromFile(const char* data, size_t size) {
-        origPtr = data;
-        origSize = size;
-        pieces.clear();
-        addBuf.clear();
-        totalLength = size;
-        cachedIdx = 0;
-        cachedStart = 0;
-        if (size > 0) pieces.push_back({ true, 0, size });
-    }
-
-    void initEmpty() {
-        origPtr = nullptr;
-        origSize = 0;
-        pieces.clear();
-        addBuf.clear();
-        totalLength = 0;
-        cachedIdx = 0;
-        cachedStart = 0;
-    }
-
-    size_t length() const { return totalLength; }
-
-    void coalesceAround(size_t idx) {
-        if (pieces.empty()) return;
-        size_t start = (idx > 0) ? (idx - 1) : 0;
-        while (start + 1 < pieces.size()) {
-            Piece& a = pieces[start];
-            Piece& b = pieces[start + 1];
-            if (a.isOriginal == b.isOriginal && a.start + a.len == b.start) {
-                a.len += b.len;
-                pieces.erase(pieces.begin() + start + 1);
-            } else {
-                if (start > idx + 1) break;
-                start++;
-            }
-        }
-        cachedIdx = 0;
-        cachedStart = 0;
-    }
-
-    void getRange(size_t pos, size_t count, std::string& out) const {
-        out.clear();
-        if (pos >= totalLength || count == 0) return;
-        count = std::min(count, totalLength - pos);
-        out.reserve(count);
-        size_t cur = 0, idx = 0;
-        if (cachedIdx < pieces.size() && cachedStart <= pos) {
-            cur = cachedStart;
-            idx = cachedIdx;
-        }
-        for (; idx < pieces.size(); ++idx) {
-            const auto& p = pieces[idx];
-            if (cur + p.len <= pos) { cur += p.len; continue; }
-            if (out.empty()) { cachedIdx = idx; cachedStart = cur; }
-            size_t localStart = (pos > cur) ? (pos - cur) : 0;
-            size_t take = std::min(p.len - localStart, count - out.size());
-            if (take == 0) break;
-            p.isOriginal ? out.append(origPtr + p.start + localStart, take) : out.append(addBuf.data() + p.start + localStart, take);
-            if (out.size() >= count) break;
-            cur += p.len;
-        }
-    }
-
-    std::string getRange(size_t pos, size_t count) const {
-        std::string out;
-        getRange(pos, count, out);
-        return out;
-    }
-
-    char charAt(size_t pos) const {
-        if (pos >= totalLength) return ' ';
-        if (cachedIdx < pieces.size()) {
-            const Piece& cp = pieces[cachedIdx];
-            if (pos >= cachedStart && pos < cachedStart + cp.len) {
-                size_t off = pos - cachedStart;
-                return cp.isOriginal ? origPtr[cp.start + off] : addBuf[cp.start + off];
-            }
-            if (pos >= cachedStart + cp.len && cachedIdx + 1 < pieces.size()) {
-                const Piece& np = pieces[cachedIdx + 1];
-                size_t nextStart = cachedStart + cp.len;
-                if (pos < nextStart + np.len) {
-                    cachedIdx++;
-                    cachedStart = nextStart;
-                    size_t off = pos - nextStart;
-                    return np.isOriginal ? origPtr[np.start + off] : addBuf[np.start + off];
-                }
-            }
-        }
-        size_t cur = 0;
-        for (size_t i = 0; i < pieces.size(); ++i) {
-            const auto& p = pieces[i];
-            if (cur + p.len <= pos) { cur += p.len; continue; }
-            cachedIdx = i;
-            cachedStart = cur;
-            return p.isOriginal ? origPtr[p.start + pos - cur] : addBuf[p.start + pos - cur];
-        }
-        return ' ';
-    }
-
-    void insert(size_t pos, const std::string& s) {
-        if (s.empty()) return;
-        if (pos > totalLength) pos = totalLength;
-        size_t cur = 0, idx = 0;
-        while (idx < pieces.size() && cur + pieces[idx].len < pos) { cur += pieces[idx].len; ++idx; }
-        if (idx < pieces.size()) {
-            Piece p = pieces[idx];
-            size_t offset = pos - cur;
-            if (offset > 0 && offset < p.len) {
-                pieces[idx] = { p.isOriginal, p.start, offset };
-                pieces.insert(pieces.begin() + idx + 1, { p.isOriginal, p.start + offset, p.len - offset });
-                idx++;
-            } else if (offset == p.len) {
-                idx++;
-            }
-        }
-        size_t addStart = addBuf.size();
-        addBuf.append(s);
-        pieces.insert(pieces.begin() + idx, { false, addStart, (size_t)s.size() });
-        totalLength += s.size();
-        coalesceAround(idx);
-    }
-
-    void erase(size_t pos, size_t count) {
-        if (count == 0 || pos >= totalLength) return;
-        if (pos + count > totalLength) count = totalLength - pos;
-        size_t cur = 0, idx = 0;
-        while (idx < pieces.size() && cur + pieces[idx].len <= pos) { cur += pieces[idx].len; ++idx; }
-        if (idx >= pieces.size()) return;
-        if (pos > cur) {
-            Piece p = pieces[idx];
-            size_t leftLen = pos - cur;
-            pieces[idx] = { p.isOriginal, p.start, leftLen };
-            pieces.insert(pieces.begin() + idx + 1, { p.isOriginal, p.start + leftLen, p.len - leftLen });
-            idx++;
-        }
-        size_t remaining = count;
-        while (idx < pieces.size() && remaining > 0) {
-            if (pieces[idx].len <= remaining) {
-                remaining -= pieces[idx].len;
-                pieces.erase(pieces.begin() + idx);
-            } else {
-                pieces[idx].start += remaining;
-                pieces[idx].len -= remaining;
-                remaining = 0;
-            }
-        }
-        totalLength -= count;
-        coalesceAround(idx);
-    }
-};
+using MiuCore::Piece;
+using MiuCore::PieceTable;
 
 struct Cursor {
     size_t head = 0;
@@ -259,27 +101,9 @@ struct Cursor {
     bool hasSelection() const { return head != anchor; }
 };
 
-struct EditOp {
-    enum Type { Insert, Erase } type;
-    size_t pos;
-    std::string text;
-};
-
-struct EditBatch {
-    std::vector<EditOp> ops;
-    std::vector<Cursor> beforeCursors, afterCursors;
-};
-
-struct UndoManager {
-    std::vector<EditBatch> undoStack, redoStack;
-    int savePoint = 0;
-    void clear() { undoStack.clear(); redoStack.clear(); savePoint = 0; }
-    void markSaved() { savePoint = (int)undoStack.size(); }
-    bool isModified() const { return (int)undoStack.size() != savePoint; }
-    void push(const EditBatch& b) { undoStack.push_back(b); redoStack.clear(); }
-    EditBatch popUndo() { EditBatch e = undoStack.back(); undoStack.pop_back(); redoStack.push_back(e); return e; }
-    EditBatch popRedo() { EditBatch e = redoStack.back(); redoStack.pop_back(); undoStack.push_back(e); return e; }
-};
+using MiuCore::EditOp;
+using EditBatch = MiuCore::EditBatchT<Cursor>;
+using UndoManager = MiuCore::UndoManagerT<Cursor>;
 
 struct MappedFile {
     int fd = -1;
@@ -363,6 +187,11 @@ struct Editor {
     bool searchWholeWord = false;
     bool searchRegex = false;
     bool isReplaceMode = false;
+    mutable std::regex cachedSearchRegex;
+    mutable std::string cachedSearchRegexPattern;
+    mutable bool cachedSearchRegexIc = false;
+    mutable bool cachedSearchRegexValid = false;
+    const std::regex* getCompiledSearchRegex(const std::string& rawQuery, bool matchCase) const;
 
     std::chrono::steady_clock::time_point zoomPopupEndTime;
     std::string zoomPopupText = "";

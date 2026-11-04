@@ -13,7 +13,7 @@ import jwt
 import requests
 
 BUNDLE_ID = "jp.hack.miu"
-TARGET_VERSION = "1.0.46"
+TARGET_VERSION = "1.0.47"
 BASE_URL = "https://api.appstoreconnect.apple.com/v1"
 
 # ============================================================================
@@ -48,11 +48,11 @@ UTF-8やShift_JIS、EUC-JPなど、さまざまな文字コードを自動で判
 miuが、あなたの「書く時間」を少しでも快適にするお手伝いができれば幸いです。"""
 
 JA_WHATS_NEW = """いつも miu をご利用いただきありがとうございます。
-v1.0.46 では、文字コード判別や改行コードの対応強化、およびプレビュー機能の安定性向上を行いました。
+v1.0.47 では、編集・検索置換・リアルタイムプレビューの全面的な高速化を行いました。
 
-・文字コード自動判別・変換保存の強化：BOMなし UTF-16LE / UTF-16BE の自動判別、4バイト文字（絵文字・サロゲートペア・異体字）の正確な変換保存、64KB超の大容量ファイルでの判別精度向上、および不正バイト列を含むファイルの保護に対応しました。
-・改行コード（CR / CRLF / LF）の完全対応：CR単体や混在改行を含むファイルでも、全49言語のシンタックスハイライト、貼り付け時の改行コード自動正規化、正規表現（^ / $）による複数行検索・置換、ライブプレビューがすべて正確に動作するよう改善しました。
-・ライブプレビューの安定性向上：Mermaid図表（ガントチャート等）やLaTeX数式の入力途中でも、リアルタイムプレビューが強制終了せず安定して描画されるよう改善しました。"""
+・文字入力・スクロール・大容量ファイル編集の高速化：大きなファイルや長時間の編集作業でも、タイピング・カーソル移動・スクロールがこれまで以上に軽快でなめらかに反応するよう高速化しました。
+・検索・「すべて置換」の劇的な高速化：キーワード検索や正規表現検索の照合処理、および数千〜数万箇所におよぶ一括置換（すべて置換）を大幅に高速化し、待ち時間なく瞬時に完了します。
+・Markdown / LaTeX数式 / Mermaid図表 ライブプレビューの高速化：長文ドキュメントや複雑な図表・数式をリアルタイムプレビューしながら執筆する際の描画レスポンスを向上させました。"""
 
 EN_DESC = """miu is a simple, lightweight text and code editor designed to make everything from quick daily notes to Markdown writing and programming feel effortless.
 
@@ -81,11 +81,11 @@ No ads, no tracking, and no data collection. Everything works 100% offline on yo
 Whether you use it as an everyday notepad or a reliable code editor, we hope miu makes your writing time a little more enjoyable."""
 
 EN_WHATS_NEW = """Thank you for using miu.
-Version 1.0.46 improves character encoding support, line-ending handling, and Live Preview stability:
+Version 1.0.47 delivers major speed and responsiveness improvements across editing, search, and Live Preview:
 
-• Enhanced Character Encoding Detection & Conversion: Added automatic detection for BOM-less UTF-16LE/BE files, full UTF-16 surrogate pair (4-byte characters & emoji) preservation when converting encodings, dynamic non-ASCII sampling for files over 64 KB, and safe fallback protection for malformed byte sequences.
-• Full CR / CRLF / LF Line-Ending Support: Syntax highlighting across all 49 languages, clipboard paste newline normalization, multiline regular expression (^ / $) Find & Replace, and Live Preview now work seamlessly with classic Mac (CR) and mixed line endings.
-• Improved Live Preview Stability: Hardened Mermaid diagram (including Gantt charts), LaTeX math, and Markdown live rendering so incomplete syntax while typing never causes unexpected crashes."""
+• Faster Typing, Scrolling & Large-File Editing: Accelerated text input, cursor movement, and scrolling so even large files and long editing sessions remain smooth and responsive.
+• Ultra-Fast Find & "Replace All": Dramatically sped up keyword search, regular expression matching, and bulk "Replace All" across thousands of matches so replacements finish in an instant.
+• Faster Markdown, LaTeX & Mermaid Live Preview: Optimized real-time preview rendering for long Markdown documents, LaTeX math equations, and Mermaid diagrams while typing."""
 
 ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无论是记录日常随笔、撰写 Markdown 文档，还是编写程序代码，都能为您提供舒适顺畅的书写体验。
 
@@ -114,11 +114,11 @@ ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无�
 无论是作为日常便签，还是得力的代码编辑器，希望 miu 能陪伴您度过每一段愉快的书写时光。"""
 
 ZH_HANS_WHATS_NEW = """感谢您使用 miu。
-v1.0.46 全面强化了字符编码识别、换行符兼容以及实时预览的稳定性：
+v1.0.47 全面提升了文本编辑、查找替换与实时预览的运行速度：
 
-・字符编码自动识别与转换保存强化：新增无 BOM UTF-16LE / UTF-16BE 自动识别、4 字节字符（表情符号与 UTF-16 代理对）完整转换支持、超过 64KB 大文件的动态多字节采样识别，以及针对损坏字节序列的安全保护。
-・全面完善 CR / CRLF / LF 换行符支持：无论是经典 Mac 换行（CR）还是混合换行文件，全部 49 种语言语法高亮、粘贴时换行符自动统一、多行正则表达式（^ / $）查找替换以及实时预览均能精准工作。
-・实时预览稳定性提升：改进了 Mermaid 图表（如甘特图）与 LaTeX 数学公式在输入未完成语法时的容错处理，确保实时预览流畅稳定。"""
+・大幅提升输入、滚动与大文件编辑速度：深度优化文本处理速度，即使是超大文件或长时间连续编辑，打字输入、光标移动与页面滚动都更加轻快流畅。
+・查找与“全部替换”速度大幅跃升：显著加速关键词查找、正则表达式匹配以及大批量“全部替换”的处理速度，成千上万处替换也能瞬间完成。
+・Markdown / LaTeX 公式 / Mermaid 图表实时预览提速：优化实时预览的转换与渲染速度，在撰写长篇文档或复杂图表公式时预览响应更加迅速。"""
 
 ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器。無論是記錄日常隨手筆記、撰寫 Markdown 文章，還是編寫程式碼，都能為您帶來舒適順暢的書寫體驗。
 
@@ -147,11 +147,11 @@ ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器�
 無論是作為日常記事本，還是可靠的程式碼編輯器，希望 miu 能讓您的書寫時光更加愉快。"""
 
 ZH_HANT_WHATS_NEW = """感謝您使用 miu。
-v1.0.46 全面強化了字元編碼辨識、換行符號相容性以及即時預覽的穩定性：
+v1.0.47 全面提升了文字編輯、尋找取代與即時預覽的執行速度：
 
-・字元編碼自動辨識與轉換儲存強化：新增無 BOM UTF-16LE / UTF-16BE 自動辨識、4 位元組字元（表情符號與 UTF-16 代理對）完整轉換支援、超過 64KB 大檔案的動態多位元組取樣辨識，以及損壞位元組序列的安全保護。
-・全面完善 CR / CRLF / LF 換行符號支援：無論是經典 Mac 換行（CR）或混合換行檔案，全部 49 種語言語法突顯、貼上時換行符號自動統一、多行正規表示式（^ / $）尋找取代與即時預覽皆能精準運作。
-・即時預覽穩定性提升：改進了 Mermaid 圖表（如甘特圖）與 LaTeX 數學公式在輸入未完成語法時的容錯處理，確保即時預覽流暢穩定。"""
+・大幅提升輸入、捲動與大檔案編輯速度：深度最佳化文字處理速度，即使是超大檔案或長時間連續編輯，打字輸入、游標移動與頁面捲動都更加輕快流暢。
+・尋找與「全部取代」速度大幅躍升：顯著加速關鍵字尋找、正規表示式比對以及大批量「全部取代」的處理速度，成千上萬處取代也能瞬間完成。
+・Markdown / LaTeX 數學公式 / Mermaid 圖表即時預覽提速：最佳化即時預覽的轉換與繪製速度，在撰寫長篇文件或複雜圖表公式時預覽反應更加迅速。"""
 
 KO_DESC = """miu는 일상의 가벼운 메모부터 Markdown 글쓰기, 프로그래밍까지 편안하게 사용할 수 있는 심플한 텍스트 및 코드 에디터입니다.
 
@@ -181,11 +181,11 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 등 다양한 문자 인코딩을 자동으로 
 miu가 당신의 글쓰기 시간을 조금 더 기분 좋게 만들어 드릴 수 있기를 바랍니다."""
 
 KO_WHATS_NEW = """언제나 miu를 이용해 주셔서 감사합니다.
-v1.0.46에서는 문자 인코딩 감지, 줄바꿈 호환성 및 실시간 미리보기 안정성을 대폭 개선했습니다.
+v1.0.47에서는 텍스트 편집, 찾기/바꾸기 및 실시간 미리보기의 처리 속도를 대폭 향상했습니다.
 
-・문자 인코딩 자동 감지 및 변환 저장 강화: BOM 없는 UTF-16LE / UTF-16BE 자동 감지, 4바이트 문자(이모지 및 UTF-16 서로게이트 페어) 완벽 변환, 64KB 초과 대용량 파일의 인코딩 감지 정확도 향상 및 손상된 바이트 시퀀스 안전 보호를 지원합니다.
-・CR / CRLF / LF 모든 줄바꿈 형식 완벽 지원: 고전 Mac 형식(CR) 및 혼합 줄바꿈 파일에서도 49개 언어 구문 강조, 붙여넣기 시 줄바꿈 자동 정규화, 다중 행 정규식(^ / $) 검색·바꾸기 및 실시간 미리보기가 정확하게 작동합니다.
-・실시간 미리보기 안정성 향상: Mermaid 다이어그램(간트 차트 등)과 LaTeX 수식을 입력하는 도중에도 실시간 미리보기가 멈추지 않고 안정적으로 렌더링되도록 개선했습니다."""
+・타이핑, 스크롤 및 대용량 파일 편집 속도 향상: 대용량 파일이나 장시간 편집 작업에서도 글자 입력, 커서 이동, 스크롤이 한층 더 가볍고 매끄럽게 반응하도록 고속화했습니다.
+・찾기 및 '모두 바꾸기' 초고속화: 키워드 검색, 정규식 매칭 및 수천~수만 건의 '모두 바꾸기' 처리 속도를 비약적으로 높여 대기 시간 없이 즉시 완료됩니다.
+・Markdown / LaTeX 수식 / Mermaid 다이어그램 실시간 미리보기 고속화: 긴 문서나 복잡한 수식·다이어그램 작성 시 실시간 미리보기 렌더링 반응 속도를 높였습니다."""
 
 DE_DESC = """miu ist ein schlichter, leichtgewichtiger Text- und Code-Editor, mit dem alltägliche Notizen, Markdown-Texte und Programmierarbeiten gleichermaßen angenehm von der Hand gehen.
 
@@ -214,11 +214,11 @@ Keine Werbung, kein Tracking und keine Datenübertragung. Alle Funktionen arbeit
 Ob als täglicher Notizblock oder als verlässlicher Code-Editor – wir hoffen, dass miu Ihnen das Schreiben jeden Tag ein Stück angenehmer macht."""
 
 DE_WHATS_NEW = """Vielen Dank, dass Sie miu nutzen.
-Version 1.0.46 verbessert die Zeichenkodierungserkennung, die Verarbeitung von Zeilenumbrüchen und die Stabilität der Live-Vorschau:
+Version 1.0.47 bringt deutliche Geschwindigkeitssteigerungen beim Bearbeiten, Suchen/Ersetzen und in der Live-Vorschau:
 
-• Verbesserte Zeichenkodierungserkennung & Konvertierung: Automatische Erkennung für UTF-16LE/BE ohne BOM, volle Unterstützung für 4-Byte-Zeichen (UTF-16-Surrogatpaare & Emojis), präzise Erkennung bei Dateien über 64 KB und Schutz vor beschädigten Bytefolgen.
-• Vollständige Unterstützung für CR / CRLF / LF-Zeilenumbrüche: Syntaxhervorhebung für alle 49 Sprachen, automatische Zeilenumbruch-Normalisierung beim Einfügen, mehrzeilige Regex-Suche (^ / $) und Live-Vorschau unterstützen nun durchgängig CR-, CRLF- und LF-Zeilenumbrüche.
-• Erhöhte Stabilität der Live-Vorschau: Verbesserte Fehlertoleranz für Mermaid-Diagramme (einschließlich Gantt-Diagrammen) und LaTeX-Formeln während der Eingabe."""
+• Schnelleres Tippen, Scrollen und Bearbeiten großer Dateien: Texteingabe, Cursorbewegung und Bildlauf wurden spürbar beschleunigt, sodass auch große Dateien jederzeit flüssig reagieren.
+• Ultraschnelles Suchen & „Alle ersetzen“: Stichwortsuche, reguläre Ausdrücke und „Alle ersetzen“ bei tausenden Treffern werden nun nahezu verzögerungsfrei ausgeführt.
+• Schnellere Live-Vorschau für Markdown, LaTeX & Mermaid: Die Vorschau-Darstellung für lange Markdown-Dokumente, LaTeX-Formeln und Mermaid-Diagramme reagiert beim Schreiben noch schneller."""
 
 FR_DESC = """miu est un éditeur de texte et de code simple et léger, conçu pour rendre aussi agréables la prise de notes quotidienne, la rédaction en Markdown et la programmation.
 
@@ -247,11 +247,11 @@ Aucune publicité, aucun suivi et aucune collecte de données. Tout fonctionne �
 Comme bloc-notes de tous les jours ou comme éditeur de code fiable, nous espérons que miu rendra vos moments d’écriture plus agréables."""
 
 FR_WHATS_NEW = """Merci d’utiliser miu.
-La version 1.0.46 améliore la prise en charge des encodages de caractères, des fins de ligne et la stabilité de l’aperçu en direct :
+La version 1.0.47 apporte une accélération majeure de l’édition, de la recherche/remplacement et de l’aperçu en direct :
 
-• Détection et conversion d’encodage améliorées : détection automatique des fichiers UTF-16LE/BE sans BOM, prise en charge complète des caractères sur 4 octets (paires de substitution UTF-16 et émojis), échantillonnage dynamique au-delà de 64 Ko et protection contre les séquences d’octets corrompues.
-• Prise en charge complète des fins de ligne CR / CRLF / LF : la coloration syntaxique des 49 langages, la normalisation au collage, la recherche par expressions régulières multilignes (^ / $) et l’aperçu en direct fonctionnent parfaitement avec les fins de ligne CR, CRLF et LF.
-• Stabilité renforcée de l’aperçu en direct : rendu fluide et sécurisé des diagrammes Mermaid (dont Gantt) et des formules LaTeX pendant la frappe."""
+• Frappe, défilement et édition de gros fichiers plus rapides : la saisie de texte, le déplacement du curseur et le défilement ont été considérablement accélérés pour offrir une fluidité optimale, même sur de très grands fichiers.
+• Recherche et « Tout remplacer » ultra-rapides : les recherches par mot-clé ou expression régulière ainsi que le remplacement massif de milliers d’occurrences s’exécutent désormais instantanément.
+• Aperçu en direct Markdown, LaTeX et Mermaid plus réactif : le rendu en temps réel des longs documents Markdown, formules LaTeX et diagrammes Mermaid est encore plus rapide pendant la frappe."""
 
 ES_DESC = """miu es un editor de texto y código sencillo y ligero, pensado para que desde tus notas rápidas del día a día hasta la escritura en Markdown y la programación resulten cómodas y agradables.
 
@@ -280,11 +280,11 @@ Sin anuncios, sin rastreo y sin envío de datos. Todo funciona 100 % sin conexi�
 Ya sea como tu bloc de notas diario o como un editor de código de confianza, esperamos que miu haga más agradable tu tiempo de escritura."""
 
 ES_WHATS_NEW = """Gracias por usar miu.
-La versión 1.0.46 mejora la detección de codificación de caracteres, el manejo de saltos de línea y la estabilidad de la vista previa en vivo:
+La versión 1.0.47 ofrece una gran mejora de velocidad en la edición, búsqueda/reemplazo y vista previa en vivo:
 
-• Detección y conversión de codificación mejoradas: detección automática de archivos UTF-16LE/BE sin BOM, soporte completo de caracteres de 4 bytes (pares sustitutos UTF-16 y emojis), muestreo dinámico para archivos mayores de 64 KB y protección ante secuencias de bytes dañadas.
-• Soporte completo para saltos de línea CR / CRLF / LF: el resaltado de sintaxis en 49 lenguajes, la normalización al pegar, la búsqueda regex multilínea (^ / $) y la vista previa en vivo funcionan con total precisión con CR, CRLF y LF.
-• Mayor estabilidad en la vista previa en vivo: renderizado más seguro y estable de diagramas Mermaid (incluidos diagramas Gantt) y fórmulas LaTeX mientras escribes."""
+• Escritura, desplazamiento y edición de archivos grandes más rápidos: se aceleró notablemente la entrada de texto, el movimiento del cursor y el desplazamiento para que incluso los archivos grandes respondan con total fluidez.
+• Búsqueda y «Reemplazar todo» ultrarrápidos: la búsqueda de texto, expresiones regulares y el reemplazo masivo de miles de coincidencias ahora se completan al instante.
+• Vista previa en vivo más rápida para Markdown, LaTeX y Mermaid: se optimizó la visualización en tiempo real de documentos Markdown extensos, fórmulas LaTeX y diagramas Mermaid."""
 
 IT_DESC = """miu è un editor di testo e codice semplice e leggero, pensato per rendere piacevole ogni attività: dagli appunti quotidiani alla scrittura in Markdown, fino alla programmazione.
 
@@ -313,11 +313,11 @@ Nessuna pubblicità, nessun tracciamento e nessuna raccolta dati. Tutto funziona
 Come blocco note quotidiano o come affidabile editor di codice, speriamo che miu renda più piacevole il tuo tempo dedicato alla scrittura."""
 
 IT_WHATS_NEW = """Grazie per aver scelto miu.
-La versione 1.0.46 migliora il supporto delle codifiche di caratteri, la gestione delle interruzioni di riga e la stabilità dell’anteprima dal vivo:
+La versione 1.0.47 offre un notevole aumento di velocità per modifica, trova/sostituisci e anteprima dal vivo:
 
-• Rilevamento e conversione della codifica migliorati: rilevamento automatico per file UTF-16LE/BE senza BOM, pieno supporto per caratteri a 4 byte (coppie di surrogati UTF-16 ed emoji), campionamento dinamico oltre i 64 KB e protezione per sequenze di byte danneggiate.
-• Supporto completo per interruzioni di riga CR / CRLF / LF: evidenziazione della sintassi per 49 linguaggi, normalizzazione all’incollaggio, ricerca regex multilinea (^ / $) e anteprima live perfettamente compatibili con CR, CRLF e LF.
-• Maggiore stabilità dell’anteprima dal vivo: rendering ancora più stabile e sicuro per diagrammi Mermaid (inclusi i diagrammi di Gantt) e formule LaTeX durante la digitazione."""
+• Digitazione, scorrimento e modifica di file grandi più veloci: l’inserimento del testo, il movimento del cursore e lo scorrimento sono stati velocizzati per offrire la massima fluidità anche sui file più grandi.
+• Ricerca e «Sostituisci tutto» ultraveloci: la ricerca per parola chiave o espressione regolare e la sostituzione simultanea di migliaia di occorrenze vengono ora completate all’istante.
+• Anteprima live più rapida per Markdown, LaTeX e Mermaid: rendering in tempo reale ancora più reattivo per lunghi documenti Markdown, formule LaTeX e diagrammi Mermaid."""
 
 PT_DESC = """O miu é um editor de texto e código simples e leve, criado para tornar desde as suas anotações diárias até a escrita em Markdown e a programação muito mais confortáveis.
 
@@ -346,11 +346,11 @@ Sem anúncios, sem rastreamento e sem coleta de dados. Tudo funciona 100% offlin
 Seja como seu bloco de notas do dia a dia ou como um editor de código confiável, esperamos que o miu torne o seu momento de escrever ainda mais agradável."""
 
 PT_WHATS_NEW = """Obrigado por usar o miu.
-A versão 1.0.46 traz melhorias na detecção de codificação de caracteres, suporte a quebras de linha e estabilidade da pré-visualização:
+A versão 1.0.47 traz um grande ganho de velocidade na edição, localização/substituição e pré-visualização em tempo real:
 
-• Detecção e conversão de codificação aprimoradas: detecção automática de arquivos UTF-16LE/BE sem BOM, suporte completo a caracteres de 4 bytes (pares substitutos UTF-16 e emojis), amostragem dinâmica acima de 64 KB e proteção contra sequências de bytes corrompidas.
-• Suporte completo a quebras de linha CR / CRLF / LF: destaque de sintaxe para 49 linguagens, normalização ao colar, busca com expressões regulares multilinha (^ / $) e pré-visualização em tempo real funcionam perfeitamente com CR, CRLF e LF.
-• Maior estabilidade na pré-visualização: renderização contínua e segura de diagramas Mermaid (incluindo gráficos de Gantt) e fórmulas LaTeX durante a digitação."""
+• Digitação, rolagem e edição de arquivos grandes mais rápidas: a entrada de texto, a movimentação do cursor e a rolagem foram aceleradas para garantir máxima fluidez mesmo em arquivos extensos.
+• Localizar e «Substituir tudo» ultrarrápidos: a busca por palavras-chave, expressões regulares e a substituição em massa de milhares de ocorrências agora são concluídas instantaneamente.
+• Pré-visualização em tempo real mais rápida para Markdown, LaTeX e Mermaid: renderização ainda mais ágil para documentos Markdown longos, fórmulas LaTeX e diagramas Mermaid."""
 
 RU_DESC = """miu — это простой и лёгкий текстовый и кодовый редактор, созданный для комфортной работы: от быстрых повседневных заметок и текстов в Markdown до программирования.
 
@@ -379,11 +379,11 @@ RU_DESC = """miu — это простой и лёгкий текстовый и
 В качестве ежедневного блокнота или надёжного редактора кода — надеемся, что miu сделает вашу работу с текстом ещё приятнее."""
 
 RU_WHATS_NEW = """Спасибо, что пользуетесь miu.
-В версии 1.0.46 улучшены распознавание кодировок, обработка переносов строк и стабильность живого предпросмотра:
+В версии 1.0.47 значительно ускорены редактирование, поиск с заменой и живой предпросмотр:
 
-• Улучшенное определение и конвертация кодировок: автоопределение файлов UTF-16LE/BE без BOM, полная поддержка 4-байтовых символов (суррогатных пар UTF-16 и эмодзи), динамическая выборка для файлов более 64 КБ и защита от поврежденных последовательностей байтов.
-• Полная поддержка переносов строк CR / CRLF / LF: подсветка синтаксиса для 49 языков, нормализация переносов при вставке, многострочный поиск с регулярными выражениями (^ / $) и предпросмотр корректно работают с CR, CRLF и LF.
-• Повышена стабильность предпросмотра: надежная отрисовка диаграмм Mermaid (включая диаграммы Ганта) и формул LaTeX прямо во время ввода текста."""
+• Более быстрый ввод, прокрутка и работа с большими файлами: ускорены набор текста, перемещение курсора и прокрутка — даже большие файлы и длительные сессии редактирования работают максимально плавно.
+• Мгновенный поиск и «Заменить все»: поиск по тексту, регулярным выражениям и массовая замена тысяч совпадений теперь выполняются мгновенно.
+• Ускоренный предпросмотр Markdown, формул LaTeX и диаграмм Mermaid: оптимизирована отрисовка предпросмотра в реальном времени для длинных документов Markdown, математических формул и диаграмм."""
 
 NL_DESC = """miu is een eenvoudige, lichtgewicht tekst- en code-editor waarmee u prettig werkt aan dagelijkse notities, Markdown-documenten en programmeerprojecten.
 
@@ -412,11 +412,11 @@ Geen advertenties, geen tracking en geen gegevensverzameling. Alles werkt 100% o
 Of u miu nu gebruikt als dagelijks notitieblok of als betrouwbare code-editor, we hopen dat het uw schrijfmomenten net wat aangenamer maakt."""
 
 NL_WHATS_NEW = """Bedankt voor het gebruiken van miu.
-Versie 1.0.46 verbetert de tekensetherkenning, de ondersteuning voor regeleinden en de stabiliteit van de live-voorvertoning:
+Versie 1.0.47 biedt grote snelheidsverbeteringen voor bewerken, zoeken/vervangen en de live-voorvertoning:
 
-• Verbeterde tekensetherkenning en conversie: automatische detectie van UTF-16LE/BE zonder BOM, volledige ondersteuning voor 4-byte tekens (UTF-16-surrogaatparen en emoji's), dynamische detectie voor bestanden boven 64 KB en bescherming tegen beschadigde bytes.
-• Volledige ondersteuning voor CR / CRLF / LF-regeleinden: syntaxisaccentuering voor alle 49 talen, normalisatie bij plakken, regex-zoeken over meerdere regels (^ / $) en de live-voorvertoning werken naadloos met CR, CRLF en LF.
-• Stabielere live-voorvertoning: verbeterde foutafhandeling bij het live weergeven van Mermaid-diagrammen (zoals Gantt-diagrammen) en LaTeX-formules tijdens het typen."""
+• Sneller typen, scrollen en grote bestanden bewerken: tekstinvoer, cursorbeweging en scrollen zijn aanzienlijk versneld voor een vloeiende ervaring, zelfs in grote bestanden.
+• Razendsnel zoeken en ‘Alles vervangen’: zoekopdrachten, reguliere expressies en het in één keer vervangen van duizenden overeenkomsten worden nu direct uitgevoerd.
+• Snellere live-voorvertoning voor Markdown, LaTeX en Mermaid: de weergave van lange Markdown-documenten, LaTeX-formules en Mermaid-diagrammen reageert nog sneller tijdens het typen."""
 
 SV_DESC = """miu är en enkel och lättviktig text- och kodredigerare som gör allt från dagliga anteckningar till Markdown-skrivande och programmering bekvämt och smidigt.
 
@@ -445,11 +445,11 @@ Inga annonser, ingen spårning och ingen datainsamling. Allt fungerar 100 % offl
 Som dagligt anteckningsblock eller pålitlig kodredigerare – vi hoppas att miu gör din skrivstund lite trevligare."""
 
 SV_WHATS_NEW = """Tack för att du använder miu.
-Version 1.0.46 förbättrar teckenkodningsstödet, hanteringen av radbrytningar och stabiliteten i live-förhandsvisningen:
+Version 1.0.47 ger stora hastighetsförbättringar för redigering, sök/ersätt och förhandsvisning i realtid:
 
-• Förbättrad teckenkodningsdetektering och konvertering: automatisk identifiering av UTF-16LE/BE utan BOM, fullt stöd för 4-bytetecken (UTF-16-surrogatpar och emojis), dynamisk provtagning för filer över 64 KB samt skydd mot skadade bytesekvenser.
-• Fullt stöd för CR / CRLF / LF-radbrytningar: syntaxmarkering för 49 språk, radbrytningsnormalisering vid inklistring, flerradig regex-sökning (^ / $) och förhandsvisning i realtid fungerar nu felfritt med CR, CRLF och LF.
-• Ännu stabilare förhandsvisning: säker och mjuk rendering av Mermaid-diagram (inklusive Gantt-scheman) och LaTeX-formler medan du skriver."""
+• Snabbare skrivning, rullning och redigering av stora filer: textinmatning, markörförflyttning och rullning har snabbats upp rejält så att även stora filer känns följsamma och snabba.
+• Blixtsnabb sökning och ”Ersätt alla”: sökning med sökord eller reguljära uttryck samt ”Ersätt alla” för tusentals träffar slutförs nu omedelbart.
+• Snabbare förhandsvisning för Markdown, LaTeX och Mermaid: långa Markdown-dokument, LaTeX-formler och Mermaid-diagram ritas upp ännu snabbare medan du skriver."""
 
 DA_DESC = """miu er en enkel og let tekst- og kodeeditor, der gør alt fra daglige noter til Markdown-skrivning og programmering behageligt og ubesværet.
 
@@ -478,11 +478,11 @@ Ingen reklamer, ingen sporing og ingen dataindsamling. Alt fungerer 100 % offlin
 Uanset om du bruger miu som daglig notesblok eller som kodeeditor, håber vi, at den gør din skrivetid lidt mere behagelig."""
 
 DA_WHATS_NEW = """Tak fordi du bruger miu.
-Version 1.0.46 forbedrer tegnsætregistrering, håndtering af linjeskift og stabiliteten i live-forhåndsvisning:
+Version 1.0.47 giver markant højere hastighed ved redigering, søg/erstat og live-forhåndsvisning:
 
-• Forbedret tegnsætregistrering og konvertering: automatisk registrering af UTF-16LE/BE uden BOM, fuld understøttelse af 4-byte tegn (UTF-16-surrogatpar og emojis), dynamisk prøveudtagning for filer over 64 KB og beskyttelse mod beskadigede bytesekvenser.
-• Fuld understøttelse af CR / CRLF / LF-linjeskift: syntaksfremhævning for 49 sprog, normalisering ved indsætning, flerlinjet regex-søgning (^ / $) og live-forhåndsvisning fungerer nu fejlfrit med CR, CRLF og LF.
-• Øget stabilitet i live-forhåndsvisning: mere robust gengivelse af Mermaid-diagrammer (herunder Gantt-diagrammer) og LaTeX-formler under indtastning."""
+• Hurtigere indtastning, rulning og redigering af store filer: tekstindtastning, markørbevægelse og rulning er optimeret, så selv store filer føles hurtige og flydende.
+• Lynhurtig søgning og "Erstat alle": søgning med søgeord eller regulære udtryk samt "Erstat alle" på tværs af tusindvis af forekomster udføres nu øjeblikkeligt.
+• Hurtigere live-forhåndsvisning af Markdown, LaTeX og Mermaid: lange Markdown-dokumenter, LaTeX-formler og Mermaid-diagrammer opdateres endnu hurtigere, mens du skriver."""
 
 NO_DESC = """miu er et enkelt og lett tekst- og koderedigeringsprogram som gjør alt fra daglige notater til Markdown-skriving og programmering behagelig og uanstrengt.
 
@@ -511,11 +511,11 @@ Ingen reklame, ingen sporing og ingen datainnsamling. Alt fungerer 100 % offline
 Enten du bruker miu som daglig notisblokk eller som en pålitelig kodeeditor, håper vi den gjør skrivetiden din litt hyggeligere."""
 
 NO_WHATS_NEW = """Takk for at du bruker miu.
-Versjon 1.0.46 forbedrer tegnsettgjenkjenning, håndtering av linjeskift og stabiliteten i sanntidsforhåndsvisningen:
+Versjon 1.0.47 gir betydelig høyere hastighet for redigering, søk/erstatt og forhåndsvisning i sanntid:
 
-• Forbedret tegnsettgjenkjenning og konvertering: automatisk gjenkjenning av UTF-16LE/BE uten BOM, full støtte for 4-byte tegn (UTF-16-surrogatpar og emojier), dynamisk prøvetaking for filer over 64 KB og beskyttelse mot skadede bytesekvenser.
-• Full støtte for CR / CRLF / LF-linjeskift: syntaksutheving for 49 språk, normalisering ved innliming, flerlinjet regex-søk (^ / $) og forhåndsvisning i sanntid fungerer nå feilfritt med CR, CRLF og LF.
-• Økt stabilitet i forhåndsvisning: jevn og stabil visning av Mermaid-diagrammer (inkludert Gantt-diagrammer) og LaTeX-formler mens du skriver."""
+• Raskere skriving, rulling og redigering av store filer: tekstinnlasting, markørbevegelse og rulling er kraftig akselerert slik at selv store filer oppleves raske og jevne.
+• Lynraskt søk og «Erstatt alle»: nøkkelordsøk, regulære uttrykk og «Erstatt alle» for tusenvis av treff fullføres nå umiddelbart.
+• Raskere sanntidsvisning for Markdown, LaTeX og Mermaid: lange Markdown-dokumenter, LaTeX-formler og Mermaid-diagrammer oppdateres enda raskere mens du skriver."""
 
 FI_DESC = """miu on yksinkertainen ja kevyt teksti- ja koodieditori, joka tekee päivittäisistä muistiinpanoista, Markdown-kirjoittamisesta ja ohjelmoinnista miellyttävää ja vaivatonta.
 
@@ -544,11 +544,11 @@ Ei mainoksia, ei seurantaa eikä tiedonkeruuta. Kaikki toimii 100 % offline-tila
 Käytitpä miuta päivittäisenä muistiona tai luotettavana koodieditorina, toivomme sen tekevän kirjoitushetkistäsi hieman mukavampia."""
 
 FI_WHATS_NEW = """Kiitos, että käytät miuta.
-Versio 1.0.46 parantaa merkistöntunnistusta, rivinvaihtojen käsittelyä ja reaaliaikaisen esikatselun vakautta:
+Versio 1.0.47 tuo merkittävästi lisää nopeutta muokkaukseen, etsi/korvaa-toimintoihin ja reaaliaikaiseen esikatseluun:
 
-• Parannettu merkistöntunnistus ja muunnos: automaattinen tunnistus BOM-merkittömille UTF-16LE/BE-tiedostoille, täysi tuki 4-tavuisille merkeille (UTF-16-sijaisparit ja emojit), dynaaminen näytteenotto yli 64 kt:n tiedostoille sekä suojaus vioittuneille tavusarjoille.
-• Täysi CR / CRLF / LF -rivinvaihtojen tuki: 49 kielen syntaksinkorostus, liittämisen normalisointi, monirivinen säännöllisten lausekkeiden (^ / $) haku ja reaaliaikainen esikatselu toimivat virheettömästi CR-, CRLF- ja LF-rivinvaihdoilla.
-• Vakaampi reaaliaikainen esikatselu: Mermaid-kaavioiden (mukaan lukien Gantt-kaaviot) ja LaTeX-kaavojen entistä luotettavampi piirto kirjoittamisen aikana."""
+• Nopeampi kirjoitus, vieritys ja suurten tiedostojen muokkaus: tekstinsyöttöä, kohdistimen liikettä ja vieritystä on nopeutettu huomattavasti, jotta suuretkin tiedostot toimivat sulavasti.
+• Salamannopea haku ja ”Korvaa kaikki”: avainsana- ja regex-haku sekä tuhansien osumien ”Korvaa kaikki” -toiminto valmistuvat nyt välittömästi.
+• Nopeampi Markdown-, LaTeX- ja Mermaid-esikatselu: pitkien Markdown-asiakirjojen, LaTeX-kaavojen ja Mermaid-kaavioiden reaaliaikainen esikatselu päivittyy entistä nopeammin kirjoittaessasi."""
 
 PL_DESC = """miu to prosty, lekki edytor tekstu i kodu, zaprojektowany tak, aby codzienne notatki, pisanie w Markdown oraz programowanie były wygodne i przyjemne.
 
@@ -577,11 +577,11 @@ Brak reklam, brak śledzenia i brak gromadzenia danych. Wszystko działa w 100% 
 Zarówno jako codzienny notatnik, jak i niezawodny edytor kodu – mamy nadzieję, że miu uprzyjemni Twój czas spędzony na pisaniu."""
 
 PL_WHATS_NEW = """Dziękujemy za korzystanie z aplikacji miu.
-Wersja 1.0.46 ulepsza obsługę kodowania znaków, końców wierszy oraz stabilność podglądu na żywo:
+Wersja 1.0.47 przynosi znaczące przyspieszenie edycji, wyszukiwania/zamiany oraz podglądu na żywo:
 
-• Ulepszone wykrywanie i konwersja kodowania znaków: automatyczne wykrywanie plików UTF-16LE/BE bez BOM, pełna obsługa znaków 4-bajtowych (par surogatów UTF-16 i emoji), dynamiczne próbkowanie powyżej 64 KB oraz ochrona przed uszkodzonymi sekwencjami bajtów.
-• Pełna obsługa końców wierszy CR / CRLF / LF: kolorowanie składni dla 49 języków, normalizacja przy wklejaniu, wielowierszowe wyszukiwanie regex (^ / $) oraz podgląd na żywo działają bezbłędnie z CR, CRLF i LF.
-• Większa stabilność podglądu na żywo: płynne i bezpieczne renderowanie diagramów Mermaid (w tym wykresów Gantta) oraz wzorów LaTeX podczas pisania."""
+• Szybsze pisanie, przewijanie i edycja dużych plików: przyspieszono wprowadzanie tekstu, ruch kursora oraz przewijanie, dzięki czemu nawet duże pliki działają wyjątkowo płynnie.
+• Błyskawiczne wyszukiwanie i „Zamień wszystko”: wyszukiwanie słów kluczowych, wyrażeń regularnych oraz masowa zamiana tysięcy wystąpień wykonują się teraz natychmiastowo.
+• Szybszy podgląd na żywo dla Markdown, LaTeX i Mermaid: zoptymalizowano renderowanie długich dokumentów Markdown, wzorów LaTeX oraz diagramów Mermaid podczas pisania."""
 
 CS_DESC = """miu je jednoduchý a lehký textový a kódový editor, se kterým je psaní každodenních poznámek, textů v Markdownu i programování pohodlné a příjemné.
 
@@ -610,11 +610,11 @@ Hledání a nahrazování (s regulárními výrazy), více kurzorů, čísla ř�
 Ať už miu používáte jako každodenní zápisník nebo jako spolehlivý editor kódu, věříme, že vám zpříjemní každou chvíli u psaní."""
 
 CS_WHATS_NEW = """Děkujeme, že používáte miu.
-Verze 1.0.46 přináší vylepšenou podporu kódování znaků, konců řádků a vyšší stabilitu živého náhledu:
+Verze 1.0.47 přináší výrazné zrychlení úprav, vyhledávání/nahrazování a živého náhledu:
 
-• Vylepšená detekce a převod kódování znaků: automatické rozpoznání souborů UTF-16LE/BE bez BOM, plná podpora 4bajtových znaků (náhradních párů UTF-16 a emoji), dynamické vzorkování u souborů nad 64 KB a ochrana proti poškozeným sekvencím bajtů.
-• Plná podpora konců řádků CR / CRLF / LF: zvýrazňování syntaxe pro 49 jazyků, normalizace při vkládání, víceřádkové vyhledávání pomocí regulárních výrazů (^ / $) i živý náhled nyní bezchybně fungují s CR, CRLF a LF.
-• Vyšší stabilita živého náhledu: plynulé a bezpečné vykreslování diagramů Mermaid (včetně Ganttových diagramů) a vzorců LaTeX během psaní."""
+• Rychlejší psaní, posouvání a úpravy velkých souborů: zadávání textu, pohyb kurzoru a posouvání byly výrazně zrychleny pro maximálně plynulou práci i s velkými soubory.
+• Bleskové vyhledávání a „Nahradit vše“: vyhledávání textu, regulárních výrazů i hromadné nahrazení tisíců výskytů nyní proběhne okamžitě.
+• Rychlejší živý náhled pro Markdown, LaTeX a Mermaid: zrychlené vykreslování dlouhých dokumentů Markdown, vzorců LaTeX a diagramů Mermaid v reálném čase."""
 
 HU_DESC = """A miu egy egyszerű, könnyed szöveg- és kódszerkesztő, amely a napi gyors jegyzeteléstől a Markdown-szövegíráson át a programozásig minden helyzetben kényelmes használatot nyújt.
 
@@ -643,11 +643,11 @@ Nincsenek reklámok, nincs követés és nincs adatgyűjtés. Minden funkció 10
 Akár mindennapi jegyzettömbként, akár megbízható kódszerkesztőként használja, reméljük, hogy a miu kellemesebbé teszi az írással töltött időt."""
 
 HU_WHATS_NEW = """Köszönjük, hogy a miu alkalmazást használja.
-Az 1.0.46-os verzió fejleszti a karakterkódolás-felismerést, a sortörések kezelését és az élő előnézet stabilitását:
+Az 1.0.47-es verzió jelentős sebességnövekedést hoz a szerkesztés, a keresés/csere és az élő előnézet terén:
 
-• Fejlesztett karakterkódolás-felismerés és konvertálás: automatikus felismerés BOM nélküli UTF-16LE/BE fájlokhoz, teljes támogatás a 4 bájtos karakterekhez (UTF-16 helyettesítő párok és emojik), dinamikus mintavételezés 64 KB feletti fájloknál és védelem a sérült bájtsorozatok ellen.
-• Teljes CR / CRLF / LF sortörés-támogatás: mind a 49 nyelv szintaxiskiemelése, a beillesztési normalizálás, a többsoros regex (^ / $) keresés és az élő előnézet pontosan működik CR, CRLF és LF sortörésekkel.
-• Még stabilabb élő előnézet: a Mermaid diagramok (beleértve a Gantt-diagramokat) és a LaTeX képletek gépelés közben is biztonságosan és folyamatosan jelennek meg."""
+• Gyorsabb gépelés, görgetés és nagy fájlok szerkesztése: a szövegbevitel, a kurzormozgatás és a görgetés sokkal gyorsabb lett, így a nagy fájlok szerkesztése is rendkívül folyamatos.
+• Villámgyors keresés és „Összes cseréje”: a kulcsszavas és reguláris kifejezéses keresés, valamint több ezer találat egyidejű cseréje mostantól pillanatok alatt elkészül.
+• Gyorsabb Markdown, LaTeX és Mermaid élő előnézet: a hosszú Markdown-dokumentumok, LaTeX-képletek és Mermaid-diagramok valós idejű megjelenítése még gyorsabb gépelés közben."""
 
 RO_DESC = """miu este un editor de text și cod simplu și ușor, creat pentru ca notițele zilnice, redactarea în Markdown și programarea să fie cât mai plăcute și confortabile.
 
@@ -676,11 +676,11 @@ Fără reclame, fără urmărire și fără colectare de date. Totul funcționea
 Fie ca agendă de zi cu zi, fie ca editor de cod de încredere, sperăm că miu vă va face timpul petrecut scriind mai plăcut."""
 
 RO_WHATS_NEW = """Vă mulțumim că folosiți miu.
-Versiunea 1.0.46 aduce îmbunătățiri pentru detectarea codificării caracterelor, gestionarea sfârșiturilor de rând și stabilitatea previzualizării:
+Versiunea 1.0.47 aduce o creștere majoră a vitezei pentru editare, căutare/înlocuire și previzualizarea în timp real:
 
-• Detectare și conversie îmbunătățită a codificării: detectare automată pentru fișiere UTF-16LE/BE fără BOM, suport complet pentru caractere pe 4 octeți (perechi surogat UTF-16 și emoji), eșantionare dinamică peste 64 KB și protecție pentru secvențe de octeți deteriorate.
-• Suport complet pentru sfârșituri de rând CR / CRLF / LF: evidențierea sintaxei pentru 49 de limbaje, normalizarea la lipire, căutarea regex pe mai multe rânduri (^ / $) și previzualizarea în timp real funcționează impecabil cu CR, CRLF și LF.
-• Stabilitate sporită a previzualizării în timp real: redare sigură și fluentă a diagramelor Mermaid (inclusiv Gantt) și a formulelor LaTeX în timpul tastării."""
+• Tastare, derulare și editare mai rapidă a fișierelor mari: introducerea textului, mișcarea cursorului și derularea au fost accelerate semnificativ pentru o experiență fluidă chiar și în fișierele mari.
+• Căutare și „Înlocuiește tot” ultra-rapide: căutarea cuvintelor cheie, expresiilor regulate și înlocuirea în masă a mii de apariții se finalizează acum instantaneu.
+• Previzualizare în timp real mai rapidă pentru Markdown, LaTeX și Mermaid: redarea documentelor Markdown lungi, formulelor LaTeX și diagramelor Mermaid este și mai rapidă în timp ce tastați."""
 
 EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επεξεργαστής κειμένου και κώδικα, σχεδιασμένος ώστε οι καθημερινές σημειώσεις, η συγγραφή σε Markdown και ο προγραμματισμός να γίνονται άνετα και ευχάριστα.
 
@@ -709,11 +709,11 @@ EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επ�
 Είτε ως καθημερινό σημειωματάριο είτε ως αξιόπιστος επεξεργαστής κώδικα, ελπίζουμε το miu να κάνει τον χρόνο που αφιερώνετε στο γράψιμο πιο ευχάριστο."""
 
 EL_WHATS_NEW = """Σας ευχαριστούμε που χρησιμοποιείτε το miu.
-Η έκδοση 1.0.46 βελτιώνει την αναγνώριση κωδικοποίησης χαρακτήρων, τη διαχείριση αλλαγών γραμμής και τη σταθερότητα της ζωντανής προεπισκόπησης:
+Η έκδοση 1.0.47 προσφέρει μεγάλη αύξηση ταχύτητας στην επεξεργασία, την εύρεση/αντικατάσταση και τη ζωντανή προεπισκόπηση:
 
-• Βελτιωμένη ανίχνευση και μετατροπή κωδικοποίησης: αυτόματη ανίχνευση αρχείων UTF-16LE/BE χωρίς BOM, πλήρης υποστήριξη χαρακτήρων 4 byte (ζεύγη υποκατάστασης UTF-16 και emoji), δυναμική δειγματοληψία άνω των 64 KB και προστασία από κατεστραμμένες ακολουθίες byte.
-• Πλήρης υποστήριξη αλλαγών γραμμής CR / CRLF / LF: η επισήμανση σύνταξης για 49 γλώσσες, η κανονικοποίηση κατά την επικόλληση, η αναζήτηση regex πολλαπλών γραμμών (^ / $) και η ζωντανή προεπισκόπηση λειτουργούν άψογα με CR, CRLF και LF.
-• Αυξημένη σταθερότητα ζωντανής προεπισκόπησης: ομαλή και ασφαλής απόδοση διαγραμμάτων Mermaid (συμπεριλαμβανομένων των διαγραμμάτων Gantt) και εξισώσεων LaTeX κατά την πληκτρολόγηση."""
+• Ταχύτερη πληκτρολόγηση, κύλιση και επεξεργασία μεγάλων αρχείων: η εισαγωγή κειμένου, η κίνηση του δρομέα και η κύλιση επιταχύνθηκαν σημαντικά ώστε ακόμη και τα μεγάλα αρχεία να αποκρίνονται άμεσα.
+• Εξαιρετικά γρήγορη αναζήτηση και «Αντικατάσταση όλων»: η αναζήτηση λέξεων-κλειδιών, εκφράσεων regex και η μαζική αντικατάσταση χιλιάδων αποτελεσμάτων ολοκληρώνονται πλέον ακαριαία.
+• Ταχύτερη ζωντανή προεπισκόπηση για Markdown, LaTeX και Mermaid: η απόδοση μεγάλων εγγράφων Markdown, εξισώσεων LaTeX και διαγραμμάτων Mermaid ενημερώνεται ακόμη πιο γρήγορα καθώς πληκτρολογείτε."""
 
 TR_DESC = """miu; günlük kısa notlardan Markdown yazılarına ve programlamaya kadar her türlü metin çalışmasını keyifli ve rahat hale getirmek için tasarlanmış sade ve hafif bir metin ve kod düzenleyicidir.
 
@@ -742,11 +742,11 @@ Reklam, takip veya veri toplama yoktur. Tüm özellikler cihazınızda %100 çev
 İster günlük not defteriniz ister güvenilir kod düzenleyiciniz olarak, miu'nun yazma zamanınızı daha keyifli hale getirmesini dileriz."""
 
 TR_WHATS_NEW = """miu'yu kullandığınız için teşekkür ederiz.
-1.0.46 sürümü; karakter kodlaması algılama, satır sonu desteği ve Canlı Önizleme kararlılığında önemli iyileştirmeler sunar:
+1.0.47 sürümü; düzenleme, arama/değiştirme ve Canlı Önizleme genelinde büyük hız artışları sunar:
 
-• Geliştirilmiş Karakter Kodlaması Algılama ve Dönüştürme: BOM'suz UTF-16LE/BE dosyaları için otomatik algılama, 4 baytlık karakterler (UTF-16 vekil çiftleri ve emojiler) için tam dönüştürme desteği, 64 KB üzeri dosyalar için dinamik örnekleme ve bozuk bayt dizilerine karşı güvenli koruma eklendi.
-• Tam CR / CRLF / LF Satır Sonu Desteği: 49 dilde sözdizimi vurgulama, yapıştırma sırasında satır sonu eşitleme, çok satırlı düzenli ifade (^ / $) arama/değiştirme ve Canlı Önizleme artık CR, CRLF ve LF ile kusursuz çalışır.
-• Artırılmış Canlı Önizleme Kararlılığı: Mermaid diyagramları (Gantt şemaları dahil) ve LaTeX formülleri yazım sırasında kesintisiz ve güvenli bir şekilde oluşturulur."""
+• Daha Hızlı Yazma, Kaydırma ve Büyük Dosya Düzenleme: Metin girişi, imleç hareketi ve kaydırma önemli ölçüde hızlandırıldı; büyük dosyalarda bile akıcı ve hızlı yanıt verir.
+• Ultra Hızlı Arama ve "Tümünü Değiştir": Anahtar kelime araması, düzenli ifadeler (regex) ve binlerce eşleşmeyi kapsayan "Tümünü Değiştir" işlemleri artık anında tamamlanır.
+• Daha Hızlı Markdown, LaTeX ve Mermaid Canlı Önizlemesi: Uzun Markdown belgeleri, LaTeX formülleri ve Mermaid diyagramları siz yazarken çok daha hızlı görüntülenir."""
 
 UK_DESC = """miu — це простий і легкий редактор тексту та коду, створений для того, щоб щоденні нотатки, написання текстів у Markdown і програмування були максимально зручними та приємними.
 
@@ -775,11 +775,11 @@ UK_DESC = """miu — це простий і легкий редактор тек
 Як щоденний записник або надійний редактор коду — сподіваємося, що miu зробить ваш час за письмом приємнішим."""
 
 UK_WHATS_NEW = """Дякуємо, що користуєтеся miu.
-У версії 1.0.46 покращено розпізнавання кодувань символів, підтримку переносів рядків і стабільність попереднього перегляду:
+У версії 1.0.47 значно прискорено редагування, пошук із заміною та живий попередній перегляд:
 
-• Покращене визначення та конвертація кодувань: автовизначення файлів UTF-16LE/BE без BOM, повна підтримка 4-байтових символів (сурогатних пар UTF-16 та емодзі), динамічна вибірка для файлів понад 64 КБ і захист від пошкоджених байтів.
-• Повна підтримка переносів рядків CR / CRLF / LF: підсвічування синтаксису для 49 мов, нормалізація під час вставлення, багаторядковий пошук із регулярними виразами (^ / $) та живий перегляд бездоганно працюють із CR, CRLF та LF.
-• Підвищена стабільність живого перегляду: надійне відображення діаграм Mermaid (зокрема діаграм Ганта) і формул LaTeX безпосередньо під час набору тексту."""
+• Швидше введення тексту, прокручування та робота з великими файлами: прискорено набір тексту, переміщення курсора та прокручування для максимально плавної роботи навіть із великими файлами.
+• Миттєвий пошук і «Замінити все»: пошук ключових слів, регулярних виразів і масова заміна тисяч збігів тепер виконуються миттєво.
+• Швидший живий перегляд Markdown, LaTeX і Mermaid: оптимізовано відображення довгих документів Markdown, формул LaTeX і діаграм Mermaid під час набору тексту."""
 
 VI_DESC = """miu là trình soạn thảo văn bản và mã nguồn đơn giản, gọn nhẹ, mang lại cảm giác thoải mái cho mọi nhu cầu từ ghi chú nhanh hàng ngày, viết tài liệu Markdown cho đến lập trình.
 
@@ -808,11 +808,11 @@ Không quảng cáo, không theo dõi và không thu thập dữ liệu. Mọi t
 Dù dùng làm sổ tay hàng ngày hay trình sửa code đáng tin cậy, hy vọng miu sẽ giúp khoảng thời gian viết lách của bạn thêm phần dễ chịu."""
 
 VI_WHATS_NEW = """Cảm ơn bạn đã luôn sử dụng miu.
-Phiên bản 1.0.46 nâng cấp khả năng nhận diện bảng mã, xử lý ký tự xuống dòng và độ ổn định của Xem trước trực tiếp:
+Phiên bản 1.0.47 tăng tốc toàn diện cho chỉnh sửa văn bản, Tìm kiếm/Thay thế và Xem trước trực tiếp:
 
-• Nâng cấp nhận diện và chuyển đổi bảng mã: Tự động nhận diện tệp UTF-16LE/BE không có BOM, hỗ trợ đầy đủ ký tự 4 byte (cặp thay thế UTF-16 & emoji), lấy mẫu động cho tệp trên 64 KB và bảo vệ an toàn trước chuỗi byte lỗi.
-• Hỗ trợ hoàn chỉnh ký tự xuống dòng CR / CRLF / LF: Tô màu cú pháp cho 49 ngôn ngữ, chuẩn hóa dòng khi dán, tìm kiếm & thay thế đa dòng bằng biểu thức chính quy (^ / $) và Xem trước trực tiếp hoạt động chính xác với CR, CRLF và LF.
-• Tăng cường độ ổn định khi Xem trước trực tiếp: Hiển thị mượt mà và ổn định các sơ đồ Mermaid (bao gồm biểu đồ Gantt) và công thức LaTeX ngay trong lúc đang gõ."""
+• Gõ phím, cuộn trang và chỉnh sửa tệp lớn nhanh hơn: Tăng tốc đáng kể thao tác nhập liệu, di chuyển con trỏ và cuộn trang, giúp chỉnh sửa mượt mà ngay cả với các tệp dung lượng lớn.
+• Tìm kiếm & "Thay thế tất cả" siêu tốc: Tối ưu hóa tốc độ tìm kiếm từ khóa, biểu thức chính quy (regex) và "Thay thế tất cả" hàng nghìn vị trí chỉ trong chớp mắt.
+• Xem trước trực tiếp Markdown, LaTeX & Mermaid nhanh hơn: Hiển thị thời gian thực các tài liệu Markdown dài, công thức LaTeX và sơ đồ Mermaid nhanh và mượt hơn khi đang gõ."""
 
 TH_DESC = """miu คือแอปแก้ไขข้อความและโค้ดที่เรียบง่ายและทำงานได้อย่างรวดเร็ว ออกแบบมาเพื่อให้ทั้งการจดบันทึกประจำวัน การเขียนบทความด้วย Markdown และการเขียนโปรแกรมเป็นเรื่องที่สบายตาและน่าใช้งาน
 
@@ -841,11 +841,11 @@ TH_DESC = """miu คือแอปแก้ไขข้อความและ
 ไม่ว่าจะใช้เป็นสมุดโน้ตประจำวันหรือเครื่องมือเขียนโค้ดคู่ใจ เราหวังว่า miu จะช่วยให้ช่วงเวลาแห่งการเขียนของคุณน่าเพลิดเพลินยิ่งขึ้น"""
 
 TH_WHATS_NEW = """ขอบคุณที่ใช้บริการ miu เสมอมา
-ในเวอร์ชัน 1.0.46 เราได้ยกระดับการตรวจจับรหัสอักขระ การรองรับรูปแบบการขึ้นบรรทัดใหม่ และความเสถียรของโหมดพรีวิว:
+ในเวอร์ชัน 1.0.47 เราได้เพิ่มความเร็วครั้งใหญ่ทั้งการแก้ไขข้อความ การค้นหา/แทนที่ และโหมดพรีวิวสด:
 
-• ยกระดับการตรวจจับและแปลงรหัสอักขระ: รองรับการตรวจจับไฟล์ UTF-16LE/BE แบบไม่มี BOM อัตโนมัติ, รองรับอักขระ 4 ไบต์ (UTF-16 Surrogate Pairs และอีโมจิ) อย่างสมบูรณ์, การสุ่มตรวจไฟล์ขนาดเกิน 64 KB อย่างแม่นยำ และการป้องกันข้อมูลสูญหายจากไบต์ที่เสียหาย
-• รองรับการขึ้นบรรทัดใหม่ทั้ง CR / CRLF / LF อย่างสมบูรณ์: การไฮไลต์ไวยากรณ์ทั้ง 49 ภาษา, การจัดรูปแบบบรรทัดเมื่อวาง, การค้นหาและแทนที่หลายบรรทัดด้วย Regex (^ / $) และการพรีวิวทำงานได้อย่างถูกต้องครบถ้วน
-• เพิ่มความเสถียรของโหมดพรีวิว: แสดงผลแผนภาพ Mermaid (รวมถึงแผนภูมิ Gantt) และสมการ LaTeX ได้อย่างราบรื่นและเสถียรแม้ในขณะกำลังพิมพ์"""
+• พิมพ์ เลื่อนหน้าจอ และแก้ไขไฟล์ขนาดใหญ่ได้เร็วขึ้น: เร่งความเร็วการพิมพ์ การเลื่อนเคอร์เซอร์ และการเลื่อนหน้าจอให้ลื่นไหลและตอบสนองทันใจแม้เปิดไฟล์ขนาดใหญ่
+• ค้นหาและ "แทนที่ทั้งหมด" เร็วทันใจ: ค้นหาคำสำคัญ นิพจน์ทั่วไป (Regex) และสั่ง "แทนที่ทั้งหมด" นับพันรายการได้เสร็จสิ้นในพริบตา
+• พรีวิวสด Markdown, สมการ LaTeX และแผนภาพ Mermaid เร็วขึ้น: แสดงผลเอกสาร Markdown ขนาดยาว สมการ LaTeX และแผนภาพ Mermaid ได้รวดเร็วขึ้นขณะพิมพ์"""
 
 ID_DESC = """miu adalah editor teks dan kode yang sederhana serta ringan, dirancang agar nyaman digunakan mulai dari mencatat ide harian, menulis dokumen Markdown, hingga pemrograman.
 
@@ -874,11 +874,11 @@ Tanpa iklan, tanpa pelacakan, dan tanpa pengumpulan data. Semua fitur berjalan 1
 Baik sebagai buku catatan sehari-hari maupun editor kode andalan, semoga miu dapat membuat waktu menulis Anda menjadi lebih menyenangkan."""
 
 ID_WHATS_NEW = """Terima kasih telah menggunakan miu.
-Versi 1.0.46 meningkatkan deteksi pengkodean karakter, dukungan akhir baris, serta stabilitas Pratinjau Langsung:
+Versi 1.0.47 menghadirkan peningkatan kecepatan besar pada pengeditan, Cari/Ganti, serta Pratinjau Langsung:
 
-• Peningkatan Deteksi & Konversi Pengkodean Karakter: Deteksi otomatis untuk file UTF-16LE/BE tanpa BOM, dukungan penuh karakter 4-byte (pasangan pengganti UTF-16 & emoji), pengambilan sampel dinamis untuk file di atas 64 KB, serta perlindungan terhadap urutan byte yang rusak.
-• Dukungan Penuh Akhir Baris CR / CRLF / LF: Sorotan sintaks untuk 49 bahasa, normalisasi baris saat menempel, pencarian & penggantian regex multibaris (^ / $), serta Pratinjau Langsung kini bekerja akurat dengan CR, CRLF, dan LF.
-• Peningkatan Stabilitas Pratinjau Langsung: Menampilkan diagram Mermaid (termasuk diagram Gantt) dan rumus LaTeX dengan lebih stabil dan mulus saat Anda sedang mengetik."""
+• Pengetikan, Pengguliran & Pengeditan File Besar Lebih Cepat: Mempercepat input teks, pergerakan kursor, dan pengguliran secara signifikan sehingga file berukuran besar sekalipun terasa sangat mulus dan responsif.
+• Pencarian & "Ganti Semua" Super Cepat: Pencarian kata kunci, ekspresi reguler (regex), serta operasi "Ganti Semua" untuk ribuan kecocokan kini selesai secara instan.
+• Pratinjau Langsung Markdown, LaTeX & Mermaid Lebih Cepat: Menampilkan dokumen Markdown panjang, rumus LaTeX, dan diagram Mermaid lebih cepat saat Anda mengetik."""
 
 MS_DESC = """miu ialah penyunting teks dan kod yang ringkas serta ringan, direka untuk memberikan keselesaan sama ada ketika mencatat nota harian, menulis dokumen Markdown mahupun melakukan pengaturcaraan.
 
@@ -907,11 +907,11 @@ Tiada iklan, tiada penjejakan dan tiada pengumpulan data. Semua ciri berfungsi 1
 Sama ada sebagai buku nota harian atau penyunting kod yang boleh dipercayai, kami berharap miu menjadikan masa menulis anda lebih menyenangkan."""
 
 MS_WHATS_NEW = """Terima kasih kerana menggunakan miu.
-Versi 1.0.46 mempertingkatkan pengesanan pengekodan aksara, sokongan hujung baris dan kestabilan Pratonton Langsung:
+Versi 1.0.47 membawakan peningkatan kelajuan besar untuk penyuntingan, Cari/Ganti dan Pratonton Langsung:
 
-• Pengesanan & Penukaran Pengekodan Aksara Dipertingkatkan: Pengesanan automatik untuk fail UTF-16LE/BE tanpa BOM, sokongan penuh aksara 4-bait (pasangan pengganti UTF-16 & emoji), pensampelan dinamik untuk fail melebihi 64 KB, dan perlindungan daripada jujukan bait rosak.
-• Sokongan Penuh Hujung Baris CR / CRLF / LF: Penyerlahan sintaks bagi 49 bahasa, penormalan baris semasa menampal, carian & penggantian regex berbilang baris (^ / $) serta Pratonton Langsung kini berfungsi dengan tepat untuk CR, CRLF dan LF.
-• Kestabilan Pratonton Langsung Lebih Baik: Memaparkan rajah Mermaid (termasuk carta Gantt) dan formula LaTeX dengan lancar dan stabil semasa menaip."""
+• Penaipan, Penatalan & Penyuntingan Fail Besar Lebih Pantas: Input teks, pergerakan kursor dan penatalan dipercepatkan dengan ketara supaya fail besar sekalipun kekal lancar dan responsif.
+• Carian & "Ganti Semua" Ultra-Pantas: Carian kata kunci, ungkapan biasa (regex) dan operasi "Ganti Semua" untuk ribuan padanan kini selesai serta-merta.
+• Pratonton Langsung Markdown, LaTeX & Mermaid Lebih Pantas: Dokumen Markdown yang panjang, formula LaTeX dan rajah Mermaid dipaparkan dengan lebih pantas semasa anda menaip."""
 
 HI_DESC = """miu एक सरल और हल्का टेक्स्ट व कोड एडिटर है, जिसे रोज़मर्रा के छोटे नोट्स से लेकर Markdown लेखन और प्रोग्रामिंग तक हर काम को सहज और आरामदायक बनाने के लिए डिज़ाइन किया गया है।
 
@@ -940,11 +940,11 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 और अन्य एन्कोडिंग
 चाहे आप इसे दैनिक नोटपैड के रूप में उपयोग करें या एक भरोसेमंद कोड एडिटर के रूप में, हमें उम्मीद है कि miu आपके लिखने के समय को और सुखद बनाएगा।"""
 
 HI_WHATS_NEW = """miu का उपयोग करने के लिए धन्यवाद।
-संस्करण 1.0.46 में कैरेक्टर एन्कोडिंग पहचान, लाइन-एंडिंग समर्थन और लाइव प्रीव्यू की स्थिरता को और बेहतर बनाया गया है:
+संस्करण 1.0.47 में संपादन, खोजें/बदलें और लाइव प्रीव्यू की गति में बड़ा सुधार किया गया है:
 
-• बेहतर कैरेक्टर एन्कोडिंग पहचान और रूपांतरण: बिना BOM वाली UTF-16LE/BE फ़ाइलों की स्वतः पहचान, 4-बाइट अक्षरों (UTF-16 सरोगेट पेयर और इमोजी) का पूर्ण समर्थन, 64 KB से बड़ी फ़ाइलों के लिए सटीक सैंपलिंग और खराब बाइट अनुक्रमों से सुरक्षा।
-• पूर्ण CR / CRLF / LF लाइन-एंडिंग समर्थन: सभी 49 भाषाओं में सिंटैक्स हाइलाइटिंग, पेस्ट करते समय लाइन सामान्यीकरण, मल्टी-लाइन रेगेक्स (^ / $) खोजें और बदलें, तथा लाइव प्रीव्यू अब CR, CRLF और LF के साथ सटीक काम करते हैं।
-• लाइव प्रीव्यू स्थिरता में सुधार: टाइप करते समय Mermaid आरेखों (Gantt चार्ट सहित) और LaTeX सूत्रों का सुचारू और स्थिर रेंडरिंग।"""
+• तेज़ टाइपिंग, स्क्रॉलिंग और बड़ी फ़ाइलों का संपादन: टेक्स्ट इनपुट, कर्सर मूवमेंट और स्क्रॉलिंग को काफी तेज़ किया गया है ताकि बड़ी फ़ाइलों में भी काम करना बेहद सहज और तेज़ रहे।
+• अल्ट्रा-फ़ास्ट खोज और "सभी बदलें" (Replace All): कीवर्ड खोज, रेगेक्स (Regex) मिलान और हज़ारों स्थानों पर एक साथ "सभी बदलें" अब पलक झपकते ही पूरा हो जाता है।
+• तेज़ Markdown, LaTeX और Mermaid लाइव प्रीव्यू: लंबे Markdown दस्तावेज़ों, LaTeX सूत्रों और Mermaid आरेखों का लाइव प्रीव्यू टाइप करते समय और भी तेज़ी से अपडेट होता है।"""
 
 SUPPORT_URL = "https://github.com/kenjinote/miu"
 
@@ -1848,6 +1848,43 @@ def prepare_testflight_builds_only(app_id):
         }
         r_enc = requests.patch(f"{BASE_URL}/builds/{chosen_build_id}", headers=headers, json=enc_payload)
         print(f"[{plat}] Set usesNonExemptEncryption=False on TestFlight build {chosen_build_ver} ({chosen_build_id}): HTTP {r_enc.status_code}")
+
+        # Sync TestFlight betaBuildLocalizations (What to Test) across locales
+        r_bbloc = requests.get(f"{BASE_URL}/builds/{chosen_build_id}/betaBuildLocalizations?limit=200", headers=headers)
+        existing_bbloc = {}
+        if r_bbloc.status_code == 200:
+            for item in r_bbloc.json().get("data", []):
+                loc_code = item.get("attributes", {}).get("locale")
+                if loc_code:
+                    existing_bbloc[loc_code] = item["id"]
+        bb_ok = 0
+        for locale, (_desc, whats_new) in ASC_LOCALIZATIONS.items():
+            if locale in existing_bbloc:
+                bb_id = existing_bbloc[locale]
+                bb_payload = {
+                    "data": {
+                        "type": "betaBuildLocalizations",
+                        "id": bb_id,
+                        "attributes": {"whatsNew": whats_new},
+                    }
+                }
+                rb = requests.patch(f"{BASE_URL}/betaBuildLocalizations/{bb_id}", headers=headers, json=bb_payload)
+                if rb.status_code in (200, 204):
+                    bb_ok += 1
+            else:
+                bb_payload = {
+                    "data": {
+                        "type": "betaBuildLocalizations",
+                        "attributes": {"locale": locale, "whatsNew": whats_new},
+                        "relationships": {
+                            "build": {"data": {"type": "builds", "id": chosen_build_id}}
+                        },
+                    }
+                }
+                rb = requests.post(f"{BASE_URL}/betaBuildLocalizations", headers=headers, json=bb_payload)
+                if rb.status_code in (200, 201):
+                    bb_ok += 1
+        print(f"[{plat}] Synced {bb_ok} TestFlight betaBuildLocalizations on build {chosen_build_ver}")
 
 
 def main():

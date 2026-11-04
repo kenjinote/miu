@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../foundation.h"
 
 namespace Pele {
@@ -234,52 +234,6 @@ struct RadarAst {
     std::vector<OptionAst> options;
 };
 
-inline std::string fixSingle(const std::string& text) {
-    std::string s = trimStr(text);
-    std::string out;
-    int spaces = 0;
-    char firstSpace = ' ';
-    for (size_t i = 0; i < s.size(); ++i) {
-        char c = s[i];
-        if (c == '\t' || c == ' ') {
-            if (spaces == 0) firstSpace = c;
-            spaces++;
-        } else {
-            if (spaces == 1) out.push_back(firstSpace);
-            else if (spaces >= 2) out.push_back(' ');
-            spaces = 0;
-            out.push_back(c);
-        }
-    }
-    return out;
-}
-
-inline std::string fixTitleValue(const std::string& text) {
-    size_t pos = text.find("title");
-    if (pos == std::string::npos) return "";
-    return fixSingle(text.substr(pos + 5));
-}
-
-inline std::string fixAccTitleValue(const std::string& text) {
-    size_t pos = text.find(':');
-    if (pos == std::string::npos) return "";
-    return fixSingle(text.substr(pos + 1));
-}
-
-inline std::string fixAccDescrValue(const std::string& text) {
-    size_t brace = text.find('{');
-    size_t colon = text.find(':');
-    if (colon != std::string::npos && (brace == std::string::npos || colon < brace)) {
-        return fixSingle(text.substr(colon + 1));
-    }
-    if (brace != std::string::npos) {
-        size_t close = text.find('}', brace + 1);
-        std::string body = text.substr(brace + 1, close == std::string::npos ? std::string::npos : close - brace - 1);
-        return cleanAccDescr(body);
-    }
-    return "";
-}
-
 inline RadarAst parseRadar(const std::string& src) {
     const auto& types = radarTokens();
     Tokens toks = tokenize(src, types, "radar");
@@ -364,15 +318,15 @@ inline RadarAst parseRadar(const std::string& src) {
                 r.i++;
                 break;
             case T::accDescr:
-                ast.accDescr = fixAccDescrValue(r.take());
+                ast.accDescr = common_tokens::accDescrValue(r.take());
                 endOfLine();
                 break;
             case T::accTitle:
-                ast.accTitle = fixAccTitleValue(r.take());
+                ast.accTitle = common_tokens::accTitleValue(r.take());
                 endOfLine();
                 break;
             case T::title:
-                ast.title = fixTitleValue(r.take());
+                ast.title = common_tokens::titleValue(r.take());
                 endOfLine();
                 break;
             case T::axis:

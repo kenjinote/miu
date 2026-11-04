@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../foundation.h"
 
 namespace Pele {
@@ -211,27 +211,6 @@ inline double packetOption(const Config& config, const std::string& key, double 
         }
     }
     return fallback;
-}
-
-inline std::string stripNewlineIndent(const std::string& s) {
-    std::string out;
-    out.reserve(s.size());
-    size_t i = 0;
-    while (i < s.size()) {
-        if (s[i] == '\n') {
-            out.push_back('\n');
-            i++;
-            while (i < s.size()) {
-                size_t next = i;
-                int cp = charCodeAtUtf8(s, i, &next);
-                if (!isSpace(cp)) break;
-                i = next;
-            }
-        } else {
-            out.push_back(s[i++]);
-        }
-    }
-    return out;
 }
 
 inline PacketModel buildPacket(const PacketAst& ast, const Config& config, const std::string& title) {

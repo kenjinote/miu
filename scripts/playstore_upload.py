@@ -115,18 +115,10 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
     except Exception:
         pass
 
-    # Preserve existing localized release notes on the track if present
-    for t_check in ("production", track):
-        r_existing = requests.get(f"{base_url}/edits/{edit_id}/tracks/{t_check}", headers=headers, timeout=30)
-        if r_existing.status_code == 200:
-            ex_rels = r_existing.json().get("releases", [])
-            if ex_rels and ex_rels[0].get("releaseNotes"):
-                release_notes = ex_rels[0]["releaseNotes"]
-                print(f"Preserving {len(release_notes)} existing localized releaseNotes from '{t_check}' track.")
-                break
+    print(f"Using {len(release_notes)} localized v1.0.47 releaseNotes for '{track}' track.")
 
     for target_track in tracks_to_update:
-        rel_name = f"{version_code} (1.0.46)" if target_track == "production" else "1.0.46"
+        rel_name = f"{version_code} (1.0.47)" if target_track == "production" else "1.0.47"
         print(f"Assigning versionCode {version_code} ({rel_name}) to track '{target_track}' (status={status})...")
         track_body = {
             "track": target_track,

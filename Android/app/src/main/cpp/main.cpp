@@ -30,6 +30,7 @@
 #include <vulkan/vulkan.h>
 #include "compact_enc_det/compact_enc_det.h"
 #include "util/encodings/encodings.h"
+#include "MiuCore.h"
 #include "MiuSyntax.h"
 #include "MiuEmmet.h"
 #include "MiuPreview.h"
@@ -210,94 +211,22 @@ uint32_t decodeUtf8(const char** ptr, const char* end) {
     }
     return cp;
 }
-struct Piece { bool isOriginal; size_t start; size_t len; };
-struct PieceTable {
-    const char* origPtr = nullptr; size_t origSize = 0;
-    std::string addBuf; std::vector<Piece> pieces;
-    void initEmpty() { origPtr = nullptr; origSize = 0; pieces.clear(); addBuf.clear(); }
-    size_t length() const { size_t s = 0; for (auto& p : pieces) s += p.len; return s; }
-    std::string getRange(size_t pos, size_t count) const {
-        std::string out; out.reserve(std::min(count, (size_t)4096));
-        size_t cur = 0;
-        for (const auto& p : pieces) {
-            if (cur + p.len <= pos) { cur += p.len; continue; }
-            size_t localStart = (pos > cur) ? (pos - cur) : 0;
-            size_t take = std::min(p.len - localStart, count - out.size());
-            if (take == 0) break;
-            if (p.isOriginal) out.append(origPtr + p.start + localStart, take);
-            else out.append(addBuf.data() + p.start + localStart, take);
-            if (out.size() >= count) break;
-            cur += p.len;
-        }
-        return out;
-    }
-    void insert(size_t pos, const std::string& s) {
-        if (s.empty()) return;
-        size_t cur = 0; size_t idx = 0;
-        while (idx < pieces.size() && cur + pieces[idx].len < pos) { cur += pieces[idx].len; ++idx; }
-        if (idx < pieces.size()) {
-            Piece p = pieces[idx]; size_t offsetInPiece = pos - cur;
-            if (offsetInPiece > 0 && offsetInPiece < p.len) {
-                pieces[idx] = { p.isOriginal, p.start, offsetInPiece };
-                pieces.insert(pieces.begin() + idx + 1, { p.isOriginal, p.start + offsetInPiece, p.len - offsetInPiece });
-                idx++;
-            } else if (offsetInPiece == p.len) idx++;
-        } else idx = pieces.size();
-        size_t addStart = addBuf.size();
-        addBuf.append(s);
-        if (idx > 0 && !pieces[idx - 1].isOriginal && pieces[idx - 1].start + pieces[idx - 1].len == addStart) {
-            pieces[idx - 1].len += s.size();
-        } else {
-            pieces.insert(pieces.begin() + idx, { false, addStart, s.size() });
-        }
-    }
-    void erase(size_t pos, size_t count) {
-        if (count == 0) return;
-        size_t cur = 0; size_t idx = 0;
-        while (idx < pieces.size() && cur + pieces[idx].len <= pos) { cur += pieces[idx].len; ++idx; }
-        size_t remaining = count;
-        if (idx >= pieces.size()) return;
-        if (pos > cur) {
-            Piece p = pieces[idx]; size_t leftLen = pos - cur;
-            pieces[idx] = { p.isOriginal, p.start, leftLen };
-            pieces.insert(pieces.begin() + idx + 1, { p.isOriginal, p.start + leftLen, p.len - leftLen });
-            idx++;
-        }
-        while (idx < pieces.size() && remaining > 0) {
-            if (pieces[idx].len <= remaining) { remaining -= pieces[idx].len; pieces.erase(pieces.begin() + idx); }
-            else { pieces[idx].start += remaining; pieces[idx].len -= remaining; remaining = 0; }
-        }
-    }
-    char charAt(size_t pos) const {
-        size_t cur = 0;
-        for (const auto& p : pieces) {
-            if (cur + p.len <= pos) { cur += p.len; continue; }
-            return p.isOriginal ? origPtr[p.start + (pos - cur)] : addBuf[p.start + (pos - cur)];
-        }
-        return '\0';
-    }
-};
+using MiuCore::Piece;
+using MiuCore::PieceTable;
 struct Cursor {
     size_t head; size_t anchor; float desiredX;
     size_t start() const { return std::min(head, anchor); }
     size_t end() const { return std::max(head, anchor); }
     bool hasSelection() const { return head != anchor; }
 };
-struct EditOp { enum Type { Insert, Erase } type; size_t pos; std::string text; };
-struct EditBatch { std::vector<EditOp> ops; std::vector<Cursor> beforeCursors; std::vector<Cursor> afterCursors; };
-struct UndoManager {
-    std::vector<EditBatch> undoStack; std::vector<EditBatch> redoStack;
-    void push(const EditBatch& batch) { undoStack.push_back(batch); redoStack.clear(); }
-};
+using MiuCore::EditOp;
+using EditBatch = MiuCore::EditBatchT<Cursor>;
+using UndoManager = MiuCore::UndoManagerT<Cursor>;
 int64_t getCurrentTimeMs() {
     return std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count();
 }
-bool isWordChar(char c) {
-    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-           (c >= '0' && c <= '9') || c == '_' ||
-           (unsigned char)c >= 0x80;
-}
+using MiuCore::isWordChar;
 struct Vertex {
     float pos[2];
     float uv[2];
@@ -377,6 +306,10 @@ struct Engine {
     bool searchWholeWord = false;
     bool searchRegex = false;
     bool isReplaceMode = false;
+    std::regex cachedSearchRegex;
+    std::string cachedSearchRegexQuery;
+    bool cachedSearchRegexMatchCase = false;
+    bool cachedSearchRegexValid = false;
     std::string newlineStr = "\n";
     float scrollX = 0.0f;
     float scrollY = 0.0f;
@@ -442,6 +375,7 @@ struct Engine {
     std::vector<FT_Face> fallbackFaces;
     std::vector<hb_font_t*> fallbackHbFonts;
     std::vector<float> fallbackFontScales;
+    hb_buffer_t* persistentHbBuf = nullptr;
     std::vector<LineCache> lineCaches;
     TextAtlas atlas;
     VkSwapchainKHR swapchain;
@@ -744,80 +678,43 @@ void performNewDocument(Engine* engine) {
     updateTitleBarIfNeeded(engine);
     notifyPreviewUpdateIfNeeded(engine);
 }
-std::string UnescapeString(const std::string& s, const std::string& newline) {
-    std::string out; out.reserve(s.size());
-    for (size_t i = 0; i < s.size(); ++i) {
-        if (s[i] == '\\' && i + 1 < s.size()) {
-            switch (s[i + 1]) {
-                case 'n': out += newline; break;
-                case 'r': out += '\r'; break;
-                case 't': out += '\t'; break;
-                case '\\': out += '\\'; break;
-                default: out += s[i]; out += s[i + 1]; break;
-            } i++;
-        } else out += s[i];
-    } return out;
+using MiuCore::unescapeReplaceString;
+using MiuCore::preprocessRegexQuery;
+using MiuCore::adjustCaretGroupReferences;
+inline std::string UnescapeString(const std::string& s, const std::string& newline) {
+    return MiuCore::unescapeReplaceString(s, newline);
 }
-std::string preprocessRegexQuery(const std::string& query) {
-    std::string processed; processed.reserve(query.size() * 4);
-    bool inCharClass = false;
-    size_t charClassStart = 0;
-    for (size_t i = 0; i < query.size(); ++i) {
-        char c = query[i];
-        if (c == '\\' && i + 1 < query.size()) {
-            char next = query[i + 1];
-            if (!inCharClass && next == 'n') {
-                bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
-                if (!isPrecededByCR) { processed += "(?:\\r\\n|[\\r\\n])"; i++; continue; }
-            }
-            processed += c; processed += next; i++; continue;
-        }
-        if (inCharClass) {
-            if (c == ']' && !(i == charClassStart + 1 || (i == charClassStart + 2 && query[charClassStart + 1] == '^'))) {
-                inCharClass = false;
-            }
-            processed += c;
-            continue;
-        }
-        if (c == '[') {
-            inCharClass = true;
-            charClassStart = i;
-            processed += c;
-            continue;
-        } else if (c == '^') {
-            if (i == 0) {
-                processed += "((?:^|(?:\\r\\n|\\r(?!\\n)|[\\n])))";
-            } else {
-                processed += "(?:^|(?:\\r\\n|\\r(?!\\n)|[\\n]))";
-            }
-            continue;
-        } else if (c == '$') {
-            processed += "(?=(?:\\r\\n|[\\r\\n]|$))";
-            continue;
-        } else if (c == '.') {
-            processed += "[^\\r\\n]";
-            continue;
-        }
-        processed += c;
+const std::regex* getCompiledSearchRegex(Engine* engine, const std::string& rawQuery, bool matchCase) {
+    if (!engine || rawQuery.empty()) return nullptr;
+    if (engine->cachedSearchRegexQuery == rawQuery && engine->cachedSearchRegexMatchCase == matchCase) {
+        return engine->cachedSearchRegexValid ? &engine->cachedSearchRegex : nullptr;
     }
-    return processed;
+    engine->cachedSearchRegexQuery = rawQuery;
+    engine->cachedSearchRegexMatchCase = matchCase;
+    engine->cachedSearchRegexValid = false;
+    if (!isSafeUserRegex(rawQuery)) return nullptr;
+    std::string actualQuery = preprocessRegexQuery(rawQuery);
+    if (!isSafeUserRegex(actualQuery)) return nullptr;
+    try {
+        std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+        if (!matchCase) flags |= std::regex_constants::icase;
+        engine->cachedSearchRegex = std::regex(actualQuery, flags);
+        engine->cachedSearchRegexValid = true;
+        return &engine->cachedSearchRegex;
+    } catch (...) {
+        return nullptr;
+    }
 }
 size_t findText(Engine* engine, size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
     size_t len = engine->pt.length();
     if (len == 0) return std::string::npos;
-    std::string actualQuery = query;
     if (isRegex) {
-        if (!isSafeUserRegex(query)) return std::string::npos;
-        actualQuery = preprocessRegexQuery(query);
-        if (!isSafeUserRegex(actualQuery)) return std::string::npos;
-    }
-    if (isRegex) {
+        const std::regex* rePtr = getCompiledSearchRegex(engine, query, matchCase);
+        if (!rePtr) return std::string::npos;
+        const std::regex& re = *rePtr;
         std::string fullText = engine->pt.getRange(0, len);
         try {
-            std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
-            if (!matchCase) flags |= std::regex_constants::icase;
-            std::regex re(actualQuery, flags);
             std::smatch m;
             size_t foundPos = std::string::npos;
             size_t foundLen = 0;
@@ -992,30 +889,8 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
         } catch (...) { return std::string::npos; }
         return std::string::npos;
     }
-    size_t qLen = query.length();
-    if (outLen) *outLen = qLen;
-    auto toLower = [](char c) { return (c >= 'A' && c <= 'Z') ? c + ('a' - 'A') : c; };
-    size_t cur = startPos;
-    if (forward) { if (cur >= len) cur = 0; } else { if (cur == 0) cur = len; else cur--; }
-    size_t count = 0;
-    while (count < len) {
-        bool match = true;
-        for (size_t i = 0; i < qLen; ++i) {
-            size_t p = cur + i;
-            if (p >= len) { match = false; break; }
-            char c1 = engine->pt.charAt(p); char c2 = query[i];
-            if (!matchCase) { c1 = toLower(c1); c2 = toLower(c2); }
-            if (c1 != c2) { match = false; break; }
-        }
-        if (match && wholeWord) {
-            if (cur > 0 && isWordChar(engine->pt.charAt(cur - 1))) match = false;
-            if (match && (cur + qLen < len) && isWordChar(engine->pt.charAt(cur + qLen))) match = false;
-        }
-        if (match) return cur;
-        if (forward) { cur++; if (cur >= len) cur = 0; } else { if (cur == 0) cur = len - 1; else cur--; }
-        count++;
-    }
-    return std::string::npos;
+    if (outLen) *outLen = query.length();
+    return MiuCore::findSubstringFast(engine->pt, startPos, query, forward, matchCase, wholeWord, outLen);
 }
 void findNextCommand(Engine* engine, bool forward) {
     if (engine->searchQuery.empty()) return;
@@ -1037,41 +912,14 @@ void replaceNextCommand(Engine* engine) {
     std::string selText = engine->pt.getRange(start, len);
     std::string replacement = UnescapeString(engine->replaceQuery, engine->newlineStr);
     if (engine->searchRegex) {
-        if (!isSafeUserRegex(engine->searchQuery)) return;
-        std::string actualQuery = preprocessRegexQuery(engine->searchQuery);
-        if (!isSafeUserRegex(actualQuery)) return;
+        const std::regex* rePtr = getCompiledSearchRegex(engine, engine->searchQuery, engine->searchMatchCase);
+        if (!rePtr) return;
+        const std::regex& re = *rePtr;
         try {
-            std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
-            if (!engine->searchMatchCase) flags |= std::regex_constants::icase;
-            std::regex re(actualQuery, flags);
             std::smatch m;
             bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^');
             std::string rawFmt = UnescapeString(engine->replaceQuery, engine->newlineStr);
-            std::string fmt;
-            for (size_t i = 0; i < rawFmt.size(); ++i) {
-                if (rawFmt[i] == '$') {
-                    fmt += '$';
-                    if (i + 1 < rawFmt.size()) {
-                        if (isdigit((unsigned char)rawFmt[i + 1])) {
-                            i++;
-                            std::string numStr;
-                            while (i < rawFmt.size() && isdigit((unsigned char)rawFmt[i])) {
-                                numStr += rawFmt[i];
-                                i++;
-                            }
-                            i--;
-                            int grp = std::stoi(numStr);
-                            if (startsWithCaret && grp > 0) grp++;
-                            fmt += std::to_string(grp);
-                        } else {
-                            fmt += rawFmt[i + 1];
-                            i++;
-                        }
-                    }
-                } else {
-                    fmt += rawFmt[i];
-                }
-            }
+            std::string fmt = adjustCaretGroupReferences(rawFmt, startsWithCaret);
             if (std::regex_match(selText, m, re)) {
                 replacement = m.format(fmt);
             } else if (start > 0) {
@@ -1114,43 +962,16 @@ int replaceAllCommand(Engine* engine) {
     struct Match { size_t start; size_t len; std::string replacementText; };
     std::vector<Match> matches;
     size_t docLen = engine->pt.length();
+    std::string fullText = engine->pt.getRange(0, docLen);
     if (engine->searchRegex) {
-        if (!isSafeUserRegex(engine->searchQuery)) return 0;
-        std::string actualQuery = preprocessRegexQuery(engine->searchQuery);
-        if (!isSafeUserRegex(actualQuery)) return 0;
+        const std::regex* rePtr = getCompiledSearchRegex(engine, engine->searchQuery, engine->searchMatchCase);
+        if (!rePtr) return 0;
+        const std::regex& re = *rePtr;
         try {
-            std::regex_constants::syntax_option_type rxFlags = std::regex_constants::ECMAScript;
-            if (!engine->searchMatchCase) rxFlags |= std::regex_constants::icase;
-            std::regex re(actualQuery, rxFlags);
-            std::string fullText = engine->pt.getRange(0, docLen);
             bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^');
             bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
             std::string rawFmt = UnescapeString(engine->replaceQuery, engine->newlineStr);
-            std::string fmt;
-            for (size_t i = 0; i < rawFmt.size(); ++i) {
-                if (rawFmt[i] == '$') {
-                    fmt += '$';
-                    if (i + 1 < rawFmt.size()) {
-                        if (isdigit((unsigned char)rawFmt[i + 1])) {
-                            i++;
-                            std::string numStr;
-                            while (i < rawFmt.size() && isdigit((unsigned char)rawFmt[i])) {
-                                numStr += rawFmt[i];
-                                i++;
-                            }
-                            i--;
-                            int grp = std::stoi(numStr);
-                            if (startsWithCaret && grp > 0) grp++;
-                            fmt += std::to_string(grp);
-                        } else {
-                            fmt += rawFmt[i + 1];
-                            i++;
-                        }
-                    }
-                } else {
-                    fmt += rawFmt[i];
-                }
-            }
+            std::string fmt = adjustCaretGroupReferences(rawFmt, startsWithCaret);
             auto searchStart = fullText.cbegin();
             std::smatch m;
             size_t currentOffset = 0;
@@ -1232,42 +1053,83 @@ int replaceAllCommand(Engine* engine) {
             }
         } catch (...) { return 0; }
     } else {
-        size_t currentPos = 0;
-        while (true) {
-            size_t matchLen = 0;
-            size_t pos = findText(engine, currentPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, false, &matchLen);
-            if (pos == std::string::npos || pos < currentPos) break;
-            std::string rText = UnescapeString(engine->replaceQuery, engine->newlineStr);
-            matches.push_back({ pos, matchLen, rText });
-            currentPos = pos + matchLen;
-            if (currentPos >= docLen) break;
+        std::string rText = UnescapeString(engine->replaceQuery, engine->newlineStr);
+        size_t qLen = engine->searchQuery.size();
+        if (qLen > 0 && qLen <= docLen) {
+            auto toLower = [](unsigned char c) -> unsigned char { return (c >= 'A' && c <= 'Z') ? (c + ('a' - 'A')) : c; };
+            std::string qLower = engine->searchQuery;
+            if (!engine->searchMatchCase) {
+                for (char& ch : qLower) ch = (char)toLower((unsigned char)ch);
+            }
+            const char* textData = fullText.data();
+            const char* qData = engine->searchMatchCase ? engine->searchQuery.data() : qLower.data();
+            unsigned char qFirst = (unsigned char)qData[0];
+            size_t maxStart = docLen - qLen;
+            size_t pos = 0;
+            while (pos <= maxStart) {
+                bool match = false;
+                if (engine->searchMatchCase) {
+                    const void* found = std::memchr(textData + pos, qFirst, maxStart - pos + 1);
+                    if (!found) break;
+                    pos = (size_t)((const char*)found - textData);
+                    match = (qLen == 1) || (std::memcmp(textData + pos + 1, qData + 1, qLen - 1) == 0);
+                } else {
+                    if (toLower((unsigned char)textData[pos]) == qFirst) {
+                        match = true;
+                        for (size_t i = 1; i < qLen; ++i) {
+                            if (toLower((unsigned char)textData[pos + i]) != (unsigned char)qData[i]) {
+                                match = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (match && engine->searchWholeWord) {
+                    if (pos > 0 && isWordChar(textData[pos - 1])) match = false;
+                    if (match && (pos + qLen < docLen) && isWordChar(textData[pos + qLen])) match = false;
+                }
+                if (match) {
+                    matches.push_back({ pos, qLen, rText });
+                    pos += qLen;
+                } else {
+                    pos++;
+                }
+            }
         }
     }
     if (matches.empty()) return 0;
+    std::string newContent;
+    newContent.reserve(fullText.size());
+    size_t lastCopied = 0;
+    size_t lastReplaceStart = 0;
+    size_t lastReplaceEnd = 0;
+    for (const auto& m : matches) {
+        if (m.start > lastCopied) {
+            newContent.append(fullText, lastCopied, m.start - lastCopied);
+        }
+        lastReplaceStart = newContent.size();
+        newContent.append(m.replacementText);
+        lastReplaceEnd = newContent.size();
+        lastCopied = m.start + m.len;
+    }
+    if (lastCopied < fullText.size()) {
+        newContent.append(fullText, lastCopied, fullText.size() - lastCopied);
+    }
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
-    for (auto it = matches.rbegin(); it != matches.rend(); ++it) {
-        size_t start = it->start;
-        size_t len = it->len;
-        if (start + len > engine->pt.length()) continue;
-        std::string deleted = engine->pt.getRange(start, len);
-        engine->pt.erase(start, len);
-        batch.ops.push_back({ EditOp::Erase, start, deleted });
-        engine->pt.insert(start, it->replacementText);
-        batch.ops.push_back({ EditOp::Insert, start, it->replacementText });
+    if (docLen > 0) {
+        engine->pt.erase(0, docLen);
+        batch.ops.push_back({ EditOp::Erase, 0, fullText });
     }
-    size_t finalMatchIdx = matches.size() - 1;
-    long long offsetBeforeFinal = 0;
-    for (size_t i = 0; i < finalMatchIdx; ++i) {
-        offsetBeforeFinal += (long long)matches[i].replacementText.size() - (long long)matches[i].len;
+    if (!newContent.empty()) {
+        engine->pt.insert(0, newContent);
+        batch.ops.push_back({ EditOp::Insert, 0, newContent });
     }
-    size_t lastReplaceStart = (size_t)((long long)matches.back().start + offsetBeforeFinal);
-    size_t lastReplaceEnd = lastReplaceStart + matches.back().replacementText.size();
     engine->cursors.clear();
     engine->cursors.push_back({ lastReplaceEnd, lastReplaceStart, getXFromPos(engine, lastReplaceEnd) });
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
-    applyBatchToEmmetTabstops(engine, batch);
+    engine->activeEmmetSession.clear();
     bool wasDirty = engine->isDirty;
     engine->isDirty = true;
     rebuildLineStarts(engine);
@@ -1331,127 +1193,9 @@ static std::string MapCedEncodingToCharset(Encoding enc) {
         default:                   return "UTF-8";
     }
 }
-static std::string SanitizeUtf8(const std::string& input) {
-    bool needsFix = false;
-    size_t n = input.size();
-    size_t i = 0;
-    while (i < n) {
-        unsigned char c = (unsigned char)input[i];
-        if (c == 0x00) { needsFix = true; break; }
-        else if (c <= 0x7F) { i += 1; }
-        else if (c >= 0xC2 && c <= 0xDF) {
-            if (i + 1 >= n || ((unsigned char)input[i + 1] & 0xC0) != 0x80) { needsFix = true; break; }
-            i += 2;
-        } else if (c >= 0xE0 && c <= 0xEF) {
-            if (i + 2 >= n) { needsFix = true; break; }
-            unsigned char b1 = (unsigned char)input[i + 1];
-            unsigned char b2 = (unsigned char)input[i + 2];
-            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (c == 0xE0 && b1 < 0xA0) || (c == 0xED && b1 >= 0xA0)) { needsFix = true; break; }
-            i += 3;
-        } else if (c >= 0xF0 && c <= 0xF4) {
-            if (i + 3 >= n) { needsFix = true; break; }
-            unsigned char b1 = (unsigned char)input[i + 1];
-            unsigned char b2 = (unsigned char)input[i + 2];
-            unsigned char b3 = (unsigned char)input[i + 3];
-            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80 || (c == 0xF0 && b1 < 0x90) || (c == 0xF4 && b1 >= 0x90)) { needsFix = true; break; }
-            i += 4;
-        } else {
-            needsFix = true; break;
-        }
-    }
-    if (!needsFix) return input;
-    std::string out;
-    out.reserve(n + 16);
-    i = 0;
-    while (i < n) {
-        unsigned char c = (unsigned char)input[i];
-        if (c == 0x00) { out.push_back('?'); i += 1; }
-        else if (c <= 0x7F) { out.push_back((char)c); i += 1; }
-        else if (c >= 0xC2 && c <= 0xDF && i + 1 < n && ((unsigned char)input[i + 1] & 0xC0) == 0x80) {
-            out.append(input, i, 2); i += 2;
-        } else if (c >= 0xE0 && c <= 0xEF && i + 2 < n) {
-            unsigned char b1 = (unsigned char)input[i + 1];
-            unsigned char b2 = (unsigned char)input[i + 2];
-            if ((b1 & 0xC0) == 0x80 && (b2 & 0xC0) == 0x80 && !(c == 0xE0 && b1 < 0xA0) && !(c == 0xED && b1 >= 0xA0)) {
-                out.append(input, i, 3); i += 3;
-            } else {
-                out.append("\xEF\xBF\xBD", 3); i += 1;
-            }
-        } else if (c >= 0xF0 && c <= 0xF4 && i + 3 < n) {
-            unsigned char b1 = (unsigned char)input[i + 1];
-            unsigned char b2 = (unsigned char)input[i + 2];
-            unsigned char b3 = (unsigned char)input[i + 3];
-            if ((b1 & 0xC0) == 0x80 && (b2 & 0xC0) == 0x80 && (b3 & 0xC0) == 0x80 && !(c == 0xF0 && b1 < 0x90) && !(c == 0xF4 && b1 >= 0x90)) {
-                out.append(input, i, 4); i += 4;
-            } else {
-                out.append("\xEF\xBF\xBD", 3); i += 1;
-            }
-        } else {
-            out.append("\xEF\xBF\xBD", 3); i += 1;
-        }
-    }
-    return out;
-}
+using MiuCore::SanitizeUtf8;
 static std::string DecodeUtf16BytesToUtf8(const char* data, size_t len, bool bigEndian) {
-    if (!data || len == 0) return "";
-    size_t offset = 0;
-    if (len >= 2) {
-        unsigned char b0 = (unsigned char)data[0];
-        unsigned char b1 = (unsigned char)data[1];
-        if (!bigEndian && b0 == 0xFF && b1 == 0xFE) offset = 2;
-        else if (bigEndian && b0 == 0xFE && b1 == 0xFF) offset = 2;
-    }
-    std::string out;
-    out.reserve((len - offset) + 8);
-    auto readU16 = [&](size_t pos) -> uint16_t {
-        unsigned char b0 = (unsigned char)data[pos];
-        unsigned char b1 = (unsigned char)data[pos + 1];
-        return bigEndian ? (uint16_t)((b0 << 8) | b1) : (uint16_t)(b0 | (b1 << 8));
-    };
-    auto appendCodepoint = [&](uint32_t cp) {
-        if (cp == 0) { out.push_back('?'); }
-        else if (cp <= 0x7F) { out.push_back((char)cp); }
-        else if (cp <= 0x7FF) {
-            out.push_back((char)(0xC0 | ((cp >> 6) & 0x1F)));
-            out.push_back((char)(0x80 | (cp & 0x3F)));
-        } else if (cp <= 0xFFFF) {
-            out.push_back((char)(0xE0 | ((cp >> 12) & 0x0F)));
-            out.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
-            out.push_back((char)(0x80 | (cp & 0x3F)));
-        } else if (cp <= 0x10FFFF) {
-            out.push_back((char)(0xF0 | ((cp >> 18) & 0x07)));
-            out.push_back((char)(0x80 | ((cp >> 12) & 0x3F)));
-            out.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
-            out.push_back((char)(0x80 | (cp & 0x3F)));
-        } else {
-            out.append("\xEF\xBF\xBD", 3);
-        }
-    };
-    size_t i = offset;
-    while (i + 1 < len) {
-        uint16_t w1 = readU16(i);
-        i += 2;
-        if (w1 >= 0xD800 && w1 <= 0xDBFF) {
-            if (i + 1 < len) {
-                uint16_t w2 = readU16(i);
-                if (w2 >= 0xDC00 && w2 <= 0xDFFF) {
-                    i += 2;
-                    uint32_t cp = 0x10000 + (((uint32_t)(w1 - 0xD800) << 10) | (uint32_t)(w2 - 0xDC00));
-                    appendCodepoint(cp);
-                    continue;
-                }
-            }
-            appendCodepoint(0xFFFD);
-        } else if (w1 >= 0xDC00 && w1 <= 0xDFFF) {
-            appendCodepoint(0xFFFD);
-        } else {
-            appendCodepoint(w1);
-        }
-    }
-    if (i < len) {
-        appendCodepoint(0xFFFD);
-    }
-    return out;
+    return MiuCore::Utf16ToUtf8(data, len, bigEndian);
 }
 static std::string jstringToUtf8(JNIEnv* env, jstring jstr) {
     if (!env || !jstr) return "";
@@ -1497,45 +1241,7 @@ static std::string jstringToUtf8(JNIEnv* env, jstring jstr) {
     env->ReleaseStringChars(jstr, chars);
     return out;
 }
-static bool IsValidUtf8(const char* buf, size_t len) {
-    if (len == 0) return true;
-    size_t i = 0;
-    while (i < len) {
-        unsigned char c = (unsigned char)buf[i];
-        if (c == 0x00) {
-            return false;
-        } else if (c == 0x1B) {
-            if (i + 2 < len && (buf[i + 1] == '$' || buf[i + 1] == '(')) return false;
-            i++;
-        } else if (c <= 0x7F) {
-            i++;
-        } else if (c >= 0xC2 && c <= 0xDF) {
-            if (i + 1 >= len) return false;
-            if (((unsigned char)buf[i + 1] & 0xC0) != 0x80) return false;
-            i += 2;
-        } else if (c >= 0xE0 && c <= 0xEF) {
-            if (i + 2 >= len) return false;
-            unsigned char b1 = (unsigned char)buf[i + 1];
-            unsigned char b2 = (unsigned char)buf[i + 2];
-            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80) return false;
-            if (c == 0xE0 && b1 < 0xA0) return false;
-            if (c == 0xED && b1 >= 0xA0) return false;
-            i += 3;
-        } else if (c >= 0xF0 && c <= 0xF4) {
-            if (i + 3 >= len) return false;
-            unsigned char b1 = (unsigned char)buf[i + 1];
-            unsigned char b2 = (unsigned char)buf[i + 2];
-            unsigned char b3 = (unsigned char)buf[i + 3];
-            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80) return false;
-            if (c == 0xF0 && b1 < 0x90) return false;
-            if (c == 0xF4 && b1 >= 0x90) return false;
-            i += 4;
-        } else {
-            return false;
-        }
-    }
-    return true;
-}
+using MiuCore::IsValidUtf8;
 static DetectResult DetectEncodingEx(const char* buf, size_t len) {
     DetectResult res = { ENC_UTF8_NOBOM, "UTF-8" };
     if (len >= 3 && (unsigned char)buf[0] == 0xEF && (unsigned char)buf[1] == 0xBB && (unsigned char)buf[2] == 0xBF) {
@@ -1548,34 +1254,12 @@ static DetectResult DetectEncodingEx(const char* buf, size_t len) {
     if (IsValidUtf8(buf, len)) {
         res.type = ENC_UTF8_NOBOM; return res;
     }
-    if (len >= 4 && (len % 2 == 0)) {
-        size_t samplePairs = std::min(len / 2, (size_t)2048);
-        size_t evenZeros = 0, oddZeros = 0;
-        for (size_t p = 0; p < samplePairs; ++p) {
-            if ((unsigned char)buf[p * 2] == 0x00) evenZeros++;
-            if ((unsigned char)buf[p * 2 + 1] == 0x00) oddZeros++;
-        }
-        if (oddZeros * 2 >= samplePairs && evenZeros * 10 <= samplePairs) {
-            res.type = ENC_UTF16LE; res.charsetName = "UTF-16LE"; return res;
-        }
-        if (evenZeros * 2 >= samplePairs && oddZeros * 10 <= samplePairs) {
-            res.type = ENC_UTF16BE; res.charsetName = "UTF-16BE"; return res;
-        }
-    }
+    int bomless16 = MiuCore::DetectBomlessUtf16(buf, len);
+    if (bomless16 == 1) { res.type = ENC_UTF16LE; res.charsetName = "UTF-16LE"; return res; }
+    if (bomless16 == 2) { res.type = ENC_UTF16BE; res.charsetName = "UTF-16BE"; return res; }
     const char* sampleBuf = buf;
-    size_t ced_len = (len > 65536) ? 65536 : len;
-    if (len > 65536) {
-        size_t firstSpecial = 0;
-        for (size_t i = 0; i < len; ++i) {
-            unsigned char c = (unsigned char)buf[i];
-            if (c >= 0x80 || c == 0x1B || c == 0x00) { firstSpecial = i; break; }
-        }
-        if (firstSpecial > 4096) {
-            size_t start = firstSpecial - 4096;
-            sampleBuf = buf + start;
-            ced_len = std::min(len - start, (size_t)65536);
-        }
-    }
+    size_t ced_len = len;
+    MiuCore::SelectCedSampleWindow(buf, len, sampleBuf, ced_len);
     int bytes_consumed = 0;
     bool is_reliable = false;
     Encoding ced_enc = CompactEncDet::DetectEncoding(
@@ -1643,13 +1327,10 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
             if (size <= 16 * 1024 * 1024) {
                 engine->convertedFileBuffer.assign(ptr, size);
                 engine->fileMap.close();
-                engine->pt.origPtr = engine->convertedFileBuffer.data();
-                engine->pt.origSize = engine->convertedFileBuffer.size();
+                engine->pt.initFromFile(engine->convertedFileBuffer.data(), engine->convertedFileBuffer.size());
             } else {
-                engine->pt.origPtr = ptr;
-                engine->pt.origSize = size;
+                engine->pt.initFromFile(ptr, size);
             }
-            engine->pt.pieces.push_back({ true, 0, size });
         } else {
             std::string contentUtf8;
             switch (engine->currentEncoding) {
@@ -1671,23 +1352,9 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
             }
             engine->fileMap.close();
             engine->convertedFileBuffer = std::move(contentUtf8);
-            engine->pt.origPtr = engine->convertedFileBuffer.data();
-            engine->pt.origSize = engine->convertedFileBuffer.size();
-            engine->pt.pieces.push_back({ true, 0, engine->pt.origSize });
+            engine->pt.initFromFile(engine->convertedFileBuffer.data(), engine->convertedFileBuffer.size());
         }
-        engine->newlineStr = "\n";
-        const char* checkPtr = engine->pt.origPtr;
-        size_t checkLen = std::min(engine->pt.origSize, (size_t)4096);
-        for (size_t i = 0; i < checkLen; ++i) {
-            if (checkPtr[i] == '\r') {
-                if (i + 1 < engine->pt.origSize && checkPtr[i + 1] == '\n') engine->newlineStr = "\r\n";
-                else engine->newlineStr = "\r";
-                break;
-            } else if (checkPtr[i] == '\n') {
-                engine->newlineStr = "\n";
-                break;
-            }
-        }
+        engine->newlineStr = MiuCore::DetectLineEnding(engine->pt.origPtr, engine->pt.origSize, "\n");
     }
     engine->currentFilePath = path;
     engine->displayFileName.clear();
@@ -1903,55 +1570,49 @@ void pollAsyncParsing(Engine* engine) {
 }
 void rebuildLineStarts(Engine* engine) {
     stopAsyncParsing(engine);
-    engine->lineStarts.clear();
-    engine->lineStarts.push_back(0);
-    size_t currentPos = 0;
-    bool prevEndedWithCR = false;
-    for (const auto& p : engine->pt.pieces) {
-        if (p.len == 0) continue;
-        const char* buf = p.isOriginal ? engine->pt.origPtr : engine->pt.addBuf.data();
-        size_t startIdx = p.start;
-        size_t len = p.len;
-        const char* ptr = buf + startIdx;
-        const char* end = ptr + len;
-        if (prevEndedWithCR) {
-            if (*ptr == '\n') {
-                if (!engine->lineStarts.empty()) engine->lineStarts.back() = currentPos + 1;
-                ptr++;
-            }
-            prevEndedWithCR = false;
-        }
-        while (ptr < end) {
-            char c = *ptr;
-            if (c == '\n') {
-                size_t offsetInPiece = ptr - (buf + startIdx);
-                engine->lineStarts.push_back(currentPos + offsetInPiece + 1);
-                ptr++;
-            } else if (c == '\r') {
-                size_t offsetInPiece = ptr - (buf + startIdx);
-                if (ptr + 1 < end) {
-                    if (*(ptr + 1) == '\n') {
-                        engine->lineStarts.push_back(currentPos + offsetInPiece + 2);
-                        ptr += 2;
-                    } else {
-                        engine->lineStarts.push_back(currentPos + offsetInPiece + 1);
-                        ptr++;
-                    }
-                } else {
-                    engine->lineStarts.push_back(currentPos + offsetInPiece + 1);
-                    prevEndedWithCR = true;
-                    ptr++;
-                }
-            } else {
-                ptr++;
-            }
-        }
-        currentPos += len;
-    }
+    MiuCore::scanPieceTableLineStartsSIMD(engine->pt, engine->lineStarts);
     updateGutterWidth(engine);
     engine->lineCaches.clear();
     engine->lineCaches.resize(engine->lineStarts.size());
     engine->commentStateCache.clear();
+}
+static bool hasAnyNewlineChar(const std::string& s) {
+    for (char c : s) {
+        if (c == '\n' || c == '\r') return true;
+    }
+    return false;
+}
+void adjustLineStartsAndCachesSingleLine(Engine* engine, int editedLine, ptrdiff_t delta) {
+    if (!engine || delta == 0 || editedLine < 0 || editedLine >= (int)engine->lineStarts.size() ||
+        engine->lineCaches.size() != engine->lineStarts.size()) {
+        rebuildLineStarts(engine);
+        return;
+    }
+    for (size_t i = (size_t)editedLine + 1; i < engine->lineStarts.size(); ++i) {
+        engine->lineStarts[i] = (size_t)((ptrdiff_t)engine->lineStarts[i] + delta);
+    }
+    LineCache& editedCache = engine->lineCaches[editedLine];
+    editedCache.isShaped = false;
+    editedCache.isWrapped = false;
+    editedCache.glyphs.clear();
+    editedCache.wrapSegments.clear();
+    for (size_t i = (size_t)editedLine + 1; i < engine->lineCaches.size(); ++i) {
+        LineCache& lc = engine->lineCaches[i];
+        if (lc.isShaped) {
+            for (auto& sg : lc.glyphs) {
+                sg.cluster = (size_t)((ptrdiff_t)sg.cluster + delta);
+            }
+        }
+        if (lc.isWrapped) {
+            for (auto& seg : lc.wrapSegments) {
+                seg.byteStart = (size_t)((ptrdiff_t)seg.byteStart + delta);
+                seg.byteEnd = (size_t)((ptrdiff_t)seg.byteEnd + delta);
+            }
+        }
+    }
+    if ((int)engine->commentStateCache.size() > editedLine + 1) {
+        engine->commentStateCache.resize(editedLine + 1);
+    }
 }
 int getLineIdx(Engine* engine, size_t pos) {
     if (engine->lineStarts.empty()) return 0;
@@ -2031,7 +1692,10 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
         runs.back().codepoints.push_back(cp);
         runs.back().byteOffsets.push_back(prevOffset);
     }
-    hb_buffer_t* hb_buf = hb_buffer_create();
+    if (!engine->persistentHbBuf) {
+        engine->persistentHbBuf = hb_buffer_create();
+    }
+    hb_buffer_t* hb_buf = engine->persistentHbBuf;
     float current_line_x = 0.0f;
 
     for (const auto& run : runs) {
@@ -2082,7 +1746,6 @@ void ensureLineShaped(Engine* engine, int lineIdx) {
             cache.glyphs.push_back(sg);
         }
     }
-    hb_buffer_destroy(hb_buf);
 }
 void ensureLineWrapped(Engine* engine, int lineIdx) {
     if (lineIdx < 0 || lineIdx >= (int)engine->lineCaches.size()) return;
@@ -2454,6 +2117,15 @@ void insertAtCursors(Engine* engine, const std::string& text) {
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
 
+    bool canFastSingleLine = (engine->cursors.size() == 1 &&
+                              !engine->isAsyncParsing &&
+                              engine->pendingLineChunks.empty() &&
+                              !engine->lineStarts.empty() &&
+                              engine->lineCaches.size() == engine->lineStarts.size() &&
+                              !hasAnyNewlineChar(text));
+    int fastEditedLine = -1;
+    ptrdiff_t fastDelta = 0;
+
     std::vector<size_t> indices(engine->cursors.size());
     std::iota(indices.begin(), indices.end(), 0);
     std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) {
@@ -2479,6 +2151,9 @@ void insertAtCursors(Engine* engine, const std::string& text) {
                 }
             }
             std::string d = engine->pt.getRange(st, l);
+            if (canFastSingleLine && (hasAnyNewlineChar(d) || (st > 0 && engine->pt.charAt(st - 1) == '\r'))) {
+                canFastSingleLine = false;
+            }
             engine->pt.erase(st, l);
             batch.ops.push_back({ EditOp::Erase, st, d });
             for (auto& o : engine->cursors) {
@@ -2493,6 +2168,9 @@ void insertAtCursors(Engine* engine, const std::string& text) {
                 st--;
                 c.head = st; c.anchor = st;
             }
+            if (canFastSingleLine && st > 0 && engine->pt.charAt(st - 1) == '\r') {
+                canFastSingleLine = false;
+            }
             engine->pt.insert(st, text);
             batch.ops.push_back({ EditOp::Insert, st, text });
             for (auto& o : engine->cursors) {
@@ -2500,9 +2178,22 @@ void insertAtCursors(Engine* engine, const std::string& text) {
                 if (o.anchor >= st) o.anchor += text.size();
             }
         }
+        if (canFastSingleLine) {
+            fastEditedLine = getLineIdx(engine, st);
+            fastDelta = (ptrdiff_t)text.size() - (ptrdiff_t)l;
+            size_t afterPos = st + text.size();
+            if (afterPos > 0 && afterPos < engine->pt.length() &&
+                engine->pt.charAt(afterPos - 1) == '\r' && engine->pt.charAt(afterPos) == '\n') {
+                canFastSingleLine = false;
+            }
+        }
     }
 
-    rebuildLineStarts(engine);
+    if (canFastSingleLine && fastEditedLine >= 0) {
+        adjustLineStartsAndCachesSingleLine(engine, fastEditedLine, fastDelta);
+    } else {
+        rebuildLineStarts(engine);
+    }
     for (auto& c : engine->cursors) {
         c.desiredX = getXFromPos(engine, c.head);
     }
@@ -2664,12 +2355,27 @@ void backspaceAtCursors(Engine* engine) {
     });
 
     bool changed = false;
+    bool canFastSingleLine = (engine->cursors.size() == 1 &&
+                              !engine->isAsyncParsing &&
+                              engine->pendingLineChunks.empty() &&
+                              !engine->lineStarts.empty() &&
+                              engine->lineCaches.size() == engine->lineStarts.size());
+    int fastEditedLine = -1;
+    ptrdiff_t fastDelta = 0;
+
     for (size_t idx : indices) {
         Cursor& c = engine->cursors[idx];
         if (c.hasSelection()) {
             size_t st = c.start();
             size_t len = c.end() - st;
             std::string d = engine->pt.getRange(st, len);
+            if (canFastSingleLine && (hasAnyNewlineChar(d) || (st > 0 && engine->pt.charAt(st - 1) == '\r'))) {
+                canFastSingleLine = false;
+            }
+            if (canFastSingleLine) {
+                fastEditedLine = getLineIdx(engine, st);
+                fastDelta = -(ptrdiff_t)len;
+            }
             engine->pt.erase(st, len);
             batch.ops.push_back({ EditOp::Erase, st, d });
             changed = true;
@@ -2731,6 +2437,13 @@ void backspaceAtCursors(Engine* engine) {
                 eraseLen++;
             }
             std::string d = engine->pt.getRange(eraseStart, eraseLen);
+            if (canFastSingleLine && (hasAnyNewlineChar(d) || (eraseStart > 0 && engine->pt.charAt(eraseStart - 1) == '\r'))) {
+                canFastSingleLine = false;
+            }
+            if (canFastSingleLine) {
+                fastEditedLine = getLineIdx(engine, eraseStart);
+                fastDelta = -(ptrdiff_t)eraseLen;
+            }
             engine->pt.erase(eraseStart, eraseLen);
             batch.ops.push_back({ EditOp::Erase, eraseStart, d });
             changed = true;
@@ -2745,7 +2458,11 @@ void backspaceAtCursors(Engine* engine) {
     }
 
     if (changed) {
-        rebuildLineStarts(engine);
+        if (canFastSingleLine && fastEditedLine >= 0) {
+            adjustLineStartsAndCachesSingleLine(engine, fastEditedLine, fastDelta);
+        } else {
+            rebuildLineStarts(engine);
+        }
         for (auto& c : engine->cursors) c.desiredX = getXFromPos(engine, c.head);
         batch.afterCursors = engine->cursors;
         engine->undo.push(batch);
@@ -2770,12 +2487,27 @@ void deleteForwardAtCursors(Engine* engine) {
     });
 
     bool changed = false;
+    bool canFastSingleLine = (engine->cursors.size() == 1 &&
+                              !engine->isAsyncParsing &&
+                              engine->pendingLineChunks.empty() &&
+                              !engine->lineStarts.empty() &&
+                              engine->lineCaches.size() == engine->lineStarts.size());
+    int fastEditedLine = -1;
+    ptrdiff_t fastDelta = 0;
+
     for (size_t idx : indices) {
         Cursor& c = engine->cursors[idx];
         if (c.hasSelection()) {
             size_t st = c.start();
             size_t len = c.end() - st;
             std::string d = engine->pt.getRange(st, len);
+            if (canFastSingleLine && (hasAnyNewlineChar(d) || (st > 0 && engine->pt.charAt(st - 1) == '\r'))) {
+                canFastSingleLine = false;
+            }
+            if (canFastSingleLine) {
+                fastEditedLine = getLineIdx(engine, st);
+                fastDelta = -(ptrdiff_t)len;
+            }
             engine->pt.erase(st, len);
             batch.ops.push_back({ EditOp::Erase, st, d });
             changed = true;
@@ -2824,6 +2556,13 @@ void deleteForwardAtCursors(Engine* engine) {
 
         size_t eraseLen = eraseEnd - eraseStart;
         std::string d = engine->pt.getRange(eraseStart, eraseLen);
+        if (canFastSingleLine && (hasAnyNewlineChar(d) || (eraseStart > 0 && engine->pt.charAt(eraseStart - 1) == '\r'))) {
+            canFastSingleLine = false;
+        }
+        if (canFastSingleLine) {
+            fastEditedLine = getLineIdx(engine, eraseStart);
+            fastDelta = -(ptrdiff_t)eraseLen;
+        }
         engine->pt.erase(eraseStart, eraseLen);
         batch.ops.push_back({ EditOp::Erase, eraseStart, d });
         changed = true;
@@ -2836,7 +2575,11 @@ void deleteForwardAtCursors(Engine* engine) {
     }
 
     if (changed) {
-        rebuildLineStarts(engine);
+        if (canFastSingleLine && fastEditedLine >= 0) {
+            adjustLineStartsAndCachesSingleLine(engine, fastEditedLine, fastDelta);
+        } else {
+            rebuildLineStarts(engine);
+        }
         for (auto& c : engine->cursors) c.desiredX = getXFromPos(engine, c.head);
         batch.afterCursors = engine->cursors;
         engine->undo.push(batch);
@@ -3760,20 +3503,7 @@ bool handlePreviewTaskToggleCommand(Engine* engine, int targetLineIdx) {
     return true;
 }
 static std::string NormalizeNewlines(const std::string& input, const std::string& targetNewline) {
-    const std::string& nl = targetNewline.empty() ? std::string("\n") : targetNewline;
-    std::string out;
-    out.reserve(input.size() + 16);
-    for (size_t i = 0; i < input.size(); ++i) {
-        if (input[i] == '\r') {
-            if (i + 1 < input.size() && input[i + 1] == '\n') i++;
-            out += nl;
-        } else if (input[i] == '\n') {
-            out += nl;
-        } else {
-            out += input[i];
-        }
-    }
-    return out;
+    return MiuCore::NormalizeLineEndings(input, targetNewline.empty() ? std::string_view("\n") : std::string_view(targetNewline));
 }
 extern "C" {
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_commitText(JNIEnv* env, jobject thiz, jstring text) {
@@ -4057,33 +3787,7 @@ JNIEXPORT jbyteArray JNICALL Java_jp_hack_miu_MainActivity_cmdGetSaveData(JNIEnv
     }
     if (g_engine->currentEncoding == ENC_UTF16LE || g_engine->currentEncoding == ENC_UTF16BE) {
         bool be = (g_engine->currentEncoding == ENC_UTF16BE);
-        std::vector<uint8_t> out;
-        out.reserve(2 + utf8Text.size() * 2);
-        out.push_back(be ? 0xFE : 0xFF);
-        out.push_back(be ? 0xFF : 0xFE);
-        auto pushU16 = [&](uint16_t w) {
-            if (be) {
-                out.push_back((uint8_t)((w >> 8) & 0xFF));
-                out.push_back((uint8_t)(w & 0xFF));
-            } else {
-                out.push_back((uint8_t)(w & 0xFF));
-                out.push_back((uint8_t)((w >> 8) & 0xFF));
-            }
-        };
-        const char* p = utf8Text.data();
-        const char* e = p + utf8Text.size();
-        while (p < e) {
-            uint32_t cp = decodeUtf8(&p, e);
-            if (cp <= 0xFFFF) {
-                pushU16((uint16_t)cp);
-            } else if (cp <= 0x10FFFF) {
-                cp -= 0x10000;
-                pushU16((uint16_t)(0xD800 + (cp >> 10)));
-                pushU16((uint16_t)(0xDC00 + (cp & 0x3FF)));
-            } else {
-                pushU16(0xFFFD);
-            }
-        }
+        std::string out = MiuCore::Utf8ToUtf16Bytes(utf8Text.data(), utf8Text.size(), be, true);
         jbyteArray finalArray = env->NewByteArray((jsize)out.size());
         env->SetByteArrayRegion(finalArray, 0, (jsize)out.size(), (const jbyte*)out.data());
         return finalArray;
@@ -4771,6 +4475,7 @@ void cleanupVulkan(Engine* engine) {
     if (engine->fontImageMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->fontImageMemory, nullptr);
     for (hb_font_t* hb_font : engine->fallbackHbFonts) if (hb_font) hb_font_destroy(hb_font);
     engine->fallbackHbFonts.clear();
+    if (engine->persistentHbBuf) { hb_buffer_destroy(engine->persistentHbBuf); engine->persistentHbBuf = nullptr; }
     engine->lineCaches.clear();
     for (FT_Face face : engine->fallbackFaces) if (face) FT_Done_Face(face);
     engine->fallbackFaces.clear();
@@ -5331,11 +5036,11 @@ void updateTextVertices(Engine* engine) {
     if (!engine->searchQuery.empty()) {
         size_t docLen = engine->pt.length();
         if (engine->searchRegex) {
-            if (isSafeUserRegex(engine->searchQuery)) {
-                std::string fullText = engine->pt.getRange(0, docLen); std::string actualQuery = preprocessRegexQuery(engine->searchQuery);
+            const std::regex* rePtr = getCompiledSearchRegex(engine, engine->searchQuery, engine->searchMatchCase);
+            if (rePtr) {
+                std::string fullText = engine->pt.getRange(0, docLen);
                 try {
-                    std::regex_constants::syntax_option_type rxFlags = std::regex_constants::ECMAScript; if (!engine->searchMatchCase) rxFlags |= std::regex_constants::icase;
-                    std::regex re(actualQuery, rxFlags); bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^'); bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
+                    const std::regex& re = *rePtr; bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^'); bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
                     auto searchStart = fullText.cbegin(); std::smatch m; size_t currentOffset = 0; std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
                     while (std::regex_search(searchStart, fullText.cend(), m, re, flags)) {
                         size_t matchPos = currentOffset + m.position(); size_t matchLen = m.length(); size_t anchorLen = 0;

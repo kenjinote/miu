@@ -1336,4 +1336,50 @@ inline Rendered tighten(const RenderOptions& options, DrawFn&& draw) {
     return tight.width < wide.width ? tight : wide;
 }
 
+inline std::string stripNewlineIndent(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    size_t i = 0;
+    while (i < s.size()) {
+        if (s[i] == '\n') {
+            out.push_back('\n');
+            i++;
+            while (i < s.size()) {
+                size_t next = i;
+                int cp = charCodeAtUtf8(s, i, &next);
+                if (!isSpace(cp)) break;
+                i = next;
+            }
+        } else {
+            out.push_back(s[i++]);
+        }
+    }
+    return out;
+}
+
+inline double numberOption(const Config& conf, const std::string& key, double fallback, double minVal, double maxVal) {
+    if (!conf.isMap()) return fallback;
+    const Config* v = conf.get(key);
+    if (v && v->isNumber() && v->nVal >= minVal) {
+        return std::min(v->nVal, maxVal);
+    }
+    return fallback;
+}
+
+inline double numberOption(const Config& config, const std::string& key, double fallback) {
+    if (!config.isMap()) return fallback;
+    const Config* v = config.get(key);
+    if (v && v->isNumber() && v->nVal > 0.0) {
+        return std::min(v->nVal, 2000.0);
+    }
+    return fallback;
+}
+
+inline double numberOption(const Config& config, const std::string& section, const std::string& key, double fallback) {
+    if (!config.isMap()) return fallback;
+    const Config* sec = config.get(section);
+    if (!sec || !sec->isMap()) return fallback;
+    return numberOption(*sec, key, fallback);
+}
+
 } // namespace Pele

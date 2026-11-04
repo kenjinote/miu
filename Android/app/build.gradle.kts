@@ -22,8 +22,8 @@ android {
         applicationId = "jp.hack.miu"
         minSdk = 24
         targetSdk = 36
-        versionCode = 53
-        versionName = "1.0.46"
+        versionCode = 54
+        versionName = "1.0.47"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         externalNativeBuild {

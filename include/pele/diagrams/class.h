@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../foundation.h"
 #include "../util.h"
 #include "../text.h"
@@ -2050,15 +2050,6 @@ constexpr double SECTION_PAD = 6.0;
 constexpr double EMPTY_SECTION = 10.0;
 constexpr double MIN_WIDTH = 64.0;
 constexpr double FOLD = 8.0;
-
-inline double numberOption(const Config& config, const std::string& key, double fallback) {
-    if (!config.isMap()) return fallback;
-    auto it = config.mVal.find(key);
-    if (it != config.mVal.end() && it->second.isNumber() && it->second.nVal > 0.0) {
-        return std::min(it->second.nVal, 2000.0);
-    }
-    return fallback;
-}
 
 template <typename Opts, typename = void>
 struct HasMonospaceVec : std::false_type {};

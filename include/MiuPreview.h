@@ -18,15 +18,25 @@ namespace MiuPreview {
 inline std::string convertMarkdownToHtml(const std::string& md, int depth = 0);
 inline std::string formatMarkdownInline(const std::string& s, int depth = 0);
 
-inline std::string escapeHtmlBasic(const std::string& s) {
-    std::string out; out.reserve(s.size() + 64);
-    for (char c : s) {
-        if (c == '&') out += "&amp;";
-        else if (c == '<') out += "&lt;";
-        else if (c == '>') out += "&gt;";
-        else if (c == '"') out += "&quot;";
-        else out += c;
+inline std::string escapeHtmlBasic(std::string_view s) {
+    std::string out; out.reserve(s.size() + 32);
+    size_t runStart = 0;
+    const size_t n = s.size();
+    for (size_t i = 0; i < n; ++i) {
+        char c = s[i];
+        const char* rep = nullptr;
+        size_t repLen = 0;
+        if (c == '&') { rep = "&amp;"; repLen = 5; }
+        else if (c == '<') { rep = "&lt;"; repLen = 4; }
+        else if (c == '>') { rep = "&gt;"; repLen = 4; }
+        else if (c == '"') { rep = "&quot;"; repLen = 6; }
+        if (rep) {
+            if (i > runStart) out.append(s.data() + runStart, i - runStart);
+            out.append(rep, repLen);
+            runStart = i + 1;
+        }
     }
+    if (runStart < n) out.append(s.data() + runStart, n - runStart);
     return out;
 }
 
@@ -709,13 +719,17 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
 }
 inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
     if (depth > 16) return "<p>" + escapeHtmlBasic(md) + "</p>\n";
-    auto trimStr = [](const std::string& str) -> std::string {
+    auto trimSv = [](std::string_view str) -> std::string_view {
         size_t a = 0, b = str.size();
         while (a < b && (str[a] == ' ' || str[a] == '\t')) a++;
         while (b > a && (str[b - 1] == ' ' || str[b - 1] == '\t')) b--;
         return str.substr(a, b - a);
     };
-    auto getIndent = [](const std::string& line, size_t& firstNonSpace) -> int {
+    auto trimStr = [&](std::string_view str) -> std::string {
+        std::string_view sv = trimSv(str);
+        return std::string(sv.data(), sv.size());
+    };
+    auto getIndent = [](std::string_view line, size_t& firstNonSpace) -> int {
         int cols = 0;
         size_t i = 0;
         while (i < line.size()) {
@@ -726,13 +740,13 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         firstNonSpace = i;
         return cols;
     };
-    auto splitCells = [&](const std::string& row) -> std::vector<std::string> {
-        std::string t = trimStr(row);
-        if (!t.empty() && t.front() == '|') t.erase(0, 1);
+    auto splitCells = [&](std::string_view row) -> std::vector<std::string> {
+        std::string_view t = trimSv(row);
+        if (!t.empty() && t.front() == '|') t.remove_prefix(1);
         if (!t.empty() && t.back() == '|') {
             size_t bs = 0;
             for (size_t k = t.size() - 1; k > 0 && t[k - 1] == '\\'; --k) bs++;
-            if ((bs % 2) == 0) t.pop_back();
+            if ((bs % 2) == 0) t.remove_suffix(1);
         }
         std::vector<std::string> cells;
         size_t start = 0, i = 0, n = t.size();
@@ -754,7 +768,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
                 continue;
             }
             if (t[i] == '|') {
-                std::string c = trimStr(t.substr(start, i - start));
+                std::string_view c = trimSv(t.substr(start, i - start));
                 std::string u; u.reserve(c.size());
                 for (size_t k = 0; k < c.size(); ++k) {
                     if (c[k] == '\\' && k + 1 < c.size() && c[k + 1] == '|') { u += '|'; k++; }
@@ -766,7 +780,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
             i++;
         }
         {
-            std::string c = trimStr(t.substr(start));
+            std::string_view c = trimSv(t.substr(start));
             std::string u; u.reserve(c.size());
             for (size_t k = 0; k < c.size(); ++k) {
                 if (c[k] == '\\' && k + 1 < c.size() && c[k + 1] == '|') { u += '|'; k++; }
@@ -776,8 +790,8 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         }
         return cells;
     };
-    auto isTableSep = [&](const std::string& s) -> bool {
-        if (s.find('|') == std::string::npos || s.find('-') == std::string::npos) return false;
+    auto isTableSep = [&](std::string_view s) -> bool {
+        if (s.find('|') == std::string_view::npos || s.find('-') == std::string_view::npos) return false;
         auto cells = splitCells(s);
         if (cells.empty()) return false;
         for (const auto& c : cells) {
@@ -792,7 +806,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         }
         return true;
     };
-    auto isFenceStart = [&](const std::string& line, char& fChar, size_t& fLen, std::string& info) -> bool {
+    auto isFenceStart = [&](std::string_view line, char& fChar, size_t& fLen, std::string& info) -> bool {
         size_t p = 0;
         int ind = getIndent(line, p);
         if (ind > 3 || p >= line.size()) return false;
@@ -801,12 +815,12 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         size_t len = 0;
         while (p + len < line.size() && line[p + len] == c) len++;
         if (len < 3) return false;
-        std::string rest = trimStr(line.substr(p + len));
-        if (c == '`' && rest.find('`') != std::string::npos) return false;
-        fChar = c; fLen = len; info = rest;
+        std::string_view rest = trimSv(line.substr(p + len));
+        if (c == '`' && rest.find('`') != std::string_view::npos) return false;
+        fChar = c; fLen = len; info.assign(rest.data(), rest.size());
         return true;
     };
-    auto isFenceEnd = [&](const std::string& line, char fChar, size_t fLen) -> bool {
+    auto isFenceEnd = [&](std::string_view line, char fChar, size_t fLen) -> bool {
         size_t p = 0;
         int ind = getIndent(line, p);
         if (ind > 3 || p >= line.size() || line[p] != fChar) return false;
@@ -818,7 +832,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         }
         return true;
     };
-    auto isThematicBreak = [&](const std::string& line) -> bool {
+    auto isThematicBreak = [&](std::string_view line) -> bool {
         size_t p = 0;
         int ind = getIndent(line, p);
         if (ind > 3 || p >= line.size()) return false;
@@ -831,7 +845,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         }
         return count >= 3;
     };
-    auto isSetextUnderline = [&](const std::string& line, int& levelOut) -> bool {
+    auto isSetextUnderline = [&](std::string_view line, int& levelOut) -> bool {
         size_t p = 0;
         int ind = getIndent(line, p);
         if (ind > 3 || p >= line.size()) return false;
@@ -844,7 +858,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         levelOut = (c == '=') ? 1 : 2;
         return true;
     };
-    auto isAtxHeading = [&](const std::string& line, int& levelOut, std::string& textOut) -> bool {
+    auto isAtxHeading = [&](std::string_view line, int& levelOut, std::string& textOut) -> bool {
         size_t p = 0;
         int ind = getIndent(line, p);
         if (ind > 3 || p >= line.size() || line[p] != '#') return false;
@@ -853,29 +867,29 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         if (h == 0 || h > 6) return false;
         if (p + h < line.size() && line[p + h] != ' ' && line[p + h] != '\t') return false;
         levelOut = (int)h;
-        std::string rest = trimStr(line.substr(p + h));
+        std::string_view rest = trimSv(line.substr(p + h));
         if (!rest.empty() && rest.back() == '#') {
             size_t e = rest.size();
             while (e > 0 && rest[e - 1] == '#') e--;
-            if (e == 0) rest.clear();
+            if (e == 0) rest = std::string_view{};
             else if (rest[e - 1] == ' ' || rest[e - 1] == '\t') {
                 while (e > 0 && (rest[e - 1] == ' ' || rest[e - 1] == '\t')) e--;
-                rest.erase(e);
+                rest = rest.substr(0, e);
             }
         }
-        textOut = rest;
+        textOut.assign(rest.data(), rest.size());
         return true;
     };
-    auto isBlockquoteLine = [&](const std::string& line, std::string& innerOut) -> bool {
+    auto isBlockquoteLine = [&](std::string_view line, std::string& innerOut) -> bool {
         size_t p = 0;
         int ind = getIndent(line, p);
         if (ind > 3 || p >= line.size() || line[p] != '>') return false;
         p++;
         if (p < line.size() && (line[p] == ' ' || line[p] == '\t')) p++;
-        innerOut = line.substr(p);
+        innerOut.assign(line.data() + p, line.size() - p);
         return true;
     };
-    auto isListItem = [&](const std::string& line, int& indOut, bool& isOlOut, int& startNumOut, std::string& contentOut) -> bool {
+    auto isListItem = [&](std::string_view line, int& indOut, bool& isOlOut, int& startNumOut, std::string& contentOut) -> bool {
         size_t p = 0;
         int ind = getIndent(line, p);
         if (p >= line.size()) return false;
@@ -887,33 +901,38 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
             startNumOut = 1;
             size_t cs = p + 1;
             if (cs < line.size() && (line[cs] == ' ' || line[cs] == '\t')) cs++;
-            contentOut = line.substr(cs);
+            contentOut.assign(line.data() + cs, line.size() - cs);
             return true;
         }
         size_t d = p;
-        while (d < line.size() && (d - p) < 9 && line[d] >= '0' && line[d] <= '9') d++;
+        int parsedNum = 0;
+        while (d < line.size() && (d - p) < 9 && line[d] >= '0' && line[d] <= '9') {
+            parsedNum = parsedNum * 10 + (line[d] - '0');
+            d++;
+        }
         if (d > p && d < line.size() && (line[d] == '.' || line[d] == ')') && (d + 1 == line.size() || line[d + 1] == ' ' || line[d + 1] == '\t')) {
             indOut = ind;
             isOlOut = true;
-            startNumOut = atoi(line.substr(p, d - p).c_str());
+            startNumOut = parsedNum;
             size_t cs = d + 1;
             if (cs < line.size() && (line[cs] == ' ' || line[cs] == '\t')) cs++;
-            contentOut = line.substr(cs);
+            contentOut.assign(line.data() + cs, line.size() - cs);
             return true;
         }
         return false;
     };
 
-    std::vector<std::string> lines;
+    std::vector<std::string_view> lines;
     lines.reserve(md.size() / 36 + 16);
     {
         size_t pos = 0, len = md.size();
+        const char* base = md.data();
         while (pos < len) {
             size_t eol = pos;
-            while (eol < len && md[eol] != '\n' && md[eol] != '\r') eol++;
-            lines.push_back(md.substr(pos, eol - pos));
+            while (eol < len && base[eol] != '\n' && base[eol] != '\r') eol++;
+            lines.emplace_back(base + pos, eol - pos);
             if (eol < len) {
-                if (md[eol] == '\r' && eol + 1 < len && md[eol + 1] == '\n') pos = eol + 2;
+                if (base[eol] == '\r' && eol + 1 < len && base[eol + 1] == '\n') pos = eol + 2;
                 else pos = eol + 1;
             } else {
                 pos = len;
@@ -926,34 +945,34 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
     std::vector<ListLevel> listStack;
     bool inTable = false;
     std::vector<const char*> colAligns;
-    std::vector<std::string> paraLines;
+    std::vector<std::string_view> paraLines;
 
-    auto formatParaLines = [&](const std::vector<std::string>& plines) -> std::string {
+    auto formatParaLines = [&](const std::vector<std::string_view>& plines) -> std::string {
         std::string res;
         for (size_t k = 0; k < plines.size(); ++k) {
-            std::string s = plines[k];
+            std::string_view sv = plines[k];
             size_t lead = 0;
-            while (lead < s.size() && (s[lead] == ' ' || s[lead] == '\t')) lead++;
-            s.erase(0, lead);
+            while (lead < sv.size() && (sv[lead] == ' ' || sv[lead] == '\t')) lead++;
+            sv.remove_prefix(lead);
             bool hardBreak = false;
             if (k + 1 < plines.size()) {
                 size_t trailSp = 0;
-                while (trailSp < s.size() && s[s.size() - 1 - trailSp] == ' ') trailSp++;
+                while (trailSp < sv.size() && sv[sv.size() - 1 - trailSp] == ' ') trailSp++;
                 if (trailSp >= 2) {
-                    s.erase(s.size() - trailSp);
+                    sv.remove_suffix(trailSp);
                     hardBreak = true;
-                } else if (!s.empty() && s.back() == '\\') {
+                } else if (!sv.empty() && sv.back() == '\\') {
                     size_t bs = 0;
-                    for (size_t m = s.size(); m > 0 && s[m - 1] == '\\'; --m) bs++;
+                    for (size_t m = sv.size(); m > 0 && sv[m - 1] == '\\'; --m) bs++;
                     if ((bs % 2) == 1) {
-                        s.pop_back();
+                        sv.remove_suffix(1);
                         hardBreak = true;
                     }
                 }
             } else {
-                while (!s.empty() && (s.back() == ' ' || s.back() == '\t')) s.pop_back();
+                while (!sv.empty() && (sv.back() == ' ' || sv.back() == '\t')) sv.remove_suffix(1);
             }
-            res += formatMarkdownInline(s);
+            res += formatMarkdownInline(std::string(sv.data(), sv.size()));
             if (k + 1 < plines.size()) {
                 res += hardBreak ? "<br>\n" : "\n";
             }
@@ -979,7 +998,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
 
     size_t nLines = lines.size();
     for (size_t idx = 0; idx < nLines; ++idx) {
-        const std::string& line = lines[idx];
+        std::string_view line = lines[idx];
         size_t firstNonSp = 0;
         int lineIndent = getIndent(line, firstNonSp);
         bool isBlank = (firstNonSp >= line.size());
@@ -1002,7 +1021,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
                 while (idx < nLines && !isFenceEnd(lines[idx], fChar, fLen)) {
                     if (!firstLine) code += "\n";
                     firstLine = false;
-                    code += lines[idx];
+                    code.append(lines[idx].data(), lines[idx].size());
                     idx++;
                 }
                 const std::string& svg = cachedMermaidRenderSvg(code);
@@ -1022,7 +1041,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
                 while (idx < nLines && !isFenceEnd(lines[idx], fChar, fLen)) {
                     if (!firstLine) code += "\n";
                     firstLine = false;
-                    code += lines[idx];
+                    code.append(lines[idx].data(), lines[idx].size());
                     idx++;
                 }
                 const std::string& mml = cachedLatexToMathML(code, true);
@@ -1051,16 +1070,16 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
 
         // 1b. Display math block ($$ ... $$)
         if (!isBlank && lineIndent <= 3 && line.compare(firstNonSp, 2, "$$") == 0) {
-            std::string trimmedMath = trimStr(line);
+            std::string_view trimmedMath = trimSv(line);
             if (trimmedMath == "$$") {
                 flushPara(); closeLists(); closeTable();
                 std::string code;
                 bool firstLine = true;
                 idx++;
-                while (idx < nLines && trimStr(lines[idx]) != "$$") {
+                while (idx < nLines && trimSv(lines[idx]) != "$$") {
                     if (!firstLine) code += "\n";
                     firstLine = false;
-                    code += lines[idx];
+                    code.append(lines[idx].data(), lines[idx].size());
                     idx++;
                 }
                 const std::string& mml = cachedLatexToMathML(code, true);
@@ -1073,7 +1092,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
             } else if (trimmedMath.size() > 4 && trimmedMath.compare(trimmedMath.size() - 2, 2, "$$") == 0 &&
                        trimmedMath.find("$$", 2) == trimmedMath.size() - 2) {
                 flushPara(); closeLists(); closeTable();
-                std::string code = trimmedMath.substr(2, trimmedMath.size() - 4);
+                std::string code(trimmedMath.data() + 2, trimmedMath.size() - 4);
                 const std::string& mml = cachedLatexToMathML(code, true);
                 if (!mml.empty()) {
                     out += "<div class=\"math-block\" style=\"margin:1em 0;text-align:center;\">";
@@ -1086,7 +1105,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
 
         // 2. Active table continuation
         if (inTable) {
-            if (!isBlank && line.find('|') != std::string::npos) {
+            if (!isBlank && line.find('|') != std::string_view::npos) {
                 auto cells = splitCells(line);
                 size_t numCols = colAligns.size();
                 out += "<tr>";
@@ -1198,7 +1217,7 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         }
 
         // 8. GFM Table start (Header row | Separator row)
-        if (line.find('|') != std::string::npos && idx + 1 < nLines && isTableSep(lines[idx + 1])) {
+        if (line.find('|') != std::string_view::npos && idx + 1 < nLines && isTableSep(lines[idx + 1])) {
             flushPara(); closeLists();
             auto hdrs = splitCells(line);
             auto seps = splitCells(lines[idx + 1]);

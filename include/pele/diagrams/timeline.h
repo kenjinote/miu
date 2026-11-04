@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../foundation.h"
 
 namespace Pele {
@@ -16,27 +16,6 @@ struct TimelineModel : public DiagramMeta {
     std::vector<std::string> sections;
     std::vector<TimelinePeriod> periods;
 };
-
-inline std::string stripNewlineIndent(const std::string& s) {
-    std::string out;
-    out.reserve(s.size());
-    size_t i = 0;
-    while (i < s.size()) {
-        if (s[i] == '\n') {
-            out.push_back('\n');
-            i++;
-            while (i < s.size()) {
-                size_t next = i;
-                int cp = charCodeAtUtf8(s, i, &next);
-                if (!isSpace(cp)) break;
-                i = next;
-            }
-        } else {
-            out.push_back(s[i++]);
-        }
-    }
-    return out;
-}
 
 class TimelineDb : public TimelineModel {
 public:
@@ -334,105 +313,6 @@ inline void parseTimeline(const std::string& src, TimelineDb& db) {
                 fail(i, STATEMENT);
         }
     }
-}
-
-// ============================================================================
-// Port of src/diagrams/common/fit.ts (plainLabel, fitLabel)
-// ============================================================================
-
-inline size_t matchBrTag(const std::string& s, size_t pos) {
-    if (pos + 3 >= s.size() || s[pos] != '<') return 0;
-    if ((s[pos + 1] != 'b' && s[pos + 1] != 'B') || (s[pos + 2] != 'r' && s[pos + 2] != 'R')) return 0;
-    size_t p = pos + 3;
-    while (p < s.size()) {
-        size_t next = p;
-        int cp = charCodeAtUtf8(s, p, &next);
-        if (!isSpace(cp)) break;
-        p = next;
-    }
-    if (p < s.size() && s[p] == '/') p++;
-    if (p < s.size() && s[p] == '>') return p + 1 - pos;
-    return 0;
-}
-
-inline Label plainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
-    if (raw.empty()) return Label{};
-    std::string text;
-    if (raw.find('<') != std::string::npos) {
-        text.reserve(raw.size() + 8);
-        for (size_t i = 0; i < raw.size(); i++) {
-            if (raw[i] == '<' && matchBrTag(raw, i) == 0) {
-                text += "&lt;";
-            } else {
-                text.push_back(raw[i]);
-            }
-        }
-    } else {
-        text = raw;
-    }
-    if (text.find(":fa-") != std::string::npos) {
-        text = replaceAllStr(text, ":fa-", "&colon;fa-");
-    }
-    return layoutLabel(text, false, measurer, size, max, base);
-}
-
-inline Label fitPlainLabel(const std::string& raw, const TextMeasurer& measurer, double size, double max, int base = 0) {
-    Label label = plainLabel(raw, measurer, size, max, base);
-    if (raw.empty() || label.width <= max) return label;
-    std::string out;
-    double width = 0.0;
-    size_t i = 0;
-    while (i < raw.size()) {
-        std::string unit;
-        bool isBr = false;
-        bool isEntity = false;
-        size_t brLen = matchBrTag(raw, i);
-        if (brLen > 0) {
-            unit = raw.substr(i, brLen);
-            isBr = true;
-            i += brLen;
-        } else if (startsWith(raw, PLACEHOLDER_OPEN, i)) {
-            size_t p = i + PLACEHOLDER_OPEN.size();
-            if (startsWith(raw, "\xC2\xB0", p)) p += 2;
-            size_t wStart = p;
-            while (p < raw.size() && isWord(static_cast<unsigned char>(raw[p]))) p++;
-            if (p > wStart && startsWith(raw, PLACEHOLDER_CLOSE, p)) {
-                size_t end = p + PLACEHOLDER_CLOSE.size();
-                unit = raw.substr(i, end - i);
-                isEntity = true;
-                i = end;
-            }
-        }
-        if (unit.empty() && raw[i] == '&') {
-            size_t p = i + 1;
-            if (p < raw.size() && raw[p] == '#') p++;
-            size_t wStart = p;
-            while (p < raw.size() && isWord(static_cast<unsigned char>(raw[p]))) p++;
-            if (p > wStart && p < raw.size() && raw[p] == ';') {
-                unit = raw.substr(i, p + 1 - i);
-                isEntity = true;
-                i = p + 1;
-            }
-        }
-        if (unit.empty()) {
-            size_t s = i;
-            nextCodepoint(raw, i);
-            unit = raw.substr(s, i - s);
-        }
-
-        if (trimStr(unit).empty() || isBr) {
-            width = 0.0;
-        } else {
-            double w = measurer.width(isEntity ? "x" : unit, size, base);
-            if (width > 0.0 && width + w > max) {
-                out.push_back('\n');
-                width = 0.0;
-            }
-            width += w;
-        }
-        out += unit;
-    }
-    return plainLabel(out, measurer, size, max, base);
 }
 
 constexpr double PAD_X = 12.0;

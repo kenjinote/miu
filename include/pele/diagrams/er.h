@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../foundation.h"
 #include "../util.h"
 #include "../text.h"
@@ -1382,17 +1382,6 @@ inline bool hasMonospaceOption(const Opts& opts, const std::string& item) {
     return false;
 }
 
-inline double numberOption(const Config& config, const std::string& key, double fallback) {
-    if (!config.isMap()) return fallback;
-    auto itEr = config.mVal.find("er");
-    if (itEr == config.mVal.end() || !itEr->second.isMap()) return fallback;
-    auto it = itEr->second.mVal.find(key);
-    if (it != itEr->second.mVal.end() && it->second.isNumber() && it->second.nVal > 0.0) {
-        return std::min(it->second.nVal, 2000.0);
-    }
-    return fallback;
-}
-
 struct Row {
     Label cells[4];
     double h = 0.0;
@@ -1715,9 +1704,9 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
     }
 
     LayeredOptions lopt;
-    lopt.nodeSep = numberOption(config, "nodeSpacing", NODE_SEP);
+    lopt.nodeSep = numberOption(config, "er", "nodeSpacing", NODE_SEP);
     lopt.edgeSep = EDGE_SEP;
-    lopt.rankSep = numberOption(config, "rankSpacing", RANK_SEP);
+    lopt.rankSep = numberOption(config, "er", "rankSpacing", RANK_SEP);
     lopt.portSep = 24.0;
     CompoundResult layout = compoundLayout(cnodes, cedges, turned ? "TB" : direction(db.direction), lopt);
 

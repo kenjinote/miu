@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 #include "../foundation.h"
 #include <algorithm>
@@ -629,15 +629,6 @@ inline std::string contentId(const std::string& text) {
     b = static_cast<int32_t>(static_cast<uint32_t>(b * 33) + c);
   }
   return u32ToBase36(a) + u32ToBase36(static_cast<uint32_t>(b));
-}
-
-inline double numberOption(const Config& conf, const std::string& key, double fallback, double minVal, double maxVal) {
-  if (!conf.isMap()) return fallback;
-  const Config* v = conf.get(key);
-  if (v && v->isNumber() && v->nVal >= minVal) {
-    return std::min(v->nVal, maxVal);
-  }
-  return fallback;
 }
 
 inline std::string textOption(const Config& conf, const std::string& key) {

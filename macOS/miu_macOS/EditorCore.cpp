@@ -24,129 +24,14 @@
 #include <arm_neon.h>
 #endif
 
-const std::wstring APP_VERSION = L"v1.0.46";
+const std::wstring APP_VERSION = L"v1.0.47";
 const std::wstring APP_TITLE = L"miu";
 
-static std::string SanitizeUtf8(const char* buf, size_t len) {
-    if (!buf || len == 0) return "";
-    bool clean = true;
-    for (size_t i = 0; i < len; ) {
-        unsigned char c = (unsigned char)buf[i];
-        if (c == 0x00) { clean = false; break; }
-        if (c <= 0x7F) { i++; }
-        else if (c >= 0xC2 && c <= 0xDF) {
-            if (i + 1 >= len || ((unsigned char)buf[i + 1] & 0xC0) != 0x80) { clean = false; break; }
-            i += 2;
-        } else if (c >= 0xE0 && c <= 0xEF) {
-            if (i + 2 >= len) { clean = false; break; }
-            unsigned char b1 = (unsigned char)buf[i + 1], b2 = (unsigned char)buf[i + 2];
-            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (c == 0xE0 && b1 < 0xA0) || (c == 0xED && b1 >= 0xA0)) { clean = false; break; }
-            i += 3;
-        } else if (c >= 0xF0 && c <= 0xF4) {
-            if (i + 3 >= len) { clean = false; break; }
-            unsigned char b1 = (unsigned char)buf[i + 1], b2 = (unsigned char)buf[i + 2], b3 = (unsigned char)buf[i + 3];
-            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80 || (c == 0xF0 && b1 < 0x90) || (c == 0xF4 && b1 >= 0x90)) { clean = false; break; }
-            i += 4;
-        } else {
-            clean = false; break;
-        }
-    }
-    if (clean) return std::string(buf, len);
+using MiuCore::SanitizeUtf8;
+using MiuCore::Utf8ToUtf16Bytes;
 
-    std::string out;
-    out.reserve(len);
-    for (size_t i = 0; i < len; ) {
-        unsigned char c = (unsigned char)buf[i];
-        if (c == 0x00) {
-            out.push_back('?');
-            i++;
-        } else if (c <= 0x7F) {
-            out.push_back((char)c);
-            i++;
-        } else if (c >= 0xC2 && c <= 0xDF && i + 1 < len && ((unsigned char)buf[i + 1] & 0xC0) == 0x80) {
-            out.append(buf + i, 2);
-            i += 2;
-        } else if (c >= 0xE0 && c <= 0xEF && i + 2 < len) {
-            unsigned char b1 = (unsigned char)buf[i + 1], b2 = (unsigned char)buf[i + 2];
-            if ((b1 & 0xC0) == 0x80 && (b2 & 0xC0) == 0x80 && !(c == 0xE0 && b1 < 0xA0) && !(c == 0xED && b1 >= 0xA0)) {
-                out.append(buf + i, 3);
-                i += 3;
-            } else {
-                out.append("\xEF\xBF\xBD", 3);
-                i++;
-            }
-        } else if (c >= 0xF0 && c <= 0xF4 && i + 3 < len) {
-            unsigned char b1 = (unsigned char)buf[i + 1], b2 = (unsigned char)buf[i + 2], b3 = (unsigned char)buf[i + 3];
-            if ((b1 & 0xC0) == 0x80 && (b2 & 0xC0) == 0x80 && (b3 & 0xC0) == 0x80 && !(c == 0xF0 && b1 < 0x90) && !(c == 0xF4 && b1 >= 0x90)) {
-                out.append(buf + i, 4);
-                i += 4;
-            } else {
-                out.append("\xEF\xBF\xBD", 3);
-                i++;
-            }
-        } else {
-            out.append("\xEF\xBF\xBD", 3);
-            i++;
-        }
-    }
-    return out;
-}
-
-static std::string DecodeUtf16BytesToUtf8(const char* data, size_t len, bool isBigEndian) {
-    if (!data || len < 2) return "";
-    size_t offset = 0;
-    if ((unsigned char)data[0] == 0xFF && (unsigned char)data[1] == 0xFE) offset = 2;
-    else if ((unsigned char)data[0] == 0xFE && (unsigned char)data[1] == 0xFF) offset = 2;
-    if (len <= offset) return "";
-    size_t u16Count = (len - offset) / 2;
-    const unsigned char* p = (const unsigned char*)(data + offset);
-    std::string out;
-    out.reserve(u16Count * 2);
-    auto readU16 = [&](size_t idx) -> uint16_t {
-        if (isBigEndian) return (uint16_t)((p[idx * 2] << 8) | p[idx * 2 + 1]);
-        return (uint16_t)(p[idx * 2] | (p[idx * 2 + 1] << 8));
-    };
-    auto appendCp = [&](uint32_t cp) {
-        if (cp == 0) {
-            out.push_back('?');
-        } else if (cp <= 0x7F) {
-            out.push_back((char)cp);
-        } else if (cp <= 0x7FF) {
-            out.push_back((char)(0xC0 | ((cp >> 6) & 0x1F)));
-            out.push_back((char)(0x80 | (cp & 0x3F)));
-        } else if (cp <= 0xFFFF) {
-            out.push_back((char)(0xE0 | ((cp >> 12) & 0x0F)));
-            out.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
-            out.push_back((char)(0x80 | (cp & 0x3F)));
-        } else if (cp <= 0x10FFFF) {
-            out.push_back((char)(0xF0 | ((cp >> 18) & 0x07)));
-            out.push_back((char)(0x80 | ((cp >> 12) & 0x3F)));
-            out.push_back((char)(0x80 | ((cp >> 6) & 0x3F)));
-            out.push_back((char)(0x80 | (cp & 0x3F)));
-        } else {
-            out.append("\xEF\xBF\xBD", 3);
-        }
-    };
-    for (size_t i = 0; i < u16Count; ++i) {
-        uint16_t w1 = readU16(i);
-        if (w1 >= 0xD800 && w1 <= 0xDBFF) {
-            if (i + 1 < u16Count) {
-                uint16_t w2 = readU16(i + 1);
-                if (w2 >= 0xDC00 && w2 <= 0xDFFF) {
-                    uint32_t cp = 0x10000 + (((uint32_t)(w1 - 0xD800) << 10) | (uint32_t)(w2 - 0xDC00));
-                    appendCp(cp);
-                    i++;
-                    continue;
-                }
-            }
-            appendCp(0xFFFD);
-        } else if (w1 >= 0xDC00 && w1 <= 0xDFFF) {
-            appendCp(0xFFFD);
-        } else {
-            appendCp(w1);
-        }
-    }
-    return out;
+std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
+    return MiuCore::Utf16ToUtf8(data, len, isBigEndian);
 }
 
 #if defined(__APPLE__)
@@ -187,10 +72,6 @@ std::wstring UTF8ToW(const std::string& s) {
     std::wstring res = CFStringToStdWString(str);
     if (str) CFRelease(str);
     return res;
-}
-
-std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
-    return DecodeUtf16BytesToUtf8(data, len, isBigEndian);
 }
 
 static CFStringEncoding MapCedEncodingToCFEncoding(Encoding enc) {
@@ -351,10 +232,6 @@ std::wstring UTF8ToW(const std::string& s) {
     return res;
 }
 
-std::string Utf16ToUtf8(const char* data, size_t len, bool isBigEndian) {
-    return DecodeUtf16BytesToUtf8(data, len, isBigEndian);
-}
-
 static uint32_t MapCedEncodingToWinCodePage(Encoding enc) {
     switch (enc) {
         case JAPANESE_SHIFT_JIS:
@@ -431,62 +308,6 @@ static std::string Utf8ToLocal(const std::string& utf8, uint32_t codePage) {
     return res;
 }
 #endif
-
-static std::string Utf8ToUtf16Bytes(const std::string& utf8, bool isBigEndian) {
-    std::string out;
-    out.reserve(2 + utf8.size() * 2);
-    if (isBigEndian) {
-        out.push_back((char)0xFE);
-        out.push_back((char)0xFF);
-    } else {
-        out.push_back((char)0xFF);
-        out.push_back((char)0xFE);
-    }
-    auto appendU16 = [&](uint16_t u16) {
-        if (isBigEndian) {
-            out.push_back((char)((u16 >> 8) & 0xFF));
-            out.push_back((char)(u16 & 0xFF));
-        } else {
-            out.push_back((char)(u16 & 0xFF));
-            out.push_back((char)((u16 >> 8) & 0xFF));
-        }
-    };
-    size_t i = 0;
-    size_t n = utf8.size();
-    while (i < n) {
-        unsigned char b0 = (unsigned char)utf8[i];
-        uint32_t cp = 0;
-        if (b0 < 0x80) {
-            cp = b0;
-            i += 1;
-        } else if ((b0 & 0xE0) == 0xC0 && i + 1 < n) {
-            cp = ((uint32_t)(b0 & 0x1F) << 6) | ((uint32_t)((unsigned char)utf8[i + 1] & 0x3F));
-            i += 2;
-        } else if ((b0 & 0xF0) == 0xE0 && i + 2 < n) {
-            cp = ((uint32_t)(b0 & 0x0F) << 12) |
-                 ((uint32_t)((unsigned char)utf8[i + 1] & 0x3F) << 6) |
-                 ((uint32_t)((unsigned char)utf8[i + 2] & 0x3F));
-            i += 3;
-        } else if ((b0 & 0xF8) == 0xF0 && i + 3 < n) {
-            cp = ((uint32_t)(b0 & 0x07) << 18) |
-                 ((uint32_t)((unsigned char)utf8[i + 1] & 0x3F) << 12) |
-                 ((uint32_t)((unsigned char)utf8[i + 2] & 0x3F) << 6) |
-                 ((uint32_t)((unsigned char)utf8[i + 3] & 0x3F));
-            i += 4;
-        } else {
-            cp = 0xFFFD;
-            i += 1;
-        }
-        if (cp <= 0xFFFF) {
-            appendU16((uint16_t)cp);
-        } else if (cp <= 0x10FFFF) {
-            uint32_t v = cp - 0x10000;
-            appendU16((uint16_t)(0xD800 + (v >> 10)));
-            appendU16((uint16_t)(0xDC00 + (v & 0x3FF)));
-        }
-    }
-    return out;
-}
 
 bool MappedFile::open(const char* path) {
 #if defined(__APPLE__)
@@ -573,66 +394,17 @@ void MappedFile::close() {
 }
 
 bool IsValidUtf8(const char* buf, size_t len) {
-    if (len == 0) return true;
-    size_t i = 0;
-    while (i < len) {
-        unsigned char c = (unsigned char)buf[i];
-        if (c == 0x00) return false;
-        if (c == 0x1B && i + 2 < len) {
-            unsigned char b1 = (unsigned char)buf[i + 1];
-            unsigned char b2 = (unsigned char)buf[i + 2];
-            if (b1 == '$' && (b2 == '@' || b2 == 'B' || b2 == '(')) return false;
-            if (b1 == '(' && (b2 == 'B' || b2 == 'J' || b2 == 'I')) return false;
-        }
-        if (c <= 0x7F) {
-            i++;
-        } else if (c >= 0xC2 && c <= 0xDF) {
-            if (i + 1 >= len) return false;
-            if (((unsigned char)buf[i + 1] & 0xC0) != 0x80) return false;
-            i += 2;
-        } else if (c >= 0xE0 && c <= 0xEF) {
-            if (i + 2 >= len) return false;
-            unsigned char b1 = (unsigned char)buf[i + 1];
-            unsigned char b2 = (unsigned char)buf[i + 2];
-            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80) return false;
-            if (c == 0xE0 && b1 < 0xA0) return false;
-            if (c == 0xED && b1 >= 0xA0) return false;
-            i += 3;
-        } else if (c >= 0xF0 && c <= 0xF4) {
-            if (i + 3 >= len) return false;
-            unsigned char b1 = (unsigned char)buf[i + 1];
-            unsigned char b2 = (unsigned char)buf[i + 2];
-            unsigned char b3 = (unsigned char)buf[i + 3];
-            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80) return false;
-            if (c == 0xF0 && b1 < 0x90) return false;
-            if (c == 0xF4 && b1 >= 0x90) return false;
-            i += 4;
-        } else {
-            return false;
-        }
-    }
-    return true;
+    return MiuCore::IsValidUtf8(buf, len);
 }
 
 Encoding DetectEncoding(const char* buf, size_t len) {
     int bytes_consumed = 0;
     bool is_reliable = false;
-    size_t start_off = 0;
-    if (len > 65536) {
-        size_t first_special = 0;
-        while (first_special < len) {
-            unsigned char c = (unsigned char)buf[first_special];
-            if (c >= 0x80 || c == 0x1B || c == 0x00) break;
-            first_special++;
-        }
-        if (first_special < len && first_special > 4096) {
-            start_off = first_special - 4096;
-        }
-    }
-    size_t rem_len = len - start_off;
-    size_t ced_len = (rem_len > 65536) ? 65536 : rem_len;
+    const char* sampleBuf = buf;
+    size_t sampleLen = len;
+    MiuCore::SelectCedSampleWindow(buf, len, sampleBuf, sampleLen);
     return CompactEncDet::DetectEncoding(
-        buf + start_off, static_cast<int>(ced_len),
+        sampleBuf, static_cast<int>(sampleLen),
         nullptr, nullptr, nullptr,
         UNKNOWN_ENCODING,
         UNKNOWN_LANGUAGE,
@@ -661,27 +433,9 @@ DetectResult DetectEncodingEx(const char* buf, size_t len) {
         res.type = ENC_UTF8_NOBOM;
         return res;
     }
-    if (len >= 2 && (len % 2) == 0) {
-        size_t samplePairs = std::min(len, (size_t)4096) / 2;
-        size_t zeroEven = 0, zeroOdd = 0, doubleZero = 0;
-        for (size_t k = 0; k < samplePairs; ++k) {
-            unsigned char b0 = (unsigned char)buf[k * 2];
-            unsigned char b1 = (unsigned char)buf[k * 2 + 1];
-            if (b0 == 0 && b1 == 0) doubleZero++;
-            else if (b0 == 0) zeroEven++;
-            else if (b1 == 0) zeroOdd++;
-        }
-        if (doubleZero == 0) {
-            if (zeroOdd > 0 && zeroEven == 0 && zeroOdd * 4 >= samplePairs) {
-                res.type = ENC_UTF16LE;
-                return res;
-            }
-            if (zeroEven > 0 && zeroOdd == 0 && zeroEven * 4 >= samplePairs) {
-                res.type = ENC_UTF16BE;
-                return res;
-            }
-        }
-    }
+    int bomless16 = MiuCore::DetectBomlessUtf16(buf, len);
+    if (bomless16 == 1) { res.type = ENC_UTF16LE; return res; }
+    if (bomless16 == 2) { res.type = ENC_UTF16BE; return res; }
     Encoding ced_enc = DetectEncoding(buf, len);
     if (ced_enc == UTF16LE) {
         res.type = ENC_UTF16LE;
@@ -715,21 +469,7 @@ std::string ConvertCase(const std::string& s, bool toUpper) {
 }
 
 void Editor::detectNewlineStyle(const char* buf, size_t len) {
-    size_t checkLen = (len > 4096) ? 4096 : len;
-    for (size_t i = 0; i < checkLen; ++i) {
-        if (buf[i] == '\r') {
-            if (i + 1 < checkLen && buf[i + 1] == '\n') {
-                newlineStr = "\r\n";
-                return;
-            }
-            newlineStr = "\r";
-            return;
-        } else if (buf[i] == '\n') {
-            newlineStr = "\n";
-            return;
-        }
-    }
-    newlineStr = "\n";
+    newlineStr = MiuCore::DetectLineEnding(buf, len, "\n");
 }
 
 void Editor::rollbackPadding() {
@@ -2796,142 +2536,42 @@ std::pair<std::string, bool> Editor::getHighlightTarget() {
 }
 
 std::string Editor::UnescapeString(const std::string& s, const std::string& newline) {
-    std::string out;
-    out.reserve(s.size());
-    for (size_t i = 0; i < s.size(); ++i) {
-        if (s[i] == '\\' && i + 1 < s.size()) {
-            switch (s[i + 1]) {
-                case 'n': out += newline; break;
-                case 'r': out += '\r'; break;
-                case 't': out += '\t'; break;
-                case '\\': out += '\\'; break;
-                default: out += s[i]; out += s[i + 1]; break;
-            }
-            i++;
-        } else {
-            out += s[i];
-        }
-    }
-    return out;
+    return MiuCore::unescapeReplaceString(s, newline);
 }
 
 std::string Editor::preprocessRegexQuery(const std::string& query) {
-    std::string processed;
-    processed.reserve(query.size() * 4);
-    bool inCharClass = false;
-    for (size_t i = 0; i < query.size(); ++i) {
-        char c = query[i];
-        if (c == '\\') {
-            if (i + 1 < query.size()) {
-                char next = query[i + 1];
-                if (!inCharClass && next == 'n') {
-                    bool isPrecededByCR = (i >= 2 && query[i - 2] == '\\' && query[i - 1] == 'r');
-                    if (!isPrecededByCR) {
-                        processed += "(?:\\r\\n|[\\r\\n])";
-                        i++;
-                        continue;
-                    }
-                }
-                processed += c;
-                processed += next;
-                i++;
-                continue;
-            }
-        } else if (c == '[' && !inCharClass) {
-            inCharClass = true;
-            processed += c;
-            continue;
-        } else if (c == ']' && inCharClass) {
-            inCharClass = false;
-            processed += c;
-            continue;
-        } else if (!inCharClass && c == '^') {
-            if (i == 0) {
-                processed += "((?:^|(?:\\r\\n|\\r(?!\\n)|[\\n])))";
-            } else {
-                processed += "(?:^|(?:\\r\\n|\\r(?!\\n)|[\\n]))";
-            }
-            continue;
-        } else if (!inCharClass && c == '$') {
-            processed += "(?=(?:\\r\\n|[\\r\\n]|$))";
-            continue;
-        } else if (!inCharClass && c == '.') {
-            processed += "[^\\r\\n]";
-            continue;
-        }
-        processed += c;
+    return MiuCore::preprocessRegexQuery(query);
+}
+
+const std::regex* Editor::getCompiledSearchRegex(const std::string& rawQuery, bool matchCase) const {
+    if (rawQuery.empty() || !isSafeUserRegex(rawQuery)) return nullptr;
+    bool ic = !matchCase;
+    if (cachedSearchRegexValid && cachedSearchRegexPattern == rawQuery && cachedSearchRegexIc == ic) {
+        return &cachedSearchRegex;
     }
-    return processed;
+    std::string actualQuery = MiuCore::preprocessRegexQuery(rawQuery);
+    if (!isSafeUserRegex(actualQuery)) {
+        cachedSearchRegexValid = false;
+        return nullptr;
+    }
+    try {
+        std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
+        if (ic) flags |= std::regex_constants::icase;
+        cachedSearchRegex = std::regex(actualQuery, flags);
+        cachedSearchRegexPattern = rawQuery;
+        cachedSearchRegexIc = ic;
+        cachedSearchRegexValid = true;
+        return &cachedSearchRegex;
+    } catch (...) {
+        cachedSearchRegexValid = false;
+        return nullptr;
+    }
 }
 
 static const char* fastFindLiteralBuffer(const char* hay, size_t hayLen, const char* needle, size_t needleLen) {
     if (needleLen == 0) return hay;
-    if (hayLen < needleLen) return nullptr;
-    const char first = needle[0];
-    const char last = needle[needleLen - 1];
-    size_t limit = hayLen - needleLen + 1;
-    size_t i = 0;
-
-#if defined(__AVX2__)
-    if (limit >= 32) {
-        __m256i vFirst = _mm256_set1_epi8(first);
-        __m256i vLast = _mm256_set1_epi8(last);
-        for (; i + 32 <= limit; i += 32) {
-            __m256i blockFirst = _mm256_loadu_si256((const __m256i*)(hay + i));
-            __m256i blockLast = _mm256_loadu_si256((const __m256i*)(hay + i + needleLen - 1));
-            uint32_t mask = (uint32_t)_mm256_movemask_epi8(_mm256_and_si256(
-                _mm256_cmpeq_epi8(blockFirst, vFirst),
-                _mm256_cmpeq_epi8(blockLast, vLast)));
-            while (mask != 0) {
-#if defined(_MSC_VER)
-                unsigned long bit = 0;
-                _BitScanForward(&bit, mask);
-#else
-                int bit = __builtin_ctz(mask);
-#endif
-                size_t cand = i + (size_t)bit;
-                if (needleLen <= 2 || std::memcmp(hay + cand + 1, needle + 1, needleLen - 2) == 0) {
-                    return hay + cand;
-                }
-                mask &= (mask - 1);
-            }
-        }
-    }
-#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
-    if (limit >= 16) {
-        uint8x16_t vFirst = vdupq_n_u8((uint8_t)first);
-        uint8x16_t vLast = vdupq_n_u8((uint8_t)last);
-        for (; i + 16 <= limit; i += 16) {
-            uint8x16_t bFirst = vld1q_u8((const uint8_t*)(hay + i));
-            uint8x16_t bLast = vld1q_u8((const uint8_t*)(hay + i + needleLen - 1));
-            uint8x16_t eq = vandq_u8(vceqq_u8(bFirst, vFirst), vceqq_u8(bLast, vLast));
-            uint64_t lo = vgetq_lane_u64(vreinterpretq_u64_u8(eq), 0);
-            uint64_t hi = vgetq_lane_u64(vreinterpretq_u64_u8(eq), 1);
-            if ((lo | hi) != 0) {
-                for (size_t k = 0; k < 16; ++k) {
-                    size_t cand = i + k;
-                    if (hay[cand] == first && hay[cand + needleLen - 1] == last) {
-                        if (needleLen <= 2 || std::memcmp(hay + cand + 1, needle + 1, needleLen - 2) == 0) {
-                            return hay + cand;
-                        }
-                    }
-                }
-            }
-        }
-    }
-#endif
-    while (i < limit) {
-        const char* p = (const char*)std::memchr(hay + i, (unsigned char)first, limit - i);
-        if (!p) break;
-        size_t cand = (size_t)(p - hay);
-        if (hay[cand + needleLen - 1] == last) {
-            if (needleLen <= 2 || std::memcmp(hay + cand + 1, needle + 1, needleLen - 2) == 0) {
-                return hay + cand;
-            }
-        }
-        i = cand + 1;
-    }
-    return nullptr;
+    size_t pos = MiuCore::findSubstringFast(hay, hayLen, needle, needleLen, 0, true);
+    return (pos == std::string::npos) ? nullptr : (hay + pos);
 }
 
 size_t Editor::findText(size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
@@ -2940,14 +2580,11 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
     if (len == 0) return std::string::npos;
 
     if (isRegex) {
-        if (!isSafeUserRegex(query)) return std::string::npos;
-        std::string actualQuery = preprocessRegexQuery(query);
-        if (!isSafeUserRegex(actualQuery)) return std::string::npos;
+        const std::regex* rePtr = getCompiledSearchRegex(query, matchCase);
+        if (!rePtr) return std::string::npos;
+        const std::regex& re = *rePtr;
         std::string fullText = pt.getRange(0, len);
         try {
-            std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
-            if (!matchCase) flags |= std::regex_constants::icase;
-            std::regex re(actualQuery, flags);
             std::smatch m;
             size_t foundPos = std::string::npos;
             size_t foundLen = 0;
@@ -3210,41 +2847,14 @@ void Editor::replaceNext() {
     bool match = false;
     std::string replacement = replaceQuery;
     if (searchRegex) {
-        if (!isSafeUserRegex(searchQuery)) return;
+        const std::regex* rePtr = getCompiledSearchRegex(searchQuery, searchMatchCase);
+        if (!rePtr) return;
+        const std::regex& re = *rePtr;
         try {
-            std::string actualQuery = preprocessRegexQuery(searchQuery);
-            if (!isSafeUserRegex(actualQuery)) return;
-            std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
-            if (!searchMatchCase) flags |= std::regex_constants::icase;
-            std::regex re(actualQuery, flags);
             std::smatch m;
             bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
             std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
-            std::string fmt;
-            for (size_t i = 0; i < rawFmt.size(); ++i) {
-                if (rawFmt[i] == '$') {
-                    fmt += '$';
-                    if (i + 1 < rawFmt.size()) {
-                        if (isdigit((unsigned char)rawFmt[i + 1])) {
-                            i++;
-                            std::string numStr;
-                            while (i < rawFmt.size() && isdigit((unsigned char)rawFmt[i])) {
-                                numStr += rawFmt[i];
-                                i++;
-                            }
-                            i--;
-                            int grp = std::stoi(numStr);
-                            if (startsWithCaret && grp > 0) grp++;
-                            fmt += std::to_string(grp);
-                        } else {
-                            fmt += rawFmt[i + 1];
-                            i++;
-                        }
-                    }
-                } else {
-                    fmt += rawFmt[i];
-                }
-            }
+            std::string fmt = MiuCore::adjustCaretGroupReferences(rawFmt, startsWithCaret);
             if (std::regex_match(selText, m, re)) {
                 match = true;
             } else if (start > 0) {
@@ -3309,45 +2919,18 @@ void Editor::replaceAll() {
     std::string fullText = pt.getRange(0, docLen);
 
     if (searchRegex) {
-        if (!isSafeUserRegex(searchQuery)) return;
-        std::string actualQuery = preprocessRegexQuery(searchQuery);
-        if (!isSafeUserRegex(actualQuery)) return;
+        const std::regex* rePtr = getCompiledSearchRegex(searchQuery, searchMatchCase);
+        if (!rePtr) return;
+        const std::regex& cachedRegex = *rePtr;
         bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
         bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
         std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
-        std::string fmt;
-        for (size_t i = 0; i < rawFmt.size(); ++i) {
-            if (rawFmt[i] == '$') {
-                fmt += '$';
-                if (i + 1 < rawFmt.size()) {
-                    if (isdigit((unsigned char)rawFmt[i + 1])) {
-                        i++;
-                        std::string numStr;
-                        while (i < rawFmt.size() && isdigit((unsigned char)rawFmt[i])) {
-                            numStr += rawFmt[i];
-                            i++;
-                        }
-                        i--;
-                        int grp = std::stoi(numStr);
-                        if (startsWithCaret && grp > 0) grp++;
-                        fmt += std::to_string(grp);
-                    } else {
-                        fmt += rawFmt[i + 1];
-                        i++;
-                    }
-                }
-            } else {
-                fmt += rawFmt[i];
-            }
-        }
+        std::string fmt = MiuCore::adjustCaretGroupReferences(rawFmt, startsWithCaret);
         try {
             auto searchStart = fullText.cbegin();
             std::smatch m;
             size_t currentOffset = 0;
             std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
-            std::regex_constants::syntax_option_type reFlags = std::regex_constants::ECMAScript;
-            if (!searchMatchCase) reFlags |= std::regex_constants::icase;
-            std::regex cachedRegex(actualQuery, reFlags);
             while (std::regex_search(searchStart, fullText.cend(), m, cachedRegex, flags)) {
                 size_t matchPos = currentOffset + m.position();
                 size_t matchLen = m.length();
@@ -3567,72 +3150,9 @@ void Editor::updateFont(float s) {
 }
 
 void Editor::rebuildLineStarts() {
-    lineStarts.clear();
-    lineStarts.push_back(0);
-    maxLineBytes = 0;
-    maxLineBytesIdx = 0;
-    size_t go = 0;
-    size_t curLineStart = 0;
-    bool prevEndedWithCR = false;
-
-    for (const auto& p : pt.pieces) {
-        if (p.len == 0) continue;
-        const char* b = p.isOriginal ? (pt.origPtr + p.start) : (pt.addBuf.data() + p.start);
-        size_t i = 0;
-        if (prevEndedWithCR) {
-            prevEndedWithCR = false;
-            if (b[0] == '\n') {
-                curLineStart = go + 1;
-                lineStarts.back() = curLineStart;
-                i = 1;
-            }
-        }
-        while (i < p.len) {
-            char c = b[i];
-            if (c == '\r') {
-                size_t nlDocPos = go + i;
-                size_t bLen = (nlDocPos >= curLineStart) ? (nlDocPos - curLineStart) : 0;
-                if (bLen > maxLineBytes) {
-                    maxLineBytes = bLen;
-                    maxLineBytesIdx = (int)lineStarts.size() - 1;
-                }
-                if (i + 1 < p.len) {
-                    if (b[i + 1] == '\n') {
-                        curLineStart = nlDocPos + 2;
-                        lineStarts.push_back(curLineStart);
-                        i += 2;
-                    } else {
-                        curLineStart = nlDocPos + 1;
-                        lineStarts.push_back(curLineStart);
-                        i += 1;
-                    }
-                } else {
-                    curLineStart = nlDocPos + 1;
-                    lineStarts.push_back(curLineStart);
-                    prevEndedWithCR = true;
-                    i += 1;
-                }
-            } else if (c == '\n') {
-                size_t nlDocPos = go + i;
-                size_t bLen = (nlDocPos >= curLineStart) ? (nlDocPos - curLineStart) : 0;
-                if (bLen > maxLineBytes) {
-                    maxLineBytes = bLen;
-                    maxLineBytesIdx = (int)lineStarts.size() - 1;
-                }
-                curLineStart = nlDocPos + 1;
-                lineStarts.push_back(curLineStart);
-                i += 1;
-            } else {
-                i += 1;
-            }
-        }
-        go += p.len;
-    }
-    size_t lastLineBytes = (go >= curLineStart) ? (go - curLineStart) : 0;
-    if (lastLineBytes > maxLineBytes) {
-        maxLineBytes = lastLineBytes;
-        maxLineBytesIdx = (int)lineStarts.size() - 1;
-    }
+    int maxIdx = 0;
+    MiuCore::scanPieceTableLineStartsSIMD(pt, lineStarts, maxLineBytes, maxIdx);
+    maxLineBytesIdx = std::max(0, maxIdx);
     commentStateCache.clear();
     updateGutterWidth();
     maxLineWidth = std::max(100.0f, measureLineWidth(maxLineBytesIdx));
@@ -4927,9 +4447,7 @@ void Editor::newFile() {
 }
 
 bool Editor::isWordChar(char c) {
-    if (isalnum((unsigned char)c) || c == '_') return true;
-    if ((unsigned char)c >= 0x80) return true;
-    return false;
+    return MiuCore::isWordChar(c);
 }
 
 void Editor::getWordBoundaries(size_t pos, size_t& start, size_t& end) {
@@ -5456,13 +4974,11 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     if (!searchQuery.empty()) {
         CGColorRef hlColor = isDarkMode ? CGColorCreateGenericRGB(0.4, 0.4, 0.0, 0.6) : CGColorCreateGenericRGB(1.0, 1.0, 0.0, 0.4);
         CGContextSetFillColorWithColor(ctx, hlColor);
-        if (searchRegex && isSafeUserRegex(searchQuery)) {
-            try {
-                std::string actualQuery = preprocessRegexQuery(searchQuery);
-                if (isSafeUserRegex(actualQuery)) {
-                    std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
-                    if (!searchMatchCase) flags |= std::regex_constants::icase;
-                    std::regex re(actualQuery, flags);
+        if (searchRegex) {
+            const std::regex* rePtr = getCompiledSearchRegex(searchQuery, searchMatchCase);
+            if (rePtr) {
+                try {
+                    const std::regex& re = *rePtr;
                     bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
                     auto searchStartIter = visibleText.cbegin();
                     std::smatch m;
@@ -5486,8 +5002,8 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                         std::advance(searchStartIter, advance);
                         matchFlags |= std::regex_constants::match_not_bol;
                     }
-                }
-            } catch (...) {}
+                } catch (...) {}
+            }
         } else if (!searchRegex) {
             std::string q = searchQuery;
             std::string t = visibleText;

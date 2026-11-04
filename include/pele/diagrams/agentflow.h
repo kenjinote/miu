@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../foundation.h"
 #include "flowchart.h"
 
@@ -3434,15 +3434,6 @@ inline int flowEndSide(const std::string& dir) {
     return 2; // TB
 }
 
-inline double numberOption(const Config& config, const std::string& key, double fallback) {
-    if (!config.isMap()) return fallback;
-    const auto* af = config.get("agentflow");
-    if (!af || !af->isMap()) return fallback;
-    const auto* v = af->get(key);
-    if (v && v->isNumber() && v->nVal > 0.0) return std::min(v->nVal, 2000.0);
-    return fallback;
-}
-
 inline std::string tint(int slot, const std::string& wash, const ResolvedStyle& style) {
     std::string color = seriesColor(slot);
     return Pele::cat({" fill=\"", color, "\"", (setsFill(style.shape) ? "" : Pele::cat({" fill-opacity=\"", wash, "\""})), " stroke=\"", color, "\""});
@@ -3511,8 +3502,8 @@ inline Rendered drawAgentflow(
     double size = options.hasFontSize ? options.fontSize : 16.0;
     double edgeSize = Flowchart::jsRound(size * 0.875);
     const auto& measurer = getMeasurer(options);
-    double wrapWidth = numberOption(config, "wrappingWidth", 120.0);
-    double minWidth = numberOption(config, "minNodeWidth", 120.0);
+    double wrapWidth = numberOption(config, "agentflow", "wrappingWidth", 120.0);
+    double minWidth = numberOption(config, "agentflow", "minNodeWidth", 120.0);
     double pad = options.hasPadding ? options.padding : 8.0;
     const auto& icons = options.icons;
 
@@ -3670,9 +3661,9 @@ inline Rendered drawAgentflow(
     }
 
     Flowchart::LayeredOptions layoutOpts;
-    layoutOpts.nodeSep = numberOption(config, "nodeSpacing", NODE_SEP);
+    layoutOpts.nodeSep = numberOption(config, "agentflow", "nodeSpacing", NODE_SEP);
     layoutOpts.edgeSep = EDGE_SEP;
-    layoutOpts.rankSep = numberOption(config, "rankSpacing", RANK_SEP);
+    layoutOpts.rankSep = numberOption(config, "agentflow", "rankSpacing", RANK_SEP);
     layoutOpts.portSep = 20.0;
     auto layout = Flowchart::compoundLayout(cnodes, cedges, rootDir, layoutOpts);
 

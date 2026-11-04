@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <cstring>
 #include <algorithm>
+#include "MiuCore.h"
 
 struct SyntaxColor {
     float r = 0.0f;
@@ -127,40 +128,7 @@ static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) {
     }
     return m;
 }
-static inline bool isSafeUserRegex(const std::string& q) {
-    if (q.empty() || q.size() > 1024) return false;
-    int parenDepth = 0;
-    bool groupHasQuantifier[64] = {};
-    bool inBracket = false;
-    for (size_t i = 0; i < q.size(); ++i) {
-        char c = q[i];
-        if (c == '\\') { i++; continue; }
-        if (inBracket) {
-            if (c == ']') inBracket = false;
-            continue;
-        }
-        if (c == '[') { inBracket = true; continue; }
-        if (c == '(') {
-            parenDepth++;
-            if (parenDepth >= 32) return false;
-            groupHasQuantifier[parenDepth] = false;
-        } else if (c == ')') {
-            if (parenDepth <= 0) return false;
-            bool hadQ = groupHasQuantifier[parenDepth];
-            parenDepth--;
-            if (parenDepth > 0 && hadQ) groupHasQuantifier[parenDepth] = true;
-            if (i + 1 < q.size()) {
-                char next = q[i + 1];
-                if ((next == '+' || next == '*' || next == '{') && hadQ) {
-                    return false; // Reject nested repeating quantifier ReDoS (e.g. (a+)+, (.*)*)
-                }
-            }
-        } else if (c == '+' || c == '*' || c == '{') {
-            if (parenDepth > 0) groupHasQuantifier[parenDepth] = true;
-        }
-    }
-    return parenDepth == 0 && !inBracket;
-}
+using MiuCore::isSafeUserRegex;
 
 
 inline std::wstring extractSyntaxExtensionFromPath(const std::wstring& targetPath) {
