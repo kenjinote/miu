@@ -25,7 +25,7 @@ jobs:
         if: env.APPSTORE_ISSUER_ID != '' && env.APPSTORE_KEY_ID != '' && env.APPSTORE_PRIVATE_KEY != ''
         run: |
           pip3 install --quiet --break-system-packages pyjwt cryptography requests pillow numpy || pip3 install --quiet pyjwt cryptography requests pillow numpy
-          python3 scripts/appstore_metadata_sync.py
+          python3 scripts/appstore_metadata_sync.py --ios-only
           if [ "$SYNC_SCREENSHOTS" = "true" ]; then
             python3 scripts/appstore_screenshots_sync.py --out-dir /tmp/asc_screenshots
           fi

@@ -48,13 +48,11 @@ UTF-8やShift_JIS、EUC-JPなど、さまざまな文字コードを自動で判
 miuが、あなたの「書く時間」を少しでも快適にするお手伝いができれば幸いです。"""
 
 JA_WHATS_NEW = """いつも miu をご利用いただきありがとうございます。
-今回のアップデートでは、より快適にお使いいただけるよう、以下の機能追加と改善を行いました。
+v1.0.46 では、文字コード判別や改行コードの対応強化、およびプレビュー機能の安定性向上を行いました。
 
-・対応言語の拡充：シンタックスハイライトに新しく25種類の言語・設定ファイルを追加し、合計49カテゴリ（120種類以上の拡張子）に対応しました。
-・日本語入力の改善：変換確定前の文字が見やすく表示されるようになり、全角文字を含む行でも行番号がきれいに揃うよう調整しました。
-・入力操作とプレビューの改善：iOSでのEmmet展開（Tabキー入力）や、ソフトウェアキーボード使用時の自動スクロール、プレビュー切り替え時の描画を改善しました。
-・画面レイアウトの最適化：iPadで画面を縦横に回転させた際や、さまざまな画面サイズでも、エディタが画面の端までぴったり収まるよう修正しました。
-・保存機能の改善：「別名で保存」の際に、指定した拡張子のまま正しく保存できるよう改善しました。"""
+・文字コード自動判別・変換保存の強化：BOMなし UTF-16LE / UTF-16BE の自動判別、4バイト文字（絵文字・サロゲートペア・異体字）の正確な変換保存、64KB超の大容量ファイルでの判別精度向上、および不正バイト列を含むファイルの保護に対応しました。
+・改行コード（CR / CRLF / LF）の完全対応：CR単体や混在改行を含むファイルでも、全49言語のシンタックスハイライト、貼り付け時の改行コード自動正規化、正規表現（^ / $）による複数行検索・置換、ライブプレビューがすべて正確に動作するよう改善しました。
+・ライブプレビューの安定性向上：Mermaid図表（ガントチャート等）やLaTeX数式の入力途中でも、リアルタイムプレビューが強制終了せず安定して描画されるよう改善しました。"""
 
 EN_DESC = """miu is a simple, lightweight text and code editor designed to make everything from quick daily notes to Markdown writing and programming feel effortless.
 
@@ -83,13 +81,11 @@ No ads, no tracking, and no data collection. Everything works 100% offline on yo
 Whether you use it as an everyday notepad or a reliable code editor, we hope miu makes your writing time a little more enjoyable."""
 
 EN_WHATS_NEW = """Thank you for using miu.
-This update brings new features and refinements to make your editing experience even smoother:
+Version 1.0.46 improves character encoding support, line-ending handling, and Live Preview stability:
 
-• Expanded Language Support: Added 25 new syntax highlighting languages and configuration formats, now supporting 49 categories (120+ file extensions).
-• Improved Text Input & Alignment: Improved live display for uncommitted IME text (such as Japanese input) and refined line number alignment for lines containing full-width characters.
-• Better Typing & Preview Experience: Improved Emmet abbreviation expansion on iOS, smoother auto-scrolling with the on-screen keyboard, and cleaner rendering when toggling Live Preview.
-• Refined Screen Layout: Fixed layout adjustments when rotating iPad between portrait and landscape so the editor always fits cleanly to the edges of the screen.
-• Improved File Saving: "Save As" now preserves your custom file extension without automatically appending .txt."""
+• Enhanced Character Encoding Detection & Conversion: Added automatic detection for BOM-less UTF-16LE/BE files, full UTF-16 surrogate pair (4-byte characters & emoji) preservation when converting encodings, dynamic non-ASCII sampling for files over 64 KB, and safe fallback protection for malformed byte sequences.
+• Full CR / CRLF / LF Line-Ending Support: Syntax highlighting across all 49 languages, clipboard paste newline normalization, multiline regular expression (^ / $) Find & Replace, and Live Preview now work seamlessly with classic Mac (CR) and mixed line endings.
+• Improved Live Preview Stability: Hardened Mermaid diagram (including Gantt charts), LaTeX math, and Markdown live rendering so incomplete syntax while typing never causes unexpected crashes."""
 
 ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无论是记录日常随笔、撰写 Markdown 文档，还是编写程序代码，都能为您提供舒适顺畅的书写体验。
 
@@ -118,13 +114,11 @@ ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无�
 无论是作为日常便签，还是得力的代码编辑器，希望 miu 能陪伴您度过每一段愉快的书写时光。"""
 
 ZH_HANS_WHATS_NEW = """感谢您使用 miu。
-本次更新带来了以下功能扩充与体验优化，为您提供更加顺畅的编辑环境：
+v1.0.46 全面强化了字符编码识别、换行符兼容以及实时预览的稳定性：
 
-・新增语法高亮语言：新增 25 种编程语言与配置文件格式，目前共支持 49 个类别（120 多种文件扩展名）。
-・输入体验优化：改进了中日韩输入法候选词确认前的实时显示效果，并优化了包含全角字符时的行号对齐精度。
-・键盘与预览改进：修复了 iOS 上的 Emmet 缩写展开（Tab 键），优化了使用软键盘换行时的自动滚动，以及切换实时预览时的画面渲染。
-・屏幕布局优化：修复了 iPad 横竖屏旋转时的界面自适应问题，使编辑区域始终完美贴合屏幕边缘。
-・保存功能改进：使用“另存为”时，可完整保留您输入的自定义扩展名，不再强制附加 .txt。"""
+・字符编码自动识别与转换保存强化：新增无 BOM UTF-16LE / UTF-16BE 自动识别、4 字节字符（表情符号与 UTF-16 代理对）完整转换支持、超过 64KB 大文件的动态多字节采样识别，以及针对损坏字节序列的安全保护。
+・全面完善 CR / CRLF / LF 换行符支持：无论是经典 Mac 换行（CR）还是混合换行文件，全部 49 种语言语法高亮、粘贴时换行符自动统一、多行正则表达式（^ / $）查找替换以及实时预览均能精准工作。
+・实时预览稳定性提升：改进了 Mermaid 图表（如甘特图）与 LaTeX 数学公式在输入未完成语法时的容错处理，确保实时预览流畅稳定。"""
 
 ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器。無論是記錄日常隨手筆記、撰寫 Markdown 文章，還是編寫程式碼，都能為您帶來舒適順暢的書寫體驗。
 
@@ -153,13 +147,11 @@ ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器�
 無論是作為日常記事本，還是可靠的程式碼編輯器，希望 miu 能讓您的書寫時光更加愉快。"""
 
 ZH_HANT_WHATS_NEW = """感謝您使用 miu。
-本次更新帶來了以下功能擴充與細節改善，讓操作更加順暢舒適：
+v1.0.46 全面強化了字元編碼辨識、換行符號相容性以及即時預覽的穩定性：
 
-・擴充支援語言：新增 25 種語法突顯語言與設定檔格式，總計支援 49 個類別（超過 120 種副檔名）。
-・輸入體驗改善：修正了輸入法組字（未確定文字）在編輯器上的即時顯示，並微調了全形字元與行號的對齊位置。
-・操作與預覽最佳化：改善了 iOS 上的 Emmet 縮寫展開（Tab 鍵）、虛擬鍵盤換行時的自動捲動，以及切換預覽畫面時的繪製表現。
-・畫面佈局最佳化：修正了 iPad 直向與橫向旋轉時的版面配置，讓編輯區域始終完美貼合螢幕邊緣。
-・儲存功能改善：使用「另存新檔」時，能正確保留您指定的自訂副檔名，不再自動加上 .txt。"""
+・字元編碼自動辨識與轉換儲存強化：新增無 BOM UTF-16LE / UTF-16BE 自動辨識、4 位元組字元（表情符號與 UTF-16 代理對）完整轉換支援、超過 64KB 大檔案的動態多位元組取樣辨識，以及損壞位元組序列的安全保護。
+・全面完善 CR / CRLF / LF 換行符號支援：無論是經典 Mac 換行（CR）或混合換行檔案，全部 49 種語言語法突顯、貼上時換行符號自動統一、多行正規表示式（^ / $）尋找取代與即時預覽皆能精準運作。
+・即時預覽穩定性提升：改進了 Mermaid 圖表（如甘特圖）與 LaTeX 數學公式在輸入未完成語法時的容錯處理，確保即時預覽流暢穩定。"""
 
 KO_DESC = """miu는 일상의 가벼운 메모부터 Markdown 글쓰기, 프로그래밍까지 편안하게 사용할 수 있는 심플한 텍스트 및 코드 에디터입니다.
 
@@ -189,13 +181,11 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 등 다양한 문자 인코딩을 자동으로 
 miu가 당신의 글쓰기 시간을 조금 더 기분 좋게 만들어 드릴 수 있기를 바랍니다."""
 
 KO_WHATS_NEW = """언제나 miu를 이용해 주셔서 감사합니다.
-이번 업데이트에서는 더욱 쾌적한 사용을 위해 다음과 같은 기능 추가와 개선을 진행했습니다.
+v1.0.46에서는 문자 인코딩 감지, 줄바꿈 호환성 및 실시간 미리보기 안정성을 대폭 개선했습니다.
 
-・지원 언어 확대: 구문 강조에 25종의 언어 및 설정 파일 형식을 새롭게 추가하여 총 49개 카테고리(120종 이상의 확장자)를 지원합니다.
-・입력 및 줄 번호 정렬 개선: 조합 중인 글자(IME 미확정 문자)가 에디터에 자연스럽게 표시되도록 수정하고, 전각 문자가 포함된 줄에서도 줄 번호가 깔끔하게 정렬되도록 개선했습니다.
-・입력 조작 및 미리보기 개선: iOS에서의 Emmet 약어 전개(Tab 키), 화면 키보드 사용 시의 자동 스크롤, 미리보기 전환 시의 화면 표시를 개선했습니다.
-・화면 레이아웃 최적화: iPad를 세로와 가로로 회전할 때나 다양한 화면 크기에서도 에디터 영역이 화면 가장자리에 꼭 맞게 표시되도록 수정했습니다.
-・저장 기능 개선: '다른 이름으로 저장' 시 지정한 확장자 그대로 저장되도록 개선했습니다."""
+・문자 인코딩 자동 감지 및 변환 저장 강화: BOM 없는 UTF-16LE / UTF-16BE 자동 감지, 4바이트 문자(이모지 및 UTF-16 서로게이트 페어) 완벽 변환, 64KB 초과 대용량 파일의 인코딩 감지 정확도 향상 및 손상된 바이트 시퀀스 안전 보호를 지원합니다.
+・CR / CRLF / LF 모든 줄바꿈 형식 완벽 지원: 고전 Mac 형식(CR) 및 혼합 줄바꿈 파일에서도 49개 언어 구문 강조, 붙여넣기 시 줄바꿈 자동 정규화, 다중 행 정규식(^ / $) 검색·바꾸기 및 실시간 미리보기가 정확하게 작동합니다.
+・실시간 미리보기 안정성 향상: Mermaid 다이어그램(간트 차트 등)과 LaTeX 수식을 입력하는 도중에도 실시간 미리보기가 멈추지 않고 안정적으로 렌더링되도록 개선했습니다."""
 
 DE_DESC = """miu ist ein schlichter, leichtgewichtiger Text- und Code-Editor, mit dem alltägliche Notizen, Markdown-Texte und Programmierarbeiten gleichermaßen angenehm von der Hand gehen.
 
@@ -224,13 +214,11 @@ Keine Werbung, kein Tracking und keine Datenübertragung. Alle Funktionen arbeit
 Ob als täglicher Notizblock oder als verlässlicher Code-Editor – wir hoffen, dass miu Ihnen das Schreiben jeden Tag ein Stück angenehmer macht."""
 
 DE_WHATS_NEW = """Vielen Dank, dass Sie miu nutzen.
-Dieses Update bringt neue Funktionen und Verbesserungen für ein noch angenehmeres Arbeiten:
+Version 1.0.46 verbessert die Zeichenkodierungserkennung, die Verarbeitung von Zeilenumbrüchen und die Stabilität der Live-Vorschau:
 
-• Mehr unterstützte Sprachen: 25 neue Sprachen und Konfigurationsformate für die Syntaxhervorhebung hinzugefügt – insgesamt werden nun 49 Kategorien (über 120 Dateiendungen) unterstützt.
-• Verbesserte Texteingabe & Ausrichtung: Optimierte Darstellung während der IME-Zeicheneingabe sowie präzise Ausrichtung der Zeilennummern bei Zeichen mit voller Breite.
-• Optimierte Bedienung & Vorschau: Verbesserte Emmet-Erweiterung unter iOS, sanfteres automatisches Scrollen mit der Bildschirmtastatur und saubere Darstellung beim Umschalten der Live-Vorschau.
-• Angepasstes Bildschirmlayout: Korrigierte Anpassung beim Drehen des iPads zwischen Hoch- und Querformat, sodass der Editor stets bündig mit dem Bildschirmrand abschließt.
-• Verbessertes Speichern: „Speichern unter“ behält nun Ihre gewählte Dateiendung bei, ohne automatisch .txt anzuhängen."""
+• Verbesserte Zeichenkodierungserkennung & Konvertierung: Automatische Erkennung für UTF-16LE/BE ohne BOM, volle Unterstützung für 4-Byte-Zeichen (UTF-16-Surrogatpaare & Emojis), präzise Erkennung bei Dateien über 64 KB und Schutz vor beschädigten Bytefolgen.
+• Vollständige Unterstützung für CR / CRLF / LF-Zeilenumbrüche: Syntaxhervorhebung für alle 49 Sprachen, automatische Zeilenumbruch-Normalisierung beim Einfügen, mehrzeilige Regex-Suche (^ / $) und Live-Vorschau unterstützen nun durchgängig CR-, CRLF- und LF-Zeilenumbrüche.
+• Erhöhte Stabilität der Live-Vorschau: Verbesserte Fehlertoleranz für Mermaid-Diagramme (einschließlich Gantt-Diagrammen) und LaTeX-Formeln während der Eingabe."""
 
 FR_DESC = """miu est un éditeur de texte et de code simple et léger, conçu pour rendre aussi agréables la prise de notes quotidienne, la rédaction en Markdown et la programmation.
 
@@ -259,13 +247,11 @@ Aucune publicité, aucun suivi et aucune collecte de données. Tout fonctionne �
 Comme bloc-notes de tous les jours ou comme éditeur de code fiable, nous espérons que miu rendra vos moments d’écriture plus agréables."""
 
 FR_WHATS_NEW = """Merci d’utiliser miu.
-Cette mise à jour apporte de nouvelles fonctionnalités et des améliorations pour rendre votre expérience encore plus confortable :
+La version 1.0.46 améliore la prise en charge des encodages de caractères, des fins de ligne et la stabilité de l’aperçu en direct :
 
-• Prise en charge de nouveaux langages : ajout de 25 nouveaux langages et formats de configuration pour la coloration syntaxique, portant le total à 49 catégories (plus de 120 extensions).
-• Saisie et alignement améliorés : meilleur affichage en direct lors de la saisie IME et alignement précis des numéros de ligne avec les caractères pleine chasse.
-• Saisie au clavier et aperçu optimisés : amélioration du développement des abréviations Emmet sur iOS, du défilement automatique avec le clavier virtuel et de l’affichage lors du basculement de l’aperçu en direct.
-• Mise en page ajustée : correction de l’adaptation de l’écran lors de la rotation entre les modes portrait et paysage sur iPad.
-• Enregistrement amélioré : « Enregistrer sous » conserve désormais l’extension personnalisée que vous avez choisie sans ajouter .txt automatiquement."""
+• Détection et conversion d’encodage améliorées : détection automatique des fichiers UTF-16LE/BE sans BOM, prise en charge complète des caractères sur 4 octets (paires de substitution UTF-16 et émojis), échantillonnage dynamique au-delà de 64 Ko et protection contre les séquences d’octets corrompues.
+• Prise en charge complète des fins de ligne CR / CRLF / LF : la coloration syntaxique des 49 langages, la normalisation au collage, la recherche par expressions régulières multilignes (^ / $) et l’aperçu en direct fonctionnent parfaitement avec les fins de ligne CR, CRLF et LF.
+• Stabilité renforcée de l’aperçu en direct : rendu fluide et sécurisé des diagrammes Mermaid (dont Gantt) et des formules LaTeX pendant la frappe."""
 
 ES_DESC = """miu es un editor de texto y código sencillo y ligero, pensado para que desde tus notas rápidas del día a día hasta la escritura en Markdown y la programación resulten cómodas y agradables.
 
@@ -294,13 +280,11 @@ Sin anuncios, sin rastreo y sin envío de datos. Todo funciona 100 % sin conexi�
 Ya sea como tu bloc de notas diario o como un editor de código de confianza, esperamos que miu haga más agradable tu tiempo de escritura."""
 
 ES_WHATS_NEW = """Gracias por usar miu.
-En esta actualización hemos añadido nuevas funciones y mejoras para ofrecerte una experiencia aún más cómoda:
+La versión 1.0.46 mejora la detección de codificación de caracteres, el manejo de saltos de línea y la estabilidad de la vista previa en vivo:
 
-• Más lenguajes compatibles: se añadieron 25 nuevos lenguajes y formatos de configuración al resaltado de sintaxis, alcanzando un total de 49 categorías (más de 120 extensiones).
-• Mejoras en la entrada de texto y alineación: mejor visualización del texto en composición (IME) y alineación precisa de los números de línea al usar caracteres de ancho completo.
-• Mejor experiencia de teclado y vista previa: se mejoró la expansión de Emmet en iOS, el desplazamiento automático con el teclado en pantalla y el dibujado al alternar la vista previa.
-• Diseño de pantalla optimizado: se corrigió el ajuste del área de edición al girar el iPad entre vertical y horizontal para que siempre ocupe toda la pantalla de forma limpia.
-• Mejora al guardar archivos: ahora «Guardar como» conserva la extensión personalizada que indiques sin añadir .txt automáticamente."""
+• Detección y conversión de codificación mejoradas: detección automática de archivos UTF-16LE/BE sin BOM, soporte completo de caracteres de 4 bytes (pares sustitutos UTF-16 y emojis), muestreo dinámico para archivos mayores de 64 KB y protección ante secuencias de bytes dañadas.
+• Soporte completo para saltos de línea CR / CRLF / LF: el resaltado de sintaxis en 49 lenguajes, la normalización al pegar, la búsqueda regex multilínea (^ / $) y la vista previa en vivo funcionan con total precisión con CR, CRLF y LF.
+• Mayor estabilidad en la vista previa en vivo: renderizado más seguro y estable de diagramas Mermaid (incluidos diagramas Gantt) y fórmulas LaTeX mientras escribes."""
 
 IT_DESC = """miu è un editor di testo e codice semplice e leggero, pensato per rendere piacevole ogni attività: dagli appunti quotidiani alla scrittura in Markdown, fino alla programmazione.
 
@@ -329,13 +313,11 @@ Nessuna pubblicità, nessun tracciamento e nessuna raccolta dati. Tutto funziona
 Come blocco note quotidiano o come affidabile editor di codice, speriamo che miu renda più piacevole il tuo tempo dedicato alla scrittura."""
 
 IT_WHATS_NEW = """Grazie per aver scelto miu.
-Questo aggiornamento introduce nuove funzionalità e miglioramenti per rendere l’utilizzo ancora più confortevole:
+La versione 1.0.46 migliora il supporto delle codifiche di caratteri, la gestione delle interruzioni di riga e la stabilità dell’anteprima dal vivo:
 
-• Nuovi linguaggi supportati: aggiunti 25 nuovi linguaggi e formati di configurazione per l’evidenziazione della sintassi, per un totale di 49 categorie (oltre 120 estensioni).
-• Miglioramenti all’inserimento del testo: perfezionata la visualizzazione del testo durante la composizione IME e l’allineamento dei numeri di riga con i caratteri a larghezza intera.
-• Tastiera e anteprima migliorate: ottimizzata l’espansione Emmet su iOS, lo scorrimento automatico con la tastiera su schermo e la resa grafica durante l’attivazione dell’anteprima.
-• Layout dello schermo ottimizzato: risolto il ridimensionamento dell’editor durante la rotazione dell’iPad tra verticale e orizzontale.
-• Salvataggio migliorato: "Salva con nome" ora mantiene correttamente l’estensione personalizzata senza aggiungere automaticamente .txt."""
+• Rilevamento e conversione della codifica migliorati: rilevamento automatico per file UTF-16LE/BE senza BOM, pieno supporto per caratteri a 4 byte (coppie di surrogati UTF-16 ed emoji), campionamento dinamico oltre i 64 KB e protezione per sequenze di byte danneggiate.
+• Supporto completo per interruzioni di riga CR / CRLF / LF: evidenziazione della sintassi per 49 linguaggi, normalizzazione all’incollaggio, ricerca regex multilinea (^ / $) e anteprima live perfettamente compatibili con CR, CRLF e LF.
+• Maggiore stabilità dell’anteprima dal vivo: rendering ancora più stabile e sicuro per diagrammi Mermaid (inclusi i diagrammi di Gantt) e formule LaTeX durante la digitazione."""
 
 PT_DESC = """O miu é um editor de texto e código simples e leve, criado para tornar desde as suas anotações diárias até a escrita em Markdown e a programação muito mais confortáveis.
 
@@ -364,13 +346,11 @@ Sem anúncios, sem rastreamento e sem coleta de dados. Tudo funciona 100% offlin
 Seja como seu bloco de notas do dia a dia ou como um editor de código confiável, esperamos que o miu torne o seu momento de escrever ainda mais agradável."""
 
 PT_WHATS_NEW = """Obrigado por usar o miu.
-Esta atualização traz novos recursos e melhorias para deixar sua experiência ainda mais confortável:
+A versão 1.0.46 traz melhorias na detecção de codificação de caracteres, suporte a quebras de linha e estabilidade da pré-visualização:
 
-• Mais linguagens compatíveis: adicionamos 25 novas linguagens e formatos de configuração ao destaque de sintaxe, totalizando 49 categorias (mais de 120 extensões).
-• Melhorias na digitação e alinhamento: aprimoramos a exibição de texto durante a composição (IME) e o alinhamento dos números de linha com caracteres de largura total.
-• Teclado e pré-visualização aprimorados: melhoramos a expansão do Emmet no iOS, a rolagem automática com o teclado na tela e a renderização ao alternar a pré-visualização.
-• Layout de tela otimizado: corrigimos o ajuste da área de edição ao girar o iPad entre os modos retrato e paisagem.
-• Melhoria ao salvar: a opção "Salvar como" agora preserva a extensão personalizada informada sem adicionar .txt automaticamente."""
+• Detecção e conversão de codificação aprimoradas: detecção automática de arquivos UTF-16LE/BE sem BOM, suporte completo a caracteres de 4 bytes (pares substitutos UTF-16 e emojis), amostragem dinâmica acima de 64 KB e proteção contra sequências de bytes corrompidas.
+• Suporte completo a quebras de linha CR / CRLF / LF: destaque de sintaxe para 49 linguagens, normalização ao colar, busca com expressões regulares multilinha (^ / $) e pré-visualização em tempo real funcionam perfeitamente com CR, CRLF e LF.
+• Maior estabilidade na pré-visualização: renderização contínua e segura de diagramas Mermaid (incluindo gráficos de Gantt) e fórmulas LaTeX durante a digitação."""
 
 RU_DESC = """miu — это простой и лёгкий текстовый и кодовый редактор, созданный для комфортной работы: от быстрых повседневных заметок и текстов в Markdown до программирования.
 
@@ -399,13 +379,11 @@ RU_DESC = """miu — это простой и лёгкий текстовый и
 В качестве ежедневного блокнота или надёжного редактора кода — надеемся, что miu сделает вашу работу с текстом ещё приятнее."""
 
 RU_WHATS_NEW = """Спасибо, что пользуетесь miu.
-В этом обновлении мы добавили новые возможности и улучшения для ещё более комфортной работы:
+В версии 1.0.46 улучшены распознавание кодировок, обработка переносов строк и стабильность живого предпросмотра:
 
-• Расширена поддержка языков: добавлено 25 новых языков и форматов конфигурации для подсветки синтаксиса (всего 49 категорий и более 120 расширений файлов).
-• Улучшен ввод текста и выравнивание: доработано отображение вводимых символов (IME) до подтверждения и выравнивание номеров строк при использовании полноширинных символов.
-• Улучшены работа с клавиатурой и предпросмотр: исправлено разворачивание сокращений Emmet на iOS, улучшена автопрокрутка при вводе с экранной клавиатуры и отрисовка при переключении предпросмотра.
-• Оптимизирована разметка экрана: исправлено масштабирование области редактора при повороте iPad между портретной и альбомной ориентацией.
-• Улучшено сохранение файлов: при использовании «Сохранить как» теперь корректно сохраняется указанное вами расширение файла без автоматического добавления .txt."""
+• Улучшенное определение и конвертация кодировок: автоопределение файлов UTF-16LE/BE без BOM, полная поддержка 4-байтовых символов (суррогатных пар UTF-16 и эмодзи), динамическая выборка для файлов более 64 КБ и защита от поврежденных последовательностей байтов.
+• Полная поддержка переносов строк CR / CRLF / LF: подсветка синтаксиса для 49 языков, нормализация переносов при вставке, многострочный поиск с регулярными выражениями (^ / $) и предпросмотр корректно работают с CR, CRLF и LF.
+• Повышена стабильность предпросмотра: надежная отрисовка диаграмм Mermaid (включая диаграммы Ганта) и формул LaTeX прямо во время ввода текста."""
 
 NL_DESC = """miu is een eenvoudige, lichtgewicht tekst- en code-editor waarmee u prettig werkt aan dagelijkse notities, Markdown-documenten en programmeerprojecten.
 
@@ -434,13 +412,11 @@ Geen advertenties, geen tracking en geen gegevensverzameling. Alles werkt 100% o
 Of u miu nu gebruikt als dagelijks notitieblok of als betrouwbare code-editor, we hopen dat het uw schrijfmomenten net wat aangenamer maakt."""
 
 NL_WHATS_NEW = """Bedankt voor het gebruiken van miu.
-Deze update bevat nieuwe functies en verbeteringen voor nog meer gebruiksgemak:
+Versie 1.0.46 verbetert de tekensetherkenning, de ondersteuning voor regeleinden en de stabiliteit van de live-voorvertoning:
 
-• Meer ondersteunde talen: 25 nieuwe talen en configuratieformaten toegevoegd voor syntaxisaccentuering (nu in totaal 49 categorieën en 120+ extensies).
-• Verbeterde tekstinvoer en uitlijning: betere weergave tijdens IME-tekstinvoer en nauwkeurige uitlijning van regelnummers bij tekens met volledige breedte.
-• Soepeler typen en voorvertonen: verbeterde Emmet-uitbreiding op iOS, automatisch scrollen met het schermtoetsenbord en nettere weergave bij het schakelen van de voorvertoning.
-• Geoptimaliseerde scherminrichting: de editor past nu altijd netjes tot aan de schermranden bij het draaien van de iPad tussen staand en liggend formaat.
-• Verbeterd opslaan: 'Bewaar als' behoudt nu uw eigen bestandsextensie zonder automatisch .txt toe te voegen."""
+• Verbeterde tekensetherkenning en conversie: automatische detectie van UTF-16LE/BE zonder BOM, volledige ondersteuning voor 4-byte tekens (UTF-16-surrogaatparen en emoji's), dynamische detectie voor bestanden boven 64 KB en bescherming tegen beschadigde bytes.
+• Volledige ondersteuning voor CR / CRLF / LF-regeleinden: syntaxisaccentuering voor alle 49 talen, normalisatie bij plakken, regex-zoeken over meerdere regels (^ / $) en de live-voorvertoning werken naadloos met CR, CRLF en LF.
+• Stabielere live-voorvertoning: verbeterde foutafhandeling bij het live weergeven van Mermaid-diagrammen (zoals Gantt-diagrammen) en LaTeX-formules tijdens het typen."""
 
 SV_DESC = """miu är en enkel och lättviktig text- och kodredigerare som gör allt från dagliga anteckningar till Markdown-skrivande och programmering bekvämt och smidigt.
 
@@ -469,13 +445,11 @@ Inga annonser, ingen spårning och ingen datainsamling. Allt fungerar 100 % offl
 Som dagligt anteckningsblock eller pålitlig kodredigerare – vi hoppas att miu gör din skrivstund lite trevligare."""
 
 SV_WHATS_NEW = """Tack för att du använder miu.
-Den här uppdateringen innehåller nya funktioner och förbättringar för en ännu smidigare upplevelse:
+Version 1.0.46 förbättrar teckenkodningsstödet, hanteringen av radbrytningar och stabiliteten i live-förhandsvisningen:
 
-• Fler språk stöds: 25 nya språk och konfigurationsformat har lagts till för syntaxmarkering, totalt 49 kategorier (120+ filändelser).
-• Förbättrad textinmatning och justering: Tydligare visning vid IME-inmatning samt exakt justering av radnummer för helbreddstecken.
-• Bättre tangentbords- och förhandsvisningsfunktion: Förbättrad Emmet-utökning på iOS, mjukare rullning med skärmtangentbordet och snyggare uppritning vid växling av förhandsvisning.
-• Optimerad skärmlayout: Redigeringsytan anpassar sig nu perfekt till skärmens kanter när iPad roteras mellan stående och liggande läge.
-• Förbättrad filsparning: "Spara som" behåller nu din valda filändelse utan att automatiskt lägga till .txt."""
+• Förbättrad teckenkodningsdetektering och konvertering: automatisk identifiering av UTF-16LE/BE utan BOM, fullt stöd för 4-bytetecken (UTF-16-surrogatpar och emojis), dynamisk provtagning för filer över 64 KB samt skydd mot skadade bytesekvenser.
+• Fullt stöd för CR / CRLF / LF-radbrytningar: syntaxmarkering för 49 språk, radbrytningsnormalisering vid inklistring, flerradig regex-sökning (^ / $) och förhandsvisning i realtid fungerar nu felfritt med CR, CRLF och LF.
+• Ännu stabilare förhandsvisning: säker och mjuk rendering av Mermaid-diagram (inklusive Gantt-scheman) och LaTeX-formler medan du skriver."""
 
 DA_DESC = """miu er en enkel og let tekst- og kodeeditor, der gør alt fra daglige noter til Markdown-skrivning og programmering behageligt og ubesværet.
 
@@ -504,13 +478,11 @@ Ingen reklamer, ingen sporing og ingen dataindsamling. Alt fungerer 100 % offlin
 Uanset om du bruger miu som daglig notesblok eller som kodeeditor, håber vi, at den gør din skrivetid lidt mere behagelig."""
 
 DA_WHATS_NEW = """Tak fordi du bruger miu.
-Denne opdatering indeholder nye funktioner og forbedringer for en endnu bedre oplevelse:
+Version 1.0.46 forbedrer tegnsætregistrering, håndtering af linjeskift og stabiliteten i live-forhåndsvisning:
 
-• Flere understøttede sprog: Tilføjet 25 nye sprog og konfigurationsformater til syntaksfremhævning – nu i alt 49 kategorier (over 120 filendelser).
-• Forbedret tekstindtastning og justering: Bedre visning under IME-indtastning samt præcis justering af linjenumre ved fuldbreddetegn.
-• Bedre tastatur- og forhåndsvisningsoplevelse: Forbedret Emmet-udvidelse på iOS, mere jævn automatisk rulning med skærmtastaturet og pænere visning ved skift af forhåndsvisning.
-• Optimeret skærmlayout: Rettet tilpasning ved rotation af iPad mellem stående og liggende format.
-• Forbedret arkivering: "Gem som" bevarer nu din valgte filendelse uden automatisk at tilføje .txt."""
+• Forbedret tegnsætregistrering og konvertering: automatisk registrering af UTF-16LE/BE uden BOM, fuld understøttelse af 4-byte tegn (UTF-16-surrogatpar og emojis), dynamisk prøveudtagning for filer over 64 KB og beskyttelse mod beskadigede bytesekvenser.
+• Fuld understøttelse af CR / CRLF / LF-linjeskift: syntaksfremhævning for 49 sprog, normalisering ved indsætning, flerlinjet regex-søgning (^ / $) og live-forhåndsvisning fungerer nu fejlfrit med CR, CRLF og LF.
+• Øget stabilitet i live-forhåndsvisning: mere robust gengivelse af Mermaid-diagrammer (herunder Gantt-diagrammer) og LaTeX-formler under indtastning."""
 
 NO_DESC = """miu er et enkelt og lett tekst- og koderedigeringsprogram som gjør alt fra daglige notater til Markdown-skriving og programmering behagelig og uanstrengt.
 
@@ -539,13 +511,11 @@ Ingen reklame, ingen sporing og ingen datainnsamling. Alt fungerer 100 % offline
 Enten du bruker miu som daglig notisblokk eller som en pålitelig kodeeditor, håper vi den gjør skrivetiden din litt hyggeligere."""
 
 NO_WHATS_NEW = """Takk for at du bruker miu.
-Denne oppdateringen gir nye funksjoner og forbedringer for en enda bedre brukeropplevelse:
+Versjon 1.0.46 forbedrer tegnsettgjenkjenning, håndtering av linjeskift og stabiliteten i sanntidsforhåndsvisningen:
 
-• Flere støttede språk: Lagt til 25 nye språk og konfigurasjonsformater for syntaksutheving, totalt 49 kategorier (over 120 filtyper).
-• Forbedret tekstinndata og justering: Bedre visning under IME-skriving og nøyaktig justering av linjenumre for fullbreddetegn.
-• Bedre tastatur- og forhåndsvisningsopplevelse: Forbedret Emmet-utvidelse på iOS, jevnere rulling med skjermtastaturet og renere opptegning ved bytte av forhåndsvisning.
-• Optimalisert skjermoppsett: Rettet tilpasning når iPad roteres mellom stående og liggende retning.
-• Forbedret lagring: «Arkiver som» beholder nå filtypen du oppgir uten å legge til .txt automatisk."""
+• Forbedret tegnsettgjenkjenning og konvertering: automatisk gjenkjenning av UTF-16LE/BE uten BOM, full støtte for 4-byte tegn (UTF-16-surrogatpar og emojier), dynamisk prøvetaking for filer over 64 KB og beskyttelse mot skadede bytesekvenser.
+• Full støtte for CR / CRLF / LF-linjeskift: syntaksutheving for 49 språk, normalisering ved innliming, flerlinjet regex-søk (^ / $) og forhåndsvisning i sanntid fungerer nå feilfritt med CR, CRLF og LF.
+• Økt stabilitet i forhåndsvisning: jevn og stabil visning av Mermaid-diagrammer (inkludert Gantt-diagrammer) og LaTeX-formler mens du skriver."""
 
 FI_DESC = """miu on yksinkertainen ja kevyt teksti- ja koodieditori, joka tekee päivittäisistä muistiinpanoista, Markdown-kirjoittamisesta ja ohjelmoinnista miellyttävää ja vaivatonta.
 
@@ -574,13 +544,11 @@ Ei mainoksia, ei seurantaa eikä tiedonkeruuta. Kaikki toimii 100 % offline-tila
 Käytitpä miuta päivittäisenä muistiona tai luotettavana koodieditorina, toivomme sen tekevän kirjoitushetkistäsi hieman mukavampia."""
 
 FI_WHATS_NEW = """Kiitos, että käytät miuta.
-Tämä päivitys tuo uusia ominaisuuksia ja parannuksia entistä sujuvampaan käyttöön:
+Versio 1.0.46 parantaa merkistöntunnistusta, rivinvaihtojen käsittelyä ja reaaliaikaisen esikatselun vakautta:
 
-• Laajempi kielituki: Lisätty 25 uutta syntaksinkorostuskieltä ja asetustiedostomuotoa – yhteensä 49 kategoriaa (yli 120 tiedostopäätettä).
-• Parannettu tekstinsyöttö ja kohdistus: Selkeämpi IME-syötön esikatselu sekä tarkka rivinumeroiden kohdistus täysleveiden merkkien kanssa.
-• Sujuvampi kirjoitus ja esikatselu: Parannettu Emmet-laajennus iOS:llä, automaattinen vieritys näyttönäppäimistöllä ja siistimpi piirto esikatselua vaihdettaessa.
-• Optimoitu näytön asettelu: Korjattu muokkausalueen sovitus iPadia pysty- ja vaakasuuntaan käännettäessä.
-• Parannettu tallennus: "Tallenna nimellä" säilyttää nyt valitsemasi tiedostopäätteen lisäämättä .txt-päätettä automaattisesti."""
+• Parannettu merkistöntunnistus ja muunnos: automaattinen tunnistus BOM-merkittömille UTF-16LE/BE-tiedostoille, täysi tuki 4-tavuisille merkeille (UTF-16-sijaisparit ja emojit), dynaaminen näytteenotto yli 64 kt:n tiedostoille sekä suojaus vioittuneille tavusarjoille.
+• Täysi CR / CRLF / LF -rivinvaihtojen tuki: 49 kielen syntaksinkorostus, liittämisen normalisointi, monirivinen säännöllisten lausekkeiden (^ / $) haku ja reaaliaikainen esikatselu toimivat virheettömästi CR-, CRLF- ja LF-rivinvaihdoilla.
+• Vakaampi reaaliaikainen esikatselu: Mermaid-kaavioiden (mukaan lukien Gantt-kaaviot) ja LaTeX-kaavojen entistä luotettavampi piirto kirjoittamisen aikana."""
 
 PL_DESC = """miu to prosty, lekki edytor tekstu i kodu, zaprojektowany tak, aby codzienne notatki, pisanie w Markdown oraz programowanie były wygodne i przyjemne.
 
@@ -609,13 +577,11 @@ Brak reklam, brak śledzenia i brak gromadzenia danych. Wszystko działa w 100% 
 Zarówno jako codzienny notatnik, jak i niezawodny edytor kodu – mamy nadzieję, że miu uprzyjemni Twój czas spędzony na pisaniu."""
 
 PL_WHATS_NEW = """Dziękujemy za korzystanie z aplikacji miu.
-W tej aktualizacji wprowadziliśmy nowe funkcje i ulepszenia zwiększające komfort pracy:
+Wersja 1.0.46 ulepsza obsługę kodowania znaków, końców wierszy oraz stabilność podglądu na żywo:
 
-• Rozszerzona obsługa języków: dodano 25 nowych języków i formatów konfiguracji do kolorowania składni (łącznie 49 kategorii i ponad 120 rozszerzeń).
-• Ulepszone wprowadzanie tekstu i wyrównanie: poprawiono wyświetlanie tekstu w trakcie składania znaków (IME) oraz wyrównanie numerów wierszy przy znakach pełnej szerokości.
-• Lepsza obsługa klawiatury i podglądu: usprawniono rozwijanie skrótów Emmet w systemie iOS, automatyczne przewijanie z klawiaturą ekranową oraz renderowanie przy przełączaniu podglądu.
-• Zoptymalizowany układ ekranu: poprawiono dopasowanie obszaru edytora podczas obracania iPada między orientacją pionową a poziomą.
-• Ulepszone zapisywanie plików: opcja „Zapisz jako” zachowuje teraz wybrane rozszerzenie pliku bez automatycznego dodawania .txt."""
+• Ulepszone wykrywanie i konwersja kodowania znaków: automatyczne wykrywanie plików UTF-16LE/BE bez BOM, pełna obsługa znaków 4-bajtowych (par surogatów UTF-16 i emoji), dynamiczne próbkowanie powyżej 64 KB oraz ochrona przed uszkodzonymi sekwencjami bajtów.
+• Pełna obsługa końców wierszy CR / CRLF / LF: kolorowanie składni dla 49 języków, normalizacja przy wklejaniu, wielowierszowe wyszukiwanie regex (^ / $) oraz podgląd na żywo działają bezbłędnie z CR, CRLF i LF.
+• Większa stabilność podglądu na żywo: płynne i bezpieczne renderowanie diagramów Mermaid (w tym wykresów Gantta) oraz wzorów LaTeX podczas pisania."""
 
 CS_DESC = """miu je jednoduchý a lehký textový a kódový editor, se kterým je psaní každodenních poznámek, textů v Markdownu i programování pohodlné a příjemné.
 
@@ -644,13 +610,11 @@ Hledání a nahrazování (s regulárními výrazy), více kurzorů, čísla ř�
 Ať už miu používáte jako každodenní zápisník nebo jako spolehlivý editor kódu, věříme, že vám zpříjemní každou chvíli u psaní."""
 
 CS_WHATS_NEW = """Děkujeme, že používáte miu.
-Tato aktualizace přináší nové funkce a vylepšení pro ještě pohodlnější práci:
+Verze 1.0.46 přináší vylepšenou podporu kódování znaků, konců řádků a vyšší stabilitu živého náhledu:
 
-• Rozšířená podpora jazyků: přidáno 25 nových jazyků a konfiguračních formátů pro zvýrazňování syntaxe, celkem nyní 49 kategorií (přes 120 přípon).
-• Vylepšené zadávání textu a zarovnání: lepší zobrazení rozepsaného textu (IME) a přesné zarovnání čísel řádků u znaků s plnou šířkou.
-• Lepší psaní a náhled: vylepšeno rozbalování zkratek Emmet na iOS, plynulejší automatické posouvání se softwarovou klávesnicí a čistší vykreslování při přepínání náhledu.
-• Optimalizované rozvržení obrazovky: opraveno přizpůsobení editoru při otáčení iPadu mezi zobrazením na výšku a na šířku.
-• Vylepšené ukládání: funkce „Uložit jako“ nyní zachová vámi zadanou příponu souboru bez automatického přidávání .txt."""
+• Vylepšená detekce a převod kódování znaků: automatické rozpoznání souborů UTF-16LE/BE bez BOM, plná podpora 4bajtových znaků (náhradních párů UTF-16 a emoji), dynamické vzorkování u souborů nad 64 KB a ochrana proti poškozeným sekvencím bajtů.
+• Plná podpora konců řádků CR / CRLF / LF: zvýrazňování syntaxe pro 49 jazyků, normalizace při vkládání, víceřádkové vyhledávání pomocí regulárních výrazů (^ / $) i živý náhled nyní bezchybně fungují s CR, CRLF a LF.
+• Vyšší stabilita živého náhledu: plynulé a bezpečné vykreslování diagramů Mermaid (včetně Ganttových diagramů) a vzorců LaTeX během psaní."""
 
 HU_DESC = """A miu egy egyszerű, könnyed szöveg- és kódszerkesztő, amely a napi gyors jegyzeteléstől a Markdown-szövegíráson át a programozásig minden helyzetben kényelmes használatot nyújt.
 
@@ -679,13 +643,11 @@ Nincsenek reklámok, nincs követés és nincs adatgyűjtés. Minden funkció 10
 Akár mindennapi jegyzettömbként, akár megbízható kódszerkesztőként használja, reméljük, hogy a miu kellemesebbé teszi az írással töltött időt."""
 
 HU_WHATS_NEW = """Köszönjük, hogy a miu alkalmazást használja.
-Ez a frissítés új funkciókat és finomításokat tartalmaz a még kényelmesebb használat érdekében:
+Az 1.0.46-os verzió fejleszti a karakterkódolás-felismerést, a sortörések kezelését és az élő előnézet stabilitását:
 
-• Bővített nyelvi támogatás: 25 új nyelvvel és konfigurációs formátummal bővült a szintaxiskiemelés, így már összesen 49 kategóriát (több mint 120 kiterjesztést) támogat.
-• Javított szövegbevitel és igazítás: pontosabb megjelenítés IME-szövegbevitel közben, valamint szépen igazított sorszámok a teljes szélességű karaktereket tartalmazó soroknál.
-• Jobb gépelési és előnézeti élmény: javított Emmet-kibontás iOS-en, egyenletesebb automatikus görgetés a képernyő-billentyűzettel, és tisztább megjelenítés az előnézet váltásakor.
-• Optimalizált képernyőelrendezés: javítottuk a szerkesztőterület illeszkedését az iPad álló és fekvő tájolása közötti forgatáskor.
-• Fejlesztett mentés: a „Mentés másként” funkció mostantól megtartja a megadott egyéni fájlkiterjesztést anélkül, hogy automatikusan .txt-t fűzne hozzá."""
+• Fejlesztett karakterkódolás-felismerés és konvertálás: automatikus felismerés BOM nélküli UTF-16LE/BE fájlokhoz, teljes támogatás a 4 bájtos karakterekhez (UTF-16 helyettesítő párok és emojik), dinamikus mintavételezés 64 KB feletti fájloknál és védelem a sérült bájtsorozatok ellen.
+• Teljes CR / CRLF / LF sortörés-támogatás: mind a 49 nyelv szintaxiskiemelése, a beillesztési normalizálás, a többsoros regex (^ / $) keresés és az élő előnézet pontosan működik CR, CRLF és LF sortörésekkel.
+• Még stabilabb élő előnézet: a Mermaid diagramok (beleértve a Gantt-diagramokat) és a LaTeX képletek gépelés közben is biztonságosan és folyamatosan jelennek meg."""
 
 RO_DESC = """miu este un editor de text și cod simplu și ușor, creat pentru ca notițele zilnice, redactarea în Markdown și programarea să fie cât mai plăcute și confortabile.
 
@@ -714,13 +676,11 @@ Fără reclame, fără urmărire și fără colectare de date. Totul funcționea
 Fie ca agendă de zi cu zi, fie ca editor de cod de încredere, sperăm că miu vă va face timpul petrecut scriind mai plăcut."""
 
 RO_WHATS_NEW = """Vă mulțumim că folosiți miu.
-Această actualizare aduce funcții noi și îmbunătățiri pentru o experiență și mai confortabilă:
+Versiunea 1.0.46 aduce îmbunătățiri pentru detectarea codificării caracterelor, gestionarea sfârșiturilor de rând și stabilitatea previzualizării:
 
-• Mai multe limbaje suportate: am adăugat 25 de limbaje și formate de configurare noi pentru evidențierea sintaxei, ajungând la un total de 49 de categorii (peste 120 de extensii).
-• Introducere de text și aliniere îmbunătățite: afișare mai clară în timpul compoziției IME și aliniere precisă a numerelor de rând pentru caracterele cu lățime completă.
-• Tastare și previzualizare optimizate: extindere Emmet îmbunătățită pe iOS, derulare automată mai lină cu tastatura pe ecran și afișare mai curată la comutarea previzualizării.
-• Aspect optimizat al ecranului: am corectat adaptarea zonei de editare la rotirea iPad-ului între modurile portret și peisaj.
-• Salvare îmbunătățită: opțiunea „Salvează ca” păstrează acum extensia personalizată fără a adăuga automat .txt."""
+• Detectare și conversie îmbunătățită a codificării: detectare automată pentru fișiere UTF-16LE/BE fără BOM, suport complet pentru caractere pe 4 octeți (perechi surogat UTF-16 și emoji), eșantionare dinamică peste 64 KB și protecție pentru secvențe de octeți deteriorate.
+• Suport complet pentru sfârșituri de rând CR / CRLF / LF: evidențierea sintaxei pentru 49 de limbaje, normalizarea la lipire, căutarea regex pe mai multe rânduri (^ / $) și previzualizarea în timp real funcționează impecabil cu CR, CRLF și LF.
+• Stabilitate sporită a previzualizării în timp real: redare sigură și fluentă a diagramelor Mermaid (inclusiv Gantt) și a formulelor LaTeX în timpul tastării."""
 
 EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επεξεργαστής κειμένου και κώδικα, σχεδιασμένος ώστε οι καθημερινές σημειώσεις, η συγγραφή σε Markdown και ο προγραμματισμός να γίνονται άνετα και ευχάριστα.
 
@@ -749,13 +709,11 @@ EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επ�
 Είτε ως καθημερινό σημειωματάριο είτε ως αξιόπιστος επεξεργαστής κώδικα, ελπίζουμε το miu να κάνει τον χρόνο που αφιερώνετε στο γράψιμο πιο ευχάριστο."""
 
 EL_WHATS_NEW = """Σας ευχαριστούμε που χρησιμοποιείτε το miu.
-Αυτή η ενημέρωση φέρνει νέες δυνατότητες και βελτιώσεις για ακόμα πιο άνετη εμπειρία:
+Η έκδοση 1.0.46 βελτιώνει την αναγνώριση κωδικοποίησης χαρακτήρων, τη διαχείριση αλλαγών γραμμής και τη σταθερότητα της ζωντανής προεπισκόπησης:
 
-• Υποστήριξη περισσότερων γλωσσών: προστέθηκαν 25 νέες γλώσσες και μορφές αρχείων ρυθμίσεων στην επισήμανση σύνταξης, φτάνοντας συνολικά τις 49 κατηγορίες (120+ επεκτάσεις).
-• Βελτιωμένη εισαγωγή κειμένου και ευθυγράμμιση: καλύτερη εμφάνιση κατά τη σύνθεση χαρακτήρων (IME) και ακριβής ευθυγράμμιση αριθμών γραμμής με χαρακτήρες πλήρους πλάτους.
-• Καλύτερη εμπειρία πληκτρολόγησης και προεπισκόπησης: βελτιώθηκε η ανάπτυξη Emmet στο iOS, η αυτόματη κύλιση με το πληκτρολόγιο οθόνης και η απεικόνιση κατά την εναλλαγή της προεπισκόπησης.
-• Βελτιστοποιημένη διάταξη οθόνης: διορθώθηκε η προσαρμογή της περιοχής επεξεργασίας κατά την περιστροφή του iPad μεταξύ κατακόρυφου και οριζόντιου προσανατολισμού.
-• Βελτιωμένη αποθήκευση: η «Αποθήκευση ως» διατηρεί πλέον την προσαρμοσμένη επέκταση αρχείου χωρίς αυτόματη προσθήκη του .txt."""
+• Βελτιωμένη ανίχνευση και μετατροπή κωδικοποίησης: αυτόματη ανίχνευση αρχείων UTF-16LE/BE χωρίς BOM, πλήρης υποστήριξη χαρακτήρων 4 byte (ζεύγη υποκατάστασης UTF-16 και emoji), δυναμική δειγματοληψία άνω των 64 KB και προστασία από κατεστραμμένες ακολουθίες byte.
+• Πλήρης υποστήριξη αλλαγών γραμμής CR / CRLF / LF: η επισήμανση σύνταξης για 49 γλώσσες, η κανονικοποίηση κατά την επικόλληση, η αναζήτηση regex πολλαπλών γραμμών (^ / $) και η ζωντανή προεπισκόπηση λειτουργούν άψογα με CR, CRLF και LF.
+• Αυξημένη σταθερότητα ζωντανής προεπισκόπησης: ομαλή και ασφαλής απόδοση διαγραμμάτων Mermaid (συμπεριλαμβανομένων των διαγραμμάτων Gantt) και εξισώσεων LaTeX κατά την πληκτρολόγηση."""
 
 TR_DESC = """miu; günlük kısa notlardan Markdown yazılarına ve programlamaya kadar her türlü metin çalışmasını keyifli ve rahat hale getirmek için tasarlanmış sade ve hafif bir metin ve kod düzenleyicidir.
 
@@ -784,13 +742,11 @@ Reklam, takip veya veri toplama yoktur. Tüm özellikler cihazınızda %100 çev
 İster günlük not defteriniz ister güvenilir kod düzenleyiciniz olarak, miu'nun yazma zamanınızı daha keyifli hale getirmesini dileriz."""
 
 TR_WHATS_NEW = """miu'yu kullandığınız için teşekkür ederiz.
-Bu güncellemede daha rahat bir kullanım için aşağıdaki yenilikleri ve iyileştirmeleri yaptık:
+1.0.46 sürümü; karakter kodlaması algılama, satır sonu desteği ve Canlı Önizleme kararlılığında önemli iyileştirmeler sunar:
 
-• Genişletilmiş Dil Desteği: Sözdizimi vurgulamaya 25 yeni dil ve yapılandırma biçimi eklendi; artık toplam 49 kategori (120'den fazla uzantı) destekleniyor.
-• Geliştirilmiş Metin Girişi ve Hizalama: IME ile yazım sırasındaki onaylanmamış metin görünümü iyileştirildi ve tam genişlikli karakter içeren satırlarda satır numarası hizalaması düzeltildi.
-• Klavye ve Önizleme İyileştirmeleri: iOS'te Emmet kısaltma genişletmesi, ekran klavyesiyle yazarken otomatik kaydırma ve önizleme geçişlerindeki çizim performansı iyileştirildi.
-• Optimize Edilmiş Ekran Düzeni: iPad'i dikey ve yatay konumlar arasında döndürürken düzenleme alanının ekran kenarlarına tam oturması sağlandı.
-• Kaydetme İyileştirmesi: "Farklı Kaydet" kullanılırken belirlediğiniz dosya uzantısının sonuna otomatik .txt eklenmeden korunması sağlandı."""
+• Geliştirilmiş Karakter Kodlaması Algılama ve Dönüştürme: BOM'suz UTF-16LE/BE dosyaları için otomatik algılama, 4 baytlık karakterler (UTF-16 vekil çiftleri ve emojiler) için tam dönüştürme desteği, 64 KB üzeri dosyalar için dinamik örnekleme ve bozuk bayt dizilerine karşı güvenli koruma eklendi.
+• Tam CR / CRLF / LF Satır Sonu Desteği: 49 dilde sözdizimi vurgulama, yapıştırma sırasında satır sonu eşitleme, çok satırlı düzenli ifade (^ / $) arama/değiştirme ve Canlı Önizleme artık CR, CRLF ve LF ile kusursuz çalışır.
+• Artırılmış Canlı Önizleme Kararlılığı: Mermaid diyagramları (Gantt şemaları dahil) ve LaTeX formülleri yazım sırasında kesintisiz ve güvenli bir şekilde oluşturulur."""
 
 UK_DESC = """miu — це простий і легкий редактор тексту та коду, створений для того, щоб щоденні нотатки, написання текстів у Markdown і програмування були максимально зручними та приємними.
 
@@ -819,13 +775,11 @@ UK_DESC = """miu — це простий і легкий редактор тек
 Як щоденний записник або надійний редактор коду — сподіваємося, що miu зробить ваш час за письмом приємнішим."""
 
 UK_WHATS_NEW = """Дякуємо, що користуєтеся miu.
-У цьому оновленні ми додали нові функції та покращення для ще комфортнішої роботи:
+У версії 1.0.46 покращено розпізнавання кодувань символів, підтримку переносів рядків і стабільність попереднього перегляду:
 
-• Розширена підтримка мов: додано 25 нових мов і форматів конфігурації для підсвічування синтаксису — загалом 49 категорій (понад 120 розширень).
-• Покращене введення тексту та вирівнювання: вдосконалено відображення тексту під час набору через IME та вирівнювання номерів рядків із повноширинними символами.
-• Покращена робота з клавіатурою та переглядом: виправлено розгортання Emmet на iOS, покращено автопрокрутку з екранною клавіатурою та відображення під час перемикання попереднього перегляду.
-• Оптимізована розмітка екрана: виправлено масштабування області редактора під час повороту iPad між книжковою та альбомною орієнтацією.
-• Покращене збереження: функція «Зберегти як» тепер зберігає вказане вами розширення файлу без автоматичного додавання .txt."""
+• Покращене визначення та конвертація кодувань: автовизначення файлів UTF-16LE/BE без BOM, повна підтримка 4-байтових символів (сурогатних пар UTF-16 та емодзі), динамічна вибірка для файлів понад 64 КБ і захист від пошкоджених байтів.
+• Повна підтримка переносів рядків CR / CRLF / LF: підсвічування синтаксису для 49 мов, нормалізація під час вставлення, багаторядковий пошук із регулярними виразами (^ / $) та живий перегляд бездоганно працюють із CR, CRLF та LF.
+• Підвищена стабільність живого перегляду: надійне відображення діаграм Mermaid (зокрема діаграм Ганта) і формул LaTeX безпосередньо під час набору тексту."""
 
 VI_DESC = """miu là trình soạn thảo văn bản và mã nguồn đơn giản, gọn nhẹ, mang lại cảm giác thoải mái cho mọi nhu cầu từ ghi chú nhanh hàng ngày, viết tài liệu Markdown cho đến lập trình.
 
@@ -854,13 +808,11 @@ Không quảng cáo, không theo dõi và không thu thập dữ liệu. Mọi t
 Dù dùng làm sổ tay hàng ngày hay trình sửa code đáng tin cậy, hy vọng miu sẽ giúp khoảng thời gian viết lách của bạn thêm phần dễ chịu."""
 
 VI_WHATS_NEW = """Cảm ơn bạn đã luôn sử dụng miu.
-Bản cập nhật này bổ sung thêm tính năng mới và các cải tiến giúp việc soạn thảo thuận tiện hơn:
+Phiên bản 1.0.46 nâng cấp khả năng nhận diện bảng mã, xử lý ký tự xuống dòng và độ ổn định của Xem trước trực tiếp:
 
-• Mở rộng ngôn ngữ hỗ trợ: Thêm 25 ngôn ngữ và định dạng tệp cấu hình mới cho tô màu cú pháp, nâng tổng số lên 49 danh mục (hơn 120 phần mở rộng tệp).
-• Cải thiện bộ gõ và căn lề: Hiển thị rõ ràng các ký tự đang gõ chưa xác nhận (IME) và căn chỉnh số dòng thẳng hàng với các ký tự full-width.
-• Cải thiện thao tác bàn phím và Xem trước: Khắc phục mở rộng gõ tắt Emmet trên iOS, tự động cuộn mượt hơn khi dùng bàn phím ảo và hiển thị ổn định khi bật/tắt chế độ xem trước.
-• Tối ưu bố cục màn hình: Điều chỉnh vùng soạn thảo vừa khít viền màn hình khi xoay dọc/ngang trên iPad.
-• Cải thiện lưu tệp: Tính năng "Lưu thành" giữ nguyên phần mở rộng tệp tùy chỉnh của bạn mà không tự động thêm đuôi .txt."""
+• Nâng cấp nhận diện và chuyển đổi bảng mã: Tự động nhận diện tệp UTF-16LE/BE không có BOM, hỗ trợ đầy đủ ký tự 4 byte (cặp thay thế UTF-16 & emoji), lấy mẫu động cho tệp trên 64 KB và bảo vệ an toàn trước chuỗi byte lỗi.
+• Hỗ trợ hoàn chỉnh ký tự xuống dòng CR / CRLF / LF: Tô màu cú pháp cho 49 ngôn ngữ, chuẩn hóa dòng khi dán, tìm kiếm & thay thế đa dòng bằng biểu thức chính quy (^ / $) và Xem trước trực tiếp hoạt động chính xác với CR, CRLF và LF.
+• Tăng cường độ ổn định khi Xem trước trực tiếp: Hiển thị mượt mà và ổn định các sơ đồ Mermaid (bao gồm biểu đồ Gantt) và công thức LaTeX ngay trong lúc đang gõ."""
 
 TH_DESC = """miu คือแอปแก้ไขข้อความและโค้ดที่เรียบง่ายและทำงานได้อย่างรวดเร็ว ออกแบบมาเพื่อให้ทั้งการจดบันทึกประจำวัน การเขียนบทความด้วย Markdown และการเขียนโปรแกรมเป็นเรื่องที่สบายตาและน่าใช้งาน
 
@@ -889,13 +841,11 @@ TH_DESC = """miu คือแอปแก้ไขข้อความและ
 ไม่ว่าจะใช้เป็นสมุดโน้ตประจำวันหรือเครื่องมือเขียนโค้ดคู่ใจ เราหวังว่า miu จะช่วยให้ช่วงเวลาแห่งการเขียนของคุณน่าเพลิดเพลินยิ่งขึ้น"""
 
 TH_WHATS_NEW = """ขอบคุณที่ใช้บริการ miu เสมอมา
-ในการอัปเดตครั้งนี้ เราได้เพิ่มฟีเจอร์และปรับปรุงการทำงานเพื่อให้คุณใช้งานได้สะดวกสบายยิ่งขึ้น:
+ในเวอร์ชัน 1.0.46 เราได้ยกระดับการตรวจจับรหัสอักขระ การรองรับรูปแบบการขึ้นบรรทัดใหม่ และความเสถียรของโหมดพรีวิว:
 
-• เพิ่มภาษาที่รองรับ: เพิ่มการไฮไลต์ไวยากรณ์อีก 25 ภาษาและไฟล์ตั้งค่า รวมเป็น 49 หมวดหมู่ (มากกว่า 120 นามสกุลไฟล์)
-• ปรับปรุงการพิมพ์และการจัดแนวบรรทัด: แสดงข้อความระหว่างกำลังพิมพ์ (IME) ได้อย่างชัดเจน และปรับตำแหน่งเลขบรรทัดให้ตรงกับอักษรแบบเต็มความกว้างอย่างสวยงาม
-• ปรับปรุงการพิมพ์และโหมดพรีวิว: ปรับปรุงการขยายตัวย่อ Emmet บน iOS การเลื่อนหน้าจออัตโนมัติเมื่อใช้แป้นพิมพ์บนหน้าจอ และการแสดงผลเมื่อสลับโหมดพรีวิว
-• ปรับแต่งเลย์เอาต์หน้าจอ: แก้ไขพื้นที่แสดงผลของเอดิเตอร์ให้พอดีกับขอบหน้าจอเมื่อหมุน iPad สลับระหว่างแนวตั้งและแนวนอน
-• ปรับปรุงการบันทึกไฟล์: "บันทึกเป็น" สามารถใช้นามสกุลไฟล์ที่คุณกำหนดเองได้โดยไม่เติม .txt ต่อท้ายโดยอัตโนมัติ"""
+• ยกระดับการตรวจจับและแปลงรหัสอักขระ: รองรับการตรวจจับไฟล์ UTF-16LE/BE แบบไม่มี BOM อัตโนมัติ, รองรับอักขระ 4 ไบต์ (UTF-16 Surrogate Pairs และอีโมจิ) อย่างสมบูรณ์, การสุ่มตรวจไฟล์ขนาดเกิน 64 KB อย่างแม่นยำ และการป้องกันข้อมูลสูญหายจากไบต์ที่เสียหาย
+• รองรับการขึ้นบรรทัดใหม่ทั้ง CR / CRLF / LF อย่างสมบูรณ์: การไฮไลต์ไวยากรณ์ทั้ง 49 ภาษา, การจัดรูปแบบบรรทัดเมื่อวาง, การค้นหาและแทนที่หลายบรรทัดด้วย Regex (^ / $) และการพรีวิวทำงานได้อย่างถูกต้องครบถ้วน
+• เพิ่มความเสถียรของโหมดพรีวิว: แสดงผลแผนภาพ Mermaid (รวมถึงแผนภูมิ Gantt) และสมการ LaTeX ได้อย่างราบรื่นและเสถียรแม้ในขณะกำลังพิมพ์"""
 
 ID_DESC = """miu adalah editor teks dan kode yang sederhana serta ringan, dirancang agar nyaman digunakan mulai dari mencatat ide harian, menulis dokumen Markdown, hingga pemrograman.
 
@@ -924,13 +874,11 @@ Tanpa iklan, tanpa pelacakan, dan tanpa pengumpulan data. Semua fitur berjalan 1
 Baik sebagai buku catatan sehari-hari maupun editor kode andalan, semoga miu dapat membuat waktu menulis Anda menjadi lebih menyenangkan."""
 
 ID_WHATS_NEW = """Terima kasih telah menggunakan miu.
-Pembaruan kali ini menghadirkan penambahan fitur dan peningkatan agar pengalaman menulis Anda semakin nyaman:
+Versi 1.0.46 meningkatkan deteksi pengkodean karakter, dukungan akhir baris, serta stabilitas Pratinjau Langsung:
 
-• Penambahan Bahasa: Menambahkan 25 bahasa dan format konfigurasi baru pada sorotan sintaks, kini mendukung total 49 kategori (lebih dari 120 ekstensi file).
-• Peningkatan Input Teks & Perataan Baris: Memperbaiki tampilan teks saat proses pengetikan IME serta merapikan perataan nomor baris pada karakter lebar penuh.
-• Peningkatan Keyboard & Pratinjau: Memperbaiki ekspansi Emmet di iOS, pengguliran otomatis saat mengetik dengan keyboard layar, serta tampilan saat mengalihkan pratinjau.
-• Optimalisasi Tata Letak Layar: Memperbaiki ukuran area editor agar selalu pas hingga ke tepi layar saat memutar iPad antara posisi vertikal dan horizontal.
-• Peningkatan Penyimpanan File: Fitur "Simpan Sebagai" kini mempertahankan ekstensi file pilihan Anda tanpa menambahkan .txt secara otomatis."""
+• Peningkatan Deteksi & Konversi Pengkodean Karakter: Deteksi otomatis untuk file UTF-16LE/BE tanpa BOM, dukungan penuh karakter 4-byte (pasangan pengganti UTF-16 & emoji), pengambilan sampel dinamis untuk file di atas 64 KB, serta perlindungan terhadap urutan byte yang rusak.
+• Dukungan Penuh Akhir Baris CR / CRLF / LF: Sorotan sintaks untuk 49 bahasa, normalisasi baris saat menempel, pencarian & penggantian regex multibaris (^ / $), serta Pratinjau Langsung kini bekerja akurat dengan CR, CRLF, dan LF.
+• Peningkatan Stabilitas Pratinjau Langsung: Menampilkan diagram Mermaid (termasuk diagram Gantt) dan rumus LaTeX dengan lebih stabil dan mulus saat Anda sedang mengetik."""
 
 MS_DESC = """miu ialah penyunting teks dan kod yang ringkas serta ringan, direka untuk memberikan keselesaan sama ada ketika mencatat nota harian, menulis dokumen Markdown mahupun melakukan pengaturcaraan.
 
@@ -959,13 +907,11 @@ Tiada iklan, tiada penjejakan dan tiada pengumpulan data. Semua ciri berfungsi 1
 Sama ada sebagai buku nota harian atau penyunting kod yang boleh dipercayai, kami berharap miu menjadikan masa menulis anda lebih menyenangkan."""
 
 MS_WHATS_NEW = """Terima kasih kerana menggunakan miu.
-Kemas kini ini membawakan ciri baharu dan penambahbaikan untuk pengalaman yang lebih selesa:
+Versi 1.0.46 mempertingkatkan pengesanan pengekodan aksara, sokongan hujung baris dan kestabilan Pratonton Langsung:
 
-• Sokongan Bahasa Diperluas: Menambah 25 bahasa dan format konfigurasi baharu untuk penyerlahan sintaks, kini menyokong 49 kategori (lebih 120 sambungan fail).
-• Penambahbaikan Input Teks & Penjajaran: Memperbaiki paparan teks semasa menaip melalui IME dan menjajarkan nombor baris dengan kemas bagi aksara lebar penuh.
-• Papan Kekunci & Pratonton Lebih Baik: Memperbaiki pengembangan Emmet pada iOS, tatalan automatik dengan papan kekunci skrin dan paparan semasa menukar pratonton.
-• Susun Atur Skrin Dioptimumkan: Memastikan ruang penyunting sentiasa muat dengan kemas pada tepi skrin apabila memutar iPad antara mod potret dan landskap.
-• Penambahbaikan Penyimpanan: "Simpan Sebagai" kini mengekalkan sambungan fail pilihan anda tanpa menambah .txt secara automatik."""
+• Pengesanan & Penukaran Pengekodan Aksara Dipertingkatkan: Pengesanan automatik untuk fail UTF-16LE/BE tanpa BOM, sokongan penuh aksara 4-bait (pasangan pengganti UTF-16 & emoji), pensampelan dinamik untuk fail melebihi 64 KB, dan perlindungan daripada jujukan bait rosak.
+• Sokongan Penuh Hujung Baris CR / CRLF / LF: Penyerlahan sintaks bagi 49 bahasa, penormalan baris semasa menampal, carian & penggantian regex berbilang baris (^ / $) serta Pratonton Langsung kini berfungsi dengan tepat untuk CR, CRLF dan LF.
+• Kestabilan Pratonton Langsung Lebih Baik: Memaparkan rajah Mermaid (termasuk carta Gantt) dan formula LaTeX dengan lancar dan stabil semasa menaip."""
 
 HI_DESC = """miu एक सरल और हल्का टेक्स्ट व कोड एडिटर है, जिसे रोज़मर्रा के छोटे नोट्स से लेकर Markdown लेखन और प्रोग्रामिंग तक हर काम को सहज और आरामदायक बनाने के लिए डिज़ाइन किया गया है।
 
@@ -994,13 +940,11 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 और अन्य एन्कोडिंग
 चाहे आप इसे दैनिक नोटपैड के रूप में उपयोग करें या एक भरोसेमंद कोड एडिटर के रूप में, हमें उम्मीद है कि miu आपके लिखने के समय को और सुखद बनाएगा।"""
 
 HI_WHATS_NEW = """miu का उपयोग करने के लिए धन्यवाद।
-इस अपडेट में आपके अनुभव को और बेहतर बनाने के लिए निम्नलिखित नई सुविधाएँ और सुधार किए गए हैं:
+संस्करण 1.0.46 में कैरेक्टर एन्कोडिंग पहचान, लाइन-एंडिंग समर्थन और लाइव प्रीव्यू की स्थिरता को और बेहतर बनाया गया है:
 
-• अधिक भाषाओं का समर्थन: सिंटैक्स हाइलाइटिंग में 25 नई भाषाएँ और कॉन्फ़िगरेशन फ़ॉर्मेट जोड़े गए हैं, जिससे अब कुल 49 श्रेणियाँ (120+ एक्सटेंशन) समर्थित हैं।
-• बेहतर टेक्स्ट इनपुट और संरेखण: IME इनपुट के दौरान अक्षरों के लाइव प्रदर्शन में सुधार किया गया है और पूर्ण-चौड़ाई (full-width) वाले अक्षरों के साथ लाइन नंबरों को सटीक रूप से संरेखित किया गया है।
-• कीबोर्ड और प्रीव्यू में सुधार: iOS पर Emmet विस्तार, ऑन-स्क्रीन कीबोर्ड के साथ ऑटो-स्क्रॉलिंग और लाइव प्रीव्यू बदलते समय रेंडरिंग को बेहतर बनाया गया है।
-• स्क्रीन लेआउट अनुकूलन: iPad को पोर्ट्रेट और लैंडस्केप में घुमाने पर एडिटर क्षेत्र अब स्क्रीन के किनारों तक पूरी तरह फ़िट रहता है।
-• फ़ाइल सहेजने में सुधार: "इस रूप में सहेजें" (Save As) में अब आपके द्वारा दिया गया कस्टम एक्सटेंशन सुरक्षित रहता है और अपने आप .txt नहीं जुड़ता।"""
+• बेहतर कैरेक्टर एन्कोडिंग पहचान और रूपांतरण: बिना BOM वाली UTF-16LE/BE फ़ाइलों की स्वतः पहचान, 4-बाइट अक्षरों (UTF-16 सरोगेट पेयर और इमोजी) का पूर्ण समर्थन, 64 KB से बड़ी फ़ाइलों के लिए सटीक सैंपलिंग और खराब बाइट अनुक्रमों से सुरक्षा।
+• पूर्ण CR / CRLF / LF लाइन-एंडिंग समर्थन: सभी 49 भाषाओं में सिंटैक्स हाइलाइटिंग, पेस्ट करते समय लाइन सामान्यीकरण, मल्टी-लाइन रेगेक्स (^ / $) खोजें और बदलें, तथा लाइव प्रीव्यू अब CR, CRLF और LF के साथ सटीक काम करते हैं।
+• लाइव प्रीव्यू स्थिरता में सुधार: टाइप करते समय Mermaid आरेखों (Gantt चार्ट सहित) और LaTeX सूत्रों का सुचारू और स्थिर रेंडरिंग।"""
 
 SUPPORT_URL = "https://github.com/kenjinote/miu"
 
@@ -1398,7 +1342,7 @@ def sync_app_info_localizations(app_id, app_name, headers):
         print(f"AppInfo Summary (ID: {info_id}): {updated_count} updated/verified, {created_count} created.")
 
 
-def get_or_create_editable_versions(app_id, headers):
+def get_or_create_editable_versions(app_id, headers, target_platforms=None):
     """Return list of (platform, version_id, version_string, state, has_live_version) to update."""
     r = requests.get(f"{BASE_URL}/apps/{app_id}/appStoreVersions?limit=50", headers=headers)
     if r.status_code != 200:
@@ -1427,7 +1371,7 @@ def get_or_create_editable_versions(app_id, headers):
     }
 
     targets = []
-    for plat in ["IOS", "MAC_OS"]:
+    for plat in (target_platforms or ["IOS", "MAC_OS"]):
         plat_versions = by_platform.get(plat, [])
         if not plat_versions:
             print(f"\n[{plat}] No existing App Store versions found; attempting to create {TARGET_VERSION}...")
@@ -1908,6 +1852,7 @@ def prepare_testflight_builds_only(app_id):
 
 def main():
     testflight_only = "--testflight-only" in sys.argv
+    ios_only = "--ios-only" in sys.argv
     print("=== App Store Connect Metadata Synchronizer for miu ===")
     headers = get_headers()
     app_id, app_name = get_app_id(headers)
@@ -1917,8 +1862,11 @@ def main():
         print(f"\n=== Completed TestFlight build preparation for v{TARGET_VERSION} (No App Store submission, release notes untouched) ===")
         return
 
-    sync_app_info_localizations(app_id, app_name, headers)
-    targets = get_or_create_editable_versions(app_id, headers)
+    if not ios_only:
+        sync_app_info_localizations(app_id, app_name, headers)
+    target_platforms = ["IOS"] if ios_only else ["IOS", "MAC_OS"]
+    print(f"Target platforms for version sync & submission: {target_platforms}")
+    targets = get_or_create_editable_versions(app_id, headers, target_platforms=target_platforms)
 
     total_ok = 0
     total_fail = 0
