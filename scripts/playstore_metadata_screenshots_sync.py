@@ -86,7 +86,7 @@ HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנוע
 ללא פרסומות, ללא מעקב וללא איסוף נתונים. הכל פועל 100% אופליין במכשיר שלכם."""
 
 HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.48 משפרת את דיוק החיפוש וההחלפה בביטויים רגולריים (Regex) ואת תצוגת הסמן:
-• התאמת Regex מדויקת לתווים רב-לשוניים: תوكנה בעיה שבה "." או טווחי תווים החליפו תו UTF-8 בודד מספר פעמים (עברית, יפנית, קוריאנית, סינית ואימוג'י).
+• התאמת Regex מדויקת לתווים רב-לשוניים: תוקנה בעיה שבה "." או טווחי תווים החליפו תו UTF-8 בודד מספר פעמים (עברית, יפנית, קוריאנית, סינית ואימוג'י).
 • שיפור תצוגת הסמן בעת גלילה מחוץ למסך.
 • עריכה מהירה, "החלף הכל" מיידי ותצוגה מקדימה חיה של Markdown, LaTeX ו-Mermaid."""
 
@@ -114,7 +114,7 @@ Hľadanie a nahrádzanie (s regulárnymi výrazmi), viac kurzorov, čísla riadk
 • Súkromie na prvom mieste
 Žiadne reklamy, žiadne sledovanie a žiadny zber dát. Všetko funguje 100 % offline priamo vo vašom zariadení."""
 
-SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.48prináša presnejšie regulárne výrazy a opravu kurzora:
+SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.48 prináša presnejšie regulárne výrazy a opravu kurzora:
 • Presné vyhľadávanie a nahradzovanie Regex pre viacbajtové znaky: opravená chyba, pri ktorej vzor „.“ alebo rozsahy znakov nahrádzali jeden znak UTF-8 (slovenčina, japončina, kórejčina, čínština a emoji) viackrát.
 • Vylepšené zobrazenie kurzora pri posúvaní mimo obrazovky.
 • Rýchle úpravy, okamžité „Nahradiť všetko“ a živý náhľad Markdown, LaTeX a Mermaid."""

@@ -80,7 +80,7 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
     edit_id = r_edit.json()["id"]
     print(f"Created edit ID: {edit_id}")
 
-    # 2. Upload AAB bundle
+    # 2. Upload AAB bundle (or reuse existing bundle if already uploaded)
     aab_size = os.path.getsize(aab_path)
     print(f"Uploading {aab_path} ({aab_size:,} bytes)...")
     with open(aab_path, "rb") as f:
@@ -95,10 +95,17 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
         data=aab_bytes,
         timeout=600,
     )
-    r_upload.raise_for_status()
-    bundle_info = r_upload.json()
-    version_code = bundle_info["versionCode"]
-    print(f"Uploaded bundle versionCode: {version_code} (sha256: {bundle_info.get('sha256')})")
+    if r_upload.status_code in (400, 403, 409) and "already been used" in r_upload.text:
+        r_bundles = requests.get(f"{base_url}/edits/{edit_id}/bundles", headers=headers, timeout=30)
+        r_bundles.raise_for_status()
+        bundles = r_bundles.json().get("bundles", [])
+        version_code = max(int(b["versionCode"]) for b in bundles)
+        print(f"Bundle versionCode {version_code} already uploaded; reusing existing bundle.")
+    else:
+        r_upload.raise_for_status()
+        bundle_info = r_upload.json()
+        version_code = bundle_info["versionCode"]
+        print(f"Uploaded bundle versionCode: {version_code} (sha256: {bundle_info.get('sha256')})")
 
     # 3. Assign bundle to track (and also update production/internal if active)
     tracks_to_update = [track]
