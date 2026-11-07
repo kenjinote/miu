@@ -1890,6 +1890,7 @@ def prepare_testflight_builds_only(app_id):
 def main():
     testflight_only = "--testflight-only" in sys.argv
     ios_only = "--ios-only" in sys.argv
+    macos_only = "--macos-only" in sys.argv
     print("=== App Store Connect Metadata Synchronizer for miu ===")
     headers = get_headers()
     app_id, app_name = get_app_id(headers)
@@ -1899,9 +1900,14 @@ def main():
         print(f"\n=== Completed TestFlight build preparation for v{TARGET_VERSION} (No App Store submission, release notes untouched) ===")
         return
 
-    if not ios_only:
+    if not ios_only and not macos_only:
         sync_app_info_localizations(app_id, app_name, headers)
-    target_platforms = ["IOS"] if ios_only else ["IOS", "MAC_OS"]
+    if ios_only:
+        target_platforms = ["IOS"]
+    elif macos_only:
+        target_platforms = ["MAC_OS"]
+    else:
+        target_platforms = ["IOS", "MAC_OS"]
     print(f"Target platforms for version sync & submission: {target_platforms}")
     targets = get_or_create_editable_versions(app_id, headers, target_platforms=target_platforms)
 

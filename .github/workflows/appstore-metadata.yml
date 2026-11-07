@@ -10,8 +10,8 @@ on:
 
 jobs:
   sync-metadata:
-    name: Sync App Store Connect Localizations & Screenshots (iOS & macOS)
-    runs-on: xcode-27
+    name: Sync App Store Connect Localizations & Submit (macOS 1.0.48)
+    runs-on: ubuntu-latest
     env:
       APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
       APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
@@ -21,11 +21,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Python dependencies & Sync App Store Metadata + Screenshots
+      - name: Install Python dependencies & Sync App Store Metadata + Submit macOS 1.0.48
         if: env.APPSTORE_ISSUER_ID != '' && env.APPSTORE_KEY_ID != '' && env.APPSTORE_PRIVATE_KEY != ''
         run: |
           pip3 install --quiet --break-system-packages pyjwt cryptography requests pillow numpy || pip3 install --quiet pyjwt cryptography requests pillow numpy
-          python3 scripts/appstore_metadata_sync.py --ios-only
+          python3 scripts/appstore_metadata_sync.py --macos-only
           if [ "$SYNC_SCREENSHOTS" = "true" ]; then
             python3 scripts/appstore_screenshots_sync.py --out-dir /tmp/asc_screenshots
           fi
