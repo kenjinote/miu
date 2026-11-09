@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "util.h"
 #include "math_engine.h"
 
@@ -285,6 +285,7 @@ inline std::vector<std::string> splitWrapPieces(const std::string& text) {
         // Try [OPEN]*[CJK][CLOSE]*
         size_t j = i;
         while (j < n && isOpenCodepoint(cps[j].cp)) j++;
+        while (j > i && (j >= n || !isCjkCodepoint(cps[j].cp))) j--;
         if (j < n && isCjkCodepoint(cps[j].cp)) {
             j++;
             while (j < n && isCloseCodepoint(cps[j].cp)) j++;
@@ -295,6 +296,8 @@ inline std::vector<std::string> splitWrapPieces(const std::string& text) {
             while (i < n && isCloseCodepoint(cps[i].cp)) i++;
         } else if (isHintCodepoint(cps[i].cp)) {
             while (i < n && isHintCodepoint(cps[i].cp)) i++;
+        } else {
+            i++;
         }
         while (i < n && isSpace(static_cast<int>(cps[i].cp))) i++;
         size_t pieceEnd = (i < n) ? cps[i].start : text.size();
@@ -488,7 +491,7 @@ inline void parseInlineSpans(std::vector<Span>& line, const std::string& source,
                 } else if (p + 1 < n && source[p] == '/' && source[p + 1] == '>') {
                     validRest = true;
                     p += 2;
-                } else if (p < n && isSpace(static_cast<unsigned char>(source[p]))) {
+                } else if (p < n && isSpaceAtUtf8(source, p)) {
                     while (p < n && source[p] != '<' && source[p] != '>') p++;
                     if (p < n && source[p] == '>') {
                         validRest = true;
@@ -530,8 +533,10 @@ inline void parseInlineSpans(std::vector<Span>& line, const std::string& source,
             char prev = i > 0 ? source[i - 1] : ' ';
             char next = (i + len < n) ? source[i + len] : ' ';
             std::string needle = dbl ? std::string(2, ch) : std::string(1, ch);
-            bool canOpen = isOpen && !isSpace(static_cast<unsigned char>(next)) && source.find(needle, i + len) != std::string::npos;
-            bool canClose = !isOpen && !isSpace(static_cast<unsigned char>(prev));
+            bool nextSpace = (i + len >= n) || isSpaceAtUtf8(source, i + len);
+            bool prevSpace = (i == 0) || isSpaceBeforeUtf8(source, i);
+            bool canOpen = isOpen && !nextSpace && source.find(needle, i + len) != std::string::npos;
+            bool canClose = !isOpen && !prevSpace;
             bool wordy = (ch == '_') && isWord(static_cast<unsigned char>(prev)) && isWord(static_cast<unsigned char>(next));
             if ((canOpen || canClose) && !wordy) {
                 flush();
@@ -652,8 +657,7 @@ inline std::vector<std::string> splitLabelBreaks(const std::string& s) {
             i += 2;
             last = i;
         } else if (i + 3 < s.size() && s[i] == '<' && (s[i + 1] == 'b' || s[i + 1] == 'B') && (s[i + 2] == 'r' || s[i + 2] == 'R')) {
-            size_t p = i + 3;
-            while (p < s.size() && isSpace(static_cast<unsigned char>(s[p]))) p++;
+            size_t p = skipSpacesUtf8(s, i + 3);
             if (p < s.size() && s[p] == '/') p++;
             if (p < s.size() && s[p] == '>') {
                 parts.push_back(s.substr(last, i - last));

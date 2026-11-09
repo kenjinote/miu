@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../layout.h"
 #include "../common_parse.h"
 #include <algorithm>
@@ -167,7 +167,7 @@ inline TokenType rrAccDescr() {
         }
         return i;
       }
-      while (i < n && isSpace(charCodeAt(src, i))) i++;
+      i = skipSpacesUtf8(src, i);
       if (i >= n || src[i] != '{' || i >= unclosed) return -1;
       size_t close = src.find('}', i + 1);
       if (close == std::string::npos) {
@@ -527,11 +527,13 @@ inline int specialSequence(const std::string& src, int at, int) {
   int n = static_cast<int>(src.size());
   if (at >= n || src[at] != '?') return -1;
   bool solid = false;
-  for (int i = at + 1; i < n; i++) {
+  for (int i = at + 1; i < n;) {
     int c = charCodeAt(src, i);
     if (c == 63) return solid ? i + 1 : -1;
     if (c == 59) return -1;
-    if (!isSpace(c)) solid = true;
+    size_t nextI = static_cast<size_t>(i);
+    if (!isSpaceAtUtf8(src, static_cast<size_t>(i), &nextI)) solid = true;
+    i = static_cast<int>(nextI);
   }
   return -1;
 }
@@ -1111,8 +1113,7 @@ inline ParsedGrammar parse(const std::string& src) {
 // ----------------------------------------------------------------------------
 
 inline std::optional<std::string> notationOf(const std::string& source) {
-  size_t p = 0;
-  while (p < source.size() && isSpace(charCodeAt(source, static_cast<int>(p)))) p++;
+  size_t p = skipSpacesUtf8(source, size_t(0));
   std::string rem = toLowerAscii(source.substr(p, 24));
   if (startsWith(rem, "railroad-ebnf-beta")) return "ebnf";
   if (startsWith(rem, "railroad-abnf-beta")) return "abnf";

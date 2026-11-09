@@ -140,7 +140,7 @@ inline std::string preprocessBoxDrawing(const std::string& input) {
             continue;
         } else if (hasAnyBoxChar(normalized)) {
             out.push_back(line);
-        } else if (!normalized.empty() && isSpace(charCodeAt(normalized, 0))) {
+        } else if (!normalized.empty() && isSpaceAtUtf8(normalized, 0)) {
             throw PeleError("Unexpected indentation without box-drawing characters.", "syntax", "treeView", static_cast<int>(i + 1));
         } else {
             out.push_back(line);

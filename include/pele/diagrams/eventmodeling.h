@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../foundation.h"
 
 namespace Pele {
@@ -156,7 +156,7 @@ inline const std::vector<TokenType>& eventModelingTokens() {
                     int q = p + 1;
                     if (q < n && src[q] == '\r') q++;
                     if (q < n && src[q] == '\n') return q + 1;
-                    if (q >= n || isSpace(charCodeAt(src, q))) return p + 1;
+                    if (q >= n || isSpaceAtUtf8(src, static_cast<size_t>(q))) return p + 1;
                 }
                 size_t nl = src.find('\n', static_cast<size_t>(p));
                 if (nl == std::string::npos) return -1;
@@ -176,9 +176,7 @@ inline const std::vector<TokenType>& eventModelingTokens() {
         wsTok.isRegex = true;
         wsTok.hidden = true;
         wsTok.match = [](const std::string& src, int at, int) -> int {
-            int n = static_cast<int>(src.size());
-            int p = at;
-            while (p < n && isSpace(charCodeAt(src, p))) p++;
+            int p = skipSpacesUtf8(src, at);
             return p > at ? p : -1;
         };
 

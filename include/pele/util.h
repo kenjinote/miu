@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <string>
 #include <string_view>
 #include <vector>
@@ -350,6 +350,52 @@ inline int charCodeAtUtf8(const std::string& s, size_t pos, size_t* nextPos = nu
     uint32_t cp = nextCodepoint(s, i);
     if (nextPos) *nextPos = i;
     return static_cast<int>(cp);
+}
+
+inline bool isSpaceAtUtf8(const std::string& s, size_t pos, size_t* nextPos = nullptr) {
+    if (pos >= s.size()) {
+        if (nextPos) *nextPos = pos;
+        return false;
+    }
+    unsigned char b = static_cast<unsigned char>(s[pos]);
+    if (b < 0x80) {
+        if (nextPos) *nextPos = pos + 1;
+        return b == 32 || (b >= 9 && b <= 13);
+    }
+    if ((b & 0xC0) == 0x80) {
+        if (nextPos) *nextPos = pos + 1;
+        return false;
+    }
+    size_t next = pos;
+    int cp = charCodeAtUtf8(s, pos, &next);
+    if (nextPos) *nextPos = next;
+    return isSpace(cp);
+}
+
+inline bool isSpaceBeforeUtf8(const std::string& s, size_t pos) {
+    if (pos == 0 || pos > s.size()) return false;
+    unsigned char b = static_cast<unsigned char>(s[pos - 1]);
+    if (b < 0x80) {
+        return b == 32 || (b >= 9 && b <= 13);
+    }
+    size_t start = pos - 1;
+    while (start > 0 && (static_cast<unsigned char>(s[start]) & 0xC0) == 0x80) start--;
+    size_t dummy = start;
+    return isSpace(charCodeAtUtf8(s, start, &dummy));
+}
+
+inline size_t skipSpacesUtf8(const std::string& s, size_t pos) {
+    while (pos < s.size()) {
+        size_t next = pos;
+        if (!isSpaceAtUtf8(s, pos, &next)) break;
+        pos = next;
+    }
+    return pos;
+}
+
+inline int skipSpacesUtf8(const std::string& s, int pos) {
+    if (pos < 0) return pos;
+    return static_cast<int>(skipSpacesUtf8(s, static_cast<size_t>(pos)));
 }
 
 inline std::string trimStartStr(const std::string& s) {
@@ -771,7 +817,7 @@ inline std::pair<YamlValue, size_t> parseYamlFlow(const std::string& s, size_t p
         while (p < s.size()) {
             char c = s[p];
             if (c == ' ' || c == '\n' || c == '\t' || c == '\r') p++;
-            else if (c == '#' && (p == 0 || isSpace(static_cast<unsigned char>(s[p - 1])))) {
+            else if (c == '#' && (p == 0 || isSpaceBeforeUtf8(s, p))) {
                 size_t nl = s.find('\n', p);
                 p = nl == std::string::npos ? s.size() : nl;
             } else break;
@@ -840,7 +886,7 @@ inline std::pair<YamlValue, size_t> parseYamlFlow(const std::string& s, size_t p
     while (end < s.size()) {
         char c = s[end];
         if (stops.find(c) != std::string::npos && (c != ':' || end + 1 >= s.size() || s[end + 1] == ' ' || s[end + 1] == '\t' || s[end + 1] == '\n' || s[end + 1] == ',' || s[end + 1] == '}' || s[end + 1] == ']')) break;
-        if (c == '#' && end > pos && isSpace(static_cast<unsigned char>(s[end - 1]))) break;
+        if (c == '#' && end > pos && isSpaceBeforeUtf8(s, end)) break;
         end++;
     }
     return {yamlScalar(s.substr(pos, end - pos)), end};
@@ -1095,13 +1141,22 @@ inline std::string dropColorSemicolons(const std::string& text, const std::strin
         while (lineEnd < text.size() && text[lineEnd] != '\n' && text[lineEnd] != '\r') lineEnd++;
         bool afterColon = false;
         size_t hash = std::string::npos;
-        for (size_t j = from + keyword.size(); j < lineEnd; j++) {
+        for (size_t j = from + keyword.size(); j < lineEnd;) {
             unsigned char c = static_cast<unsigned char>(text[j]);
-            if (c == ':') afterColon = true;
-            else if (c == '#') {
+            if (c == ':') {
+                afterColon = true;
+                j++;
+            } else if (c == '#') {
                 if (afterColon) { hash = j; break; }
-            } else if (isSpace(c)) {
-                afterColon = false;
+                j++;
+            } else {
+                size_t nextJ = j;
+                if (isSpaceAtUtf8(text, j, &nextJ)) {
+                    afterColon = false;
+                    j = nextJ;
+                } else {
+                    j++;
+                }
             }
         }
         if (hash != std::string::npos && lineEnd > 0) {
@@ -1169,10 +1224,10 @@ inline bool detectDiagram(const std::string& cleaned, Detected& out) {
             if (s.size() > p.size() && isWord(static_cast<unsigned char>(s[p.size()]))) return false;
         }
         if (spaceOrEnd) {
-            if (s.size() > p.size() && !isSpace(static_cast<unsigned char>(s[p.size()]))) return false;
+            if (s.size() > p.size() && !isSpaceAtUtf8(s, p.size())) return false;
         }
         if (spaceColonOrEnd) {
-            if (s.size() > p.size() && !isSpace(static_cast<unsigned char>(s[p.size()])) && s[p.size()] != ':') return false;
+            if (s.size() > p.size() && !isSpaceAtUtf8(s, p.size()) && s[p.size()] != ':') return false;
         }
         return true;
     };

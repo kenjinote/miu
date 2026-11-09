@@ -194,6 +194,6 @@ jobs:
             -authenticationKeyID "$APPSTORE_KEY_ID" \
             -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" || echo "miu_macOS upload finished or build already exists"
 
-          echo "=== Preparing 1.0.48 Builds on TestFlight (macOS & iOS) & Submitting iOS 1.0.48 for App Review ==="
+          echo "=== Preparing 1.0.49 Builds on TestFlight (macOS & iOS) & Submitting iOS & macOS 1.0.49 for App Review ==="
           python3 scripts/appstore_metadata_sync.py --testflight-only
-          python3 scripts/appstore_metadata_sync.py --ios-only
+          python3 scripts/appstore_metadata_sync.py

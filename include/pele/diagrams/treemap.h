@@ -62,8 +62,7 @@ inline const std::vector<TokenType>& treemapTokens() {
         cdef.match = [](const std::string& src, int at, int) -> int {
             if (!startsWith(src, "classDef", static_cast<size_t>(at))) return -1;
             int n = static_cast<int>(src.size());
-            int p = at + 8;
-            while (p < n && isSpace(charCodeAt(src, p))) p++;
+            int p = skipSpacesUtf8(src, at + 8);
             if (p == at + 8 || p >= n) return -1;
             int c0 = charCodeAt(src, p);
             if (!isLetter(c0) && c0 != '_') return -1;
@@ -72,7 +71,7 @@ inline const std::vector<TokenType>& treemapTokens() {
             while (p < n && isWord(charCodeAt(src, p))) p++;
             if (p - idStart < 2) return -1;
             int afterId = p;
-            while (p < n && isSpace(charCodeAt(src, p))) p++;
+            p = skipSpacesUtf8(src, p);
             if (p > afterId) {
                 while (p < n && src[p] != ';' && src[p] != '\r' && src[p] != '\n') p++;
             }
@@ -236,14 +235,13 @@ inline TreemapAst parseTreemap(const std::string& src) {
         }
         if (r.kind() == T::classDef) {
             std::string raw = r.take();
-            size_t p = 8;
-            while (p < raw.size() && isSpace(static_cast<unsigned char>(raw[p]))) p++;
+            size_t p = skipSpacesUtf8(raw, size_t(8));
             size_t idStart = p;
             while (p < raw.size() && isWord(static_cast<unsigned char>(raw[p]))) p++;
             std::string className = raw.substr(idStart, p - idStart);
             std::string styleText;
             size_t afterId = p;
-            while (p < raw.size() && isSpace(static_cast<unsigned char>(raw[p]))) p++;
+            p = skipSpacesUtf8(raw, p);
             if (p > afterId && p < raw.size()) {
                 size_t end = p;
                 while (end < raw.size() && raw[end] != ';' && raw[end] != '\n' && raw[end] != '\r') end++;

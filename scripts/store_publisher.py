@@ -7,6 +7,43 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.49": {
+        "ja-jp": """miu v1.0.49 リリースノート
+📊 Mermaid 図表プレビューの全角括弧・多言語ラベル折り返し修正と描画安定性の向上
+
+・Mermaid 図表プレビューで全角括弧を含むラベルの折り返し処理を修正:
+  フローチャート等のノードラベルに日本語・韓国語・中国語などの全角文字と全角括弧（（1）、【1】、「1」など）を組み合わせて入力した際（例：A[あいうえおかきくけこ（1）]）、自動折り返し計算で動作が重くなったり応答しなくなったりする問題を修正しました。
+・全33種類の Mermaid ダイアグラムにおける多言語文字の解析を改善:
+  日本語（だ・む・場・校・項など）や多言語の UTF-8 マルチバイト文字が空白と誤認されないよう改善し、ラベル・タイトル・太字／斜体記法が正確に描画されるようになりました。
+・大容量ファイルの高速編集、全角・多言語対応の正規表現検索・一括置換、Markdown / LaTeX / Mermaid リアルタイムプレビュー。""",
+
+        "en-us": """miu v1.0.49 Release Notes
+📊 Mermaid Diagram Full-Width Bracket Wrapping Fix & Multi-Language Rendering Improvements
+
+- Fixed Mermaid Diagram Line-Wrapping Freeze with Full-Width Brackets:
+  Resolved an issue where node labels combining Japanese, Korean, or Chinese text with full-width brackets (such as （1）, 【1】, or 「1」) could cause the live preview to slow down or stop responding during line-wrap calculation.
+- Improved Multi-Byte UTF-8 Character Parsing Across All 33 Mermaid Diagrams:
+  Prevented UTF-8 continuation bytes in Japanese, Korean, Chinese, and other multi-byte characters from being misinterpreted as whitespace in labels, titles, and bold/italic formatting.
+- High-speed editing, accurate Unicode Regex Find & Replace, and smooth Markdown, LaTeX & Mermaid Live Preview.""",
+
+        "zh-hans": """miu v1.0.49 更新日志
+📊 修复 Mermaid 图表全角括号标签换行卡顿并提升多语言渲染稳定性
+
+- 修复 Mermaid 图表全角括号与长文本自动换行卡顿问题：
+  修复了在流程图等节点标签中同时使用中文、日文、韩文与全角括号（如（1）、【1】、「1」等）时，自动换行计算可能导致预览变慢或无响应的问题。
+- 强化全部 33 种 Mermaid 图表的多语言字符解析：
+  防止中日韩等 UTF-8 多字节字符在标签、标题及粗体/斜体语法中被误判为空白字符，确保所有图表准确渲染。
+- 高速编辑、精准的多语言正则表达式查找替换与 Markdown / LaTeX / Mermaid 实时预览。""",
+
+        "ko": """miu v1.0.49 릴리스 노트
+📊 Mermaid 다이어그램 전각 괄호 줄바꿈 멈춤 수정 및 다국어 렌더링 안정성 향상
+
+- Mermaid 다이어그램 전각 괄호 및 긴 라벨 자동 줄바꿈 멈춤 현상 수정:
+  플로차트 등의 노드 라벨에 한국어·일본어·중국어 등 전각 문자와 전각 괄호(（1）, 【1】, 「1」 등)를 함께 입력했을 때 자동 줄바꿈 계산 중 미리보기가 느려지거나 멈추던 문제를 해결했습니다.
+- 전체 33종 Mermaid 다이어그램의 다국어 문자 파싱 강화:
+  UTF-8 다중 바이트 문자가 공백 문자로 오인되지 않도록 개선하여 라벨·제목·굵게/기울임꼴 서식이 정확하게 표시됩니다.
+- 대용량 파일의 빠른 편집, 정확한 다국어 정규식 일괄 치환 및 Markdown / LaTeX / Mermaid 실시간 미리보기."""
+    },
     "1.0.48": {
         "ja-jp": """miu v1.0.48 リリースノート
 🔍 全角文字・多言語テキストの正規表現検索・置換の改善とスクロール表示の修正

@@ -13,7 +13,7 @@ import jwt
 import requests
 
 BUNDLE_ID = "jp.hack.miu"
-TARGET_VERSION = "1.0.48"
+TARGET_VERSION = "1.0.49"
 BASE_URL = "https://api.appstoreconnect.apple.com/v1"
 
 # ============================================================================
@@ -48,11 +48,11 @@ UTF-8やShift_JIS、EUC-JPなど、さまざまな文字コードを自動で判
 miuが、あなたの「書く時間」を少しでも快適にするお手伝いができれば幸いです。"""
 
 JA_WHATS_NEW = """いつも miu をご利用いただきありがとうございます。
-v1.0.48 では、全角文字・多言語文字に対する正規表現検索・置換の改善とスクロール表示の修正を行いました。
+v1.0.49 では、Mermaid 図表プレビューで全角括弧を含むラベルを入力した際の動作改善と、全33種類のダイアグラムにおける多言語文字処理の強化を行いました。
 
-・全角文字・多言語文字の正規表現検索・置換を改善：日本語（ひらがな・カタカナ・漢字・全角記号）、韓国語（ハングル）、中国語、絵文字などを正規表現「.」や文字範囲（[あ-ん] など）で検索・置換した際、1文字が複数文字分に変換されてしまう問題を修正し、正確に1文字単位で置換できるようになりました。
-・スクロール時のカーソル表示を改善：スクロールしてカーソル位置が画面外に見切れた際、表示されている一番上の行先頭にカーソルが表示される問題を修正しました。
-・高速な編集・一括置換・ライブプレビュー：大容量ファイルの編集や一括置換、Markdown / LaTeX数式 / Mermaid図表のリアルタイムプレビューが軽快に動作します。"""
+・Mermaid 図表プレビューの全角括弧・長文ラベル折り返し処理を修正：フローチャート等のノードラベルに日本語・韓国語・中国語などの全角文字と全角括弧（（1）、【1】、「1」など）を組み合わせて入力した際（例：A[あいうえおかきくけこ（1）]）、自動折り返し計算で動作が重くなったり停止したりする問題を修正しました。
+・全33種類の Mermaid ダイアグラムにおける多言語文字の解析を改善：日本語（だ・む・場・校・項など）や多言語の UTF-8 マルチバイト文字が空白と誤認されないよう改善し、ラベル・タイトル・太字／斜体記法が正確に描画されるようになりました。
+・高速な編集・一括置換・ライブプレビュー：大容量ファイルの編集や正規表現による一括置換、Markdown / LaTeX数式 / Mermaid図表のリアルタイムプレビューが軽快に動作します。"""
 
 EN_DESC = """miu is a simple, lightweight text and code editor designed to make everything from quick daily notes to Markdown writing and programming feel effortless.
 
@@ -81,11 +81,11 @@ No ads, no tracking, and no data collection. Everything works 100% offline on yo
 Whether you use it as an everyday notepad or a reliable code editor, we hope miu makes your writing time a little more enjoyable."""
 
 EN_WHATS_NEW = """Thank you for using miu.
-Version 1.0.48 improves multi-language regular expression search & replace and refines cursor display while scrolling:
+Version 1.0.49 fixes a freeze when wrapping Mermaid diagram labels containing full-width brackets and improves multi-language character rendering across all 33 diagram types:
 
-• Accurate Multi-Language Regex Search & Replace: Fixed an issue where "." or character ranges in regular expressions matched individual UTF-8 bytes instead of complete characters—Japanese, Korean, Chinese, accented characters, and emoji are now matched and replaced accurately one character at a time.
-• Improved Cursor Display When Scrolling: Fixed an issue where scrolling the active cursor line off-screen could display a cursor at the start of the top visible line.
-• Fast Editing, Instant "Replace All" & Smooth Markdown / LaTeX / Mermaid Live Preview."""
+• Fixed Mermaid Diagram Line-Wrapping Freeze with Full-Width Brackets: Resolved an issue where node labels combining Japanese, Korean, or Chinese text with full-width brackets (such as （1）, 【1】, or 「1」) could cause the live preview to slow down or stop responding during line-wrap calculation.
+• Improved Multi-Byte UTF-8 Character Parsing Across All 33 Mermaid Diagrams: Prevented UTF-8 continuation bytes in Japanese, Korean, Chinese, and other multi-byte characters from being misinterpreted as whitespace in labels, titles, and bold/italic formatting.
+• Fast Editing, Accurate Multi-Language Regex & Smooth Markdown / LaTeX / Mermaid Live Preview."""
 
 ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无论是记录日常随笔、撰写 Markdown 文档，还是编写程序代码，都能为您提供舒适顺畅的书写体验。
 
@@ -114,11 +114,11 @@ ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无�
 无论是作为日常便签，还是得力的代码编辑器，希望 miu 能陪伴您度过每一段愉快的书写时光。"""
 
 ZH_HANS_WHATS_NEW = """感谢您使用 miu。
-v1.0.48 优化了全角与多语言字符的正则表达式查找替换，并修复了滚动时的光标显示：
+v1.0.49 修复了 Mermaid 图表预览中包含全角括号的中日韩标签在自动换行时可能出现卡顿的问题，并强化了全部 33 种图表的 UTF-8 多字节字符解析：
 
-・完善中文、日文、韩文及全角字符的正则表达式查找与替换：修复了使用正则表达式“.”、字符范围（如 [一-龥]）或量词替换全角字符时，1 个字符被重复替换多次的问题，现在所有多语言字符与表情符号均按单个字符精准匹配和替换。
-・优化滚动时的光标显示：修复了当光标所在行滚出屏幕可视区域时，可视区域第一行行首仍会显示光标的问题。
-・高速编辑、“全部替换”与 Markdown / LaTeX 公式 / Mermaid 图表实时预览。"""
+・修复 Mermaid 图表全角括号与长文本自动换行卡顿问题：修复了在流程图等节点标签中同时使用中文、日文、韩文与全角括号（如（1）、【1】、「1」等）时，自动换行计算可能导致预览变慢或停止响应的问题。
+・强化全部 33 种 Mermaid 图表的多语言字符解析：防止中日韩等 UTF-8 多字节字符在标签、标题及粗体/斜体语法中被误判为空白字符，确保所有图表准确渲染。
+・高速编辑、精准的多语言正则表达式替换与 Markdown / LaTeX 公式 / Mermaid 图表实时预览。"""
 
 ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器。無論是記錄日常隨手筆記、撰寫 Markdown 文章，還是編寫程式碼，都能為您帶來舒適順暢的書寫體驗。
 
@@ -147,11 +147,11 @@ ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器�
 無論是作為日常記事本，還是可靠的程式碼編輯器，希望 miu 能讓您的書寫時光更加愉快。"""
 
 ZH_HANT_WHATS_NEW = """感謝您使用 miu。
-v1.0.48 最佳化了全形與多語言字元的正規表示式尋找取代，並修復了捲動時的游標顯示：
+v1.0.49 修復了 Mermaid 圖表預覽中包含全形括號的中日韓標籤在自動換行時可能出現卡頓的問題，並強化了全部 33 種圖表的 UTF-8 多位元組字元解析：
 
-・完善中文、日文、韓文及全形字元的正規表示式尋找與取代：修復了使用正規表示式「.」、字元範圍（如 [一-龥]）或量詞取代全形字元時，1 個字元被重複取代多次的問題，現在所有多語言字元與表情符號均按單一字元精準比對與取代。
-・最佳化捲動時的游標顯示：修復了當游標所在行捲出畫面可視區域時，可視區域第一行行首仍會顯示游標的問題。
-・高速編輯、「全部取代」與 Markdown / LaTeX 數學公式 / Mermaid 圖表即時預覽。"""
+・修復 Mermaid 圖表全形括號與長文字自動換行卡頓問題：修復了在流程圖等節點標籤中同時使用中文、日文、韓文與全形括號（如（1）、【1】、「1」等）時，自動換行計算可能導致預覽變慢或停止回應的問題。
+・強化全部 33 種 Mermaid 圖表的多語言字元解析：防止中日韓等 UTF-8 多位元組字元在標籤、標題及粗體／斜體語法中被誤判為空白字元，確保所有圖表準確繪製。
+・高速編輯、精準的多語言正規表示式取代與 Markdown / LaTeX 數學公式 / Mermaid 圖表即時預覽。"""
 
 KO_DESC = """miu는 일상의 가벼운 메모부터 Markdown 글쓰기, 프로그래밍까지 편안하게 사용할 수 있는 심플한 텍스트 및 코드 에디터입니다.
 
@@ -181,11 +181,11 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 등 다양한 문자 인코딩을 자동으로 
 miu가 당신의 글쓰기 시간을 조금 더 기분 좋게 만들어 드릴 수 있기를 바랍니다."""
 
 KO_WHATS_NEW = """언제나 miu를 이용해 주셔서 감사합니다.
-v1.0.48에서는 한글·전각 문자에 대한 정규식 찾기/바꾸기 정확도를 개선하고 스크롤 시 커서 표시를 수정했습니다.
+v1.0.49에서는 Mermaid 다이어그램 미리보기에서 전각 괄호가 포함된 다국어 라벨을 줄바꿈할 때의 멈춤 현상을 수정하고, 33종 모든 다이어그램의 다국어 문자 처리를 개선했습니다.
 
-・한글·전각 문자 및 다국어 정규식 찾기/바꾸기 개선: 정규식 '.' 또는 문자 범위([가-힣] 등)로 전각 문자를 변환할 때 1글자가 여러 번 중복 변환되던 문제를 수정하여, 한글·일본어·중국어·이모지 등이 정확히 1글자 단위로 매칭 및 치환됩니다.
-・스크롤 시 화면 밖 커서 표시 수정: 스크롤하여 실제 커서 위치가 화면 밖으로 벗어났을 때 화면 맨 위 줄의 맨 앞에 커서가 표시되던 현상을 수정했습니다.
-・빠른 편집, 초고속 '모두 바꾸기' 및 Markdown / LaTeX 수식 / Mermaid 다이어그램 실시간 미리보기."""
+・Mermaid 다이어그램 전각 괄호 및 긴 라벨 자동 줄바꿈 멈춤 현상 수정: 플로차트 등의 노드 라벨에 한국어·일본어·중국어 등 전각 문자와 전각 괄호(（1）, 【1】, 「1」 등)를 함께 입력했을 때 자동 줄바꿈 계산 중 미리보기가 무거워지거나 멈추던 문제를 해결했습니다.
+・전체 33종 Mermaid 다이어그램의 다국어 문자 파싱 강화: UTF-8 다중 바이트 문자가 공백으로 오인되지 않도록 개선하여 라벨·제목·굵게/기울임꼴 서식이 정확하게 표시됩니다.
+・빠른 편집, 다국어 정규식 '모두 바꾸기' 및 Markdown / LaTeX 수식 / Mermaid 다이어그램 실시간 미리보기."""
 
 DE_DESC = """miu ist ein schlichter, leichtgewichtiger Text- und Code-Editor, mit dem alltägliche Notizen, Markdown-Texte und Programmierarbeiten gleichermaßen angenehm von der Hand gehen.
 
@@ -214,11 +214,11 @@ Keine Werbung, kein Tracking und keine Datenübertragung. Alle Funktionen arbeit
 Ob als täglicher Notizblock oder als verlässlicher Code-Editor – wir hoffen, dass miu Ihnen das Schreiben jeden Tag ein Stück angenehmer macht."""
 
 DE_WHATS_NEW = """Vielen Dank, dass Sie miu nutzen.
-Version 1.0.48 verbessert die reguläre Ausdruckssuche für mehrsprachige Zeichen und die Cursoranzeige beim Scrollen:
+Version 1.0.49 behebt ein Einfrieren beim Zeilenumbruch in Mermaid-Diagrammen mit Vollbreiten-Klammern und verbessert die UTF-8-Zeichenverarbeitung in allen 33 Diagrammtypen:
 
-• Präzise Regex-Suche & -Ersetzung für Vollbreiten- und Unicode-Zeichen: Ein Problem wurde behoben, bei dem „.“ oder Zeichenbereiche mehrbytige UTF-8-Zeichen mehrfach ersetzten. Japanische, koreanische, chinesische Zeichen, Umlaute und Emojis werden nun exakt zeichenweise verarbeitet.
-• Verbesserte Cursoranzeige beim Scrollen: Wenn sich der Cursor außerhalb des sichtbaren Bereichs befindet, wird er nicht mehr am Anfang der obersten sichtbaren Zeile angezeigt.
-• Schnelles Bearbeiten, sofortiges „Alle ersetzen“ und flüssige Live-Vorschau für Markdown, LaTeX & Mermaid."""
+• Zeilenumbruch in Mermaid-Diagrammen korrigiert: Ein Problem wurde behoben, bei dem Knotenbeschriftungen mit japanischen, koreanischen oder chinesischen Zeichen und Vollbreiten-Klammern (z. B. （1）, 【1】) zu Verzögerungen oder zum Einfrieren der Vorschau führen konnten.
+• Verbesserte UTF-8-Verarbeitung in allen 33 Mermaid-Diagrammtypen: Mehrbytige UTF-8-Zeichen werden in Beschriftungen, Titeln und Fett-/Kursivformatierungen zuverlässig erkannt.
+• Schnelles Bearbeiten, präzises Regex-Suchen/Ersetzen und flüssige Live-Vorschau für Markdown, LaTeX & Mermaid."""
 
 FR_DESC = """miu est un éditeur de texte et de code simple et léger, conçu pour rendre aussi agréables la prise de notes quotidienne, la rédaction en Markdown et la programmation.
 
@@ -247,11 +247,11 @@ Aucune publicité, aucun suivi et aucune collecte de données. Tout fonctionne �
 Comme bloc-notes de tous les jours ou comme éditeur de code fiable, nous espérons que miu rendra vos moments d’écriture plus agréables."""
 
 FR_WHATS_NEW = """Merci d’utiliser miu.
-La version 1.0.48 améliore la recherche/remplacement par expression régulière multilingue et l’affichage du curseur :
+La version 1.0.49 corrige un blocage lors du retour à la ligne des diagrammes Mermaid contenant des parenthèses pleine chasse et améliore le rendu multilingue sur les 33 types de diagrammes :
 
-• Expressions régulières précises pour les caractères pleine chasse et Unicode : correction d’un problème où « . » ou les plages de caractères remplaçaient plusieurs fois un même caractère UTF-8 multi-octets (japonais, coréen, chinois, caractères accentués et émojis).
-• Affichage du curseur lors du défilement : le curseur ne s’affiche plus au début de la première ligne visible lorsqu’il est hors de l’écran.
-• Édition rapide, « Tout remplacer » instantané et aperçu en direct Markdown, LaTeX et Mermaid."""
+• Correction du retour à la ligne dans les diagrammes Mermaid : résolution d’un problème où les étiquettes combinant du texte japonais, coréen ou chinois avec des parenthèses pleine chasse (telles que （1）, 【1】, 「1」) pouvaient ralentir ou figer l’aperçu.
+• Analyse UTF-8 améliorée sur les 33 types de diagrammes Mermaid : prise en charge précise des caractères UTF-8 multi-octets dans les étiquettes, titres et styles gras/italique.
+• Édition rapide, expressions régulières précises et aperçu en direct Markdown, LaTeX et Mermaid."""
 
 ES_DESC = """miu es un editor de texto y código sencillo y ligero, pensado para que desde tus notas rápidas del día a día hasta la escritura en Markdown y la programación resulten cómodas y agradables.
 
@@ -280,11 +280,11 @@ Sin anuncios, sin rastreo y sin envío de datos. Todo funciona 100 % sin conexi�
 Ya sea como tu bloc de notas diario o como un editor de código de confianza, esperamos que miu haga más agradable tu tiempo de escritura."""
 
 ES_WHATS_NEW = """Gracias por usar miu.
-La versión 1.0.48 mejora la búsqueda y reemplazo con expresiones regulares en varios idiomas y la visualización del cursor:
+La versión 1.0.49 corrige un bloqueo al ajustar líneas en diagramas Mermaid con paréntesis de ancho completo y mejora el renderizado multilingüe en los 33 tipos de diagramas:
 
-• Expresiones regulares precisas para caracteres de ancho completo y Unicode: se corrigió un problema por el cual «.» o los rangos de caracteres reemplazaban varias veces un mismo carácter multibyte (japonés, coreano, chino, acentos y emojis).
-• Visualización mejorada del cursor al desplazar: el cursor ya no aparece al inicio de la primera línea visible cuando la línea real del cursor está fuera de la pantalla.
-• Edición rápida, «Reemplazar todo» instantáneo y vista previa en vivo para Markdown, LaTeX y Mermaid."""
+• Corrección del ajuste de línea en diagramas Mermaid: se resolvió un problema por el cual las etiquetas con texto en japonés, coreano o chino y paréntesis de ancho completo (como （1）, 【1】, 「1」) podían ralentizar o congelar la vista previa.
+• Mejor análisis UTF-8 en los 33 tipos de diagramas Mermaid: procesamiento preciso de caracteres multibyte en etiquetas, títulos y formato en negrita/cursiva.
+• Edición rápida, expresiones regulares precisas y vista previa en vivo para Markdown, LaTeX y Mermaid."""
 
 IT_DESC = """miu è un editor di testo e codice semplice e leggero, pensato per rendere piacevole ogni attività: dagli appunti quotidiani alla scrittura in Markdown, fino alla programmazione.
 
@@ -313,11 +313,11 @@ Nessuna pubblicità, nessun tracciamento e nessuna raccolta dati. Tutto funziona
 Come blocco note quotidiano o come affidabile editor di codice, speriamo che miu renda più piacevole il tuo tempo dedicato alla scrittura."""
 
 IT_WHATS_NEW = """Grazie per aver scelto miu.
-La versione 1.0.48 migliora la ricerca e sostituzione Regex multilingua e la visualizzazione del cursore durante lo scorrimento:
+La versione 1.0.49 risolve un blocco nell’a capo automatico dei diagrammi Mermaid con parentesi a larghezza intera e migliora il rendering multilingua in tutti i 33 tipi di diagrammi:
 
-• Espressioni regolari precise per caratteri a larghezza intera e Unicode: risolto un problema per cui «.» o gli intervalli di caratteri sostituivano più volte un singolo carattere multi-byte (giapponese, coreano, cinese, caratteri accentati ed emoji).
-• Visualizzazione migliorata del cursore durante lo scorrimento: il cursore non appare più all’inizio della prima riga visibile quando si trova fuori dallo schermo.
-• Modifica rapida, «Sostituisci tutto» istantaneo e anteprima live per Markdown, LaTeX e Mermaid."""
+• Correzione dell’a capo nei diagrammi Mermaid: risolto un problema per cui le etichette con testo giapponese, coreano o cinese e parentesi a larghezza intera (come （1）, 【1】, 「1」) potevano rallentare o bloccare l’anteprima.
+• Analisi UTF-8 multi-byte migliorata in tutti i 33 tipi di diagrammi Mermaid: gestione precisa dei caratteri multi-byte in etichette, titoli e stile grassetto/corsivo.
+• Modifica rapida, ricerca Regex precisa e anteprima live per Markdown, LaTeX e Mermaid."""
 
 PT_DESC = """O miu é um editor de texto e código simples e leve, criado para tornar desde as suas anotações diárias até a escrita em Markdown e a programação muito mais confortáveis.
 
@@ -346,11 +346,11 @@ Sem anúncios, sem rastreamento e sem coleta de dados. Tudo funciona 100% offlin
 Seja como seu bloco de notas do dia a dia ou como um editor de código confiável, esperamos que o miu torne o seu momento de escrever ainda mais agradável."""
 
 PT_WHATS_NEW = """Obrigado por usar o miu.
-A versão 1.0.48 melhora a localização e substituição por expressões regulares multilíngues e a exibição do cursor:
+A versão 1.0.49 corrige um travamento na quebra de linha de diagramas Mermaid com parênteses de largura total e melhora a renderização multilíngue nos 33 tipos de diagramas:
 
-• Expressões regulares precisas para caracteres de largura total e Unicode: corrigido um problema em que «.» ou intervalos de caracteres substituíam um único caractere multibyte várias vezes (japonês, coreano, chinês, acentos e emojis).
-• Exibição aprimorada do cursor ao rolar: o cursor não é mais exibido no início da primeira linha visível quando está fora da tela.
-• Edição rápida, «Substituir tudo» instantâneo e pré-visualização em tempo real para Markdown, LaTeX e Mermaid."""
+• Correção da quebra de linha em diagramas Mermaid: resolvido um problema em que rótulos combinando texto em japonês, coreano ou chinês com parênteses de largura total (como （1）, 【1】, 「1」) podiam deixar a pré-visualização lenta ou sem resposta.
+• Análise UTF-8 multibyte aprimorada nos 33 tipos de diagramas Mermaid: processamento preciso de caracteres multibyte em rótulos, títulos e negrito/itálico.
+• Edição rápida, expressões regulares precisas e pré-visualização em tempo real para Markdown, LaTeX e Mermaid."""
 
 RU_DESC = """miu — это простой и лёгкий текстовый и кодовый редактор, созданный для комфортной работы: от быстрых повседневных заметок и текстов в Markdown до программирования.
 
@@ -379,11 +379,11 @@ RU_DESC = """miu — это простой и лёгкий текстовый и
 В качестве ежедневного блокнота или надёжного редактора кода — надеемся, что miu сделает вашу работу с текстом ещё приятнее."""
 
 RU_WHATS_NEW = """Спасибо, что пользуетесь miu.
-В версии 1.0.48 улучшены поиск и замена по регулярным выражениям для многобайтовых символов и отображение курсора:
+В версии 1.0.49 исправлено зависание при переносе строк в диаграммах Mermaid с полноширинными скобками и улучшена поддержка символов UTF-8 во всех 33 типах диаграмм:
 
-• Точная работа регулярных выражений с полноширинными и многоязычными символами: исправлена ошибка, из-за которой шаблон «.» и диапазоны символов заменяли один символ UTF-8 несколько раз (японский, корейский, китайский, кириллица и эмодзи).
-• Улучшено отображение курсора при прокрутке: курсор больше не отображается в начале верхней видимой строки, когда он находится за пределами экрана.
-• Быстрое редактирование, мгновенная «Заменить все» и живой предпросмотр Markdown, LaTeX и Mermaid."""
+• Исправлен перенос строк в диаграммах Mermaid: устранена проблема, из-за которой метки с японским, корейским или китайским текстом и полноширинными скобками (например, （1）, 【1】, 「1」) могли замедлять работу предпросмотра.
+• Улучшена обработка многобайтовых символов UTF-8 во всех 33 типах диаграмм Mermaid: точное отображение меток, заголовков и полужирного/курсивного текста.
+• Быстрое редактирование, точный поиск Regex и живой предпросмотр Markdown, LaTeX и Mermaid."""
 
 NL_DESC = """miu is een eenvoudige, lichtgewicht tekst- en code-editor waarmee u prettig werkt aan dagelijkse notities, Markdown-documenten en programmeerprojecten.
 
@@ -412,11 +412,11 @@ Geen advertenties, geen tracking en geen gegevensverzameling. Alles werkt 100% o
 Of u miu nu gebruikt als dagelijks notitieblok of als betrouwbare code-editor, we hopen dat het uw schrijfmomenten net wat aangenamer maakt."""
 
 NL_WHATS_NEW = """Bedankt voor het gebruiken van miu.
-Versie 1.0.48 verbetert het zoeken en vervangen met reguliere expressies voor meertalige tekens en de cursorweergave:
+Versie 1.0.49 verhelpt het vastlopen bij regelterugloop in Mermaid-diagrammen met volledige-breedte-haakjes en verbetert de UTF-8-weergave in alle 33 diagramtypen:
 
-• Nauwkeurige reguliere expressies voor volledige-breedte- en Unicode-tekens: probleem opgelost waarbij ‘.’ of tekenbereiken één multi-byte UTF-8-teken meerdere keren vervingen (Japans, Koreaans, Chinees, accenttekens en emoji’s).
-• Verbeterde cursorweergave tijdens scrollen: de cursor wordt niet meer aan het begin van de bovenste zichtbare regel getoond wanneer de cursorregel buiten beeld is.
-• Snel bewerken, direct ‘Alles vervangen’ en vloeiende live-voorvertoning voor Markdown, LaTeX en Mermaid."""
+• Regelterugloop in Mermaid-diagrammen gecorrigeerd: probleem opgelost waarbij labels met Japanse, Koreaanse of Chinese tekst en haakjes over de volledige breedte (zoals （1）, 【1】, 「1」) de voorvertoning konden vertragen of bevriezen.
+• Verbeterde verwerking van multi-byte UTF-8-tekens in alle 33 Mermaid-diagramtypen: nauwkeurige weergave van labels, titels en vet/cursief-opmaak.
+• Snel bewerken, nauwkeurige reguliere expressies en vloeiende live-voorvertoning voor Markdown, LaTeX en Mermaid."""
 
 SV_DESC = """miu är en enkel och lättviktig text- och kodredigerare som gör allt från dagliga anteckningar till Markdown-skrivande och programmering bekvämt och smidigt.
 
@@ -445,11 +445,11 @@ Inga annonser, ingen spårning och ingen datainsamling. Allt fungerar 100 % offl
 Som dagligt anteckningsblock eller pålitlig kodredigerare – vi hoppas att miu gör din skrivstund lite trevligare."""
 
 SV_WHATS_NEW = """Tack för att du använder miu.
-Version 1.0.48 förbättrar sökning/ersättning med reguljära uttryck för flerspråkiga tecken samt markörvisning vid rullning:
+Version 1.0.49 åtgärdar frysning vid radbrytning i Mermaid-diagram med helbreddsparenteser och förbättrar UTF-8-renderingen i alla 33 diagramtyper:
 
-• Exakta reguljära uttryck för helbredds- och Unicode-tecken: åtgärdade ett problem där ”.” eller teckenintervall ersatte ett enskilt flerbytes UTF-8-tecken flera gånger (japanska, koreanska, kinesiska, å/ä/ö och emojis).
-• Förbättrad markörvisning vid rullning: markören visas inte längre i början av den översta synliga raden när markörraden är utanför skärmen.
-• Snabb redigering, omedelbar ”Ersätt alla” och smidig förhandsvisning för Markdown, LaTeX och Mermaid."""
+• Åtgärdad radbrytning i Mermaid-diagram: löste ett problem där etiketter med japansk, koreansk eller kinesisk text och helbreddsparenteser (t.ex. （1）, 【1】, 「1」) kunde göra förhandsvisningen långsam eller sluta svara.
+• Förbättrad tolkning av flerbytes UTF-8-tecken i alla 33 Mermaid-diagramtyper: korrekt hantering av etiketter, rubriker och fet/kursiv stil.
+• Snabb redigering, exakta reguljära uttryck och smidig förhandsvisning för Markdown, LaTeX och Mermaid."""
 
 DA_DESC = """miu er en enkel og let tekst- og kodeeditor, der gør alt fra daglige noter til Markdown-skrivning og programmering behageligt og ubesværet.
 
@@ -478,11 +478,11 @@ Ingen reklamer, ingen sporing og ingen dataindsamling. Alt fungerer 100 % offlin
 Uanset om du bruger miu som daglig notesblok eller som kodeeditor, håber vi, at den gør din skrivetid lidt mere behagelig."""
 
 DA_WHATS_NEW = """Tak fordi du bruger miu.
-Version 1.0.48 forbedrer søgning/erstatning med regulære udtryk for flersprogede tegn samt markørvisning ved rulning:
+Version 1.0.49 retter frysning ved linjeskift i Mermaid-diagrammer med fuldbreddeparenteser og forbedrer UTF-8-gengivelsen i alle 33 diagramtyper:
 
-• Præcise regulære udtryk for fuldbredde- og Unicode-tegn: rettet en fejl, hvor "." eller tegnintervaller erstattede et enkelt multi-byte UTF-8-tegn flere gange (japansk, koreansk, kinesisk, æ/ø/å og emojis).
-• Forbedret markørvisning under rulning: markøren vises ikke længere i starten af den øverste synlige linje, når markørlinjen er rullet ud af skærmen.
-• Hurtig redigering, øjeblikkelig "Erstat alle" og flydende live-forhåndsvisning af Markdown, LaTeX og Mermaid."""
+• Rettet linjeskift i Mermaid-diagrammer: løst et problem, hvor etiketter med japansk, koreansk eller kinesisk tekst og fuldbreddeparenteser (f.eks. （1）, 【1】, 「1」) kunne gøre forhåndsvisningen langsom eller få den til at stoppe.
+• Forbedret fortolkning af multi-byte UTF-8-tegn i alle 33 Mermaid-diagramtyper: præcis visning af etiketter, titler og fed/kursiv formatering.
+• Hurtig redigering, præcise regulære udtryk og flydende live-forhåndsvisning af Markdown, LaTeX og Mermaid."""
 
 NO_DESC = """miu er et enkelt og lett tekst- og koderedigeringsprogram som gjør alt fra daglige notater til Markdown-skriving og programmering behagelig og uanstrengt.
 
@@ -511,11 +511,11 @@ Ingen reklame, ingen sporing og ingen datainnsamling. Alt fungerer 100 % offline
 Enten du bruker miu som daglig notisblokk eller som en pålitelig kodeeditor, håper vi den gjør skrivetiden din litt hyggeligere."""
 
 NO_WHATS_NEW = """Takk for at du bruker miu.
-Versjon 1.0.48 forbedrer søk/erstatt med regulære uttrykk for flerspråklige tegn og markørvisning ved rulling:
+Versjon 1.0.49 retter frysing ved linjebryting i Mermaid-diagrammer med fullbreddeparenteser og forbedrer UTF-8-visningen i alle 33 diagramtyper:
 
-• Presise regulære uttrykk for fullbredde- og Unicode-tegn: rettet en feil der «.» eller tegnintervaller erstattet et enkelt flerbytes UTF-8-tegn flere ganger (japansk, koreansk, kinesisk, æ/ø/å og emojier).
-• Forbedret markørvisning ved rulling: markøren vises ikke lenger i starten av den øverste synlige linjen når markørlinjen er utenfor skjermen.
-• Rask redigering, umiddelbar «Erstatt alle» og jevn sanntidsvisning for Markdown, LaTeX og Mermaid."""
+• Rettet linjebryting i Mermaid-diagrammer: løst et problem der etiketter med japansk, koreansk eller kinesisk tekst og fullbreddeparenteser (f.eks. （1）, 【1】, 「1」) kunne gjøre forhåndsvisningen treg eller få den til å slutte å svare.
+• Forbedret tolkning av flerbytes UTF-8-tegn i alle 33 Mermaid-diagramtyper: nøyaktig visning av etiketter, titler og fet/kursiv formatering.
+• Rask redigering, presise regulære uttrykk og jevn sanntidsvisning for Markdown, LaTeX og Mermaid."""
 
 FI_DESC = """miu on yksinkertainen ja kevyt teksti- ja koodieditori, joka tekee päivittäisistä muistiinpanoista, Markdown-kirjoittamisesta ja ohjelmoinnista miellyttävää ja vaivatonta.
 
@@ -544,11 +544,11 @@ Ei mainoksia, ei seurantaa eikä tiedonkeruuta. Kaikki toimii 100 % offline-tila
 Käytitpä miuta päivittäisenä muistiona tai luotettavana koodieditorina, toivomme sen tekevän kirjoitushetkistäsi hieman mukavampia."""
 
 FI_WHATS_NEW = """Kiitos, että käytät miuta.
-Versio 1.0.48 parantaa monikielistä säännöllisten lausekkeiden hakua/korvausta sekä kohdistimen näyttöä vieritettäessä:
+Versio 1.0.49 korjaa Mermaid-kaavioiden rivityksen jumiutumisen täyden leveyden sulkeita käytettäessä ja parantaa UTF-8-tukea kaikissa 33 kaaviotyypissä:
 
-• Tarkat säännölliset lausekkeet täyden leveyden ja Unicode-merkeille: korjattu ongelma, jossa ”.” tai merkkivälit korvasivat yhden monimuotoisen UTF-8-merkin useaan kertaan (suomen ä/ö, japani, korea, kiina ja emojit).
-• Parannettu kohdistimen näkyvyys vierityksen aikana: kohdistinta ei enää näytetä ylimmän näkyvän rivin alussa, kun kohdistinrivi on näytön ulkopuolella.
-• Nopea muokkaus, välitön ”Korvaa kaikki” ja sulava Markdown-, LaTeX- ja Mermaid-esikatselu."""
+• Korjattu Mermaid-kaavioiden rivitys: ratkaistu ongelma, jossa japanin-, korean- tai kiinankielistä tekstiä ja täyden leveyden sulkeita (kuten （1）, 【1】, 「1」) yhdistävät otsikot saattoivat hidastaa tai pysäyttää esikatselun.
+• Parannettu monitavuisten UTF-8-merkkien käsittely kaikissa 33 Mermaid-kaaviotyypissä: otsikot ja lihavoitu/kursivoitu teksti piirtyvät tarkasti.
+• Nopea muokkaus, tarkat säännölliset lausekkeet ja sulava Markdown-, LaTeX- ja Mermaid-esikatselu."""
 
 PL_DESC = """miu to prosty, lekki edytor tekstu i kodu, zaprojektowany tak, aby codzienne notatki, pisanie w Markdown oraz programowanie były wygodne i przyjemne.
 
@@ -577,11 +577,11 @@ Brak reklam, brak śledzenia i brak gromadzenia danych. Wszystko działa w 100% 
 Zarówno jako codzienny notatnik, jak i niezawodny edytor kodu – mamy nadzieję, że miu uprzyjemni Twój czas spędzony na pisaniu."""
 
 PL_WHATS_NEW = """Dziękujemy za korzystanie z aplikacji miu.
-Wersja 1.0.48 usprawnia wyszukiwanie i zamianę z użyciem wyrażeń regularnych dla znaków wielojęzycznych oraz wyświetlanie kursora:
+Wersja 1.0.49 naprawia zawieszanie się zawijania wierszy w diagramach Mermaid z nawiasami pełnej szerokości i ulepsza obsługę znaków UTF-8 we wszystkich 33 typach diagramów:
 
-• Dokładne wyrażenia regularne dla znaków pełnej szerokości i Unicode: naprawiono błąd, przez który „.” lub zakresy znaków zamieniały pojedynczy znak wielobajtowy UTF-8 wielokrotnie (polskie znaki, japoński, koreański, chiński i emoji).
-• Poprawione wyświetlanie kursora podczas przewijania: kursor nie jest już wyświetlany na początku pierwszego widocznego wiersza, gdy znajduje się poza ekranem.
-• Szybka edycja, błyskawiczne „Zamień wszystko” i podgląd na żywo dla Markdown, LaTeX oraz Mermaid."""
+• Naprawiono zawijanie tekstu w diagramach Mermaid: rozwiązano problem, przez który etykiety łączące tekst japoński, koreański lub chiński z nawiasami pełnej szerokości (np. （1）, 【1】, 「1」) mogły powodować brak odpowiedzi podglądu.
+• Ulepszona analiza znaków UTF-8 we wszystkich 33 typach diagramów Mermaid: dokładne wyświetlanie etykiet, tytułów oraz pogrubienia/kursywy.
+• Szybka edycja, dokładne wyrażenia regularne i podgląd na żywo dla Markdown, LaTeX oraz Mermaid."""
 
 CS_DESC = """miu je jednoduchý a lehký textový a kódový editor, se kterým je psaní každodenních poznámek, textů v Markdownu i programování pohodlné a příjemné.
 
@@ -610,11 +610,11 @@ Hledání a nahrazování (s regulárními výrazy), více kurzorů, čísla ř�
 Ať už miu používáte jako každodenní zápisník nebo jako spolehlivý editor kódu, věříme, že vám zpříjemní každou chvíli u psaní."""
 
 CS_WHATS_NEW = """Děkujeme, že používáte miu.
-Verze 1.0.48 vylepšuje vyhledávání a nahrazování regulárními výrazy pro vícejazyčné znaky a zobrazení kurzoru při posouvání:
+Verze 1.0.49 opravuje zamrzání při zalamování řádků v diagramech Mermaid s plnošířkovými závorkami a vylepšuje podporu UTF-8 ve všech 33 typech diagramů:
 
-• Přesné regulární výrazy pro znaky s plnou šířkou a Unicode: opraven problém, kdy vzor „.“ nebo rozsahy znaků nahrazovaly jeden vícebajtový znak UTF-8 vícekrát (české znaky, japonština, korejština, čínština a emoji).
-• Vylepšené zobrazení kurzoru při posouvání: kurzor se již nezobrazuje na začátku prvního viditelného řádku, pokud je mimo obrazovku.
-• Rychlé úpravy, okamžité „Nahradit vše“ a plynulý živý náhled pro Markdown, LaTeX a Mermaid."""
+• Opraveno zalamování štítků v diagramech Mermaid: vyřešen problém, kdy štítky s japonským, korejským nebo čínským textem a závorkami s plnou šířkou (např. （1）, 【1】, 「1」) mohly zpomalit nebo zastavit živý náhled.
+• Vylepšené zpracování vícebajtových znaků UTF-8 ve všech 33 typech diagramů Mermaid: přesné vykreslování štítků, názvů a tučného/kurzívního písma.
+• Rychlé úpravy, přesné regulární výrazy a plynulý živý náhled pro Markdown, LaTeX a Mermaid."""
 
 HU_DESC = """A miu egy egyszerű, könnyed szöveg- és kódszerkesztő, amely a napi gyors jegyzeteléstől a Markdown-szövegíráson át a programozásig minden helyzetben kényelmes használatot nyújt.
 
@@ -643,11 +643,11 @@ Nincsenek reklámok, nincs követés és nincs adatgyűjtés. Minden funkció 10
 Akár mindennapi jegyzettömbként, akár megbízható kódszerkesztőként használja, reméljük, hogy a miu kellemesebbé teszi az írással töltött időt."""
 
 HU_WHATS_NEW = """Köszönjük, hogy a miu alkalmazást használja.
-Az 1.0.48-as verzió javítja a többnyelvű reguláris kifejezéses keresést/cserét és a kurzor megjelenítését görgetéskor:
+Az 1.0.49-es verzió javítja a Mermaid diagramok sortörési lefagyását teljes szélességű zárójelek esetén, és fejleszti az UTF-8 karakterkezelést mind a 33 diagramtípusban:
 
-• Pontos reguláris kifejezések teljes szélességű és Unicode karakterekhez: javítottuk azt a hibát, amelynél a „.” vagy a karaktertartományok többször cseréltek le egyetlen többbájtos UTF-8 karaktert (magyar ékezetes betűk, japán, koreai, kínai és emojik).
-• Javított kurzormegjelenítés görgetés közben: a kurzor többé nem jelenik meg a legfelső látható sor elején, amikor a képernyőn kívül van.
-• Gyors szerkesztés, azonnali „Összes cseréje” és folyamatos Markdown, LaTeX és Mermaid élő előnézet."""
+• Mermaid diagram sortörési javítás: megoldottuk azt a hibát, amelynél a japán, koreai vagy kínai szöveget teljes szélességű zárójelekkel (pl. （1）, 【1】, 「1」) kombináló címkék megállíthatták az előnézetet.
+• Továbbfejlesztett többbájtos UTF-8 karakterfeldolgozás mind a 33 Mermaid diagramtípusban: pontos címke-, cím- és félkövér/dőlt megjelenítés.
+• Gyors szerkesztés, pontos reguláris kifejezések és folyamatos Markdown, LaTeX és Mermaid élő előnézet."""
 
 RO_DESC = """miu este un editor de text și cod simplu și ușor, creat pentru ca notițele zilnice, redactarea în Markdown și programarea să fie cât mai plăcute și confortabile.
 
@@ -676,11 +676,11 @@ Fără reclame, fără urmărire și fără colectare de date. Totul funcționea
 Fie ca agendă de zi cu zi, fie ca editor de cod de încredere, sperăm că miu vă va face timpul petrecut scriind mai plăcut."""
 
 RO_WHATS_NEW = """Vă mulțumim că folosiți miu.
-Versiunea 1.0.48 îmbunătățește căutarea și înlocuirea cu expresii regulate pentru caractere multilingve și afișarea cursorului:
+Versiunea 1.0.49 rezolvă blocarea la încadrarea liniilor în diagramele Mermaid cu paranteze cu lățime completă și îmbunătățește randarea UTF-8 în toate cele 33 de tipuri de diagrame:
 
-• Expresii regulate precise pentru caractere Unicode și cu lățime completă: s-a rezolvat o problemă prin care „.” sau intervalele de caractere înlocuiau de mai multe ori un singur caracter UTF-8 multi-byte (diacritice, japoneză, coreeană, chineză și emoji).
-• Afișare îmbunătățită a cursorului la derulare: cursorul nu mai apare la începutul primei linii vizibile atunci când este în afara ecranului.
-• Editare rapidă, „Înlocuiește tot” instantaneu și previzualizare în timp real pentru Markdown, LaTeX și Mermaid."""
+• Corecție pentru încadrarea liniilor în diagramele Mermaid: etichetele care combină text japonez, coreean sau chinez cu paranteze cu lățime completă (precum （1）, 【1】, 「1」) sunt afișate instantaneu fără încetiniri.
+• Analiză UTF-8 multi-byte îmbunătățită în toate cele 33 de tipuri de diagrame Mermaid: afișare precisă a etichetelor, titlurilor și stilului aldin/cursiv.
+• Editare rapidă, expresii regulate precise și previzualizare în timp real pentru Markdown, LaTeX și Mermaid."""
 
 EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επεξεργαστής κειμένου και κώδικα, σχεδιασμένος ώστε οι καθημερινές σημειώσεις, η συγγραφή σε Markdown και ο προγραμματισμός να γίνονται άνετα και ευχάριστα.
 
@@ -709,11 +709,11 @@ EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επ�
 Είτε ως καθημερινό σημειωματάριο είτε ως αξιόπιστος επεξεργαστής κώδικα, ελπίζουμε το miu να κάνει τον χρόνο που αφιερώνετε στο γράψιμο πιο ευχάριστο."""
 
 EL_WHATS_NEW = """Σας ευχαριστούμε που χρησιμοποιείτε το miu.
-Η έκδοση 1.0.48 βελτιώνει την αναζήτηση/αντικατάσταση Regex για πολυγλωσσικούς χαρακτήρες και την εμφάνιση του δρομέα:
+Η έκδοση 1.0.49 διορθώνει το πάγωμα αναδίπλωσης γραμμών σε διαγράμματα Mermaid με παρενθέσεις πλήρους πλάτους και βελτιώνει την απόδοση UTF-8 στους 33 τύπους διαγραμμάτων:
 
-• Ακριβείς κανονικές εκφράσεις (Regex) για χαρακτήρες πλήρους πλάτους και Unicode: διορθώθηκε ένα ζήτημα όπου το «.» ή τα εύρη χαρακτήρων αντικαθιστούσαν πολλαπλές φορές έναν χαρακτήρα UTF-8 (ελληνικά, ιαπωνικά, κορεατικά, κινεζικά και emoji).
-• Βελτιωμένη εμφάνιση δρομέα κατά την κύλιση: ο δρομέας δεν εμφανίζεται πλέον στην αρχή της πρώτης ορατής γραμμής όταν βρίσκεται εκτός οθόνης.
-• Γρήγορη επεξεργασία, ακαριαία «Αντικατάσταση όλων» και ζωντανή προεπισκόπηση Markdown, LaTeX & Mermaid."""
+• Διόρθωση αναδίπλωσης γραμμών σε διαγράμματα Mermaid: επιλύθηκε ζήτημα όπου ετικέτες με ιαπωνικό, κορεατικό ή κινεζικό κείμενο και παρενθέσεις πλήρους πλάτους (π.χ. （1）, 【1】, 「1」) επιβράδυναν την προεπισκόπηση.
+• Βελτιωμένη ανάλυση χαρακτήρων UTF-8 πολλαπλών byte και στους 33 τύπους διαγραμμάτων Mermaid: ακριβής απόδοση ετικετών, τίτλων και έντονης/πλάγιας γραφής.
+• Γρήγορη επεξεργασία, ακριβείς εκφράσεις Regex και ζωντανή προεπισκόπηση Markdown, LaTeX & Mermaid."""
 
 TR_DESC = """miu; günlük kısa notlardan Markdown yazılarına ve programlamaya kadar her türlü metin çalışmasını keyifli ve rahat hale getirmek için tasarlanmış sade ve hafif bir metin ve kod düzenleyicidir.
 
@@ -742,11 +742,11 @@ Reklam, takip veya veri toplama yoktur. Tüm özellikler cihazınızda %100 çev
 İster günlük not defteriniz ister güvenilir kod düzenleyiciniz olarak, miu'nun yazma zamanınızı daha keyifli hale getirmesini dileriz."""
 
 TR_WHATS_NEW = """miu'yu kullandığınız için teşekkür ederiz.
-1.0.48 sürümü, çok dilli düzenli ifade (Regex) arama/değiştirme doğruluğunu ve kaydırma sırasında imleç görünümünü iyileştirir:
+1.0.49 sürümü, tam genişlikli parantezler içeren Mermaid diyagram etiketlerinde satır kaydırma donmasını giderir ve 33 diyagram türünün tamamında UTF-8 desteğini geliştirir:
 
-• Tam Genişlikli ve Çok Dilli Karakterlerde Doğru Regex Eşleşmesi: Düzenli ifadelerde "." veya karakter aralıkları kullanıldığında tek bir UTF-8 karakterinin birden fazla kez değiştirilmesine neden olan sorun giderildi (Türkçe, Japonca, Korece, Çince ve emojiler).
-• Kaydırma Sırasında İmleç Görünümü İyileştirildi: İmleç ekran dışına kaydırıldığında en üstteki görünür satırın başında imleç görünmesi sorunu düzeltildi.
-• Hızlı düzenleme, anında "Tümünü Değiştir" ve akıcı Markdown, LaTeX ve Mermaid Canlı Önizlemesi."""
+• Mermaid Diyagramlarında Satır Kaydırma Düzeltmesi: Japonca, Korece veya Çince metinleri tam genişlikli parantezlerle (ör. （1）, 【1】, 「1」) birleştiren etiketlerde oluşan yavaşlama ve yanıt vermeme sorunu çözüldü.
+• Tüm 33 Mermaid Diyagram Türünde Çok Baytlı UTF-8 Karakter Desteği: Etiketlerde, başlıklarda ve kalın/italik biçimlendirmede çok baytlı karakterler doğru şekilde işlenir.
+• Hızlı düzenleme, doğru Regex eşleşmesi ve akıcı Markdown, LaTeX ve Mermaid Canlı Önizlemesi."""
 
 UK_DESC = """miu — це простий і легкий редактор тексту та коду, створений для того, щоб щоденні нотатки, написання текстів у Markdown і програмування були максимально зручними та приємними.
 
@@ -775,11 +775,11 @@ UK_DESC = """miu — це простий і легкий редактор тек
 Як щоденний записник або надійний редактор коду — сподіваємося, що miu зробить ваш час за письмом приємнішим."""
 
 UK_WHATS_NEW = """Дякуємо, що користуєтеся miu.
-У версії 1.0.48 покращено пошук і заміну за регулярними виразами для багатомовних символів та відображення курсора:
+У версії 1.0.49 виправлено зависання під час перенесення рядків у діаграмах Mermaid із повноширинними дужками та покращено обробку UTF-8 в усіх 33 типах діаграм:
 
-• Точна робота регулярних виразів із повноширинними та Unicode-символами: виправлено помилку, через яку «.» або діапазони символів замінювали один символ UTF-8 декілька разів (українські, японські, корейські, китайські символи та емодзі).
-• Покращено відображення курсора під час прокручування: курсор більше не з’являється на початку верхнього видимого рядка, коли він за межами екрана.
-• Швидке редагування, миттєва «Замінити все» та живий перегляд Markdown, LaTeX і Mermaid."""
+• Виправлено перенесення рядків у діаграмах Mermaid: усунено проблему, через яку мітки з японським, корейським або китайським текстом і повноширинними дужками (наприклад, （1）, 【1】, 「1」) могли сповільнювати перегляд.
+• Покращено обробку багатобайтових символів UTF-8 в усіх 33 типах діаграм Mermaid: точне відображення міток, заголовків і жирного/курсивного тексту.
+• Швидке редагування, точний пошук Regex і живий перегляд Markdown, LaTeX і Mermaid."""
 
 VI_DESC = """miu là trình soạn thảo văn bản và mã nguồn đơn giản, gọn nhẹ, mang lại cảm giác thoải mái cho mọi nhu cầu từ ghi chú nhanh hàng ngày, viết tài liệu Markdown cho đến lập trình.
 
@@ -808,11 +808,11 @@ Không quảng cáo, không theo dõi và không thu thập dữ liệu. Mọi t
 Dù dùng làm sổ tay hàng ngày hay trình sửa code đáng tin cậy, hy vọng miu sẽ giúp khoảng thời gian viết lách của bạn thêm phần dễ chịu."""
 
 VI_WHATS_NEW = """Cảm ơn bạn đã luôn sử dụng miu.
-Phiên bản 1.0.48 cải thiện độ chính xác Tìm kiếm/Thay thế Regex đa ngôn ngữ và hiển thị con trỏ khi cuộn trang:
+Phiên bản 1.0.49 khắc phục lỗi treo khi ngắt dòng nhãn biểu đồ Mermaid có dấu ngoặc toàn giác và cải thiện hiển thị UTF-8 trên toàn bộ 33 loại biểu đồ:
 
-• Khớp biểu thức chính quy (Regex) chính xác cho ký tự toàn角 và đa ngôn ngữ: Đã khắc phục lỗi khi dùng "." hoặc phạm vi ký tự trong Regex khiến 1 ký tự UTF-8 nhiều byte (tiếng Việt, Nhật, Hàn, Trung và emoji) bị thay thế lặp lại nhiều lần.
-• Cải thiện hiển thị con trỏ khi cuộn trang: Đã sửa lỗi con trỏ hiển thị ở đầu dòng đầu tiên đang thấy khi dòng chứa con trỏ thực tế ở ngoài màn hình.
-• Chỉnh sửa tốc độ cao, "Thay thế tất cả" tức thì và Xem trước trực tiếp Markdown, LaTeX & Mermaid."""
+• Sửa lỗi ngắt dòng biểu đồ Mermaid với dấu ngoặc toàn giác: Đã khắc phục lỗi khi nhãn kết hợp chữ tiếng Nhật, Hàn, Trung với dấu ngoặc toàn giác (như （1）, 【1】, 「1」) khiến xem trước bị chậm hoặc ngừng phản hồi.
+• Cải thiện phân tích ký tự UTF-8 nhiều byte trên 33 loại biểu đồ Mermaid: Hiển thị chính xác nhãn, tiêu đề và chữ đậm/nghiêng.
+• Chỉnh sửa tốc độ cao, Tìm/Thay thế Regex chính xác và Xem trước trực tiếp Markdown, LaTeX & Mermaid."""
 
 TH_DESC = """miu คือแอปแก้ไขข้อความและโค้ดที่เรียบง่ายและทำงานได้อย่างรวดเร็ว ออกแบบมาเพื่อให้ทั้งการจดบันทึกประจำวัน การเขียนบทความด้วย Markdown และการเขียนโปรแกรมเป็นเรื่องที่สบายตาและน่าใช้งาน
 
@@ -841,11 +841,11 @@ TH_DESC = """miu คือแอปแก้ไขข้อความและ
 ไม่ว่าจะใช้เป็นสมุดโน้ตประจำวันหรือเครื่องมือเขียนโค้ดคู่ใจ เราหวังว่า miu จะช่วยให้ช่วงเวลาแห่งการเขียนของคุณน่าเพลิดเพลินยิ่งขึ้น"""
 
 TH_WHATS_NEW = """ขอบคุณที่ใช้บริการ miu เสมอมา
-ในเวอร์ชัน 1.0.48 เราได้ปรับปรุงความแม่นยำในการค้นหา/แทนที่ด้วย Regex สำหรับอักขระหลายภาษา และแก้ไขการแสดงเคอร์เซอร์ขณะเลื่อนหน้าจอ:
+ในเวอร์ชัน 1.0.49 เราได้แก้ไขปัญหาค้างเมื่อตัดบรรทัดป้ายกำกับแผนภาพ Mermaid ที่มีวงเล็บแบบเต็มความกว้าง และปรับปรุงการแสดงผล UTF-8 ในแผนภาพทั้ง 33 ประเภท:
 
-• จับคู่และแทนที่ด้วยนิพจน์ทั่วไป (Regex) อย่างแม่นยำทุกภาษา: แก้ไขปัญหาการใช้ "." หรือช่วงอักขระใน Regex ที่เคยแปลงอักขระ UTF-8 แบบหลายไบต์ (ไทย ญี่ปุ่น เกาหลี จีน และอิโมจิ) ซ้ำหลายครั้งต่อ 1 ตัวอักษร
-• ปรับปรุงการแสดงเคอร์เซอร์เมื่อเลื่อนหน้าจอ: แก้ไขปัญหาเคอร์เซอร์แสดงที่ต้นบรรทัดแรกของหน้าจอเมื่อบรรทัดที่มีเคอร์เซอร์จริงอยู่นอกหน้าจอ
-• แก้ไขข้อความรวดเร็ว "แทนที่ทั้งหมด" ทันใจ พร้อมพรีวิวสด Markdown, LaTeX และ Mermaid"""
+• แก้ไขการตัดบรรทัดในแผนภาพ Mermaid: แก้ไขปัญหาเมื่อป้ายกำกับโหนดที่มีข้อความภาษาญี่ปุ่น เกาหลี หรือจีน ร่วมกับวงเล็บแบบเต็มความกว้าง (เช่น （1）, 【1】, 「1」) ทำให้พรีวิวช้าลงหรือหยุดตอบสนอง
+• ปรับปรุงการประมวลผลอักขระ UTF-8 แบบหลายไบต์ในแผนภาพ Mermaid ทั้ง 33 ประเภท: แสดงป้ายกำกับ ชื่อเรื่อง และตัวหนา/ตัวเอียงได้อย่างถูกต้อง
+• แก้ไขข้อความรวดเร็ว ค้นหา/แทนที่ด้วย Regex แม่นยำ พร้อมพรีวิวสด Markdown, LaTeX และ Mermaid"""
 
 ID_DESC = """miu adalah editor teks dan kode yang sederhana serta ringan, dirancang agar nyaman digunakan mulai dari mencatat ide harian, menulis dokumen Markdown, hingga pemrograman.
 
@@ -874,11 +874,11 @@ Tanpa iklan, tanpa pelacakan, dan tanpa pengumpulan data. Semua fitur berjalan 1
 Baik sebagai buku catatan sehari-hari maupun editor kode andalan, semoga miu dapat membuat waktu menulis Anda menjadi lebih menyenangkan."""
 
 ID_WHATS_NEW = """Terima kasih telah menggunakan miu.
-Versi 1.0.48 meningkatkan akurasi Cari/Ganti Regex multibahasa serta tampilan kursor saat menggulir:
+Versi 1.0.49 memperbaiki masalah macet saat memotong baris label diagram Mermaid dengan tanda kurung lebar penuh dan meningkatkan rendering UTF-8 di 33 jenis diagram:
 
-• Pencocokan Regex yang Akurat untuk Karakter Lebar Penuh & Unicode: Memperbaiki masalah saat menggunakan "." atau rentang karakter dalam Regex yang sebelumnya mengganti satu karakter UTF-8 multibyte (Jepang, Korea, Mandarin, aksen, dan emoji) beberapa kali.
-• Tampilan Kursor Lebih Baik Saat Menggulir: Kursor tidak lagi muncul di awal baris teratas yang terlihat saat baris kursor sebenarnya berada di luar layar.
-• Pengeditan cepat, "Ganti Semua" instan, dan Pratinjau Langsung Markdown, LaTeX & Mermaid."""
+• Perbaikan Pemotongan Baris Diagram Mermaid: Mengatasi masalah ketika label yang menggabungkan teks Jepang, Korea, atau Mandarin dengan tanda kurung lebar penuh (seperti （1）, 【1】, 「1」) menyebabkan pratinjau melambat atau berhenti merespons.
+• Peningkatan Penguraian UTF-8 Multibyte di 33 Jenis Diagram Mermaid: Menampilkan label, judul, dan teks tebal/miring secara akurat.
+• Pengeditan cepat, Cari/Ganti Regex akurat, dan Pratinjau Langsung Markdown, LaTeX & Mermaid."""
 
 MS_DESC = """miu ialah penyunting teks dan kod yang ringkas serta ringan, direka untuk memberikan keselesaan sama ada ketika mencatat nota harian, menulis dokumen Markdown mahupun melakukan pengaturcaraan.
 
@@ -907,11 +907,11 @@ Tiada iklan, tiada penjejakan dan tiada pengumpulan data. Semua ciri berfungsi 1
 Sama ada sebagai buku nota harian atau penyunting kod yang boleh dipercayai, kami berharap miu menjadikan masa menulis anda lebih menyenangkan."""
 
 MS_WHATS_NEW = """Terima kasih kerana menggunakan miu.
-Versi 1.0.48 meningkatkan ketepatan Cari/Ganti Regex berbilang bahasa serta paparan kursor semasa menatal:
+Versi 1.0.49 memperbaiki masalah pegun semasa membalut baris label diagram Mermaid dengan kurungan lebar penuh dan meningkatkan paparan UTF-8 dalam semua 33 jenis diagram:
 
-• Padanan Regex yang Tepat untuk Aksara Lebar Penuh & Unicode: Memperbaiki masalah apabila menggunakan "." atau julat aksara dalam Regex yang sebelum ini menggantikan satu aksara UTF-8 berbilang bait (Jepun, Korea, Cina, aksara beraksen dan emoji) beberapa kali.
-• Paparan Kursor Lebih Baik Semasa Menatal: Kursor tidak lagi muncul pada permulaan baris teratas yang kelihatan apabila baris kursor sebenar berada di luar skrin.
-• Penyuntingan pantas, "Ganti Semua" serta-merta dan Pratonton Langsung Markdown, LaTeX & Mermaid."""
+• Pembaikan Pembalutan Baris Diagram Mermaid: Menyelesaikan masalah apabila label yang menggabungkan teks Jepun, Korea atau Cina dengan tanda kurungan lebar penuh (seperti （1）, 【1】, 「1」) menyebabkan pratonton menjadi perlahan atau berhenti bertindak balas.
+• Peningkatan Penghuraian UTF-8 Berbilang Bait dalam 33 Jenis Diagram Mermaid: Memaparkan label, tajuk dan teks tebal/condong dengan tepat.
+• Penyuntingan pantas, Cari/Ganti Regex tepat dan Pratonton Langsung Markdown, LaTeX & Mermaid."""
 
 HI_DESC = """miu एक सरल और हल्का टेक्स्ट व कोड एडिटर है, जिसे रोज़मर्रा के छोटे नोट्स से लेकर Markdown लेखन और प्रोग्रामिंग तक हर काम को सहज और आरामदायक बनाने के लिए डिज़ाइन किया गया है।
 
@@ -940,11 +940,11 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 और अन्य एन्कोडिंग
 चाहे आप इसे दैनिक नोटपैड के रूप में उपयोग करें या एक भरोसेमंद कोड एडिटर के रूप में, हमें उम्मीद है कि miu आपके लिखने के समय को और सुखद बनाएगा।"""
 
 HI_WHATS_NEW = """miu का उपयोग करने के लिए धन्यवाद।
-संस्करण 1.0.48 में बहुभाषी रेगेक्स (Regex) खोज/बदलाव की सटीकता और स्क्रॉल करते समय कर्सर प्रदर्शन में सुधार किया गया है:
+संस्करण 1.0.49 में पूर्ण-चौड़ाई वाले कोष्ठकों के साथ Mermaid डायग्राम लेबल लाइन-रैपिंग की समस्या को ठीक किया गया है और सभी 33 डायग्राम प्रकारों में UTF-8 रेंडरिंग में सुधार किया गया है:
 
-• पूर्ण-चौड़ाई और बहुभाषी यूनिकोड अक्षरों के लिए सटीक रेगेक्स मिलान: रेगेक्स में "." या अक्षर श्रेणियों का उपयोग करने पर एक मल्टी-बाइट अक्षर (हिंदी, जापानी, कोरियाई, चीनी और इमोजी) के कई बार बदलने की समस्या को ठीक किया गया है।
-• स्क्रॉल करते समय कर्सर दृश्यता में सुधार: कर्सर वाली पंक्ति के स्क्रीन से बाहर होने पर सबसे ऊपर दिखने वाली पंक्ति की शुरुआत में कर्सर दिखने की समस्या को ठीक किया गया है।
-• तेज़ संपादन, तुरंत "सभी बदलें" और सहज Markdown, LaTeX व Mermaid लाइव प्रीव्यू।"""
+• Mermaid डायग्राम लाइन-रैपिंग सुधार: जापानी, कोरियाई या चीनी पाठ के साथ पूर्ण-चौड़ाई वाले कोष्ठक (जैसे （1）, 【1】, 「1」) होने पर प्रीव्यू के धीमा होने या रुकने की समस्या को ठीक किया गया है।
+• सभी 33 Mermaid डायग्राम प्रकारों में मल्टी-बाइट UTF-8 अक्षर पार्सिंग में सुधार: लेबल, शीर्षक और बोल्ड/इटैलिक पाठ की सटीक रेंडरिंग।
+• तेज़ संपादन, सटीक रेगेक्स खोज/बदलाव और सहज Markdown, LaTeX व Mermaid लाइव प्रीव्यू।"""
 
 SUPPORT_URL = "https://github.com/kenjinote/miu"
 

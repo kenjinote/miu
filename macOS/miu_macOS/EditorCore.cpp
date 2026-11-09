@@ -24,7 +24,7 @@
 #include <arm_neon.h>
 #endif
 
-const std::wstring APP_VERSION = L"v1.0.48";
+const std::wstring APP_VERSION = L"v1.0.49";
 const std::wstring APP_TITLE = L"miu";
 
 using MiuCore::SanitizeUtf8;

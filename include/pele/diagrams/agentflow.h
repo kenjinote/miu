@@ -299,12 +299,11 @@ inline bool isBlockScalarHeaderLine(const std::string& code) {
     // /:\s*[>|][\d+-]*\s*$/
     size_t colon = code.rfind(':');
     if (colon == std::string::npos) return false;
-    size_t p = colon + 1;
-    while (p < code.size() && isSpace(static_cast<unsigned char>(code[p]))) p++;
+    size_t p = skipSpacesUtf8(code, colon + 1);
     if (p >= code.size() || (code[p] != '>' && code[p] != '|')) return false;
     p++;
     while (p < code.size() && (isDigit(static_cast<unsigned char>(code[p])) || code[p] == '+' || code[p] == '-')) p++;
-    while (p < code.size() && isSpace(static_cast<unsigned char>(code[p]))) p++;
+    p = skipSpacesUtf8(code, p);
     return p == code.size();
 }
 
@@ -792,7 +791,7 @@ public:
             out.push_back(text[i]);
             if (text[i] == '\n') {
                 i++;
-                while (i < text.size() && isSpace(static_cast<unsigned char>(text[i])) && text[i] != '\n') i++;
+                while (i < text.size() && text[i] != '\n' && isSpaceAtUtf8(text, i, &i)) {}
             } else {
                 i++;
             }
@@ -2168,7 +2167,11 @@ inline AgentTokens tokenize(const std::string& src) {
                     advance(np);
                 } else {
                     size_t q = p + 1;
-                    while (q < n && !Flowchart::detail::isSpaceAt(src, q)) q++;
+                    while (q < n) {
+                        size_t nq = q;
+                        if (Flowchart::detail::isSpaceAt(src, q, &nq)) break;
+                        q = nq;
+                    }
                     emitFlat(CLICK, q);
                 }
                 break;

@@ -56,10 +56,10 @@ AR_DESC = """miu هو محرر نصوص وأكواد بسيط وخفيف، مص�
 • خصوصية تامة
 بدون إعلانات، وبدون تتبع، وبدون جمع بيانات. جميع الميزات تعمل بنسبة 100% دون اتصال بالإنترنت على جهازك."""
 
-AR_WHATS_NEW = """شكراً لاستخدامك miu. يحسّن الإصدار 1.0.48 دقة البحث والاستبدال بالتعبيرات النمطية (Regex) وعرض المؤشر:
-• مطابقة Regex دقيقة للأحرف متعددة اللغات والعريضة: إصلاح مشكلة استبدال الحرف الواحد عدة مرات عند استخدام "." أو نطاقات الأحرف مع العربية واليابانية والكورية والصينية والرموز التعبيرية.
-• تحسين عرض المؤشر عند التمرير خارج الشاشة.
-• تحرير سريع و«استبدال الكل» فوري ومعاينة مباشرة لـ Markdown وLaTeX وMermaid."""
+AR_WHATS_NEW = """شكراً لاستخدامك miu. يصلح الإصدار 1.0.49 توقف التفاف النص في مخططات Mermaid ويحسّن دعم UTF-8:
+• إصلاح التفاف النص في مخططات Mermaid: حل مشكلة بطء أو توقف المعاينة عند احتواء التسميات على أحرف يابانية أو كورية أو صينية مع أقواس كاملة العرض مثل （1） و【1】.
+• تحسين تحليل أحرف UTF-8 متعددة البايت في جميع أنواع مخططات Mermaid الـ 33.
+• تحرير سريع وبحث Regex دقيق ومعاينة مباشرة لـ Markdown وLaTeX وMermaid."""
 
 HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנועד להפוך כל משימה – מרישום הערות יומיות מהירות ועד כתיבת מסמכי Markdown ותכנות – לנוחה ונעימה.
 
@@ -85,10 +85,10 @@ HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנוע
 • פרטיות מלאה
 ללא פרסומות, ללא מעקב וללא איסוף נתונים. הכל פועל 100% אופליין במכשיר שלכם."""
 
-HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.48 משפרת את דיוק החיפוש וההחלפה בביטויים רגולריים (Regex) ואת תצוגת הסמן:
-• התאמת Regex מדויקת לתווים רב-לשוניים: תוקנה בעיה שבה "." או טווחי תווים החליפו תו UTF-8 בודד מספר פעמים (עברית, יפנית, קוריאנית, סינית ואימוג'י).
-• שיפור תצוגת הסמן בעת גלילה מחוץ למסך.
-• עריכה מהירה, "החלף הכל" מיידי ותצוגה מקדימה חיה של Markdown, LaTeX ו-Mermaid."""
+HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.49 מתקנת קפיאה בגלישת שורות בתרשימי Mermaid ומשפרת תמיכה ב-UTF-8:
+• תיקון גלישת שורות בתרשימי Mermaid: נפתרה בעיה שבה תוויות עם טקסט ביפנית, קוריאנית או סינית וסוגריים ברוחב מלא (כגון （1）, 【1】) גרמו להאטה או לעצירה של התצוגה המקדימה.
+• שיפור פענוח תווי UTF-8 מרובי-בתים בכל 33 סוגי תרשימי Mermaid.
+• עריכה מהירה, חיפוש Regex מדויק ותצוגה מקדימה חיה של Markdown, LaTeX ו-Mermaid."""
 
 SK_DESC = """miu je jednoduchý a ľahký textový a kódový editor, s ktorým je písanie každodenných poznámok, textov v Markdowne aj programovanie pohodlné a príjemné.
 
@@ -114,10 +114,10 @@ Hľadanie a nahrádzanie (s regulárnymi výrazmi), viac kurzorov, čísla riadk
 • Súkromie na prvom mieste
 Žiadne reklamy, žiadne sledovanie a žiadny zber dát. Všetko funguje 100 % offline priamo vo vašom zariadení."""
 
-SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.48 prináša presnejšie regulárne výrazy a opravu kurzora:
-• Presné vyhľadávanie a nahradzovanie Regex pre viacbajtové znaky: opravená chyba, pri ktorej vzor „.“ alebo rozsahy znakov nahrádzali jeden znak UTF-8 (slovenčina, japončina, kórejčina, čínština a emoji) viackrát.
-• Vylepšené zobrazenie kurzora pri posúvaní mimo obrazovky.
-• Rýchle úpravy, okamžité „Nahradiť všetko“ a živý náhľad Markdown, LaTeX a Mermaid."""
+SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.49 opravuje zalamovanie riadkov v diagramoch Mermaid a zlepšuje podporu UTF-8:
+• Opravené zalamovanie štítkov v diagramoch Mermaid: vyriešený problém, pri ktorom štítky s japonským, kórejským alebo čínskym textom a plnošírkovými zátvorkami (napr. （1）, 【1】) spomaľovali náhľad.
+• Vylepšené spracovanie viacbajtových znakov UTF-8 vo všetkých 33 typoch diagramov Mermaid.
+• Rýchle úpravy, presné Regex a živý náhľad Markdown, LaTeX a Mermaid."""
 
 # ============================================================================
 # Short Descriptions (Strictly <= 80 characters for Google Play)
@@ -210,149 +210,149 @@ def adapt_desc_for_android(text: str) -> str:
     return out
 
 
-# Localized Android Release Notes for v1.0.48 (versionCode 55), strictly <= 500 chars each
+# Localized Android Release Notes for v1.0.49 (versionCode 56), strictly <= 500 chars each
 ANDROID_RELEASE_NOTES = {
-    "ja-JP": """いつも miu をご利用いただきありがとうございます。v1.0.48 では正規表現検索・置換の改善と表示修正を行いました。
-・全角文字・多言語文字の正規表現検索・置換を改善：日本語・韓国語・中国語・絵文字などを正規表現「.」や文字範囲（[あ-ん] など）で置換した際、1文字が複数文字分に変換される問題を修正し、正確に1文字単位で置換されます。
-・スクロールしてカーソルが画面外に出た際のカーソル表示を改善しました。
-・大容量ファイルの高速編集、瞬時に完了する「すべて置換」、Markdown / LaTeX / Mermaid ライブプレビュー。""",
+    "ja-JP": """いつも miu をご利用いただきありがとうございます。v1.0.49 では Mermaid 図表プレビューの動作改善を行いました。
+・Mermaid 図表で全角括弧を含むラベルの折り返し処理を修正：日本語・韓国語・中国語などの全角文字と全角括弧（（1）、【1】、「1」など）を組み合わせたラベル（例：A[あいうえおかきくけこ（1）]）で動作が重くなったり停止したりする問題を修正しました。
+・全33種類の Mermaid 図表で UTF-8 マルチバイト文字の解析と描画安定性を強化しました。
+・高速編集、正規表現による一括置換、Markdown / LaTeX / Mermaid ライブプレビュー。""",
 
-    "en-US": """Thank you for using miu. Version 1.0.48 improves multi-language regex accuracy and scrolling cursor display:
-• Accurate Multi-Language Regex Search & Replace: Fixed an issue where "." or character ranges in regex replaced a single multi-byte character (Japanese, Korean, Chinese, accented text, emoji) multiple times.
-• Fixed cursor display when the cursor line is scrolled off-screen.
-• High-speed editing, instant "Replace All", and smooth Markdown, LaTeX & Mermaid Live Preview.""",
+    "en-US": """Thank you for using miu. Version 1.0.49 fixes Mermaid diagram label wrapping and improves UTF-8 rendering:
+• Fixed Mermaid Diagram Wrapping Freeze: Resolved an issue where node labels combining Japanese, Korean, or Chinese text with full-width brackets (e.g. （1）, 【1】, 「1」) could slow down or freeze the preview.
+• Improved multi-byte UTF-8 character parsing across all 33 Mermaid diagram types.
+• Fast editing, accurate Regex Find & Replace, and Markdown, LaTeX & Mermaid Live Preview.""",
 
-    "zh-CN": """感谢您使用 miu。v1.0.48 优化了多语言正则表达式查找替换与滚动光标显示：
-・完善全角与多语言字符的正则查找替换：修复了使用正则表达式“.”或字符范围（如 [一-龥]）替换中文、日文、韩文、全角符号及表情符号时，1 个字符被重复替换多次的问题，现可按单字符精准匹配替换。
-・优化了光标所在行滚出可视区域时的光标显示。
-・高速大文件编辑、瞬间完成的“全部替换”及 Markdown / LaTeX / Mermaid 分屏实时预览。""",
+    "zh-CN": """感谢您使用 miu。v1.0.49 修复了 Mermaid 图表全角括号标签换行卡顿并提升了多语言渲染稳定性：
+・修复 Mermaid 图表全角括号与长文本换行卡顿问题：修复了在流程图等节点标签中同时使用中日韩文字与全角括号（如（1）、【1】、「1」等）时，自动换行计算可能导致预览变慢或无响应的问题。
+・强化全部 33 种 Mermaid 图表的 UTF-8 多字节字符解析，确保标签、标题与粗斜体准确渲染。
+・高速大文件编辑、精准正则替换及 Markdown / LaTeX / Mermaid 实时预览。""",
 
-    "zh-TW": """感謝您使用 miu。v1.0.48 最佳化了多語言正規表示式尋找取代與捲動游標顯示：
-・完善全形與多語言字元的正規尋找取代：修復了使用正規表示式「.」或字元範圍（如 [一-龥]）取代中文、日文、韓文、全形符號及表情符號時，1 個字元被重複取代多次的問題，現可按單一字元精準比對取代。
-・最佳化了游標所在行捲出可視區域時的游標顯示。
-・高速大檔案編輯、瞬間完成的「全部取代」及 Markdown / LaTeX / Mermaid 分割即時預覽。""",
+    "zh-TW": """感謝您使用 miu。v1.0.49 修復了 Mermaid 圖表全形括號標籤換行卡頓並提升了多語言繪製穩定性：
+・修復 Mermaid 圖表全形括號與長文字換行卡頓問題：修復了在流程圖等節點標籤中同時使用中日韓文字與全形括號（如（1）、【1】、「1」等）時，自動換行計算可能導致預覽變慢或停止回應的問題。
+・強化全部 33 種 Mermaid 圖表的 UTF-8 多位元組字元解析，確保標籤、標題與粗斜體準確繪製。
+・高速大檔案編輯、精準正規取代及 Markdown / LaTeX / Mermaid 即時預覽。""",
 
-    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다. v1.0.48에서는 정규식 정확도 개선 및 커서 표시 수정을 진행했습니다.
-・한글·전각 문자 정규식 찾기/바꾸기 개선: 정규식 '.' 또는 문자 범위([가-힣] 등)로 전각 문자를 변환할 때 1글자가 여러 번 중복 변환되던 문제를 수정하여 한글·일본어·중국어·이모지가 정확히 1글자 단위로 치환됩니다.
-・스크롤하여 커서가 화면 밖으로 벗어났을 때의 커서 표시를 수정했습니다.
-・빠른 편집, 초고속 '모두 바꾸기' 및 Markdown / LaTeX / Mermaid 실시간 미리보기.""",
+    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다. v1.0.49에서는 Mermaid 다이어그램 줄바꿈 멈춤 수정 및 다국어 렌더링 개선을 진행했습니다.
+・Mermaid 전각 괄호 라벨 줄바꿈 멈춤 현상 수정: 한국어·일본어·중국어 등 전각 문자와 전각 괄호(（1）, 【1】, 「1」 등)가 함께 포함된 노드 라벨에서 자동 줄바꿈 계산 중 미리보기가 느려지거나 멈추던 문제를 해결했습니다.
+・전체 33종 Mermaid 다이어그램에서 UTF-8 다중 바이트 문자 파싱을 강화했습니다.
+・빠른 편집, 다국어 정규식 치환 및 Markdown / LaTeX / Mermaid 실시간 미리보기.""",
 
-    "de-DE": """Vielen Dank, dass Sie miu nutzen. Version 1.0.48 verbessert die Regex-Genauigkeit und die Cursoranzeige:
-• Präzise mehrsprachige Regex-Suche & -Ersetzung: Ein Problem wurde behoben, bei dem „.“ oder Zeichenbereiche ein einzelnes UTF-8-Zeichen (Umlaute, Japanisch, Koreanisch, Chinesisch, Emojis) mehrfach ersetzten.
-• Verbesserte Cursoranzeige, wenn die Cursorzeile aus dem Bild gescrollt wird.
-• Schnelles Bearbeiten, sofortiges „Alle ersetzen“ und Live-Vorschau für Markdown, LaTeX & Mermaid.""",
+    "de-DE": """Vielen Dank, dass Sie miu nutzen. Version 1.0.49 korrigiert den Zeilenumbruch in Mermaid-Diagrammen und verbessert die UTF-8-Unterstützung:
+• Zeilenumbruch in Mermaid-Diagrammen korrigiert: Beschriftungen mit CJK-Text und Vollbreiten-Klammern (z. B. （1）, 【1】) führen nicht mehr zum Einfrieren der Vorschau.
+• Verbesserte Verarbeitung von mehrbytigen UTF-8-Zeichen in allen 33 Mermaid-Diagrammtypen.
+• Schnelles Bearbeiten, präzise Regex-Suche und Live-Vorschau für Markdown, LaTeX & Mermaid.""",
 
-    "fr-FR": """Merci d’utiliser miu. La version 1.0.48 améliore la précision des regex multilingues et l’affichage du curseur :
-• Expressions régulières précises : correction d’un problème où « . » ou les plages de caractères remplaçaient plusieurs fois un même caractère UTF-8 (accents, japonais, coréen, chinois, émojis).
-• Correction de l’affichage du curseur lorsque sa ligne est défilée hors de l’écran.
-• Édition rapide, « Tout remplacer » instantané et aperçu en direct Markdown, LaTeX et Mermaid.""",
+    "fr-FR": """Merci d’utiliser miu. La version 1.0.49 corrige le retour à la ligne des diagrammes Mermaid et améliore le rendu UTF-8 :
+• Correction du retour à la ligne dans Mermaid : résolution d’un blocage lorsque les étiquettes combinaient du texte japonais, coréen ou chinois avec des parenthèses pleine chasse (ex. （1）, 【1】).
+• Analyse améliorée des caractères UTF-8 multi-octets dans les 33 types de diagrammes Mermaid.
+• Édition rapide, Regex précis et aperçu en direct Markdown, LaTeX et Mermaid.""",
 
-    "es-ES": """Gracias por usar miu. La versión 1.0.48 mejora la precisión de Regex multilingüe y la visualización del cursor:
-• Búsqueda y reemplazo Regex precisos: se corrigió un problema por el que «.» o los rangos de caracteres reemplazaban varias veces un mismo carácter UTF-8 (acentos, japonés, coreano, chino y emojis).
-• Mejor visualización del cursor al desplazar su línea fuera de la pantalla.
-• Edición rápida, «Reemplazar todo» instantáneo y vista previa en vivo de Markdown, LaTeX y Mermaid.""",
+    "es-ES": """Gracias por usar miu. La versión 1.0.49 corrige el ajuste de línea en diagramas Mermaid y mejora el soporte UTF-8:
+• Corrección del ajuste de línea en Mermaid: se resolvió un bloqueo al usar etiquetas con texto japonés, coreano o chino y paréntesis de ancho completo (como （1）, 【1】).
+• Mejor análisis de caracteres UTF-8 multibyte en los 33 tipos de diagramas Mermaid.
+• Edición rápida, búsqueda Regex precisa y vista previa en vivo de Markdown, LaTeX y Mermaid.""",
 
-    "it-IT": """Grazie per aver scelto miu. La versione 1.0.48 migliora la precisione Regex multilingua e il cursore:
-• Ricerca e sostituzione Regex precise: risolto un problema per cui «.» o gli intervalli di caratteri sostituivano più volte un singolo carattere UTF-8 (accenti, giapponese, coreano, cinese ed emoji).
-• Migliorata la visualizzazione del cursore quando la riga scorre fuori dallo schermo.
-• Modifica rapida, «Sostituisci tutto» istantaneo e anteprima live per Markdown, LaTeX e Mermaid.""",
+    "it-IT": """Grazie per aver scelto miu. La versione 1.0.49 corregge l’a capo nei diagrammi Mermaid e migliora il supporto UTF-8:
+• Correzione dell’a capo in Mermaid: risolto un blocco con etichette contenenti testo giapponese, coreano o cinese e parentesi a larghezza intera (es. （1）, 【1】).
+• Migliorata l’analisi dei caratteri UTF-8 multi-byte in tutti i 33 tipi di diagrammi Mermaid.
+• Modifica rapida, Regex preciso e anteprima live per Markdown, LaTeX e Mermaid.""",
 
-    "pt-BR": """Obrigado por usar o miu. A versão 1.0.48 melhora a precisão de Regex multilíngue e a exibição do cursor:
-• Busca e substituição Regex precisas: corrigido um problema em que «.» ou intervalos de caracteres substituíam várias vezes um único caractere UTF-8 (acentos, japonês, coreano, chinês e emojis).
-• Melhor exibição do cursor quando sua linha sai da tela ao rolar.
-• Edição rápida, «Substituir tudo» instantâneo e pré-visualização ao vivo de Markdown, LaTeX e Mermaid.""",
+    "pt-BR": """Obrigado por usar o miu. A versão 1.0.49 corrige a quebra de linha em diagramas Mermaid e melhora o suporte UTF-8:
+• Correção na quebra de linha do Mermaid: resolvido um travamento em rótulos com texto em japonês, coreano ou chinês e parênteses de largura total (ex.: （1）, 【1】).
+• Análise aprimorada de caracteres UTF-8 multibyte em todos os 33 tipos de diagramas Mermaid.
+• Edição rápida, Regex preciso e pré-visualização ao vivo de Markdown, LaTeX e Mermaid.""",
 
-    "ru-RU": """Спасибо, что пользуетесь miu. В версии 1.0.48 улучшены регулярные выражения и отображение курсора:
-• Точный поиск и замена Regex для многобайтовых символов: исправлена ошибка, из-за которой «.» или диапазоны символов заменяли один символ UTF-8 (кириллица, японский, корейский, китайский, эмодзи) несколько раз.
-• Исправлено отображение курсора при прокрутке строки за пределы экрана.
-• Быстрое редактирование, мгновенная «Заменить все» и предпросмотр Markdown, LaTeX и Mermaid.""",
+    "ru-RU": """Спасибо, что пользуетесь miu. В версии 1.0.49 исправлен перенос строк в диаграммах Mermaid и улучшена поддержка UTF-8:
+• Исправлен перенос строк в Mermaid: устранено зависание при использовании меток с японским, корейским или китайским текстом и полноширинными скобками (например, （1）, 【1】).
+• Улучшена обработка многобайтовых символов UTF-8 во всех 33 типах диаграмм Mermaid.
+• Быстрое редактирование, точный поиск Regex и предпросмотр Markdown, LaTeX и Mermaid.""",
 
-    "nl-NL": """Bedankt voor het gebruiken van miu. Versie 1.0.48 verbetert meertalige regex-precisie en cursorweergave:
-• Nauwkeurige regex-zoek/vervangfunctie: probleem opgelost waarbij ‘.’ of tekenbereiken één multi-byte UTF-8-teken (Japans, Koreaans, Chinees, accenten en emoji’s) meerdere keren vervingen.
-• Verbeterde cursorweergave wanneer de cursorregel buiten beeld wordt gescrold.
-• Snel bewerken, direct ‘Alles vervangen’ en live-weergave voor Markdown, LaTeX en Mermaid.""",
+    "nl-NL": """Bedankt voor het gebruiken van miu. Versie 1.0.49 verhelpt een probleem met regelterugloop in Mermaid en verbetert UTF-8:
+• Regelterugloop in Mermaid-diagrammen gecorrigeerd: probleem opgelost waarbij labels met CJK-tekst en haakjes over de volledige breedte (zoals （1）, 【1】) de weergave lieten bevriezen.
+• Verbeterde verwerking van multi-byte UTF-8-tekens in alle 33 Mermaid-diagramtypen.
+• Snel bewerken, nauwkeurige Regex en live-weergave voor Markdown, LaTeX en Mermaid.""",
 
-    "sv-SE": """Tack för att du använder miu. Version 1.0.48 förbättrar flerspråkig regex-precision och markörvisning:
-• Exakt Regex-sökning/ersättning: åtgärdade ett problem där ”.” eller teckenintervall ersatte ett enskilt UTF-8-tecken (å/ä/ö, japanska, koreanska, kinesiska och emojis) flera gånger.
-• Förbättrad markörvisning när markörraden rullas utanför skärmen.
-• Snabb redigering, omedelbar ”Ersätt alla” och live-förhandsgranskning för Markdown, LaTeX och Mermaid.""",
+    "sv-SE": """Tack för att du använder miu. Version 1.0.49 åtgärdar radbrytning i Mermaid-diagram och förbättrar UTF-8-stödet:
+• Åtgärdad radbrytning i Mermaid: löste ett problem där etiketter med japansk, koreansk eller kinesisk text och helbreddsparenteser (t.ex. （1）, 【1】) kunde frysa förhandsgranskningen.
+• Förbättrad tolkning av flerbytes UTF-8-tecken i alla 33 Mermaid-diagramtyper.
+• Snabb redigering, exakt Regex och live-förhandsgranskning för Markdown, LaTeX och Mermaid.""",
 
-    "da-DK": """Tak fordi du bruger miu. Version 1.0.48 forbedrer flersproget regex-præcision og markørvisning:
-• Præcis Regex-søgning/erstatning: rettet en fejl, hvor "." eller tegnintervaller erstattede et enkelt UTF-8-tegn (æ/ø/å, japansk, koreansk, kinesisk og emojis) flere gange.
-• Forbedret markørvisning, når markørlinjen rulles ud af skærmen.
-• Hurtig redigering, øjeblikkelig "Erstat alle" og live-visning af Markdown, LaTeX og Mermaid.""",
+    "da-DK": """Tak fordi du bruger miu. Version 1.0.49 retter linjeskift i Mermaid-diagrammer og forbedrer UTF-8-understøttelsen:
+• Rettet linjeskift i Mermaid: løst et problem, hvor etiketter med japansk, koreansk eller kinesisk tekst og fuldbreddeparenteser (f.eks. （1）, 【1】) kunne fryse forhåndsvisningen.
+• Forbedret fortolkning af multi-byte UTF-8-tegn i alle 33 Mermaid-diagramtyper.
+• Hurtig redigering, præcis Regex og live-visning af Markdown, LaTeX og Mermaid.""",
 
-    "no-NO": """Takk for at du bruker miu. Versjon 1.0.48 forbedrer flerspråklig regex-presisjon og markørvisning:
-• Presis Regex-søk/erstatt: rettet en feil der «.» eller tegnintervaller erstattet et enkelt UTF-8-tegn (æ/ø/å, japansk, koreansk, kinesisk og emojier) flere ganger.
-• Forbedret markørvisning når markørlinjen rulles utenfor skjermen.
-• Rask redigering, umiddelbar «Erstatt alle» og sanntidsvisning for Markdown, LaTeX og Mermaid.""",
+    "no-NO": """Takk for at du bruker miu. Versjon 1.0.49 retter linjebryting i Mermaid-diagrammer og forbedrer UTF-8-støtten:
+• Rettet linjebryting i Mermaid: løst et problem der etiketter med japansk, koreansk eller kinesisk tekst og fullbreddeparenteser (f.eks. （1）, 【1】) kunne fryse forhåndsvisningen.
+• Forbedret tolkning av flerbytes UTF-8-tegn i alle 33 Mermaid-diagramtyper.
+• Rask redigering, presis Regex og sanntidsvisning for Markdown, LaTeX og Mermaid.""",
 
-    "fi-FI": """Kiitos, että käytät miuta. Versio 1.0.48 parantaa monikielistä regex-tarkkuutta ja kohdistimen näyttöä:
-• Tarkka Regex-haku ja -korvaus: korjattu ongelma, jossa ”.” tai merkkivälit korvasivat yhden UTF-8-merkin (ä/ö, japani, korea, kiina ja emojit) useaan kertaan.
-• Parannettu kohdistimen näkyvyys, kun kohdistinrivi vieritetään näytön ulkopuolelle.
-• Nopea muokkaus, välitön ”Korvaa kaikki” ja reaaliaikainen Markdown-, LaTeX- ja Mermaid-esikatselu.""",
+    "fi-FI": """Kiitos, että käytät miuta. Versio 1.0.49 korjaa Mermaid-kaavioiden rivityksen ja parantaa UTF-8-tukea:
+• Korjattu Mermaid-kaavioiden rivitys: ratkaistu ongelma, jossa japanin-, korean- tai kiinankielistä tekstiä ja täyden leveyden sulkeita (esim. （1）, 【1】) sisältävät otsikot saattoivat pysäyttää esikatselun.
+• Parannettu monitavuisten UTF-8-merkkien käsittely kaikissa 33 Mermaid-kaaviotyypissä.
+• Nopea muokkaus, tarkka Regex ja reaaliaikainen Markdown-, LaTeX- ja Mermaid-esikatselu.""",
 
-    "pl-PL": """Dziękujemy za korzystanie z miu. Wersja 1.0.48 poprawia dokładność wyrażeń regularnych i wyświetlanie kursora:
-• Dokładne dopasowywanie Regex dla znaków wielobajtowych: naprawiono błąd, przez który „.” lub zakresy znaków zamieniały pojedynczy znak UTF-8 (polskie znaki, japoński, koreański, chiński, emoji) wielokrotnie.
-• Poprawiono wyświetlanie kursora po przewinięciu wiersza poza ekran.
-• Szybka edycja, błyskawiczne „Zamień wszystko” i podgląd na żywo Markdown, LaTeX i Mermaid.""",
+    "pl-PL": """Dziękujemy za korzystanie z miu. Wersja 1.0.49 naprawia zawijanie wierszy w diagramach Mermaid i ulepsza obsługę UTF-8:
+• Naprawiono zawijanie tekstu w Mermaid: rozwiązano problem, przez który etykiety z tekstem CJK i nawiasami pełnej szerokości (np. （1）, 【1】) mogły zawieszać podgląd.
+• Ulepszona analiza wielobajtowych znaków UTF-8 we wszystkich 33 typach diagramów Mermaid.
+• Szybka edycja, dokładne Regex i podgląd na żywo Markdown, LaTeX i Mermaid.""",
 
-    "cs-CZ": """Děkujeme, že používáte miu. Verze 1.0.48 zpřesňuje regulární výrazy a upravuje zobrazení kurzoru:
-• Přesné vyhledávání a nahrazování Regex pro vícebajtové znaky: opravena chyba, kdy vzor „.“ nebo rozsahy znaků nahrazovaly jeden znak UTF-8 (čeština, japonština, korejština, čínština, emoji) vícekrát.
-• Vylepšené zobrazení kurzoru při posunutí řádku mimo obrazovku.
-• Rychlé úpravy, okamžité „Nahradit vše“ a živý náhled pro Markdown, LaTeX a Mermaid.""",
+    "cs-CZ": """Děkujeme, že používáte miu. Verze 1.0.49 opravuje zalamování řádků v diagramech Mermaid a zlepšuje podporu UTF-8:
+• Opraveno zalamování štítků v Mermaid: vyřešen problém, kdy štítky s japonským, korejským nebo čínským textem a plnošířkovými závorkami (např. （1）, 【1】) zpomalovaly náhled.
+• Vylepšené zpracování vícebajtových znaků UTF-8 ve všech 33 typech diagramů Mermaid.
+• Rychlé úpravy, přesné Regex a živý náhled pro Markdown, LaTeX a Mermaid.""",
 
     "sk": SK_WHATS_NEW,
 
-    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja. Az 1.0.48-as verzió javítja a Regex pontosságát és a kurzort:
-• Pontos többnyelvű Regex keresés és csere: javítottuk a hibát, amelynél a „.” vagy a karaktertartományok többször cseréltek le egyetlen UTF-8 karaktert (magyar ékezetek, japán, koreai, kínai, emojik).
-• Javított kurzormegjelenítés, ha a kurzor sora a képernyőn kívülre kerül.
-• Gyors szerkesztés, azonnali „Összes cseréje” és élő Markdown, LaTeX és Mermaid előnézet.""",
+    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja. Az 1.0.49-es verzió javítja a Mermaid sortörést és az UTF-8 támogatást:
+• Mermaid diagram sortörési javítás: megoldottuk a hibát, amelynél a CJK szöveget és teljes szélességű zárójeleket (pl. （1）, 【1】) tartalmazó címkék megállíthatták az előnézetet.
+• Továbbfejlesztett többbájtos UTF-8 karakterfeldolgozás mind a 33 Mermaid diagramtípusban.
+• Gyors szerkesztés, pontos Regex és élő Markdown, LaTeX és Mermaid előnézet.""",
 
-    "ro": """Vă mulțumim că folosiți miu. Versiunea 1.0.48 îmbunătățește precizia Regex și afișarea cursorului:
-• Căutare și înlocuire Regex precise pentru caractere multi-byte: s-a rezolvat problema prin care „.” sau intervalele de caractere înlocuiau de mai multe ori un singur caracter UTF-8 (diacritice, japoneză, coreeană, chineză, emoji).
-• Afișare îmbunătățită a cursorului la derularea în afara ecranului.
-• Editare rapidă, „Înlocuiește tot” instantaneu și previzualizare live Markdown, LaTeX și Mermaid.""",
+    "ro": """Vă mulțumim că folosiți miu. Versiunea 1.0.49 rezolvă încadrarea liniilor în diagramele Mermaid și îmbunătățește suportul UTF-8:
+• Corecție pentru încadrarea liniilor în Mermaid: s-a rezolvat blocarea la etichetele cu text CJK și paranteze cu lățime completă (ex. （1）, 【1】).
+• Analiză îmbunătățită a caracterelor UTF-8 multi-byte în toate cele 33 de tipuri de diagrame Mermaid.
+• Editare rapidă, Regex precis și previzualizare live Markdown, LaTeX și Mermaid.""",
 
-    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu. Η έκδοση 1.0.48 βελτιώνει την ακρίβεια Regex και τον δρομέα:
-• Ακριβής αναζήτηση/αντικατάσταση Regex: διορθώθηκε ζήτημα όπου το «.» ή τα εύρη χαρακτήρων αντικαθιστούσαν πολλαπλές φορές έναν χαρακτήρα UTF-8 (ελληνικά, ιαπωνικά, κορεατικά, κινεζικά, emoji).
-• Βελτιωμένη εμφάνιση δρομέα όταν η γραμμή του βρίσκεται εκτός οθόνης.
-• Γρήγορη επεξεργασία, ακαριαία «Αντικατάσταση όλων» και προεπισκόπηση Markdown, LaTeX & Mermaid.""",
+    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu. Η έκδοση 1.0.49 διορθώνει την αναδίπλωση σε διαγράμματα Mermaid και βελτιώνει το UTF-8:
+• Διόρθωση αναδίπλωσης γραμμών στο Mermaid: επιλύθηκε το πάγωμα σε ετικέτες με κείμενο CJK και παρενθέσεις πλήρους πλάτους (π.χ. （1）, 【1】).
+• Βελτιωμένη ανάλυση χαρακτήρων UTF-8 πολλαπλών byte και στους 33 τύπους διαγραμμάτων Mermaid.
+• Γρήγορη επεξεργασία, ακριβές Regex και προεπισκόπηση Markdown, LaTeX & Mermaid.""",
 
-    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz. 1.0.48 sürümü Regex doğruluğunu ve imleç görünümünü iyileştirir:
-• Çok Dilli Karakterlerde Doğru Regex Eşleşmesi: "." veya karakter aralıkları kullanıldığında tek bir UTF-8 karakterinin (Türkçe, Japonca, Korece, Çince, emoji) birden fazla kez değiştirilmesi sorunu giderildi.
-• İmleç satırı ekran dışına kaydırıldığında imleç görünümü düzeltildi.
-• Hızlı düzenleme, anında "Tümünü Değiştir" ve Markdown, LaTeX, Mermaid Canlı Önizlemesi.""",
+    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz. 1.0.49 sürümü Mermaid satır kaydırma sorununu giderir ve UTF-8 desteğini geliştirir:
+• Mermaid Diyagramlarında Satır Kaydırma Düzeltmesi: Japonca, Korece veya Çince metinleri tam genişlikli parantezlerle (ör. （1）, 【1】) birleştiren etiketlerdeki donma sorunu çözüldü.
+• Tüm 33 Mermaid diyagram türünde çok baytlı UTF-8 karakter desteği geliştirildi.
+• Hızlı düzenleme, doğru Regex ve Markdown, LaTeX, Mermaid Canlı Önizlemesi.""",
 
-    "uk": """Дякуємо, що користуєтеся miu. У версії 1.0.48 покращено точність регулярних виразів і курсор:
-• Точний пошук і заміна Regex для багатобайтових символів: виправлено помилку, через яку «.» або діапазони символів замінювали один символ UTF-8 (українська, японська, корейська, китайська, емодзі) декілька разів.
-• Виправлено відображення курсора під час прокручування за межі екрана.
-• Швидке редагування, миттєва «Замінити все» та живий перегляд Markdown, LaTeX і Mermaid.""",
+    "uk": """Дякуємо, що користуєтеся miu. У версії 1.0.49 виправлено перенесення рядків у діаграмах Mermaid і покращено UTF-8:
+• Виправлено перенесення рядків у Mermaid: усунено зависання на мітках із японським, корейським або китайським текстом і повноширинними дужками (наприклад, （1）, 【1】).
+• Покращено обробку багатобайтових символів UTF-8 в усіх 33 типах діаграм Mermaid.
+• Швидке редагування, точний пошук Regex і живий перегляд Markdown, LaTeX і Mermaid.""",
 
-    "vi": """Cảm ơn bạn đã sử dụng miu. Phiên bản 1.0.48 cải thiện độ chính xác Regex đa ngôn ngữ và hiển thị con trỏ:
-• Tìm kiếm & thay thế Regex chính xác: Đã sửa lỗi khi dùng "." hoặc phạm vi ký tự khiến 1 ký tự UTF-8 nhiều byte (tiếng Việt, Nhật, Hàn, Trung, emoji) bị thay thế lặp lại nhiều lần.
-• Sửa lỗi hiển thị con trỏ khi dòng chứa con trỏ cuộn ra ngoài màn hình.
-• Chỉnh sửa nhanh, "Thay thế tất cả" tức thì và Xem trước trực tiếp Markdown, LaTeX, Mermaid.""",
+    "vi": """Cảm ơn bạn đã sử dụng miu. Phiên bản 1.0.49 sửa lỗi ngắt dòng biểu đồ Mermaid và cải thiện hiển thị UTF-8:
+• Sửa lỗi treo khi ngắt dòng nhãn Mermaid: Khắc phục lỗi khi nhãn kết hợp chữ Nhật, Hàn, Trung với dấu ngoặc toàn giác (như （1）, 【1】) làm chậm hoặc treo xem trước.
+• Cải thiện phân tích ký tự UTF-8 nhiều byte trên toàn bộ 33 loại biểu đồ Mermaid.
+• Chỉnh sửa nhanh, Regex chính xác và Xem trước trực tiếp Markdown, LaTeX, Mermaid.""",
 
-    "th": """ขอบคุณที่ใช้บริการ miu เวอร์ชัน 1.0.48 ปรับปรุงความแม่นยำ Regex หลายภาษาและการแสดงเคอร์เซอร์:
-• ค้นหาและแทนที่ด้วย Regex อย่างแม่นยำ: แก้ไขปัญหาการใช้ "." หรือช่วงอักขระใน Regex ที่เคยแปลงอักขระ UTF-8 (ไทย ญี่ปุ่น เกาหลี จีน และอิโมจิ) ซ้ำหลายครั้งต่อ 1 ตัวอักษร
-• แก้ไขการแสดงเคอร์เซอร์เมื่อเลื่อนบรรทัดเคอร์เซอร์ออกนอกหน้าจอ
-• แก้ไขไฟล์เร็ว "แทนที่ทั้งหมด" ทันใจ พร้อมพรีวิวสด Markdown, LaTeX และ Mermaid""",
+    "th": """ขอบคุณที่ใช้บริการ miu เวอร์ชัน 1.0.49 แก้ไขการตัดบรรทัดในแผนภาพ Mermaid และปรับปรุงการแสดงผล UTF-8:
+• แก้ไขปัญหาค้างเมื่อตัดบรรทัดป้ายกำกับ Mermaid ที่มีข้อความญี่ปุ่น เกาหลี หรือจีน ร่วมกับวงเล็บเต็มความกว้าง (เช่น （1）, 【1】)
+• ปรับปรุงการประมวลผลอักขระ UTF-8 แบบหลายไบต์ในแผนภาพ Mermaid ทั้ง 33 ประเภท
+• แก้ไขไฟล์เร็ว ค้นหา/แทนที่ด้วย Regex แม่นยำ พร้อมพรีวิวสด Markdown, LaTeX และ Mermaid""",
 
-    "id": """Terima kasih telah menggunakan miu. Versi 1.0.48 meningkatkan akurasi Regex multibahasa & tampilan kursor:
-• Pencarian & Penggantian Regex Akurat: Memperbaiki masalah saat "." atau rentang karakter dalam Regex mengganti satu karakter UTF-8 multibyte (Jepang, Korea, Mandarin, aksen, emoji) beberapa kali.
-• Memperbaiki tampilan kursor saat baris kursor digulir ke luar layar.
-• Pengeditan cepat, "Ganti Semua" instan, dan Pratinjau Langsung Markdown, LaTeX & Mermaid.""",
+    "id": """Terima kasih telah menggunakan miu. Versi 1.0.49 memperbaiki pemotongan baris diagram Mermaid & dukungan UTF-8:
+• Perbaikan Pemotongan Baris Mermaid: Mengatasi masalah macet pada label dengan teks Jepang, Korea, atau Mandarin dan kurung lebar penuh (seperti （1）, 【1】).
+• Peningkatan penguraian karakter UTF-8 multibyte di semua 33 jenis diagram Mermaid.
+• Pengeditan cepat, Regex akurat, dan Pratinjau Langsung Markdown, LaTeX & Mermaid.""",
 
-    "ms": """Terima kasih kerana menggunakan miu. Versi 1.0.48 meningkatkan ketepatan Regex berbilang bahasa & kursor:
-• Carian & Penggantian Regex Tepat: Memperbaiki masalah apabila "." atau julat aksara dalam Regex menggantikan satu aksara UTF-8 berbilang bait (Jepun, Korea, Cina, aksen, emoji) beberapa kali.
-• Memperbaiki paparan kursor apabila baris kursor ditatal keluar dari skrin.
-• Penyuntingan pantas, "Ganti Semua" serta-merta dan Pratonton Langsung Markdown, LaTeX & Mermaid.""",
+    "ms": """Terima kasih kerana menggunakan miu. Versi 1.0.49 memperbaiki pembalutan baris diagram Mermaid & sokongan UTF-8:
+• Pembaikan Pembalutan Baris Mermaid: Menyelesaikan masalah pegun pada label dengan teks Jepun, Korea atau Cina dan kurungan lebar penuh (seperti （1）, 【1】).
+• Peningkatan penghuraian aksara UTF-8 berbilang bait dalam semua 33 jenis diagram Mermaid.
+• Penyuntingan pantas, Regex tepat dan Pratonton Langsung Markdown, LaTeX & Mermaid.""",
 
-    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद। संस्करण 1.0.48 में बहुभाषी रेगेक्स (Regex) सटीकता और कर्सर सुधार किए गए हैं:
-• सटीक बहुभाषी रेगेक्स खोज और बदलाव: "." या अक्षर श्रेणियों से एक मल्टी-बाइट अक्षर (हिंदी, जापानी, कोरियाई, चीनी, इमोजी) के कई बार बदलने की समस्या ठीक की गई।
-• कर्सर वाली पंक्ति के स्क्रीन से बाहर स्क्रॉल होने पर कर्सर का प्रदर्शन सुधारा गया।
-• तेज़ संपादन, तुरंत "सभी बदलें" और Markdown, LaTeX व Mermaid लाइव प्रीव्यू।""",
+    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद। संस्करण 1.0.49 में Mermaid डायग्राम लाइन-रैपिंग और UTF-8 रेंडरिंग में सुधार किए गए हैं:
+• Mermaid लाइन-रैपिंग सुधार: जापानी, कोरियाई या चीनी पाठ के साथ पूर्ण-चौड़ाई वाले कोष्ठक (जैसे （1）, 【1】) होने पर प्रीव्यू के रुकने की समस्या ठीक की गई।
+• सभी 33 Mermaid डायग्राम प्रकारों में मल्टी-बाइट UTF-8 अक्षर पार्सिंग में सुधार।
+• तेज़ संपादन, सटीक रेगेक्स और Markdown, LaTeX व Mermaid लाइव प्रीव्यू।""",
 
     "ar": AR_WHATS_NEW,
     "iw-IL": HE_WHATS_NEW,

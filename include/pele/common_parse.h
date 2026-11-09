@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "util.h"
 
 namespace Pele {
@@ -142,8 +142,7 @@ inline TokenType makeAccDescr() {
     if (q < static_cast<int>(src.size()) && src[q] == ':') {
       return matchRestOfLineBeforeComment(src, q + 1);
     }
-    q = p;
-    while (q < static_cast<int>(src.size()) && isSpace(charCodeAt(src, q))) q++;
+    q = skipSpacesUtf8(src, p);
     if (q < static_cast<int>(src.size()) && src[q] == '{') {
       size_t close = src.find('}', q + 1);
       if (close != std::string::npos) return static_cast<int>(close + 1);
@@ -265,7 +264,7 @@ inline TokenType makeYaml() {
         int q = p + 3;
         if (q < n && src[q] == '\r') q++;
         if (q < n && src[q] == '\n') return q + 1;
-        if (q >= n || isSpace(charCodeAt(src, q))) return q;
+        if (q >= n || isSpaceAtUtf8(src, static_cast<size_t>(q))) return q;
       }
       size_t nl = src.find('\n', p);
       if (nl == std::string::npos) return -1;
@@ -297,7 +296,7 @@ inline TokenType makeDirective() {
     int n = static_cast<int>(src.size());
     if (q < n && src[q] == '\r') q++;
     if (q < n && src[q] == '\n') return q + 1;
-    if (q >= n || isSpace(charCodeAt(src, q))) return q;
+    if (q >= n || isSpaceAtUtf8(src, static_cast<size_t>(q))) return q;
     return -1;
   };
   return t;
@@ -327,7 +326,7 @@ inline TokenType keyword(const std::string& word) {
   t.match = [word](const std::string& src, int at, int) -> int {
     if (src.compare(at, word.size(), word) != 0) return -1;
     int end = at + static_cast<int>(word.size());
-    if (end >= static_cast<int>(src.size()) || isSpace(charCodeAt(src, end)) || src.compare(end, 2, "%%") == 0) {
+    if (end >= static_cast<int>(src.size()) || isSpaceAtUtf8(src, static_cast<size_t>(end)) || src.compare(end, 2, "%%") == 0) {
       return end;
     }
     return -1;
@@ -479,9 +478,8 @@ inline int skipTrivia(const std::string& src, int from) {
       p = lineEnd(src, p);
     } else if (c == 10) {
       return p;
-    } else if (isSpace(c)) {
-      do p++;
-      while (p < n && isSpace(charCodeAt(src, p)));
+    } else if (isSpaceAtUtf8(src, static_cast<size_t>(p))) {
+      p = skipSpacesUtf8(src, p);
     } else if (c == 35) {
       p = lineEnd(src, p);
     } else {
@@ -495,8 +493,7 @@ inline int accessibility(const std::string& src, int p, ScanTokens& out, int fir
   bool descr = keywordAt(src, p, "accdescr");
   if (!descr && !keywordAt(src, p, "acctitle")) return p;
   int n = static_cast<int>(src.size());
-  int q = p + 8;
-  while (isSpace(charCodeAt(src, q))) q++;
+  int q = skipSpacesUtf8(src, p + 8);
   int c = charCodeAt(src, q);
   auto emit = [&](int type, int s, int e) {
     out.types.push_back(type);
@@ -504,16 +501,14 @@ inline int accessibility(const std::string& src, int p, ScanTokens& out, int fir
     out.starts.push_back(s);
   };
   if (c == 58) {
-    q++;
-    while (isSpace(charCodeAt(src, q))) q++;
+    q = skipSpacesUtf8(src, q + 1);
     int end = lineEnd(src, q);
     emit(descr ? first + 2 : first, p, q);
     emit(descr ? first + 3 : first + 1, q, end);
     return end;
   }
   if (!descr || c != 123) return p;
-  q++;
-  while (isSpace(charCodeAt(src, q))) q++;
+  q = skipSpacesUtf8(src, q + 1);
   while (charCodeAt(src, q) != 125) {
     size_t found = src.find('}', q);
     int end = found == std::string::npos ? n : static_cast<int>(found);
@@ -617,8 +612,7 @@ inline ScanTokens tokenizeOutline(const std::string& src, bool kanban) {
     return q > from ? q : -1;
   };
   auto matchSpace = [&](int from) -> int {
-    int q = from;
-    while (q < n && isSpace(charCodeAt(src, q))) q++;
+    int q = skipSpacesUtf8(src, from);
     return q > from ? q : -1;
   };
   auto matchId = [&](int from) -> int {
@@ -753,8 +747,7 @@ inline ScanTokens tokenizeOutline(const std::string& src, bool kanban) {
       for (size_t k = 0; k < raw.size();) {
         if (raw[k] == '\n') {
           replaced += "<br/>";
-          k++;
-          while (k < raw.size() && isSpace(static_cast<unsigned char>(raw[k]))) k++;
+          k = skipSpacesUtf8(raw, k + 1);
         } else {
           replaced.push_back(raw[k++]);
         }

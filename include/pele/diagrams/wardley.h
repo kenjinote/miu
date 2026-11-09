@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../foundation.h"
 
 namespace Pele {
@@ -401,7 +401,7 @@ inline const std::vector<TokenType>& wardleyTokens() {
         nameWithSpacesTok.first = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
         nameWithSpacesTok.match = [](const std::string& src, int at, int) -> int {
             if (!isLetter(charCodeAt(src, at))) return -1;
-            if (src.compare(at, 5, "title") == 0 && isSpace(charCodeAt(src, at + 5))) return -1;
+            if (src.compare(at, 5, "title") == 0 && isSpaceAtUtf8(src, static_cast<size_t>(at + 5))) return -1;
             if (src.compare(at, 8, "accTitle") == 0 || src.compare(at, 8, "accDescr") == 0) return -1;
             int n = static_cast<int>(src.size());
             int p = at + 1;
@@ -435,8 +435,7 @@ inline const std::vector<TokenType>& wardleyTokens() {
                 if (q < static_cast<int>(src.size()) && src[q] == ':') {
                     return common_tokens::matchRestOfLineBeforeComment(src, q + 1);
                 }
-                q = p;
-                while (q < static_cast<int>(src.size()) && isSpace(charCodeAt(src, q))) q++;
+                q = skipSpacesUtf8(src, p);
                 if (q < static_cast<int>(src.size()) && src[q] == '{') {
                     if (unclosed) return -1;
                     size_t close = src.find('}', q + 1);

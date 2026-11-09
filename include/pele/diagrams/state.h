@@ -3987,8 +3987,7 @@ public:
     }
 
     void setAccTitle(const std::string& text) {
-        size_t i = 0;
-        while (i < text.size() && isSpace(charCodeAt(text, static_cast<int>(i)))) i++;
+        size_t i = skipSpacesUtf8(text, size_t(0));
         accTitle = text.substr(i);
     }
 
@@ -3998,8 +3997,7 @@ public:
         for (size_t i = 0; i < text.size();) {
             if (text[i] == '\n') {
                 out.push_back('\n');
-                i++;
-                while (i < text.size() && isSpace(charCodeAt(text, static_cast<int>(i)))) i++;
+                i = skipSpacesUtf8(text, i + 1);
             } else {
                 out.push_back(text[i++]);
             }
@@ -4263,9 +4261,7 @@ inline StateTokens tokenizeState(const std::string& src) {
         }
     };
     auto wsEnd = [&](int q) -> int {
-        int j = q;
-        while (j < n && isSpace(charCodeAt(src, j))) j++;
-        return j;
+        return skipSpacesUtf8(src, q);
     };
     auto wordEnd = [&](int q) -> int {
         int j = q;
@@ -4396,14 +4392,14 @@ inline StateTokens tokenizeState(const std::string& src) {
                         emit(T::NL, p, j);
                         continue;
                     }
-                    if (isSpace(c)) {
+                    if (isSpaceAtUtf8(src, static_cast<size_t>(p))) {
                         p = wsEnd(p);
                         continue;
                     }
-                } else if (c != 10 && isSpace(c)) {
-                    int j = p + 1;
-                    while (j < n && ch(j) != 10 && isSpace(charCodeAt(src, j))) j++;
-                    p = j;
+                } else if (c != 10 && isSpaceAtUtf8(src, static_cast<size_t>(p))) {
+                    size_t j = static_cast<size_t>(p);
+                    while (j < static_cast<size_t>(n) && src[j] != '\n' && isSpaceAtUtf8(src, j, &j)) {}
+                    p = static_cast<int>(j);
                     continue;
                 }
                 if (c == 35 || (c == 37 && ch(p + 1) == 37 && ch(p + 2) != 123)) {
@@ -4512,7 +4508,7 @@ inline StateTokens tokenizeState(const std::string& src) {
                 int j = p;
                 while (j < n) {
                     int d = charCodeAt(src, j);
-                    if (d == 58 || d == 45 || d == 123 || isSpace(d)) break;
+                    if (d == 58 || d == 45 || d == 123 || isSpaceAtUtf8(src, static_cast<size_t>(j))) break;
                     j++;
                 }
                 if (j > p) {
@@ -4555,10 +4551,10 @@ inline StateTokens tokenizeState(const std::string& src) {
             }
 
             case S::STATE: {
-                if (c != 10 && isSpace(c)) {
-                    int j = p + 1;
-                    while (j < n && ch(j) != 10 && isSpace(charCodeAt(src, j))) j++;
-                    p = j;
+                if (c != 10 && isSpaceAtUtf8(src, static_cast<size_t>(p))) {
+                    size_t j = static_cast<size_t>(p);
+                    while (j < static_cast<size_t>(n) && src[j] != '\n' && isSpaceAtUtf8(src, j, &j)) {}
+                    p = static_cast<int>(j);
                     continue;
                 }
                 if (c == 35 || (c == 37 && ch(p + 1) == 37 && ch(p + 2) != 123)) {
@@ -4613,7 +4609,7 @@ inline StateTokens tokenizeState(const std::string& src) {
                 int j = p + 1;
                 while (j < n) {
                     int d = charCodeAt(src, j);
-                    if (d == 123 || isSpace(d)) break;
+                    if (d == 123 || isSpaceAtUtf8(src, static_cast<size_t>(j))) break;
                     j++;
                 }
                 emit(T::COMPOSIT_STATE, p, j);
@@ -4758,7 +4754,7 @@ inline StateTokens tokenizeState(const std::string& src) {
                 int j = q;
                 while (j < n) {
                     int d = charCodeAt(src, j);
-                    if (d == 58 || d == 45 || isSpace(d)) break;
+                    if (d == 58 || d == 45 || isSpaceAtUtf8(src, static_cast<size_t>(j))) break;
                     j++;
                 }
                 if (j == q) return finish(T::ERROR);

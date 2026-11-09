@@ -219,16 +219,58 @@ def main():
         notes = args.notes
         if not notes:
             # Default release notes template
-            notes = f"# miu {release_name} リリースノート\n\n" + r"""### 🔍 全角文字・多言語テキストの正規表現検索・置換の改善とスクロール表示の修正
+            notes = f"# miu {release_name} リリースノート / Release Notes\n\n" + r"""## 🇯🇵 日本語 (Japanese)
+いつも **miu** をご利用いただきありがとうございます。
+v1.0.49 では、Mermaid 図表プレビューで全角括弧を含む日本語・多言語ラベルを入力した際の動作改善と、全33種類のダイアグラムにおけるマルチバイト文字処理の強化を行いました。
 
-1. **全角文字・多言語文字に対する正規表現（`.` や文字範囲など）の検索・置換精度を改善**
-   - 日本語（ひらがな・カタカナ・漢字・全角記号）、韓国語（ハングル）、中国語、絵文字などの文字に対して、正規表現の `.`（任意の1文字）や文字クラス（`[あ-ん]`、`[가-힣]`、`[一-龥]` など）・量指定子（`+`、`*`、`{n}`）を使用した際、1文字が複数回（3回など）に分かれて変換されてしまう問題を修正し、正確に1文字単位で検索・置換されるようになりました。
+### 🛠 主な改善・修正内容
+- **Mermaid 図表プレビューの全角括弧・長文ラベル折り返し処理を修正**:
+  - フローチャート等のノードラベルに日本語・韓国語・中国語などの全角文字と全角括弧（`（1）`、`【1】`、`「1」` など）を組み合わせて入力した際（例：`A[あいうえおかきくけこ（1）]`）、自動折り返し位置の計算で動作が重くなったり停止したりする問題を修正しました。
+- **全33種類の Mermaid ダイアグラムにおける多言語文字の解析を強化**:
+  - 日本語（`だ`・`む`・`場`・`校`・`項` など）や韓国語・中国語・絵文字などの UTF-8 マルチバイト文字が空白文字と誤認されないよう改善し、ラベル・タイトル・設定値・太字／斜体記法がすべての図表で正確に描画されるようになりました。
+- **高速な編集・正規表現一括置換・ライブプレビュー**:
+  - 大容量ファイルの高速編集、全角・多言語対応の正規表現検索・一括置換、Markdown / LaTeX 数式 / Mermaid 図表のリアルタイムプレビューが軽快に動作します。
 
-2. **スクロール時に画面外へ出たカーソルの表示を改善**
-   - カーソルのある行が画面外へスクロールして見切れた際に、画面の一番上に表示されている行の先頭にカーソルが表示されてしまう現象を修正し、カーソルが画面内にあるときのみ自然に表示されるようになりました。
+---
 
-3. **高速で軽快な編集・一括置換・リアルタイムプレビュー**
-   - 大容量ファイルの編集・スクロール、数千〜数万箇所におよぶ「すべて置換」、および Markdown / LaTeX 数式 / Mermaid 図表のリアルタイムプレビューが引き続き高速かつ快適に動作します。
+## 🇺🇸 English
+Thank you for using **miu**.
+Version 1.0.49 fixes a freeze when wrapping Mermaid diagram labels containing full-width brackets and CJK characters, and strengthens multi-byte UTF-8 character handling across all 33 Mermaid diagram types.
+
+### 🛠 Key Improvements & Fixes
+- **Fixed Mermaid Diagram Line-Wrapping Freeze with Full-Width Brackets**:
+  - Resolved an issue where node labels combining Japanese, Korean, or Chinese text with full-width brackets (such as `（1）`, `【1】`, or `「1」`, e.g., `A[あいうえおかきくけこ（1）]`) could cause the preview to slow down or stop responding during line-wrap calculation.
+- **Improved Multi-Byte UTF-8 Character Parsing Across All 33 Mermaid Diagrams**:
+  - Prevented UTF-8 continuation bytes inside Japanese, Korean, Chinese, and other multi-byte characters from being misinterpreted as whitespace in labels, titles, configuration values, and inline bold/italic formatting.
+- **High-Speed Editing, Multi-Language Regex & Live Preview**:
+  - Smooth editing of large files, accurate Unicode regular expression Find & Replace, and instant offline Markdown, LaTeX & Mermaid Live Preview.
+
+---
+
+## 🇨🇳 简体中文 (Simplified Chinese)
+感谢您使用 **miu**。
+v1.0.49 修复了 Mermaid 图表预览中包含全角括号的中日韩标签在自动换行时可能出现卡顿或无响应的问题，并全面强化了 33 种图表的 UTF-8 多字节字符解析。
+
+- **修复 Mermaid 图表全角括号与长文本自动换行卡顿问题**：修复了在流程图等节点标签中同时使用中文、日文、韩文与全角括号（如 `（1）`、`【1】`、`「1」` 等）时，自动换行计算可能导致预览变慢或停止响应的问题。
+- **强化全部 33 种 Mermaid 图表的多语言字符解析**：修复了部分 UTF-8 多字节字符在标签、标题、配置项及粗体/斜体语法中被误判为空白字符的问题，确保所有图表准确渲染。
+
+---
+
+## 🇹🇼 繁體中文 (Traditional Chinese)
+感謝您使用 **miu**。
+v1.0.49 修復了 Mermaid 圖表預覽中包含全形括號的中日韓標籤在自動換行時可能出現卡頓或停止回應的問題，並全面強化了 33 種圖表的 UTF-8 多位元組字元解析。
+
+- **修復 Mermaid 圖表全形括號與長文字自動換行卡頓問題**：修復了在流程圖等節點標籤中同時使用中文、日文、韓文與全形括號（如 `（1）`、`【1】`、`「1」` 等）時，自動換行計算可能導致預覽變慢或停止回應的問題。
+- **強化全部 33 種 Mermaid 圖表的多語言字元解析**：修復了部分 UTF-8 多位元組字元在標籤、標題、設定值及粗體／斜體語法中被誤判為空白字元的問題，確保所有圖表準確繪製。
+
+---
+
+## 🇰🇷 한국어 (Korean)
+언제나 **miu**를 이용해 주셔서 감사합니다.
+v1.0.49에서는 Mermaid 다이어그램 미리보기에서 전각 괄호가 포함된 다국어 라벨을 줄바꿈할 때 동작이 느려지거나 멈추는 문제를 수정하고, 33종의 모든 다이어그램에서 UTF-8 다중 바이트 문자 처리를 개선했습니다.
+
+- **Mermaid 다이어그램 전각 괄호 및 긴 라벨 자동 줄바꿈 멈춤 현상 수정**: 플로차트 등의 노드 라벨에 한국어·일본어·중국어 등 전각 문자와 전각 괄호(`（1）`, `【1】`, `「1」` 등)를 함께 입력했을 때 자동 줄바꿈 계산 중 미리보기가 무거워지거나 응답하지 않던 문제를 해결했습니다.
+- **전체 33종 Mermaid 다이어그램의 다국어 문자 파싱 강화**: UTF-8 다중 바이트 문자가 공백 문자로 오인되지 않도록 개선하여 라벨·제목·굵게/기울임꼴 서식이 정확하게 렌더링됩니다.
 """
         elif os.path.exists(notes):
             with open(notes, "r", encoding="utf-8") as f:

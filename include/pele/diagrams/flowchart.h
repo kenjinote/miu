@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <array>
 #include "../foundation.h"
 
@@ -3962,7 +3962,7 @@ public:
             out.push_back(text[i]);
             if (text[i] == '\n') {
                 i++;
-                while (i < text.size() && isSpace(static_cast<unsigned char>(text[i])) && text[i] != '\n') i++;
+                while (i < text.size() && text[i] != '\n' && isSpaceAtUtf8(text, i, &i)) {}
             } else {
                 i++;
             }
@@ -4197,20 +4197,11 @@ inline int codepointAt(const std::string& src, size_t pos, size_t& nextPos) {
 }
 
 inline bool isSpaceAt(const std::string& src, size_t pos, size_t* nextPos = nullptr) {
-    size_t np = pos;
-    int cp = codepointAt(src, pos, np);
-    if (nextPos) *nextPos = np;
-    return isSpace(cp);
+    return isSpaceAtUtf8(src, pos, nextPos);
 }
 
 inline size_t skipSpaces(const std::string& src, size_t pos) {
-    while (pos < src.size()) {
-        size_t np = pos;
-        int cp = codepointAt(src, pos, np);
-        if (!isSpace(cp)) break;
-        pos = np;
-    }
-    return pos;
+    return skipSpacesUtf8(src, pos);
 }
 
 // Sticky matchers corresponding to RE_* in lexer.ts

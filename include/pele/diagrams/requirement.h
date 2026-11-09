@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../common_parse.h"
 #include "../layout.h"
 #include "../svg.h"
@@ -393,14 +393,15 @@ inline Tokens tokenize(const std::string& src) {
 
   auto initial = [&](int c) -> bool {
     int lower = c | 32;
-    if (lower == 116 && p + 5 < n && matchPrefixCI(src, p + 1, "itle", 4) && isSpace(charAt(p + 5))) {
-      size_t q = p + 6;
+    size_t afterTitle = p + 5;
+    if (lower == 116 && p + 5 < n && matchPrefixCI(src, p + 1, "itle", 4) && isSpaceAtUtf8(src, p + 5, &afterTitle)) {
+      size_t q = afterTitle;
       while (q < n) {
         int d = charAt(q);
         if (d == 35 || d == 10 || d == 59) break;
         q++;
       }
-      if (q > p + 6) {
+      if (q > afterTitle) {
         emit(T::title, p, q);
         return true;
       }
@@ -436,9 +437,8 @@ inline Tokens tokenize(const std::string& src) {
       emit(T::NEWLINE, p, q);
       return true;
     }
-    if (isSpace(c)) {
-      p++;
-      while (p < n && isSpace(charAt(p))) p++;
+    if (isSpaceAtUtf8(src, p)) {
+      p = skipSpacesUtf8(src, p);
       return true;
     }
     if (c == 35 || c == 37) {

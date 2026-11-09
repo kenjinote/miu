@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "../foundation.h"
 
 namespace Pele {
@@ -212,14 +212,15 @@ public:
 
             if (((c | 32) >= 97 && (c | 32) <= 122) || c == 95) {
                 int sep = charCodeAt(src, static_cast<int>(i + 5));
-                if (word(i, "title") && isSpace(sep) && sep != 10 && sep != 13) {
-                    size_t end = i + 6;
+                size_t afterTitle = i + 5;
+                if (word(i, "title") && sep != 10 && sep != 13 && isSpaceAtUtf8(src, i + 5, &afterTitle)) {
+                    size_t end = afterTitle;
                     while (end < n) {
                         int ch = charCodeAt(src, static_cast<int>(end));
                         if (ch == 35 || ch == 10 || ch == 59) break;
                         end++;
                     }
-                    if (end > i + 6) return token(T::TITLE, end);
+                    if (end > afterTitle) return token(T::TITLE, end);
                 }
                 static const std::pair<const char*, int> KEYWORDS[] = {
                     {"venn-beta", T::VENN},
@@ -315,11 +316,11 @@ private:
     int color(size_t pos, int parts) const {
         size_t i = pos + 1;
         for (int part = 0; part < parts; part++) {
-            while (isSpace(charCodeAt(src, static_cast<int>(i)))) i++;
+            i = skipSpacesUtf8(src, i);
             size_t from = i;
             while (isDigit(charCodeAt(src, static_cast<int>(i))) || charCodeAt(src, static_cast<int>(i)) == 46) i++;
             if (i == from) return -1;
-            while (isSpace(charCodeAt(src, static_cast<int>(i)))) i++;
+            i = skipSpacesUtf8(src, i);
             if (charCodeAt(src, static_cast<int>(i)) != (part == parts - 1 ? 41 : 44)) return -1;
             i++;
         }

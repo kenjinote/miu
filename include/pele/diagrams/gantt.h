@@ -446,12 +446,12 @@ struct ParseStep {
 
 inline bool isSepChar(char c) {
   return c == '-' || c == '_' || c == ':' || c == '/' || c == '.' || c == ',' || c == '(' || c == ')' ||
-         isSpace(static_cast<unsigned char>(c));
+         c == ' ' || (c >= '\t' && c <= '\r');
 }
 
 inline bool isWordNonSepNonDigit(char c) {
   return !(c >= '0' && c <= '9') && c != '-' && c != '_' && c != ':' && c != '/' && c != ',' && c != '(' && c != ')' &&
-         !isSpace(static_cast<unsigned char>(c));
+         !(c == ' ' || (c >= '\t' && c <= '\r'));
 }
 
 inline std::optional<std::string> findMatchInSlice(const std::string& slice, MatchKind kind) {
@@ -1242,15 +1242,15 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
     return e == std::string::npos ? n : static_cast<int>(e);
   };
   auto skipSpaces = [&](int i) -> int {
-    while (i < n && isSpace(charCodeAt(src, i))) i++;
-    return i;
+    return skipSpacesUtf8(src, i);
   };
   auto matchStmt = [&](const std::string& kw, bool stopHash, bool stopSemi) -> int {
     int kLen = static_cast<int>(kw.size());
     if (!ciAt(src, p, kw)) return -1;
     int i = p + kLen;
-    if (i >= n || !isSpace(charCodeAt(src, i))) return -1;
-    i++;
+    size_t nextI = static_cast<size_t>(i);
+    if (i >= n || !isSpaceAtUtf8(src, static_cast<size_t>(i), &nextI)) return -1;
+    i = static_cast<int>(nextI);
     int startBody = i;
     while (i < n && src[i] != '\n' && (!stopHash || src[i] != '#') && (!stopSemi || src[i] != ';')) i++;
     return i > startBody ? i : -1;
@@ -1289,7 +1289,7 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
         break;
       }
       case 'h': {
-        if (ciAt(src, p, "href") && p + 4 < n && isSpace(charCodeAt(src, p + 4))) {
+        if (ciAt(src, p, "href") && p + 4 < n && isSpaceAtUtf8(src, static_cast<size_t>(p + 4))) {
           int i = skipSpaces(p + 4);
           if (i < n && src[i] == '"') {
             state = S_href;
@@ -1300,12 +1300,12 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
         break;
       }
       case 'c': {
-        if (ciAt(src, p, "call") && p + 4 < n && isSpace(charCodeAt(src, p + 4))) {
+        if (ciAt(src, p, "call") && p + 4 < n && isSpaceAtUtf8(src, static_cast<size_t>(p + 4))) {
           state = S_callbackname;
           p = skipSpaces(p + 4);
           return true;
         }
-        if (ciAt(src, p, "click") && p + 5 < n && isSpace(charCodeAt(src, p + 5))) {
+        if (ciAt(src, p, "click") && p + 5 < n && isSpaceAtUtf8(src, static_cast<size_t>(p + 5))) {
           state = S_click;
           p = skipSpaces(p + 5);
           return true;
@@ -1314,8 +1314,9 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
       }
       case 't': {
         if (ciAt(src, p, "title")) {
-          int i = p + 5;
-          while (i < n && isSpace(charCodeAt(src, i)) && src[i] != '\r' && src[i] != '\n') i++;
+          size_t qi = static_cast<size_t>(p + 5);
+          while (qi < static_cast<size_t>(n) && src[qi] != '\r' && src[qi] != '\n' && isSpaceAtUtf8(src, qi, &qi)) {}
+          int i = static_cast<int>(qi);
           if (i >= n || src[i] == '\r' || src[i] == '\n') {
             p = i;
             return true;
@@ -1327,8 +1328,9 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
         }
         if ((e = matchStmt("tickinterval", true, true)) >= 0) { emit(T::tickInterval, p, e); return true; }
         if ((e = matchStmt("todaymarker", false, true)) >= 0) { emit(T::todayMarker, p, e); return true; }
-        if (ciAt(src, p, "title") && p + 5 < n && isSpace(charCodeAt(src, p + 5)) && src[p + 5] != '\r' && src[p + 5] != '\n') {
-          int i = p + 6;
+        size_t afterTitle = static_cast<size_t>(p + 5);
+        if (ciAt(src, p, "title") && p + 5 < n && src[p + 5] != '\r' && src[p + 5] != '\n' && isSpaceAtUtf8(src, static_cast<size_t>(p + 5), &afterTitle)) {
+          int i = static_cast<int>(afterTitle);
           int startBody = i;
           while (i < n && src[i] != '\n') i++;
           if (i > startBody) { emit(T::title, p, i); return true; }
@@ -1336,7 +1338,7 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
         break;
       }
       case 'w': {
-        if (ciAt(src, p, "weekday") && p + 7 < n && isSpace(charCodeAt(src, p + 7))) {
+        if (ciAt(src, p, "weekday") && p + 7 < n && isSpaceAtUtf8(src, static_cast<size_t>(p + 7))) {
           int i = skipSpaces(p + 7);
           static const char* days[] = {"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"};
           for (int d = 0; d < 7; d++) {
@@ -1347,7 +1349,7 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
             }
           }
         }
-        if (ciAt(src, p, "weekend") && p + 7 < n && isSpace(charCodeAt(src, p + 7))) {
+        if (ciAt(src, p, "weekend") && p + 7 < n && isSpaceAtUtf8(src, static_cast<size_t>(p + 7))) {
           int i = skipSpaces(p + 7);
           if (ciAt(src, i, "friday") && wordBoundaryAt(src, i + 6)) {
             emit(T::weekend_friday, p, i + 6);
@@ -1436,9 +1438,8 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
           int e = p + 1;
           while (e < n && src[e] == '\n') e++;
           emit(T::NL, p, e);
-        } else if (isSpace(c)) {
-          p++;
-          while (p < n && isSpace(charCodeAt(src, p))) p++;
+        } else if (isSpaceAtUtf8(src, static_cast<size_t>(p))) {
+          p = skipSpacesUtf8(src, p);
         } else if (keyword(c)) {
           break;
         } else if (c >= '0' && c <= '9' && isDateAt(p)) {
@@ -1499,16 +1500,18 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
           emit(T::callbackargs, p, until(')', p));
         }
         break;
-      case S_click:
-        if (isSpace(c)) {
+      case S_click: {
+        size_t nextP = static_cast<size_t>(p);
+        if (isSpaceAtUtf8(src, static_cast<size_t>(p), &nextP)) {
           state = S_INITIAL;
-          p++;
+          p = static_cast<int>(nextP);
         } else {
           int e = p + 1;
-          while (e < n && !isSpace(charCodeAt(src, e))) e++;
+          while (e < n && !isSpaceAtUtf8(src, static_cast<size_t>(e))) e++;
           emit(T::click, p, e);
         }
         break;
+      }
     }
   }
 
@@ -1594,9 +1597,14 @@ inline std::vector<std::string> mergeTokens(const std::vector<std::string>& exis
   std::string low = toLowerAscii(txt);
   size_t i = 0;
   while (i < low.size()) {
-    while (i < low.size() && (low[i] == ',' || isSpace(charCodeAt(low, static_cast<int>(i))))) i++;
+    while (i < low.size()) {
+      if (low[i] == ',') { i++; continue; }
+      size_t next = i;
+      if (isSpaceAtUtf8(low, i, &next)) { i = next; continue; }
+      break;
+    }
     size_t j = i;
-    while (j < low.size() && low[j] != ',' && !isSpace(charCodeAt(low, static_cast<int>(j)))) j++;
+    while (j < low.size() && low[j] != ',' && !isSpaceAtUtf8(low, j)) j++;
     if (j > i) {
       std::string tok = low.substr(i, j - i);
       if (seen.insert(tok).second) out.push_back(tok);
@@ -1878,8 +1886,8 @@ private:
   static bool isAfterOrUntil(const std::string& str, const std::string& kw, std::string& restOut) {
     if (str.compare(0, kw.size(), kw) != 0) return false;
     size_t i = kw.size();
-    if (i >= str.size() || !isSpace(charCodeAt(str, static_cast<int>(i)))) return false;
-    while (i < str.size() && isSpace(charCodeAt(str, static_cast<int>(i)))) i++;
+    if (i >= str.size() || !isSpaceAtUtf8(str, i)) return false;
+    i = skipSpacesUtf8(str, i);
     size_t j = i;
     while (j < str.size() && (isWordChar(str[j]) || str[j] == '-' || str[j] == ' ')) j++;
     if (j == i) return false;
@@ -2196,8 +2204,7 @@ inline std::string replaceBreakTags(const std::string& raw) {
     if (raw[i] == '<' && i + 3 < raw.size() &&
         (raw[i + 1] == 'b' || raw[i + 1] == 'B') &&
         (raw[i + 2] == 'r' || raw[i + 2] == 'R')) {
-      size_t j = i + 3;
-      while (j < raw.size() && isSpace(charCodeAt(raw, static_cast<int>(j)))) j++;
+      size_t j = skipSpacesUtf8(raw, i + 3);
       if (j < raw.size() && raw[j] == '/') j++;
       if (j < raw.size() && raw[j] == '>') {
         out.push_back(' ');
