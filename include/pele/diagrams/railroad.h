@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../layout.h"
 #include "../common_parse.h"
 #include <algorithm>

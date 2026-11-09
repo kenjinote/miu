@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include "../common_parse.h"
 #include "../layout.h"
 #include "../svg.h"
