@@ -1433,22 +1433,6 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
                 listings[lang]["baseListing"]["releaseNotes"] = notes
                 print(f"Updated release notes for [{lang}]")
 
-    # Restrict device family availability strictly to Desktop (matching Windows.Desktop in Package.appxmanifest)
-    dev_fams = submission_data.get("allowTargetFutureDeviceFamilies")
-    if isinstance(dev_fams, dict):
-        for fam_key in list(dev_fams.keys()):
-            dev_fams[fam_key] = (fam_key == "Desktop")
-        dev_fams["Desktop"] = True
-    else:
-        submission_data["allowTargetFutureDeviceFamilies"] = {
-            "Desktop": True,
-            "Mobile": False,
-            "Xbox": False,
-            "Team": False,
-            "Holographic": False,
-        }
-    submission_data["allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies"] = False
-
     # 5. PUT update to Dev Center API
     print(f"Updating submission {sub_id}...")
     put_url = f"https://manage.devcenter.microsoft.com/v1.0/my/applications/{product_id}/submissions/{sub_id}"
