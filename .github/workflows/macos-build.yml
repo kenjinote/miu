@@ -136,6 +136,10 @@ jobs:
           </plist>
           EOF
 
+          # Restore standard umask 022 before xcodebuild archive/exportArchive so app bundle
+          # files inside the .ipa/.pkg installer are readable by non-root users (0755/0644).
+          umask 022
+
           python3 - << 'PYEOF'
           import os, time, jwt, requests
 
