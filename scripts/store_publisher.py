@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.50": {
+        "ja-jp": """miu v1.0.50 リリースノート
+💻 全65言語カテゴリ（230種類以上の拡張子・設定ファイル）のシンタックスハイライト＆コメント切替に対応
+
+・Lisp 系言語のフルサポートを追加:
+  Common Lisp (.lisp, .lsp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .cljs, .edn)、Hy、Fennel、Janet のシンタックスハイライト、行コメント切替（;）、ブロックコメント（#| ... |#）に対応しました。
+・アセンブリ言語（Assembly）の大幅強化:
+  x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS、WebAssembly (.wat, .wast) の命令・レジスタ・ディレクティブのハイライトを強化しました。
+・15種類の新規言語カテゴリと70種以上の拡張子・設定ファイルを追加:
+  Objective-C/C++ (.m, .mm)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D言語、Pascal/Delphi、Ada、Prolog、Vimscript、Nix、Apple Metal (.metal)、BUILD、Gemfile、.gitignore、.editorconfig 等に対応しました。""",
+
+        "en-us": """miu v1.0.50 Release Notes
+💻 Expanded Syntax Highlighting & Comment Toggling to 65 Language Categories (230+ Extensions & Config Files)
+
+- Full Lisp Family Support:
+  Added syntax highlighting, ';' line comment toggling, and '#| ... |#' block comments for Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel, and Janet.
+- Major Assembly Language Enhancements:
+  Expanded highlighting for x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS directives, and WebAssembly Text Format (.wat, .wast).
+- 15 New Language Categories & 70+ New Extensions/Dotfiles:
+  Added Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, and more.""",
+
+        "zh-hans": """miu v1.0.50 更新日志
+💻 语法高亮与注释切换扩展至 65 种语言类别（230 余种扩展名与配置文件）
+
+- 新增 Lisp 系列语言完整支持：
+  支持 Common Lisp (.lisp, .lsp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .cljs, .edn)、Hy、Fennel、Janet 的语法高亮、`;` 行注释切换与 `#| ... |#` 块注释。
+- 全面强化汇编语言 (Assembly) 支持：
+  涵盖 x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS 以及 WebAssembly 文本格式 (.wat, .wast)。
+- 新增 15 种语言类别及 70 余种配置文件扩展名：
+  新增 Objective-C/C++ (.m, .mm)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D 语言、Pascal/Delphi、Ada、Prolog、Vimscript、Nix、Apple Metal (.metal)、BUILD、Gemfile、.gitignore、.editorconfig 等支持。""",
+
+        "ko": """miu v1.0.50 릴리스 노트
+💻 총 65개 언어 카테고리(230종 이상의 확장자 및 설정 파일) 구문 강조 및 주석 토글 지원
+
+- Lisp 계열 언어 완벽 지원 추가:
+  Common Lisp(.lisp, .lsp, .cl), Emacs Lisp(.el), Scheme(.scm), Racket(.rkt), Clojure(.clj, .cljs, .edn), Hy, Fennel, Janet의 구문 강조 및 ';' 줄 주석 토글, '#| ... |#' 블록 주석을 지원합니다.
+- 어셈블리어(Assembly) 대폭 강화:
+  x86/x64(SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS 및 WebAssembly(.wat, .wast) 명령어·레지스터·디렉티브 강조를 강화했습니다.
+- 15종의 신규 언어 카테고리 및 70종 이상의 확장자·설정 파일 추가:
+  Objective-C/C++(.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D 언어, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal(.metal), BUILD, Gemfile, .gitignore, .editorconfig 등을 지원합니다."""
+    },
     "1.0.49": {
         "ja-jp": """miu v1.0.49 リリースノート
 📊 Mermaid 図表プレビューの全角括弧・多言語ラベル折り返し修正と描画安定性の向上

@@ -90,6 +90,8 @@ struct SyntaxDef {
     std::string blockCommentStart;
     std::string blockCommentEnd;
     bool disableStrings = false;
+    bool disableSingleQuoteStrings = false;
+    bool lispWords = false;
     std::vector<std::pair<std::regex, SyntaxColor>> regexes;
     std::vector<SyntaxRuleMeta> ruleMetas;
 };
@@ -108,7 +110,14 @@ static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) {
     if (pat.find("(https?|ftp)://") == 0) { m.kind = SyntaxRuleKind::Url; m.reqChar1 = ':'; m.reqChar2 = '/'; return m; }
     if (pat.find("@[a-zA-Z0-9.-]+") != std::string::npos) { m.kind = SyntaxRuleKind::Email; m.reqChar1 = '@'; return m; }
     if (!pat.empty()) {
-        if (pat[0] == '@' || pat[0] == '$' || pat[0] == '%' || pat[0] == '#' || pat[0] == ':' || pat[0] == '`' || pat[0] == '"' || pat[0] == '=') m.reqChar1 = pat[0];
+        if (pat[0] == '@' || pat[0] == '$' || pat[0] == '%' || pat[0] == '#' || pat[0] == ':' || pat[0] == '`' || pat[0] == '"' || pat[0] == '=' || pat[0] == '\'' || pat[0] == '&' || pat[0] == '<' || pat[0] == '-') m.reqChar1 = pat[0];
+        else if (pat.find("(?:#:|:)") == 0) m.reqChar1 = ':';
+        else if (pat.find("(?:#'|')") == 0) m.reqChar1 = '\'';
+        else if (pat.find(R"(\*[)") == 0) m.reqChar1 = '*';
+        else if (pat.find(R"(\+[)") == 0) m.reqChar1 = '+';
+        else if (pat.find(R"(\?)") == 0) m.reqChar1 = '?';
+        else if (pat.find(R"(\.)") == 0) m.reqChar1 = '.';
+        else if (pat.find(R"(\([*])") == 0) { m.reqChar1 = '('; m.reqChar2 = '*'; }
         else if (pat.find("Windows ") == 0) m.reqChar1 = 'W';
         else if (pat.find("</?") == 0) m.reqChar1 = '<';
         else if (pat.find("&[#") == 0) m.reqChar1 = '&';
@@ -117,14 +126,13 @@ static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) {
         else if (pat.find(R"(\{)") == 0) m.reqChar1 = '{';
         else if (pat.find(R"(\$)") == 0) m.reqChar1 = '$';
         else if (pat.find(R"(\[<)") == 0) { m.reqChar1 = '['; m.reqChar2 = '<'; }
-        else if (pat.find(R"(\.[a-zA-Z_])") == 0) m.reqChar1 = '.';
         else if (pat.find("--[") == 0) m.reqChar1 = '-';
         else if (pat.find("(?:^|[\\r\\n])[ \\t]*\\[") == 0) { m.reqChar1 = '['; m.reqChar2 = ']'; }
         else if (pat.find("(?:^|[\\r\\n])\\+") == 0) m.reqChar1 = '+';
         else if (pat.find("(?:^|[\\r\\n])-") == 0) m.reqChar1 = '-';
         else if (pat.find("(?:^|[\\r\\n])@@") == 0) m.reqChar1 = '@';
-        else if (pat.find("(?=[ \\t]*=)") != std::string::npos) m.reqChar1 = '=';
-        else if (pat.find("(?=[ \\t]*:") != std::string::npos) m.reqChar1 = ':';
+        else if (pat.find("(?=[ \\t]*=)") != std::string::npos || pat.find("(?==[^=])") != std::string::npos) m.reqChar1 = '=';
+        else if (pat.find("(?=[ \\t]*:") != std::string::npos || pat.find(":[a-zA-Z0-9_]+") != std::string::npos) m.reqChar1 = ':';
     }
     return m;
 }
@@ -138,10 +146,18 @@ inline std::wstring extractSyntaxExtensionFromPath(const std::wstring& targetPat
     std::wstring lowerBase = baseName;
     for (auto& c : lowerBase) c = std::towlower(c);
     if (lowerBase == L"dockerfile" || lowerBase == L"containerfile" || lowerBase.rfind(L"dockerfile.", 0) == 0 || lowerBase.rfind(L"containerfile.", 0) == 0) ext = L"dockerfile";
-    else if (lowerBase == L"makefile" || lowerBase == L"gnumakefile") ext = L"makefile";
+    else if (lowerBase == L"makefile" || lowerBase == L"gnumakefile" || lowerBase == L"bsdmakefile" || lowerBase == L"justfile") ext = L"makefile";
     else if (lowerBase == L"cmakelists.txt") ext = L"cmake";
     else if (lowerBase == L".env" || lowerBase.rfind(L".env.", 0) == 0) ext = L"env";
-    else if (lowerBase == L".bashrc" || lowerBase == L".bash_profile" || lowerBase == L".zshrc" || lowerBase == L".profile") ext = L"sh";
+    else if (lowerBase == L".bashrc" || lowerBase == L".bash_profile" || lowerBase == L".zshrc" || lowerBase == L".zprofile" || lowerBase == L".zshenv" || lowerBase == L".zlogin" || lowerBase == L".zlogout" || lowerBase == L".profile" || lowerBase == L".cshrc" || lowerBase == L".tcshrc" || lowerBase == L".kshrc" || lowerBase == L"pkgbuild") ext = L"sh";
+    else if (lowerBase == L".emacs" || lowerBase == L".sbclrc" || lowerBase == L".clisprc" || lowerBase == L".guile") ext = L"lisp";
+    else if (lowerBase == L"gemfile" || lowerBase == L"rakefile" || lowerBase == L"podfile" || lowerBase == L"fastfile" || lowerBase == L"appfile" || lowerBase == L"matchfile" || lowerBase == L"deliverfile" || lowerBase == L"gymfile" || lowerBase == L"scanfile" || lowerBase == L"snapfile" || lowerBase == L"brewfile" || lowerBase == L"vagrantfile" || lowerBase == L"berksfile" || lowerBase == L"guardfile" || lowerBase == L"capfile" || lowerBase == L"thorfile" || lowerBase == L"dangerfile") ext = L"rb";
+    else if (lowerBase == L"jenkinsfile") ext = L"groovy";
+    else if (lowerBase == L"build" || lowerBase == L"build.bazel" || lowerBase == L"workspace" || lowerBase == L"workspace.bazel" || lowerBase == L"sconstruct" || lowerBase == L"sconscript" || lowerBase == L"tiltfile") ext = L"py";
+    else if (lowerBase == L".vimrc" || lowerBase == L"_vimrc" || lowerBase == L".gvimrc" || lowerBase == L"_gvimrc" || lowerBase == L"vimrc" || lowerBase == L"gvimrc" || lowerBase == L".exrc") ext = L"vim";
+    else if (lowerBase == L".gitignore" || lowerBase == L".gitattributes" || lowerBase == L".dockerignore" || lowerBase == L".npmignore" || lowerBase == L".eslintignore" || lowerBase == L".prettierignore" || lowerBase == L".clang-format" || lowerBase == L".clang-tidy" || lowerBase == L".yamllint" || lowerBase == L".htaccess") ext = L"conf";
+    else if (lowerBase == L".editorconfig" || lowerBase == L".gitconfig" || lowerBase == L".gitmodules" || lowerBase == L".npmrc" || lowerBase == L".yarnrc" || lowerBase == L".flake8" || lowerBase == L".pylintrc" || lowerBase == L".coveragerc") ext = L"ini";
+    else if (lowerBase == L".prettierrc" || lowerBase == L".babelrc" || lowerBase == L".eslintrc" || lowerBase == L".stylelintrc" || lowerBase == L".hintrc" || lowerBase == L".swcrc") ext = L"json";
     else {
         size_t dotPos = baseName.find_last_of(L".");
         if (dotPos != std::wstring::npos) ext = baseName.substr(dotPos + 1);
@@ -288,6 +304,8 @@ regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlLdD]*))\b
 regex_color: 0.4 0.7 0.6 1.0
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.6 0.4 0.7 1.0
+regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
+regex_color: 0.6 0.4 0.7 1.0
 )";
         static constexpr const char* kSyntax11 = R"([powershell]
 keyword: begin break catch continue data do dynamicparam else elseif end exit filter finally for foreach from function if in inlineScript parallel param process return sequence switch throw trap try until while workflow
@@ -419,6 +437,8 @@ comment_line: //
 comment_block: /* */
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.6 0.4 0.7 1.0
+regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
+regex_color: 0.6 0.4 0.7 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
@@ -437,6 +457,8 @@ literal: true false null undefined
 comment_line: //
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.6 0.4 0.7 1.0
+regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
+regex_color: 0.6 0.4 0.7 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([a-zA-Z0-9_]*))\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
@@ -446,6 +468,8 @@ literal: true false null None Some Left Right Success Failure Nil
 comment_line: //
 comment_block: /* */
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
+regex_color: 0.6 0.4 0.7 1.0
+regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
 regex_color: 0.6 0.4 0.7 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlLdD]*))\b
 regex_color: 0.4 0.7 0.6 1.0
@@ -510,6 +534,8 @@ literal: true false nil
 comment_line: #
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.6 0.4 0.7 1.0
+regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
+regex_color: 0.6 0.4 0.7 1.0
 regex: :[a-zA-Z_][a-zA-Z0-9_?!]*
 regex_color: 0.8 0.5 0.3 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([a-zA-Z0-9_]*))\b
@@ -553,6 +579,8 @@ keyword: query mutation subscription fragment on type interface union enum input
 literal: true false null
 comment_line: #
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
+regex_color: 0.6 0.4 0.7 1.0
+regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
 regex_color: 0.6 0.4 0.7 1.0
 regex: \$[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.8 0.5 0.3 1.0
@@ -598,25 +626,32 @@ regex: =(?:dword|qword|hex(?:\([0-9a-fA-F]+\))?):[0-9a-fA-F,\\\t ]*
 regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax43 = R"([shader]
-keyword: cbuffer tbuffer struct class interface technique technique10 technique11 pass compile return if else for while do switch case default break continue discard in out inout uniform attribute varying buffer shared coherent volatile restrict readonly writeonly layout flat smooth noperspective centroid sample patch precise invariant highp mediump lowp const static extern inline register packoffset fn var let override workgroup storage private function void bool int uint dword half float double min16float min16int min16uint float2 float3 float4 int2 int3 int4 uint2 uint3 uint4 bool2 bool3 bool4 half2 half3 half4 double2 double3 double4 float2x2 float3x3 float4x4 matrix vector vec2 vec3 vec4 ivec2 ivec3 ivec4 uvec2 uvec3 uvec4 bvec2 bvec3 bvec4 dvec2 dvec3 dvec4 mat2 mat3 mat4 vec2f vec3f vec4f vec2i vec3i vec4i vec2u vec3u vec4u mat2x2f mat3x3f mat4x4f f32 i32 u32 Texture1D Texture2D Texture3D TextureCube Texture2DArray RWTexture1D RWTexture2D RWTexture3D StructuredBuffer RWStructuredBuffer ByteAddressBuffer RWByteAddressBuffer SamplerState SamplerComparisonState sampler1D sampler2D sampler3D samplerCube image2D
-literal: true false SV_Position SV_Target SV_Target0 SV_Target1 SV_Target2 SV_Target3 SV_Depth SV_VertexID SV_InstanceID SV_DispatchThreadID SV_GroupID SV_GroupThreadID SV_GroupIndex POSITION NORMAL TEXCOORD0 TEXCOORD1 TEXCOORD2 COLOR0 gl_Position gl_FragCoord gl_FragDepth gl_VertexID gl_InstanceID gl_GlobalInvocationID gl_LocalInvocationID gl_WorkGroupID
+keyword: cbuffer tbuffer struct class interface technique technique10 technique11 pass compile return if else for while do switch case default break continue discard in out inout uniform attribute varying buffer shared coherent volatile restrict readonly writeonly layout flat smooth noperspective centroid sample patch precise invariant highp mediump lowp const static extern inline register packoffset fn var let override workgroup storage private function void bool int uint dword half float double min16float min16int min16uint float2 float3 float4 int2 int3 int4 uint2 uint3 uint4 bool2 bool3 bool4 half2 half3 half4 double2 double3 double4 float2x2 float3x3 float4x4 matrix vector vec2 vec3 vec4 ivec2 ivec3 ivec4 uvec2 uvec3 uvec4 bvec2 bvec3 bvec4 dvec2 dvec3 dvec4 mat2 mat3 mat4 vec2f vec3f vec4f vec2i vec3i vec4i vec2u vec3u vec4u mat2x2f mat3x3f mat4x4f f32 i32 u32 Texture1D Texture2D Texture3D TextureCube Texture2DArray RWTexture1D RWTexture2D RWTexture3D StructuredBuffer RWStructuredBuffer ByteAddressBuffer RWByteAddressBuffer SamplerState SamplerComparisonState sampler1D sampler2D sampler3D samplerCube image2D kernel vertex fragment device constant thread threadgroup threadgroup_imageblock ray_data object_data mesh object uchar ushort ulong texture1d texture2d texture3d texturecube depth2d sampler metal namespace using
+literal: true false SV_Position SV_Target SV_Target0 SV_Target1 SV_Target2 SV_Target3 SV_Depth SV_VertexID SV_InstanceID SV_DispatchThreadID SV_GroupID SV_GroupThreadID SV_GroupIndex POSITION NORMAL TEXCOORD0 TEXCOORD1 TEXCOORD2 COLOR0 gl_Position gl_FragCoord gl_FragDepth gl_VertexID gl_InstanceID gl_GlobalInvocationID gl_LocalInvocationID gl_WorkGroupID stage_in position thread_position_in_grid thread_position_in_threadgroup threadgroup_position_in_grid
 comment_line: //
 comment_block: /* */
 regex: #[ \t]*[a-zA-Z0-9_]+
 regex_color: 0.6 0.4 0.7 1.0
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.6 0.4 0.7 1.0
+regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
+regex_color: 0.6 0.4 0.7 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlLuU]*))\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax44 = R"([asm]
-keyword: mov movzx movsx lea push pop call ret jmp je jz jne jnz jg jge jl jle ja jae jb jbe jc jnc jo jno js jns add sub mul imul div idiv inc dec neg and or xor not shl shr sal sar rol ror cmp test nop int syscall sysenter sysexit cpuid rdtsc cld std cli sti rep repe repz repne repnz cmpsb movsb stosb lodsb scasb xchg cmpxchg lock wait hlt leave enter cbw cwd cdq cqo movaps movups movdqa movdqu movss movsd addps addpd subps subpd mulps mulpd divps divpd xorps xorpd pxor por pand paddd psubd vmovaps vmovups vaddps vmulps vfma231ps ldr str ldp stp bl br b cbz cbnz adr adrp mrs msr svc db dw dd dq dt resb resw resd resq equ section segment global extern PUBLIC EXTRN PROC ENDP SEGMENT ENDS ASSUME MACRO ENDM ALIGN ORG BITS USE16 USE32 USE64 BYTE WORD DWORD QWORD XMMWORD YMMWORD ZMMWORD PTR OFFSET FLAT SHORT NEAR FAR
-literal: rax rbx rcx rdx rsi rdi rbp rsp r8 r9 r10 r11 r12 r13 r14 r15 rip eax ebx ecx edx esi edi ebp esp r8d r9d r10d r11d r12d r13d r14d r15d ax bx cx dx si di bp sp al bl cl dl ah bh ch dh sil dil bpl spl xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7 xmm8 xmm9 xmm10 xmm11 xmm12 xmm13 xmm14 xmm15 ymm0 ymm1 ymm2 ymm3 ymm4 ymm5 ymm6 ymm7 zmm0 zmm1 cs ds es fs gs ss x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 lr pc w0 w1 w2 w3 w4 w5 w6 w7
+keyword: mov movb movw movl movq movabs movzx movzbl movzwl movsx movsbl movswl movslq lea leal leaq push pushq pop popq call callq ret retq lret iret iretq jmp ljmp je jz jne jnz jg jge jl jle ja jae jb jbe jc jnc jo jno js jns jp jpe jnp jpo jecxz jrcxz loop loope loopne cmove cmovz cmovne cmovnz cmovg cmovge cmovl cmovle cmova cmovae cmovb cmovbe seta sete setne setg setge setl setle add addb addw addl addq adc adcx adox sub subb subw subl subq sbb mul imul div idiv inc dec neg and or xor not shl shr sal sar rol ror rcl rcr shld shrd bsf bsr bswap bt btc btr bts popcnt lzcnt tzcnt cmp cmpb cmpw cmpl cmpq test testb testw testl testq nop ud2 int into syscall sysret sysenter sysexit cpuid rdtsc rdtscp cld std cli sti clc stc cmc rep repe repz repne repnz cmpsb cmpsw cmpsd cmpsq movsb movsw movsd movsq stosb stosw stosd stosq lodsb lodsw lodsd lodsq scasb scasw scasd scasq xchg xadd cmpxchg cmpxchg8b cmpxchg16b lock pause wait hlt leave enter cbw cwde cdqe cwd cdq cqo lfence mfence sfence prefetchnta prefetcht0 prefetcht1 prefetcht2 movaps movups movapd movupd movdqa movdqu movd movq movss movsd movhlps movlhps shufps shufpd unpcklps unpckhps addps addpd addss addsd subps subpd subss subsd mulps mulpd mulss mulsd divps divpd divss divsd sqrtps sqrtpd sqrtss sqrtsd maxps maxpd minps minpd andps andpd andnps andnpd orps orpd xorps xorpd pxor por pand pandn paddb paddw paddd paddq psubb psubw psubd psubq pmullw pmulld pcmpeqb pcmpeqw pcmpeqd pcmpgtb pcmpgtw pcmpgtd pshufb pshufd psllw pslld psllq psrlw psrld psrlq psraw psrad vmovaps vmovups vmovapd vmovupd vmovdqa vmovdqu vaddps vaddpd vsubps vsubpd vmulps vmulpd vdivps vdivpd vxorps vxorpd vpxor vpor vpand vfmadd132ps vfmadd213ps vfmadd231ps vfmadd231pd vbroadcastss vbroadcastsd vzeroupper vzeroall ldr ldrb ldrh ldrsb ldrsh ldrsw ldp ldnp ldxr ldaxr str strb strh stp stnp stxr stlxr bl blr br b beq bne blt bgt ble bge bcs bcc bmi bpl bvs bvc bhi bls cbz cbnz tbz tbnz adr adrp madd msub mneg smull umull sdiv udiv csel cset csetm cinc cinv cneg ubfm sbfm bfm ubfx sbfx bfi lsl lsr asr bic orn eon tst cmn mvn rev rev16 rev32 clz rbit mrs msr svc hvc smc isb dsb dmb fmov fadd fsub fmul fdiv fsqrt fcmp fcvt scvtf ucvtf fcvtzs fcvtzu lui auipc jal jalr lb lh lw ld lbu lhu lwu sb sh sw sd addi slti sltiu xori ori andi slli srli srai addw subw sllw srlw sraw addiw slliw srliw sraiw mulh mulhsu mulhu divu rem remu mulw divw divuw remw remuw ecall ebreak mret sret uret wfi fence csrr csrw csrs csrc csrrw csrrs csrrc li la mv j jr beqz bnez blez bgez bltz bgtz seqz snez sltz sgtz db dw dd dq dt do dy dz resb resw resd resq rest reso resy resz incbin equ times section segment global extern common weak local type size align balign p2align org bits use16 use32 use64 default rel abs struc endstruc istruc iend at macro endm %macro %endmacro %define %assign %ifdef %ifndef %else %endif %include %rep %endrep PUBLIC EXTRN EXTERNDEF PROTO PROC ENDP SEGMENT ENDS ASSUME MACRO ENDM ALIGN ORG EVEN RECORD STRUCT UNION TYPEDEF END BYTE SBYTE WORD SWORD DWORD SDWORD FWORD QWORD SQWORD TBYTE OWORD XMMWORD YMMWORD ZMMWORD PTR OFFSET FLAT SHORT NEAR FAR PROC module func param result local global table memory type import export start elem data offset mut i32 i64 f32 f64 v128 funcref externref
+literal: rax rbx rcx rdx rsi rdi rbp rsp r8 r9 r10 r11 r12 r13 r14 r15 rip eflags rflags eax ebx ecx edx esi edi ebp esp r8d r9d r10d r11d r12d r13d r14d r15d eip ax bx cx dx si di bp sp r8w r9w r10w r11w r12w r13w r14w r15w al bl cl dl ah bh ch dh sil dil bpl spl r8b r9b r10b r11b r12b r13b r14b r15b mm0 mm1 mm2 mm3 mm4 mm5 mm6 mm7 xmm0 xmm1 xmm2 xmm3 xmm4 xmm5 xmm6 xmm7 xmm8 xmm9 xmm10 xmm11 xmm12 xmm13 xmm14 xmm15 xmm16 xmm17 xmm18 xmm19 xmm20 xmm21 xmm22 xmm23 xmm24 xmm25 xmm26 xmm27 xmm28 xmm29 xmm30 xmm31 ymm0 ymm1 ymm2 ymm3 ymm4 ymm5 ymm6 ymm7 ymm8 ymm9 ymm10 ymm11 ymm12 ymm13 ymm14 ymm15 zmm0 zmm1 zmm2 zmm3 zmm4 zmm5 zmm6 zmm7 k0 k1 k2 k3 k4 k5 k6 k7 cr0 cr2 cr3 cr4 dr0 dr1 dr2 dr3 dr6 dr7 cs ds es fs gs ss st0 st1 st2 st3 st4 st5 st6 st7 x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10 x11 x12 x13 x14 x15 x16 x17 x18 x19 x20 x21 x22 x23 x24 x25 x26 x27 x28 x29 x30 lr pc xzr wzr w0 w1 w2 w3 w4 w5 w6 w7 w8 w9 w10 w11 w12 w13 w14 w15 w16 w17 w18 w19 w20 w21 w22 w23 w24 w25 w26 w27 w28 w29 w30 v0 v1 v2 v3 v4 v5 v6 v7 v8 v9 v10 v11 v12 v13 v14 v15 v16 v17 v18 v19 v20 v21 v22 v23 v24 v25 v26 v27 v28 v29 v30 v31 q0 q1 q2 q3 q4 q5 q6 q7 d0 d1 d2 d3 d4 d5 d6 d7 s0 s1 s2 s3 s4 s5 s6 s7 s8 s9 s10 s11 cpsr spsr fpsr fpcr zero ra gp tp t0 t1 t2 t3 t4 t5 t6 fp a0 a1 a2 a3 a4 a5 a6 a7 ft0 ft1 ft2 ft3 ft4 ft5 ft6 ft7 fs0 fs1 fa0 fa1 fa2 fa3 fa4 fa5 fa6 fa7
 comment_line: ;
+comment_block: /* */
 regex: (?:^|[\r\n])[ \t]*[a-zA-Z_.][a-zA-Z0-9_.$@]*(?=[ \t]*:)
 regex_color: 0.6 0.4 0.7 1.0
-regex: \.[a-zA-Z_][a-zA-Z0-9_]*
+regex: %[a-zA-Z0-9]+
+regex_color: 0.35 0.75 0.85 1.0
+regex: \.[a-zA-Z_][a-zA-Z0-9_.]*
 regex_color: 0.3 0.65 0.9 1.0
+regex: \b[0-9][0-9a-fA-F]*[hH]\b
+regex_color: 0.4 0.7 0.6 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([a-zA-Z0-9_]*))\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
@@ -667,32 +702,230 @@ regex_color: 0.2 0.6 0.8 1.0
 regex: \b([0-9]+(\.[0-9]+)?)\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
+        static const char* kSyntax49 = R"([lisp]
+no_single_quote: 1
+lisp_words: 1
+keyword: defun defmacro defvar defparameter defconstant defstruct defclass defgeneric defmethod deftype defpackage in-package defsetf define-modify-macro define-compiler-macro define-symbol-macro define-condition define-method-combination defalias defsubst defcustom defgroup defface defconst defadvice cl-defun cl-defmacro cl-defstruct cl-defmethod cl-defgeneric cl-loop cl-letf cl-letf* cl-flet cl-labels cl-macrolet cl-symbol-macrolet cl-destructuring-bind cl-multiple-value-bind cl-case cl-ecase cl-typecase cl-etypecase cl-return cl-return-from cl-block define define-syntax define-record-type define-values define-library define-struct define-type define-syntax-rule define/contract syntax-rules syntax-case syntax-parse with-syntax datum->syntax syntax->datum defn defn- def defonce defmulti defprotocol defrecord definterface ns fn lambda let let* letrec letrec* let-values let*-values letrec-values let-syntax letrec-syntax letfn fluid-let flet labels macrolet symbol-macrolet destructuring-bind multiple-value-bind multiple-value-call multiple-value-list multiple-value-prog1 multiple-value-setq with-open-file with-open-stream with-output-to-string with-input-from-string with-slots with-accessors with-gensyms with-standard-io-syntax with-package-iterator with-hash-table-iterator with-simple-restart with-compilation-unit with-current-buffer with-temp-buffer with-temp-file with-output-to-temp-buffer with-selected-window with-demoted-errors with-eval-after-load with-open with-redefs with-out-str with-in-str save-excursion save-restriction save-current-buffer save-match-data unwind-protect condition-case handler-case handler-bind restart-case restart-bind ignore-errors if when unless cond condp case typecase etypecase ctypecase ecase ccase pcase pcase-let pcase-let* pcase-lambda pcase-dolist match match* match-let match-lambda do do* dolist dotimes doseq do-symbols do-external-symbols do-all-symbols loop recur repeat while until for for* for/list for*/list for/vector for/hash for/sum for/fold for/first for/and for/or foreach for-each begin begin0 progn prog1 prog2 prog prog* progv block return return-from go tagbody catch throw try finally monitor-enter monitor-exit eval-when locally the declare proclaim declaim provide require use-package import export shadow shadowing-import unexport unintern make-package find-package delete-package module module+ module* struct include load load-file compile compile-file autoload interactive quote function var deref atom swap! reset! compare-and-set! ref dosync alter commute ensure agent send send-off await future promise deliver locking binding setq setq-local setq-default defvar-local setf psetq psetf incf decf push pushnew pop rotatef shiftf remf set! set-car! set-cdr! vector-set! string-set! box unbox set-box! delay force parameterize make-parameter guard dynamic-wind call-with-current-continuation call/cc call-with-values call-with-input-file call-with-output-file with-input-from-file with-output-to-file values values-list eval apply funcall trampoline macroexpand macroexpand-1 complement constantly identity partial comp juxt memoize fnil every-pred some-fn mapcar mapc mapcan maplist mapcon map map-into mapv mapcat map-indexed filter filterv filter-map keep keep-indexed reduce reduce-kv foldl foldr remove remove-if remove-if-not delete delete-if delete-if-not remove-duplicates delete-duplicates substitute find find-if position count sort stable-sort merge every some notany notevery andmap ormap cons car cdr caar cadr cdar cddr caaar caadr cadar caddr cdaar cdadr cddar cdddr first second third fourth fifth sixth seventh eighth ninth tenth rest last butlast nth nthcdr append nconc reverse nreverse list list* make-list copy-list copy-alist copy-tree assoc rassoc member adjoin union intersection set-difference subsetp acons pairlis vector make-array adjust-array aref svref elt length subseq copy-seq fill replace concatenate coerce into conj disj assoc-in dissoc update update-in get-in select-keys keys vals merge-with zipmap vec set hash-map array-map sorted-map sorted-set subvec peek empty seq lazy-seq lazy-cat repeatedly iterate cycle range take take-while take-nth drop drop-while drop-last split-at split-with partition partition-all partition-by group-by frequencies interleave interpose distinct dedupe format prin1 princ print pprint println pr prn pr-str prn-str print-str println-str terpri fresh-line display displayln newline printf fprintf sprintf eprintf read read-line read-char unread-char peek-char read-from-string read-string slurp spit write write-line write-string write-char message user-error error warn signal cerror invoke-restart find-restart compute-restarts abort continue muffle-warning store-value use-value break assert check-type typep subtypep type-of class-of instance? isa? make-instance initialize-instance reinitialize-instance shared-initialize slot-value slot-boundp slot-makunbound slot-exists-p call-next-method next-method-p change-class eq eql equal equalp eq? eqv? equal? identical? distinct? null not and or xor atom consp listp symbolp keywordp numberp integerp rationalp floatp realp complexp characterp stringp vectorp bit-vector-p arrayp packagep functionp compiled-function-p streamp hash-table-p pathnamep zerop plusp minusp oddp evenp null? pair? list? symbol? keyword? number? integer? real? rational? ratio? decimal? float? complex? exact? inexact? zero? positive? negative? pos? neg? pos-int? neg-int? nat-int? odd? even? string? char? vector? procedure? fn? ifn? boolean? port? input-port? output-port? eof-object? nil? some? true? false? empty? not-empty seq? coll? map? set? associative? sequential? counted? reversible? sorted? contains? var? delay? future? realized? string=? string<? string>? string<=? string>=? char=? char<? char>? char<=? char>=? string= string/= string< string> string<= string>= string-equal char= char/= char< char> char<= char>= char-equal gensym gentemp intern make-symbol find-symbol symbol-name symbol-value symbol-function symbol-plist symbol-package boundp fboundp makunbound fmakunbound get getf put get-properties make-hash-table gethash remhash maphash clrhash hash-table-count sxhash -> ->> as-> cond-> cond->> some-> some->> doto if-let when-let if-some when-some if-not when-not when-first + - * / = /= < > <= >= 1+ 1- inc dec max min abs mod rem quot quotient remainder modulo floor ceiling truncate round sin cos tan asin acos atan sqrt isqrt exp expt log ash logand logior logxor lognot bit-and bit-or bit-xor bit-not bit-shift-left bit-shift-right str subs concat substring string-append string-length string-ref vector-length vector-ref make-vector make-string #lang
+literal: t nil true false #t #f #true #false #nil &optional &rest &key &body &aux &allow-other-keys &whole &environment &
+comment_line: ;
+comment_block: #| |#
+regex: (?:#:|:)[a-zA-Z0-9_+\-*/?!<>=&$%^~.@]+
+regex_color: 0.75 0.5 0.85 1.0
+regex: (?:#'|')[a-zA-Z_+\-*/?!<>=&$%^~][a-zA-Z0-9_+\-*/?!<>=&$%^~.@]*
+regex_color: 0.85 0.65 0.35 1.0
+regex: \*[a-zA-Z0-9_+\-*/?!<>=&$%^~]+\*
+regex_color: 0.35 0.75 0.85 1.0
+regex: \+[a-zA-Z0-9_+\-*/?!<>=&$%^~]+\+
+regex_color: 0.35 0.75 0.85 1.0
+regex: (https?|ftp)://[^\s/$.?#].[^\s]*
+regex_color: 0.2 0.6 0.8 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax50 = R"([objc]
+keyword: alignas alignof and and_eq asm auto bitand bitor bool break case catch char char16_t char32_t class compl const constexpr const_cast continue decltype default delete do double dynamic_cast else enum explicit export extern false float for friend goto if inline int long mutable namespace new noexcept not not_eq nullptr operator or or_eq private protected public register reinterpret_cast return short signed sizeof static static_assert static_cast struct switch template this thread_local throw true try typedef typeid typename union unsigned using virtual void volatile wchar_t while xor xor_eq id Class SEL IMP BOOL instancetype super self in out inout bycopy byref oneway strong weak unsafe_unretained assign retain copy readonly readwrite nonatomic atomic nullable nonnull null_unspecified null_resettable __weak __strong __unsafe_unretained __autoreleasing __bridge __bridge_transfer __bridge_retained __block NSObject NSString NSMutableString NSArray NSMutableArray NSDictionary NSMutableDictionary NSSet NSMutableSet NSNumber NSData NSMutableData NSError NSURL NSURLRequest NSURLSession NSBundle NSNotificationCenter NSUserDefaults NSFileManager NSThread NSOperationQueue dispatch_queue_t NSInteger NSUInteger CGFloat CGRect CGPoint CGSize NSRange UIView UIViewController UIWindow UIApplication NSView NSViewController NSWindow NSApplication
+literal: YES NO true false NULL nil Nil nullptr
+comment_line: //
+comment_block: /* */
+regex: #[ \t]*(?:include|import)[ \t]*[<"][^>"]+[>"]
+regex_color: 0.8 0.4 0.2 1.0
+regex: #[ \t]*[a-zA-Z0-9_]+
+regex_color: 0.6 0.4 0.7 1.0
+regex: @[a-zA-Z_][a-zA-Z0-9_]*
+regex_color: 0.75 0.45 0.85 1.0
+regex: (https?|ftp)://[^\s/$.?#].[^\s]*
+regex_color: 0.2 0.6 0.8 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlLuU]*))\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax51 = R"([groovy]
+keyword: as assert break case catch class const continue def default do else enum extends finally for goto if implements import in instanceof interface new package return super switch this throw throws trait try var while public protected private static final abstract synchronized native transient volatile strictfp void boolean byte char short int long float double String Object Closure List Map Set Range BigDecimal BigInteger File plugins buildscript repositories dependencies android defaultConfig buildTypes signingConfigs productFlavors compileOptions kotlinOptions sourceSets allprojects subprojects ext tasks register named implementation api compileOnly runtimeOnly testImplementation androidTestImplementation debugImplementation releaseImplementation annotationProcessor kapt ksp classpath google mavenCentral gradlePluginPortal maven apply plugin id version group description namespace compileSdk minSdk targetSdk versionCode versionName pipeline agent stages stage steps post environment options parameters triggers tools when parallel script sh bat echo checkout always success failure
+literal: true false null it
+comment_line: //
+comment_block: /* */
+regex: @[a-zA-Z_][a-zA-Z0-9_]*
+regex_color: 0.75 0.5 0.85 1.0
+regex: \$\{[^}\r\n]+\}|\$[a-zA-Z_][a-zA-Z0-9_]*
+regex_color: 0.35 0.75 0.85 1.0
+regex: (https?|ftp)://[^\s/$.?#].[^\s]*
+regex_color: 0.2 0.6 0.8 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlLdD]*))\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax52 = R"([ocaml]
+no_single_quote: 1
+keyword: and as assert asr begin class constraint do done downto else end exception external for fun function functor if in include inherit initializer land lazy let lor lsl lsr lxor match method mod module mutable new nonrec object of open or private rec sig struct then to try type val virtual when while with abstype datatype eqtype fn handle infix infixr local op orelse andalso raise sharing structure where withtype switch pri pub external int float bool char string bytes unit list array option result ref exn seq Hashtbl Map Set Array List String Char Int Float Printf Format Lwt Async
+literal: true false None Some Ok Error
+comment_block: (* *)
+regex: '(?:\\.|[^'\\\r\n])'
+regex_color: 0.64 0.08 0.08 1.0
+regex: '[a-zA-Z_][a-zA-Z0-9_]*\b
+regex_color: 0.85 0.65 0.35 1.0
+regex: \b[A-Z][a-zA-Z0-9_]*\b
+regex_color: 0.3 0.65 0.85 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax53 = R"([erlang]
+keyword: after and andalso band begin bnot bor bsl bsr bxor case catch cond div end fun if let not of or orelse receive rem try when xor module export import compile record define undef ifdef ifndef else endif include include_lib behaviour behavior callback spec type opaque export_type spawn spawn_link spawn_monitor self register unregister whereis send exit error throw apply is_atom is_binary is_bitstring is_boolean is_float is_function is_integer is_list is_map is_number is_pid is_port is_record is_reference is_tuple hd tl length size byte_size bit_size tuple_size map_size element setelement make_ref node nodes monitor demonitor link unlink trap_exit process_flag erlang lists maps io file ets dets mnesia gen_server gen_statem gen_event supervisor application sys timer proplists binary re string
+literal: true false ok undefined infinity
+comment_line: %
+regex: -(?:module|export|import|compile|record|define|undef|ifdef|ifndef|else|endif|include|include_lib|behaviour|behavior|callback|spec|type|opaque|export_type)\b
+regex_color: 0.75 0.5 0.85 1.0
+regex: \?[a-zA-Z_][a-zA-Z0-9_]*
+regex_color: 0.85 0.6 0.3 1.0
+regex: \b[A-Z_][a-zA-Z0-9_@]*\b
+regex_color: 0.35 0.7 0.85 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax54 = R"([fortran]
+keyword: program end subroutine function module submodule contains use only implicit none integer real double precision complex logical character type class dimension allocatable pointer target intent in out inout optional parameter save public private protected intrinsic external interface abstract procedure generic operator assignment allocate deallocate nullify if then else elseif select case default do while concurrent cycle exit continue goto return stop error call read write print open close inquire format rewind backspace flush where elsewhere forall pure elemental recursive result bind common equivalence data namelist sequence extends pass nopass deferred non_overridable associate block critical sync all images memory codimension PROGRAM END SUBROUTINE FUNCTION MODULE SUBMODULE CONTAINS USE ONLY IMPLICIT NONE INTEGER REAL DOUBLE PRECISION COMPLEX LOGICAL CHARACTER TYPE CLASS DIMENSION ALLOCATABLE POINTER TARGET INTENT IN OUT INOUT OPTIONAL PARAMETER SAVE PUBLIC PRIVATE PROTECTED INTRINSIC EXTERNAL INTERFACE ABSTRACT PROCEDURE GENERIC OPERATOR ASSIGNMENT ALLOCATE DEALLOCATE NULLIFY IF THEN ELSE ELSEIF SELECT CASE DEFAULT DO WHILE CONCURRENT CYCLE EXIT CONTINUE GOTO RETURN STOP ERROR CALL READ WRITE PRINT OPEN CLOSE INQUIRE FORMAT REWIND BACKSPACE FLUSH WHERE ELSEWHERE FORALL PURE ELEMENTAL RECURSIVE RESULT BIND COMMON EQUIVALENCE DATA NAMELIST SEQUENCE
+literal: true false TRUE FALSE
+comment_line: !
+regex: \.(?:true|false|and|or|not|eqv|neqv|eq|ne|lt|le|gt|ge|TRUE|FALSE|AND|OR|NOT|EQV|NEQV|EQ|NE|LT|LE|GT|GE)\.
+regex_color: 0.75 0.5 0.85 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax55 = R"([cobol]
+lisp_words: 1
+keyword: IDENTIFICATION ID DIVISION PROGRAM-ID ENVIRONMENT CONFIGURATION SOURCE-COMPUTER OBJECT-COMPUTER SPECIAL-NAMES INPUT-OUTPUT FILE-CONTROL I-O-CONTROL DATA FILE WORKING-STORAGE LOCAL-STORAGE LINKAGE REPORT SCREEN SECTION FD SD PIC PICTURE VALUE VALUES FILLER REDEFINES OCCURS TIMES DEPENDING ON ASCENDING DESCENDING KEY INDEXED BY USAGE DISPLAY COMP COMP-1 COMP-2 COMP-3 COMP-4 COMP-5 COMPUTATIONAL BINARY PACKED-DECIMAL INDEX POINTER JUSTIFIED BLANK WHEN SIGN LEADING TRAILING SEPARATE SYNCHRONIZED SYNC EXTERNAL GLOBAL PROCEDURE DECLARATIVES END-DECLARATIVES USING RETURNING GIVING ACCEPT ADD TO GIVING ON-SIZE-ERROR NOT-ON-SIZE-ERROR END-ADD ALTER CALL CANCEL CLOSE COMPUTE END-COMPUTE CONTINUE COPY DELETE END-DELETE DIVIDE INTO REMAINDER END-DIVIDE ENTRY EVALUATE ALSO THRU THROUGH OTHER END-EVALUATE EXIT GOBACK GO TO IF THEN ELSE NEXT SENTENCE END-IF INITIALIZE INSPECT TALLYING REPLACING CONVERTING LEADING FIRST ALL INITIAL BEFORE AFTER MERGE MOVE CORRESPONDING CORR MULTIPLY END-MULTIPLY OPEN INPUT OUTPUT I-O EXTEND PERFORM VARYING FROM UNTIL WITH TEST END-PERFORM READ AT END NOT-AT-END INVALID-KEY NOT-INVALID-KEY END-READ RELEASE RETURN REWRITE END-REWRITE SEARCH END-SEARCH SET SORT START END-START STOP RUN STRING DELIMITED SIZE END-STRING SUBTRACT END-SUBTRACT UNSTRING END-UNSTRING WRITE ADVANCING PAGE LINES END-WRITE XML PARSE GENERATE JSON identification division program-id environment configuration input-output file-control data file working-storage local-storage linkage procedure section pic picture value filler redefines occurs usage comp comp-3 perform varying until if then else end-if evaluate when other end-evaluate move to compute add subtract multiply divide display accept open close read write rewrite delete call using goback stop run exit
+literal: ZERO ZEROS ZEROES SPACE SPACES HIGH-VALUE HIGH-VALUES LOW-VALUE LOW-VALUES QUOTE QUOTES NULL NULLS TRUE FALSE zero zeros zeroes space spaces true false null
+comment_line: *>
+regex: (?:^|[\r\n])[0-9 ]{0,6}\*[^\r\n]*
+regex_color: 0.42 0.6 0.33 1.0
+regex: \b([0-9]+(\.[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax56 = R"([prisma]
+keyword: datasource generator model enum type view provider url directUrl shadowDatabaseUrl previewFeatures output binaryTargets engineType relationMode extensions schemas String Boolean Int BigInt Float Decimal DateTime Json Bytes Unsupported
+literal: true false null now autoincrement cuid uuid ulid dbgenerated env Cascade Restrict NoAction SetNull SetDefault Asc Desc
+comment_line: //
+regex: @@?[a-zA-Z_][a-zA-Z0-9_.]*
+regex_color: 0.75 0.5 0.85 1.0
+regex: \b([0-9]+(\.[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax57 = R"([solidity]
+keyword: pragma solidity abicoder import as from contract interface library abstract is using for struct enum event error modifier function constructor fallback receive external public internal private pure view payable constant immutable anonymous indexed virtual override returns memory storage calldata transient if else while do break continue return try catch revert require assert emit new delete unchecked assembly let switch case default leave mapping bool string bytes byte address int int8 int16 int24 int32 int64 int128 int256 uint uint8 uint16 uint24 uint32 uint64 uint128 uint256 bytes1 bytes2 bytes4 bytes8 bytes16 bytes20 bytes32 ufixed fixed wei gwei ether seconds minutes hours days weeks keccak256 sha256 ripemd160 ecrecover addmod mulmod selfdestruct
+literal: true false this super msg block tx abi type
+comment_line: //
+comment_block: /* */
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax58 = R"([nim]
+keyword: addr and as asm bind block break case cast concept const continue converter defer discard distinct div do elif else end enum except export finally for from func if import in include interface iterator let macro method mixin mod nil not notin object of or out proc ptr raise ref return shl shr static template try tuple type using var when while xor yield int int8 int16 int32 int64 uint uint8 uint16 uint32 uint64 float float32 float64 bool char string cstring pointer ByteAddress Natural Positive seq array openArray varargs set HashSet Table OrderedTable Option Future void auto echo assert doAssert
+literal: true false nil result
+comment_line: #
+comment_block: #[ ]#
+regex: \{\.[a-zA-Z0-9_:, \t]+\.\}
+regex_color: 0.75 0.5 0.85 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([a-zA-Z0-9_]*))\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax59 = R"([d]
+keyword: abstract alias align asm assert auto body bool break byte case cast catch cdouble cent cfloat char class const continue creal dchar debug default delegate delete deprecated do double else enum export extern final finally float for foreach foreach_reverse function goto idouble if ifloat immutable import in inout int interface invariant ireal is lazy long macro mixin module new nothrow out override package pragma private protected public pure real ref return scope shared short static struct super switch synchronized template this throw try typedef typeid typeof ubyte ucent uint ulong union unittest ushort version void wchar while with __gshared __traits __vector __parameters string wstring dstring size_t ptrdiff_t Object Throwable Exception Error
+literal: true false null __FILE__ __LINE__ __MODULE__ __FUNCTION__ __PRETTY_FUNCTION__
+comment_line: //
+comment_block: /* */
+regex: @[a-zA-Z_][a-zA-Z0-9_]*
+regex_color: 0.75 0.5 0.85 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlLuU]*))\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax60 = R"([pascal]
+keyword: and array as asm begin case class const constructor destructor dispinterface div do downto else end except exports file finalization finally for function goto if implementation in inherited initialization inline interface is label library mod not object of on operator or out packed procedure program property raise record repeat resourcestring set shl shr string then threadvar to try type unit until uses var while with xor private protected public published virtual override overload reintroduce abstract dynamic message stdcall cdecl pascal register safecall forward external read write default nodefault stored index dispid Integer Cardinal ShortInt SmallInt LongInt Int64 UInt64 NativeInt NativeUInt Byte Word LongWord DWORD QWord Single Double Extended Comp Currency Real Boolean ByteBool WordBool LongBool Char AnsiChar WideChar ShortString AnsiString WideString UnicodeString String Variant OleVariant Pointer PChar TObject TClass TInterfacedObject TPersistent TComponent TStrings TStringList TList TStream TMemoryStream TFileStream Exception SysUtils Classes Forms Controls Graphics Dialogs Windows Messages
+literal: true false nil True False Nil Self Result TRUE FALSE NIL
+comment_line: //
+comment_block: { }
+regex: \([*][\s\S]*?[*]\)
+regex_color: 0.42 0.6 0.33 1.0
+regex: \$[0-9a-fA-F]+
+regex_color: 0.4 0.7 0.6 1.0
+regex: \b([0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax61 = R"([ada]
+no_single_quote: 1
+keyword: abort abs abstract accept access aliased all and array at begin body case constant declare delay delta digits do else elsif end entry exception exit for function generic goto if in interface is limited loop mod new not null of or others out overriding package pragma private procedure protected raise range record rem renames requeue return reverse select separate some subtype synchronized tagged task terminate then type until use when while with xor Integer Natural Positive Float Long_Float Short_Float Boolean Character Wide_Character String Wide_String Duration System Ada Text_IO Interfaces
+literal: True False null true false NULL TRUE FALSE
+comment_line: --
+regex: '[^'\r\n]'
+regex_color: 0.64 0.08 0.08 1.0
+regex: '[a-zA-Z_][a-zA-Z0-9_]*
+regex_color: 0.75 0.5 0.85 1.0
+regex: \b([0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax62 = R"([prolog]
+keyword: module use_module ensure_loaded dynamic multifile discontiguous volatile meta_predicate op initialization is mod rem div rdiv abs sign max min sqrt sin cos tan exp log not once ignore call apply catch throw findall bagof setof forall aggregate aggregate_all member memberchk append prefix suffix select nth0 nth1 last length reverse permutation flatten sort msort keysort numlist between succ plus functor arg univ copy_term term_variables subsumes_term unify_with_occurs_check var nonvar atom integer float rational number atomic compound callable ground cyclic_term acyclic_term is_list assert asserta assertz retract retractall abolish clause current_predicate current_op consult reconsult listing open close read write writeln writeq write_canonical print format nl get_char get_code put_char put_code halt abort trace notrace spy nospy
+literal: true fail false !
+comment_line: %
+comment_block: /* */
+regex: :-|\?-->|-->
+regex_color: 0.75 0.5 0.85 1.0
+regex: \b[A-Z_][a-zA-Z0-9_]*\b
+regex_color: 0.35 0.7 0.85 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax63 = R"([vim]
+keyword: let unlet const set setlocal setglobal setfiletype if elseif else endif while endwhile for in endfor try catch finally endtry throw break continue return finish function endfunction endfunc func def enddef call execute eval echo echon echomsg echoerr echohl silent unsilent verbose normal augroup autocmd au doautocmd command com delcommand map nmap vmap xmap smap omap imap cmap tmap lmap noremap nnoremap vnoremap xnoremap snoremap onoremap inoremap cnoremap tnoremap lnoremap unmap nunmap vunmap xunmap sunmap ounmap iunmap cunmap tunmap mapclear abbreviate ab iabbrev cabbrev unabbreviate syntax syn highlight hi clear filetype plugin indent on off source runtime packadd packloadall colorscheme colo sign match highlight normal! set! let! function! command! Plug vim9script export import var final static abstract class endclass interface endinterface enum endenum type
+literal: true false null none v:true v:false v:null v:none v:val v:key v:count v:version v:shell_error
+comment_line: "
+regex: \b(?:g|b|w|t|s|l|a|v):[a-zA-Z0-9_]+
+regex_color: 0.35 0.75 0.85 1.0
+regex: &[a-zA-Z_][a-zA-Z0-9_]*
+regex_color: 0.75 0.5 0.85 1.0
+regex: <[a-zA-Z0-9_-]+>
+regex_color: 0.85 0.6 0.3 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
+        static constexpr const char* kSyntax64 = R"([nix]
+keyword: let in if then else assert with rec inherit or import builtins derivation mkDerivation stdenv lib pkgs config options modulesPath inputs outputs description inputsFrom buildInputs nativeBuildInputs propagatedBuildInputs checkInputs nativeCheckInputs patches postPatch preConfigure configureFlags buildPhase checkPhase installPhase postInstall fixupPhase doCheck src pname name version url sha256 hash rev ref owner repo fetchurl fetchzip fetchgit fetchTarball fetchFromGitHub fetchFromGitLab callPackage override overrideAttrs overrideDerivation mkShell mkIf mkMerge mkOption mkEnableOption mkPackageOption mkForce mkDefault mkBefore mkAfter types writeText writeScript writeShellScript writeShellScriptBin writeShellApplication runCommand symlinkJoin buildEnv flake-utils nixpkgs home-manager darwin
+literal: true false null
+comment_line: #
+comment_block: /* */
+regex: \$\{[^}\r\n]+\}
+regex_color: 0.85 0.6 0.3 1.0
+regex: [a-zA-Z0-9_.-]+[ \t]*(?==[^=])
+regex_color: 0.35 0.7 0.85 1.0
+regex: (https?|ftp)://[^\s/$.?#].[^\s]*
+regex_color: 0.2 0.6 0.8 1.0
+regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
+regex_color: 0.4 0.7 0.6 1.0
+)";
         struct SyntaxEntry { const wchar_t* ext; const char* syntax; };
         static const SyntaxEntry syntaxTable[] = {
             { L"mmd", kSyntax24 }, { L"mermaid", kSyntax24 },
-            { L"cpp", kSyntax0 }, { L"c", kSyntax0 }, { L"cc", kSyntax0 }, { L"cxx", kSyntax0 }, { L"h", kSyntax0 }, { L"hpp", kSyntax0 }, { L"hxx", kSyntax0 }, { L"hh", kSyntax0 }, { L"inl", kSyntax0 }, { L"ipp", kSyntax0 }, { L"tpp", kSyntax0 }, { L"rc", kSyntax0 }, { L"ino", kSyntax0 }, { L"cu", kSyntax0 }, { L"cuh", kSyntax0 },
-            { L"cs", kSyntax1 },
-            { L"py", kSyntax2 }, { L"pyw", kSyntax2 }, { L"pyi", kSyntax2 },
-            { L"js", kSyntax3 }, { L"ts", kSyntax3 }, { L"jsx", kSyntax3 }, { L"tsx", kSyntax3 }, { L"mjs", kSyntax3 }, { L"cjs", kSyntax3 },
-            { L"json", kSyntax4 }, { L"jsonc", kSyntax4 },
-            { L"html", kSyntax5 }, { L"htm", kSyntax5 }, { L"xhtml", kSyntax5 }, { L"shtml", kSyntax5 }, { L"xml", kSyntax5 }, { L"svg", kSyntax5 }, { L"xsl", kSyntax5 }, { L"xslt", kSyntax5 }, { L"xsd", kSyntax5 }, { L"vue", kSyntax5 }, { L"svelte", kSyntax5 }, { L"astro", kSyntax5 }, { L"vcxproj", kSyntax5 }, { L"csproj", kSyntax5 }, { L"fsproj", kSyntax5 }, { L"vbproj", kSyntax5 }, { L"props", kSyntax5 }, { L"targets", kSyntax5 }, { L"wapproj", kSyntax5 }, { L"appxmanifest", kSyntax5 }, { L"resw", kSyntax5 }, { L"resx", kSyntax5 }, { L"plist", kSyntax5 }, { L"xaml", kSyntax5 }, { L"nuspec", kSyntax5 }, { L"config", kSyntax5 }, { L"manifest", kSyntax5 },
-            { L"css", kSyntax6 }, { L"scss", kSyntax6 }, { L"sass", kSyntax6 }, { L"less", kSyntax6 }, { L"styl", kSyntax6 },
-            { L"md", kSyntax7 }, { L"markdown", kSyntax7 }, { L"mdx", kSyntax7 },
+            { L"cpp", kSyntax0 }, { L"c", kSyntax0 }, { L"cc", kSyntax0 }, { L"cxx", kSyntax0 }, { L"c++", kSyntax0 }, { L"cp", kSyntax0 }, { L"h", kSyntax0 }, { L"hpp", kSyntax0 }, { L"hxx", kSyntax0 }, { L"hh", kSyntax0 }, { L"inl", kSyntax0 }, { L"ipp", kSyntax0 }, { L"tpp", kSyntax0 }, { L"rc", kSyntax0 }, { L"ino", kSyntax0 }, { L"cu", kSyntax0 }, { L"cuh", kSyntax0 },
+            { L"cs", kSyntax1 }, { L"csx", kSyntax1 },
+            { L"py", kSyntax2 }, { L"pyw", kSyntax2 }, { L"pyi", kSyntax2 }, { L"pyx", kSyntax2 }, { L"pxd", kSyntax2 }, { L"pxi", kSyntax2 }, { L"bzl", kSyntax2 }, { L"bazel", kSyntax2 }, { L"star", kSyntax2 }, { L"gyp", kSyntax2 }, { L"gypi", kSyntax2 }, { L"wsgi", kSyntax2 }, { L"build", kSyntax2 }, { L"workspace", kSyntax2 }, { L"sconstruct", kSyntax2 }, { L"sconscript", kSyntax2 }, { L"tiltfile", kSyntax2 },
+            { L"js", kSyntax3 }, { L"ts", kSyntax3 }, { L"jsx", kSyntax3 }, { L"tsx", kSyntax3 }, { L"mjs", kSyntax3 }, { L"cjs", kSyntax3 }, { L"mts", kSyntax3 }, { L"cts", kSyntax3 }, { L"es6", kSyntax3 }, { L"pac", kSyntax3 },
+            { L"json", kSyntax4 }, { L"jsonc", kSyntax4 }, { L"jsonl", kSyntax4 }, { L"ndjson", kSyntax4 }, { L"geojson", kSyntax4 }, { L"webmanifest", kSyntax4 }, { L"har", kSyntax4 }, { L"prettierrc", kSyntax4 }, { L"babelrc", kSyntax4 }, { L"eslintrc", kSyntax4 }, { L"stylelintrc", kSyntax4 }, { L"hintrc", kSyntax4 }, { L"swcrc", kSyntax4 },
+            { L"html", kSyntax5 }, { L"htm", kSyntax5 }, { L"xhtml", kSyntax5 }, { L"shtml", kSyntax5 }, { L"xml", kSyntax5 }, { L"svg", kSyntax5 }, { L"xsl", kSyntax5 }, { L"xslt", kSyntax5 }, { L"xsd", kSyntax5 }, { L"wsdl", kSyntax5 }, { L"rng", kSyntax5 }, { L"dtd", kSyntax5 }, { L"rss", kSyntax5 }, { L"atom", kSyntax5 }, { L"mathml", kSyntax5 }, { L"vue", kSyntax5 }, { L"svelte", kSyntax5 }, { L"astro", kSyntax5 }, { L"vcxproj", kSyntax5 }, { L"csproj", kSyntax5 }, { L"fsproj", kSyntax5 }, { L"vbproj", kSyntax5 }, { L"props", kSyntax5 }, { L"targets", kSyntax5 }, { L"wapproj", kSyntax5 }, { L"appxmanifest", kSyntax5 }, { L"resw", kSyntax5 }, { L"resx", kSyntax5 }, { L"plist", kSyntax5 }, { L"storyboard", kSyntax5 }, { L"xib", kSyntax5 }, { L"xaml", kSyntax5 }, { L"fxml", kSyntax5 }, { L"glade", kSyntax5 }, { L"ui", kSyntax5 }, { L"qrc", kSyntax5 }, { L"nuspec", kSyntax5 }, { L"config", kSyntax5 }, { L"manifest", kSyntax5 },
+            { L"css", kSyntax6 }, { L"scss", kSyntax6 }, { L"sass", kSyntax6 }, { L"less", kSyntax6 }, { L"styl", kSyntax6 }, { L"pcss", kSyntax6 }, { L"postcss", kSyntax6 }, { L"wxss", kSyntax6 },
+            { L"md", kSyntax7 }, { L"markdown", kSyntax7 }, { L"mdx", kSyntax7 }, { L"mkd", kSyntax7 }, { L"mdown", kSyntax7 }, { L"rmd", kSyntax7 }, { L"qmd", kSyntax7 },
             { L"rs", kSyntax8 }, { L"go", kSyntax9 }, { L"java", kSyntax10 },
             { L"ps1", kSyntax11 }, { L"psm1", kSyntax11 }, { L"psd1", kSyntax11 },
             { L"bat", kSyntax12 }, { L"cmd", kSyntax12 },
-            { L"sh", kSyntax13 }, { L"bash", kSyntax13 }, { L"zsh", kSyntax13 },
-            { L"sql", kSyntax14 }, { L"php", kSyntax15 }, { L"rb", kSyntax16 }, { L"ruby", kSyntax16 }, { L"swift", kSyntax17 },
+            { L"sh", kSyntax13 }, { L"bash", kSyntax13 }, { L"zsh", kSyntax13 }, { L"fish", kSyntax13 }, { L"ksh", kSyntax13 }, { L"csh", kSyntax13 }, { L"tcsh", kSyntax13 }, { L"ebuild", kSyntax13 }, { L"apkbuild", kSyntax13 }, { L"bashrc", kSyntax13 }, { L"bash_profile", kSyntax13 }, { L"zshrc", kSyntax13 }, { L"zprofile", kSyntax13 }, { L"zshenv", kSyntax13 }, { L"zlogin", kSyntax13 }, { L"zlogout", kSyntax13 }, { L"profile", kSyntax13 }, { L"cshrc", kSyntax13 }, { L"tcshrc", kSyntax13 }, { L"kshrc", kSyntax13 }, { L"pkgbuild", kSyntax13 },
+            { L"sql", kSyntax14 }, { L"php", kSyntax15 }, { L"phtml", kSyntax15 },
+            { L"rb", kSyntax16 }, { L"ruby", kSyntax16 }, { L"gemspec", kSyntax16 }, { L"ru", kSyntax16 }, { L"rake", kSyntax16 }, { L"thor", kSyntax16 }, { L"jbuilder", kSyntax16 }, { L"podspec", kSyntax16 }, { L"gemfile", kSyntax16 }, { L"rakefile", kSyntax16 }, { L"podfile", kSyntax16 }, { L"fastfile", kSyntax16 }, { L"appfile", kSyntax16 }, { L"matchfile", kSyntax16 }, { L"deliverfile", kSyntax16 }, { L"gymfile", kSyntax16 }, { L"scanfile", kSyntax16 }, { L"snapfile", kSyntax16 }, { L"brewfile", kSyntax16 }, { L"vagrantfile", kSyntax16 }, { L"berksfile", kSyntax16 }, { L"guardfile", kSyntax16 }, { L"capfile", kSyntax16 }, { L"thorfile", kSyntax16 }, { L"dangerfile", kSyntax16 },
+            { L"swift", kSyntax17 },
             { L"kt", kSyntax18 }, { L"kts", kSyntax18 }, { L"kotlin", kSyntax18 },
             { L"lua", kSyntax19 },
-            { L"ini", kSyntax20 }, { L"inf", kSyntax20 }, { L"cfg", kSyntax20 },
-            { L"conf", kSyntax21 }, { L"yml", kSyntax21 }, { L"yaml", kSyntax21 },
-            { L"tex", kSyntax22 }, { L"latex", kSyntax22 },
+            { L"ini", kSyntax20 }, { L"inf", kSyntax20 }, { L"cfg", kSyntax20 }, { L"editorconfig", kSyntax20 }, { L"gitconfig", kSyntax20 }, { L"gitmodules", kSyntax20 }, { L"npmrc", kSyntax20 }, { L"yarnrc", kSyntax20 }, { L"flake8", kSyntax20 }, { L"pylintrc", kSyntax20 }, { L"coveragerc", kSyntax20 }, { L"service", kSyntax20 }, { L"socket", kSyntax20 }, { L"timer", kSyntax20 },
+            { L"conf", kSyntax21 }, { L"yml", kSyntax21 }, { L"yaml", kSyntax21 }, { L"gitignore", kSyntax21 }, { L"gitattributes", kSyntax21 }, { L"dockerignore", kSyntax21 }, { L"npmignore", kSyntax21 }, { L"eslintignore", kSyntax21 }, { L"prettierignore", kSyntax21 }, { L"clang-format", kSyntax21 }, { L"clang-tidy", kSyntax21 }, { L"yamllint", kSyntax21 }, { L"htaccess", kSyntax21 },
+            { L"tex", kSyntax22 }, { L"latex", kSyntax22 }, { L"bib", kSyntax22 }, { L"sty", kSyntax22 }, { L"cls", kSyntax22 },
             { L"dart", kSyntax25 },
             { L"r", kSyntax26 },
             { L"zig", kSyntax27 },
-            { L"scala", kSyntax28 }, { L"sc", kSyntax28 },
-            { L"pl", kSyntax29 }, { L"pm", kSyntax29 },
+            { L"scala", kSyntax28 }, { L"sc", kSyntax28 }, { L"sbt", kSyntax28 },
+            { L"pl", kSyntax29 }, { L"pm", kSyntax29 }, { L"t", kSyntax29 },
             { L"vb", kSyntax30 }, { L"vbs", kSyntax30 }, { L"bas", kSyntax30 }, { L"vba", kSyntax30 },
             { L"fs", kSyntax31 }, { L"fsi", kSyntax31 }, { L"fsx", kSyntax31 },
             { L"jl", kSyntax32 },
@@ -704,14 +937,35 @@ regex_color: 0.4 0.7 0.6 1.0
             { L"graphql", kSyntax38 }, { L"gql", kSyntax38 },
             { L"proto", kSyntax39 },
             { L"cmake", kSyntax40 }, { L"cmakelists.txt", kSyntax40 },
-            { L"mk", kSyntax41 }, { L"mak", kSyntax41 }, { L"makefile", kSyntax41 }, { L"gnumakefile", kSyntax41 },
+            { L"mk", kSyntax41 }, { L"mak", kSyntax41 }, { L"makefile", kSyntax41 }, { L"gnumakefile", kSyntax41 }, { L"bsdmakefile", kSyntax41 }, { L"justfile", kSyntax41 },
             { L"reg", kSyntax42 },
-            { L"hlsl", kSyntax43 }, { L"fx", kSyntax43 }, { L"glsl", kSyntax43 }, { L"vert", kSyntax43 }, { L"frag", kSyntax43 }, { L"comp", kSyntax43 }, { L"geom", kSyntax43 }, { L"tesc", kSyntax43 }, { L"tese", kSyntax43 }, { L"wgsl", kSyntax43 },
-            { L"asm", kSyntax44 }, { L"s", kSyntax44 }, { L"inc", kSyntax44 },
+            { L"hlsl", kSyntax43 }, { L"fx", kSyntax43 }, { L"glsl", kSyntax43 }, { L"vert", kSyntax43 }, { L"frag", kSyntax43 }, { L"comp", kSyntax43 }, { L"geom", kSyntax43 }, { L"tesc", kSyntax43 }, { L"tese", kSyntax43 }, { L"wgsl", kSyntax43 }, { L"metal", kSyntax43 }, { L"vsh", kSyntax43 }, { L"fsh", kSyntax43 }, { L"glslv", kSyntax43 }, { L"glslf", kSyntax43 },
+            { L"asm", kSyntax44 }, { L"s", kSyntax44 }, { L"inc", kSyntax44 }, { L"nasm", kSyntax44 }, { L"yasm", kSyntax44 }, { L"masm", kSyntax44 }, { L"s51", kSyntax44 }, { L"a51", kSyntax44 }, { L"avr", kSyntax44 }, { L"mips", kSyntax44 }, { L"riscv", kSyntax44 }, { L"wat", kSyntax44 }, { L"wast", kSyntax44 },
             { L"v", kSyntax45 }, { L"sv", kSyntax45 }, { L"svh", kSyntax45 }, { L"vh", kSyntax45 },
             { L"vhd", kSyntax46 }, { L"vhdl", kSyntax46 },
             { L"diff", kSyntax47 }, { L"patch", kSyntax47 },
-            { L"log", kSyntax48 }
+            { L"log", kSyntax48 },
+            { L"lisp", kSyntax49 }, { L"lsp", kSyntax49 }, { L"cl", kSyntax49 }, { L"asd", kSyntax49 }, { L"ros", kSyntax49 },
+            { L"el", kSyntax49 }, { L"emacs", kSyntax49 }, { L"sbclrc", kSyntax49 }, { L"clisprc", kSyntax49 }, { L"guile", kSyntax49 },
+            { L"scm", kSyntax49 }, { L"ss", kSyntax49 }, { L"sld", kSyntax49 },
+            { L"rkt", kSyntax49 },
+            { L"clj", kSyntax49 }, { L"cljs", kSyntax49 }, { L"cljc", kSyntax49 }, { L"edn", kSyntax49 },
+            { L"hy", kSyntax49 }, { L"fnl", kSyntax49 }, { L"janet", kSyntax49 },
+            { L"m", kSyntax50 }, { L"mm", kSyntax50 },
+            { L"groovy", kSyntax51 }, { L"gvy", kSyntax51 }, { L"gy", kSyntax51 }, { L"gsh", kSyntax51 }, { L"gradle", kSyntax51 }, { L"jenkinsfile", kSyntax51 },
+            { L"ml", kSyntax52 }, { L"mli", kSyntax52 }, { L"sml", kSyntax52 }, { L"sig", kSyntax52 }, { L"fun", kSyntax52 }, { L"re", kSyntax52 }, { L"rei", kSyntax52 }, { L"res", kSyntax52 }, { L"resi", kSyntax52 },
+            { L"erl", kSyntax53 }, { L"hrl", kSyntax53 }, { L"escript", kSyntax53 },
+            { L"f", kSyntax54 }, { L"for", kSyntax54 }, { L"f77", kSyntax54 }, { L"f90", kSyntax54 }, { L"f95", kSyntax54 }, { L"f03", kSyntax54 }, { L"f08", kSyntax54 }, { L"f18", kSyntax54 }, { L"fpp", kSyntax54 },
+            { L"cob", kSyntax55 }, { L"cbl", kSyntax55 }, { L"cpy", kSyntax55 }, { L"cobol", kSyntax55 },
+            { L"prisma", kSyntax56 },
+            { L"sol", kSyntax57 },
+            { L"nim", kSyntax58 }, { L"nims", kSyntax58 }, { L"nimble", kSyntax58 },
+            { L"d", kSyntax59 }, { L"di", kSyntax59 },
+            { L"pas", kSyntax60 }, { L"dpr", kSyntax60 }, { L"dpk", kSyntax60 }, { L"pp", kSyntax60 }, { L"lpr", kSyntax60 },
+            { L"adb", kSyntax61 }, { L"ads", kSyntax61 }, { L"ada", kSyntax61 },
+            { L"pro", kSyntax62 }, { L"prolog", kSyntax62 }, { L"yap", kSyntax62 },
+            { L"vim", kSyntax63 }, { L"vimrc", kSyntax63 }, { L"_vimrc", kSyntax63 }, { L"gvimrc", kSyntax63 }, { L"_gvimrc", kSyntax63 }, { L"exrc", kSyntax63 },
+            { L"nix", kSyntax64 }
         };
         std::wstring lowerExt = ext;
         for (auto& c : lowerExt) c = std::towlower(c);
@@ -783,6 +1037,8 @@ regex_color: 0.4 0.7 0.6 1.0
                 while (nextWord(line, p, w)) parsed.literals.insert(w);
             }
             if (line == "no_strings: 1") parsed.disableStrings = true;
+            if (line == "no_single_quote: 1") parsed.disableSingleQuoteStrings = true;
+            if (line == "lisp_words: 1") parsed.lispWords = true;
             if (line.find("comment_line: ") == 0) parsed.commentLine = line.substr(14);
             if (line.find("comment_block: ") == 0) {
                 size_t p = 15;
@@ -837,8 +1093,13 @@ inline void scanSyntaxHighlighting(
     if (visibleText.empty()) return;
     const size_t vLen = visibleText.size();
     const char* vData = visibleText.data();
-    auto isWChar = [](char c) noexcept -> bool { return std::isalnum((unsigned char)c) || c == '_'; };
-    auto isWordChar = [](char c) noexcept -> bool { return std::isalnum((unsigned char)c) || c == '_'; };
+    auto isStdWordChar = [](char c) noexcept -> bool { return std::isalnum((unsigned char)c) || c == '_'; };
+    auto isLispWordChar = [](char c) noexcept -> bool {
+        return std::isalnum((unsigned char)c) || c == '_' || c == '-' || c == '*' || c == '+' ||
+               c == '!' || c == '?' || c == '/' || c == '<' || c == '>' || c == '=' || c == '&' || c == '#';
+    };
+    auto isWChar = [&](char c) noexcept -> bool { return currentSyntax.lispWords ? isLispWordChar(c) : isStdWordChar(c); };
+    auto isWordChar = [&](char c) noexcept -> bool { return currentSyntax.lispWords ? isLispWordChar(c) : isStdWordChar(c); };
     for (size_t i = 0; i < currentSyntax.regexes.size(); ++i) {
         SyntaxRuleMeta meta = (i < currentSyntax.ruleMetas.size()) ? currentSyntax.ruleMetas[i] : SyntaxRuleMeta{};
         if (meta.reqChar1 != 0 && visibleText.find(meta.reqChar1) == std::string::npos) continue;
@@ -852,42 +1113,76 @@ inline void scanSyntaxHighlighting(
             size_t p = 0;
             while (p < vLen) {
                 unsigned char ch = (unsigned char)vData[p];
-                if (ch >= '0' && ch <= '9' && (p == 0 || (!isWChar(vData[p - 1]) && vData[p - 1] != '\\'))) {
+                bool isLispSignedOrRadix = false;
+                if (currentSyntax.lispWords && (p == 0 || (!isWChar(vData[p - 1]) && vData[p - 1] != '\\' && vData[p - 1] != ':'))) {
+                    if ((ch == '+' || ch == '-') && p + 1 < vLen && std::isdigit((unsigned char)vData[p + 1])) {
+                        isLispSignedOrRadix = true;
+                    } else if (ch == '#' && p + 2 < vLen) {
+                        char r = (char)std::tolower((unsigned char)vData[p + 1]);
+                        if ((r == 'x' && std::isxdigit((unsigned char)vData[p + 2])) ||
+                            (r == 'b' && (vData[p + 2] == '0' || vData[p + 2] == '1')) ||
+                            (r == 'o' && (vData[p + 2] >= '0' && vData[p + 2] <= '7'))) {
+                            isLispSignedOrRadix = true;
+                        }
+                    }
+                }
+                if (isLispSignedOrRadix || (ch >= '0' && ch <= '9' && (p == 0 || (!isWChar(vData[p - 1]) && vData[p - 1] != '\\' && (!currentSyntax.lispWords || vData[p - 1] != ':'))))) {
                     size_t start = p;
                     bool matchedBase = false;
-                    if (vData[p] == '0' && p + 2 <= vLen) {
-                        char n1 = vData[p + 1];
-                        if (meta.kind != SyntaxRuleKind::NumberSimple && meta.kind != SyntaxRuleKind::NumberRust && n1 == 'x' && p + 2 < vLen && std::isxdigit((unsigned char)vData[p + 2])) {
-                            p += 2;
-                            while (p < vLen && std::isxdigit((unsigned char)vData[p])) p++;
-                            matchedBase = true;
-                        } else if (meta.kind == SyntaxRuleKind::NumberPy && n1 == 'b' && p + 2 < vLen && (vData[p + 2] == '0' || vData[p + 2] == '1')) {
-                            p += 2;
-                            while (p < vLen && (vData[p] == '0' || vData[p] == '1')) p++;
-                            matchedBase = true;
-                        } else if (meta.kind == SyntaxRuleKind::NumberPy && n1 == 'o' && p + 2 < vLen && (vData[p + 2] >= '0' && vData[p + 2] <= '7')) {
-                            p += 2;
-                            while (p < vLen && (vData[p] >= '0' && vData[p] <= '7')) p++;
-                            matchedBase = true;
+                    if (currentSyntax.lispWords && vData[p] == '#' && p + 2 < vLen) {
+                        char r = (char)std::tolower((unsigned char)vData[p + 1]);
+                        p += 2;
+                        if (r == 'x') { while (p < vLen && std::isxdigit((unsigned char)vData[p])) p++; matchedBase = true; }
+                        else if (r == 'b') { while (p < vLen && (vData[p] == '0' || vData[p] == '1')) p++; matchedBase = true; }
+                        else if (r == 'o') { while (p < vLen && (vData[p] >= '0' && vData[p] <= '7')) p++; matchedBase = true; }
+                    } else {
+                        if (currentSyntax.lispWords && (vData[p] == '+' || vData[p] == '-')) p++;
+                        if (vData[p] == '0' && p + 2 <= vLen) {
+                            char n1 = vData[p + 1];
+                            if (meta.kind != SyntaxRuleKind::NumberSimple && meta.kind != SyntaxRuleKind::NumberRust && (n1 == 'x' || n1 == 'X') && p + 2 < vLen && std::isxdigit((unsigned char)vData[p + 2])) {
+                                p += 2;
+                                while (p < vLen && std::isxdigit((unsigned char)vData[p])) p++;
+                                matchedBase = true;
+                            } else if (meta.kind == SyntaxRuleKind::NumberPy && n1 == 'b' && p + 2 < vLen && (vData[p + 2] == '0' || vData[p + 2] == '1')) {
+                                p += 2;
+                                while (p < vLen && (vData[p] == '0' || vData[p] == '1')) p++;
+                                matchedBase = true;
+                            } else if (meta.kind == SyntaxRuleKind::NumberPy && n1 == 'o' && p + 2 < vLen && (vData[p + 2] >= '0' && vData[p + 2] <= '7')) {
+                                p += 2;
+                                while (p < vLen && (vData[p] >= '0' && vData[p] <= '7')) p++;
+                                matchedBase = true;
+                            }
                         }
                     }
                     size_t dotPos = std::string::npos;
                     if (!matchedBase) {
                         while (p < vLen && std::isdigit((unsigned char)vData[p])) p++;
-                        if (p + 1 < vLen && vData[p] == '.' && std::isdigit((unsigned char)vData[p + 1])) {
-                            dotPos = p;
+                        if (currentSyntax.lispWords && p + 1 < vLen && vData[p] == '/' && std::isdigit((unsigned char)vData[p + 1])) {
                             p += 2;
                             while (p < vLen && std::isdigit((unsigned char)vData[p])) p++;
-                        }
-                        if (meta.kind != SyntaxRuleKind::NumberSimple && p + 1 < vLen && (vData[p] == 'e' || vData[p] == 'E')) {
-                            size_t ep = p + 1;
-                            if (ep < vLen && (vData[ep] == '+' || vData[ep] == '-')) ep++;
-                            if (ep < vLen && std::isdigit((unsigned char)vData[ep])) {
-                                p = ep + 1;
+                        } else {
+                            if (p + 1 < vLen && vData[p] == '.' && std::isdigit((unsigned char)vData[p + 1])) {
+                                dotPos = p;
+                                p += 2;
                                 while (p < vLen && std::isdigit((unsigned char)vData[p])) p++;
                             }
+                            if (meta.kind != SyntaxRuleKind::NumberSimple && p + 1 < vLen) {
+                                char expCh = vData[p];
+                                bool isExp = (expCh == 'e' || expCh == 'E') ||
+                                             (currentSyntax.lispWords && (expCh == 'd' || expCh == 'D' || expCh == 'f' || expCh == 'F' || expCh == 's' || expCh == 'S' || expCh == 'l' || expCh == 'L'));
+                                if (isExp) {
+                                    size_t ep = p + 1;
+                                    if (ep < vLen && (vData[ep] == '+' || vData[ep] == '-')) ep++;
+                                    if (ep < vLen && std::isdigit((unsigned char)vData[ep])) {
+                                        p = ep + 1;
+                                        while (p < vLen && std::isdigit((unsigned char)vData[p])) p++;
+                                    }
+                                }
+                            }
                         }
-                        if (meta.kind == SyntaxRuleKind::NumberCpp) {
+                        if (currentSyntax.lispWords && p < vLen && (vData[p] == 'N' || vData[p] == 'M')) {
+                            p++;
+                        } else if (meta.kind == SyntaxRuleKind::NumberCpp) {
                             while (p < vLen && (vData[p]=='f'||vData[p]=='F'||vData[p]=='l'||vData[p]=='L'||vData[p]=='u'||vData[p]=='U')) p++;
                         } else if (meta.kind == SyntaxRuleKind::NumberCs) {
                             while (p < vLen && (vData[p]=='f'||vData[p]=='F'||vData[p]=='l'||vData[p]=='L'||vData[p]=='m'||vData[p]=='M'||vData[p]=='u'||vData[p]=='U'||vData[p]=='d'||vData[p]=='D')) p++;
@@ -903,7 +1198,7 @@ inline void scanSyntaxHighlighting(
                     }
                     if (p == vLen || !isWChar(vData[p])) {
                         setEffect(start, p - start);
-                    } else if (dotPos != std::string::npos) {
+                    } else if (dotPos != std::string::npos && !currentSyntax.lispWords) {
                         setEffect(start, dotPos - start);
                         p = dotPos + 1;
                     } else {
@@ -988,14 +1283,75 @@ inline void scanSyntaxHighlighting(
                 continue;
             }
             if (!currentSyntax.commentLine.empty() && visibleText.compare(i, currentSyntax.commentLine.length(), currentSyntax.commentLine) == 0) {
-                size_t startStr = i;
-                size_t eol = visibleText.find_first_of("\r\n", i);
-                if (eol == std::string::npos) eol = len;
-                i = eol;
-                applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::Comment);
-                continue;
+                bool isLineComment = true;
+                if (currentSyntax.commentLine == "\"") {
+                    size_t lineStart = visibleText.find_last_of("\r\n", i);
+                    lineStart = (lineStart == std::string::npos) ? 0 : lineStart + 1;
+                    bool onlyWhitespaceBefore = true;
+                    for (size_t k = lineStart; k < i; ++k) {
+                        if (visibleText[k] != ' ' && visibleText[k] != '\t') {
+                            onlyWhitespaceBefore = false;
+                            break;
+                        }
+                    }
+                    if (!onlyWhitespaceBefore) {
+                        size_t eolCheck = visibleText.find_first_of("\r\n", i + 1);
+                        if (eolCheck == std::string::npos) eolCheck = len;
+                        bool hasClosingQuote = false;
+                        for (size_t k = i + 1; k < eolCheck; ++k) {
+                            if (visibleText[k] == '\\' && k + 1 < eolCheck) {
+                                ++k;
+                            } else if (visibleText[k] == '"') {
+                                hasClosingQuote = true;
+                                break;
+                            }
+                        }
+                        bool precededBySpace = (i > lineStart && (visibleText[i - 1] == ' ' || visibleText[i - 1] == '\t'));
+                        isLineComment = (precededBySpace && !hasClosingQuote);
+                    }
+                }
+                if (isLineComment) {
+                    size_t startStr = i;
+                    size_t eol = visibleText.find_first_of("\r\n", i);
+                    if (eol == std::string::npos) eol = len;
+                    i = eol;
+                    applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::Comment);
+                    continue;
+                }
             }
-            if (!currentSyntax.disableStrings && (visibleText[i] == '"' || visibleText[i] == '\'')) {
+            if (currentSyntax.disableSingleQuoteStrings && currentSyntax.lispWords) {
+                if (i + 2 < len && visibleText[i] == '#' && visibleText[i + 1] == '\\') {
+                    size_t startStr = i;
+                    i += 3;
+                    if (std::isalnum((unsigned char)visibleText[i - 1])) {
+                        while (i < len && (std::isalnum((unsigned char)visibleText[i]) || visibleText[i] == '-' || visibleText[i] == '_')) i++;
+                    }
+                    applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::String);
+                    continue;
+                }
+                if (i + 1 < len && visibleText[i] == '\\') {
+                    size_t startStr = i;
+                    i += 2;
+                    if (std::isalnum((unsigned char)visibleText[i - 1])) {
+                        while (i < len && std::isalnum((unsigned char)visibleText[i])) i++;
+                    }
+                    applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::String);
+                    continue;
+                }
+                if (i + 2 < len && visibleText[i] == '?' && visibleText[i + 1] == '\\' && (i == 0 || !isWordChar(visibleText[i - 1]))) {
+                    size_t startStr = i;
+                    i += 3;
+                    applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::String);
+                    continue;
+                }
+                if (i + 1 < len && visibleText[i] == '?' && (visibleText[i + 1] == '"' || visibleText[i + 1] == ';' || visibleText[i + 1] == '|') && (i == 0 || !isWordChar(visibleText[i - 1]))) {
+                    size_t startStr = i;
+                    i += 2;
+                    applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::String);
+                    continue;
+                }
+            }
+            if (!currentSyntax.disableStrings && (visibleText[i] == '"' || (!currentSyntax.disableSingleQuoteStrings && visibleText[i] == '\''))) {
                 char quote = visibleText[i];
                 size_t startStr = i;
                 i++;
@@ -1017,6 +1373,9 @@ inline void scanSyntaxHighlighting(
             if (isWordChar(visibleText[i])) {
                 size_t startStr = i;
                 while (i < len && isWordChar(visibleText[i])) i++;
+                if (startStr > 0 && ((currentSyntax.lispWords && visibleText[startStr - 1] == ':') || (currentSyntax.disableSingleQuoteStrings && visibleText[startStr - 1] == '\''))) {
+                    continue;
+                }
                 std::string_view word(visibleText.data() + startStr, i - startStr);
                 if (currentSyntax.keywords.contains(word)) applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::Keyword);
                 else if (currentSyntax.literals.contains(word)) applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::Literal);

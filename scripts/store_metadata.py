@@ -34,14 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.49 發行說明
-📊 修復 Mermaid 圖表全形括號標籤換行卡頓並提升多語言繪製穩定性
+        "releaseNotes": """miu v1.0.50 發行說明
+💻 語法突顯與註解切換擴充至 65 種語言類別（230 餘種副檔名與設定檔）
 
-- 修復 Mermaid 圖表全形括號與長文字自動換行卡頓問題：
-  修復了在流程圖等節點標籤中同時使用中文、日文、韓文與全形括號（如（1）、【1】、「1」等）時，自動換行計算可能導致預覽變慢或停止回應的問題。
-- 強化全部 33 種 Mermaid 圖表的多語言字元解析：
-  防止中日韓等 UTF-8 多位元組字元在標籤、標題及粗體／斜體語法中被誤判為空白字元，確保所有圖表準確繪製。
-- 高速編輯、精準的多語言正規表示式尋找取代與 Markdown / LaTeX / Mermaid 即時預覽。""",
+- 新增 Lisp 系列語言完整支援：
+  支援 Common Lisp (.lisp, .lsp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .cljs, .edn)、Hy、Fennel、Janet 的語法突顯、`;` 行註解切換與 `#| ... |#` 區塊註解。
+- 全面強化組合語言 (Assembly) 支援：
+  涵蓋 x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS 以及 WebAssembly 文字格式 (.wat, .wast)。
+- 新增 15 種語言類別及 70 餘種設定檔副檔名：
+  新增 Objective-C/C++ (.m, .mm)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D 語言、Pascal/Delphi、Ada、Prolog、Vimscript、Nix、Apple Metal (.metal)、BUILD、Gemfile、.gitignore、.editorconfig 等支援。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -80,14 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.49 Versionshinweise
-📊 Fehlerbehebung beim Zeilenumbruch in Mermaid-Diagrammen & verbesserte UTF-8-Unterstützung
+        "releaseNotes": """miu v1.0.50 Versionshinweise
+💻 Syntaxhervorhebung & Kommentar-Umschaltung auf 65 Sprachkategorien (über 230 Dateierweiterungen) erweitert
 
-- Zeilenumbruch in Mermaid-Diagrammen mit Vollbreiten-Klammern korrigiert:
-  Ein Problem wurde behoben, bei dem Knotenbeschriftungen mit japanischen, koreanischen oder chinesischen Zeichen und Vollbreiten-Klammern (z. B. （1）, 【1】) beim Berechnen des Zeilenumbruchs zu Verzögerungen oder zum Einfrieren der Vorschau führen konnten.
-- Verbesserte UTF-8-Zeichenverarbeitung in allen 33 Mermaid-Diagrammtypen:
-  Mehrbytige UTF-8-Zeichen werden in Beschriftungen, Titeln und Fett-/Kursivformatierungen nicht mehr fälschlicherweise als Leerzeichen interpretiert.
-- Schnelles Bearbeiten, präzises Regex-Suchen/Ersetzen und flüssige Live-Vorschau für Markdown, LaTeX & Mermaid.""",
+- Vollständige Unterstützung für Lisp-Sprachen:
+  Syntaxhervorhebung, Zeilenkommentare (;) und Blockkommentare (#| ... |#) für Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel und Janet hinzugefügt.
+- Erweiterte Assembler-Unterstützung (Assembly):
+  Umfassende Hervorhebung für x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS und WebAssembly (.wat, .wast).
+- 15 neue Programmiersprachen & über 70 neue Dateierweiterungen:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig u. v. m.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -126,14 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.49
-📊 Correction du retour à la ligne des diagrammes Mermaid et amélioration du rendu multilingue
+        "releaseNotes": """Notes de version miu v1.0.50
+💻 Coloration syntaxique et commentaires étendus à 65 catégories de langages (plus de 230 extensions)
 
-- Correction du blocage lors du retour à la ligne dans les diagrammes Mermaid :
-  Résolution d’un problème où les étiquettes combinant du texte japonais, coréen ou chinois avec des parenthèses pleine chasse (telles que （1）, 【1】, 「1」) pouvaient ralentir ou figer l’aperçu en direct.
-- Analyse UTF-8 améliorée sur les 33 types de diagrammes Mermaid :
-  Les caractères UTF-8 multi-octets sont désormais traités avec précision dans les étiquettes, titres et styles gras/italique sans être confondus avec des espaces.
-- Édition rapide, recherche/remplacement Regex précis et aperçu en direct Markdown, LaTeX et Mermaid.""",
+- Prise en charge complète de la famille Lisp :
+  Ajout de la coloration syntaxique, du basculement de commentaire de ligne (;) et des commentaires de bloc (#| ... |#) pour Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel et Janet.
+- Améliorations majeures pour l’Assembleur (Assembly) :
+  Support étendu pour x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS et WebAssembly (.wat, .wast).
+- 15 nouveaux langages et plus de 70 nouvelles extensions/fichiers de configuration :
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, etc.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -172,14 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.49
-📊 Corrección del ajuste de línea en diagramas Mermaid y mejoras de renderizado multilingüe
+        "releaseNotes": """Notas de la versión miu v1.0.50
+💻 Resaltado de sintaxis y alternancia de comentarios ampliados a 65 categorías de lenguajes (más de 230 extensiones)
 
-- Corrección del bloqueo al ajustar líneas con paréntesis de ancho completo en Mermaid:
-  Se resolvió un problema por el cual las etiquetas que combinaban texto en japonés, coreano o chino con paréntesis de ancho completo (como （1）, 【1】, 「1」) podían ralentizar o congelar la vista previa.
-- Análisis mejorado de caracteres UTF-8 multibyte en los 33 tipos de diagramas Mermaid:
-  Los caracteres multibyte ya no se interpretan erróneamente como espacios en etiquetas, títulos ni formato en negrita/cursiva.
-- Edición rápida, búsqueda y reemplazo Regex precisos y vista previa en vivo de Markdown, LaTeX y Mermaid.""",
+- Soporte completo para la familia Lisp:
+  Resaltado de sintaxis, comentarios de línea (;) y comentarios de bloque (#| ... |#) para Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel y Janet.
+- Mejoras importantes para lenguaje ensamblador (Assembly):
+  Soporte ampliado para x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS y WebAssembly (.wat, .wast).
+- 15 nuevos lenguajes y más de 70 extensiones y archivos de configuración:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig y más.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -218,14 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de versão do miu v1.0.49
-📊 Correção da quebra de linha em diagramas Mermaid e melhorias na renderização multilíngue
+        "releaseNotes": """Notas de versão do miu v1.0.50
+💻 Destaque de sintaxe e alternância de comentários expandidos para 65 categorias de linguagens (mais de 230 extensões)
 
-- Correção de travamento na quebra de linha de diagramas Mermaid com parênteses de largura total:
-  Resolvido um problema em que rótulos combinando texto em japonês, coreano ou chinês com parênteses de largura total (como （1）, 【1】, 「1」) podiam deixar a pré-visualização lenta ou sem resposta.
-- Análise aprimorada de caracteres UTF-8 multibyte em todos os 33 tipos de diagramas Mermaid:
-  Os caracteres multibyte agora são processados com precisão em rótulos, títulos e formatação em negrito/itálico.
-- Edição rápida, localização/substituição Regex precisa e pré-visualização ao vivo de Markdown, LaTeX e Mermaid.""",
+- Suporte completo para a família Lisp:
+  Destaque de sintaxe, comentários de linha (;) e comentários de bloco (#| ... |#) para Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel e Janet.
+- Grandes melhorias para Assembly:
+  Suporte expandido para x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS e WebAssembly (.wat, .wast).
+- 15 novas linguagens e mais de 70 novas extensões e arquivos de configuração:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig e muito mais.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -264,14 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.49
-📊 Исправление переноса строк в диаграммах Mermaid и улучшенная поддержка UTF-8
+        "releaseNotes": """Примечания к выпуску miu v1.0.50
+💻 Подсветка синтаксиса и переключение комментариев расширены до 65 категорий языков (более 230 расширений)
 
-- Исправлено зависание при переносе строк с полноширинными скобками в диаграммах Mermaid:
-  Устранена проблема, из-за которой метки узлов, сочетающие японский, корейский или китайский текст с полноширинными скобками (например, （1）, 【1】, 「1」), могли замедлять работу предпросмотра.
-- Улучшена обработка многобайтовых символов UTF-8 во всех 33 типах диаграмм Mermaid:
-  Многобайтовые символы больше не воспринимаются как пробелы в метках, заголовках и полужирном/курсивном начертании.
-- Быстрое редактирование, точный поиск Regex и живой предпросмотр Markdown, LaTeX и Mermaid.""",
+- Полная поддержка семейства языков Lisp:
+  Подсветка синтаксиса, строчные комментарии (;) и блочные комментарии (#| ... |#) для Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel и Janet.
+- Масштабное обновление поддержки ассемблера (Assembly):
+  Расширена поддержка x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS и WebAssembly (.wat, .wast).
+- 15 новых языков и более 70 новых расширений и файлов конфигурации:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig и др.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -310,14 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.49
-📊 Correzione dell’a capo nei diagrammi Mermaid e miglioramenti al rendering multilingua
+        "releaseNotes": """Note di rilascio di miu v1.0.50
+💻 Evidenziazione della sintassi e commenti estesi a 65 categorie di linguaggi (oltre 230 estensioni)
 
-- Risolto il blocco dell’a capo automatico nei diagrammi Mermaid con parentesi a larghezza intera:
-  Risolto un problema per cui le etichette che combinavano testo giapponese, coreano o cinese con parentesi a larghezza intera (come （1）, 【1】, 「1」) potevano rallentare o bloccare l’anteprima.
-- Analisi migliorata dei caratteri UTF-8 multi-byte in tutti i 33 tipi di diagrammi Mermaid:
-  I caratteri multi-byte vengono ora elaborati con precisione in etichette, titoli e stile grassetto/corsivo.
-- Modifica rapida, ricerca/sostituzione Regex precisa e anteprima live per Markdown, LaTeX e Mermaid.""",
+- Supporto completo per la famiglia Lisp:
+  Evidenziazione della sintassi, commenti su riga (;) e commenti a blocco (#| ... |#) per Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel e Janet.
+- Importanti miglioramenti per Assembly:
+  Supporto esteso per x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS e WebAssembly (.wat, .wast).
+- 15 nuovi linguaggi e oltre 70 nuove estensioni e file di configurazione:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig e altro ancora.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -356,14 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.49
-📊 Poprawka zawijania wierszy w diagramach Mermaid oraz ulepszona obsługa znaków UTF-8
+        "releaseNotes": """Informacje o wersji miu v1.0.50
+💻 Kolorowanie składni i przełączanie komentarzy rozszerzone do 65 kategorii języków (ponad 230 rozszerzeń)
 
-- Naprawiono zawieszanie się podglądu Mermaid przy nawiasach pełnej szerokości:
-  Rozwiązano problem, przez który etykiety łączące tekst japoński, koreański lub chiński z nawiasami pełnej szerokości (np. （1）, 【1】, 「1」) mogły powodować spowolnienie lub brak odpowiedzi podczas zawijania tekstu.
-- Ulepszona analiza wielobajtowych znaków UTF-8 we wszystkich 33 typach diagramów Mermaid:
-  Znaki wielobajtowe są teraz poprawnie rozpoznawane w etykietach, tytułach oraz formatowaniu pogrubionym/kursywie.
-- Szybka edycja, precyzyjne wyrażenia regularne i podgląd na żywo dla Markdown, LaTeX oraz Mermaid.""",
+- Pełna obsługa rodziny języków Lisp:
+  Kolorowanie składni, komentarze wierszowe (;) i blokowe (#| ... |#) dla Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel i Janet.
+- Znacznie rozbudowana obsługa asemblera (Assembly):
+  Rozszerzono obsługę x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS oraz WebAssembly (.wat, .wast).
+- 15 nowych języków i ponad 70 nowych rozszerzeń oraz plików konfiguracyjnych:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig i inne.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -402,14 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.49
-📊 Oplossing voor regelterugloop in Mermaid-diagrammen en verbeterde meertalige weergave
+        "releaseNotes": """Releaseopmerkingen miu v1.0.50
+💻 Syntaxmarkering en commentaar-schakeling uitgebreid naar 65 taalcategorieën (230+ bestandsextensies)
 
-- Vastlopen bij regelterugloop met volledige-breedte-haakjes in Mermaid verholpen:
-  Probleem opgelost waarbij knooppuntlabels met Japanse, Koreaanse of Chinese tekst en haakjes over de volledige breedte (zoals （1）, 【1】, 「1」) de live-weergave konden vertragen of bevriezen.
-- Verbeterde verwerking van multi-byte UTF-8-tekens in alle 33 Mermaid-diagramtypen:
-  Multi-byte tekens worden niet langer ten onrechte als spaties gezien in labels, titels en vet/cursief-opmaak.
-- Snel bewerken, nauwkeurige Regex-zoek/vervangfunctie en vloeiende live-weergave voor Markdown, LaTeX en Mermaid.""",
+- Volledige ondersteuning voor de Lisp-taalfamilie:
+  Syntaxmarkering, regelcommentaar (;) en blokcommentaar (#| ... |#) voor Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel en Janet.
+- Uitgebreide ondersteuning voor Assembly:
+  Ondersteuning voor x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS en WebAssembly (.wat, .wast).
+- 15 nieuwe programmeertalen en 70+ nieuwe extensies en configuratiebestanden:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig en meer.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -448,14 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.49 Sürüm Notları
-📊 Mermaid Diyagramlarında Satır Kaydırma Düzeltmesi ve Çok Dilli Görselleştirme İyileştirmeleri
+        "releaseNotes": """miu v1.0.50 Sürüm Notları
+💻 Sözdizimi Vurgulama ve Yorum Satırı Geçişi 65 Dil Kategorisine (230+ Uzantı) Genişletildi
 
-- Mermaid Diyagramlarında Tam Genişlikli Parantezlerle Satır Kaydırma Donması Giderildi:
-  Japonca, Korece veya Çince metinleri tam genişlikli parantezlerle (ör. （1）, 【1】, 「1」) birleştiren etiketlerde satır kaydırma hesaplaması sırasında oluşan yavaşlama ve yanıt vermeme sorunu çözüldü.
-- Tüm 33 Mermaid Diyagram Türünde Çok Baytlı UTF-8 Karakter Desteği Geliştirildi:
-  Çok baytlı UTF-8 karakterlerinin etiketlerde, başlıklarda ve kalın/italik biçimlendirmede boşluk olarak algılanması önlendi.
-- Hızlı düzenleme, doğru Regex arama/değiştirme ve akıcı Markdown, LaTeX ve Mermaid Canlı Önizlemesi.""",
+- Lisp Dil Ailesi İçin Tam Destek:
+  Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel ve Janet için sözdizimi vurgulama, ';' satır yorumu ve '#| ... |#' blok yorumu eklendi.
+- Kapsamlı Assembly Dili Geliştirmeleri:
+  x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS ve WebAssembly (.wat, .wast) desteği genişletildi.
+- 15 Yeni Dil Kategorisi ve 70+ Yeni Uzantı/Yapılandırma Dosyası:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig ve daha fazlası.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -493,14 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.49
-📊 Sửa lỗi ngắt dòng biểu đồ Mermaid với dấu ngoặc toàn giác & cải thiện hiển thị đa ngôn ngữ
+        "releaseNotes": """Ghi chú phát hành miu v1.0.50
+💻 Mở rộng tô sáng cú pháp & bật/tắt chú thích lên 65 nhóm ngôn ngữ (hơn 230 phần mở rộng tệp)
 
-- Khắc phục lỗi treo khi tự động ngắt dòng nhãn biểu đồ Mermaid có dấu ngoặc toàn giác:
-  Đã sửa lỗi khi nhãn nút kết hợp chữ tiếng Nhật, Hàn, Trung với dấu ngoặc toàn giác (như （1）, 【1】, 「1」) khiến tính năng xem trước bị chậm hoặc ngừng phản hồi.
-- Cải thiện phân tích ký tự UTF-8 nhiều byte trên toàn bộ 33 loại biểu đồ Mermaid:
-  Đảm bảo các ký tự nhiều byte không bị nhận nhầm thành khoảng trắng trong nhãn, tiêu đề và định dạng đậm/nghiêng.
-- Chỉnh sửa tốc độ cao, Tìm/Thay thế Regex chính xác và Xem trước trực tiếp Markdown, LaTeX, Mermaid mượt mà.""",
+- Hỗ trợ đầy đủ họ ngôn ngữ Lisp:
+  Tô sáng cú pháp, bật/tắt chú thích dòng (;) và chú thích khối (#| ... |#) cho Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel và Janet.
+- Nâng cấp toàn diện hợp ngữ (Assembly):
+  Mở rộng hỗ trợ x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS và WebAssembly (.wat, .wast).
+- Thêm 15 ngôn ngữ mới & hơn 70 phần mở rộng/tệp cấu hình:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, v.v.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -539,14 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.49
-📊 Виправлення перенесення рядків у діаграмах Mermaid і покращена підтримка UTF-8
+        "releaseNotes": """Примітки до випуску miu v1.0.50
+💻 Підсвічування синтаксису та перемикання коментарів розширено до 65 категорій мов (понад 230 розширень)
 
-- Виправлено зависання під час перенесення рядків із повноширинними дужками в діаграмах Mermaid:
-  Усунено проблему, через яку мітки вузлів із японським, корейським або китайським текстом і повноширинними дужками (наприклад, （1）, 【1】, 「1」) могли сповільнювати перегляд.
-- Покращено обробку багатобайтових символів UTF-8 в усіх 33 типах діаграм Mermaid:
-  Багатобайтові символи більше не сприймаються як пробіли в мітках, заголовках і форматуванні жирним/курсивом.
-- Швидке редагування, точний пошук Regex і живий перегляд Markdown, LaTeX та Mermaid.""",
+- Повна підтримка сімейства мов Lisp:
+  Підсвічування синтаксису, рядкові коментарі (;) та блокові коментарі (#| ... |#) для Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel і Janet.
+- Масштабне розширення підтримки асемблера (Assembly):
+  Підтримка x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS і WebAssembly (.wat, .wast).
+- 15 нових мов і понад 70 нових розширень та конфігураційних файлів:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig тощо.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -585,14 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.49
-📊 Perbaikan Pemotongan Baris Diagram Mermaid & Peningkatan Rendering Multibahasa
+        "releaseNotes": """Catatan Rilis miu v1.0.50
+💻 Penyorotan Sintaks & Alih Komentar Diperluas ke 65 Kategori Bahasa (230+ Ekstensi File)
 
-- Memperbaiki Masalah Macet Saat Memotong Baris Label Mermaid dengan Kurung Lebar Penuh:
-  Mengatasi masalah ketika label simpul yang menggabungkan teks Jepang, Korea, atau Mandarin dengan tanda kurung lebar penuh (seperti （1）, 【1】, 「1」) menyebabkan pratinjau melambat atau berhenti merespons.
-- Peningkatan Penguraian Karakter UTF-8 Multibyte di Semua 33 Jenis Diagram Mermaid:
-  Mencegah karakter UTF-8 multibyte disalahartikan sebagai spasi pada label, judul, dan format tebal/miring.
-- Pengeditan cepat, Cari & Ganti Regex akurat, serta Pratinjau Langsung Markdown, LaTeX & Mermaid yang mulus.""",
+- Dukungan Penuh Keluarga Bahasa Lisp:
+  Penyorotan sintaks, alih komentar baris (;), dan komentar blok (#| ... |#) untuk Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel, dan Janet.
+- Peningkatan Besar Bahasa Assembly:
+  Dukungan diperluas untuk x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS, dan WebAssembly (.wat, .wast).
+- 15 Kategori Bahasa Baru & 70+ Ekstensi/File Konfigurasi:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, dan lainnya.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -631,14 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.49
-📊 Oprava zalamování řádků v diagramech Mermaid a vylepšené zpracování znaků UTF-8
+        "releaseNotes": """Poznámky k verzi miu v1.0.50
+💻 Zvýrazňování syntaxe a přepínání komentářů rozšířeno na 65 kategorií jazyků (více než 230 přípon)
 
-- Opraveno zamrzání při zalamování štítků s plnošířkovými závorkami v diagramech Mermaid:
-  Vyřešen problém, kdy štítky kombinující japonský, korejský nebo čínský text se závorkami s plnou šířkou (např. （1）, 【1】, 「1」) mohly zpomalit nebo zastavit živý náhled.
-- Vylepšené zpracování vícebajtových znaků UTF-8 ve všech 33 typech diagramů Mermaid:
-  Vícebajtové znaky již nejsou chybně vyhodnocovány jako mezery ve štítcích, názvech a tučném/kurzívním písmu.
-- Rychlé úpravy, přesné regulární výrazy a plynulý živý náhled pro Markdown, LaTeX a Mermaid.""",
+- Plná podpora rodiny jazyků Lisp:
+  Zvýrazňování syntaxe, řádkové komentáře (;) a blokové komentáře (#| ... |#) pro Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel a Janet.
+- Rozsáhlé vylepšení podpory assembleru (Assembly):
+  Rozšířená podpora pro x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS a WebAssembly (.wat, .wast).
+- 15 nových jazyků a více než 70 nových přípon a konfiguračních souborů:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig a další.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -677,14 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.49
-📊 Åtgärdad radbrytning i Mermaid-diagram och förbättrad flerspråkig UTF-8-rendering
+        "releaseNotes": """Versionsinformation för miu v1.0.50
+💻 Syntaxmarkering och kommentarsväxling utökad till 65 språkkategorier (över 230 filändelser)
 
-- Åtgärdade frysning vid radbrytning med helbreddsparenteser i Mermaid-diagram:
-  Löste ett problem där nodetiketter med japansk, koreansk eller kinesisk text och helbreddsparenteser (t.ex. （1）, 【1】, 「1」) kunde göra förhandsgranskningen långsam eller sluta svara.
-- Förbättrad tolkning av flerbytes UTF-8-tecken i alla 33 Mermaid-diagramtyper:
-  Flerbytestecken tolkas inte längre felaktigt som blanksteg i etiketter, rubriker och fet/kursiv stil.
-- Snabb redigering, exakt Regex-sökning/ersättning och smidig live-förhandsgranskning för Markdown, LaTeX och Mermaid.""",
+- Fullt stöd för Lisp-språkfamiljen:
+  Syntaxmarkering, radkommentarer (;) och blockkommentarer (#| ... |#) för Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel och Janet.
+- Stora förbättringar för Assembly:
+  Utökat stöd för x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS och WebAssembly (.wat, .wast).
+- 15 nya språkkategorier och över 70 nya filändelser och konfigurationsfiler:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig m.fl.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -723,14 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.49
-📊 แก้ไขปัญหาการตัดบรรทัดในแผนภาพ Mermaid และปรับปรุงการแสดงผลหลายภาษา
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.50
+💻 ขยายการเน้นไวยากรณ์และสลับความคิดเห็นเป็น 65 หมวดหมู่ภาษา (นามสกุลไฟล์กว่า 230 รายการ)
 
-- แก้ไขปัญหาค้างเมื่อตัดบรรทัดป้ายกำกับ Mermaid ที่มีวงเล็บแบบเต็มความกว้าง:
-  แก้ไขปัญหาเมื่อป้ายกำกับโหนดที่มีข้อความภาษาญี่ปุ่น เกาหลี หรือจีน ร่วมกับวงเล็บแบบเต็มความกว้าง (เช่น （1）, 【1】, 「1」) ทำให้พรีวิวทำงานช้าลงหรือหยุดตอบสนอง
-- ปรับปรุงการประมวลผลอักขระ UTF-8 แบบหลายไบต์ในแผนภาพ Mermaid ทั้ง 33 ประเภท:
-  ป้องกันไม่ให้อักขระหลายไบต์ถูกตีความเป็นช่องว่างในป้ายกำกับ ชื่อเรื่อง และตัวหนา/ตัวเอียง
-- แก้ไขข้อความรวดเร็ว ค้นหา/แทนที่ด้วย Regex แม่นยำ พร้อมพรีวิวสด Markdown, LaTeX และ Mermaid""",
+- รองรับตระกูลภาษา Lisp อย่างเต็มรูปแบบ:
+  เพิ่มการเน้นไวยากรณ์ สลับความคิดเห็นบรรทัด (;) และความคิดเห็นบล็อก (#| ... |#) สำหรับ Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel และ Janet
+- ยกระดับการรองรับภาษาแอสเซมบลี (Assembly):
+  รองรับ x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS และ WebAssembly (.wat, .wast)
+- เพิ่ม 15 หมวดหมู่ภาษาใหม่และนามสกุลไฟล์/ไฟล์ตั้งค่ากว่า 70 รายการ:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig และอื่นๆ""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -769,14 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.49 रिलीज़ नोट्स
-📊 Mermaid डायग्राम में लाइन-रैपिंग सुधार और बहुभाषी रेंडरिंग में सुधार
+        "releaseNotes": """miu v1.0.50 रिलीज़ नोट्स
+💻 सिंटैक्स हाइलाइटिंग और कमेंट टॉगलिंग का 65 भाषा श्रेणियों (230+ फ़ाइल एक्सटेंशन) में विस्तार
 
-- पूर्ण-चौड़ाई वाले कोष्ठकों के साथ Mermaid डायग्राम लेबल लाइन-रैपिंग हैंग समस्या का समाधान:
-  जापानी, कोरियाई या चीनी पाठ के साथ पूर्ण-चौड़ाई वाले कोष्ठक (जैसे （1）, 【1】, 「1」) होने पर प्रीव्यू के धीमा होने या रुकने की समस्या को ठीक किया गया है।
-- सभी 33 Mermaid डायग्राम प्रकारों में मल्टी-बाइट UTF-8 अक्षर पार्सिंग में सुधार:
-  लेबल, शीर्षक और बोल्ड/इटैलिक फ़ॉर्मेटिंग में मल्टी-बाइट अक्षरों की सटीक रेंडरिंग सुनिश्चित की गई है।
-- तेज़ संपादन, सटीक रेगेक्स खोज/बदलाव और सहज Markdown, LaTeX व Mermaid लाइव प्रीव्यू।""",
+- Lisp भाषा परिवार के लिए पूर्ण समर्थन:
+  Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel और Janet के लिए सिंटैक्स हाइलाइटिंग, ';' लाइन कमेंट और '#| ... |#' ब्लॉक कमेंट जोड़े गए।
+- असेंबली भाषा (Assembly) में बड़े सुधार:
+  x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS और WebAssembly (.wat, .wast) के लिए विस्तारित समर्थन।
+- 15 नई भाषा श्रेणियां और 70+ नए एक्सटेंशन/कॉन्फ़िगरेशन फ़ाइलें:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig आदि।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -815,14 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.49
-📊 Corecție pentru încadrarea liniilor în diagramele Mermaid și randare multilingvă îmbunătățită
+        "releaseNotes": """Note de lansare miu v1.0.50
+💻 Evidențierea sintaxei și comutarea comentariilor extinse la 65 de categorii de limbaje (peste 230 de extensii)
 
-- S-a rezolvat blocarea la trecerea pe rând nou în diagramele Mermaid cu paranteze cu lățime completă:
-  Etichetele care combină text japonez, coreean sau chinez cu paranteze cu lățime completă (precum （1）, 【1】, 「1」) sunt acum afișate instantaneu fără încetiniri.
-- Analiză îmbunătățită a caracterelor UTF-8 multi-byte în toate cele 33 de tipuri de diagrame Mermaid:
-  Caracterele multi-byte sunt procesate corect în etichete, titluri și formatarea aldin/cursiv.
-- Editare rapidă, căutare/înlocuire Regex precisă și previzualizare live pentru Markdown, LaTeX și Mermaid.""",
+- Suport complet pentru familia de limbaje Lisp:
+  Evidențiere sintaxă, comentarii pe linie (;) și comentarii bloc (#| ... |#) pentru Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel și Janet.
+- Îmbunătățiri majore pentru limbajul de asamblare (Assembly):
+  Suport extins pentru x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS și WebAssembly (.wat, .wast).
+- 15 categorii noi de limbaje și peste 70 de extensii și fișiere de configurare:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig și multe altele.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -861,14 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.49 kiadási megjegyzések
-📊 Mermaid diagram sortörési javítás és továbbfejlesztett többnyelvű megjelenítés
+        "releaseNotes": """miu v1.0.50 kiadási megjegyzések
+💻 Szintaxiskiemelés és megjegyzés-váltás 65 nyelvi kategóriára (több mint 230 fájlkiterjesztésre) bővítve
 
-- Javítottuk a Mermaid diagramok sortörési lefagyását teljes szélességű zárójelek esetén:
-  Megoldottuk azt a hibát, amelynél a japán, koreai vagy kínai szöveget teljes szélességű zárójelekkel (pl. （1）, 【1】, 「1」) kombináló címkék lelassíthatták vagy megállíthatták az előnézetet.
-- Továbbfejlesztett többbájtos UTF-8 karakterfeldolgozás mind a 33 Mermaid diagramtípusban:
-  A többbájtos karakterek pontosan jelennek meg a címkékben, címekben és a félkövér/dőlt formázásban.
-- Gyors szerkesztés, pontos Regex keresés/csere és folyamatos Markdown, LaTeX és Mermaid élő előnézet.""",
+- Teljes Lisp nyelvcsalád támogatás:
+  Szintaxiskiemelés, sorkomment (;) és blokk-komment (#| ... |#) támogatás Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel és Janet nyelvekhez.
+- Jelentősen bővített Assembly támogatás:
+  Kiterjesztett támogatás x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS és WebAssembly (.wat, .wast) architektúrákhoz.
+- 15 új programozási nyelv és több mint 70 új kiterjesztés/konfigurációs fájl:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig és egyebek.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -907,14 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.49
-📊 Διόρθωση αναδίπλωσης γραμμών σε διαγράμματα Mermaid & βελτιωμένη πολυγλωσσική απόδοση
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.50
+💻 Επισήμανση σύνταξης και εναλλαγή σχολίων σε 65 κατηγορίες γλωσσών (πάνω από 230 επεκτάσεις αρχείων)
 
-- Διορθώθηκε το πάγωμα κατά την αναδίπλωση ετικετών Mermaid με παρενθέσεις πλήρους πλάτους:
-  Επιλύθηκε ένα ζήτημα όπου οι ετικέτες με ιαπωνικό, κορεατικό ή κινεζικό κείμενο και παρενθέσεις πλήρους πλάτους (π.χ. （1）, 【1】, 「1」) μπορούσαν να επιβραδύνουν την προεπισκόπηση.
-- Βελτιωμένη ανάλυση χαρακτήρων UTF-8 πολλαπλών byte και στους 33 τύπους διαγραμμάτων Mermaid:
-  Οι χαρακτήρες πολλαπλών byte αποδίδονται με ακρίβεια σε ετικέτες, τίτλους και έντονη/πλάγια γραφή.
-- Γρήγορη επεξεργασία, ακριβής αναζήτηση Regex και ζωντανή προεπισκόπηση Markdown, LaTeX & Mermaid.""",
+- Πλήρης υποστήριξη για την οικογένεια γλωσσών Lisp:
+  Επισήμανση σύνταξης, σχόλια γραμμής (;) και σχόλια μπλοκ (#| ... |#) για Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel και Janet.
+- Σημαντικές βελτιώσεις για Assembly:
+  Εκτεταμένη υποστήριξη για x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS και WebAssembly (.wat, .wast).
+- 15 νέες κατηγορίες γλωσσών και 70+ νέες επεκτάσεις/αρχεία ρυθμίσεων:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig κ.ά.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -953,14 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter til miu v1.0.49
-📊 Rettet linjeskift i Mermaid-diagrammer og forbedret flersproget UTF-8-gengivelse
+        "releaseNotes": """Udgivelsesnoter til miu v1.0.50
+💻 Syntaksfremhævning og kommentarskift udvidet til 65 sprogkategorier (over 230 filtyper)
 
-- Rettet frysning ved linjeskift med fuldbreddeparenteser i Mermaid-diagrammer:
-  Løst et problem, hvor etiketter med japansk, koreansk eller kinesisk tekst og fuldbreddeparenteser (f.eks. （1）, 【1】, 「1」) kunne gøre forhåndsvisningen langsom eller få den til at stoppe.
-- Forbedret fortolkning af multi-byte UTF-8-tegn i alle 33 Mermaid-diagramtyper:
-  Multi-byte-tegn behandles nu præcist i etiketter, titler og fed/kursiv formatering.
-- Hurtig redigering, præcis Regex-søgning/erstatning og flydende live-forhåndsvisning af Markdown, LaTeX og Mermaid.""",
+- Fuld understøttelse af Lisp-sprogfamilien:
+  Syntaksfremhævning, linjekommentarer (;) og blokkommentarer (#| ... |#) til Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel og Janet.
+- Store forbedringer til Assembly:
+  Udvidet understøttelse af x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS og WebAssembly (.wat, .wast).
+- 15 nye sprogkategorier og over 70 nye filtyper og konfigurationsfiler:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig m.fl.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -999,14 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.49 -julkaisutiedot
-📊 Mermaid-kaavioiden rivityskorjaus ja parannettu monikielinen UTF-8-tuki
+        "releaseNotes": """miu v1.0.50 -julkaisutiedot
+💻 Syntaksin korostus ja kommenttien vaihto laajennettu 65 kielikategoriaan (yli 230 tiedostopäätettä)
 
-- Korjattu Mermaid-kaavioiden rivityksen jumiutuminen täyden leveyden sulkeita käytettäessä:
-  Ratkaistu ongelma, jossa japanin-, korean- tai kiinankielistä tekstiä ja täyden leveyden sulkeita (kuten （1）, 【1】, 「1」) yhdistävät otsikot saattoivat hidastaa tai pysäyttää esikatselun.
-- Parannettu monimuotoisten UTF-8-merkkien käsittely kaikissa 33 Mermaid-kaaviotyypissä:
-  Monitavuiset merkit tunnistetaan tarkasti otsikoissa ja lihavoidussa/kursivoidussa tekstissä.
-- Nopea muokkaus, tarkka Regex-haku/korvaus ja sulava Markdown-, LaTeX- ja Mermaid-esikatselu.""",
+- Täysi tuki Lisp-kieliperheelle:
+  Syntaksin korostus, rivikommentit (;) ja lohkokommentit (#| ... |#) kielille Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel ja Janet.
+- Merkittäviä parannuksia Assembly-tukeen:
+  Laajennettu tuki arkkitehtuureille x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS ja WebAssembly (.wat, .wast).
+- 15 uutta ohjelmointikieltä ja yli 70 uutta tiedostopäätettä/asetustiedostoa:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig ym.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1045,14 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.49
-📊 Rettet linjebryting i Mermaid-diagrammer og forbedret flerspråklig UTF-8-visning
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.50
+💻 Syntaksutheving og kommentuveksling utvidet til 65 språkkategorier (over 230 filtyper)
 
-- Rettet frysing ved linjebryting med fullbreddeparenteser i Mermaid-diagrammer:
-  Løst et problem der etiketter med japansk, koreansk eller kinesisk tekst og fullbreddeparenteser (f.eks. （1）, 【1】, 「1」) kunne gjøre forhåndsvisningen treg eller få den til å slutte å svare.
-- Forbedret tolkning av flerbytes UTF-8-tegn i alle 33 Mermaid-diagramtyper:
-  Flerbytestegn behandles nå nøyaktig i etiketter, titler og fet/kursiv formatering.
-- Rask redigering, presis Regex-søk/erstatt og jevn sanntidsvisning for Markdown, LaTeX og Mermaid.""",
+- Full støtte for Lisp-språkfamilien:
+  Syntaksutheving, linjekommentarer (;) og blokkommentarer (#| ... |#) for Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel og Janet.
+- Store forbedringer for Assembly:
+  Utvidet støtte for x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS og WebAssembly (.wat, .wast).
+- 15 nye språkkategorier og over 70 nye filtyper og konfigurasjonsfiler:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig m.m.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1091,14 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.49
-📊 Pembaikan Pembalutan Baris Diagram Mermaid & Peningkatan Paparan Berbilang Bahasa
+        "releaseNotes": """Nota Keluaran miu v1.0.50
+💻 Sorotan Sintaks & Togol Komen Diperluas kepada 65 Kategori Bahasa (230+ Sambungan Fail)
 
-- Memperbaiki Masalah Pegun Semasa Membalut Baris Label Mermaid dengan Kurungan Lebar Penuh:
-  Menyelesaikan masalah apabila label nod yang menggabungkan teks Jepun, Korea atau Cina dengan tanda kurungan lebar penuh (seperti （1）, 【1】, 「1」) menyebabkan pratonton menjadi perlahan atau berhenti bertindak balas.
-- Peningkatan Penghuraian Aksara UTF-8 Berbilang Bait dalam Semua 33 Jenis Diagram Mermaid:
-  Memastikan aksara berbilang bait dipaparkan dengan tepat dalam label, tajuk dan format tebal/condong.
-- Penyuntingan pantas, Cari & Ganti Regex tepat serta Pratonton Langsung Markdown, LaTeX & Mermaid yang lancar.""",
+- Sokongan Penuh Keluarga Bahasa Lisp:
+  Sorotan sintaks, togol komen baris (;) dan komen blok (#| ... |#) untuk Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel dan Janet.
+- Penambahbaikan Besar Bahasa Assembly:
+  Sokongan diperluas untuk x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS dan WebAssembly (.wat, .wast).
+- 15 Kategori Bahasa Baharu & 70+ Sambungan/Fail Konfigurasi:
+  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig dan banyak lagi.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

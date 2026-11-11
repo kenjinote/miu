@@ -12,8 +12,8 @@
   - Windows（C++17 / Win32 / DirectWrite）、macOS（Cocoa / CoreText）、iOS・iPadOS（UIKit / CoreText）、Android（C++20 NDK / Vulkan + FreeType + HarfBuzz）の各 OS に最適化したネイティブ設計
 - 🗂 **巨大ファイルの高速編集**
   - メモリマップドファイル等を活用した高速なファイル読み込み・スクロール・一括置換
-- 💻 **49言語カテゴリ（120種類以上の拡張子）のシンタックスハイライト & Emmet 対応**
-  - C/C++、C#、Rust、Go、Zig、Swift、Kotlin、Java、Python、JavaScript/TypeScript、HTML、CSS、Markdown、LaTeX、SQL、JSON、YAML、TOML、Shell、PowerShell、Dockerfile 等に対応
+- 💻 **65言語カテゴリ（230種類以上の拡張子・設定ファイル）のシンタックスハイライト & Emmet 対応**
+  - C/C++、C#、Objective-C/C++、Rust、Go、Zig、D、Nim、Swift、Kotlin、Java、Groovy/Gradle、Scala、Python、JavaScript/TypeScript、Ruby、PHP、Perl、Lua、Lisp（Common Lisp / Emacs Lisp / Scheme / Racket / Clojure）、OCaml/SML/ReScript、Haskell、Elixir、Erlang、Fortran、COBOL、Pascal/Delphi、Ada、Prolog、Assembly（x86/x64 / ARM64 / RISC-V / MIPS / WebAssembly `.wat`）、Shader（HLSL / GLSL / Metal）、Solidity、Prisma、Nix、Vimscript、HTML、CSS、Markdown、LaTeX、SQL、JSON、YAML、TOML、Shell、PowerShell、Dockerfile 等に対応
   - HTML / CSS の Emmet 省略記法展開、スマート自動インデント、行コメント切替、対応括弧のハイライトを搭載
 - 📊 **完全オフラインのリアルタイム・ライブプレビュー**
   - **Markdown**（GFM テーブル・タスクリスト・コードブロック）・**HTML**・**SVG** の即時プレビュー

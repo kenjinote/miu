@@ -1208,6 +1208,557 @@ static void testPhase6EncodingsNewlinesRectCursorSearch() {
     }
 }
 
+static void testPhase7LispSyntaxAndCommentToggle() {
+    std::cout << "--- Running Phase 7: Exhaustive Lisp Family Syntax Highlighting & Comment Toggle (;) ---" << std::endl;
+    Editor ed;
+    ed.initGraphics();
+
+    // 1. Test all 21 Lisp extensions and dotfiles (case-insensitive + full paths)
+    const std::vector<std::string> lispFiles = {
+        "main.lisp", "init.lsp", "core.cl", "project.asd", "script.ros",
+        "init.el", "sicp.scm", "chez.ss", "library.sld", "lang.rkt",
+        "core.clj", "app.cljs", "shared.cljc", "deps.edn",
+        "macro.hy", "config.fnl", "build.janet",
+        ".emacs", ".sbclrc", ".clisprc", ".guile",
+        "/Users/dev/.emacs", "C:\\Users\\dev\\.sbclrc",
+        "UPPER.LISP", "UPPER.EL", "UPPER.SCM", "UPPER.RKT", "UPPER.CLJ"
+    };
+    for (const auto& f : lispFiles) {
+        ed.loadSyntaxForExtension(f);
+        CHECK(ed.currentSyntax.active, "Lisp syntax active for " + f);
+        CHECK(ed.currentSyntax.lineComment == ";", "Lisp lineComment is ';' for " + f);
+        CHECK(ed.currentSyntax.blockCommentStart == "#|" && ed.currentSyntax.blockCommentEnd == "|#",
+              "Lisp blockComment is '#| |#' for " + f);
+        CHECK(ed.currentSyntax.disableSingleQuoteStrings == true,
+              "Lisp disableSingleQuoteStrings is true for " + f);
+        CHECK(ed.currentSyntax.lispWords == true,
+              "Lisp lispWords is true for " + f);
+    }
+
+    ed.loadSyntaxForExtension("test.lisp");
+
+    // Helper to check the category of a substring in scanned text
+    auto checkTokenCat = [&](const std::string& code, const std::string& token, int expectedCat, const std::string& desc, size_t searchFrom = 0) {
+        std::vector<int> cats(code.size(), -999);
+        scanSyntaxHighlighting(ed.currentSyntax, code, false, [&](size_t s, size_t l, int cat) {
+            for (size_t k = s; k < s + l && k < code.size(); ++k) cats[k] = cat;
+        });
+        size_t pos = code.find(token, searchFrom);
+        if (pos == std::string::npos) {
+            CHECK(false, desc + " (token not found: " + token + ")");
+            return;
+        }
+        bool allMatch = true;
+        for (size_t k = pos; k < pos + token.size(); ++k) {
+            if (cats[k] != expectedCat) { allMatch = false; break; }
+        }
+        CHECK(allMatch, desc + " [" + token + "]");
+    };
+
+    // Rule indices in kSyntax49:
+    // 0: (:keyword / #:uninterned)
+    // 1: ('symbol / #'func)
+    // 2: (*earmuffs*)
+    // 3: (+constant+)
+    // 4: URL
+    // 5: Number
+
+    // 2. Keywords across Common Lisp, Emacs Lisp, Scheme, Racket, Clojure
+    {
+        std::string kwCode =
+            "(defun defmacro defvar defparameter defconstant defstruct defclass defgeneric defmethod "
+            "lambda let let* flet labels macrolet destructuring-bind multiple-value-bind unwind-protect "
+            "handler-case restart-case if when unless cond case typecase loop dolist dotimes progn prog1 "
+            "block return-from setq setf incf decf format mapcar cons car cdr + - * / = /= < > <= >= 1+ 1- "
+            "defcustom defface cl-defun cl-loop pcase pcase-let* condition-case with-current-buffer save-excursion interactive "
+            "#lang define define-syntax define-record-type define/contract syntax-rules syntax-case letrec letrec* "
+            "parameterize begin set! set-car! set-cdr! call-with-current-continuation call/cc dynamic-wind "
+            "null? pair? list? symbol? number? zero? eq? eqv? equal? string=? for/list for/fold match "
+            "defn defn- defonce defmulti defprotocol defrecord ns fn recur try catch finally swap! reset! "
+            "-> ->> as-> cond-> some-> if-let when-let if-some when-some doseq mapv filterv reduce-kv nil? pos-int?)";
+        const std::vector<std::string> kwList = {
+            "defun", "defmacro", "defparameter", "let*", "destructuring-bind", "multiple-value-bind",
+            "unwind-protect", "handler-case", "return-from", "1+", "1-", "+", "-", "*", "/", "/=", "<=", ">=",
+            "cl-defun", "cl-loop", "pcase-let*", "condition-case", "with-current-buffer", "save-excursion",
+            "#lang", "define-syntax", "define/contract", "syntax-rules", "letrec*", "set!", "set-car!",
+            "call/cc", "null?", "pair?", "zero?", "equal?", "string=?", "for/list",
+            "defn", "defn-", "defprotocol", "swap!", "->", "->>", "cond->", "if-let", "when-some", "reduce-kv", "pos-int?"
+        };
+        for (const auto& kw : kwList) {
+            checkTokenCat(kwCode, kw, (int)SyntaxTokenCategory::Keyword, "Lisp keyword highlighted");
+        }
+    }
+
+    // 3. Compound user identifiers must NOT have false-positive keyword/literal/number matches
+    {
+        std::string userCode = "(my-if if-foo foo-let-bar custom-defun let*-helper not-null? my-set! foo/bar 1+x x+1 utf-8 iso-8859-1 #t-shirt nil-val &my-opt)";
+        const std::vector<std::string> userSyms = {
+            "my-if", "if-foo", "foo-let-bar", "custom-defun", "let*-helper", "not-null?",
+            "my-set!", "foo/bar", "1+x", "x+1", "utf-8", "iso-8859-1", "#t-shirt", "nil-val", "&my-opt"
+        };
+        for (const auto& sym : userSyms) {
+            checkTokenCat(userCode, sym, -999, "User compound symbol NOT falsely highlighted");
+        }
+    }
+
+    // 4. Literals & lambda-list keywords
+    {
+        std::string litCode = "(t nil true false #t #f #true #false #nil &optional &rest &key &body &aux &allow-other-keys &whole &environment &)";
+        const std::vector<std::string> lits = {
+            "t", "nil", "true", "false", "#t", "#f", "#true", "#false", "#nil",
+            "&optional", "&rest", "&key", "&body", "&aux", "&allow-other-keys", "&whole", "&environment", "&"
+        };
+        for (const auto& lit : lits) {
+            size_t pos = litCode.find(" " + lit + " ");
+            if (pos == std::string::npos) pos = litCode.find("(" + lit + " ");
+            if (pos == std::string::npos) pos = litCode.find(" " + lit + ")");
+            CHECK(pos != std::string::npos, "Found literal in test string: " + lit);
+            checkTokenCat(litCode, lit, (int)SyntaxTokenCategory::Literal, "Lisp literal highlighted", pos);
+        }
+    }
+
+    // 5. Keyword symbols (:kw / #:uninterned), Quoted symbols ('sym / #'fn), Earmuffs (*var* / +const+)
+    {
+        std::string rxCode = "(:initarg :accessor :if :defun :nil #:uninterned #:if 'quoted-sym 'if 'nil #'my-fn #'defun #'+ *standard-output* *if* +max-size+ +let+)";
+        checkTokenCat(rxCode, ":initarg", 0, "Keyword symbol :initarg");
+        checkTokenCat(rxCode, ":if", 0, "Keyword symbol :if not overwritten by keyword 'if'");
+        checkTokenCat(rxCode, ":defun", 0, "Keyword symbol :defun not overwritten by keyword 'defun'");
+        checkTokenCat(rxCode, ":nil", 0, "Keyword symbol :nil not overwritten by literal 'nil'");
+        checkTokenCat(rxCode, "#:uninterned", 0, "Uninterned symbol #:uninterned");
+        checkTokenCat(rxCode, "#:if", 0, "Uninterned symbol #:if not overwritten by keyword 'if'");
+        checkTokenCat(rxCode, "'quoted-sym", 1, "Quoted symbol 'quoted-sym");
+        checkTokenCat(rxCode, "'if", 1, "Quoted symbol 'if not overwritten by keyword 'if'");
+        checkTokenCat(rxCode, "'nil", 1, "Quoted symbol 'nil not overwritten by literal 'nil'");
+        checkTokenCat(rxCode, "#'my-fn", 1, "Function-quoted symbol #'my-fn");
+        checkTokenCat(rxCode, "#'defun", 1, "Function-quoted symbol #'defun");
+        checkTokenCat(rxCode, "#'+", 1, "Function-quoted operator #'+");
+        checkTokenCat(rxCode, "*standard-output*", 2, "Earmuff dynamic variable *standard-output*");
+        checkTokenCat(rxCode, "*if*", 2, "Earmuff variable *if* not overwritten by keyword 'if'");
+        checkTokenCat(rxCode, "+max-size+", 3, "Constant earmuff +max-size+");
+        checkTokenCat(rxCode, "+let+", 3, "Constant earmuff +let+ not overwritten by keyword 'let'");
+    }
+
+    // 6. Lisp Number literals (integers, signed, floats, exponents d/f/s/l/e, ratios, radix #x/#b/#o/0x, BigInt N/M)
+    {
+        std::string numCode = "(42 -42 +42 3.14 -3.14 +0.5 1.5e-3 1.0d0 2.5d-3 1.0f0 1.0s0 1.0l0 1/2 -3/4 +22/7 #xFF #XDeadBeef #b1010 #o755 0xFF 42N 3.14M)";
+        const std::vector<std::string> nums = {
+            "42", "-42", "+42", "3.14", "-3.14", "+0.5", "1.5e-3", "1.0d0", "2.5d-3",
+            "1.0f0", "1.0s0", "1.0l0", "1/2", "-3/4", "+22/7", "#xFF", "#XDeadBeef",
+            "#b1010", "#o755", "0xFF", "42N", "3.14M"
+        };
+        size_t cur = 0;
+        for (const auto& num : nums) {
+            size_t pos = numCode.find(num, cur);
+            CHECK(pos != std::string::npos, "Found number token: " + num);
+            checkTokenCat(numCode, num, 5, "Lisp number highlighted", pos);
+            cur = pos + num.size();
+        }
+    }
+
+    // 7. Single-quote reader macro must NOT start a string literal or break comments/keywords
+    {
+        std::string quoteLine = "(setq x '(defun foo (a) (+ a 10))) ; trailing comment";
+        checkTokenCat(quoteLine, "setq", (int)SyntaxTokenCategory::Keyword, "setq before quote");
+        checkTokenCat(quoteLine, "defun", (int)SyntaxTokenCategory::Keyword, "defun inside quoted list '(...) is highlighted as keyword, NOT string");
+        checkTokenCat(quoteLine, "+", (int)SyntaxTokenCategory::Keyword, "+ inside quoted list is highlighted as keyword");
+        checkTokenCat(quoteLine, "10", 5, "10 inside quoted list is highlighted as number");
+        checkTokenCat(quoteLine, "; trailing comment", (int)SyntaxTokenCategory::Comment, "Trailing ; comment after single quote is highlighted as Comment");
+    }
+
+    // 8. Character literal escapes (#\", #\;, #\|, ?\", ?\;, ?", ?;, \", \;) must NOT corrupt strings or comments
+    {
+        std::string charEscLine1 = "(list #\\\" #\\; #\\| #\\space #\\newline) (defun after-cl-chars () 123) ; real comment";
+        checkTokenCat(charEscLine1, "#\\\"", (int)SyntaxTokenCategory::String, "CL char literal #\\\" highlighted as char/string");
+        checkTokenCat(charEscLine1, "#\\;", (int)SyntaxTokenCategory::String, "CL char literal #\\; does not start comment");
+        checkTokenCat(charEscLine1, "#\\space", (int)SyntaxTokenCategory::String, "CL named char literal #\\space");
+        checkTokenCat(charEscLine1, "defun", (int)SyntaxTokenCategory::Keyword, "defun after #\\\" and #\\; is still highlighted as Keyword");
+        checkTokenCat(charEscLine1, "; real comment", (int)SyntaxTokenCategory::Comment, "Real comment after char literals");
+
+        std::string charEscLine2 = "(list ?\\\" ?\\; ?\" ?;) (defun after-elisp-chars () 456)";
+        checkTokenCat(charEscLine2, "?\\\"", (int)SyntaxTokenCategory::String, "Elisp char literal ?\\\"");
+        checkTokenCat(charEscLine2, "?\\;", (int)SyntaxTokenCategory::String, "Elisp char literal ?\\;");
+        checkTokenCat(charEscLine2, "?\"", (int)SyntaxTokenCategory::String, "Elisp char literal ?\"");
+        checkTokenCat(charEscLine2, "?;", (int)SyntaxTokenCategory::String, "Elisp char literal ?;");
+        checkTokenCat(charEscLine2, "defun", (int)SyntaxTokenCategory::Keyword, "defun after Elisp char literals is highlighted as Keyword");
+
+        std::string charEscLine3 = "(vector \\\" \\; \\newline) (defn after-clj-chars [] 789)";
+        checkTokenCat(charEscLine3, "\\\"", (int)SyntaxTokenCategory::String, "Clojure char literal \\\"");
+        checkTokenCat(charEscLine3, "\\;", (int)SyntaxTokenCategory::String, "Clojure char literal \\;");
+        checkTokenCat(charEscLine3, "\\newline", (int)SyntaxTokenCategory::String, "Clojure char literal \\newline");
+        checkTokenCat(charEscLine3, "defn", (int)SyntaxTokenCategory::Keyword, "defn after Clojure char literals is highlighted as Keyword");
+    }
+
+    // 9. Multi-line block comments (#| ... |#) and interaction with ', ;, strings, and char literals
+    {
+        ed.newFile();
+        ed.loadSyntaxForExtension("block.lisp");
+        std::string blockDoc =
+            "(setq a 'quoted) #| block comment start\n"
+            "(defun inside-block () 123)\n"
+            "end of block |# (defun outside-block () 456)\n"
+            "; #| commented-out block start\n"
+            "(defun not-in-block () 789)\n"
+            "\"#| string block start\"\n"
+            "(defun also-not-in-block () 101)\n"
+            "(list #\\\" #\\; ?\" ?;) #| block after char literals\n"
+            "(defun inside-block-2 () 202)\n"
+            "|#\n"
+            "(defun final-outside () 303)";
+        ed.insertAtCursors(blockDoc);
+        CHECK(ed.checkInBlockComment(0) == false, "Line 0 starts outside block comment");
+        CHECK(ed.checkInBlockComment(1) == true, "Line 1 is inside #| ... |# even after single quote 'quoted on line 0");
+        CHECK(ed.checkInBlockComment(2) == true, "Line 2 starts inside #| ... |#");
+        CHECK(ed.checkInBlockComment(3) == false, "Line 3 starts outside after |# on line 2");
+        CHECK(ed.checkInBlockComment(4) == false, "Line 4 is NOT in block comment because '; #|' on line 3 was a line comment");
+        CHECK(ed.checkInBlockComment(6) == false, "Line 6 is NOT in block comment because '\"#|' on line 5 was inside a string");
+        CHECK(ed.checkInBlockComment(8) == true, "Line 8 IS inside block comment started after #\\\" #\\; ?\" ?; on line 7");
+        CHECK(ed.checkInBlockComment(10) == false, "Line 10 is outside block comment after |# on line 9");
+    }
+
+    // 10. Toggle Comment (;) across LF, CRLF, and CR (single line, indented multi-line, mixed, multi-cursor, undo/redo)
+    for (const std::string& nl : { std::string("\n"), std::string("\r\n"), std::string("\r") }) {
+        // Single-line toggle ON/OFF
+        ed.newFile();
+        ed.newlineStr = nl;
+        ed.loadSyntaxForExtension("core.clj");
+        std::string singleDoc = "(defn greet [name] (println \"Hello\" name))";
+        ed.pt.initFromFile(singleDoc.data(), singleDoc.size());
+        ed.rebuildLineStarts();
+        ed.cursors = { { 5, 5, 0.0f, 0.0f, false, false } };
+        ed.toggleComment();
+        verifyLineStartsInvariant(ed);
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == "; " + singleDoc, "Lisp single-line toggleComment ON");
+        ed.toggleComment();
+        verifyLineStartsInvariant(ed);
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == singleDoc, "Lisp single-line toggleComment OFF");
+
+        // Multi-line toggle ON/OFF (minIndent == 0) + Undo/Redo
+        std::string multiDoc =
+            "(defun factorial (n)" + nl +
+            "  (if (<= n 1)" + nl +
+            "      1" + nl +
+            "      (* n (factorial (1- n)))))";
+        ed.newFile();
+        ed.newlineStr = nl;
+        ed.loadSyntaxForExtension("fact.lisp");
+        ed.pt.initFromFile(multiDoc.data(), multiDoc.size());
+        ed.rebuildLineStarts();
+        ed.selectAll();
+        ed.toggleComment();
+        verifyLineStartsInvariant(ed);
+        std::string expectedCommented =
+            "; (defun factorial (n)" + nl +
+            ";   (if (<= n 1)" + nl +
+            ";       1" + nl +
+            ";       (* n (factorial (1- n)))))";
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == expectedCommented, "Lisp multi-line toggleComment ON");
+        ed.toggleComment();
+        verifyLineStartsInvariant(ed);
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == multiDoc, "Lisp multi-line toggleComment OFF");
+        ed.performUndo();
+        verifyLineStartsInvariant(ed);
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == expectedCommented, "Lisp toggleComment Undo restores commented state");
+        ed.performUndo();
+        verifyLineStartsInvariant(ed);
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == multiDoc, "Lisp toggleComment second Undo restores original state");
+        ed.performRedo();
+        verifyLineStartsInvariant(ed);
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == expectedCommented, "Lisp toggleComment Redo re-applies comment");
+
+        // Multi-line indented block toggle ON/OFF (minIndent == 2)
+        std::string indentedDoc =
+            "  (if (<= n 1)" + nl +
+            "      1" + nl +
+            "      (* n (factorial (1- n))))";
+        ed.newFile();
+        ed.newlineStr = nl;
+        ed.loadSyntaxForExtension("fact.scm");
+        ed.pt.initFromFile(indentedDoc.data(), indentedDoc.size());
+        ed.rebuildLineStarts();
+        ed.selectAll();
+        ed.toggleComment();
+        verifyLineStartsInvariant(ed);
+        std::string expectedIndentedCommented =
+            "  ; (if (<= n 1)" + nl +
+            "  ;     1" + nl +
+            "  ;     (* n (factorial (1- n))))";
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == expectedIndentedCommented, "Lisp indented block toggleComment ON at minIndent=2");
+        ed.toggleComment();
+        verifyLineStartsInvariant(ed);
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == indentedDoc, "Lisp indented block toggleComment OFF restores exact indentation");
+
+        // Multi-cursor toggleComment on lines 0 and 2 (skipping line 1)
+        ed.newFile();
+        ed.newlineStr = nl;
+        ed.loadSyntaxForExtension("init.el");
+        std::string mcDoc = "(setq a 1)" + nl + "(setq b 2)" + nl + "(setq c 3)";
+        ed.pt.initFromFile(mcDoc.data(), mcDoc.size());
+        ed.rebuildLineStarts();
+        ed.cursors = {
+            { ed.lineStarts[0], ed.lineStarts[0], 0.0f, 0.0f, false, false },
+            { ed.lineStarts[2], ed.lineStarts[2], 0.0f, 0.0f, false, false }
+        };
+        ed.toggleComment();
+        verifyLineStartsInvariant(ed);
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == "; (setq a 1)" + nl + "(setq b 2)" + nl + "; (setq c 3)",
+              "Lisp multi-cursor toggleComment ON comments only cursor lines 0 and 2");
+        ed.toggleComment();
+        verifyLineStartsInvariant(ed);
+        CHECK(ed.pt.getRange(0, ed.pt.totalLength) == mcDoc,
+              "Lisp multi-cursor toggleComment OFF uncomments lines 0 and 2");
+    }
+}
+
+void testPhase8AssemblyAndNewSyntaxCategories() {
+    std::cout << "=== Phase 8: Assembly & 15 New Syntax Categories (kSyntax50..kSyntax64) + Additional Extensions ===" << std::endl;
+
+    Editor ed;
+    auto isColor = [](const SyntaxColor& a, const SyntaxColor& b) {
+        return std::abs(a.r - b.r) < 0.02f && std::abs(a.g - b.g) < 0.02f &&
+               std::abs(a.b - b.b) < 0.02f && std::abs(a.a - b.a) < 0.02f;
+    };
+    SyntaxColor colComment = {0.0f, 0.50f, 0.0f, 1.0f};
+    SyntaxColor colString  = {0.64f, 0.08f, 0.08f, 1.0f};
+    SyntaxColor colKeyword = {0.0f, 0.0f, 1.0f, 1.0f};
+    SyntaxColor colLiteral = {0.0f, 0.35f, 0.70f, 1.0f};
+    SyntaxColor colDefault = {0.0f, 0.0f, 0.0f, 0.0f};
+
+    // 1. Enhanced Assembly (kSyntax44)
+    const char* asmFiles[] = {
+        "boot.asm", "start.s", "start.S", "macros.inc", "kernel.nasm", "fast.yasm",
+        "win64.masm", "mcu.s51", "mcu.a51", "blink.avr", "cpu.mips", "rv64.riscv",
+        "module.wat", "test.wast"
+    };
+    for (const char* f : asmFiles) {
+        ed.loadSyntaxForExtension(f);
+        CHECK(ed.currentSyntax.active, std::string("Assembly syntax active for ") + f);
+        CHECK(ed.currentSyntax.commentLine == ";", std::string("Assembly commentLine is ';' for ") + f);
+        CHECK(ed.currentSyntax.commentBlockStart == "/*", std::string("Assembly commentBlockStart is '/*' for ") + f);
+        CHECK(ed.currentSyntax.commentBlockEnd == "*/", std::string("Assembly commentBlockEnd is '*/' for ") + f);
+    }
+    {
+        ed.loadSyntaxForExtension("kernel.asm");
+        std::string asmCode =
+            ".section .text\n"
+            ".globl _start\n"
+            "_start:\n"
+            "    mov rax, 0FFh ; NASM/MASM hex\n"
+            "    vaddps zmm0, zmm1, zmm2\n"
+            "    stp x29, x30, [sp, #-16]!\n"
+            "    addi a0, zero, 42\n"
+            "    movq %rax, %rbx /* GAS block comment */\n"
+            "    (module (func $add (param i32 i32) (result i32) local.get 0))\n";
+        std::vector<SyntaxColor> colors;
+        scanSyntaxHighlighting(asmCode, ed.currentSyntax, false, colors, false);
+        CHECK(colors.size() == asmCode.size(), "Asm colors vector matches code length");
+
+        size_t posSection = asmCode.find(".section");
+        CHECK(!isColor(colors[posSection], colDefault), "Asm directive .section highlighted");
+        size_t posLabel = asmCode.find("_start:");
+        CHECK(!isColor(colors[posLabel], colDefault), "Asm label _start: highlighted");
+        size_t posMov = asmCode.find("mov ");
+        CHECK(isColor(colors[posMov], colKeyword), "Asm mnemonic mov highlighted as Keyword");
+        size_t posRax = asmCode.find("rax,");
+        CHECK(isColor(colors[posRax], colLiteral), "Asm register rax highlighted as Literal");
+        size_t posHex = asmCode.find("0FFh");
+        CHECK(!isColor(colors[posHex], colDefault), "Asm MASM/NASM hex 0FFh highlighted");
+        size_t posComment = asmCode.find("; NASM");
+        CHECK(isColor(colors[posComment], colComment), "Asm ';' line comment highlighted");
+        size_t posZmm = asmCode.find("zmm0");
+        CHECK(isColor(colors[posZmm], colLiteral), "Asm AVX-512 register zmm0 highlighted");
+        size_t posStp = asmCode.find("stp ");
+        CHECK(isColor(colors[posStp], colKeyword), "ARM64 mnemonic stp highlighted");
+        size_t posAddi = asmCode.find("addi ");
+        CHECK(isColor(colors[posAddi], colKeyword), "RISC-V mnemonic addi highlighted");
+        size_t posAttReg = asmCode.find("%rax");
+        CHECK(!isColor(colors[posAttReg], colDefault), "AT&T register %rax highlighted");
+        size_t posBlk = asmCode.find("/* GAS");
+        CHECK(isColor(colors[posBlk], colComment), "GAS /* ... */ block comment highlighted");
+        size_t posWasm = asmCode.find("module");
+        CHECK(isColor(colors[posWasm], colKeyword), "WebAssembly .wat module keyword highlighted");
+    }
+
+    // 2. All 15 New Language Categories (kSyntax50..kSyntax64)
+    struct LangTestSpec {
+        const char* filename;
+        const char* expectedCommentLine;
+        const char* expectedBlockStart;
+        const char* expectedBlockEnd;
+        const char* sampleKeyword;
+        const char* sampleLiteral;
+        const char* sampleCode;
+    };
+    const LangTestSpec specs[] = {
+        { "ViewController.m", "//", "/*", "*/", "@interface", "YES",
+          "#import <Foundation/Foundation.h>\n@interface Foo : NSObject\n@property (nonatomic, strong) NSString *name;\n@end\nBOOL ok = YES; // comment\n" },
+        { "Bridge.mm", "//", "/*", "*/", "@implementation", "nil",
+          "@implementation Bridge\n- (id)init { return nil; }\n@end\n" },
+        { "build.gradle", "//", "/*", "*/", "dependencies", "true",
+          "@CompileStatic\ndef ver = \"${project.version}\"\ndependencies { implementation 'org.codehaus.groovy:groovy:3.0.9'; boolean ok = true }\n" },
+        { "Jenkinsfile", "//", "/*", "*/", "pipeline", "true",
+          "pipeline {\n  agent any\n  stages { stage('Build') { steps { sh 'make' } } }\n}\nboolean x = true\n" },
+        { "parser.ml", "", "(*", "*)", "match", "true",
+          "(* OCaml comment *)\nlet rec map (f : 'a -> 'b) xs = match xs with | [] -> [] | h :: t -> if true then f h :: map f t else []\n" },
+        { "component.res", "", "(*", "*)", "switch", "true",
+          "let x = switch opt { | Some(v) => true | None => false }\n" },
+        { "server.erl", "%", "", "", "receive", "ok",
+          "-module(server).\n-export([loop/0]).\nloop() -> receive {From, Msg} -> From ! ok, loop() end. % comment\n" },
+        { "solver.f90", "!", "", "", "program", ".true.",
+          "program main\n  implicit none\n  logical :: flag = .true.\n  real :: x = 1.0\n  ! Fortran comment\nend program main\n" },
+        { "payroll.cbl", "*>", "", "", "IDENTIFICATION", "ZERO",
+          "       IDENTIFICATION DIVISION.\n       PROGRAM-ID. PAYROLL.\n       DATA DIVISION.\n       WORKING-STORAGE SECTION.\n       01 WS-COUNT PIC 9(4) VALUE ZERO.\n       *> COBOL comment\n       PROCEDURE DIVISION.\n           STOP RUN.\n" },
+        { "schema.prisma", "//", "", "", "model", "Int",
+          "datasource db { provider = \"postgresql\" }\nmodel User {\n  id Int @id @default(autoincrement())\n  email String @unique\n  @@index([email])\n}\n" },
+        { "Vault.sol", "//", "/*", "*/", "contract", "uint256",
+          "pragma solidity ^0.8.20;\ncontract Vault {\n  mapping(address => uint256) public balances;\n  function deposit() external payable { balances[msg.sender] += msg.value; }\n}\n" },
+        { "main.nim", "#", "#[", "]#", "proc", "int",
+          "#[ Nim block comment ]#\nproc add(a, b: int): int {.inline.} =\n  result = a + b # Nim line comment\n" },
+        { "app.d", "//", "/*", "*/", "module", "int",
+          "module app;\nimport std.stdio;\n@safe @nogc pure nothrow int square(int x) { return x * x; }\n" },
+        { "Unit1.pas", "//", "{", "}", "procedure", "Integer",
+          "{ Delphi block comment }\nunit Unit1;\ninterface\nprocedure Test(x: Integer);\nimplementation\nprocedure Test(x: Integer);\nvar h: Integer;\nbegin\n  h := $FF;\nend;\nend.\n" },
+        { "main.adb", "--", "", "", "procedure", "Integer",
+          "with Ada.Text_IO; use Ada.Text_IO;\nprocedure Main is\n  X : Integer := 42;\nbegin\n  Put_Line(Integer'Image(X)); -- Ada comment\nend Main;\n" },
+        { "family.pro", "%", "/*", "*/", "findall", "true",
+          "/* Prolog block */\nancestor(X, Y) :- parent(X, Y), true.\nquery(L) :- findall(X, ancestor(X, bob), L). % Prolog line\n" },
+        { ".vimrc", "\"", "", "", "nnoremap", "v:true",
+          "\" Full-line Vimscript comment\nlet g:mapleader = \" \"\nnnoremap <Leader>w :w<CR>\nlet s:flag = v:true \" trailing comment\n" },
+        { "flake.nix", "#", "/*", "*/", "let", "mkDerivation",
+          "/* Nix block */\nlet\n  pkgs = import <nixpkgs> {};\nin pkgs.stdenv.mkDerivation {\n  pname = \"miu\";\n  src = ./.; # Nix comment\n}\n" }
+    };
+
+    for (const auto& sp : specs) {
+        ed.newFile();
+        ed.loadSyntaxForExtension(sp.filename);
+        CHECK(ed.currentSyntax.active, std::string("Syntax active for ") + sp.filename);
+        CHECK(ed.currentSyntax.commentLine == sp.expectedCommentLine, std::string("commentLine matches for ") + sp.filename);
+        CHECK(ed.currentSyntax.commentBlockStart == sp.expectedBlockStart, std::string("commentBlockStart matches for ") + sp.filename);
+        CHECK(ed.currentSyntax.commentBlockEnd == sp.expectedBlockEnd, std::string("commentBlockEnd matches for ") + sp.filename);
+
+        std::string code = sp.sampleCode;
+        std::vector<SyntaxColor> colors;
+        scanSyntaxHighlighting(code, ed.currentSyntax, false, colors, false);
+        CHECK(colors.size() == code.size(), std::string("Colors size matches for ") + sp.filename);
+
+        size_t kwPos = code.find(sp.sampleKeyword);
+        CHECK(kwPos != std::string::npos && !isColor(colors[kwPos], colDefault),
+              std::string("Keyword '") + sp.sampleKeyword + "' highlighted in " + sp.filename);
+
+        size_t litPos = code.find(sp.sampleLiteral);
+        CHECK(litPos != std::string::npos && !isColor(colors[litPos], colDefault),
+              std::string("Literal '") + sp.sampleLiteral + "' highlighted in " + sp.filename);
+
+        // Test toggleComment() roundtrip when commentLine is non-empty
+        if (!ed.currentSyntax.commentLine.empty()) {
+            std::string lineDoc = "first_line_code\nsecond_line_code";
+            ed.pt.initFromFile(lineDoc.data(), lineDoc.size());
+            ed.rebuildLineStarts();
+            ed.cursors = {{0, 0, 0.0f, 0.0f, false, false}};
+            ed.toggleComment();
+            verifyLineStartsInvariant(ed);
+            std::string afterOn = ed.pt.getRange(0, ed.pt.totalLength);
+            CHECK(afterOn.find(std::string(sp.expectedCommentLine) + " first_line_code") == 0,
+                  std::string("toggleComment ON inserts '") + sp.expectedCommentLine + " ' for " + sp.filename);
+            ed.toggleComment();
+            verifyLineStartsInvariant(ed);
+            CHECK(ed.pt.getRange(0, ed.pt.totalLength) == lineDoc,
+                  std::string("toggleComment OFF restores exact line for ") + sp.filename);
+        }
+    }
+
+    // 3. Special language edge cases:
+    // 3a. OCaml ('a -> 'b) polymorphic type variables must NOT swallow strings or break comments
+    {
+        ed.loadSyntaxForExtension("types.ml");
+        std::string mlCode = "type 'a option = None | Some of 'a\nlet s = \"hello\" (* comment *)\n";
+        std::vector<SyntaxColor> colors;
+        scanSyntaxHighlighting(mlCode, ed.currentSyntax, false, colors, false);
+        size_t posSome = mlCode.find("Some");
+        CHECK(!isColor(colors[posSome], colString), "OCaml 'a does not swallow subsequent code into a string");
+        size_t posStr = mlCode.find("\"hello\"");
+        CHECK(isColor(colors[posStr], colString), "OCaml double-quoted string highlighted as String");
+        size_t posCmt = mlCode.find("(* comment *)");
+        CHECK(isColor(colors[posCmt], colComment), "OCaml (* ... *) comment highlighted as Comment");
+    }
+    // 3b. Ada attribute ticks (Integer'Image, Arr'Range) must NOT swallow strings or comments
+    {
+        ed.loadSyntaxForExtension("attr.adb");
+        std::string adaCode = "X := Integer'First;\nY := Integer'Last; -- comment after attributes\n";
+        std::vector<SyntaxColor> colors;
+        scanSyntaxHighlighting(adaCode, ed.currentSyntax, false, colors, false);
+        size_t posFirst = adaCode.find("'First");
+        CHECK(!isColor(colors[posFirst], colString), "Ada 'First attribute tick is not treated as unclosed string");
+        size_t posCmt = adaCode.find("-- comment");
+        CHECK(isColor(colors[posCmt], colComment), "Ada -- comment after two attributes is highlighted as Comment");
+    }
+    // 3c. Vimscript: distinguish full-line/trailing `"` comments from `"string"` literals
+    {
+        ed.loadSyntaxForExtension(".vimrc");
+        std::string vimCode =
+            "\" Comment at start of line\n"
+            "  \" Indented comment with \"quoted\" word\n"
+            "let g:name = \"miu editor\"\n"
+            "set number \" trailing comment\n";
+        std::vector<SyntaxColor> colors;
+        scanSyntaxHighlighting(vimCode, ed.currentSyntax, false, colors, false);
+        CHECK(isColor(colors[0], colComment), "Vimscript line-start '\"' is Comment");
+        size_t posIndented = vimCode.find("\" Indented");
+        CHECK(isColor(colors[posIndented], colComment), "Vimscript indented '\"' is Comment");
+        size_t posStr = vimCode.find("\"miu editor\"");
+        CHECK(isColor(colors[posStr], colString), "Vimscript '\"miu editor\"' in let assignment is String");
+        size_t posTrailing = vimCode.find("\" trailing");
+        CHECK(isColor(colors[posTrailing], colComment), "Vimscript trailing '\" trailing comment' is Comment");
+    }
+    // 3d. COBOL hyphenated keywords (PROGRAM-ID, WORKING-STORAGE, END-IF)
+    {
+        ed.loadSyntaxForExtension("app.cob");
+        std::string cobCode = "PROGRAM-ID. APP.\nWORKING-STORAGE SECTION.\nEND-IF.\n";
+        std::vector<SyntaxColor> colors;
+        scanSyntaxHighlighting(cobCode, ed.currentSyntax, false, colors, false);
+        CHECK(isColor(colors[cobCode.find("PROGRAM-ID")], colKeyword), "COBOL hyphenated keyword PROGRAM-ID highlighted");
+        CHECK(isColor(colors[cobCode.find("WORKING-STORAGE")], colKeyword), "COBOL hyphenated keyword WORKING-STORAGE highlighted");
+        CHECK(isColor(colors[cobCode.find("END-IF")], colKeyword), "COBOL hyphenated keyword END-IF highlighted");
+    }
+    // 3e. Metal Shading Language (.metal)
+    {
+        ed.loadSyntaxForExtension("Shaders.metal");
+        CHECK(ed.currentSyntax.active, "Metal shader (.metal) syntax active");
+        std::string metalCode = "vertex float4 vertex_main(VertexIn in [[stage_in]], uint vid [[vertex_id]]) { return float4(1.0); }\n";
+        std::vector<SyntaxColor> colors;
+        scanSyntaxHighlighting(metalCode, ed.currentSyntax, false, colors, false);
+        CHECK(isColor(colors[metalCode.find("vertex ")], colKeyword), "Metal 'vertex' keyword highlighted");
+        CHECK(isColor(colors[metalCode.find("float4")], colKeyword), "Metal 'float4' type keyword highlighted");
+        CHECK(isColor(colors[metalCode.find("stage_in")], colLiteral), "Metal 'stage_in' attribute literal highlighted");
+        CHECK(!isColor(colors[metalCode.find("[[vertex_id]]")], colDefault), "Metal [[vertex_id]] attribute highlighted");
+    }
+
+    // 4. Category 3 Additional Extensions & Dotfiles/Buildfiles
+    const char* extraFiles[] = {
+        "main.c++", "main.cp", "script.csx",
+        "fast.pyx", "fast.pxd", "fast.pxi", "rules.bzl", "MODULE.bazel", "config.star",
+        "BUILD", "BUILD.bazel", "WORKSPACE", "WORKSPACE.bazel", "SConstruct", "SConscript", "Tiltfile",
+        "index.mts", "index.cts", "app.es6", "proxy.pac",
+        "events.jsonl", "logs.ndjson", "map.geojson", "site.webmanifest", "trace.har",
+        ".prettierrc", ".babelrc", ".eslintrc", ".stylelintrc", ".hintrc", ".swcrc",
+        "service.wsdl", "Main.storyboard", "View.xib", "layout.fxml", "window.ui", "resources.qrc",
+        "styles.pcss", "styles.postcss", "page.wxss",
+        "notes.mkd", "notes.mdown", "analysis.rmd", "report.qmd",
+        "config.fish", "run.ksh", "run.csh", "run.tcsh", "pkg.ebuild", ".zprofile", ".zshenv", "PKGBUILD",
+        "template.phtml",
+        "miu.gemspec", "config.ru", "tasks.rake", "App.podspec",
+        "Gemfile", "Rakefile", "Podfile", "Fastfile", "Brewfile", "Vagrantfile",
+        ".editorconfig", ".gitconfig", ".gitmodules", ".npmrc", ".yarnrc", ".flake8", ".pylintrc", "app.service",
+        ".gitignore", ".gitattributes", ".dockerignore", ".npmignore", ".clang-format", ".clang-tidy", ".htaccess",
+        "refs.bib", "theme.sty", "article.cls",
+        "build.sbt", "01_basic.t", "BSDMakefile", "Justfile",
+        "pass.vsh", "pass.fsh", "pass.glslv", "pass.glslf"
+    };
+    for (const char* f : extraFiles) {
+        ed.loadSyntaxForExtension(f);
+        CHECK(ed.currentSyntax.active, std::string("Additional extension/dotfile syntax active for: ") + f);
+    }
+}
+
 int main() {
     testPhase1PieceTableAndFastLineStarts();
     testPhase1FastSearchReplaceAndReDoS();
@@ -1219,6 +1770,8 @@ int main() {
     testPhase5RandomStressTest600Steps();
     testParityEdgeCases();
     testPhase6EncodingsNewlinesRectCursorSearch();
+    testPhase7LispSyntaxAndCommentToggle();
+    testPhase8AssemblyAndNewSyntaxCategories();
 
     std::cout << "\n==========================================" << std::endl;
     std::cout << "Total Assertions Passed: " << g_passCount << std::endl;

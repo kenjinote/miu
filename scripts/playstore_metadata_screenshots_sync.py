@@ -56,10 +56,10 @@ AR_DESC = """miu هو محرر نصوص وأكواد بسيط وخفيف، مص�
 • خصوصية تامة
 بدون إعلانات، وبدون تتبع، وبدون جمع بيانات. جميع الميزات تعمل بنسبة 100% دون اتصال بالإنترنت على جهازك."""
 
-AR_WHATS_NEW = """شكراً لاستخدامك miu. يصلح الإصدار 1.0.49 توقف التفاف النص في مخططات Mermaid ويحسّن دعم UTF-8:
-• إصلاح التفاف النص في مخططات Mermaid: حل مشكلة بطء أو توقف المعاينة عند احتواء التسميات على أحرف يابانية أو كورية أو صينية مع أقواس كاملة العرض مثل （1） و【1】.
-• تحسين تحليل أحرف UTF-8 متعددة البايت في جميع أنواع مخططات Mermaid الـ 33.
-• تحرير سريع وبحث Regex دقيق ومعاينة مباشرة لـ Markdown وLaTeX وMermaid."""
+AR_WHATS_NEW = """شكراً لاستخدامك miu. يوسّع الإصدار 1.0.50 تمييز الصياغة والتعليقات إلى 65 فئة لغوية (230+ امتداداً):
+• دعم كامل لعائلة Lisp: Common Lisp (.lisp, .cl) وEmacs Lisp (.el) وScheme (.scm) وRacket (.rkt) وClojure (.clj) مع تعليقات (;) و(#| |#).
+• تعزيز Assembly: دعم x86/x64 وARM64 وRISC-V وMIPS وWebAssembly (.wat).
+• 15 لغة جديدة: Objective-C وGroovy/Gradle وOCaml وErlang وFortran وCOBOL وPrisma وSolidity وNim وD وPascal وAda وProlog وVim وNix."""
 
 HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנועד להפוך כל משימה – מרישום הערות יומיות מהירות ועד כתיבת מסמכי Markdown ותכנות – לנוחה ונעימה.
 
@@ -85,10 +85,10 @@ HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנוע
 • פרטיות מלאה
 ללא פרסומות, ללא מעקב וללא איסוף נתונים. הכל פועל 100% אופליין במכשיר שלכם."""
 
-HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.49 מתקנת קפיאה בגלישת שורות בתרשימי Mermaid ומשפרת תמיכה ב-UTF-8:
-• תיקון גלישת שורות בתרשימי Mermaid: נפתרה בעיה שבה תוויות עם טקסט ביפנית, קוריאנית או סינית וסוגריים ברוחב מלא (כגון （1）, 【1】) גרמו להאטה או לעצירה של התצוגה המקדימה.
-• שיפור פענוח תווי UTF-8 מרובי-בתים בכל 33 סוגי תרשימי Mermaid.
-• עריכה מהירה, חיפוש Regex מדויק ותצוגה מקדימה חיה של Markdown, LaTeX ו-Mermaid."""
+HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.50 מרחיבה הדגשת תחביר והערות ל-65 קטגוריות שפה (230+ סיומות):
+• תמיכה מלאה במשפחת Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) עם הערות (;) ו-(#| |#).
+• שדרוג Assembly: תמיכה ב-x86/x64, ARM64, RISC-V, MIPS ו-WebAssembly (.wat).
+• 15 שפות חדשות: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim ו-Nix."""
 
 SK_DESC = """miu je jednoduchý a ľahký textový a kódový editor, s ktorým je písanie každodenných poznámok, textov v Markdowne aj programovanie pohodlné a príjemné.
 
@@ -114,10 +114,10 @@ Hľadanie a nahrádzanie (s regulárnymi výrazmi), viac kurzorov, čísla riadk
 • Súkromie na prvom mieste
 Žiadne reklamy, žiadne sledovanie a žiadny zber dát. Všetko funguje 100 % offline priamo vo vašom zariadení."""
 
-SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.49 opravuje zalamovanie riadkov v diagramoch Mermaid a zlepšuje podporu UTF-8:
-• Opravené zalamovanie štítkov v diagramoch Mermaid: vyriešený problém, pri ktorom štítky s japonským, kórejským alebo čínskym textom a plnošírkovými zátvorkami (napr. （1）, 【1】) spomaľovali náhľad.
-• Vylepšené spracovanie viacbajtových znakov UTF-8 vo všetkých 33 typoch diagramov Mermaid.
-• Rýchle úpravy, presné Regex a živý náhľad Markdown, LaTeX a Mermaid."""
+SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.50 rozširuje zvýrazňovanie syntaxe na 65 kategórií jazykov (230+ prípon):
+• Plná podpora Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), komentáre (;) a (#| |#).
+• Rozšírený Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM a WebAssembly (.wat).
+• 15 nových jazykov: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim a Nix."""
 
 # ============================================================================
 # Short Descriptions (Strictly <= 80 characters for Google Play)
@@ -210,149 +210,149 @@ def adapt_desc_for_android(text: str) -> str:
     return out
 
 
-# Localized Android Release Notes for v1.0.49 (versionCode 56), strictly <= 500 chars each
+# Localized Android Release Notes for v1.0.50 (versionCode 57), strictly <= 500 chars each
 ANDROID_RELEASE_NOTES = {
-    "ja-JP": """いつも miu をご利用いただきありがとうございます。v1.0.49 では Mermaid 図表プレビューの動作改善を行いました。
-・Mermaid 図表で全角括弧を含むラベルの折り返し処理を修正：日本語・韓国語・中国語などの全角文字と全角括弧（（1）、【1】、「1」など）を組み合わせたラベル（例：A[あいうえおかきくけこ（1）]）で動作が重くなったり停止したりする問題を修正しました。
-・全33種類の Mermaid 図表で UTF-8 マルチバイト文字の解析と描画安定性を強化しました。
-・高速編集、正規表現による一括置換、Markdown / LaTeX / Mermaid ライブプレビュー。""",
+    "ja-JP": """いつも miu をご利用いただきありがとうございます。v1.0.50 ではシンタックスハイライトを全65言語カテゴリ（230種以上の拡張子）に拡充しました。
+・Lisp 系言語のフルサポート：Common Lisp (.lisp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .edn) 等のハイライト・行コメント切替（;）・ブロックコメントに対応。
+・Assembly の大幅強化：x86/x64、ARM64、RISC-V、MIPS、WebAssembly (.wat) に対応。
+・15種の新規言語（Objective-C、Groovy/Gradle、OCaml、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D、Pascal、Ada、Prolog、Vim、Nix）と設定ファイルを追加。""",
 
-    "en-US": """Thank you for using miu. Version 1.0.49 fixes Mermaid diagram label wrapping and improves UTF-8 rendering:
-• Fixed Mermaid Diagram Wrapping Freeze: Resolved an issue where node labels combining Japanese, Korean, or Chinese text with full-width brackets (e.g. （1）, 【1】, 「1」) could slow down or freeze the preview.
-• Improved multi-byte UTF-8 character parsing across all 33 Mermaid diagram types.
-• Fast editing, accurate Regex Find & Replace, and Markdown, LaTeX & Mermaid Live Preview.""",
+    "en-US": """Thank you for using miu. Version 1.0.50 expands syntax highlighting to 65 language categories (230+ extensions):
+• Full Lisp Support: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), Hy, Fennel & Janet with ';' and '#| |#' comments.
+• Enhanced Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 New Languages: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "zh-CN": """感谢您使用 miu。v1.0.49 修复了 Mermaid 图表全角括号标签换行卡顿并提升了多语言渲染稳定性：
-・修复 Mermaid 图表全角括号与长文本换行卡顿问题：修复了在流程图等节点标签中同时使用中日韩文字与全角括号（如（1）、【1】、「1」等）时，自动换行计算可能导致预览变慢或无响应的问题。
-・强化全部 33 种 Mermaid 图表的 UTF-8 多字节字符解析，确保标签、标题与粗斜体准确渲染。
-・高速大文件编辑、精准正则替换及 Markdown / LaTeX / Mermaid 实时预览。""",
+    "zh-CN": """感谢您使用 miu。v1.0.50 将语法高亮与注释切换扩展至 65 种语言类别（230 余种扩展名与配置文件）：
+・新增 Lisp 系列语言完整支持：Common Lisp (.lisp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .edn) 等语法高亮与 `;` 行注释、`#| |#` 块注释。
+・全面强化汇编语言 (Assembly)：支持 x86/x64、ARM64、RISC-V、MIPS、NASM/MASM 与 WebAssembly (.wat)。
+・新增 15 种语言（Objective-C、Groovy/Gradle、OCaml、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D、Pascal、Ada、Prolog、Vimscript、Nix）及 70 余种配置文件。""",
 
-    "zh-TW": """感謝您使用 miu。v1.0.49 修復了 Mermaid 圖表全形括號標籤換行卡頓並提升了多語言繪製穩定性：
-・修復 Mermaid 圖表全形括號與長文字換行卡頓問題：修復了在流程圖等節點標籤中同時使用中日韓文字與全形括號（如（1）、【1】、「1」等）時，自動換行計算可能導致預覽變慢或停止回應的問題。
-・強化全部 33 種 Mermaid 圖表的 UTF-8 多位元組字元解析，確保標籤、標題與粗斜體準確繪製。
-・高速大檔案編輯、精準正規取代及 Markdown / LaTeX / Mermaid 即時預覽。""",
+    "zh-TW": """感謝您使用 miu。v1.0.50 將語法突顯與註解切換擴充至 65 種語言類別（230 餘種副檔名與設定檔）：
+・新增 Lisp 系列語言完整支援：Common Lisp (.lisp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .edn) 等語法突顯與 `;` 行註解、`#| |#` 區塊註解。
+・全面強化組合語言 (Assembly)：支援 x86/x64、ARM64、RISC-V、MIPS、NASM/MASM 與 WebAssembly (.wat)。
+・新增 15 種語言（Objective-C、Groovy/Gradle、OCaml、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D、Pascal、Ada、Prolog、Vimscript、Nix）及 70 餘種設定檔。""",
 
-    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다. v1.0.49에서는 Mermaid 다이어그램 줄바꿈 멈춤 수정 및 다국어 렌더링 개선을 진행했습니다.
-・Mermaid 전각 괄호 라벨 줄바꿈 멈춤 현상 수정: 한국어·일본어·중국어 등 전각 문자와 전각 괄호(（1）, 【1】, 「1」 등)가 함께 포함된 노드 라벨에서 자동 줄바꿈 계산 중 미리보기가 느려지거나 멈추던 문제를 해결했습니다.
-・전체 33종 Mermaid 다이어그램에서 UTF-8 다중 바이트 문자 파싱을 강화했습니다.
-・빠른 편집, 다국어 정규식 치환 및 Markdown / LaTeX / Mermaid 실시간 미리보기.""",
+    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다. v1.0.50에서는 구문 강조 및 주석 토글을 총 65개 언어 카테고리(230종 이상의 확장자)로 확장했습니다.
+・Lisp 계열 완벽 지원: Common Lisp(.lisp, .cl), Emacs Lisp(.el), Scheme(.scm), Racket(.rkt), Clojure(.clj, .edn) 구문 강조 및 ';' 줄 주석, '#| |#' 블록 주석 지원.
+・어셈블리어(Assembly) 강화: x86/x64, ARM64, RISC-V, MIPS, WebAssembly(.wat) 지원.
+・15종 신규 언어(Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vimscript, Nix) 및 설정 파일 추가.""",
 
-    "de-DE": """Vielen Dank, dass Sie miu nutzen. Version 1.0.49 korrigiert den Zeilenumbruch in Mermaid-Diagrammen und verbessert die UTF-8-Unterstützung:
-• Zeilenumbruch in Mermaid-Diagrammen korrigiert: Beschriftungen mit CJK-Text und Vollbreiten-Klammern (z. B. （1）, 【1】) führen nicht mehr zum Einfrieren der Vorschau.
-• Verbesserte Verarbeitung von mehrbytigen UTF-8-Zeichen in allen 33 Mermaid-Diagrammtypen.
-• Schnelles Bearbeiten, präzise Regex-Suche und Live-Vorschau für Markdown, LaTeX & Mermaid.""",
+    "de-DE": """Vielen Dank, dass Sie miu nutzen. Version 1.0.50 erweitert die Syntaxhervorhebung auf 65 Sprachkategorien (230+ Erweiterungen):
+• Volle Lisp-Unterstützung: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) inkl. (;)- & (#| |#)-Kommentaren.
+• Erweiterte Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 neue Sprachen: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "fr-FR": """Merci d’utiliser miu. La version 1.0.49 corrige le retour à la ligne des diagrammes Mermaid et améliore le rendu UTF-8 :
-• Correction du retour à la ligne dans Mermaid : résolution d’un blocage lorsque les étiquettes combinaient du texte japonais, coréen ou chinois avec des parenthèses pleine chasse (ex. （1）, 【1】).
-• Analyse améliorée des caractères UTF-8 multi-octets dans les 33 types de diagrammes Mermaid.
-• Édition rapide, Regex précis et aperçu en direct Markdown, LaTeX et Mermaid.""",
+    "fr-FR": """Merci d’utiliser miu. La version 1.0.50 étend la coloration syntaxique à 65 catégories de langages (230+ extensions) :
+• Support Lisp : Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) avec commentaires (;) et (#| |#).
+• Assembleur enrichi : x86/x64, ARM64, RISC-V, MIPS, NASM/MASM et WebAssembly (.wat).
+• 15 nouveaux langages : Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim et Nix.""",
 
-    "es-ES": """Gracias por usar miu. La versión 1.0.49 corrige el ajuste de línea en diagramas Mermaid y mejora el soporte UTF-8:
-• Corrección del ajuste de línea en Mermaid: se resolvió un bloqueo al usar etiquetas con texto japonés, coreano o chino y paréntesis de ancho completo (como （1）, 【1】).
-• Mejor análisis de caracteres UTF-8 multibyte en los 33 tipos de diagramas Mermaid.
-• Edición rápida, búsqueda Regex precisa y vista previa en vivo de Markdown, LaTeX y Mermaid.""",
+    "es-ES": """Gracias por usar miu. La versión 1.0.50 amplía el resaltado de sintaxis a 65 categorías de lenguajes (230+ extensiones):
+• Soporte Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) con comentarios (;) y (#| |#).
+• Assembly mejorado: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM y WebAssembly (.wat).
+• 15 nuevos lenguajes: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim y Nix.""",
 
-    "it-IT": """Grazie per aver scelto miu. La versione 1.0.49 corregge l’a capo nei diagrammi Mermaid e migliora il supporto UTF-8:
-• Correzione dell’a capo in Mermaid: risolto un blocco con etichette contenenti testo giapponese, coreano o cinese e parentesi a larghezza intera (es. （1）, 【1】).
-• Migliorata l’analisi dei caratteri UTF-8 multi-byte in tutti i 33 tipi di diagrammi Mermaid.
-• Modifica rapida, Regex preciso e anteprima live per Markdown, LaTeX e Mermaid.""",
+    "it-IT": """Grazie per aver scelto miu. La versione 1.0.50 estende l’evidenziazione della sintassi a 65 categorie di linguaggi (230+ estensioni):
+• Supporto Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) con commenti (;) e (#| |#).
+• Assembly potenziato: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM e WebAssembly (.wat).
+• 15 nuovi linguaggi: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim e Nix.""",
 
-    "pt-BR": """Obrigado por usar o miu. A versão 1.0.49 corrige a quebra de linha em diagramas Mermaid e melhora o suporte UTF-8:
-• Correção na quebra de linha do Mermaid: resolvido um travamento em rótulos com texto em japonês, coreano ou chinês e parênteses de largura total (ex.: （1）, 【1】).
-• Análise aprimorada de caracteres UTF-8 multibyte em todos os 33 tipos de diagramas Mermaid.
-• Edição rápida, Regex preciso e pré-visualização ao vivo de Markdown, LaTeX e Mermaid.""",
+    "pt-BR": """Obrigado por usar o miu. A versão 1.0.50 expande o destaque de sintaxe para 65 categorias de linguagens (230+ extensões):
+• Suporte Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) com comentários (;) e (#| |#).
+• Assembly aprimorado: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM e WebAssembly (.wat).
+• 15 novas linguagens: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim e Nix.""",
 
-    "ru-RU": """Спасибо, что пользуетесь miu. В версии 1.0.49 исправлен перенос строк в диаграммах Mermaid и улучшена поддержка UTF-8:
-• Исправлен перенос строк в Mermaid: устранено зависание при использовании меток с японским, корейским или китайским текстом и полноширинными скобками (например, （1）, 【1】).
-• Улучшена обработка многобайтовых символов UTF-8 во всех 33 типах диаграмм Mermaid.
-• Быстрое редактирование, точный поиск Regex и предпросмотр Markdown, LaTeX и Mermaid.""",
+    "ru-RU": """Спасибо, что пользуетесь miu. В версии 1.0.50 подсветка синтаксиса расширена до 65 категорий языков (230+ расширений):
+• Полная поддержка Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), комментарии (;) и (#| |#).
+• Обновление Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM и WebAssembly (.wat).
+• 15 новых языков: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim и Nix.""",
 
-    "nl-NL": """Bedankt voor het gebruiken van miu. Versie 1.0.49 verhelpt een probleem met regelterugloop in Mermaid en verbetert UTF-8:
-• Regelterugloop in Mermaid-diagrammen gecorrigeerd: probleem opgelost waarbij labels met CJK-tekst en haakjes over de volledige breedte (zoals （1）, 【1】) de weergave lieten bevriezen.
-• Verbeterde verwerking van multi-byte UTF-8-tekens in alle 33 Mermaid-diagramtypen.
-• Snel bewerken, nauwkeurige Regex en live-weergave voor Markdown, LaTeX en Mermaid.""",
+    "nl-NL": """Bedankt voor het gebruiken van miu. Versie 1.0.50 breidt syntaxmarkering uit naar 65 taalcategorieën (230+ extensies):
+• Volledige Lisp-steun: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) met (;)- & (#| |#)-commentaar.
+• Uitgebreide Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 nieuwe talen: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "sv-SE": """Tack för att du använder miu. Version 1.0.49 åtgärdar radbrytning i Mermaid-diagram och förbättrar UTF-8-stödet:
-• Åtgärdad radbrytning i Mermaid: löste ett problem där etiketter med japansk, koreansk eller kinesisk text och helbreddsparenteser (t.ex. （1）, 【1】) kunde frysa förhandsgranskningen.
-• Förbättrad tolkning av flerbytes UTF-8-tecken i alla 33 Mermaid-diagramtyper.
-• Snabb redigering, exakt Regex och live-förhandsgranskning för Markdown, LaTeX och Mermaid.""",
+    "sv-SE": """Tack för att du använder miu. Version 1.0.50 utökar syntaxmarkering till 65 språkkategorier (230+ filändelser):
+• Fullt stöd för Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) med (;)- & (#| |#)-kommentarer.
+• Utökat stöd för Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 nya språk: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "da-DK": """Tak fordi du bruger miu. Version 1.0.49 retter linjeskift i Mermaid-diagrammer og forbedrer UTF-8-understøttelsen:
-• Rettet linjeskift i Mermaid: løst et problem, hvor etiketter med japansk, koreansk eller kinesisk tekst og fuldbreddeparenteser (f.eks. （1）, 【1】) kunne fryse forhåndsvisningen.
-• Forbedret fortolkning af multi-byte UTF-8-tegn i alle 33 Mermaid-diagramtyper.
-• Hurtig redigering, præcis Regex og live-visning af Markdown, LaTeX og Mermaid.""",
+    "da-DK": """Tak fordi du bruger miu. Version 1.0.50 udvider syntaksfremhævning til 65 sprogkategorier (230+ filtyper):
+• Fuld Lisp-støtte: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) med (;)- & (#| |#)-kommentarer.
+• Udvidet Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 nye sprog: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "no-NO": """Takk for at du bruker miu. Versjon 1.0.49 retter linjebryting i Mermaid-diagrammer og forbedrer UTF-8-støtten:
-• Rettet linjebryting i Mermaid: løst et problem der etiketter med japansk, koreansk eller kinesisk tekst og fullbreddeparenteser (f.eks. （1）, 【1】) kunne fryse forhåndsvisningen.
-• Forbedret tolkning av flerbytes UTF-8-tegn i alle 33 Mermaid-diagramtyper.
-• Rask redigering, presis Regex og sanntidsvisning for Markdown, LaTeX og Mermaid.""",
+    "no-NO": """Takk for at du bruker miu. Versjon 1.0.50 utvider syntaksutheving til 65 språkkategorier (230+ filtyper):
+• Full Lisp-støtte: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) med (;)- & (#| |#)-kommentarer.
+• Utvidet Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 nye språk: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "fi-FI": """Kiitos, että käytät miuta. Versio 1.0.49 korjaa Mermaid-kaavioiden rivityksen ja parantaa UTF-8-tukea:
-• Korjattu Mermaid-kaavioiden rivitys: ratkaistu ongelma, jossa japanin-, korean- tai kiinankielistä tekstiä ja täyden leveyden sulkeita (esim. （1）, 【1】) sisältävät otsikot saattoivat pysäyttää esikatselun.
-• Parannettu monitavuisten UTF-8-merkkien käsittely kaikissa 33 Mermaid-kaaviotyypissä.
-• Nopea muokkaus, tarkka Regex ja reaaliaikainen Markdown-, LaTeX- ja Mermaid-esikatselu.""",
+    "fi-FI": """Kiitos, että käytät miuta. Versio 1.0.50 laajentaa syntaksin korostuksen 65 kielikategoriaan (230+ tiedostopäätettä):
+• Täysi Lisp-tuki: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) sekä (;)- ja (#| |#)-kommentit.
+• Laajennettu Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 uutta kieltä: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "pl-PL": """Dziękujemy za korzystanie z miu. Wersja 1.0.49 naprawia zawijanie wierszy w diagramach Mermaid i ulepsza obsługę UTF-8:
-• Naprawiono zawijanie tekstu w Mermaid: rozwiązano problem, przez który etykiety z tekstem CJK i nawiasami pełnej szerokości (np. （1）, 【1】) mogły zawieszać podgląd.
-• Ulepszona analiza wielobajtowych znaków UTF-8 we wszystkich 33 typach diagramów Mermaid.
-• Szybka edycja, dokładne Regex i podgląd na żywo Markdown, LaTeX i Mermaid.""",
+    "pl-PL": """Dziękujemy za korzystanie z miu. Wersja 1.0.50 rozszerza kolorowanie składni do 65 kategorii języków (230+ rozszerzeń):
+• Pełna obsługa Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) oraz komentarze (;) i (#| |#).
+• Rozbudowany Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM i WebAssembly (.wat).
+• 15 nowych języków: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim i Nix.""",
 
-    "cs-CZ": """Děkujeme, že používáte miu. Verze 1.0.49 opravuje zalamování řádků v diagramech Mermaid a zlepšuje podporu UTF-8:
-• Opraveno zalamování štítků v Mermaid: vyřešen problém, kdy štítky s japonským, korejským nebo čínským textem a plnošířkovými závorkami (např. （1）, 【1】) zpomalovaly náhled.
-• Vylepšené zpracování vícebajtových znaků UTF-8 ve všech 33 typech diagramů Mermaid.
-• Rychlé úpravy, přesné Regex a živý náhled pro Markdown, LaTeX a Mermaid.""",
+    "cs-CZ": """Děkujeme, že používáte miu. Verze 1.0.50 rozšiřuje zvýrazňování syntaxe na 65 kategorií jazyků (230+ přípon):
+• Plná podpora Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), komentáře (;) a (#| |#).
+• Rozšířený Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM a WebAssembly (.wat).
+• 15 nových jazyků: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim a Nix.""",
 
     "sk": SK_WHATS_NEW,
 
-    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja. Az 1.0.49-es verzió javítja a Mermaid sortörést és az UTF-8 támogatást:
-• Mermaid diagram sortörési javítás: megoldottuk a hibát, amelynél a CJK szöveget és teljes szélességű zárójeleket (pl. （1）, 【1】) tartalmazó címkék megállíthatták az előnézetet.
-• Továbbfejlesztett többbájtos UTF-8 karakterfeldolgozás mind a 33 Mermaid diagramtípusban.
-• Gyors szerkesztés, pontos Regex és élő Markdown, LaTeX és Mermaid előnézet.""",
+    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja. Az 1.0.50-es verzió 65 nyelvi kategóriára (230+ kiterjesztésre) bővíti a szintaxiskiemelést:
+• Teljes Lisp támogatás: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), (;) és (#| |#) megjegyzések.
+• Bővített Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 új nyelv: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "ro": """Vă mulțumim că folosiți miu. Versiunea 1.0.49 rezolvă încadrarea liniilor în diagramele Mermaid și îmbunătățește suportul UTF-8:
-• Corecție pentru încadrarea liniilor în Mermaid: s-a rezolvat blocarea la etichetele cu text CJK și paranteze cu lățime completă (ex. （1）, 【1】).
-• Analiză îmbunătățită a caracterelor UTF-8 multi-byte în toate cele 33 de tipuri de diagrame Mermaid.
-• Editare rapidă, Regex precis și previzualizare live Markdown, LaTeX și Mermaid.""",
+    "ro": """Vă mulțumim că folosiți miu. Versiunea 1.0.50 extinde evidențierea sintaxei la 65 de categorii de limbaje (230+ extensii):
+• Suport Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), comentarii (;) și (#| |#).
+• Assembly extins: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 limbaje noi: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu. Η έκδοση 1.0.49 διορθώνει την αναδίπλωση σε διαγράμματα Mermaid και βελτιώνει το UTF-8:
-• Διόρθωση αναδίπλωσης γραμμών στο Mermaid: επιλύθηκε το πάγωμα σε ετικέτες με κείμενο CJK και παρενθέσεις πλήρους πλάτους (π.χ. （1）, 【1】).
-• Βελτιωμένη ανάλυση χαρακτήρων UTF-8 πολλαπλών byte και στους 33 τύπους διαγραμμάτων Mermaid.
-• Γρήγορη επεξεργασία, ακριβές Regex και προεπισκόπηση Markdown, LaTeX & Mermaid.""",
+    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu. Η έκδοση 1.0.50 επεκτείνει την επισήμανση σύνταξης σε 65 κατηγορίες γλωσσών (230+ επεκτάσεις):
+• Υποστήριξη Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), σχόλια (;) & (#| |#).
+• Ενισχυμένο Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 νέες γλώσσες: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz. 1.0.49 sürümü Mermaid satır kaydırma sorununu giderir ve UTF-8 desteğini geliştirir:
-• Mermaid Diyagramlarında Satır Kaydırma Düzeltmesi: Japonca, Korece veya Çince metinleri tam genişlikli parantezlerle (ör. （1）, 【1】) birleştiren etiketlerdeki donma sorunu çözüldü.
-• Tüm 33 Mermaid diyagram türünde çok baytlı UTF-8 karakter desteği geliştirildi.
-• Hızlı düzenleme, doğru Regex ve Markdown, LaTeX, Mermaid Canlı Önizlemesi.""",
+    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz. 1.0.50 sürümü sözdizimi vurgulamayı 65 dil kategorisine (230+ uzantı) genişletir:
+• Tam Lisp Desteği: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) ile (;) ve (#| |#) yorumları.
+• Gelişmiş Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 Yeni Dil: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "uk": """Дякуємо, що користуєтеся miu. У версії 1.0.49 виправлено перенесення рядків у діаграмах Mermaid і покращено UTF-8:
-• Виправлено перенесення рядків у Mermaid: усунено зависання на мітках із японським, корейським або китайським текстом і повноширинними дужками (наприклад, （1）, 【1】).
-• Покращено обробку багатобайтових символів UTF-8 в усіх 33 типах діаграм Mermaid.
-• Швидке редагування, точний пошук Regex і живий перегляд Markdown, LaTeX і Mermaid.""",
+    "uk": """Дякуємо, що користуєтеся miu. У версії 1.0.50 підсвічування синтаксису розширено до 65 категорій мов (230+ розширень):
+• Підтримка Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), коментарі (;) і (#| |#).
+• Розширений Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM і WebAssembly (.wat).
+• 15 нових мов: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim і Nix.""",
 
-    "vi": """Cảm ơn bạn đã sử dụng miu. Phiên bản 1.0.49 sửa lỗi ngắt dòng biểu đồ Mermaid và cải thiện hiển thị UTF-8:
-• Sửa lỗi treo khi ngắt dòng nhãn Mermaid: Khắc phục lỗi khi nhãn kết hợp chữ Nhật, Hàn, Trung với dấu ngoặc toàn giác (như （1）, 【1】) làm chậm hoặc treo xem trước.
-• Cải thiện phân tích ký tự UTF-8 nhiều byte trên toàn bộ 33 loại biểu đồ Mermaid.
-• Chỉnh sửa nhanh, Regex chính xác và Xem trước trực tiếp Markdown, LaTeX, Mermaid.""",
+    "vi": """Cảm ơn bạn đã sử dụng miu. Phiên bản 1.0.50 mở rộng tô sáng cú pháp lên 65 nhóm ngôn ngữ (230+ phần mở rộng):
+• Hỗ trợ họ Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) cùng chú thích (;) và (#| |#).
+• Nâng cấp Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 ngôn ngữ mới: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "th": """ขอบคุณที่ใช้บริการ miu เวอร์ชัน 1.0.49 แก้ไขการตัดบรรทัดในแผนภาพ Mermaid และปรับปรุงการแสดงผล UTF-8:
-• แก้ไขปัญหาค้างเมื่อตัดบรรทัดป้ายกำกับ Mermaid ที่มีข้อความญี่ปุ่น เกาหลี หรือจีน ร่วมกับวงเล็บเต็มความกว้าง (เช่น （1）, 【1】)
-• ปรับปรุงการประมวลผลอักขระ UTF-8 แบบหลายไบต์ในแผนภาพ Mermaid ทั้ง 33 ประเภท
-• แก้ไขไฟล์เร็ว ค้นหา/แทนที่ด้วย Regex แม่นยำ พร้อมพรีวิวสด Markdown, LaTeX และ Mermaid""",
+    "th": """ขอบคุณที่ใช้บริการ miu เวอร์ชัน 1.0.50 ขยายการเน้นไวยากรณ์เป็น 65 หมวดหมู่ภาษา (นามสกุลไฟล์กว่า 230 รายการ):
+• รองรับตระกูล Lisp เต็มรูปแบบ: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) พร้อมความคิดเห็น (;) และ (#| |#)
+• ยกระดับภาษา Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM และ WebAssembly (.wat)
+• เพิ่ม 15 ภาษาใหม่: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim และ Nix""",
 
-    "id": """Terima kasih telah menggunakan miu. Versi 1.0.49 memperbaiki pemotongan baris diagram Mermaid & dukungan UTF-8:
-• Perbaikan Pemotongan Baris Mermaid: Mengatasi masalah macet pada label dengan teks Jepang, Korea, atau Mandarin dan kurung lebar penuh (seperti （1）, 【1】).
-• Peningkatan penguraian karakter UTF-8 multibyte di semua 33 jenis diagram Mermaid.
-• Pengeditan cepat, Regex akurat, dan Pratinjau Langsung Markdown, LaTeX & Mermaid.""",
+    "id": """Terima kasih telah menggunakan miu. Versi 1.0.50 memperluas penyorotan sintaks ke 65 kategori bahasa (230+ ekstensi file):
+• Dukungan Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) dengan komentar (;) & (#| |#).
+• Peningkatan Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 Bahasa Baru: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "ms": """Terima kasih kerana menggunakan miu. Versi 1.0.49 memperbaiki pembalutan baris diagram Mermaid & sokongan UTF-8:
-• Pembaikan Pembalutan Baris Mermaid: Menyelesaikan masalah pegun pada label dengan teks Jepun, Korea atau Cina dan kurungan lebar penuh (seperti （1）, 【1】).
-• Peningkatan penghuraian aksara UTF-8 berbilang bait dalam semua 33 jenis diagram Mermaid.
-• Penyuntingan pantas, Regex tepat dan Pratonton Langsung Markdown, LaTeX & Mermaid.""",
+    "ms": """Terima kasih kerana menggunakan miu. Versi 1.0.50 memperluas sorotan sintaks kepada 65 kategori bahasa (230+ sambungan fail):
+• Sokongan Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) dengan komen (;) & (#| |#).
+• Penambahbaikan Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
+• 15 Bahasa Baharu: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
 
-    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद। संस्करण 1.0.49 में Mermaid डायग्राम लाइन-रैपिंग और UTF-8 रेंडरिंग में सुधार किए गए हैं:
-• Mermaid लाइन-रैपिंग सुधार: जापानी, कोरियाई या चीनी पाठ के साथ पूर्ण-चौड़ाई वाले कोष्ठक (जैसे （1）, 【1】) होने पर प्रीव्यू के रुकने की समस्या ठीक की गई।
-• सभी 33 Mermaid डायग्राम प्रकारों में मल्टी-बाइट UTF-8 अक्षर पार्सिंग में सुधार।
-• तेज़ संपादन, सटीक रेगेक्स और Markdown, LaTeX व Mermaid लाइव प्रीव्यू।""",
+    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद। संस्करण 1.0.50 सिंटैक्स हाइलाइटिंग को 65 भाषा श्रेणियों (230+ एक्सटेंशन) तक विस्तारित करता है:
+• पूर्ण Lisp समर्थन: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) तथा (;) और (#| |#) कमेंट।
+• उन्नत Assembly समर्थन: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM और WebAssembly (.wat)।
+• 15 नई भाषाएं: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim और Nix।""",
 
     "ar": AR_WHATS_NEW,
     "iw-IL": HE_WHATS_NEW,

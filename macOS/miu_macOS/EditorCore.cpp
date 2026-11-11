@@ -24,7 +24,7 @@
 #include <arm_neon.h>
 #endif
 
-const std::wstring APP_VERSION = L"v1.0.49";
+const std::wstring APP_VERSION = L"v1.0.50";
 const std::wstring APP_TITLE = L"miu";
 
 using MiuCore::SanitizeUtf8;
@@ -1909,7 +1909,12 @@ bool Editor::checkInBlockComment(int targetLine) {
                     if (i + bcs.size() <= n && lineStr.compare(i, bcs.size(), bcs) == 0) {
                         inComment = true;
                         i += bcs.size();
-                    } else if (lineStr[i] == '"' || lineStr[i] == '\'') {
+                    } else if (currentSyntax.disableSingleQuoteStrings && (
+                        (i + 2 < n && (lineStr[i] == '#' || lineStr[i] == '?') && lineStr[i + 1] == '\\') ||
+                        (i + 1 < n && lineStr[i] == '\\') ||
+                        (i + 1 < n && lineStr[i] == '?' && (lineStr[i + 1] == '"' || lineStr[i + 1] == ';' || lineStr[i + 1] == '|')))) {
+                        i += (lineStr[i] == '\\' || lineStr[i + 1] != '\\') ? 2 : 3;
+                    } else if (!currentSyntax.disableStrings && (lineStr[i] == '"' || (!currentSyntax.disableSingleQuoteStrings && lineStr[i] == '\''))) {
                         inStr = true;
                         strQuote = lineStr[i];
                         i++;

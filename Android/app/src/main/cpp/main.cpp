@@ -566,7 +566,12 @@ bool checkInBlockComment(Engine* engine, int targetLine) {
                     if (i + bcs.size() <= n && lineStr.compare(i, bcs.size(), bcs) == 0) {
                         inComment = true;
                         i += bcs.size();
-                    } else if (lineStr[i] == '"' || lineStr[i] == '\'') {
+                    } else if (engine->currentSyntax.disableSingleQuoteStrings && (
+                        (i + 2 < n && (lineStr[i] == '#' || lineStr[i] == '?') && lineStr[i + 1] == '\\') ||
+                        (i + 1 < n && lineStr[i] == '\\') ||
+                        (i + 1 < n && lineStr[i] == '?' && (lineStr[i + 1] == '"' || lineStr[i + 1] == ';' || lineStr[i + 1] == '|')))) {
+                        i += (lineStr[i] == '\\' || lineStr[i + 1] != '\\') ? 2 : 3;
+                    } else if (!engine->currentSyntax.disableStrings && (lineStr[i] == '"' || (!engine->currentSyntax.disableSingleQuoteStrings && lineStr[i] == '\''))) {
                         inStr = true;
                         strQuote = lineStr[i];
                         i++;

@@ -221,56 +221,66 @@ def main():
             # Default release notes template
             notes = f"# miu {release_name} リリースノート / Release Notes\n\n" + r"""## 🇯🇵 日本語 (Japanese)
 いつも **miu** をご利用いただきありがとうございます。
-v1.0.49 では、Mermaid 図表プレビューで全角括弧を含む日本語・多言語ラベルを入力した際の動作改善と、全33種類のダイアグラムにおけるマルチバイト文字処理の強化を行いました。
+v1.0.50 では、全プラットフォーム共通のシンタックスハイライト＆コメント切替エンジンを大幅に拡充し、**全65言語カテゴリ（230種類以上の拡張子・ビルド設定ファイル）**に対応しました。
 
-### 🛠 主な改善・修正内容
-- **Mermaid 図表プレビューの全角括弧・長文ラベル折り返し処理を修正**:
-  - フローチャート等のノードラベルに日本語・韓国語・中国語などの全角文字と全角括弧（`（1）`、`【1】`、`「1」` など）を組み合わせて入力した際（例：`A[あいうえおかきくけこ（1）]`）、自動折り返し位置の計算で動作が重くなったり停止したりする問題を修正しました。
-- **全33種類の Mermaid ダイアグラムにおける多言語文字の解析を強化**:
-  - 日本語（`だ`・`む`・`場`・`校`・`項` など）や韓国語・中国語・絵文字などの UTF-8 マルチバイト文字が空白文字と誤認されないよう改善し、ラベル・タイトル・設定値・太字／斜体記法がすべての図表で正確に描画されるようになりました。
-- **高速な編集・正規表現一括置換・ライブプレビュー**:
-  - 大容量ファイルの高速編集、全角・多言語対応の正規表現検索・一括置換、Markdown / LaTeX 数式 / Mermaid 図表のリアルタイムプレビューが軽快に動作します。
+### ✨ 主な新機能・強化内容
+- **Lisp 系言語のフルサポートを追加**:
+  - Common Lisp (`.lisp`, `.lsp`, `.cl`, `.asd`, `.ros`)、Emacs Lisp (`.el`, `.emacs`)、Scheme (`.scm`, `.ss`, `.sld`)、Racket (`.rkt`)、Clojure (`.clj`, `.cljs`, `.cljc`, `.edn`)、Hy (`.hy`)、Fennel (`.fnl`)、Janet (`.janet`) のシンタックスハイライト、`;` 行コメント切替、`#| ... |#` ブロックコメントに対応しました。
+- **アセンブリ言語（Assembly）の大幅強化**:
+  - x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS、WebAssembly Text Format (`.wat`, `.wast`)、`.asm`, `.s`, `.inc`, `.nasm`, `.yasm`, `.masm`, `.riscv`, `.mips` 等の命令・レジスタ・ディレクティブのハイライトおよび `;` 行コメント／`/* ... */` ブロックコメントに対応しました。
+- **15種類の新規プログラミング言語カテゴリを追加**:
+  - **Objective-C / Objective-C++** (`.m`, `.mm`)、**Groovy / Gradle / Jenkinsfile** (`.groovy`, `.gradle`, `Jenkinsfile`)、**OCaml / Standard ML / Reason / ReScript** (`.ml`, `.mli`, `.sml`, `.re`, `.res`)、**Erlang** (`.erl`, `.hrl`)、**Fortran** (`.f90`, `.f`, `.f95`, `.f03`, `.f08`)、**COBOL** (`.cob`, `.cbl`, `.cpy`)、**Prisma** (`.prisma`)、**Solidity** (`.sol`)、**Nim** (`.nim`, `.nims`)、**D言語** (`.d`, `.di`)、**Pascal / Delphi** (`.pas`, `.dpr`, `.lpr`)、**Ada** (`.adb`, `.ads`)、**Prolog** (`.pro`, `.prolog`)、**Vimscript** (`.vim`, `.vimrc`, `_vimrc`)、**Nix** (`.nix`) に新たに対応しました。
+- **Apple Metal シェーダー (`.metal`) や多数のビルド定義・ドットファイルへの対応拡大**:
+  - `.metal`, `.mts`, `.cts`, `.jsonl`, `.ndjson`, `.pyx`, `.bzl`, `BUILD`, `WORKSPACE`, `Gemfile`, `Rakefile`, `Podfile`, `Fastfile`, `Justfile`, `.gitignore`, `.editorconfig`, `.gitconfig`, `.fish`, `.bib`, `.sty`, `.cls`, `.sbt` など 70種類以上の拡張子・設定ファイルを追加しました。
 
 ---
 
 ## 🇺🇸 English
 Thank you for using **miu**.
-Version 1.0.49 fixes a freeze when wrapping Mermaid diagram labels containing full-width brackets and CJK characters, and strengthens multi-byte UTF-8 character handling across all 33 Mermaid diagram types.
+Version 1.0.50 significantly expands the cross-platform syntax highlighting and comment toggling engine to support **65 language categories (over 230 file extensions, build files, and dotfiles)**.
 
-### 🛠 Key Improvements & Fixes
-- **Fixed Mermaid Diagram Line-Wrapping Freeze with Full-Width Brackets**:
-  - Resolved an issue where node labels combining Japanese, Korean, or Chinese text with full-width brackets (such as `（1）`, `【1】`, or `「1」`, e.g., `A[あいうえおかきくけこ（1）]`) could cause the preview to slow down or stop responding during line-wrap calculation.
-- **Improved Multi-Byte UTF-8 Character Parsing Across All 33 Mermaid Diagrams**:
-  - Prevented UTF-8 continuation bytes inside Japanese, Korean, Chinese, and other multi-byte characters from being misinterpreted as whitespace in labels, titles, configuration values, and inline bold/italic formatting.
-- **High-Speed Editing, Multi-Language Regex & Live Preview**:
-  - Smooth editing of large files, accurate Unicode regular expression Find & Replace, and instant offline Markdown, LaTeX & Mermaid Live Preview.
+### ✨ Key New Features & Enhancements
+- **Full Lisp Family Language Support**:
+  - Added syntax highlighting, `;` line comment toggling, and `#| ... |#` block comments for Common Lisp (`.lisp`, `.lsp`, `.cl`, `.asd`, `.ros`), Emacs Lisp (`.el`, `.emacs`), Scheme (`.scm`, `.ss`, `.sld`), Racket (`.rkt`), Clojure (`.clj`, `.cljs`, `.cljc`, `.edn`), Hy (`.hy`), Fennel (`.fnl`), and Janet (`.janet`).
+- **Major Assembly Language Enhancements**:
+  - Expanded support for x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS directives, and WebAssembly Text Format (`.wat`, `.wast`) across `.asm`, `.s`, `.inc`, `.nasm`, `.yasm`, `.masm`, `.riscv`, and `.mips`, with `;` line comments and `/* ... */` block comments.
+- **15 New Programming Language Categories**:
+  - Added **Objective-C / Objective-C++** (`.m`, `.mm`), **Groovy / Gradle / Jenkinsfile** (`.groovy`, `.gradle`, `Jenkinsfile`), **OCaml / Standard ML / Reason / ReScript** (`.ml`, `.mli`, `.sml`, `.re`, `.res`), **Erlang** (`.erl`, `.hrl`), **Fortran** (`.f90`, `.f`, `.f95`, `.f03`, `.f08`), **COBOL** (`.cob`, `.cbl`, `.cpy`), **Prisma** (`.prisma`), **Solidity** (`.sol`), **Nim** (`.nim`, `.nims`), **D** (`.d`, `.di`), **Pascal / Delphi** (`.pas`, `.dpr`, `.lpr`), **Ada** (`.adb`, `.ads`), **Prolog** (`.pro`, `.prolog`), **Vimscript** (`.vim`, `.vimrc`, `_vimrc`), and **Nix** (`.nix`).
+- **Apple Metal Shaders (`.metal`) & 70+ Additional Extensions / Dotfiles**:
+  - Added support for `.metal`, `.mts`, `.cts`, `.jsonl`, `.ndjson`, `.pyx`, `.bzl`, `BUILD`, `WORKSPACE`, `Gemfile`, `Rakefile`, `Podfile`, `Fastfile`, `Justfile`, `.gitignore`, `.editorconfig`, `.gitconfig`, `.fish`, `.bib`, `.sty`, `.cls`, `.sbt`, and more.
 
 ---
 
 ## 🇨🇳 简体中文 (Simplified Chinese)
 感谢您使用 **miu**。
-v1.0.49 修复了 Mermaid 图表预览中包含全角括号的中日韩标签在自动换行时可能出现卡顿或无响应的问题，并全面强化了 33 种图表的 UTF-8 多字节字符解析。
+v1.0.50 大幅扩展了全平台语法高亮与注释切换引擎，现已支持 **65 种语言类别（超过 230 种扩展名与构建/配置文件）**。
 
-- **修复 Mermaid 图表全角括号与长文本自动换行卡顿问题**：修复了在流程图等节点标签中同时使用中文、日文、韩文与全角括号（如 `（1）`、`【1】`、`「1」` 等）时，自动换行计算可能导致预览变慢或停止响应的问题。
-- **强化全部 33 种 Mermaid 图表的多语言字符解析**：修复了部分 UTF-8 多字节字符在标签、标题、配置项及粗体/斜体语法中被误判为空白字符的问题，确保所有图表准确渲染。
+- **新增 Lisp 系列语言完整支持**：支持 Common Lisp (`.lisp`, `.lsp`, `.cl`)、Emacs Lisp (`.el`)、Scheme (`.scm`)、Racket (`.rkt`)、Clojure (`.clj`, `.cljs`, `.edn`)、Hy、Fennel、Janet 的语法高亮、`;` 行注释切换与 `#| ... |#` 块注释。
+- **全面强化汇编语言 (Assembly) 支持**：涵盖 x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS 以及 WebAssembly 文本格式 (`.wat`, `.wast`)。
+- **新增 15 种编程语言类别**：新增 Objective-C/C++ (`.m`, `.mm`)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D 语言、Pascal/Delphi、Ada、Prolog、Vimscript (`.vim`, `.vimrc`) 与 Nix (`.nix`)。
+- **新增 Apple Metal 着色器 (`.metal`) 及 70 余种扩展名与配置文件**：支持 `.metal`, `.mts`, `.cts`, `.jsonl`, `.pyx`, `.bzl`, `BUILD`, `WORKSPACE`, `Gemfile`, `Rakefile`, `Podfile`, `.gitignore`, `.editorconfig`, `.gitconfig`, `.fish`, `.bib`, `.sbt` 等。
 
 ---
 
 ## 🇹🇼 繁體中文 (Traditional Chinese)
 感謝您使用 **miu**。
-v1.0.49 修復了 Mermaid 圖表預覽中包含全形括號的中日韓標籤在自動換行時可能出現卡頓或停止回應的問題，並全面強化了 33 種圖表的 UTF-8 多位元組字元解析。
+v1.0.50 大幅擴充了全平台語法突顯與註解切換引擎，現已支援 **65 種語言類別（超過 230 種副檔名與建置／設定檔）**。
 
-- **修復 Mermaid 圖表全形括號與長文字自動換行卡頓問題**：修復了在流程圖等節點標籤中同時使用中文、日文、韓文與全形括號（如 `（1）`、`【1】`、`「1」` 等）時，自動換行計算可能導致預覽變慢或停止回應的問題。
-- **強化全部 33 種 Mermaid 圖表的多語言字元解析**：修復了部分 UTF-8 多位元組字元在標籤、標題、設定值及粗體／斜體語法中被誤判為空白字元的問題，確保所有圖表準確繪製。
+- **新增 Lisp 系列語言完整支援**：支援 Common Lisp (`.lisp`, `.lsp`, `.cl`)、Emacs Lisp (`.el`)、Scheme (`.scm`)、Racket (`.rkt`)、Clojure (`.clj`, `.cljs`, `.edn`)、Hy、Fennel、Janet 的語法突顯、`;` 行註解切換與 `#| ... |#` 區塊註解。
+- **全面強化組合語言 (Assembly) 支援**：涵蓋 x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS 以及 WebAssembly 文字格式 (`.wat`, `.wast`)。
+- **新增 15 種程式語言類別**：新增 Objective-C/C++ (`.m`, `.mm`)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D 語言、Pascal/Delphi、Ada、Prolog、Vimscript (`.vim`, `.vimrc`) 與 Nix (`.nix`)。
+- **新增 Apple Metal 著色器 (`.metal`) 及 70 餘種副檔名與設定檔**：支援 `.metal`, `.mts`, `.cts`, `.jsonl`, `.pyx`, `.bzl`, `BUILD`, `WORKSPACE`, `Gemfile`, `Rakefile`, `Podfile`, `.gitignore`, `.editorconfig`, `.gitconfig`, `.fish`, `.bib`, `.sbt` 等。
 
 ---
 
 ## 🇰🇷 한국어 (Korean)
 언제나 **miu**를 이용해 주셔서 감사합니다.
-v1.0.49에서는 Mermaid 다이어그램 미리보기에서 전각 괄호가 포함된 다국어 라벨을 줄바꿈할 때 동작이 느려지거나 멈추는 문제를 수정하고, 33종의 모든 다이어그램에서 UTF-8 다중 바이트 문자 처리를 개선했습니다.
+v1.0.50에서는 전 플랫폼 공통 구문 강조 및 주석 토글 엔진을 대폭 확장하여 **총 65개 언어 카테고리(230종 이상의 확장자 및 빌드·설정 파일)**를 지원합니다.
 
-- **Mermaid 다이어그램 전각 괄호 및 긴 라벨 자동 줄바꿈 멈춤 현상 수정**: 플로차트 등의 노드 라벨에 한국어·일본어·중국어 등 전각 문자와 전각 괄호(`（1）`, `【1】`, `「1」` 등)를 함께 입력했을 때 자동 줄바꿈 계산 중 미리보기가 무거워지거나 응답하지 않던 문제를 해결했습니다.
-- **전체 33종 Mermaid 다이어그램의 다국어 문자 파싱 강화**: UTF-8 다중 바이트 문자가 공백 문자로 오인되지 않도록 개선하여 라벨·제목·굵게/기울임꼴 서식이 정확하게 렌더링됩니다.
+- **Lisp 계열 언어 완벽 지원 추가**: Common Lisp(`.lisp`, `.lsp`, `.cl`), Emacs Lisp(`.el`), Scheme(`.scm`), Racket(`.rkt`), Clojure(`.clj`, `.cljs`, `.edn`), Hy, Fennel, Janet의 구문 강조 및 `;` 줄 주석 토글, `#| ... |#` 블록 주석을 지원합니다.
+- **어셈블리어(Assembly) 대폭 강화**: x86/x64(SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS 및 WebAssembly 텍스트 포맷(`.wat`, `.wast`)을 지원합니다.
+- **15종의 신규 프로그래밍 언어 추가**: Objective-C/C++(`.m`, `.mm`), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D 언어, Pascal/Delphi, Ada, Prolog, Vimscript(`.vim`, `.vimrc`), Nix(`.nix`)를 새롭게 지원합니다.
+- **Apple Metal 셰이더(`.metal`) 및 70종 이상의 확장자·설정 파일 추가**: `.metal`, `.mts`, `.cts`, `.jsonl`, `.pyx`, `.bzl`, `BUILD`, `WORKSPACE`, `Gemfile`, `Rakefile`, `Podfile`, `.gitignore`, `.editorconfig`, `.gitconfig`, `.fish`, `.bib`, `.sbt` 등을 지원합니다.
 """
         elif os.path.exists(notes):
             with open(notes, "r", encoding="utf-8") as f:
