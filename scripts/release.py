@@ -221,66 +221,65 @@ def main():
             # Default release notes template
             notes = f"# miu {release_name} リリースノート / Release Notes\n\n" + r"""## 🇯🇵 日本語 (Japanese)
 いつも **miu** をご利用いただきありがとうございます。
-v1.0.50 では、全プラットフォーム共通のシンタックスハイライト＆コメント切替エンジンを大幅に拡充し、**全65言語カテゴリ（230種類以上の拡張子・ビルド設定ファイル）**に対応しました。
+v1.0.51 では、全プラットフォームにわたる**ライブプレビューの完全オフライン分離・セキュリティ強化**、**全65言語シンタックス＆Mermaid図表エンジンの精度向上**、および**アトミック保存・大容量処理・多言語IME入力の信頼性強化**を実施しました。
 
-### ✨ 主な新機能・強化内容
-- **Lisp 系言語のフルサポートを追加**:
-  - Common Lisp (`.lisp`, `.lsp`, `.cl`, `.asd`, `.ros`)、Emacs Lisp (`.el`, `.emacs`)、Scheme (`.scm`, `.ss`, `.sld`)、Racket (`.rkt`)、Clojure (`.clj`, `.cljs`, `.cljc`, `.edn`)、Hy (`.hy`)、Fennel (`.fnl`)、Janet (`.janet`) のシンタックスハイライト、`;` 行コメント切替、`#| ... |#` ブロックコメントに対応しました。
-- **アセンブリ言語（Assembly）の大幅強化**:
-  - x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS、WebAssembly Text Format (`.wat`, `.wast`)、`.asm`, `.s`, `.inc`, `.nasm`, `.yasm`, `.masm`, `.riscv`, `.mips` 等の命令・レジスタ・ディレクティブのハイライトおよび `;` 行コメント／`/* ... */` ブロックコメントに対応しました。
-- **15種類の新規プログラミング言語カテゴリを追加**:
-  - **Objective-C / Objective-C++** (`.m`, `.mm`)、**Groovy / Gradle / Jenkinsfile** (`.groovy`, `.gradle`, `Jenkinsfile`)、**OCaml / Standard ML / Reason / ReScript** (`.ml`, `.mli`, `.sml`, `.re`, `.res`)、**Erlang** (`.erl`, `.hrl`)、**Fortran** (`.f90`, `.f`, `.f95`, `.f03`, `.f08`)、**COBOL** (`.cob`, `.cbl`, `.cpy`)、**Prisma** (`.prisma`)、**Solidity** (`.sol`)、**Nim** (`.nim`, `.nims`)、**D言語** (`.d`, `.di`)、**Pascal / Delphi** (`.pas`, `.dpr`, `.lpr`)、**Ada** (`.adb`, `.ads`)、**Prolog** (`.pro`, `.prolog`)、**Vimscript** (`.vim`, `.vimrc`, `_vimrc`)、**Nix** (`.nix`) に新たに対応しました。
-- **Apple Metal シェーダー (`.metal`) や多数のビルド定義・ドットファイルへの対応拡大**:
-  - `.metal`, `.mts`, `.cts`, `.jsonl`, `.ndjson`, `.pyx`, `.bzl`, `BUILD`, `WORKSPACE`, `Gemfile`, `Rakefile`, `Podfile`, `Fastfile`, `Justfile`, `.gitignore`, `.editorconfig`, `.gitconfig`, `.fish`, `.bib`, `.sty`, `.cls`, `.sbt` など 70種類以上の拡張子・設定ファイルを追加しました。
+### ✨ 主な改善・セキュリティ強化内容
+- **ライブプレビューの完全オフライン分離・セキュリティ強化**:
+  - Markdown / HTML / SVG / Mermaid / LaTeX プレビューに厳格な Content Security Policy（CSP）と外部通信遮断（WebView2 / WKWebView / Android WebView）を適用し、外部リソースへの意図しない通信やスクリプト混入を防止しました。
+  - タスクリストのチェック切替ブリッジに暗号論的ノンス（ワンタイムトークン）検証を導入し、`<` で始まる非 Web テキストファイルの安全なエスケープ表示および長文インライン強調記法の線形時間 `O(N)` パースに対応しました。
+- **シンタックスハイライト＆Mermaid / LaTeX エンジンの精度・安定性向上**:
+  - Python 三重引用符や全65言語のブロックコメント終端解析の精度向上、CRLF 改行を含む未閉鎖 Markdown コードフェンスの高速ハイライト、Prolog `-->` 演算子・Batch `REM` 境界・Rust/F#/Haskell シングルクォート解析を改善しました。
+  - Mermaid `stateDiagram-v2` の複合状態、入れ子 `block-beta`、各種数値チャートの境界値保護と Emmet 展開の上限保護を強化しました。
+- **ファイル保存の安全性（アトミック保存）・大容量処理・多言語入力の改善**:
+  - アトミック保存と安全なメモリマップ（`mmap`）再マッピングにより上書き保存時のデータ保護を強化し、数GBクラスの分割保存に対応しました。
+  - UTF-16 サロゲートペア（絵文字・4バイト文字）の IME 削除精度向上、モノクロ（1-bit）グリフの鮮明な描画、外部変更通知「再読み込み」の多言語対応を改善しました。
 
 ---
 
 ## 🇺🇸 English
 Thank you for using **miu**.
-Version 1.0.50 significantly expands the cross-platform syntax highlighting and comment toggling engine to support **65 language categories (over 230 file extensions, build files, and dotfiles)**.
+Version 1.0.51 delivers comprehensive **Live Preview offline isolation & security hardening**, **syntax highlighting & Mermaid/LaTeX engine precision improvements**, and **atomic file-saving, large-file, and IME input reliability enhancements** across all platforms.
 
-### ✨ Key New Features & Enhancements
-- **Full Lisp Family Language Support**:
-  - Added syntax highlighting, `;` line comment toggling, and `#| ... |#` block comments for Common Lisp (`.lisp`, `.lsp`, `.cl`, `.asd`, `.ros`), Emacs Lisp (`.el`, `.emacs`), Scheme (`.scm`, `.ss`, `.sld`), Racket (`.rkt`), Clojure (`.clj`, `.cljs`, `.cljc`, `.edn`), Hy (`.hy`), Fennel (`.fnl`), and Janet (`.janet`).
-- **Major Assembly Language Enhancements**:
-  - Expanded support for x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS directives, and WebAssembly Text Format (`.wat`, `.wast`) across `.asm`, `.s`, `.inc`, `.nasm`, `.yasm`, `.masm`, `.riscv`, and `.mips`, with `;` line comments and `/* ... */` block comments.
-- **15 New Programming Language Categories**:
-  - Added **Objective-C / Objective-C++** (`.m`, `.mm`), **Groovy / Gradle / Jenkinsfile** (`.groovy`, `.gradle`, `Jenkinsfile`), **OCaml / Standard ML / Reason / ReScript** (`.ml`, `.mli`, `.sml`, `.re`, `.res`), **Erlang** (`.erl`, `.hrl`), **Fortran** (`.f90`, `.f`, `.f95`, `.f03`, `.f08`), **COBOL** (`.cob`, `.cbl`, `.cpy`), **Prisma** (`.prisma`), **Solidity** (`.sol`), **Nim** (`.nim`, `.nims`), **D** (`.d`, `.di`), **Pascal / Delphi** (`.pas`, `.dpr`, `.lpr`), **Ada** (`.adb`, `.ads`), **Prolog** (`.pro`, `.prolog`), **Vimscript** (`.vim`, `.vimrc`, `_vimrc`), and **Nix** (`.nix`).
-- **Apple Metal Shaders (`.metal`) & 70+ Additional Extensions / Dotfiles**:
-  - Added support for `.metal`, `.mts`, `.cts`, `.jsonl`, `.ndjson`, `.pyx`, `.bzl`, `BUILD`, `WORKSPACE`, `Gemfile`, `Rakefile`, `Podfile`, `Fastfile`, `Justfile`, `.gitignore`, `.editorconfig`, `.gitconfig`, `.fish`, `.bib`, `.sty`, `.cls`, `.sbt`, and more.
+### ✨ Key Security, Stability & Accuracy Improvements
+- **Live Preview Offline Isolation & Security Hardening**:
+  - Enforced strict offline Content Security Policy (CSP), network request blocking across WebView2 / WKWebView / Android WebView, and HTML tag/URL sanitization so previews remain 100% local and safe.
+  - Added per-session cryptographic nonce verification for task-list checkbox toggling, safe `<pre>` escaping for non-Web text files starting with `<`, and linear-time `O(N)` inline Markdown emphasis parsing.
+- **Syntax Highlighting & Mermaid / LaTeX Engine Precision**:
+  - Improved Python triple-quoted string and block-comment delimiter progression across all 65 language categories, linear-time highlighting for unclosed CRLF Markdown code fences, Prolog `-->` operator & Batch `REM` word-boundary accuracy, and Rust/F#/Haskell single-quote lifetimes/identifiers.
+  - Hardened Mermaid `stateDiagram-v2` composite states, nested `block-beta` layouts, numeric chart edge-case guards, and Emmet expansion caps.
+- **Atomic File Saving, Large-File Reliability & Input Enhancements**:
+  - Added atomic file saving with safe `mmap` remapping to protect files during saves, plus chunked multi-GB file writing on Windows.
+  - Fixed UTF-16 surrogate-pair (emoji & 4-byte character) IME deletion, improved 1-bit monochrome font glyph rendering, and localized external file modification reload prompts.
 
 ---
 
 ## 🇨🇳 简体中文 (Simplified Chinese)
 感谢您使用 **miu**。
-v1.0.50 大幅扩展了全平台语法高亮与注释切换引擎，现已支持 **65 种语言类别（超过 230 种扩展名与构建/配置文件）**。
+v1.0.51 全面强化了**实时预览的离线隔离与安全防护**、**65 种语言语法高亮与 Mermaid/LaTeX 引擎精度**，并提升了**原子化文件保存、超大文件读写与多语言输入法（IME）稳定性**。
 
-- **新增 Lisp 系列语言完整支持**：支持 Common Lisp (`.lisp`, `.lsp`, `.cl`)、Emacs Lisp (`.el`)、Scheme (`.scm`)、Racket (`.rkt`)、Clojure (`.clj`, `.cljs`, `.edn`)、Hy、Fennel、Janet 的语法高亮、`;` 行注释切换与 `#| ... |#` 块注释。
-- **全面强化汇编语言 (Assembly) 支持**：涵盖 x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS 以及 WebAssembly 文本格式 (`.wat`, `.wast`)。
-- **新增 15 种编程语言类别**：新增 Objective-C/C++ (`.m`, `.mm`)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D 语言、Pascal/Delphi、Ada、Prolog、Vimscript (`.vim`, `.vimrc`) 与 Nix (`.nix`)。
-- **新增 Apple Metal 着色器 (`.metal`) 及 70 余种扩展名与配置文件**：支持 `.metal`, `.mts`, `.cts`, `.jsonl`, `.pyx`, `.bzl`, `BUILD`, `WORKSPACE`, `Gemfile`, `Rakefile`, `Podfile`, `.gitignore`, `.editorconfig`, `.gitconfig`, `.fish`, `.bib`, `.sbt` 等。
+- **实时预览完全离线隔离与安全加固**：为 Markdown / HTML / SVG / Mermaid / LaTeX 预览启用严格的离线安全策略（CSP）、拦截外部网络请求、净化 HTML 标签与链接，并为任务列表勾选交互加入加密随机令牌（Nonce）校验，安全转义以 `<` 开头的纯文本文件，实现线性时间 `O(N)` 行内强调解析。
+- **语法高亮与 Mermaid 图表引擎精度提升**：优化 Python 三引号与块注释闭合识别、包含 CRLF 换行的未闭合 Markdown 代码块高速高亮、Prolog `-->` 运算符、Batch `REM` 边界及 Rust/F#/Haskell 单引号解析；增强 Mermaid `stateDiagram-v2` 复合状态、`block-beta` 嵌套与数值图表的渲染稳定性。
+- **原子化安全保存、大文件支持与输入体验优化**：引入原子化保存与安全的内存映射（`mmap`）重映射机制，支持数 GB 超大文件分块保存，修复 UTF-16 代理对（表情符号与四字节字符）的输入法退格删除问题，并优化单色点阵字体渲染与外部修改重新加载提示的多语言本地化。
 
 ---
 
 ## 🇹🇼 繁體中文 (Traditional Chinese)
 感謝您使用 **miu**。
-v1.0.50 大幅擴充了全平台語法突顯與註解切換引擎，現已支援 **65 種語言類別（超過 230 種副檔名與建置／設定檔）**。
+v1.0.51 全面強化了**即時預覽的離線隔離與安全防護**、**65 種語言語法突顯與 Mermaid/LaTeX 引擎精準度**，並提升了**原子化檔案儲存、超大檔案讀寫與多語言輸入法（IME）穩定性**。
 
-- **新增 Lisp 系列語言完整支援**：支援 Common Lisp (`.lisp`, `.lsp`, `.cl`)、Emacs Lisp (`.el`)、Scheme (`.scm`)、Racket (`.rkt`)、Clojure (`.clj`, `.cljs`, `.edn`)、Hy、Fennel、Janet 的語法突顯、`;` 行註解切換與 `#| ... |#` 區塊註解。
-- **全面強化組合語言 (Assembly) 支援**：涵蓋 x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS 以及 WebAssembly 文字格式 (`.wat`, `.wast`)。
-- **新增 15 種程式語言類別**：新增 Objective-C/C++ (`.m`, `.mm`)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D 語言、Pascal/Delphi、Ada、Prolog、Vimscript (`.vim`, `.vimrc`) 與 Nix (`.nix`)。
-- **新增 Apple Metal 著色器 (`.metal`) 及 70 餘種副檔名與設定檔**：支援 `.metal`, `.mts`, `.cts`, `.jsonl`, `.pyx`, `.bzl`, `BUILD`, `WORKSPACE`, `Gemfile`, `Rakefile`, `Podfile`, `.gitignore`, `.editorconfig`, `.gitconfig`, `.fish`, `.bib`, `.sbt` 等。
+- **即時預覽完全離線隔離與安全加固**：為 Markdown / HTML / SVG / Mermaid / LaTeX 預覽啟用嚴格的離線安全原則（CSP）、攔截外部網路請求、淨化 HTML 標籤與連結，並為工作清單核取方塊互動加入加密隨機權杖（Nonce）驗證，安全轉義以 `<` 開頭的純文字檔，實現線性時間 `O(N)` 行內強調解析。
+- **語法突顯與 Mermaid 圖表引擎精準度提升**：最佳化 Python 三引號與區塊註解閉合識別、包含 CRLF 換行的未閉合 Markdown 程式碼區塊高速突顯、Prolog `-->` 運算子、Batch `REM` 邊界及 Rust/F#/Haskell 單引號解析；增強 Mermaid `stateDiagram-v2` 複合狀態、`block-beta` 巢狀與數值圖表的渲染穩定性。
+- **原子化安全儲存、大檔案支援與輸入體驗最佳化**：導入原子化儲存與安全的記憶體映射（`mmap`）重映射機制，支援數 GB 超大檔案分塊儲存，修復 UTF-16 代理對（表情符號與四位元組字元）的輸入法退格刪除問題，並最佳化單色點陣字體渲染與外部修改重新載入提示的多語言在地化。
 
 ---
 
 ## 🇰🇷 한국어 (Korean)
 언제나 **miu**를 이용해 주셔서 감사합니다.
-v1.0.50에서는 전 플랫폼 공통 구문 강조 및 주석 토글 엔진을 대폭 확장하여 **총 65개 언어 카테고리(230종 이상의 확장자 및 빌드·설정 파일)**를 지원합니다.
+v1.0.51에서는 전 플랫폼에 걸쳐 **실시간 미리보기 완전 오프라인 격리 및 보안 강화**, **65개 언어 구문 강조 및 Mermaid/LaTeX 엔진 정밀도 향상**, 그리고 **원자적(Atomic) 파일 저장·대용량 처리·다국어 IME 입력 안정성 개선**을 진행했습니다.
 
-- **Lisp 계열 언어 완벽 지원 추가**: Common Lisp(`.lisp`, `.lsp`, `.cl`), Emacs Lisp(`.el`), Scheme(`.scm`), Racket(`.rkt`), Clojure(`.clj`, `.cljs`, `.edn`), Hy, Fennel, Janet의 구문 강조 및 `;` 줄 주석 토글, `#| ... |#` 블록 주석을 지원합니다.
-- **어셈블리어(Assembly) 대폭 강화**: x86/x64(SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS 및 WebAssembly 텍스트 포맷(`.wat`, `.wast`)을 지원합니다.
-- **15종의 신규 프로그래밍 언어 추가**: Objective-C/C++(`.m`, `.mm`), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D 언어, Pascal/Delphi, Ada, Prolog, Vimscript(`.vim`, `.vimrc`), Nix(`.nix`)를 새롭게 지원합니다.
-- **Apple Metal 셰이더(`.metal`) 및 70종 이상의 확장자·설정 파일 추가**: `.metal`, `.mts`, `.cts`, `.jsonl`, `.pyx`, `.bzl`, `BUILD`, `WORKSPACE`, `Gemfile`, `Rakefile`, `Podfile`, `.gitignore`, `.editorconfig`, `.gitconfig`, `.fish`, `.bib`, `.sbt` 등을 지원합니다.
+- **실시간 미리보기 오프라인 격리 및 보안 강화**: Markdown / HTML / SVG / Mermaid / LaTeX 미리보기에 엄격한 오프라인 CSP 및 외부 네트워크 차단, HTML/URL 살균 처리를 적용하고 체크리스트 토글 브리지에 암호화 난스(Nonce) 검증을 도입했습니다. 또한 `<`로 시작하는 일반 텍스트의 안전한 이스케이프 표시 및 선형 시간 `O(N)` 인라인 강조 파싱을 지원합니다.
+- **구문 강조 및 Mermaid 다이어그램 엔진 정밀도 향상**: Python 삼중 따옴표 및 블록 주석 종결 인식 개선, CRLF 개행을 포함한 미종결 Markdown 코드 블록의 초고속 강조, Prolog `-->` 연산자·Batch `REM` 경계·Rust/F#/Haskell 작은따옴표 파싱 개선 및 Mermaid `stateDiagram-v2` 복합 상태·`block-beta`·수치 차트 렌더링 안정성을 강화했습니다.
+- **원자적 파일 저장·대용량 처리 및 입력 개선**: 원자적 파일 저장 및 안전한 메모리 맵(`mmap`) 재매핑으로 저장 중 데이터 보호를 강화하고 수 GB 대용량 분할 저장을 지원합니다. 또한 UTF-16 서로게이트 페어(이모지·4바이트 문자) IME 삭제 정확도 향상, 모노크롬 글리프 렌더링 개선 및 외부 파일 변경 새로고침 다국어 번역을 보강했습니다.
 """
         elif os.path.exists(notes):
             with open(notes, "r", encoding="utf-8") as f:

@@ -7,6 +7,47 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.51": {
+        "ja-jp": """miu v1.0.51 リリースノート
+🛡️ ライブプレビューのオフライン保護強化・シンタックス＆Mermaid精度向上・安全なファイル保存の改善
+
+・ライブプレビューの完全オフライン分離とセキュリティ強化:
+  Markdown / HTML / SVG / Mermaid / LaTeX プレビューに厳格なオフライン保護（CSP・外部通信遮断・HTMLサニタイズ・暗号ノンス検証）を適用し、`<` で始まるテキストファイルの安全な表示と長文強調記法の高速描画を改善しました。
+・全65言語シンタックスハイライト＆Mermaid図表エンジンの精度向上:
+  Python 三重引用符・ブロックコメント終端解析、CRLF 未閉鎖 Markdown コードフェンスの高速ハイライト、Prolog / Batch / Rust / F# / Haskell の構文解析、Mermaid stateDiagram-v2 複合状態・block-beta・数値チャートの描画安定性を強化しました。
+・安全なアトミック保存と大容量ファイル処理の改善:
+  上書き保存時のデータ保護（アトミック保存・安全なメモリマップ更新）および数GBクラスの分割保存の信頼性を向上しました。""",
+
+        "en-us": """miu v1.0.51 Release Notes
+🛡️ Live Preview Offline Security Hardening, Syntax & Mermaid Precision, and Atomic Save Reliability
+
+- Live Preview Offline Isolation & Security Hardening:
+  Enforced strict offline Content Security Policy (CSP), network request blocking, HTML/URL sanitization, and cryptographic nonce verification for task-list toggling, plus safe display of text files starting with '<' and fast O(N) inline Markdown parsing.
+- Syntax Highlighting & Mermaid / LaTeX Engine Precision:
+  Improved Python triple-quote and block-comment delimiter handling across all 65 language categories, fast CRLF unclosed Markdown code-fence highlighting, Prolog / Batch / Rust / F# / Haskell token accuracy, and Mermaid stateDiagram-v2 composite state, block-beta & chart stability.
+- Atomic File Saving & Large-File Reliability:
+  Enhanced save safety with atomic file replacement, safe memory-map remapping, and chunked multi-GB file saving support.""",
+
+        "zh-hans": """miu v1.0.51 更新日志
+🛡️ 实时预览离线安全加固、语法高亮与 Mermaid 引擎精度提升及原子化安全保存优化
+
+- 实时预览完全离线隔离与安全加固：
+  为 Markdown / HTML / SVG / Mermaid / LaTeX 预览启用严格的离线安全策略（CSP）、外部网络请求拦截、HTML/URL 安全过滤与任务列表勾选加密令牌校验，并安全显示以 `<` 开头的纯文本文件及加速长文本行内强调解析。
+- 65 种语言语法高亮与 Mermaid 图表精度提升：
+  优化 Python 三引号与块注释闭合识别、CRLF 未闭合 Markdown 代码块高速高亮、Prolog / Batch / Rust / F# / Haskell 语法解析，以及 Mermaid stateDiagram-v2 复合状态、block-beta 与数值图表的渲染稳定性。
+- 原子化安全保存与超大文件可靠性提升：
+  引入原子化文件替换与安全的内存映射更新机制，并支持数 GB 超大文件分块安全保存。""",
+
+        "ko": """miu v1.0.51 릴리스 노트
+🛡️ 실시간 미리보기 오프라인 보안 강화, 구문 강조·Mermaid 정밀도 향상 및 안전한 파일 저장 개선
+
+- 실시간 미리보기 오프라인 격리 및 보안 강화:
+  Markdown / HTML / SVG / Mermaid / LaTeX 미리보기에 엄격한 오프라인 보안 정책(CSP·외부 네트워크 차단·HTML 살균·암호화 난스 검증)을 적용하고, '<'로 시작하는 일반 텍스트의 안전한 표시 및 긴 문서 인라인 강조 고속 렌더링을 개선했습니다.
+- 65개 언어 구문 강조 및 Mermaid 다이어그램 정밀도 향상:
+  Python 삼중 따옴표 및 블록 주석 종결 인식, CRLF 미종결 Markdown 코드 블록 고속 강조, Prolog / Batch / Rust / F# / Haskell 구문 분석 및 Mermaid stateDiagram-v2 복합 상태·block-beta·수치 차트 안정성을 강화했습니다.
+- 원자적(Atomic) 파일 저장 및 대용량 파일 안정성 향상:
+  원자적 파일 교체와 안전한 메모리 맵 갱신으로 저장 중 데이터 보호를 강화하고 수 GB 대용량 분할 저장을 지원합니다."""
+    },
     "1.0.50": {
         "ja-jp": """miu v1.0.50 リリースノート
 💻 全65言語カテゴリ（230種類以上の拡張子・設定ファイル）のシンタックスハイライト＆コメント切替に対応

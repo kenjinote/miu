@@ -50,11 +50,14 @@ inline double capWidth(const RenderOptions& options, double natural, double leas
 // ============================================================================
 
 inline double tickStep(double span, double count) {
+    if (!(span > 0.0) || !std::isfinite(span) || !std::isfinite(count)) return 1.0;
     double raw = span / std::max(count, 1.0);
+    if (!(raw > 0.0) || !std::isfinite(raw)) return 1.0;
     double power = std::floor(std::log10(raw));
     double unit = raw / std::pow(10.0, power);
     double factor = unit >= 7.07 ? 10.0 : unit >= 3.16 ? 5.0 : unit >= 1.41 ? 2.0 : 1.0;
-    return power < 0.0 ? (-std::pow(10.0, -power) / factor) : (factor * std::pow(10.0, power));
+    double step = power < 0.0 ? (-std::pow(10.0, -power) / factor) : (factor * std::pow(10.0, power));
+    return (step != 0.0 && std::isfinite(step)) ? step : 1.0;
 }
 
 inline double tickIndex(double step, double value) {
@@ -67,6 +70,9 @@ inline double tickValue(double step, double index) {
 }
 
 inline std::vector<double> ticksBetween(double lo, double hi, double step) {
+    if (!std::isfinite(lo) || !std::isfinite(hi) || !std::isfinite(step) || step == 0.0) {
+        return {std::isfinite(lo) ? lo : 0.0};
+    }
     double first = jsRound(tickIndex(step, lo));
     if (tickValue(step, first) < lo) first += 1.0;
     double last = jsRound(tickIndex(step, hi));
@@ -639,9 +645,9 @@ inline void parseXyChart(const std::string& src, XyChartDb& db) {
     };
 
     auto range = [&]() -> std::pair<double, double> {
-        double minV = std::stod(expect(T::NUMBER_WITH_DECIMAL));
+        double minV = safeStod(expect(T::NUMBER_WITH_DECIMAL), "xychart");
         expect(T::ARROW_DELIMITER);
-        double maxV = std::stod(expect(T::NUMBER_WITH_DECIMAL));
+        double maxV = safeStod(expect(T::NUMBER_WITH_DECIMAL), "xychart");
         return {minV, maxV};
     };
 
@@ -649,7 +655,7 @@ inline void parseXyChart(const std::string& src, XyChartDb& db) {
         std::vector<DataPoint> out;
         expect(T::SQUARE_BRACES_START);
         for (;;) {
-            double value = std::stod(expect(T::NUMBER_WITH_DECIMAL));
+            double value = safeStod(expect(T::NUMBER_WITH_DECIMAL), "xychart");
             std::string label = (types[i] == T::STR) ? texts[i++] : "";
             out.push_back({value, label});
             if (types[i] != T::COMMA) break;

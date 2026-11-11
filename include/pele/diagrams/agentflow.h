@@ -791,7 +791,8 @@ public:
             out.push_back(text[i]);
             if (text[i] == '\n') {
                 i++;
-                while (i < text.size() && text[i] != '\n' && isSpaceAtUtf8(text, i, &i)) {}
+                size_t nextI = i;
+                while (i < text.size() && text[i] != '\n' && isSpaceAtUtf8(text, i, &nextI)) { i = nextI; }
             } else {
                 i++;
             }

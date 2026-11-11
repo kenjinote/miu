@@ -158,20 +158,24 @@ inline std::string escapeHtmlBasic(std::string_view s) {
             if (c == '&') {
                 if (i + 1 < b && rawUrl[i + 1] == '#') {
                     size_t k = i + 2;
-                    uint32_t cp = 0;
+                    uint64_t cpAccum = 0;
                     bool hasDigits = false;
                     if (k < b && (rawUrl[k] == 'x' || rawUrl[k] == 'X')) {
                         k++;
-                        while (k < b && (k - i) <= 12) {
+                        while (k < b) {
                             char hc = rawUrl[k];
-                            if (hc >= '0' && hc <= '9') { cp = (cp << 4) | (hc - '0'); hasDigits = true; k++; }
-                            else if (hc >= 'a' && hc <= 'f') { cp = (cp << 4) | (hc - 'a' + 10); hasDigits = true; k++; }
-                            else if (hc >= 'A' && hc <= 'F') { cp = (cp << 4) | (hc - 'A' + 10); hasDigits = true; k++; }
+                            uint64_t v = 0;
+                            if (hc >= '0' && hc <= '9') v = (uint64_t)(hc - '0');
+                            else if (hc >= 'a' && hc <= 'f') v = (uint64_t)(hc - 'a' + 10);
+                            else if (hc >= 'A' && hc <= 'F') v = (uint64_t)(hc - 'A' + 10);
                             else break;
+                            cpAccum = std::min<uint64_t>(0x110000ULL, (cpAccum << 4) | v);
+                            hasDigits = true;
+                            k++;
                         }
                     } else {
-                        while (k < b && (k - i) <= 12 && rawUrl[k] >= '0' && rawUrl[k] <= '9') {
-                            cp = cp * 10 + (rawUrl[k] - '0');
+                        while (k < b && rawUrl[k] >= '0' && rawUrl[k] <= '9') {
+                            cpAccum = std::min<uint64_t>(0x110000ULL, cpAccum * 10 + (uint64_t)(rawUrl[k] - '0'));
                             hasDigits = true;
                             k++;
                         }
@@ -179,9 +183,9 @@ inline std::string escapeHtmlBasic(std::string_view s) {
                     if (hasDigits) {
                         if (k < b && rawUrl[k] == ';') i = k;
                         else i = k - 1;
-                        if (cp <= 0x20 || cp == 0x7F) continue;
-                        if (cp < 0x80) {
-                            char dc = (char)cp;
+                        if (cpAccum <= 0x20 || cpAccum == 0x7F) continue;
+                        if (cpAccum < 0x80) {
+                            char dc = (char)cpAccum;
                             if (dc >= 'A' && dc <= 'Z') dc = (char)(dc + 32);
                             norm += dc;
                         } else {
@@ -191,11 +195,19 @@ inline std::string escapeHtmlBasic(std::string_view s) {
                     }
                 } else {
                     size_t k = i + 1;
-                    while (k < b && (k - i) <= 12 && mdIsAlnum(rawUrl[k])) k++;
+                    while (k < b && (k - i) <= 32 && mdIsAlnum(rawUrl[k])) k++;
                     std::string ent = Emmet::toLowerStr(rawUrl.substr(i + 1, k - (i + 1)));
                     bool hasSemi = (k < b && rawUrl[k] == ';');
                     if (ent == "colon") {
                         norm += ':';
+                        i = hasSemi ? k : (k - 1);
+                        continue;
+                    } else if (ent == "sol") {
+                        norm += '/';
+                        i = hasSemi ? k : (k - 1);
+                        continue;
+                    } else if (ent == "bsol") {
+                        norm += '\\';
                         i = hasSemi ? k : (k - 1);
                         continue;
                     } else if (ent == "tab" || ent == "newline") {
@@ -212,6 +224,12 @@ inline std::string escapeHtmlBasic(std::string_view s) {
             else norm += (char)c;
         }
         if (norm.empty() || norm[0] == '#') return true;
+        if (norm.size() >= 2 && norm[0] == '/' && norm[1] == '/') return false;
+        for (size_t i = 0; i < norm.size(); ++i) {
+            char c = norm[i];
+            if (c == '?' || c == '#') break;
+            if (c == '\\') return false;
+        }
         size_t colon = std::string::npos;
         for (size_t i = 0; i < norm.size(); ++i) {
             char c = norm[i];
@@ -225,7 +243,7 @@ inline std::string escapeHtmlBasic(std::string_view s) {
             if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.')) return false;
         }
         std::string scheme = norm.substr(0, colon + 1);
-        if (scheme == "http:" || scheme == "https:") {
+        if (!isImage && (scheme == "http:" || scheme == "https:")) {
             return norm.compare(colon, 3, "://") == 0;
         }
         if (!isImage && scheme == "mailto:") return true;
@@ -243,9 +261,136 @@ inline std::string escapeHtmlBasic(std::string_view s) {
         }
         return false;
     }
-    inline bool mdIsSafeHtmlTag(const std::string& tagContent){
+    inline std::string mdEscapeAttrPreservingEntities(const std::string& val) {
+        std::string out;
+        out.reserve(val.size() + 16);
+        const size_t n = val.size();
+        for (size_t i = 0; i < n; ++i) {
+            unsigned char c = (unsigned char)val[i];
+            if (c < 0x20 || c == 0x7F) continue;
+            if (c == '<') out += "&lt;";
+            else if (c == '>') out += "&gt;";
+            else if (c == '"') out += "&quot;";
+            else if (c == '\'') out += "&#39;";
+            else if (c == '&') {
+                size_t k = i + 1;
+                if (k < n && val[k] == '#') {
+                    k++;
+                    if (k < n && (val[k] == 'x' || val[k] == 'X')) {
+                        size_t s = ++k;
+                        while (k < n && ((val[k] >= '0' && val[k] <= '9') || (val[k] >= 'a' && val[k] <= 'f') || (val[k] >= 'A' && val[k] <= 'F'))) k++;
+                        if (k > s && k < n && val[k] == ';') {
+                            out.append(val, i, k - i + 1);
+                            i = k;
+                            continue;
+                        }
+                    } else {
+                        size_t s = k;
+                        while (k < n && val[k] >= '0' && val[k] <= '9') k++;
+                        if (k > s && k < n && val[k] == ';') {
+                            out.append(val, i, k - i + 1);
+                            i = k;
+                            continue;
+                        }
+                    }
+                } else {
+                    size_t s = k;
+                    while (k < n && (k - s) <= 32 && mdIsAlnum(val[k])) k++;
+                    if (k > s && k < n && val[k] == ';') {
+                        out.append(val, i, k - i + 1);
+                        i = k;
+                        continue;
+                    }
+                }
+                out += "&amp;";
+            } else {
+                out += (char)c;
+            }
+        }
+        return out;
+    }
+    inline std::string mdCleanVerifiedUrlAttr(const std::string& rawUrl) {
+        size_t a = 0, b = rawUrl.size();
+        while (a < b && (unsigned char)rawUrl[a] <= 0x20) a++;
+        while (b > a && (unsigned char)rawUrl[b - 1] <= 0x20) b--;
+        std::string decoded;
+        decoded.reserve(b - a);
+        for (size_t i = a; i < b; ++i) {
+            unsigned char c = (unsigned char)rawUrl[i];
+            if (c < 0x20 || c == 0x7F) continue;
+            if (c == '&') {
+                if (i + 1 < b && rawUrl[i + 1] == '#') {
+                    size_t k = i + 2;
+                    uint64_t cp = 0;
+                    bool hasDigits = false;
+                    if (k < b && (rawUrl[k] == 'x' || rawUrl[k] == 'X')) {
+                        k++;
+                        while (k < b) {
+                            char hc = rawUrl[k];
+                            uint64_t v = 0;
+                            if (hc >= '0' && hc <= '9') v = (uint64_t)(hc - '0');
+                            else if (hc >= 'a' && hc <= 'f') v = (uint64_t)(hc - 'a' + 10);
+                            else if (hc >= 'A' && hc <= 'F') v = (uint64_t)(hc - 'A' + 10);
+                            else break;
+                            cp = std::min<uint64_t>(0x110000ULL, (cp << 4) | v);
+                            hasDigits = true;
+                            k++;
+                        }
+                    } else {
+                        while (k < b && rawUrl[k] >= '0' && rawUrl[k] <= '9') {
+                            cp = std::min<uint64_t>(0x110000ULL, cp * 10 + (uint64_t)(rawUrl[k] - '0'));
+                            hasDigits = true;
+                            k++;
+                        }
+                    }
+                    if (hasDigits) {
+                        i = (k < b && rawUrl[k] == ';') ? k : (k - 1);
+                        if (cp <= 0x1F || cp == 0x7F || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) continue;
+                        if (cp < 0x80) decoded += (char)cp;
+                        else if (cp < 0x800) {
+                            decoded += (char)(0xC0 | (cp >> 6));
+                            decoded += (char)(0x80 | (cp & 0x3F));
+                        } else if (cp < 0x10000) {
+                            decoded += (char)(0xE0 | (cp >> 12));
+                            decoded += (char)(0x80 | ((cp >> 6) & 0x3F));
+                            decoded += (char)(0x80 | (cp & 0x3F));
+                        } else {
+                            decoded += (char)(0xF0 | (cp >> 18));
+                            decoded += (char)(0x80 | ((cp >> 12) & 0x3F));
+                            decoded += (char)(0x80 | ((cp >> 6) & 0x3F));
+                            decoded += (char)(0x80 | (cp & 0x3F));
+                        }
+                        continue;
+                    }
+                } else {
+                    size_t k = i + 1;
+                    while (k < b && (k - i) <= 32 && mdIsAlnum(rawUrl[k])) k++;
+                    std::string ent = Emmet::toLowerStr(rawUrl.substr(i + 1, k - (i + 1)));
+                    bool hasSemi = (k < b && rawUrl[k] == ';');
+                    if (ent == "amp" && hasSemi) { decoded += '&'; i = k; continue; }
+                    if (ent == "colon") { decoded += ':'; i = hasSemi ? k : (k - 1); continue; }
+                    if (ent == "sol") { decoded += '/'; i = hasSemi ? k : (k - 1); continue; }
+                    if (ent == "bsol") { decoded += '\\'; i = hasSemi ? k : (k - 1); continue; }
+                    if (ent == "quot" && hasSemi) { decoded += '"'; i = k; continue; }
+                    if (ent == "apos" && hasSemi) { decoded += '\''; i = k; continue; }
+                    if (ent == "lt" && hasSemi) { decoded += '<'; i = k; continue; }
+                    if (ent == "gt" && hasSemi) { decoded += '>'; i = k; continue; }
+                    if (ent == "tab" || ent == "newline") { i = hasSemi ? k : (k - 1); continue; }
+                }
+            }
+            decoded += (char)c;
+        }
+        return escapeHtmlBasic(decoded);
+    }
+    inline bool mdSanitizeHtmlTag(const std::string& tagContent, std::string& outTag){
+        outTag.clear();
         if (tagContent.empty()) return false;
-        if (tagContent.compare(0, 3, "!--") == 0 && tagContent.size() >= 5 && tagContent.compare(tagContent.size() - 2, 2, "--") == 0) return true;
+        if (tagContent.compare(0, 3, "!--") == 0 && tagContent.size() >= 5 &&
+            tagContent.compare(tagContent.size() - 2, 2, "--") == 0 &&
+            tagContent.find("--", 3) == tagContent.size() - 2) {
+            outTag = "<" + tagContent + ">";
+            return true;
+        }
         size_t n = tagContent.size(), p = 0;
         bool isClosing = false;
         if (tagContent[p] == '/') { isClosing = true; p++; }
@@ -265,7 +410,9 @@ inline std::string escapeHtmlBasic(std::string_view s) {
         if (!ok) return false;
         if (isClosing) {
             while (p < n && mdIsSpace(tagContent[p])) p++;
-            return p == n;
+            if (p != n) return false;
+            outTag = "</" + name + ">";
+            return true;
         }
         if (p < n && !mdIsSpace(tagContent[p]) && tagContent[p] != '/') return false;
         static const char* const safeCommonAttrs[] = {
@@ -273,13 +420,17 @@ inline std::string escapeHtmlBasic(std::string_view s) {
             "clear", "open", "start", "type", "reversed", "value", "colspan", "rowspan",
             "headers", "scope", "aria-label", "aria-hidden", "role"
         };
+        std::string built = "<" + name;
+        bool selfClosing = false;
         while (p < n) {
             while (p < n && mdIsSpace(tagContent[p])) p++;
             if (p >= n) break;
             if (tagContent[p] == '/') {
                 p++;
                 while (p < n && mdIsSpace(tagContent[p])) p++;
-                return p == n;
+                if (p != n) return false;
+                selfClosing = true;
+                break;
             }
             size_t attrStart = p;
             while (p < n && (mdIsAlnum(tagContent[p]) || tagContent[p] == '-' || tagContent[p] == '_')) p++;
@@ -313,19 +464,40 @@ inline std::string escapeHtmlBasic(std::string_view s) {
                     if (p == vs) return false;
                     attrVal = tagContent.substr(vs, p - vs);
                 }
-                if (attrName == "href" && !mdIsSafeUrl(attrVal, false)) return false;
-                if (attrName == "src" && !mdIsSafeUrl(attrVal, true)) return false;
+                if (attrName == "href") {
+                    if (!mdIsSafeUrl(attrVal, false)) return false;
+                    built += " href=\"" + mdCleanVerifiedUrlAttr(attrVal) + "\"";
+                } else if (attrName == "src") {
+                    if (!mdIsSafeUrl(attrVal, true)) return false;
+                    built += " src=\"" + mdCleanVerifiedUrlAttr(attrVal) + "\"";
+                } else {
+                    built += " " + attrName + "=\"" + mdEscapeAttrPreservingEntities(attrVal) + "\"";
+                }
             } else {
                 if (attrName == "href" || attrName == "src") return false;
+                built += " " + attrName;
             }
         }
+        built += selfClosing ? " />" : ">";
+        outTag = std::move(built);
         return true;
     }
-    inline size_t mdFindClosingEmphasis(const std::string& s, size_t start, char ch, size_t dlen){
-        size_t n = s.size();
-        size_t i = start;
-        int innerSingle = 0;
-        int innerDouble = 0;
+    inline bool mdIsSafeHtmlTag(const std::string& tagContent){
+        std::string dummy;
+        return mdSanitizeHtmlTag(tagContent, dummy);
+    }
+    struct MdInlineIndex {
+        std::vector<size_t> matchingBracket;
+        std::vector<uint32_t> suffixCloseStar;
+        std::vector<uint32_t> suffixCloseUnder;
+        std::vector<uint32_t> suffixCloseTilde;
+    };
+    inline MdInlineIndex mdBuildInlineIndex(const std::string& s) {
+        MdInlineIndex idx;
+        const size_t n = s.size();
+        idx.matchingBracket.assign(n, std::string::npos);
+        std::vector<size_t> bStack;
+        size_t i = 0;
         while (i < n) {
             if (s[i] == '\\' && i + 1 < n) { i += 2; continue; }
             if (s[i] == '`') {
@@ -344,7 +516,78 @@ inline std::string escapeHtmlBasic(std::string_view s) {
                 continue;
             }
             if (s[i] == '[') {
-                size_t rb = mdFindMatchingBracket(s, i);
+                bStack.push_back(i);
+            } else if (s[i] == ']' && !bStack.empty()) {
+                idx.matchingBracket[bStack.back()] = i;
+                bStack.pop_back();
+            }
+            i++;
+        }
+        idx.suffixCloseStar.assign(n + 1, 0);
+        idx.suffixCloseUnder.assign(n + 1, 0);
+        idx.suffixCloseTilde.assign(n + 1, 0);
+        for (size_t k = n; k > 0; ) {
+            size_t pos = k - 1;
+            idx.suffixCloseStar[pos] = idx.suffixCloseStar[k];
+            idx.suffixCloseUnder[pos] = idx.suffixCloseUnder[k];
+            idx.suffixCloseTilde[pos] = idx.suffixCloseTilde[k];
+            char ch = s[pos];
+            if (ch == '*' || ch == '_' || ch == '~') {
+                size_t runStart = pos;
+                while (runStart > 0 && s[runStart - 1] == ch) runStart--;
+                bool prevSpace = (runStart == 0) || mdIsSpace(s[runStart - 1]);
+                bool nextAlnum = (pos + 1 < n) && mdIsAlnum(s[pos + 1]);
+                bool canClose = !prevSpace && (ch != '_' || !nextAlnum);
+                uint32_t add = canClose ? 1u : 0u;
+                for (size_t m = pos + 1; m > runStart; --m) {
+                    idx.suffixCloseStar[m - 1] = idx.suffixCloseStar[pos + 1] + (ch == '*' ? add : 0u);
+                    idx.suffixCloseUnder[m - 1] = idx.suffixCloseUnder[pos + 1] + (ch == '_' ? add : 0u);
+                    idx.suffixCloseTilde[m - 1] = idx.suffixCloseTilde[pos + 1] + (ch == '~' ? add : 0u);
+                }
+                k = runStart;
+            } else {
+                k--;
+            }
+        }
+        return idx;
+    }
+    inline size_t mdFindClosingEmphasis(const std::string& s, size_t start, char ch, size_t dlen, const MdInlineIndex* idx = nullptr){
+        size_t n = s.size();
+        if (start >= n) return std::string::npos;
+        const std::vector<uint32_t>* sufVec = nullptr;
+        if (idx) {
+            if (ch == '*') sufVec = &idx->suffixCloseStar;
+            else if (ch == '_') sufVec = &idx->suffixCloseUnder;
+            else if (ch == '~') sufVec = &idx->suffixCloseTilde;
+            if (sufVec && (*sufVec)[start] == 0) return std::string::npos;
+        }
+        size_t i = start;
+        int innerSingle = 0;
+        int innerDouble = 0;
+        while (i < n) {
+            if (sufVec) {
+                uint32_t rem = (*sufVec)[i];
+                int needed = 1 + (dlen == 1 ? innerSingle : (dlen == 2 ? innerDouble : 0));
+                if ((int)rem < needed) return std::string::npos;
+            }
+            if (s[i] == '\\' && i + 1 < n) { i += 2; continue; }
+            if (s[i] == '`') {
+                size_t ticks = 0;
+                while (i + ticks < n && s[i + ticks] == '`') ticks++;
+                size_t j = i + ticks;
+                while (j < n) {
+                    if (s[j] == '`') {
+                        size_t cticks = 0;
+                        while (j + cticks < n && s[j + cticks] == '`') cticks++;
+                        if (cticks == ticks) { j += cticks; break; }
+                        j += cticks;
+                    } else j++;
+                }
+                i = j;
+                continue;
+            }
+            if (s[i] == '[') {
+                size_t rb = (idx && i < idx->matchingBracket.size()) ? idx->matchingBracket[i] : mdFindMatchingBracket(s, i);
                 if (rb != std::string::npos && rb + 1 < n && s[rb + 1] == '(') {
                     size_t cp = 0; std::string u, t;
                     if (mdParseLinkDestAndTitle(s, rb + 1, cp, u, t)) { i = cp + 1; continue; }
@@ -446,7 +689,9 @@ inline std::string escapeHtmlBasic(std::string_view s) {
         slot.hash = h;
         slot.code = code;
         try {
-            slot.svg = Pele::render(code).svg;
+            Pele::RenderOptions opts;
+            opts.images = false;
+            slot.svg = Pele::render(code, opts).svg;
         } catch (...) {
             slot.svg.clear();
         }
@@ -457,6 +702,10 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
     if (depth > 32) return escapeHtmlBasic(s);
     std::string r; r.reserve(s.size() + 64);
     size_t i = 0, n = s.size();
+    const bool useIdx = (n >= 64);
+    MdInlineIndex inlineIdx;
+    if (useIdx) inlineIdx = mdBuildInlineIndex(s);
+    const MdInlineIndex* pIdx = useIdx ? &inlineIdx : nullptr;
     while (i < n) {
         if (s[i] == '\\' && i + 1 < n) {
             char nx = s[i + 1];
@@ -540,7 +789,7 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
             }
         }
         if (s[i] == '!' && i + 1 < n && s[i + 1] == '[') {
-            size_t rb = mdFindMatchingBracket(s, i + 1);
+            size_t rb = pIdx ? pIdx->matchingBracket[i + 1] : mdFindMatchingBracket(s, i + 1);
             if (rb != std::string::npos && rb + 1 < n && s[rb + 1] == '(') {
                 size_t cp = 0; std::string url, title;
                 if (mdParseLinkDestAndTitle(s, rb + 1, cp, url, title)) {
@@ -556,7 +805,7 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
             }
         }
         if (s[i] == '[') {
-            size_t rb = mdFindMatchingBracket(s, i);
+            size_t rb = pIdx ? pIdx->matchingBracket[i] : mdFindMatchingBracket(s, i);
             if (rb != std::string::npos && rb + 1 < n && s[rb + 1] == '(') {
                 size_t cp = 0; std::string url, title;
                 if (mdParseLinkDestAndTitle(s, rb + 1, cp, url, title)) {
@@ -594,8 +843,9 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
                     i = gt + 1;
                     continue;
                 }
-                if (mdIsSafeHtmlTag(inner)) {
-                    r += '<'; r += inner; r += '>';
+                std::string sanitizedTag;
+                if (mdSanitizeHtmlTag(inner, sanitizedTag)) {
+                    r += sanitizedTag;
                     i = gt + 1;
                     continue;
                 }
@@ -638,7 +888,7 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
             if (canOpen) {
                 if (ch == '~') {
                     if (run == 2) {
-                        size_t j = mdFindClosingEmphasis(s, i + 2, '~', 2);
+                        size_t j = mdFindClosingEmphasis(s, i + 2, '~', 2, pIdx);
                         if (j != std::string::npos) {
                             r += "<del>"; r += formatMarkdownInline(s.substr(i + 2, j - (i + 2)), depth + 1); r += "</del>";
                             i = j + 2;
@@ -647,7 +897,7 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
                     }
                 } else {
                     if (run >= 3) {
-                        size_t j3 = mdFindClosingEmphasis(s, i + 3, ch, 3);
+                        size_t j3 = mdFindClosingEmphasis(s, i + 3, ch, 3, pIdx);
                         if (j3 != std::string::npos) {
                             r += "<strong><em>"; r += formatMarkdownInline(s.substr(i + 3, j3 - (i + 3)), depth + 1); r += "</em></strong>";
                             i = j3 + 3;
@@ -655,7 +905,7 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
                         }
                     }
                     if (run >= 2) {
-                        size_t j2 = mdFindClosingEmphasis(s, i + 2, ch, 2);
+                        size_t j2 = mdFindClosingEmphasis(s, i + 2, ch, 2, pIdx);
                         if (j2 != std::string::npos) {
                             r += "<strong>"; r += formatMarkdownInline(s.substr(i + 2, j2 - (i + 2)), depth + 1); r += "</strong>";
                             i = j2 + 2;
@@ -663,7 +913,7 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
                         }
                     }
                     if (run >= 1) {
-                        size_t j1 = mdFindClosingEmphasis(s, i + 1, ch, 1);
+                        size_t j1 = mdFindClosingEmphasis(s, i + 1, ch, 1, pIdx);
                         if (j1 != std::string::npos) {
                             r += "<em>"; r += formatMarkdownInline(s.substr(i + 1, j1 - (i + 1)), depth + 1); r += "</em>";
                             i = j1 + 1;
@@ -1594,13 +1844,44 @@ struct PreviewRenderResult {
     std::string domUpdateJs;
 };
 
+inline bool looksLikeStandaloneHtmlOrSvg(const std::string& rawInput) {
+    size_t p = 0;
+    const size_t n = rawInput.size();
+    if (n >= 3 && (unsigned char)rawInput[0] == 0xEF && (unsigned char)rawInput[1] == 0xBB && (unsigned char)rawInput[2] == 0xBF) {
+        p = 3;
+    }
+    while (p < n && (unsigned char)rawInput[p] <= 0x20) p++;
+    if (p >= n || rawInput[p] != '<') return false;
+    std::string head = Emmet::toLowerStr(rawInput.substr(p, std::min<size_t>(n - p, 512)));
+    if (head.compare(0, 14, "<!doctype html") == 0 || head.compare(0, 5, "<html") == 0 ||
+        head.compare(0, 5, "<head") == 0 || head.compare(0, 5, "<body") == 0 ||
+        head.compare(0, 4, "<svg") == 0) {
+        return true;
+    }
+    if (head.compare(0, 5, "<?xml") == 0 || head.compare(0, 4, "<!--") == 0) {
+        return head.find("<html") != std::string::npos || head.find("<!doctype html") != std::string::npos || head.find("<svg") != std::string::npos;
+    }
+    return false;
+}
+
+inline std::string sanitizeNonceToken(const std::string& customNonce) {
+    if (customNonce.empty() || customNonce.size() > 128) return getPreviewCspNonce();
+    for (unsigned char c : customNonce) {
+        if (!((c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c == '-' || c == '_')) {
+            return getPreviewCspNonce();
+        }
+    }
+    return customNonce;
+}
+
 inline PreviewRenderResult renderPreview(
     const std::string& rawInput,
     bool isTruncated,
     const std::string& truncatedMessageUtf8,
     const std::wstring& currentExtension,
     bool isDarkMode,
-    const std::string& baseHrefTag = "")
+    const std::string& baseHrefTag = "",
+    const std::string& customNonce = "")
 {
     PreviewRenderResult res;
     std::string truncNotice;
@@ -1608,15 +1889,14 @@ inline PreviewRenderResult renderPreview(
         truncNotice = "<div class=\"miu-trunc\">&#x2026; " + escapeHtmlBasic(truncatedMessageUtf8) + "</div>";
     }
     const char* kMdThemeStyle = getMdThemeStyle();
-    std::string lowerHead = Emmet::toLowerStr(rawInput.substr(0, std::min(rawInput.size(), (size_t)2048)));
-    bool looksLikeHtmlDoc = (lowerHead.find("<!doctype") != std::string::npos || lowerHead.find("<html") != std::string::npos ||
-                             lowerHead.find("<head") != std::string::npos || lowerHead.find("<body") != std::string::npos ||
-                             lowerHead.find("<script") != std::string::npos || lowerHead.find("<style") != std::string::npos ||
-                             lowerHead.find("<svg") != std::string::npos);
-    bool isMermaid = (currentExtension == L"mmd" || currentExtension == L"mermaid" ||
-                      ((currentExtension.empty() || currentExtension == L"txt") && !looksLikeHtmlDoc && looksLikeMermaid(rawInput)));
-    bool isMd = (!isMermaid && (currentExtension == L"md" || currentExtension == L"markdown" || currentExtension == L"mdx" ||
-                 (currentExtension.empty() && !looksLikeHtmlDoc && (rawInput.find('<') == std::string::npos || rawInput.find('#') != std::string::npos || rawInput.find("```") != std::string::npos || rawInput.find("~~~") != std::string::npos || rawInput.find("|") != std::string::npos || rawInput.find("**") != std::string::npos || rawInput.find("- ") != std::string::npos || rawInput.find("> ") != std::string::npos || rawInput.find("$") != std::string::npos))));
+    const std::string nonce = sanitizeNonceToken(customNonce);
+    const char* baseUriPolicy = baseHrefTag.empty() ? "base-uri 'none';" : "base-uri https://miu.local;";
+    const bool looksLikeHtmlDoc = currentExtension.empty() && looksLikeStandaloneHtmlOrSvg(rawInput);
+    const bool isMermaid = (currentExtension == L"mmd" || currentExtension == L"mermaid" ||
+                            ((currentExtension.empty() || currentExtension == L"txt") && !looksLikeHtmlDoc && looksLikeMermaid(rawInput)));
+    const bool isMd = (!isMermaid && (currentExtension == L"md" || currentExtension == L"markdown" || currentExtension == L"mdx" ||
+                       currentExtension == L"mkd" || currentExtension == L"mdown" || currentExtension == L"rmd" || currentExtension == L"qmd" ||
+                       (currentExtension.empty() && !looksLikeHtmlDoc && (rawInput.find('<') == std::string::npos || rawInput.find('#') != std::string::npos || rawInput.find("```") != std::string::npos || rawInput.find("~~~") != std::string::npos || rawInput.find("|") != std::string::npos || rawInput.find("**") != std::string::npos || rawInput.find("- ") != std::string::npos || rawInput.find("> ") != std::string::npos || rawInput.find("$") != std::string::npos))));
     if (isMermaid || isMd) {
         res.isMdOrMermaidShell = true;
         if (isMermaid) {
@@ -1635,14 +1915,15 @@ inline PreviewRenderResult renderPreview(
         }
         res.bodyHtml = res.bodyContent;
         res.domUpdateJs = buildDomUpdateJs(res.bodyContent, isDarkMode);
-        const std::string& nonce = getPreviewCspNonce();
         std::string& html = res.fullHtml;
         html.reserve(res.bodyContent.size() + 3072);
         html += "<!DOCTYPE html><html data-theme=\"";
         html += (isDarkMode ? "dark" : "light");
         html += "\"><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'nonce-";
         html += nonce;
-        html += "'; style-src 'unsafe-inline'; img-src https: http: data: file:; font-src https: data: file:; media-src https: http: data: file:; connect-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none';\">";
+        html += "'; style-src 'unsafe-inline'; img-src https://miu.local data: blob:; font-src https://miu.local data:; media-src https://miu.local data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; ";
+        html += baseUriPolicy;
+        html += "\">";
         html += baseHrefTag;
         html += kMdThemeStyle;
         html += "</head><body><div id=\"__miu_root\">";
@@ -1670,20 +1951,27 @@ inline PreviewRenderResult renderPreview(
             "}"
             "while(r.childNodes.length>nc.length)r.removeChild(r.lastChild);"
             "initSb();upd();"
-            "};"
-            "document.addEventListener('change',function(e){"
-            "var t=e.target;"
-            "if(t&&t.tagName==='INPUT'&&t.type==='checkbox'&&t.hasAttribute('data-line')){"
-            "var dl=t.getAttribute('data-line');"
-            "if(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.miuPreview){"
-            "window.webkit.messageHandlers.miuPreview.postMessage('toggle_task:'+dl);"
-            "}else if(window.chrome&&window.chrome.webview){"
-            "window.chrome.webview.postMessage('toggle_task:'+dl);"
-            "}else if(window.miuPreview&&window.miuPreview.postMessage){"
-            "window.miuPreview.postMessage('toggle_task:'+dl);"
-            "}"
-            "}"
-            "});"
+            "};";
+        if (isMd) {
+            html +=
+                "document.addEventListener('change',function(e){"
+                "var t=e.target;"
+                "if(t&&t.tagName==='INPUT'&&t.type==='checkbox'&&t.hasAttribute('data-line')){"
+                "var dl=t.getAttribute('data-line');"
+                "var msg='toggle_task:";
+            html += nonce;
+            html += ":'+dl;"
+                "if(window.webkit&&window.webkit.messageHandlers&&window.webkit.messageHandlers.miuPreview){"
+                "window.webkit.messageHandlers.miuPreview.postMessage(msg);"
+                "}else if(window.chrome&&window.chrome.webview){"
+                "window.chrome.webview.postMessage(msg);"
+                "}else if(window.miuPreview&&window.miuPreview.postMessage){"
+                "window.miuPreview.postMessage(msg);"
+                "}"
+                "}"
+                "});";
+        }
+        html +=
             "if(window.__miuPending){var p=window.__miuPending;window.__miuPending=null;window.__miuUpdate(p.h,p.dk);}"
             "})();</script></body></html>";
         return res;
@@ -1691,25 +1979,63 @@ inline PreviewRenderResult renderPreview(
 
     res.isMdOrMermaidShell = false;
     std::string& html = res.fullHtml;
-    html.reserve(rawInput.size() + 1024);
-    const char* webDefStyle = isDarkMode
-        ? "<style>:where(:root,html,body){color-scheme:dark;background:#000000;color:#e6edf3;--sb-thumb:rgba(255,255,255,0.42);--sb-thumb-active:rgba(255,255,255,0.65)}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}html,body{scrollbar-width:none!important}*::-webkit-scrollbar{width:10px;height:10px;background:transparent}*::-webkit-scrollbar-track{background:transparent}*::-webkit-scrollbar-thumb{background:var(--sb-thumb);border-radius:9999px;border:2px solid transparent;background-clip:padding-box}*::-webkit-scrollbar-thumb:hover,*::-webkit-scrollbar-thumb:active{background:var(--sb-thumb-active);border:2px solid transparent;background-clip:padding-box}.__ag_sb_v,.__ag_sb_h{position:fixed!important;z-index:2147483647!important;display:flex!important;user-select:none!important;-webkit-user-select:none!important;touch-action:none!important;opacity:0;pointer-events:none;margin:0!important;padding:0!important;border:none!important;background:transparent!important;box-sizing:border-box!important}.__ag_sb_v{top:2px!important;bottom:2px!important;right:0!important;width:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:row!important}.__ag_sb_h{left:2px!important;right:2px!important;bottom:0!important;height:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:column!important}.__ag_sb_v[data-visible=\"true\"],.__ag_sb_h[data-visible=\"true\"]{opacity:1!important;pointer-events:auto!important}.__ag_sb_vt,.__ag_sb_ht{border-radius:9999px!important;background-color:var(--sb-thumb)!important;margin:0!important;padding:0!important;border:none!important;flex-shrink:0!important;box-sizing:border-box!important}.__ag_sb_vt{width:6px!important}.__ag_sb_ht{height:6px!important}.__ag_sb_v[data-expanded=\"true\"] .__ag_sb_vt{width:8px!important;background-color:var(--sb-thumb-active)!important}.__ag_sb_h[data-expanded=\"true\"] .__ag_sb_ht{height:8px!important;background-color:var(--sb-thumb-active)!important}</style>"
-        : "<style>:where(:root,html,body){color-scheme:light;background:#ffffff;color:#1f2328;--sb-thumb:rgba(0,0,0,0.38);--sb-thumb-active:rgba(0,0,0,0.60)}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}html,body{scrollbar-width:none!important}*::-webkit-scrollbar{width:10px;height:10px;background:transparent}*::-webkit-scrollbar-track{background:transparent}*::-webkit-scrollbar-thumb{background:var(--sb-thumb);border-radius:9999px;border:2px solid transparent;background-clip:padding-box}*::-webkit-scrollbar-thumb:hover,*::-webkit-scrollbar-thumb:active{background:var(--sb-thumb-active);border:2px solid transparent;background-clip:padding-box}.__ag_sb_v,.__ag_sb_h{position:fixed!important;z-index:2147483647!important;display:flex!important;user-select:none!important;-webkit-user-select:none!important;touch-action:none!important;opacity:0;pointer-events:none;margin:0!important;padding:0!important;border:none!important;background:transparent!important;box-sizing:border-box!important}.__ag_sb_v{top:2px!important;bottom:2px!important;right:0!important;width:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:row!important}.__ag_sb_h{left:2px!important;right:2px!important;bottom:0!important;height:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:column!important}.__ag_sb_v[data-visible=\"true\"],.__ag_sb_h[data-visible=\"true\"]{opacity:1!important;pointer-events:auto!important}.__ag_sb_vt,.__ag_sb_ht{border-radius:9999px!important;background-color:var(--sb-thumb)!important;margin:0!important;padding:0!important;border:none!important;flex-shrink:0!important;box-sizing:border-box!important}.__ag_sb_vt{width:6px!important}.__ag_sb_ht{height:6px!important}.__ag_sb_v[data-expanded=\"true\"] .__ag_sb_vt{width:8px!important;background-color:var(--sb-thumb-active)!important}.__ag_sb_h[data-expanded=\"true\"] .__ag_sb_ht{height:8px!important;background-color:var(--sb-thumb-active)!important}</style>";
-    std::string lower = Emmet::toLowerStr(rawInput.substr(0, std::min(rawInput.size(), (size_t)1024)));
-    bool hasFullHtml = (lower.find("<html") != std::string::npos || lower.find("<!doctype") != std::string::npos);
-    if (hasFullHtml) {
-        const char* bTag = (!baseHrefTag.empty() && lower.find("<base") == std::string::npos) ? baseHrefTag.c_str() : "";
-        size_t hp = lower.find("<head>");
-        if (hp != std::string::npos) { html.append(rawInput, 0, hp + 6); html += bTag; html += webDefStyle; html.append(rawInput, hp + 6, std::string::npos); }
-        else { html += bTag; html += webDefStyle; html += rawInput; }
-        html += truncNotice;
-    } else {
-        bool isWebExt = (currentExtension.empty() || currentExtension == L"html" || currentExtension == L"htm" || currentExtension == L"xhtml" || currentExtension == L"shtml" || currentExtension == L"svg" || currentExtension == L"xml" || currentExtension == L"vue" || currentExtension == L"svelte" || currentExtension == L"astro" || currentExtension == L"php");
-        if (isWebExt || rawInput.find('<') != std::string::npos) {
-            html += "<!DOCTYPE html><html><head><meta charset=\"utf-8\">"; html += baseHrefTag; html += webDefStyle; html += "</head><body>"; html += rawInput; html += truncNotice; html += "</body></html>";
+    html.reserve(rawInput.size() + 1536);
+    const bool isExplicitWebExt = (currentExtension == L"html" || currentExtension == L"htm" ||
+                                   currentExtension == L"xhtml" || currentExtension == L"shtml" ||
+                                   currentExtension == L"svg" || currentExtension == L"vue" ||
+                                   currentExtension == L"svelte" || currentExtension == L"astro");
+    const bool renderAsWebDoc = isExplicitWebExt || looksLikeHtmlDoc;
+    if (renderAsWebDoc) {
+        const char* webDefStyle = isDarkMode
+            ? "<style>:where(:root,html,body){color-scheme:dark;background:#000000;color:#e6edf3;--sb-thumb:rgba(255,255,255,0.42);--sb-thumb-active:rgba(255,255,255,0.65)}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}html,body{scrollbar-width:none!important}*::-webkit-scrollbar{width:10px;height:10px;background:transparent}*::-webkit-scrollbar-track{background:transparent}*::-webkit-scrollbar-thumb{background:var(--sb-thumb);border-radius:9999px;border:2px solid transparent;background-clip:padding-box}*::-webkit-scrollbar-thumb:hover,*::-webkit-scrollbar-thumb:active{background:var(--sb-thumb-active);border:2px solid transparent;background-clip:padding-box}.__ag_sb_v,.__ag_sb_h{position:fixed!important;z-index:2147483647!important;display:flex!important;user-select:none!important;-webkit-user-select:none!important;touch-action:none!important;opacity:0;pointer-events:none;margin:0!important;padding:0!important;border:none!important;background:transparent!important;box-sizing:border-box!important}.__ag_sb_v{top:2px!important;bottom:2px!important;right:0!important;width:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:row!important}.__ag_sb_h{left:2px!important;right:2px!important;bottom:0!important;height:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:column!important}.__ag_sb_v[data-visible=\"true\"],.__ag_sb_h[data-visible=\"true\"]{opacity:1!important;pointer-events:auto!important}.__ag_sb_vt,.__ag_sb_ht{border-radius:9999px!important;background-color:var(--sb-thumb)!important;margin:0!important;padding:0!important;border:none!important;flex-shrink:0!important;box-sizing:border-box!important}.__ag_sb_vt{width:6px!important}.__ag_sb_ht{height:6px!important}.__ag_sb_v[data-expanded=\"true\"] .__ag_sb_vt{width:8px!important;background-color:var(--sb-thumb-active)!important}.__ag_sb_h[data-expanded=\"true\"] .__ag_sb_ht{height:8px!important;background-color:var(--sb-thumb-active)!important}</style>"
+            : "<style>:where(:root,html,body){color-scheme:light;background:#ffffff;color:#1f2328;--sb-thumb:rgba(0,0,0,0.38);--sb-thumb-active:rgba(0,0,0,0.60)}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}html,body{scrollbar-width:none!important}*::-webkit-scrollbar{width:10px;height:10px;background:transparent}*::-webkit-scrollbar-track{background:transparent}*::-webkit-scrollbar-thumb{background:var(--sb-thumb);border-radius:9999px;border:2px solid transparent;background-clip:padding-box}*::-webkit-scrollbar-thumb:hover,*::-webkit-scrollbar-thumb:active{background:var(--sb-thumb-active);border:2px solid transparent;background-clip:padding-box}.__ag_sb_v,.__ag_sb_h{position:fixed!important;z-index:2147483647!important;display:flex!important;user-select:none!important;-webkit-user-select:none!important;touch-action:none!important;opacity:0;pointer-events:none;margin:0!important;padding:0!important;border:none!important;background:transparent!important;box-sizing:border-box!important}.__ag_sb_v{top:2px!important;bottom:2px!important;right:0!important;width:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:row!important}.__ag_sb_h{left:2px!important;right:2px!important;bottom:0!important;height:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:column!important}.__ag_sb_v[data-visible=\"true\"],.__ag_sb_h[data-visible=\"true\"]{opacity:1!important;pointer-events:auto!important}.__ag_sb_vt,.__ag_sb_ht{border-radius:9999px!important;background-color:var(--sb-thumb)!important;margin:0!important;padding:0!important;border:none!important;flex-shrink:0!important;box-sizing:border-box!important}.__ag_sb_vt{width:6px!important}.__ag_sb_ht{height:6px!important}.__ag_sb_v[data-expanded=\"true\"] .__ag_sb_vt{width:8px!important;background-color:var(--sb-thumb-active)!important}.__ag_sb_h[data-expanded=\"true\"] .__ag_sb_ht{height:8px!important;background-color:var(--sb-thumb-active)!important}</style>";
+        std::string webCspMeta = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline' https://miu.local; style-src 'unsafe-inline' https://miu.local; img-src https://miu.local data: blob:; font-src https://miu.local data:; media-src https://miu.local data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; ";
+        webCspMeta += baseUriPolicy;
+        webCspMeta += "\">";
+        std::string lower = Emmet::toLowerStr(rawInput.substr(0, std::min(rawInput.size(), (size_t)1024)));
+        bool hasFullHtml = (lower.find("<html") != std::string::npos || lower.find("<!doctype") != std::string::npos);
+        if (hasFullHtml) {
+            const char* bTag = (!baseHrefTag.empty() && lower.find("<base") == std::string::npos) ? baseHrefTag.c_str() : "";
+            size_t hp = lower.find("<head>");
+            if (hp != std::string::npos) {
+                html.append(rawInput, 0, hp + 6);
+                html += webCspMeta;
+                html += bTag;
+                html += webDefStyle;
+                html.append(rawInput, hp + 6, std::string::npos);
+            } else {
+                html += webCspMeta;
+                html += bTag;
+                html += webDefStyle;
+                html += rawInput;
+            }
+            html += truncNotice;
         } else {
-            html += "<!DOCTYPE html><html data-theme=\""; html += (isDarkMode ? "dark" : "light"); html += "\"><head><meta charset=\"utf-8\">"; html += kMdThemeStyle; html += "</head><body><pre>"; html += escapeHtmlBasic(rawInput); html += "</pre>"; html += truncNotice; html += "<script>(function(){"; html += getPreviewScrollbarJs(); html += "})();</script></body></html>";
+            html += "<!DOCTYPE html><html><head><meta charset=\"utf-8\">";
+            html += webCspMeta;
+            html += baseHrefTag;
+            html += webDefStyle;
+            html += "</head><body>";
+            html += rawInput;
+            html += truncNotice;
+            html += "</body></html>";
         }
+    } else {
+        html += "<!DOCTYPE html><html data-theme=\"";
+        html += (isDarkMode ? "dark" : "light");
+        html += "\"><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'nonce-";
+        html += nonce;
+        html += "'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; media-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none';\">";
+        html += kMdThemeStyle;
+        html += "</head><body><pre>";
+        html += escapeHtmlBasic(rawInput);
+        html += "</pre>";
+        html += truncNotice;
+        html += "<script nonce=\"";
+        html += nonce;
+        html += "\">(function(){";
+        html += getPreviewScrollbarJs();
+        html += "})();</script></body></html>";
     }
     res.bodyHtml = res.bodyContent;
     return res;
@@ -1719,13 +2045,13 @@ inline PreviewRenderResult renderPreview(
     const std::string& rawInput,
     const std::string& currentFileExtUtf8,
     bool isDarkMode,
-    const std::string& /*customNonce*/ = "")
+    const std::string& customNonce = "")
 {
     try {
         std::wstring wext;
         for (unsigned char c : currentFileExtUtf8) {
             if (wext.empty() && c == '.') continue;
-            wext.push_back((wchar_t)std::tolower(c));
+            wext.push_back((wchar_t)((c >= 'A' && c <= 'Z') ? (c + 32) : c));
         }
         static constexpr size_t PREVIEW_MAX_BYTES = 524288;
         if (rawInput.size() > PREVIEW_MAX_BYTES) {
@@ -1747,12 +2073,52 @@ inline PreviewRenderResult renderPreview(
                 }
                 truncated.erase(cut);
             }
-            return renderPreview(truncated, true, "Preview truncated (512 KB)", wext, isDarkMode, "");
+            return renderPreview(truncated, true, "Preview truncated (512 KB)", wext, isDarkMode, "", customNonce);
         }
-        return renderPreview(rawInput, false, "", wext, isDarkMode, "");
+        return renderPreview(rawInput, false, "", wext, isDarkMode, "", customNonce);
     } catch (...) {
         return PreviewRenderResult{};
     }
+}
+
+inline bool parseVerifiedTaskToggleMessage(
+    const std::string& msg,
+    const std::string& expectedNonce,
+    const std::string& currentFileExtUtf8,
+    const std::string& rawDocHead,
+    int& outLineIdx) noexcept
+{
+    outLineIdx = -1;
+    if (expectedNonce.empty()) return false;
+    const std::string cleanNonce = sanitizeNonceToken(expectedNonce);
+    if (cleanNonce.empty() || cleanNonce != expectedNonce) return false;
+    const std::string prefix = "toggle_task:" + cleanNonce + ":";
+    if (msg.size() <= prefix.size() || msg.compare(0, prefix.size(), prefix) != 0) return false;
+
+    std::wstring wext;
+    for (unsigned char c : currentFileExtUtf8) {
+        if (wext.empty() && c == '.') continue;
+        wext.push_back((wchar_t)((c >= 'A' && c <= 'Z') ? (c + 32) : c));
+    }
+    const bool looksLikeHtmlDoc = wext.empty() && looksLikeStandaloneHtmlOrSvg(rawDocHead);
+    const bool isMermaid = (wext == L"mmd" || wext == L"mermaid" ||
+                            ((wext.empty() || wext == L"txt") && !looksLikeHtmlDoc && looksLikeMermaid(rawDocHead)));
+    const bool isMd = (!isMermaid && (wext == L"md" || wext == L"markdown" || wext == L"mdx" ||
+                       wext == L"mkd" || wext == L"mdown" || wext == L"rmd" || wext == L"qmd" ||
+                       (wext.empty() && !looksLikeHtmlDoc)));
+    if (!isMd) return false;
+
+    size_t pos = prefix.size();
+    if (msg.size() - pos > 9) return false;
+    long long val = 0;
+    for (; pos < msg.size(); ++pos) {
+        unsigned char d = (unsigned char)msg[pos];
+        if (d < '0' || d > '9') return false;
+        val = val * 10 + (d - '0');
+    }
+    if (val < 0 || val > 100000000LL) return false;
+    outLineIdx = (int)val;
+    return true;
 }
 
 } // namespace MiuPreview

@@ -34,15 +34,15 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.50 發行說明
-💻 語法突顯與註解切換擴充至 65 種語言類別（230 餘種副檔名與設定檔）
+        "releaseNotes": """miu v1.0.51 發行說明
+🛡️ 即時預覽離線安全加固、語法突顯與 Mermaid 精準度提升及原子化安全儲存最佳化
 
-- 新增 Lisp 系列語言完整支援：
-  支援 Common Lisp (.lisp, .lsp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .cljs, .edn)、Hy、Fennel、Janet 的語法突顯、`;` 行註解切換與 `#| ... |#` 區塊註解。
-- 全面強化組合語言 (Assembly) 支援：
-  涵蓋 x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS 以及 WebAssembly 文字格式 (.wat, .wast)。
-- 新增 15 種語言類別及 70 餘種設定檔副檔名：
-  新增 Objective-C/C++ (.m, .mm)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D 語言、Pascal/Delphi、Ada、Prolog、Vimscript、Nix、Apple Metal (.metal)、BUILD、Gemfile、.gitignore、.editorconfig 等支援。""",
+- 即時預覽完全離線隔離與安全加固：
+  為 Markdown / HTML / SVG / Mermaid / LaTeX 預覽啟用嚴格的離線安全原則（CSP）、外部網路攔截、HTML/URL 淨化與工作清單加密權杖驗證，並安全顯示以 `<` 開頭的文字檔與加速長文本解析。
+- 65 種語言語法突顯與 Mermaid 圖表精準度提升：
+  最佳化 Python 三引號與區塊註解識別、CRLF 未閉合 Markdown 程式碼區塊高速突顯、Prolog / Batch / Rust / F# / Haskell 解析及 Mermaid stateDiagram-v2、block-beta 渲染穩定性。
+- 原子化安全儲存與超大檔案可靠性提升：
+  導入原子化檔案替換與安全的記憶體映射更新，並支援數 GB 超大檔案分塊儲存。""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -81,15 +81,15 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.50 Versionshinweise
-💻 Syntaxhervorhebung & Kommentar-Umschaltung auf 65 Sprachkategorien (über 230 Dateierweiterungen) erweitert
+        "releaseNotes": """miu v1.0.51 Versionshinweise
+🛡️ Offline-Sicherheitsoptimierung der Live-Vorschau, präzisere Syntax & Mermaid-Diagramme sowie sicheres Speichern
 
-- Vollständige Unterstützung für Lisp-Sprachen:
-  Syntaxhervorhebung, Zeilenkommentare (;) und Blockkommentare (#| ... |#) für Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel und Janet hinzugefügt.
-- Erweiterte Assembler-Unterstützung (Assembly):
-  Umfassende Hervorhebung für x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS und WebAssembly (.wat, .wast).
-- 15 neue Programmiersprachen & über 70 neue Dateierweiterungen:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig u. v. m.""",
+- Vollständige Offline-Isolierung & Sicherheit der Live-Vorschau:
+  Strenge Offline-CSP, Blockierung externer Netzwerkzugriffe, HTML/URL-Bereinigung und kryptografische Nonce-Prüfung für Aufgabenlisten sowie sichere Anzeige von Textdateien mit führendem '<' und schnelles O(N)-Markdown-Parsing.
+- Höhere Präzision bei Syntaxhervorhebung & Mermaid-Diagrammen:
+  Verbesserte Erkennung von Python-Dreifach-Anführungszeichen und Blockkommentaren in allen 65 Sprachkategorien, schnelles Highlighting offener CRLF-Markdown-Codeblöcke sowie stabilere Mermaid-Diagramme (stateDiagram-v2, block-beta, Diagramme).
+- Atomares Speichern & Zuverlässigkeit bei großen Dateien:
+  Sicheres Überschreiben durch atomares Speichern, geschütztes Memory-Mapping und Unterstützung für mehrere GB große Dateien.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -128,15 +128,15 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.50
-💻 Coloration syntaxique et commentaires étendus à 65 catégories de langages (plus de 230 extensions)
+        "releaseNotes": """Notes de version miu v1.0.51
+🛡️ Sécurité hors ligne renforcée de l’aperçu en direct, précision syntaxique & Mermaid et sauvegarde atomique fiable
 
-- Prise en charge complète de la famille Lisp :
-  Ajout de la coloration syntaxique, du basculement de commentaire de ligne (;) et des commentaires de bloc (#| ... |#) pour Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel et Janet.
-- Améliorations majeures pour l’Assembleur (Assembly) :
-  Support étendu pour x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS et WebAssembly (.wat, .wast).
-- 15 nouveaux langages et plus de 70 nouvelles extensions/fichiers de configuration :
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, etc.""",
+- Isolation hors ligne et sécurité renforcée de l’aperçu en direct :
+  Politique CSP stricte hors ligne, blocage des requêtes réseau externes, assainissement HTML/URL, jeton cryptographique pour les cases à cocher, affichage sûr des fichiers texte commençant par « < » et analyse Markdown linéaire rapide.
+- Précision accrue de la coloration syntaxique et des diagrammes Mermaid :
+  Meilleure analyse des triples guillemets Python et commentaires de bloc sur les 65 catégories de langages, coloration rapide des blocs Markdown CRLF non fermés et stabilité accrue des diagrammes Mermaid (stateDiagram-v2, block-beta).
+- Sauvegarde atomique et fiabilité des fichiers volumineux :
+  Protection des données lors de l’enregistrement grâce à l’écriture atomique, au remappage mémoire sécurisé et à l’écriture par blocs multi-Go.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -175,15 +175,15 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.50
-💻 Resaltado de sintaxis y alternancia de comentarios ampliados a 65 categorías de lenguajes (más de 230 extensiones)
+        "releaseNotes": """Notas de la versión miu v1.0.51
+🛡️ Mayor seguridad sin conexión en Vista Previa, precisión de sintaxis y Mermaid, y guardado atómico seguro
 
-- Soporte completo para la familia Lisp:
-  Resaltado de sintaxis, comentarios de línea (;) y comentarios de bloque (#| ... |#) para Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel y Janet.
-- Mejoras importantes para lenguaje ensamblador (Assembly):
-  Soporte ampliado para x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS y WebAssembly (.wat, .wast).
-- 15 nuevos lenguajes y más de 70 extensiones y archivos de configuración:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig y más.""",
+- Aislamiento sin conexión y seguridad reforzada en Vista Previa:
+  Política CSP estricta sin conexión, bloqueo de red externa, saneamiento HTML/URL, verificación criptográfica en listas de tareas, visualización segura de archivos que comienzan con '<' y análisis rápido O(N) de Markdown.
+- Mayor precisión en resaltado de sintaxis y diagramas Mermaid:
+  Mejoras en comillas triples de Python y comentarios de bloque en las 65 categorías de lenguajes, resaltado rápido de bloques Markdown CRLF sin cerrar y mayor estabilidad en Mermaid (stateDiagram-v2, block-beta y gráficos).
+- Guardado atómico seguro y soporte mejorado para archivos grandes:
+  Reemplazo atómico de archivos al guardar, remapeo seguro en memoria y escritura por bloques para archivos de varios GB.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -222,15 +222,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de versão do miu v1.0.50
-💻 Destaque de sintaxe e alternância de comentários expandidos para 65 categorias de linguagens (mais de 230 extensões)
+        "releaseNotes": """Notas de versão do miu v1.0.51
+🛡️ Segurança offline reforçada na Pré-visualização, maior precisão de sintaxe e Mermaid, e salvamento atômico seguro
 
-- Suporte completo para a família Lisp:
-  Destaque de sintaxe, comentários de linha (;) e comentários de bloco (#| ... |#) para Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel e Janet.
-- Grandes melhorias para Assembly:
-  Suporte expandido para x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS e WebAssembly (.wat, .wast).
-- 15 novas linguagens e mais de 70 novas extensões e arquivos de configuração:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig e muito mais.""",
+- Isolamento offline e segurança na Pré-visualização ao vivo:
+  CSP offline rigorosa, bloqueio de conexões externas, sanitização de HTML/URL, validação criptográfica em listas de tarefas, exibição segura de textos iniciados por '<' e análise rápida O(N) de Markdown.
+- Precisão aprimorada de sintaxe e diagramas Mermaid:
+  Melhor detecção de aspas triplas em Python e comentários de bloco nas 65 categorias de linguagens, destaque rápido em blocos Markdown CRLF abertos e maior estabilidade em Mermaid (stateDiagram-v2, block-beta e gráficos).
+- Salvamento atômico e confiabilidade para arquivos grandes:
+  Proteção contra perda de dados com gravação atômica, remapeamento seguro de memória e suporte a arquivos de vários GB.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -269,15 +269,15 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.50
-💻 Подсветка синтаксиса и переключение комментариев расширены до 65 категорий языков (более 230 расширений)
+        "releaseNotes": """Примечания к выпуску miu v1.0.51
+🛡️ Усиленная офлайн-защита предпросмотра, точность подсветки синтаксиса и Mermaid, надёжное атомарное сохранение
 
-- Полная поддержка семейства языков Lisp:
-  Подсветка синтаксиса, строчные комментарии (;) и блочные комментарии (#| ... |#) для Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel и Janet.
-- Масштабное обновление поддержки ассемблера (Assembly):
-  Расширена поддержка x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS и WebAssembly (.wat, .wast).
-- 15 новых языков и более 70 новых расширений и файлов конфигурации:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig и др.""",
+- Полная офлайн-изоляция и безопасность предпросмотра:
+  Строгая политика CSP, блокировка внешних сетевых запросов, очистка HTML/URL, криптографическая проверка переключения задач, безопасное отображение текстовых файлов с символом «<» и быстрый линейный разбор Markdown.
+- Повышенная точность подсветки синтаксиса и диаграмм Mermaid:
+  Улучшен разбор тройных кавычек Python и блочных комментариев для всех 65 категорий языков, быстрая подсветка незакрытых блоков кода Markdown (CRLF), а также стабильность диаграмм Mermaid (stateDiagram-v2, block-beta).
+- Атомарное сохранение и надёжная работа с большими файлами:
+  Безопасная перезапись файлов, корректное обновление отображения в памяти и блочная запись многогигабайтных файлов.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -316,15 +316,15 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.50
-💻 Evidenziazione della sintassi e commenti estesi a 65 categorie di linguaggi (oltre 230 estensioni)
+        "releaseNotes": """Note di rilascio di miu v1.0.51
+🛡️ Sicurezza offline potenziata nell’Anteprima dal vivo, precisione di sintassi e Mermaid e salvataggio atomico sicuro
 
-- Supporto completo per la famiglia Lisp:
-  Evidenziazione della sintassi, commenti su riga (;) e commenti a blocco (#| ... |#) per Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel e Janet.
-- Importanti miglioramenti per Assembly:
-  Supporto esteso per x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS e WebAssembly (.wat, .wast).
-- 15 nuovi linguaggi e oltre 70 nuove estensioni e file di configurazione:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig e altro ancora.""",
+- Isolamento offline e sicurezza dell’Anteprima dal vivo:
+  CSP offline rigorosa, blocco delle richieste di rete esterne, sanificazione HTML/URL, verifica crittografica per le liste di attività, visualizzazione sicura dei file di testo che iniziano con '<' e analisi Markdown veloce O(N).
+- Maggiore precisione per sintassi e diagrammi Mermaid:
+  Migliorata l’analisi delle triple virgolette Python e dei commenti a blocco nelle 65 categorie di linguaggi, evidenziazione rapida dei blocchi Markdown CRLF non chiusi e stabilità per Mermaid (stateDiagram-v2, block-beta).
+- Salvataggio atomico e affidabilità per file di grandi dimensioni:
+  Protezione dei dati durante il salvataggio con sostituzione atomica, rimappatura sicura in memoria e scrittura di file multi-GB.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -363,15 +363,15 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.50
-💻 Kolorowanie składni i przełączanie komentarzy rozszerzone do 65 kategorii języków (ponad 230 rozszerzeń)
+        "releaseNotes": """Informacje o wersji miu v1.0.51
+🛡️ Wzmocnione bezpieczeństwo offline podglądu na żywo, większa precyzja składni i Mermaid oraz bezpieczny zapis atomowy
 
-- Pełna obsługa rodziny języków Lisp:
-  Kolorowanie składni, komentarze wierszowe (;) i blokowe (#| ... |#) dla Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel i Janet.
-- Znacznie rozbudowana obsługa asemblera (Assembly):
-  Rozszerzono obsługę x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS oraz WebAssembly (.wat, .wast).
-- 15 nowych języków i ponad 70 nowych rozszerzeń oraz plików konfiguracyjnych:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig i inne.""",
+- Pełna izolacja offline i bezpieczeństwo podglądu na żywo:
+  Ścisła polityka CSP offline, blokada połączeń zewnętrznych, oczyszczanie HTML/URL, kryptograficzna weryfikacja list zadań, bezpieczne wyświetlanie plików tekstowych zaczynających się od „<” oraz szybkie parsowanie Markdown O(N).
+- Wyższa precyzja kolorowania składni i diagramów Mermaid:
+  Ulepszona obsługa potrójnych cudzysłowów Pythona i komentarzy blokowych w 65 kategoriach języków, szybkie kolorowanie niezamkniętych bloków kodu Markdown (CRLF) oraz stabilność diagramów Mermaid (stateDiagram-v2, block-beta).
+- Zapis atomowy i niezawodność dla dużych plików:
+  Bezpieczne nadpisywanie plików, poprawne przemapowanie pamięci oraz obsługa zapisu wielogigabajtowych plików.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -410,15 +410,15 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.50
-💻 Syntaxmarkering en commentaar-schakeling uitgebreid naar 65 taalcategorieën (230+ bestandsextensies)
+        "releaseNotes": """Releaseopmerkingen miu v1.0.51
+🛡️ Verbeterde offline beveiliging voor Live Voorbeeld, nauwkeurigere syntax & Mermaid en betrouwbaar atomair opslaan
 
-- Volledige ondersteuning voor de Lisp-taalfamilie:
-  Syntaxmarkering, regelcommentaar (;) en blokcommentaar (#| ... |#) voor Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel en Janet.
-- Uitgebreide ondersteuning voor Assembly:
-  Ondersteuning voor x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS en WebAssembly (.wat, .wast).
-- 15 nieuwe programmeertalen en 70+ nieuwe extensies en configuratiebestanden:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig en meer.""",
+- Volledige offline isolatie en beveiliging van Live Voorbeeld:
+  Strikte offline CSP, blokkering van externe netwerkverzoeken, HTML/URL-opschoning, cryptografische verificatie voor takenlijsten, veilige weergave van tekstbestanden beginnend met '<' en snelle O(N) Markdown-verwerking.
+- Hogere nauwkeurigheid van syntaxmarkering en Mermaid-diagrammen:
+  Verbeterde verwerking van driedubbele aanhalingstekens in Python en blokcommentaar in alle 65 taalcategorieën, snelle markering van ongesloten CRLF Markdown-codeblokken en stabielere Mermaid-diagrammen (stateDiagram-v2, block-beta).
+- Atomair opslaan en betrouwbaarheid bij grote bestanden:
+  Gegevensbescherming bij het opslaan via atomaire bestandswisseling, veilige geheugenmapping en ondersteuning voor multi-GB bestanden.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -457,15 +457,15 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.50 Sürüm Notları
-💻 Sözdizimi Vurgulama ve Yorum Satırı Geçişi 65 Dil Kategorisine (230+ Uzantı) Genişletildi
+        "releaseNotes": """miu v1.0.51 Sürüm Notları
+🛡️ Canlı Önizleme Çevrimdışı Güvenlik Güçlendirmesi, Sözdizimi & Mermaid Hassasiyeti ve Güvenli Atomik Kayıt
 
-- Lisp Dil Ailesi İçin Tam Destek:
-  Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel ve Janet için sözdizimi vurgulama, ';' satır yorumu ve '#| ... |#' blok yorumu eklendi.
-- Kapsamlı Assembly Dili Geliştirmeleri:
-  x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS ve WebAssembly (.wat, .wast) desteği genişletildi.
-- 15 Yeni Dil Kategorisi ve 70+ Yeni Uzantı/Yapılandırma Dosyası:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig ve daha fazlası.""",
+- Canlı Önizleme Çevrimdışı İzolasyon ve Güvenlik:
+  Sıkı çevrimdışı CSP, dış ağ erişimi engelleme, HTML/URL temizleme, görev listesi için kriptografik doğrulama, '<' ile başlayan metin dosyalarının güvenli gösterimi ve hızlı O(N) Markdown ayrıştırma.
+- Sözdizimi Vurgulama ve Mermaid Diyagram Hassasiyeti:
+  65 dil kategorisinde Python üçlü tırnak ve blok yorum analizi, kapatılmamış CRLF Markdown kod bloklarında hızlı vurgulama ve Mermaid (stateDiagram-v2, block-beta) kararlılığı iyileştirildi.
+- Atomik Dosya Kaydetme ve Büyük Dosya Güvenilirliği:
+  Atomik dosya değiştirme, güvenli bellek eşleme ve çoklu GB dosya kaydetme desteğiyle veri güvenliği artırıldı.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -503,15 +503,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.50
-💻 Mở rộng tô sáng cú pháp & bật/tắt chú thích lên 65 nhóm ngôn ngữ (hơn 230 phần mở rộng tệp)
+        "releaseNotes": """Ghi chú phát hành miu v1.0.51
+🛡️ Tăng cường bảo mật ngoại tuyến cho Xem trước trực tiếp, nâng cao độ chính xác cú pháp & Mermaid và lưu tệp an toàn
 
-- Hỗ trợ đầy đủ họ ngôn ngữ Lisp:
-  Tô sáng cú pháp, bật/tắt chú thích dòng (;) và chú thích khối (#| ... |#) cho Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel và Janet.
-- Nâng cấp toàn diện hợp ngữ (Assembly):
-  Mở rộng hỗ trợ x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS và WebAssembly (.wat, .wast).
-- Thêm 15 ngôn ngữ mới & hơn 70 phần mở rộng/tệp cấu hình:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, v.v.""",
+- Cô lập ngoại tuyến & bảo mật Xem trước trực tiếp:
+  Áp dụng CSP ngoại tuyến nghiêm ngặt, chặn kết nối mạng bên ngoài, làm sạch HTML/URL, xác thực mã thông báo mật mã cho danh sách công việc, hiển thị an toàn tệp văn bản bắt đầu bằng '<' và phân tích Markdown tốc độ O(N).
+- Nâng cao độ chính xác tô sáng cú pháp & sơ đồ Mermaid:
+  Cải thiện xử lý chuỗi ba dấu nháy Python và chú thích khối trên 65 nhóm ngôn ngữ, tô sáng nhanh khối mã Markdown CRLF chưa đóng và tăng độ ổn định sơ đồ Mermaid (stateDiagram-v2, block-beta).
+- Lưu tệp nguyên tử (Atomic Save) & xử lý tệp dung lượng lớn:
+  Bảo vệ dữ liệu khi lưu ghi đè, ánh xạ bộ nhớ an toàn và hỗ trợ ghi tệp hàng GB theo phân đoạn.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -550,15 +550,15 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.50
-💻 Підсвічування синтаксису та перемикання коментарів розширено до 65 категорій мов (понад 230 розширень)
+        "releaseNotes": """Примітки до випуску miu v1.0.51
+🛡️ Посилений офлайн-захист перегляду наживо, точність синтаксису й Mermaid та надійне атомарне збереження
 
-- Повна підтримка сімейства мов Lisp:
-  Підсвічування синтаксису, рядкові коментарі (;) та блокові коментарі (#| ... |#) для Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel і Janet.
-- Масштабне розширення підтримки асемблера (Assembly):
-  Підтримка x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS і WebAssembly (.wat, .wast).
-- 15 нових мов і понад 70 нових розширень та конфігураційних файлів:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig тощо.""",
+- Повна офлайн-ізоляція та безпека перегляду наживо:
+  Сувора політика CSP, блокування зовнішніх мережевих запитів, очищення HTML/URL, криптографічна перевірка списків завдань, безпечне відображення текстових файлів із початковим «<» і швидкий розбір Markdown O(N).
+- Підвищена точність підсвічування синтаксису та діаграм Mermaid:
+  Покращено розбір потрійних лапок Python і блокових коментарів для всіх 65 категорій мов, швидке підсвічування незакритих блоків коду Markdown (CRLF) і стабільність Mermaid (stateDiagram-v2, block-beta).
+- Атомарне збереження та надійна робота з великими файлами:
+  Безпечний перезапис файлів, коректне оновлення відображення в пам’яті та підтримка багатогігабайтних файлів.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -597,15 +597,15 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.50
-💻 Penyorotan Sintaks & Alih Komentar Diperluas ke 65 Kategori Bahasa (230+ Ekstensi File)
+        "releaseNotes": """Catatan Rilis miu v1.0.51
+🛡️ Peningkatan Keamanan Offline Pratinjau Langsung, Akurasi Sintaks & Mermaid, serta Penyimpanan Atomik Aman
 
-- Dukungan Penuh Keluarga Bahasa Lisp:
-  Penyorotan sintaks, alih komentar baris (;), dan komentar blok (#| ... |#) untuk Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel, dan Janet.
-- Peningkatan Besar Bahasa Assembly:
-  Dukungan diperluas untuk x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS, dan WebAssembly (.wat, .wast).
-- 15 Kategori Bahasa Baru & 70+ Ekstensi/File Konfigurasi:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, dan lainnya.""",
+- Isolasi Offline & Keamanan Pratinjau Langsung:
+  Penerapan CSP offline ketat, pemblokiran jaringan eksternal, sanitasi HTML/URL, verifikasi token kriptografi daftar tugas, tampilan aman file teks berawalan '<', dan penguraian Markdown cepat O(N).
+- Akurasi Penyorotan Sintaks & Diagram Mermaid:
+  Perbaikan deteksi tanda kutip tiga Python dan komentar blok di 65 kategori bahasa, penyorotan cepat blok kode Markdown CRLF yang belum ditutup, serta stabilitas diagram Mermaid (stateDiagram-v2, block-beta).
+- Penyimpanan File Atomik & Keandalan File Besar:
+  Perlindungan data saat menyimpan dengan penggantian file atomik, pemetaan memori aman, dan dukungan penyimpanan file multi-GB.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -644,15 +644,15 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.50
-💻 Zvýrazňování syntaxe a přepínání komentářů rozšířeno na 65 kategorií jazyků (více než 230 přípon)
+        "releaseNotes": """Poznámky k verzi miu v1.0.51
+🛡️ Posílené offline zabezpečení živého náhledu, přesnější syntaxe a Mermaid a spolehlivé atomické ukládání
 
-- Plná podpora rodiny jazyků Lisp:
-  Zvýrazňování syntaxe, řádkové komentáře (;) a blokové komentáře (#| ... |#) pro Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel a Janet.
-- Rozsáhlé vylepšení podpory assembleru (Assembly):
-  Rozšířená podpora pro x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS a WebAssembly (.wat, .wast).
-- 15 nových jazyků a více než 70 nových přípon a konfiguračních souborů:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig a další.""",
+- Plná offline izolace a zabezpečení živého náhledu:
+  Přísná offline politika CSP, blokování externích síťových požadavků, čištění HTML/URL, kryptografické ověření seznamů úkolů, bezpečné zobrazení textových souborů začínajících znakem „<“ a rychlé O(N) zpracování Markdownu.
+- Vyšší přesnost zvýrazňování syntaxe a diagramů Mermaid:
+  Vylepšené zpracování trojitých uvozovek v Pythonu a blokových komentářů v 65 kategoriích jazyků, rychlé zvýrazňování neuzavřených bloků kódu Markdown (CRLF) a stabilita Mermaid (stateDiagram-v2, block-beta).
+- Atomické ukládání a spolehlivost u velkých souborů:
+  Bezpečný přepis při ukládání, chráněné přemapování paměti a podpora ukládání vícegigabajtových souborů.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -691,15 +691,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.50
-💻 Syntaxmarkering och kommentarsväxling utökad till 65 språkkategorier (över 230 filändelser)
+        "releaseNotes": """Versionsinformation för miu v1.0.51
+🛡️ Förstärkt offlinesäkerhet i Live-förhandsgranskning, högre precision för syntax & Mermaid samt säker atomär sparning
 
-- Fullt stöd för Lisp-språkfamiljen:
-  Syntaxmarkering, radkommentarer (;) och blockkommentarer (#| ... |#) för Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel och Janet.
-- Stora förbättringar för Assembly:
-  Utökat stöd för x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS och WebAssembly (.wat, .wast).
-- 15 nya språkkategorier och över 70 nya filändelser och konfigurationsfiler:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig m.fl.""",
+- Fullständig offlineisolering och säkerhet i förhandsgranskningen:
+  Strikt offline-CSP, blockering av externa nätverksanrop, HTML/URL-sanering, kryptografisk verifiering för uppgiftslistor, säker visning av textfiler som börjar med '<' och snabb O(N) Markdown-tolkning.
+- Förbättrad syntaxmarkering och Mermaid-precision:
+  Bättre hantering av trippelcitat i Python och blockkommentarer i alla 65 språkkategorier, snabb markering av oavslutade CRLF Markdown-kodblock samt stabilare Mermaid-diagram (stateDiagram-v2, block-beta).
+- Atomär filsparning och tillförlitlighet för stora filer:
+  Skydd vid överskrivning genom atomär sparning, säker minnesmappning och stöd för filer på flera GB.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -738,15 +738,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.50
-💻 ขยายการเน้นไวยากรณ์และสลับความคิดเห็นเป็น 65 หมวดหมู่ภาษา (นามสกุลไฟล์กว่า 230 รายการ)
+        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.51
+🛡️ ยกระดับความปลอดภัยออฟไลน์ของพรีวิวสด เพิ่มความแม่นยำของไวยากรณ์และ Mermaid พร้อมการบันทึกไฟล์อย่างปลอดภัย
 
-- รองรับตระกูลภาษา Lisp อย่างเต็มรูปแบบ:
-  เพิ่มการเน้นไวยากรณ์ สลับความคิดเห็นบรรทัด (;) และความคิดเห็นบล็อก (#| ... |#) สำหรับ Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel และ Janet
-- ยกระดับการรองรับภาษาแอสเซมบลี (Assembly):
-  รองรับ x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS และ WebAssembly (.wat, .wast)
-- เพิ่ม 15 หมวดหมู่ภาษาใหม่และนามสกุลไฟล์/ไฟล์ตั้งค่ากว่า 70 รายการ:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig และอื่นๆ""",
+- การแยกการทำงานแบบออฟไลน์และความปลอดภัยของพรีวิวสด:
+  ใช้ CSP แบบออฟไลน์ที่เข้มงวด บล็อกการเชื่อมต่อภายนอก คัดกรอง HTML/URL ตรวจสอบโทเค็นเข้ารหัสสำหรับรายการงาน แสดงไฟล์ข้อความที่ขึ้นต้นด้วย '<' อย่างปลอดภัย และประมวลผล Markdown ความเร็วสูง O(N)
+- เพิ่มความแม่นยำของการเน้นไวยากรณ์และแผนภาพ Mermaid:
+  ปรับปรุงการวิเคราะห์อัญประกาศสามชั้นของ Python และความคิดเห็นบล็อกใน 65 หมวดหมู่ภาษา การไฮไลต์บล็อกโค้ด Markdown (CRLF) ที่ยังไม่ปิด และความเสถียรของ Mermaid (stateDiagram-v2, block-beta)
+- การบันทึกไฟล์แบบอะตอมมิกและรองรับไฟล์ขนาดใหญ่:
+  ปกป้องข้อมูลขณะบันทึกทับ อัปเดตหน่วยความจำอย่างปลอดภัย และรองรับการบันทึกไฟล์ขนาดหลาย GB""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -785,15 +785,15 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.50 रिलीज़ नोट्स
-💻 सिंटैक्स हाइलाइटिंग और कमेंट टॉगलिंग का 65 भाषा श्रेणियों (230+ फ़ाइल एक्सटेंशन) में विस्तार
+        "releaseNotes": """miu v1.0.51 रिलीज़ नोट्स
+🛡️ लाइव प्रीव्यू ऑफ़लाइन सुरक्षा सुदृढ़ीकरण, सिंटैक्स व Mermaid सटीकता में सुधार और सुरक्षित एटॉमिक फ़ाइल सेविंग
 
-- Lisp भाषा परिवार के लिए पूर्ण समर्थन:
-  Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel और Janet के लिए सिंटैक्स हाइलाइटिंग, ';' लाइन कमेंट और '#| ... |#' ब्लॉक कमेंट जोड़े गए।
-- असेंबली भाषा (Assembly) में बड़े सुधार:
-  x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS और WebAssembly (.wat, .wast) के लिए विस्तारित समर्थन।
-- 15 नई भाषा श्रेणियां और 70+ नए एक्सटेंशन/कॉन्फ़िगरेशन फ़ाइलें:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig आदि।""",
+- लाइव प्रीव्यू ऑफ़लाइन आइसोलेशन और सुरक्षा:
+  सख्त ऑफ़लाइन CSP, बाहरी नेटवर्क अनुरोध अवरोधन, HTML/URL स्वच्छता, टास्क-लिस्ट चेकबॉक्स हेतु क्रिप्टोग्राफ़िक सत्यापन, '<' से शुरू होने वाली टेक्स्ट फ़ाइलों का सुरक्षित प्रदर्शन और तेज़ O(N) Markdown पार्सिंग।
+- सिंटैक्स हाइलाइटिंग और Mermaid डायग्राम सटीकता:
+  सभी 65 भाषा श्रेणियों में Python ट्रिपल-कोट्स व ब्लॉक कमेंट पहचान में सुधार, अधूरे CRLF Markdown कोड ब्लॉक की तेज़ हाइलाइटिंग और Mermaid (stateDiagram-v2, block-beta) स्थिरता में वृद्धि।
+- एटॉमिक फ़ाइल सेविंग और बड़ी फ़ाइलों की विश्वसनीयता:
+  एटॉमिक फ़ाइल प्रतिस्थापन, सुरक्षित मेमोरी-मैप अपडेट और कई GB की बड़ी फ़ाइलों को सुरक्षित रूप से सहेजने का समर्थन।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -832,15 +832,15 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.50
-💻 Evidențierea sintaxei și comutarea comentariilor extinse la 65 de categorii de limbaje (peste 230 de extensii)
+        "releaseNotes": """Note de lansare miu v1.0.51
+🛡️ Securitate offline consolidată pentru Previzualizare live, precizie sporită pentru sintaxă și Mermaid și salvare atomică sigură
 
-- Suport complet pentru familia de limbaje Lisp:
-  Evidențiere sintaxă, comentarii pe linie (;) și comentarii bloc (#| ... |#) pentru Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel și Janet.
-- Îmbunătățiri majore pentru limbajul de asamblare (Assembly):
-  Suport extins pentru x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS și WebAssembly (.wat, .wast).
-- 15 categorii noi de limbaje și peste 70 de extensii și fișiere de configurare:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig și multe altele.""",
+- Izolare offline și securitate pentru Previzualizarea live:
+  Politică CSP offline strictă, blocarea cererilor de rețea externe, igienizare HTML/URL, verificare criptografică pentru listele de sarcini, afișare sigură a fișierelor text care încep cu „<” și analiză Markdown rapidă O(N).
+- Precizie îmbunătățită pentru sintaxă și diagramele Mermaid:
+  Analiză mai bună a ghilimelelor triple Python și a comentariilor bloc în toate cele 65 de categorii de limbaje, evidențiere rapidă a blocurilor Markdown CRLF neînchise și stabilitate sporită în Mermaid (stateDiagram-v2, block-beta).
+- Salvare atomică și fiabilitate pentru fișiere mari:
+  Protecția datelor la suprascriere prin salvare atomică, remapare sigură a memoriei și suport pentru fișiere de mai mulți GB.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -879,15 +879,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.50 kiadási megjegyzések
-💻 Szintaxiskiemelés és megjegyzés-váltás 65 nyelvi kategóriára (több mint 230 fájlkiterjesztésre) bővítve
+        "releaseNotes": """miu v1.0.51 kiadási megjegyzések
+🛡️ Megerősített offline biztonság az Élő előnézetben, pontosabb szintaxis és Mermaid, valamint biztonságos atomi mentés
 
-- Teljes Lisp nyelvcsalád támogatás:
-  Szintaxiskiemelés, sorkomment (;) és blokk-komment (#| ... |#) támogatás Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel és Janet nyelvekhez.
-- Jelentősen bővített Assembly támogatás:
-  Kiterjesztett támogatás x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS és WebAssembly (.wat, .wast) architektúrákhoz.
-- 15 új programozási nyelv és több mint 70 új kiterjesztés/konfigurációs fájl:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig és egyebek.""",
+- Teljes offline elszigetelés és biztonság az Élő előnézetben:
+  Szigorú offline CSP, külső hálózati kérések tiltása, HTML/URL-tisztítás, kriptográfiai ellenőrzés a feladatlistákhoz, a „<” jellel kezdődő szövegfájlok biztonságos megjelenítése és gyors O(N) Markdown-elemzés.
+- Pontosabb szintaxiskiemelés és Mermaid-diagramok:
+  Fejlesztett Python tripla idézőjel- és blokk-komment-kezelés mind a 65 nyelvi kategóriában, lezáratlan CRLF Markdown-kódblokkok gyors kiemelése és stabilabb Mermaid (stateDiagram-v2, block-beta) megjelenítés.
+- Atomi fájlmentés és nagy fájlok megbízható kezelése:
+  Adatvédelem mentéskor atomi fájlfrissítéssel, biztonságos memórialeképezéssel és több gigabájtos fájlok támogatásával.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -926,15 +926,15 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.50
-💻 Επισήμανση σύνταξης και εναλλαγή σχολίων σε 65 κατηγορίες γλωσσών (πάνω από 230 επεκτάσεις αρχείων)
+        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.51
+🛡️ Ενισχυμένη ασφάλεια εκτός σύνδεσης στη Ζωντανή προεπισκόπηση, ακρίβεια σύνταξης & Mermaid και ασφαλής ατομική αποθήκευση
 
-- Πλήρης υποστήριξη για την οικογένεια γλωσσών Lisp:
-  Επισήμανση σύνταξης, σχόλια γραμμής (;) και σχόλια μπλοκ (#| ... |#) για Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel και Janet.
-- Σημαντικές βελτιώσεις για Assembly:
-  Εκτεταμένη υποστήριξη για x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS και WebAssembly (.wat, .wast).
-- 15 νέες κατηγορίες γλωσσών και 70+ νέες επεκτάσεις/αρχεία ρυθμίσεων:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig κ.ά.""",
+- Πλήρης απομόνωση εκτός σύνδεσης και ασφάλεια προεπισκόπησης:
+  Αυστηρή πολιτική CSP εκτός σύνδεσης, φραγή εξωτερικών συνδέσεων δικτύου, καθαρισμός HTML/URL, κρυπτογραφική επαλήθευση λιστών εργασιών, ασφαλής εμφάνιση αρχείων κειμένου που ξεκινούν με «<» και γρήγορη ανάλυση Markdown O(N).
+- Βελτιωμένη ακρίβεια επισήμανσης σύνταξης και διαγραμμάτων Mermaid:
+  Βελτιωμένη αναγνώριση τριπλών εισαγωγικών Python και σχολίων μπλοκ στις 65 κατηγορίες γλωσσών, γρήγορη επισήμανση ανοιχτών μπλοκ κώδικα Markdown (CRLF) και σταθερότητα Mermaid (stateDiagram-v2, block-beta).
+- Ατομική αποθήκευση και αξιοπιστία σε μεγάλα αρχεία:
+  Προστασία δεδομένων κατά την εγγραφή, ασφαλής αντιστοίχιση μνήμης και υποστήριξη αρχείων πολλών GB.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -973,15 +973,15 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter til miu v1.0.50
-💻 Syntaksfremhævning og kommentarskift udvidet til 65 sprogkategorier (over 230 filtyper)
+        "releaseNotes": """Udgivelsesnoter til miu v1.0.51
+🛡️ Styrket offlinesikkerhed i Live-forhåndsvisning, højere præcision i syntaks & Mermaid samt sikker atomisk lagring
 
-- Fuld understøttelse af Lisp-sprogfamilien:
-  Syntaksfremhævning, linjekommentarer (;) og blokkommentarer (#| ... |#) til Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel og Janet.
-- Store forbedringer til Assembly:
-  Udvidet understøttelse af x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS og WebAssembly (.wat, .wast).
-- 15 nye sprogkategorier og over 70 nye filtyper og konfigurationsfiler:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig m.fl.""",
+- Fuld offlineisolering og sikkerhed i Live-forhåndsvisning:
+  Striks offline-CSP, blokering af eksterne netværkskald, HTML/URL-rensning, kryptografisk kontrol af opgavelister, sikker visning af tekstfiler der starter med '<' og hurtig O(N) Markdown-analyse.
+- Højere præcision i syntaksfremhævning og Mermaid-diagrammer:
+  Forbedret håndtering af tredobbelte anførselstegn i Python og blokkommentarer i alle 65 sprogkategorier, hurtig fremhævning af uafsluttede CRLF Markdown-kodeblokke samt mere stabile Mermaid-diagrammer (stateDiagram-v2, block-beta).
+- Atomisk fillagring og pålidelighed ved store filer:
+  Beskyttelse mod datatab ved lagring, sikker hukommelsesmapning og understøttelse af filer på flere GB.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -1020,15 +1020,15 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.50 -julkaisutiedot
-💻 Syntaksin korostus ja kommenttien vaihto laajennettu 65 kielikategoriaan (yli 230 tiedostopäätettä)
+        "releaseNotes": """miu v1.0.51 -julkaisutiedot
+🛡️ Vahvistettu offline-tietoturva reaaliaikaisessa esikatselussa, tarkempi syntaksi ja Mermaid sekä turvallinen atominen tallennus
 
-- Täysi tuki Lisp-kieliperheelle:
-  Syntaksin korostus, rivikommentit (;) ja lohkokommentit (#| ... |#) kielille Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel ja Janet.
-- Merkittäviä parannuksia Assembly-tukeen:
-  Laajennettu tuki arkkitehtuureille x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS ja WebAssembly (.wat, .wast).
-- 15 uutta ohjelmointikieltä ja yli 70 uutta tiedostopäätettä/asetustiedostoa:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig ym.""",
+- Täysi offline-eristys ja esikatselun tietoturva:
+  Tiukka offline-CSP, ulkoisten verkkopyyntöjen esto, HTML/URL-puhdistus, tehtävälistojen kryptografinen varmennus, '<'-merkillä alkavien tekstitiedostojen turvallinen näyttö ja nopea O(N) Markdown-jäsennys.
+- Tarkempi syntaksin korostus ja Mermaid-kaaviot:
+  Parannettu Pythonin kolmoislainausmerkkien ja lohkokommenttien käsittely kaikissa 65 kielikategoriassa, sulkemattomien CRLF Markdown -koodilohkojen nopea korostus ja vakaammat Mermaid-kaaviot (stateDiagram-v2, block-beta).
+- Atominen tallennus ja suurten tiedostojen luotettavuus:
+  Tietosuoja tallennettaessa atomisella korvauksella, turvallinen muistikuvaus ja useiden gigatavujen tiedostojen tuki.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1067,15 +1067,15 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.50
-💻 Syntaksutheving og kommentuveksling utvidet til 65 språkkategorier (over 230 filtyper)
+        "releaseNotes": """Utgivelsesnotater for miu v1.0.51
+🛡️ Styrket offlinesikkerhet i direkte forhåndsvisning, høyere presisjon for syntaks og Mermaid samt sikker atomisk lagring
 
-- Full støtte for Lisp-språkfamilien:
-  Syntaksutheving, linjekommentarer (;) og blokkommentarer (#| ... |#) for Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel og Janet.
-- Store forbedringer for Assembly:
-  Utvidet støtte for x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS og WebAssembly (.wat, .wast).
-- 15 nye språkkategorier og over 70 nye filtyper og konfigurasjonsfiler:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig m.m.""",
+- Full offlineisolering og sikkerhet i forhåndsvisningen:
+  Streng offline-CSP, blokkering av eksterne nettverkskall, HTML/URL-rensing, kryptografisk bekreftelse for oppgavelister, trygg visning av tekstfiler som starter med «<» og rask O(N) Markdown-analyse.
+- Bedre presisjon i syntaksutheving og Mermaid-diagrammer:
+  Forbedret håndtering av trippelanførselstegn i Python og blokkommentarer i alle 65 språkkategorier, rask utheving av uavsluttede CRLF Markdown-kodeblokker og mer stabile Mermaid-diagrammer (stateDiagram-v2, block-beta).
+- Atomisk fillagring og pålitelighet for store filer:
+  Databeskyttelse ved lagring med atomisk filbytte, sikker minnekartlegging og støtte for filer på flere GB.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1114,15 +1114,15 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.50
-💻 Sorotan Sintaks & Togol Komen Diperluas kepada 65 Kategori Bahasa (230+ Sambungan Fail)
+        "releaseNotes": """Nota Keluaran miu v1.0.51
+🛡️ Keselamatan Luar Talian Pratonton Langsung Diperkukuh, Ketepatan Sintaks & Mermaid serta Simpanan Atomik Selamat
 
-- Sokongan Penuh Keluarga Bahasa Lisp:
-  Sorotan sintaks, togol komen baris (;) dan komen blok (#| ... |#) untuk Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel dan Janet.
-- Penambahbaikan Besar Bahasa Assembly:
-  Sokongan diperluas untuk x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS dan WebAssembly (.wat, .wast).
-- 15 Kategori Bahasa Baharu & 70+ Sambungan/Fail Konfigurasi:
-  Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig dan banyak lagi.""",
+- Pengasingan Luar Talian & Keselamatan Pratonton Langsung:
+  CSP luar talian yang ketat, sekatan rangkaian luaran, pembersihan HTML/URL, pengesahan token kriptografi senarai tugas, paparan selamat fail teks bermula dengan '<' dan penghuraian Markdown pantas O(N).
+- Ketepatan Sorotan Sintaks & Rajah Mermaid:
+  Penambahbaikan pengendalian petikan tiga kali Python dan komen blok merentas 65 kategori bahasa, sorotan pantas blok kod Markdown CRLF belum ditutup serta kestabilan Mermaid (stateDiagram-v2, block-beta).
+- Simpanan Fail Atomik & Kebolehpercayaan Fail Besar:
+  Perlindungan data semasa menyimpan melalui penggantian fail atomik, pemetaan memori selamat dan sokongan fail berbilang GB.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

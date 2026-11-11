@@ -44,6 +44,9 @@ begin
     endif;
    
     nSetupType = COMPLETE;	
+    if (SYSINFO.bIsWow64 != 0) then
+        TARGETDIR = PROGRAMFILES64 ^ "miu";
+    endif;
     szDir = TARGETDIR;
     szName = "";
     szCompany = "";
@@ -86,6 +89,7 @@ Dlg_SdRegisterUser:
     if (nResult = BACK) goto Dlg_SdLicense2;
 
 Dlg_SetupType2:   
+    if (nResult = BACK) goto Dlg_SdRegisterUser;
     szTitle = "";
     szMsg = "";
     nResult = CUSTOM;

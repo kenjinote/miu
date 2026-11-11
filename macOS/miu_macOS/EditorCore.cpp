@@ -1,6 +1,8 @@
 #include "EditorCore.h"
 #include <sys/stat.h>
 #include <cerrno>
+#include <climits>
+#include <cstdlib>
 #include <random>
 
 #if defined(__APPLE__)
@@ -16,6 +18,9 @@
 #endif
 #include <windows.h>
 #include <direct.h>
+#else
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 #if defined(__AVX2__)
@@ -24,7 +29,7 @@
 #include <arm_neon.h>
 #endif
 
-const std::wstring APP_VERSION = L"v1.0.50";
+const std::wstring APP_VERSION = L"v1.0.51";
 const std::wstring APP_TITLE = L"miu";
 
 using MiuCore::SanitizeUtf8;
@@ -1878,51 +1883,12 @@ bool Editor::checkInBlockComment(int targetLine) {
             startLine = 1;
         }
         bool inComment = (commentStateCache[startLine - 1] != 0);
-        const std::string& bcs = currentSyntax.blockCommentStart;
-        const std::string& bce = currentSyntax.blockCommentEnd;
-        const std::string& lc = currentSyntax.lineComment;
-
         for (int li = startLine; li <= targetLine && li <= (int)lineStarts.size(); ++li) {
             int prevLi = li - 1;
             size_t s = lineStarts[prevLi];
             size_t e = (prevLi + 1 < (int)lineStarts.size()) ? lineStarts[prevLi + 1] : pt.length();
             std::string lineStr = pt.getRange(s, e - s);
-            size_t i = 0, n = lineStr.size();
-            bool inStr = false;
-            char strQuote = 0;
-            while (i < n) {
-                if (inComment) {
-                    if (i + bce.size() <= n && lineStr.compare(i, bce.size(), bce) == 0) {
-                        inComment = false;
-                        i += bce.size();
-                    } else {
-                        i++;
-                    }
-                } else if (inStr) {
-                    if (lineStr[i] == '\\' && i + 1 < n) i += 2;
-                    else if (lineStr[i] == strQuote) { inStr = false; i++; }
-                    else i++;
-                } else {
-                    if (!lc.empty() && i + lc.size() <= n && lineStr.compare(i, lc.size(), lc) == 0) {
-                        break; // Rest of line is line comment
-                    }
-                    if (i + bcs.size() <= n && lineStr.compare(i, bcs.size(), bcs) == 0) {
-                        inComment = true;
-                        i += bcs.size();
-                    } else if (currentSyntax.disableSingleQuoteStrings && (
-                        (i + 2 < n && (lineStr[i] == '#' || lineStr[i] == '?') && lineStr[i + 1] == '\\') ||
-                        (i + 1 < n && lineStr[i] == '\\') ||
-                        (i + 1 < n && lineStr[i] == '?' && (lineStr[i + 1] == '"' || lineStr[i + 1] == ';' || lineStr[i + 1] == '|')))) {
-                        i += (lineStr[i] == '\\' || lineStr[i + 1] != '\\') ? 2 : 3;
-                    } else if (!currentSyntax.disableStrings && (lineStr[i] == '"' || (!currentSyntax.disableSingleQuoteStrings && lineStr[i] == '\''))) {
-                        inStr = true;
-                        strQuote = lineStr[i];
-                        i++;
-                    } else {
-                        i++;
-                    }
-                }
-            }
+            inComment = scanBlockCommentState(lineStr, currentSyntax, inComment);
             commentStateCache.push_back(inComment ? 1 : 0);
         }
     }
@@ -2518,6 +2484,16 @@ bool Editor::handlePreviewTaskToggle(int targetLineIdx) {
     return true;
 }
 
+bool Editor::handlePreviewMessage(const std::string& msg) {
+    if (!showPreview) return false;
+    std::string head = pt.getRange(0, std::min(pt.length(), (size_t)4096));
+    int lineIdx = -1;
+    if (!MiuPreview::parseVerifiedTaskToggleMessage(msg, previewNonce, currentFileExt, head, lineIdx)) {
+        return false;
+    }
+    return handlePreviewTaskToggle(lineIdx);
+}
+
 std::pair<std::string, bool> Editor::getHighlightTarget() {
     if (cursors.empty() || cursors.size() > 1) return { "", false };
     const Cursor& c = cursors.back();
@@ -2575,14 +2551,14 @@ const std::regex* Editor::getCompiledSearchRegex(const std::string& rawQuery, bo
 
 static const char* fastFindLiteralBuffer(const char* hay, size_t hayLen, const char* needle, size_t needleLen) {
     if (needleLen == 0) return hay;
-    size_t pos = MiuCore::findSubstringFast(hay, hayLen, needle, needleLen, 0, true);
+    size_t pos = MiuCore::findSubstringFast(std::string_view(hay, hayLen), 0, std::string_view(needle, needleLen), true, true, false);
     return (pos == std::string::npos) ? nullptr : (hay + pos);
 }
 
 size_t Editor::findText(size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
     size_t len = pt.length();
-    if (len == 0) return std::string::npos;
+    if (len == 0 && !isRegex) return std::string::npos;
 
     if (isRegex) {
         const std::regex* rePtr = getCompiledSearchRegex(query, matchCase);
@@ -2594,7 +2570,7 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
             size_t foundPos = std::string::npos;
             size_t foundLen = 0;
             bool startsWithCaret = (!query.empty() && query[0] == '^');
-            bool endsWithDollar = (!query.empty() && query.back() == '$');
+            bool endsWithDollar = MiuCore::hasUnescapedTrailingDollar(query);
             if (forward) {
                 if (startPos > fullText.size()) startPos = 0;
                 size_t searchStartIdx = startPos;
@@ -2657,7 +2633,7 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                 auto words_begin = std::sregex_iterator(fullText.begin(), fullText.end(), re);
                 auto words_end = std::sregex_iterator();
                 size_t bestPos = std::string::npos, bestLen = 0;
-                size_t limit = (startPos == 0) ? len : startPos;
+                size_t limit = (startPos == 0) ? (len + 1) : startPos;
                 for (auto i = words_begin; i != words_end; ++i) {
                     size_t mPos = i->position(), mLen = i->length(), aLen = 0;
                     if (startsWithCaret && i->size() > 1 && (*i)[1].matched) aLen = i->length(1);
@@ -2812,8 +2788,8 @@ void Editor::findNext(bool forward) {
                 searchStart = 0;
                 hasWrapped = true;
                 continue;
-            } else if (!forward && !hasWrapped) {
-                searchStart = pt.length();
+            } else if (!forward && !hasWrapped && searchStart > 0) {
+                searchStart = 0;
                 hasWrapped = true;
                 continue;
             }
@@ -2821,7 +2797,12 @@ void Editor::findNext(bool forward) {
             return;
         }
         size_t matchEnd = pos + matchLen;
-        if (forward && !hasWrapped && matchEnd <= currentCursorPos) {
+        if (forward && !hasWrapped && pt.length() > 0 && matchEnd <= currentCursorPos) {
+            if (searchStart >= pt.length()) {
+                searchStart = 0;
+                hasWrapped = true;
+                continue;
+            }
             size_t nextStart = searchStart + MiuCore::utf8CharLenAt(pt, searchStart);
             if (searchStart + 1 < pt.length() && pt.charAt(searchStart) == '\r' && pt.charAt(searchStart + 1) == '\n') {
                 nextStart = searchStart + 2;
@@ -2846,12 +2827,17 @@ void Editor::replaceNext() {
     if (cursors.empty() || searchQuery.empty()) return;
     rollbackPadding();
     Cursor& c = cursors.back();
-    if (!c.hasSelection()) { findNext(true); return; }
+    if (!c.hasSelection()) {
+        if (!searchRegex) { findNext(true); return; }
+        size_t zeroLen = 0;
+        size_t zeroPos = findText(c.start(), searchQuery, true, searchMatchCase, searchWholeWord, true, &zeroLen);
+        if (zeroPos != c.start() || zeroLen != 0) { findNext(true); return; }
+    }
     size_t len = c.end() - c.start();
     size_t start = c.start();
     std::string selText = pt.getRange(start, len);
     bool match = false;
-    std::string replacement = replaceQuery;
+    std::string replacement = UnescapeString(replaceQuery, newlineStr);
     if (searchRegex) {
         const std::regex* rePtr = getCompiledSearchRegex(searchQuery, searchMatchCase);
         if (!rePtr) return;
@@ -2889,16 +2875,24 @@ void Editor::replaceNext() {
                 }
                 if (c1 != c2) { match = false; break; }
             }
+            if (match && searchWholeWord) {
+                if (start > 0 && isWordChar(pt.charAt(start - 1))) match = false;
+                if (match && start + len < pt.length() && isWordChar(pt.charAt(start + len))) match = false;
+            }
         }
         if (match) replacement = replaceQuery;
     }
     if (match) {
         EditBatch batch;
         batch.beforeCursors = cursors;
-        pt.erase(start, len);
-        batch.ops.push_back({ EditOp::Erase, start, selText });
-        pt.insert(start, replacement);
-        batch.ops.push_back({ EditOp::Insert, start, replacement });
+        if (len > 0) {
+            pt.erase(start, len);
+            batch.ops.push_back({ EditOp::Erase, start, selText });
+        }
+        if (!replacement.empty()) {
+            pt.insert(start, replacement);
+            batch.ops.push_back({ EditOp::Insert, start, replacement });
+        }
         rebuildLineStarts();
         cursors.clear();
         size_t newEnd = start + replacement.size();
@@ -2929,7 +2923,7 @@ void Editor::replaceAll() {
         if (!rePtr) return;
         const std::regex& cachedRegex = *rePtr;
         bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
-        bool endsWithDollar = (!searchQuery.empty() && searchQuery.back() == '$');
+        bool endsWithDollar = MiuCore::hasUnescapedTrailingDollar(searchQuery);
         std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
         std::string fmt = MiuCore::adjustCaretGroupReferences(rawFmt, startsWithCaret);
         try {
@@ -2989,9 +2983,6 @@ void Editor::replaceAll() {
                 std::advance(searchStart, relativeAdvance);
                 currentOffset += relativeAdvance;
                 flags |= std::regex_constants::match_not_bol;
-            }
-            if (startsWithCaret && fullText.empty() && matches.empty()) {
-                matches.push_back({ 0, 0, fmt });
             }
         } catch (...) { return; }
     } else {
@@ -4065,14 +4056,32 @@ bool Editor::checkUnsavedChanges() {
     return true;
 }
 
+#if !defined(_WIN32)
+static bool writeAllToPosixFd(int fd, const char* data, size_t len) {
+    size_t offset = 0;
+    while (offset < len) {
+        size_t chunk = std::min(len - offset, (size_t)67108864);
+        ssize_t n = ::write(fd, data + offset, chunk);
+        if (n < 0) {
+            if (errno == EINTR) continue;
+            return false;
+        }
+        if (n == 0) return false;
+        offset += (size_t)n;
+    }
+    return true;
+}
+#endif
+
 bool Editor::saveFileElevated(const std::string& utf8Path, const std::string& rawBytes) {
 #if defined(__APPLE__) && (!defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE)
     char tmpTemplate[] = "/tmp/miu_elevated_XXXXXX";
     int tmpFd = mkstemp(tmpTemplate);
     if (tmpFd == -1) return false;
-    ssize_t written = ::write(tmpFd, rawBytes.data(), rawBytes.size());
+    bool writeOk = writeAllToPosixFd(tmpFd, rawBytes.data(), rawBytes.size());
+    if (writeOk) ::fsync(tmpFd);
     ::close(tmpFd);
-    if (written < 0 || (size_t)written != rawBytes.size()) {
+    if (!writeOk) {
         ::unlink(tmpTemplate);
         return false;
     }
@@ -4306,7 +4315,29 @@ std::string Editor::getEncodedContentForSaving() {
 }
 
 bool Editor::saveFile(const std::wstring& p) {
-    std::string outBytes = getEncodedContentForSaving();
+    rollbackPadding();
+    std::string contentUtf8 = pt.getRange(0, pt.length());
+    std::string outBytes;
+    if (currentEncoding == ENC_UTF16LE || currentEncoding == ENC_UTF16BE) {
+        outBytes = Utf8ToUtf16Bytes(contentUtf8, currentEncoding == ENC_UTF16BE);
+    } else if (currentEncoding == ENC_LOCAL) {
+        std::string localStr = Utf8ToLocal(contentUtf8, currentCodePage);
+        outBytes = !localStr.empty() ? localStr : contentUtf8;
+    } else if (currentEncoding == ENC_UTF8_BOM) {
+        outBytes.assign("\xEF\xBB\xBF", 3);
+        outBytes += contentUtf8;
+    } else {
+        outBytes = contentUtf8;
+    }
+
+    // Detach PieceTable from any active OS mmap before overwriting the file so
+    // neither atomic replacement nor in-place fallback can ever trigger SIGBUS.
+    if (fileMap && fileMap->fd != -1) {
+        this->currentFileBuffer = std::move(contentUtf8);
+        pt.initFromFile(this->currentFileBuffer.data(), this->currentFileBuffer.size());
+        fileMap->close();
+    }
+
     std::string utf8Path = WToUTF8(p);
     bool written = false;
     if (cbCoordinateWriteFile && cbCoordinateWriteFile(utf8Path, outBytes)) {
@@ -4314,20 +4345,106 @@ bool Editor::saveFile(const std::wstring& p) {
     }
     if (!written) {
 #if defined(_WIN32)
-        std::ofstream f(p, std::ios::binary);
-#else
-        std::ofstream f(utf8Path, std::ios::binary);
-#endif
-        if (!f) {
-            if (errno == EACCES || errno == EPERM) {
-                if (!saveFileElevated(utf8Path, outBytes)) return false;
-            } else {
-                return false;
+        std::wstring tmpPath = p + L".miu_tmp_" + std::to_wstring(GetCurrentProcessId()) + L"_" + std::to_wstring(GetTickCount64());
+        bool tmpOk = false;
+        {
+            std::ofstream tf(tmpPath, std::ios::binary | std::ios::trunc);
+            if (tf) {
+                tf.write(outBytes.data(), (std::streamsize)outBytes.size());
+                tf.flush();
+                tmpOk = tf.good();
             }
-        } else {
-            f.write(outBytes.data(), outBytes.size());
+        }
+        if (tmpOk) {
+            DWORD attrs = GetFileAttributesW(p.c_str());
+            if (attrs != INVALID_FILE_ATTRIBUTES) {
+                if (ReplaceFileW(p.c_str(), tmpPath.c_str(), NULL, REPLACEFILE_IGNORE_MERGE_ERRORS, NULL, NULL) ||
+                    MoveFileExW(tmpPath.c_str(), p.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+                    written = true;
+                } else {
+                    DeleteFileW(tmpPath.c_str());
+                }
+            } else {
+                if (MoveFileExW(tmpPath.c_str(), p.c_str(), MOVEFILE_WRITE_THROUGH)) {
+                    written = true;
+                } else {
+                    DeleteFileW(tmpPath.c_str());
+                }
+            }
+        }
+        if (!written) {
+            std::ofstream f(p, std::ios::binary | std::ios::trunc);
+            if (!f) return false;
+            f.write(outBytes.data(), (std::streamsize)outBytes.size());
             f.close();
             if (!f) return false;
+            written = true;
+        }
+#else
+        std::string targetPath = utf8Path;
+        struct stat lst{};
+        if (lstat(utf8Path.c_str(), &lst) == 0 && S_ISLNK(lst.st_mode)) {
+            char resolvedBuf[PATH_MAX];
+            if (realpath(utf8Path.c_str(), resolvedBuf) != nullptr) {
+                targetPath = resolvedBuf;
+            }
+        }
+        struct stat origStat{};
+        bool hasOrigStat = (stat(targetPath.c_str(), &origStat) == 0);
+        size_t slash = targetPath.find_last_of('/');
+        std::string dir = (slash == std::string::npos) ? "." : (slash == 0 ? "/" : targetPath.substr(0, slash));
+        std::string tmpPath = dir + "/.miu_save_XXXXXX";
+        std::vector<char> tmpBuf(tmpPath.begin(), tmpPath.end());
+        tmpBuf.push_back('\0');
+        int tmpFd = mkstemp(tmpBuf.data());
+        if (tmpFd != -1) {
+            bool ok = writeAllToPosixFd(tmpFd, outBytes.data(), outBytes.size());
+            if (ok && ::fsync(tmpFd) != 0 && errno != EINVAL && errno != ENOTSUP) {
+                // Non-fatal on filesystems without fsync, check write status
+            }
+            if (ok && hasOrigStat) {
+                (void)::fchmod(tmpFd, origStat.st_mode & 07777);
+            }
+            if (::close(tmpFd) != 0) ok = false;
+            if (ok && ::rename(tmpBuf.data(), targetPath.c_str()) == 0) {
+                written = true;
+            } else {
+                ::unlink(tmpBuf.data());
+            }
+        }
+        if (!written) {
+            int directFd = ::open(targetPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, hasOrigStat ? (origStat.st_mode & 07777) : 0644);
+            if (directFd == -1) {
+                if (errno == EACCES || errno == EPERM) {
+                    if (!saveFileElevated(targetPath, outBytes)) return false;
+                    written = true;
+                } else {
+                    return false;
+                }
+            } else {
+                bool ok = writeAllToPosixFd(directFd, outBytes.data(), outBytes.size());
+                if (ok) (void)::fsync(directFd);
+                if (::close(directFd) != 0) ok = false;
+                if (!ok) return false;
+                written = true;
+            }
+        }
+#endif
+    }
+    if (!written) return false;
+
+    if (currentEncoding == ENC_UTF8_NOBOM || currentEncoding == ENC_UTF8_BOM) {
+        std::unique_ptr<MappedFile> newMap(new MappedFile());
+        if (newMap->open(utf8Path.c_str())) {
+            const char* ptr = newMap->ptr;
+            size_t sz = newMap->size;
+            if (currentEncoding == ENC_UTF8_BOM && sz >= 3) { ptr += 3; sz -= 3; }
+            if (IsValidUtf8(ptr, sz)) {
+                pt.initFromFile(ptr, sz);
+                fileMap = std::move(newMap);
+                this->currentFileBuffer.clear();
+                this->currentFileBuffer.shrink_to_fit();
+            }
         }
     }
 
@@ -4780,6 +4897,8 @@ bool Editor::restoreViewState(const std::wstring& filePath) {
             size_t docLen = pt.length();
             size_t ch = std::min(st.cursorHead, docLen);
             size_t ca = std::min(st.cursorAnchor, docLen);
+            while (ch > 0 && ch < docLen && ((unsigned char)pt.charAt(ch) & 0xC0) == 0x80) ch--;
+            while (ca > 0 && ca < docLen && ((unsigned char)pt.charAt(ca) & 0xC0) == 0x80) ca--;
             cursors.clear();
             cursors.push_back({ ch, ca, getXFromPos(ch), getXFromPos(ca), false, false });
             return true;
@@ -5113,7 +5232,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
 
         bool inBlockComment = checkInBlockComment(i);
         if (currentSyntax.active && !ls.empty()) {
-            scanSyntaxHighlighting(ls, currentSyntax, inBlockComment, lineSyntaxColors);
+            scanSyntaxHighlighting(ls, currentSyntax, inBlockComment, lineSyntaxColors, isDarkMode);
         } else {
             lineSyntaxColors.clear();
         }
@@ -5398,9 +5517,15 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             CFRelease(zcf);
             CGColorRelease(zTextCol);
         }
-        if (cbNeedsDisplay) {
+        if (cbNeedsDisplay && toastTimerState && !toastTimerState->pending) {
+            toastTimerState->pending = true;
+            std::shared_ptr<ToastTimerState> st = toastTimerState;
+            auto cb = cbNeedsDisplay;
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                cbNeedsDisplay();
+                st->pending = false;
+                if (st->alive.load() && cb) {
+                    cb();
+                }
             });
         }
     }
@@ -5548,6 +5673,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
 #endif
 
 Editor::~Editor() {
+    if (toastTimerState) toastTimerState->alive.store(false);
     saveCurrentViewState();
 #if defined(__APPLE__)
     if (colBackground) CGColorRelease(colBackground);

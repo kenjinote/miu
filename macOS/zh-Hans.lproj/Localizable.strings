@@ -60,3 +60,5 @@
 "View" = "视图";
 "Tab" = "制表符";
 "No Recent Files" = "无最近使用的文件";
+"Reload" = "重新加载";
+"Failed to save file." = "无法保存文件。";

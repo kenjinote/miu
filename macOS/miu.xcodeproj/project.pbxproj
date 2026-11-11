@@ -18,6 +18,8 @@
 		BABDDE712F49E1D000B3E84A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE702F49E1D000B3E84A /* WebKit.framework */; };
 		BABDDE722F49E1D000B3E84A /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE702F49E1D000B3E84A /* WebKit.framework */; };
 		BABDDE732F49E1CC00B3E84A /* CoreText.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = BABDDE6E2F49E1CC00B3E84A /* CoreText.framework */; };
+		BAA1E1FA2F4AE90000BA3D2C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1F92F4AE90000BA3D2C /* PrivacyInfo.xcprivacy */; };
+		BAA1E1FB2F4AE90000BA3D2C /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = BAA1E1F92F4AE90000BA3D2C /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,6 +62,7 @@
 		BAA1E1F62F4AE80000BA3D2C /* fi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fi; path = fi.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1F72F4AE80000BA3D2C /* nb */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nb; path = nb.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1F82F4AE80000BA3D2C /* ms */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ms; path = ms.lproj/Localizable.strings; sourceTree = "<group>"; };
+		BAA1E1F92F4AE90000BA3D2C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -137,6 +140,7 @@
 			isa = PBXGroup;
 			children = (
 				BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */,
+				BAA1E1F92F4AE90000BA3D2C /* PrivacyInfo.xcprivacy */,
 				BABDDE582F49D3BC00B3E84A /* miu_macOS */,
 				BA4A72FD2F4C1DC90045F2FD /* miu_iOS */,
 				BABDDE6B2F49E1C000B3E84A /* Frameworks */,
@@ -286,6 +290,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BAF7CE7F2F535F4B00447839 /* Localizable.strings in Resources */,
+				BAA1E1FB2F4AE90000BA3D2C /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -294,6 +299,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				BAA1E1DB2F4AE17800BA3D2C /* Localizable.strings in Resources */,
+				BAA1E1FA2F4AE90000BA3D2C /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -363,7 +369,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 54;
+				CURRENT_PROJECT_VERSION = 55;
 				DEVELOPMENT_TEAM = J8HRH6XC73;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
@@ -389,7 +395,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.50;
+				MARKETING_VERSION = 1.0.51;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				SDKROOT = iphoneos;
@@ -405,7 +411,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 54;
+				CURRENT_PROJECT_VERSION = 55;
 				DEVELOPMENT_TEAM = J8HRH6XC73;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
@@ -431,7 +437,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.50;
+				MARKETING_VERSION = 1.0.51;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				SDKROOT = iphoneos;
@@ -566,12 +572,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 54;
+				CURRENT_PROJECT_VERSION = 55;
 				DEVELOPMENT_TEAM = J8HRH6XC73;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
 				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
@@ -601,7 +607,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.50;
+				MARKETING_VERSION = 1.0.51;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				REGISTER_APP_GROUPS = YES;
@@ -617,12 +623,12 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 54;
+				CURRENT_PROJECT_VERSION = 55;
 				DEVELOPMENT_TEAM = J8HRH6XC73;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
-				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = NO;
 				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
 				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
 				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
@@ -652,7 +658,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.50;
+				MARKETING_VERSION = 1.0.51;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				REGISTER_APP_GROUPS = YES;

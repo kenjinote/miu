@@ -60,3 +60,5 @@
 "View" = "檢視";
 "Tab" = "定位鍵";
 "No Recent Files" = "沒有最近使用的檔案";
+"Reload" = "重新載入";
+"Failed to save file." = "無法儲存檔案。";

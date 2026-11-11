@@ -1314,8 +1314,8 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
       }
       case 't': {
         if (ciAt(src, p, "title")) {
-          size_t qi = static_cast<size_t>(p + 5);
-          while (qi < static_cast<size_t>(n) && src[qi] != '\r' && src[qi] != '\n' && isSpaceAtUtf8(src, qi, &qi)) {}
+          size_t qi = static_cast<size_t>(p + 5), nextQi = qi;
+          while (qi < static_cast<size_t>(n) && src[qi] != '\r' && src[qi] != '\n' && isSpaceAtUtf8(src, qi, &nextQi)) { qi = nextQi; }
           int i = static_cast<int>(qi);
           if (i >= n || src[i] == '\r' || src[i] == '\n') {
             p = i;
@@ -1902,7 +1902,7 @@ private:
     if ((tmpl == "x" || tmpl == "X") && !str.empty()) {
       bool allDig = true;
       for (char c : str) if (c < '0' || c > '9') { allDig = false; break; }
-      if (allDig) return checked(GanttDate( std::stod(str) ), str);
+      if (allDig) return checked(GanttDate( safeStod(str, "gantt") ), str);
     }
 
     std::string refList;

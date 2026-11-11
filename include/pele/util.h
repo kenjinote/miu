@@ -722,6 +722,26 @@ public:
         : std::runtime_error(msg), code(code_), type(type_), line(line_), column(col_), snippet(snip_) {}
 };
 
+inline int safeStoi(const std::string& s, const char* type = "") {
+    try {
+        return std::stoi(s);
+    } catch (...) {
+        throw PeleError("Numeric value out of range: " + s, "syntax", type);
+    }
+}
+
+inline double safeStod(const std::string& s, const char* type = "") {
+    try {
+        double v = std::stod(s);
+        if (!std::isfinite(v)) throw PeleError("Non-finite numeric value: " + s, "syntax", type);
+        return v;
+    } catch (const PeleError&) {
+        throw;
+    } catch (...) {
+        throw PeleError("Numeric value out of range: " + s, "syntax", type);
+    }
+}
+
 inline PeleError syntaxError(const std::string& type, const std::string& src, size_t offset, const std::string& detail, bool lexical = false) {
     size_t end = trimEndStr(src).size();
     if (end > 0 && offset >= end) offset = end;

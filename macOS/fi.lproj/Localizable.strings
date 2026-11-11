@@ -60,3 +60,5 @@
 "View" = "Näytä";
 "Tab" = "Sarkain";
 "No Recent Files" = "Ei viimeisimpiä tiedostoja";
+"Reload" = "Lataa uudelleen";
+"Failed to save file." = "Tiedoston tallentaminen epäonnistui.";

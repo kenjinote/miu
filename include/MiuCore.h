@@ -220,20 +220,26 @@ inline std::string Utf8ToUtf16Bytes(const char* data, size_t len, bool isBigEndi
     const unsigned char* end = p + len;
     while (p < end) {
         uint32_t cp = 0;
-        if (*p < 0x80) {
-            cp = *p++;
-        } else if ((*p & 0xE0) == 0xC0 && p + 1 < end) {
-            cp = ((uint32_t)(p[0] & 0x1F) << 6) | (uint32_t)(p[1] & 0x3F);
+        unsigned char c = p[0];
+        if (c < 0x80) {
+            cp = c;
+            p += 1;
+        } else if (c >= 0xC2 && c <= 0xDF && p + 1 < end && (p[1] & 0xC0) == 0x80) {
+            cp = ((uint32_t)(c & 0x1F) << 6) | (uint32_t)(p[1] & 0x3F);
             p += 2;
-        } else if ((*p & 0xF0) == 0xE0 && p + 2 < end) {
-            cp = ((uint32_t)(p[0] & 0x0F) << 12) | ((uint32_t)(p[1] & 0x3F) << 6) | (uint32_t)(p[2] & 0x3F);
+        } else if (c >= 0xE0 && c <= 0xEF && p + 2 < end &&
+                   (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 &&
+                   !(c == 0xE0 && p[1] < 0xA0) && !(c == 0xED && p[1] >= 0xA0)) {
+            cp = ((uint32_t)(c & 0x0F) << 12) | ((uint32_t)(p[1] & 0x3F) << 6) | (uint32_t)(p[2] & 0x3F);
             p += 3;
-        } else if ((*p & 0xF8) == 0xF0 && p + 3 < end) {
-            cp = ((uint32_t)(p[0] & 0x07) << 18) | ((uint32_t)(p[1] & 0x3F) << 12) | ((uint32_t)(p[2] & 0x3F) << 6) | (uint32_t)(p[3] & 0x3F);
+        } else if (c >= 0xF0 && c <= 0xF4 && p + 3 < end &&
+                   (p[1] & 0xC0) == 0x80 && (p[2] & 0xC0) == 0x80 && (p[3] & 0xC0) == 0x80 &&
+                   !(c == 0xF0 && p[1] < 0x90) && !(c == 0xF4 && p[1] >= 0x90)) {
+            cp = ((uint32_t)(c & 0x07) << 18) | ((uint32_t)(p[1] & 0x3F) << 12) | ((uint32_t)(p[2] & 0x3F) << 6) | (uint32_t)(p[3] & 0x3F);
             p += 4;
         } else {
             cp = 0xFFFDu;
-            p++;
+            p += 1;
         }
         if (cp <= 0xFFFFu) {
             appendU16((uint16_t)cp);
@@ -475,7 +481,7 @@ struct PieceTable {
         syncTotalLengthIfNeeded();
         out.clear();
         if (count == 0 || pos >= totalLength) return;
-        if (pos + count > totalLength) count = totalLength - pos;
+        if (count > totalLength - pos) count = totalLength - pos;
         out.reserve(count);
 
         size_t idx = 0, cur = 0;
@@ -539,6 +545,7 @@ struct PieceTable {
     void erase(size_t pos, size_t count) {
         syncTotalLengthIfNeeded();
         if (count == 0 || pos >= totalLength) return;
+        if (count > totalLength - pos) count = totalLength - pos;
         size_t idx = 0, cur = 0;
         if (!locatePiece(pos, idx, cur)) return;
         size_t remaining = count;
@@ -832,41 +839,6 @@ inline bool isWordChar(char c) noexcept {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_' || (unsigned char)c >= 0x80;
 }
 
-inline bool isSafeUserRegex(const std::string& q, size_t maxLen = 1024) noexcept {
-    if (q.empty() || q.size() > maxLen) return false;
-    int parenDepth = 0;
-    bool groupHasQuantifier[64] = {};
-    bool inBracket = false;
-    for (size_t i = 0; i < q.size(); ++i) {
-        char c = q[i];
-        if (c == '\\') { i++; continue; }
-        if (inBracket) {
-            if (c == ']') inBracket = false;
-            continue;
-        }
-        if (c == '[') { inBracket = true; continue; }
-        if (c == '(') {
-            parenDepth++;
-            if (parenDepth >= 32) return false;
-            groupHasQuantifier[parenDepth] = false;
-        } else if (c == ')') {
-            if (parenDepth <= 0) return false;
-            bool hadQ = groupHasQuantifier[parenDepth];
-            parenDepth--;
-            if (parenDepth > 0 && hadQ) groupHasQuantifier[parenDepth] = true;
-            if (i + 1 < q.size()) {
-                char next = q[i + 1];
-                if ((next == '+' || next == '*' || next == '{') && hadQ) {
-                    return false;
-                }
-            }
-        } else if (c == '+' || c == '*' || c == '{') {
-            if (parenDepth > 0) groupHasQuantifier[parenDepth] = true;
-        }
-    }
-    return parenDepth == 0 && !inBracket;
-}
-
 inline bool isUtf8CharBoundary(const std::string& s, size_t pos) noexcept {
     if (pos >= s.size()) return true;
     return (((unsigned char)s[pos]) & 0xC0) != 0x80;
@@ -897,6 +869,211 @@ inline size_t utf8CharLenAt(const PieceTable& pt, size_t pos) noexcept {
         ((unsigned char)pt.charAt(pos + 1) & 0xC0) == 0x80 && ((unsigned char)pt.charAt(pos + 2) & 0xC0) == 0x80 &&
         ((unsigned char)pt.charAt(pos + 3) & 0xC0) == 0x80) return 4;
     return 1;
+}
+
+inline bool isSafeUserRegex(const std::string& q, size_t maxLen = 1024) noexcept {
+    if (q.empty() || q.size() > maxLen) return false;
+    int parenDepth = 0;
+    bool groupHasQuantifier[64] = {};
+    bool groupCanMatchEmpty[64] = {};
+    bool branchHasMandatory[64] = {};
+    bool groupIsLookaround[64] = {};
+    bool groupHasDupAlt[64] = {};
+    struct LitBranch { char bytes[32]; uint8_t len; };
+    LitBranch groupBranches[32][16] = {};
+    uint8_t groupBranchCount[32] = {};
+    LitBranch curLit[32] = {};
+    bool curPureLit[32] = {};
+    bool inBracket = false;
+    size_t bracketStart = 0;
+
+    auto finishLitBranch = [&](int d) noexcept {
+        if (d <= 0 || d >= 32) return;
+        if (curPureLit[d] && curLit[d].len > 0) {
+            const uint8_t n = curLit[d].len;
+            for (uint8_t k = 0; k < groupBranchCount[d]; ++k) {
+                const uint8_t m = groupBranches[d][k].len;
+                const uint8_t common = (n < m) ? n : m;
+                if (common > 0 && std::memcmp(curLit[d].bytes, groupBranches[d][k].bytes, common) == 0) {
+                    groupHasDupAlt[d] = true;
+                    break;
+                }
+            }
+            if (groupBranchCount[d] < 16) {
+                groupBranches[d][groupBranchCount[d]++] = curLit[d];
+            }
+        }
+        curLit[d].len = 0;
+        curPureLit[d] = true;
+    };
+
+    auto isZeroMinQuantifierAt = [&](size_t pos, size_t& skipEnd) noexcept -> bool {
+        skipEnd = pos;
+        if (pos >= q.size()) return false;
+        char qc = q[pos];
+        if (qc == '?' || qc == '*') {
+            skipEnd = pos + 1;
+            if (skipEnd < q.size() && q[skipEnd] == '?') skipEnd++;
+            return true;
+        }
+        if (qc == '{') {
+            size_t k = pos + 1;
+            if (k < q.size() && std::isdigit((unsigned char)q[k])) {
+                int minRep = 0;
+                while (k < q.size() && std::isdigit((unsigned char)q[k])) {
+                    minRep = std::min(100000, minRep * 10 + (q[k] - '0'));
+                    k++;
+                }
+                int maxRep = minRep;
+                if (k < q.size() && q[k] == ',') {
+                    k++;
+                    if (k < q.size() && std::isdigit((unsigned char)q[k])) {
+                        maxRep = 0;
+                        while (k < q.size() && std::isdigit((unsigned char)q[k])) {
+                            maxRep = std::min(100000, maxRep * 10 + (q[k] - '0'));
+                            k++;
+                        }
+                    } else {
+                        maxRep = 100000;
+                    }
+                }
+                if (k < q.size() && q[k] == '}') {
+                    if (maxRep > 1000 || (maxRep < minRep)) return false;
+                    skipEnd = k + 1;
+                    if (skipEnd < q.size() && q[skipEnd] == '?') skipEnd++;
+                    return minRep == 0;
+                }
+            }
+        }
+        return false;
+    };
+
+    for (size_t i = 0; i < q.size(); ++i) {
+        char c = q[i];
+        if (inBracket) {
+            if (c == '\\') {
+                if (i + 1 >= q.size()) return false;
+                i++;
+                continue;
+            }
+            if (c == ']' && !(i == bracketStart + 1 || (i == bracketStart + 2 && q[bracketStart + 1] == '^'))) {
+                inBracket = false;
+                if (parenDepth > 0) {
+                    if (parenDepth < 32) curPureLit[parenDepth] = false;
+                    size_t se = i + 1;
+                    if (!isZeroMinQuantifierAt(i + 1, se)) branchHasMandatory[parenDepth] = true;
+                }
+            }
+            continue;
+        }
+        if (c == '\\') {
+            if (i + 1 >= q.size()) return false;
+            char esc = q[i + 1];
+            i++;
+            if (parenDepth > 0 && parenDepth < 32) curPureLit[parenDepth] = false;
+            if (parenDepth > 0 && esc != 'b' && esc != 'B') {
+                size_t se = i + 1;
+                if (!isZeroMinQuantifierAt(i + 1, se)) branchHasMandatory[parenDepth] = true;
+            }
+            continue;
+        }
+        if (c == '[') {
+            inBracket = true;
+            bracketStart = i;
+            if (parenDepth > 0 && parenDepth < 32) curPureLit[parenDepth] = false;
+            continue;
+        }
+        if (c == '(') {
+            if (parenDepth > 0 && parenDepth < 32) curPureLit[parenDepth] = false;
+            parenDepth++;
+            if (parenDepth >= 32) return false;
+            groupHasQuantifier[parenDepth] = false;
+            groupCanMatchEmpty[parenDepth] = false;
+            branchHasMandatory[parenDepth] = false;
+            groupIsLookaround[parenDepth] = false;
+            groupHasDupAlt[parenDepth] = false;
+            groupBranchCount[parenDepth] = 0;
+            curLit[parenDepth].len = 0;
+            curPureLit[parenDepth] = true;
+            if (i + 2 < q.size() && q[i + 1] == '?' && (q[i + 2] == ':' || q[i + 2] == '=' || q[i + 2] == '!')) {
+                if (q[i + 2] == '=' || q[i + 2] == '!') groupIsLookaround[parenDepth] = true;
+                i += 2;
+            }
+        } else if (c == '|') {
+            if (parenDepth > 0) {
+                finishLitBranch(parenDepth);
+                if (!branchHasMandatory[parenDepth]) groupCanMatchEmpty[parenDepth] = true;
+                branchHasMandatory[parenDepth] = false;
+            }
+        } else if (c == ')') {
+            if (parenDepth <= 0) return false;
+            finishLitBranch(parenDepth);
+            bool hadQ = groupHasQuantifier[parenDepth];
+            bool canEmpty = groupCanMatchEmpty[parenDepth] || !branchHasMandatory[parenDepth] || groupIsLookaround[parenDepth];
+            bool dupAlt = groupHasDupAlt[parenDepth];
+            bool isLook = groupIsLookaround[parenDepth];
+            parenDepth--;
+            if (parenDepth > 0 && hadQ) groupHasQuantifier[parenDepth] = true;
+            if (i + 1 < q.size()) {
+                char next = q[i + 1];
+                if ((next == '+' || next == '*' || next == '{') && (hadQ || canEmpty || dupAlt)) {
+                    return false;
+                }
+            }
+            if (parenDepth > 0 && !isLook && !canEmpty) {
+                size_t se = i + 1;
+                if (!isZeroMinQuantifierAt(i + 1, se)) branchHasMandatory[parenDepth] = true;
+            }
+        } else if (c == '+' || c == '*' || c == '{') {
+            if (parenDepth > 0 && parenDepth < 32) curPureLit[parenDepth] = false;
+            if (c == '{') {
+                size_t k = i + 1;
+                if (k < q.size() && std::isdigit((unsigned char)q[k])) {
+                    int minRep = 0;
+                    while (k < q.size() && std::isdigit((unsigned char)q[k])) {
+                        minRep = std::min(100000, minRep * 10 + (q[k] - '0'));
+                        k++;
+                    }
+                    int maxRep = minRep;
+                    if (k < q.size() && q[k] == ',') {
+                        k++;
+                        if (k < q.size() && std::isdigit((unsigned char)q[k])) {
+                            maxRep = 0;
+                            while (k < q.size() && std::isdigit((unsigned char)q[k])) {
+                                maxRep = std::min(100000, maxRep * 10 + (q[k] - '0'));
+                                k++;
+                            }
+                        }
+                    }
+                    if (k < q.size() && q[k] == '}' && (minRep > 1000 || maxRep > 1000 || maxRep < minRep)) {
+                        return false;
+                    }
+                }
+            }
+            if (parenDepth > 0) groupHasQuantifier[parenDepth] = true;
+        } else if (c == '?') {
+            if (parenDepth > 0 && parenDepth < 32) curPureLit[parenDepth] = false;
+            // Optional / lazy modifier handled via lookahead on preceding atom
+        } else if (c != '^' && c != '$') {
+            if (parenDepth > 0) {
+                size_t uLen = ((unsigned char)c >= 0x80) ? utf8CharLenAt(q, i) : 1;
+                size_t se = i + uLen;
+                bool zMin = isZeroMinQuantifierAt(i + uLen, se);
+                if (!zMin) branchHasMandatory[parenDepth] = true;
+                if (parenDepth < 32) {
+                    if (c == '.' || zMin || curLit[parenDepth].len + uLen > 32) {
+                        curPureLit[parenDepth] = false;
+                    } else if (curPureLit[parenDepth]) {
+                        for (size_t b = 0; b < uLen; ++b) {
+                            curLit[parenDepth].bytes[curLit[parenDepth].len++] = q[i + b];
+                        }
+                    }
+                }
+                if (uLen > 1) i += uLen - 1;
+            }
+        }
+    }
+    return parenDepth == 0 && !inBracket;
 }
 
 inline uint32_t decodeUtf8CodePointAt(const std::string& s, size_t pos, size_t& outLen) noexcept {
@@ -1096,10 +1273,18 @@ inline std::string preprocessRegexQuery(const std::string& query) {
             if (!hasMultiByte) {
                 if (negated && !hasRawHexEscape) {
                     processed += "(?:[^";
-                    processed.append(query, contentStart, closeIdx - contentStart);
+                    if (contentStart < closeIdx && query[contentStart] == ']') {
+                        processed += "\\]";
+                        processed.append(query, contentStart + 1, closeIdx - (contentStart + 1));
+                    } else {
+                        processed.append(query, contentStart, closeIdx - contentStart);
+                    }
                     processed += "\\x80-\\xFF]|";
                     processed += kUtf8MultiByteOnly;
                     processed += ')';
+                } else if (contentStart < closeIdx && query[contentStart] == ']') {
+                    processed += (negated ? "[^\\]" : "[\\]");
+                    processed.append(query, contentStart + 1, closeIdx - (contentStart + 1) + 1);
                 } else {
                     processed.append(query, i, closeIdx - i + 1);
                 }
@@ -1127,7 +1312,10 @@ inline std::string preprocessRegexQuery(const std::string& query) {
                     size_t len2 = 1;
                     uint32_t cp2 = decodeUtf8CodePointAt(query, p + len1 + 1, len2);
                     if (cp1 < 0x80 && cp2 < 0x80) {
-                        asciiPart.append(query, p, len1 + 1 + len2);
+                        if (query[p] == ']') asciiPart += '\\';
+                        asciiPart.append(query, p, len1 + 1);
+                        if (query[p + len1 + 1] == ']') asciiPart += '\\';
+                        asciiPart.append(query, p + len1 + 1, len2);
                     } else {
                         appendCodePointRangeAlternates(cp1, cp2, mbAlts);
                     }
@@ -1135,7 +1323,8 @@ inline std::string preprocessRegexQuery(const std::string& query) {
                     continue;
                 }
                 if (len1 == 1) {
-                    asciiPart += query[p];
+                    if (query[p] == ']') asciiPart += "\\]";
+                    else asciiPart += query[p];
                 } else {
                     std::string seq;
                     for (size_t k = 0; k < len1; ++k) appendRegexHexByte(seq, (unsigned char)query[p + k]);
@@ -1147,6 +1336,7 @@ inline std::string preprocessRegexQuery(const std::string& query) {
             bool firstAlt = true;
             if (!asciiPart.empty()) {
                 posGroup += '[';
+                if (asciiPart[0] == '^') posGroup += '\\';
                 posGroup += asciiPart;
                 posGroup += ']';
                 firstAlt = false;
@@ -1223,6 +1413,17 @@ inline std::string unescapeReplaceString(const std::string& s, const std::string
     return out;
 }
 
+inline bool hasUnescapedTrailingDollar(std::string_view query) noexcept {
+    if (query.empty() || query.back() != '$') return false;
+    size_t bs = 0;
+    size_t idx = query.size() - 1;
+    while (idx > 0 && query[idx - 1] == '\\') {
+        ++bs;
+        --idx;
+    }
+    return (bs & 1u) == 0;
+}
+
 inline std::string adjustCaretGroupReferences(const std::string& rawFmt, bool startsWithCaret) {
     if (!startsWithCaret) return rawFmt;
     std::string fmt;
@@ -1233,15 +1434,18 @@ inline std::string adjustCaretGroupReferences(const std::string& rawFmt, bool st
             if (i + 1 < rawFmt.size()) {
                 if (std::isdigit((unsigned char)rawFmt[i + 1])) {
                     i++;
-                    std::string numStr;
-                    while (i < rawFmt.size() && std::isdigit((unsigned char)rawFmt[i])) {
-                        numStr += rawFmt[i];
+                    int d1 = rawFmt[i] - '0';
+                    if (i + 1 < rawFmt.size() && std::isdigit((unsigned char)rawFmt[i + 1])) {
+                        int grp = d1 * 10 + (rawFmt[i + 1] - '0');
                         i++;
+                        if (grp > 0 && grp < 99) grp++;
+                        if (grp < 10) fmt += '0';
+                        fmt += std::to_string(grp);
+                    } else {
+                        int grp = d1;
+                        if (grp > 0) grp++;
+                        fmt += std::to_string(grp);
                     }
-                    i--;
-                    int grp = std::stoi(numStr);
-                    if (grp > 0) grp++;
-                    fmt += std::to_string(grp);
                 } else {
                     fmt += rawFmt[i + 1];
                     i++;

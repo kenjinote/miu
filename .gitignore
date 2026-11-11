@@ -372,16 +372,21 @@ libced_iOS.a
 /Source_utf8.cpp
 /update_syntax.py
 
-# Microsoft Store & Google Play API credentials
+# Microsoft Store, Google Play & Apple API credentials / signing keys
 scripts/store_credentials.json
 scripts/google_play_service_account.json
 scripts/draft_submission.json
 scripts/test_upload.py
+*credentials*.json
+*service_account*.json
 *.jks
 *.keystore
 *.p8
 *.p12
+*.mobileprovision
 **/local.properties
+Android/.idea/deploymentTargetSelector.xml
+Android/.idea/deploymentTargetDropDown.xml
 /build_screenshots_v2/
 /build_screenshots/
 /build_screenshots_android/

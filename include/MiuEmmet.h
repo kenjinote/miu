@@ -652,12 +652,24 @@ static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>
 
     size_t i = 0;
     size_t n = abbr.size();
+    if (n > 4096) return false;
 
-    auto parseSequence = [&](auto& self, int parentIdx, bool insideGroup) -> bool {
+    auto getTreeDepth = [&](int idx) -> int {
+        int d = 0;
+        while (idx > 0 && idx < (int)pool.size() && d <= 128) {
+            idx = pool[idx].parent;
+            d++;
+        }
+        return d;
+    };
+
+    auto parseSequence = [&](auto& self, int parentIdx, bool insideGroup, int groupDepth) -> bool {
+        if (groupDepth > 64) return false;
         int curParent = parentIdx;
         int prevNode = -1;
 
         while (i < n) {
+            if (pool.size() > 2048 || getTreeDepth(curParent) > 64) return false;
             if (insideGroup && abbr[i] == ')') {
                 return true;
             }
@@ -672,7 +684,7 @@ static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>
                 pool.push_back(grp);
                 pool[curParent].children.push_back(nodeIdx);
 
-                if (!self(self, nodeIdx, true)) return false;
+                if (!self(self, nodeIdx, true, groupDepth + 1)) return false;
                 if (i >= n || abbr[i] != ')') return false;
                 i++;
 
@@ -878,6 +890,7 @@ static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>
                     for (size_t k = numStart; k < lowerTag.size(); ++k) {
                         if (!isAsciiDigit(lowerTag[k])) { allDigits = false; break; }
                         words = words * 10 + (lowerTag[k] - '0');
+                        if (words > 2000) words = 2000;
                     }
                     if (allDigits) {
                         elem.isLorem = true;
@@ -926,7 +939,7 @@ static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>
         return true;
     };
 
-    if (!parseSequence(parseSequence, 0, false)) return false;
+    if (!parseSequence(parseSequence, 0, false, 0)) return false;
     if (i != n) return false;
     return !pool[0].children.empty();
 }
@@ -1127,7 +1140,7 @@ static void applyBemFilter(std::vector<HtmlNode>& pool){
     }
 }
 
-static void renderHtmlTree(
+static bool renderHtmlTree(
     const std::vector<HtmlNode>& pool,
     Mode mode,
     const std::string& baseIndent,
@@ -1137,6 +1150,11 @@ static void renderHtmlTree(
     bool filterComment = false,
     bool filterEscape = false
 ){
+    static constexpr size_t kMaxExpandedNodes = 10000;
+    static constexpr size_t kMaxOutputBytes = 1048576;
+    size_t expandedNodes = 0;
+    bool budgetExceeded = false;
+
     auto addStop = [&](const std::string& placeholder = "") {
         size_t s = out.size();
         out += placeholder;
@@ -1151,16 +1169,23 @@ static void renderHtmlTree(
     };
 
     auto renderNodeList = [&](auto& self, const std::vector<int>& childIndices, int depth, int inheritedIdx, int inheritedTotal, bool multilineSiblings) -> void {
+        if (budgetExceeded) return;
+        if (depth > 64) { budgetExceeded = true; return; }
         bool firstRendered = true;
         bool prevWasInline = false;
         bool prevWasTextOnly = false;
 
         for (size_t ci = 0; ci < childIndices.size(); ++ci) {
+            if (budgetExceeded) return;
             int nodeIdx = childIndices[ci];
             const HtmlNode& node = pool[nodeIdx];
             int repCount = node.repeat;
 
             for (int r = 0; r < repCount; ++r) {
+                if (++expandedNodes > kMaxExpandedNodes || out.size() > kMaxOutputBytes) {
+                    budgetExceeded = true;
+                    return;
+                }
                 int curIdx = node.hasExplicitRepeat ? r : inheritedIdx;
                 int curTotal = node.hasExplicitRepeat ? repCount : inheritedTotal;
 
@@ -1382,6 +1407,11 @@ static void renderHtmlTree(
     }
 
     renderNodeList(renderNodeList, pool[0].children, 0, 0, 1, rootMultiline);
+    if (budgetExceeded || out.size() > kMaxOutputBytes) {
+        out.clear();
+        tabstops.clear();
+        return false;
+    }
 
     if (tabstops.empty() || tabstops.back().endOffset != out.size()) {
         tabstops.push_back({ out.size(), out.size() });
@@ -1405,7 +1435,13 @@ static void renderHtmlTree(
             if (ts.endOffset <= out.size()) ts.endOffset = offsetMap[ts.endOffset];
         }
         out = std::move(esc);
+        if (out.size() > kMaxOutputBytes * 2) {
+            out.clear();
+            tabstops.clear();
+            return false;
+        }
     }
+    return true;
 }
 
 // ============================================================================
@@ -2775,11 +2811,12 @@ inline ExpandResult expandOnLine(
         if (filterBem) {
             applyBemFilter(pool);
         }
-        renderHtmlTree(pool, mode, baseIndent, newlineStr, res.expanded, res.tabstops, filterComment, filterEscape);
-        res.matched = true;
-        res.abbrStartCol = abbrStart;
-        res.abbrLen = rawAbbr.size();
-        return res;
+        if (renderHtmlTree(pool, mode, baseIndent, newlineStr, res.expanded, res.tabstops, filterComment, filterEscape)) {
+            res.matched = true;
+            res.abbrStartCol = abbrStart;
+            res.abbrLen = rawAbbr.size();
+            return res;
+        }
     }
 
     if (mode == Mode::Auto && abbr.size() >= 2) {

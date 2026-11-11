@@ -1776,6 +1776,7 @@ inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>
         if (node.rank > maxRank) maxRank = node.rank;
     }
 
+    for (int ei = 0; ei < m; ei++) if (span[ei] <= 0) direct[ei] = 1;
     int segments = 0;
     for (int ei = 0; ei < m; ei++) if (!direct[ei]) segments += span[ei];
     std::vector<int> EF(segments, 0);
@@ -4397,8 +4398,8 @@ inline StateTokens tokenizeState(const std::string& src) {
                         continue;
                     }
                 } else if (c != 10 && isSpaceAtUtf8(src, static_cast<size_t>(p))) {
-                    size_t j = static_cast<size_t>(p);
-                    while (j < static_cast<size_t>(n) && src[j] != '\n' && isSpaceAtUtf8(src, j, &j)) {}
+                    size_t j = static_cast<size_t>(p), nextJ = j;
+                    while (j < static_cast<size_t>(n) && src[j] != '\n' && isSpaceAtUtf8(src, j, &nextJ)) { j = nextJ; }
                     p = static_cast<int>(j);
                     continue;
                 }
@@ -4552,8 +4553,8 @@ inline StateTokens tokenizeState(const std::string& src) {
 
             case S::STATE: {
                 if (c != 10 && isSpaceAtUtf8(src, static_cast<size_t>(p))) {
-                    size_t j = static_cast<size_t>(p);
-                    while (j < static_cast<size_t>(n) && src[j] != '\n' && isSpaceAtUtf8(src, j, &j)) {}
+                    size_t j = static_cast<size_t>(p), nextJ = j;
+                    while (j < static_cast<size_t>(n) && src[j] != '\n' && isSpaceAtUtf8(src, j, &nextJ)) { j = nextJ; }
                     p = static_cast<int>(j);
                     continue;
                 }

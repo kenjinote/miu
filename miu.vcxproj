@@ -97,6 +97,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>lib</AdditionalLibraryDirectories>
+      <AdditionalOptions>/DEPENDENTLOADFLAG:0x800 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Manifest>
       <EnableDpiAwareness>
@@ -118,6 +119,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>lib</AdditionalLibraryDirectories>
+      <AdditionalOptions>/DEPENDENTLOADFLAG:0x800 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Manifest>
       <EnableDpiAwareness>
@@ -135,7 +137,7 @@
       <StringPooling>true</StringPooling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <ControlFlowGuard>Guard</ControlFlowGuard>
-      <AdditionalOptions>/Gw /Zc:threadSafeInit- /Zc:inline /Brepro %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/Gw /Zc:inline /Brepro %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -149,7 +151,7 @@
       <GenerateDebugInformation>No</GenerateDebugInformation>
       <AdditionalLibraryDirectories>lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib</AdditionalDependencies>
-      <AdditionalOptions>/OPT:ICF=5 /Brepro %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/DEPENDENTLOADFLAG:0x800 /OPT:ICF=5 /Brepro %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Manifest>
       <EnableDpiAwareness>
@@ -167,7 +169,7 @@
       <StringPooling>true</StringPooling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <ControlFlowGuard>Guard</ControlFlowGuard>
-      <AdditionalOptions>/Gw /Zc:threadSafeInit- /Zc:inline /Brepro %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/Gw /Zc:inline /Brepro %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -181,7 +183,7 @@
       <GenerateDebugInformation>No</GenerateDebugInformation>
       <AdditionalLibraryDirectories>lib</AdditionalLibraryDirectories>
       <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib</AdditionalDependencies>
-      <AdditionalOptions>/OPT:ICF=5 /Brepro %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/DEPENDENTLOADFLAG:0x800 /OPT:ICF=5 /Brepro %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Manifest>
       <EnableDpiAwareness>

@@ -1628,6 +1628,7 @@ inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edge
         if (node.rank > maxRank) maxRank = node.rank;
     }
 
+    for (int ei = 0; ei < m; ei++) if (span[ei] <= 0) direct[ei] = 1;
     int segments = 0;
     for (int ei = 0; ei < m; ei++) if (!direct[ei]) segments += span[ei];
     std::vector<int> EF(segments, 0), ET(segments, 0);
@@ -3620,13 +3621,19 @@ inline std::string flowSafeUrl(const std::string& rawUrl) {
     std::string u = sanitizeUrl(rawUrl);
     if (u == "about:blank") return u;
     std::string normalized = replaceAllStr(u, "\\", "/");
+    if (startsWith(normalized, "//")) return "about:blank";
     size_t nl = normalized.find('\n');
     std::string firstLine = nl == std::string::npos ? normalized : normalized.substr(0, nl);
-    size_t lastColon = firstLine.rfind(':');
-    if (lastColon == std::string::npos) return u;
-    std::string protocol = trimStr(toLowerAscii(firstLine.substr(0, lastColon + 1)));
+    size_t firstColon = std::string::npos;
+    for (size_t i = 0; i < firstLine.size(); i++) {
+        char c = firstLine[i];
+        if (c == '/' || c == '?' || c == '#') break;
+        if (c == ':') { firstColon = i; break; }
+    }
+    if (firstColon == std::string::npos) return u;
+    std::string protocol = trimStr(toLowerAscii(firstLine.substr(0, firstColon + 1)));
     if (protocol == "http:" || protocol == "https:") {
-        size_t pos = lastColon + 1;
+        size_t pos = firstColon + 1;
         while (pos < normalized.size() && normalized[pos] == '/') pos++;
         size_t hostStart = pos;
         while (pos < normalized.size() && normalized[pos] != '/' && normalized[pos] != '?' && normalized[pos] != '#') pos++;
@@ -3636,7 +3643,10 @@ inline std::string flowSafeUrl(const std::string& rawUrl) {
         if (rest.empty() || rest[0] != '/') rest = "/" + rest;
         return protocol + "//" + host + rest;
     }
-    return normalized;
+    if (protocol == "mailto:" || protocol == "tel:") {
+        return normalized;
+    }
+    return "about:blank";
 }
 
 class FlowDb : public DiagramMeta {
@@ -3962,7 +3972,8 @@ public:
             out.push_back(text[i]);
             if (text[i] == '\n') {
                 i++;
-                while (i < text.size() && text[i] != '\n' && isSpaceAtUtf8(text, i, &i)) {}
+                size_t nextI = i;
+                while (i < text.size() && text[i] != '\n' && isSpaceAtUtf8(text, i, &nextI)) { i = nextI; }
             } else {
                 i++;
             }

@@ -463,7 +463,7 @@ inline GitGraphAst parseGit(const std::string& src) {
       st.name = parseName();
       if (accept(TokKind::order)) {
         if (kind() == static_cast<int>(TokKind::intTok)) {
-          st.order = std::stoi(take());
+          st.order = safeStoi(take(), "gitGraph");
         }
       }
       endOfLine();

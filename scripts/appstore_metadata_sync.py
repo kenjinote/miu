@@ -13,7 +13,7 @@ import jwt
 import requests
 
 BUNDLE_ID = "jp.hack.miu"
-TARGET_VERSION = "1.0.50"
+TARGET_VERSION = "1.0.51"
 BASE_URL = "https://api.appstoreconnect.apple.com/v1"
 
 # ============================================================================
@@ -48,11 +48,11 @@ UTF-8やShift_JIS、EUC-JPなど、さまざまな文字コードを自動で判
 miuが、あなたの「書く時間」を少しでも快適にするお手伝いができれば幸いです。"""
 
 JA_WHATS_NEW = """いつも miu をご利用いただきありがとうございます。
-v1.0.50 では、シンタックスハイライト＆コメント切替エンジンを大幅に拡充し、全65言語カテゴリ（230種類以上の拡張子・設定ファイル）に対応しました。
+v1.0.51 では、ライブプレビューのオフライン保護強化、シンタックスハイライト＆Mermaid図表エンジンの精度向上、およびファイル保存の安全性改善を実施しました。
 
-・Lisp 系言語のフルサポートを追加：Common Lisp (.lisp, .lsp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .cljs, .edn)、Hy、Fennel、Janet のハイライトと行コメント切替（;）、ブロックコメント（#| ... |#）に対応しました。
-・アセンブリ言語（Assembly）の大幅強化：x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS、WebAssembly (.wat, .wast) の命令・レジスタ・ディレクティブに対応しました。
-・15種類の新規言語と70種以上の拡張子・設定ファイルを追加：Objective-C/C++ (.m, .mm)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D言語、Pascal/Delphi、Ada、Prolog、Vimscript、Nix、Apple Metal (.metal)、BUILD、Gemfile、.gitignore、.editorconfig 等に対応しました。"""
+・ライブプレビューのオフライン分離・セキュリティ強化：Markdown / HTML / SVG / Mermaid / LaTeX プレビューに厳格なオフライン保護（CSP・外部通信遮断・HTMLサニタイズ・タスクリスト切替の暗号トークン検証）を適用し、「<」で始まるテキストファイルの安全なエスケープ表示と長文強調記法の高速描画を改善しました。
+・シンタックスハイライト＆Mermaid図表エンジンの精度向上：全65言語カテゴリにおけるブロックコメントや Python 三重引用符の解析、CRLF 改行を含む未閉鎖 Markdown コードブロックの高速ハイライト、および Mermaid（stateDiagram-v2 複合状態・block-beta・各種チャート）の描画安定性を強化しました。
+・安全なファイル保存と多言語対応の改善：アトミック保存と安全なメモリマップ更新による上書き保存時のデータ保護強化、外部変更検出時の「再読み込み」ローカライズ改善、およびプライバシーマニフェスト対応を行いました。"""
 
 EN_DESC = """miu is a simple, lightweight text and code editor designed to make everything from quick daily notes to Markdown writing and programming feel effortless.
 
@@ -81,11 +81,11 @@ No ads, no tracking, and no data collection. Everything works 100% offline on yo
 Whether you use it as an everyday notepad or a reliable code editor, we hope miu makes your writing time a little more enjoyable."""
 
 EN_WHATS_NEW = """Thank you for using miu.
-Version 1.0.50 expands syntax highlighting and comment toggling to 65 language categories (over 230 file extensions, build files, and dotfiles):
+Version 1.0.51 brings stronger offline security for Live Preview, higher precision across syntax highlighting and Mermaid diagrams, and safer file saving:
 
-• Full Lisp Family Support: Added syntax highlighting, ';' line comment toggling, and '#| ... |#' block comments for Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel, and Janet.
-• Major Assembly Enhancements: Expanded highlighting for x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS directives, and WebAssembly Text Format (.wat, .wast).
-• 15 New Languages & 70+ Extensions/Dotfiles: Added Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, and more."""
+• Live Preview Offline Isolation & Security: Enforced strict offline Content Security Policy (CSP), external network blocking, HTML/URL sanitization, and per-session cryptographic verification for task-list checkboxes, along with safe display of plain-text files starting with '<' and fast linear-time Markdown emphasis parsing.
+• Syntax Highlighting & Mermaid Precision: Improved Python triple-quoted strings and block-comment progression across all 65 language categories, fast highlighting for unclosed CRLF Markdown code fences, refined Prolog, Rust, F#, and Haskell token rules, and improved Mermaid stateDiagram-v2 composite states, block-beta layouts, and charts.
+• Safer File Saving & Reliability: Enhanced atomic file saving with safe memory-map remapping, localized external file modification "Reload" prompts, and bundled Privacy Manifest metadata."""
 
 ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无论是记录日常随笔、撰写 Markdown 文档，还是编写程序代码，都能为您提供舒适顺畅的书写体验。
 
@@ -114,11 +114,11 @@ ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无�
 无论是作为日常便签，还是得力的代码编辑器，希望 miu 能陪伴您度过每一段愉快的书写时光。"""
 
 ZH_HANS_WHATS_NEW = """感谢您使用 miu。
-v1.0.50 大幅扩展了语法高亮与注释切换引擎，现已支持 65 种语言类别（超过 230 种扩展名与配置文件）：
+v1.0.51 强化了实时预览的离线安全保护，提升了语法高亮与 Mermaid 图表引擎精度，并优化了文件保存的可靠性：
 
-・新增 Lisp 系列语言完整支持：支持 Common Lisp (.lisp, .lsp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .cljs, .edn)、Hy、Fennel、Janet 的语法高亮、`;` 行注释切换与 `#| ... |#` 块注释。
-・全面强化汇编语言 (Assembly) 支持：涵盖 x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS 以及 WebAssembly 文本格式 (.wat, .wast)。
-・新增 15 种编程语言及 70 余种扩展名：新增 Objective-C/C++ (.m, .mm)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D 语言、Pascal/Delphi、Ada、Prolog、Vimscript、Nix、Apple Metal (.metal)、BUILD、Gemfile、.gitignore、.editorconfig 等支持。"""
+・实时预览完全离线隔离与安全加固：为 Markdown / HTML / SVG / Mermaid / LaTeX 预览启用严格的离线安全策略（CSP）、外部网络请求拦截、HTML/URL 过滤与任务列表勾选加密令牌校验，支持安全显示以 `<` 开头的纯文本文件并提升长文本解析速度。
+・语法高亮与 Mermaid 图表精度提升：优化全部 65 种语言类别的块注释与 Python 三引号识别、包含 CRLF 换行的未闭合 Markdown 代码块高速高亮，并增强 Mermaid（stateDiagram-v2 复合状态、block-beta 与数值图表）的渲染稳定性。
+・安全的文件保存与本地化改进：增强原子化文件保存与内存映射安全更新机制，完善外部文件修改“重新加载”多语言提示及隐私清单支持。"""
 
 ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器。無論是記錄日常隨手筆記、撰寫 Markdown 文章，還是編寫程式碼，都能為您帶來舒適順暢的書寫體驗。
 
@@ -147,11 +147,11 @@ ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器�
 無論是作為日常記事本，還是可靠的程式碼編輯器，希望 miu 能讓您的書寫時光更加愉快。"""
 
 ZH_HANT_WHATS_NEW = """感謝您使用 miu。
-v1.0.50 大幅擴充了語法突顯與註解切換引擎，現已支援 65 種語言類別（超過 230 種副檔名與設定檔）：
+v1.0.51 強化了即時預覽的離線安全保護，提升了語法突顯與 Mermaid 圖表引擎精準度，並最佳化了檔案儲存的可靠性：
 
-・新增 Lisp 系列語言完整支援：支援 Common Lisp (.lisp, .lsp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .cljs, .edn)、Hy、Fennel、Janet 的語法突顯、`;` 行註解切換與 `#| ... |#` 區塊註解。
-・全面強化組合語言 (Assembly) 支援：涵蓋 x86/x64 (SSE/AVX/AVX-512)、ARM/AArch64、RISC-V、MIPS、NASM/MASM/GAS 以及 WebAssembly 文字格式 (.wat, .wast)。
-・新增 15 種程式語言及 70 餘種副檔名：新增 Objective-C/C++ (.m, .mm)、Groovy/Gradle/Jenkinsfile、OCaml/SML/ReScript、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D 語言、Pascal/Delphi、Ada、Prolog、Vimscript、Nix、Apple Metal (.metal)、BUILD、Gemfile、.gitignore、.editorconfig 等支援。"""
+・即時預覽完全離線隔離與安全加固：為 Markdown / HTML / SVG / Mermaid / LaTeX 預覽啟用嚴格的離線安全原則（CSP）、外部網路請求攔截、HTML/URL 過濾與工作清單核取加密權杖驗證，支援安全顯示以 `<` 開頭的純文字檔並提升長文本解析速度。
+・語法突顯與 Mermaid 圖表精準度提升：最佳化全部 65 種語言類別的區塊註解與 Python 三引號識別、包含 CRLF 換行的未閉合 Markdown 程式碼區塊高速突顯，並增強 Mermaid（stateDiagram-v2 複合狀態、block-beta 與數值圖表）的渲染穩定性。
+・安全的檔案儲存與在地化改進：增強原子化檔案儲存與記憶體映射安全更新機制，完善外部檔案修改「重新載入」多語言提示及隱私權資訊清單支援。"""
 
 KO_DESC = """miu는 일상의 가벼운 메모부터 Markdown 글쓰기, 프로그래밍까지 편안하게 사용할 수 있는 심플한 텍스트 및 코드 에디터입니다.
 
@@ -181,11 +181,11 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 등 다양한 문자 인코딩을 자동으로 
 miu가 당신의 글쓰기 시간을 조금 더 기분 좋게 만들어 드릴 수 있기를 바랍니다."""
 
 KO_WHATS_NEW = """언제나 miu를 이용해 주셔서 감사합니다.
-v1.0.50에서는 구문 강조 및 주석 토글 엔진을 대폭 확장하여 총 65개 언어 카테고리(230종 이상의 확장자 및 설정 파일)를 지원합니다.
+v1.0.51에서는 실시간 미리보기 오프라인 보안 강화, 구문 강조 및 Mermaid 다이어그램 정밀도 향상, 그리고 안전한 파일 저장 개선을 진행했습니다.
 
-・Lisp 계열 언어 완벽 지원 추가: Common Lisp(.lisp, .lsp, .cl), Emacs Lisp(.el), Scheme(.scm), Racket(.rkt), Clojure(.clj, .cljs, .edn), Hy, Fennel, Janet의 구문 강조 및 ';' 줄 주석 토글, '#| ... |#' 블록 주석을 지원합니다.
-・어셈블리어(Assembly) 대폭 강화: x86/x64(SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS 및 WebAssembly(.wat, .wast)를 지원합니다.
-・15종의 신규 언어 및 70종 이상의 확장자·설정 파일 추가: Objective-C/C++(.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D 언어, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal(.metal), BUILD, Gemfile, .gitignore, .editorconfig 등을 지원합니다."""
+・실시간 미리보기 오프라인 격리 및 보안 강화: Markdown / HTML / SVG / Mermaid / LaTeX 미리보기에 엄격한 오프라인 보안 정책(CSP·외부 네트워크 차단·HTML 살균·체크리스트 암호화 토큰 검증)을 적용하고, '<'로 시작하는 일반 텍스트 파일의 안전한 표시 및 긴 문서 인라인 강조 고속 파싱을 지원합니다.
+・구문 강조 및 Mermaid 다이어그램 정밀도 향상: 65개 언어 카테고리의 블록 주석 및 Python 삼중 따옴표 인식 개선, CRLF 개행을 포함한 미종결 Markdown 코드 블록 고속 강조, Mermaid(stateDiagram-v2 복합 상태·block-beta·차트) 렌더링 안정성을 강화했습니다.
+・안전한 파일 저장 및 다국어 개선: 원자적 파일 저장 및 안전한 메모리 맵 갱신으로 데이터 보호를 강화하고 외부 파일 변경 시 '다시 불러오기' 다국어 번역 및 개인정보 보호 매니페스트 지원을 보강했습니다."""
 
 DE_DESC = """miu ist ein schlichter, leichtgewichtiger Text- und Code-Editor, mit dem alltägliche Notizen, Markdown-Texte und Programmierarbeiten gleichermaßen angenehm von der Hand gehen.
 
@@ -214,11 +214,11 @@ Keine Werbung, kein Tracking und keine Datenübertragung. Alle Funktionen arbeit
 Ob als täglicher Notizblock oder als verlässlicher Code-Editor – wir hoffen, dass miu Ihnen das Schreiben jeden Tag ein Stück angenehmer macht."""
 
 DE_WHATS_NEW = """Vielen Dank, dass Sie miu nutzen.
-Version 1.0.50 erweitert die Syntaxhervorhebung und Kommentar-Umschaltung auf 65 Sprachkategorien (über 230 Dateierweiterungen und Konfigurationsdateien):
+Version 1.0.51 verbessert die Offline-Sicherheit der Live-Vorschau, die Präzision der Syntaxhervorhebung und Mermaid-Diagramme sowie die Zuverlässigkeit beim Speichern:
 
-• Vollständige Unterstützung für Lisp-Sprachen: Syntaxhervorhebung, Zeilenkommentare (;) und Blockkommentare (#| ... |#) für Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel und Janet.
-• Erweiterte Assembler-Unterstützung (Assembly): x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS und WebAssembly (.wat, .wast).
-• 15 neue Sprachen & 70+ Erweiterungen: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig u. v. m."""
+• Offline-Isolierung & Sicherheit der Live-Vorschau: Strenge Offline-CSP, Blockierung externer Netzwerkzugriffe, HTML/URL-Bereinigung und kryptografische Prüfung für Aufgabenlisten sowie sichere Darstellung von Textdateien mit führendem „<“ und schnelles Markdown-Parsing.
+• Präzisere Syntaxhervorhebung & Mermaid-Diagramme: Verbesserte Erkennung von Python-Dreifach-Anführungszeichen und Blockkommentaren in allen 65 Sprachkategorien, schnelles Highlighting offener CRLF-Markdown-Codeblöcke sowie stabilere Mermaid-Diagramme (stateDiagram-v2, block-beta).
+• Sicheres Speichern & Zuverlässigkeit: Verbessertes atomares Speichern mit sicherem Memory-Mapping, lokalisierte Hinweise zum Neuladen extern geänderter Dateien und aktualisiertes Datenschutzmanifest."""
 
 FR_DESC = """miu est un éditeur de texte et de code simple et léger, conçu pour rendre aussi agréables la prise de notes quotidienne, la rédaction en Markdown et la programmation.
 
@@ -247,11 +247,11 @@ Aucune publicité, aucun suivi et aucune collecte de données. Tout fonctionne �
 Comme bloc-notes de tous les jours ou comme éditeur de code fiable, nous espérons que miu rendra vos moments d’écriture plus agréables."""
 
 FR_WHATS_NEW = """Merci d’utiliser miu.
-La version 1.0.50 étend la coloration syntaxique et le basculement des commentaires à 65 catégories de langages (plus de 230 extensions et fichiers de configuration) :
+La version 1.0.51 renforce la sécurité hors ligne de l’aperçu en direct, la précision de la coloration syntaxique et des diagrammes Mermaid ainsi que la fiabilité d’enregistrement :
 
-• Prise en charge complète de la famille Lisp : coloration syntaxique, commentaires de ligne (;) et de bloc (#| ... |#) pour Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel et Janet.
-• Améliorations majeures pour l’Assembleur : support étendu pour x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS et WebAssembly (.wat, .wast).
-• 15 nouveaux langages et plus de 70 extensions : Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, etc."""
+• Isolation hors ligne et sécurité de l’aperçu en direct : politique CSP stricte hors ligne, blocage des requêtes réseau externes, assainissement HTML/URL, vérification cryptographique des listes de tâches, affichage sûr des fichiers texte commençant par « < » et analyse Markdown rapide.
+• Précision syntaxique et Mermaid : meilleure gestion des triples guillemets Python et commentaires de bloc dans les 65 catégories de langages, coloration rapide des blocs Markdown CRLF non fermés et stabilité accrue des diagrammes Mermaid (stateDiagram-v2, block-beta).
+• Enregistrement sécurisé et fiabilité : sauvegarde atomique améliorée avec remappage mémoire sûr, localisation des invites de rechargement de fichiers modifiés et manifeste de confidentialité intégré."""
 
 ES_DESC = """miu es un editor de texto y código sencillo y ligero, pensado para que desde tus notas rápidas del día a día hasta la escritura en Markdown y la programación resulten cómodas y agradables.
 
@@ -280,11 +280,11 @@ Sin anuncios, sin rastreo y sin envío de datos. Todo funciona 100 % sin conexi�
 Ya sea como tu bloc de notas diario o como un editor de código de confianza, esperamos que miu haga más agradable tu tiempo de escritura."""
 
 ES_WHATS_NEW = """Gracias por usar miu.
-La versión 1.0.50 amplía el resaltado de sintaxis y la alternancia de comentarios a 65 categorías de lenguajes (más de 230 extensiones y archivos de configuración):
+La versión 1.0.51 refuerza la seguridad sin conexión de la Vista Previa, mejora la precisión del resaltado de sintaxis y los diagramas Mermaid, y aumenta la seguridad al guardar archivos:
 
-• Soporte completo para la familia Lisp: resaltado de sintaxis, comentarios de línea (;) y de bloque (#| ... |#) para Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel y Janet.
-• Mejoras importantes para ensamblador (Assembly): soporte para x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS y WebAssembly (.wat, .wast).
-• 15 nuevos lenguajes y más de 70 extensiones: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig y más."""
+• Aislamiento sin conexión y seguridad en Vista Previa: política CSP estricta sin conexión, bloqueo de red externa, saneamiento HTML/URL, verificación criptográfica en listas de tareas, visualización segura de archivos que comienzan con '<' y análisis rápido de Markdown.
+• Precisión en sintaxis y Mermaid: mejoras en comillas triples de Python y comentarios de bloque en las 65 categorías de lenguajes, resaltado rápido de bloques Markdown CRLF sin cerrar y mayor estabilidad en Mermaid (stateDiagram-v2, block-beta).
+• Guardado seguro y fiabilidad: guardado atómico mejorado con remapeo seguro en memoria, avisos traducidos al recargar archivos modificados externamente y manifiesto de privacidad incluido."""
 
 IT_DESC = """miu è un editor di testo e codice semplice e leggero, pensato per rendere piacevole ogni attività: dagli appunti quotidiani alla scrittura in Markdown, fino alla programmazione.
 
@@ -313,11 +313,11 @@ Nessuna pubblicità, nessun tracciamento e nessuna raccolta dati. Tutto funziona
 Come blocco note quotidiano o come affidabile editor di codice, speriamo che miu renda più piacevole il tuo tempo dedicato alla scrittura."""
 
 IT_WHATS_NEW = """Grazie per aver scelto miu.
-La versione 1.0.50 estende l’evidenziazione della sintassi e i commenti a 65 categorie di linguaggi (oltre 230 estensioni e file di configurazione):
+La versione 1.0.51 potenzia la sicurezza offline dell’Anteprima dal vivo, la precisione della sintassi e dei diagrammi Mermaid e l’affidabilità del salvataggio:
 
-• Supporto completo per la famiglia Lisp: evidenziazione della sintassi, commenti su riga (;) e a blocco (#| ... |#) per Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel e Janet.
-• Importanti miglioramenti per Assembly: supporto esteso per x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS e WebAssembly (.wat, .wast).
-• 15 nuovi linguaggi e oltre 70 estensioni: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig e altro."""
+• Isolamento offline e sicurezza dell’Anteprima: CSP offline rigorosa, blocco delle connessioni esterne, sanificazione HTML/URL, verifica crittografica per le liste di attività, visualizzazione sicura dei file di testo che iniziano con '<' e analisi Markdown veloce.
+• Precisione di sintassi e Mermaid: migliorata la gestione delle triple virgolette Python e dei commenti a blocco nelle 65 categorie di linguaggi, evidenziazione rapida dei blocchi Markdown CRLF aperti e maggiore stabilità per Mermaid (stateDiagram-v2, block-beta).
+• Salvataggio sicuro e affidabilità: salvataggio atomico con rimappatura sicura della memoria, avvisi localizzati di ricaricamento file e manifesto sulla privacy aggiornato."""
 
 PT_DESC = """O miu é um editor de texto e código simples e leve, criado para tornar desde as suas anotações diárias até a escrita em Markdown e a programação muito mais confortáveis.
 
@@ -346,11 +346,11 @@ Sem anúncios, sem rastreamento e sem coleta de dados. Tudo funciona 100% offlin
 Seja como seu bloco de notas do dia a dia ou como um editor de código confiável, esperamos que o miu torne o seu momento de escrever ainda mais agradável."""
 
 PT_WHATS_NEW = """Obrigado por usar o miu.
-A versão 1.0.50 expande o destaque de sintaxe e a alternância de comentários para 65 categorias de linguagens (mais de 230 extensões e arquivos de configuração):
+A versão 1.0.51 reforça a segurança offline da Pré-visualização ao vivo, aprimora a precisão de sintaxe e diagramas Mermaid e torna o salvamento de arquivos ainda mais seguro:
 
-• Suporte completo para a família Lisp: destaque de sintaxe, comentários de linha (;) e de bloco (#| ... |#) para Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel e Janet.
-• Grandes melhorias para Assembly: suporte expandido para x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS e WebAssembly (.wat, .wast).
-• 15 novas linguagens e mais de 70 extensões: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig e muito mais."""
+• Isolamento offline e segurança na Pré-visualização: CSP offline rigorosa, bloqueio de conexões externas, sanitização de HTML/URL, verificação criptográfica em listas de tarefas, exibição segura de textos iniciados por '<' e análise rápida de Markdown.
+• Precisão de sintaxe e Mermaid: melhor detecção de aspas triplas em Python e comentários de bloco nas 65 categorias de linguagens, destaque rápido em blocos Markdown CRLF abertos e maior estabilidade em Mermaid (stateDiagram-v2, block-beta).
+• Salvamento seguro e confiabilidade: gravação atômica aprimorada com remapeamento seguro de memória, avisos traduzidos ao recarregar arquivos modificados externamente e manifesto de privacidade atualizado."""
 
 RU_DESC = """miu — это простой и лёгкий текстовый и кодовый редактор, созданный для комфортной работы: от быстрых повседневных заметок и текстов в Markdown до программирования.
 
@@ -379,11 +379,11 @@ RU_DESC = """miu — это простой и лёгкий текстовый и
 В качестве ежедневного блокнота или надёжного редактора кода — надеемся, что miu сделает вашу работу с текстом ещё приятнее."""
 
 RU_WHATS_NEW = """Спасибо, что пользуетесь miu.
-В версии 1.0.50 подсветка синтаксиса и переключение комментариев расширены до 65 категорий языков (более 230 расширений и файлов конфигурации):
+В версии 1.0.51 усилена офлайн-защита предпросмотра, повышена точность подсветки синтаксиса и диаграмм Mermaid, а также улучшена надёжность сохранения файлов:
 
-• Полная поддержка семейства Lisp: подсветка синтаксиса, строчные (;) и блочные (#| ... |#) комментарии для Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel и Janet.
-• Масштабное обновление поддержки Assembly: x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS и WebAssembly (.wat, .wast).
-• 15 новых языков и более 70 расширений: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig и др."""
+• Офлайн-изоляция и безопасность предпросмотра: строгая политика CSP, блокировка внешних сетевых запросов, очистка HTML/URL, криптографическая проверка чекбоксов задач, безопасное отображение файлов с начальным символом «<» и быстрый разбор Markdown.
+• Точность подсветки синтаксиса и Mermaid: улучшена обработка тройных кавычек Python и блочных комментариев во всех 65 категориях языков, быстрая подсветка незакрытых блоков кода Markdown (CRLF) и стабильность Mermaid (stateDiagram-v2, block-beta).
+• Надёжное сохранение файлов: атомарная запись с безопасным обновлением памяти, локализация уведомления о перезагрузке изменённых файлов и обновлённый манифест конфиденциальности."""
 
 NL_DESC = """miu is een eenvoudige, lichtgewicht tekst- en code-editor waarmee u prettig werkt aan dagelijkse notities, Markdown-documenten en programmeerprojecten.
 
@@ -412,11 +412,11 @@ Geen advertenties, geen tracking en geen gegevensverzameling. Alles werkt 100% o
 Of u miu nu gebruikt als dagelijks notitieblok of als betrouwbare code-editor, we hopen dat het uw schrijfmomenten net wat aangenamer maakt."""
 
 NL_WHATS_NEW = """Bedankt voor het gebruiken van miu.
-Versie 1.0.50 breidt syntaxmarkering en commentaar-schakeling uit naar 65 taalcategorieën (meer dan 230 bestandsextensies en configuratiebestanden):
+Versie 1.0.51 verbetert de offline beveiliging van Live Voorbeeld, verhoogt de nauwkeurigheid van syntaxmarkering en Mermaid-diagrammen en maakt het opslaan van bestanden nog betrouwbaarder:
 
-• Volledige ondersteuning voor de Lisp-taalfamilie: syntaxmarkering, regelcommentaar (;) en blokcommentaar (#| ... |#) voor Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel en Janet.
-• Uitgebreide ondersteuning voor Assembly: x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS en WebAssembly (.wat, .wast).
-• 15 nieuwe talen en 70+ extensies: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig en meer."""
+• Offline isolatie en beveiliging van Live Voorbeeld: strikte offline CSP, blokkering van externe netwerkverzoeken, HTML/URL-opschoning, cryptografische verificatie voor takenlijsten, veilige weergave van tekstbestanden beginnend met '<' en snelle Markdown-verwerking.
+• Nauwkeurigere syntaxmarkering & Mermaid: verbeterde verwerking van driedubbele aanhalingstekens in Python en blokcommentaar in alle 65 taalcategorieën, snelle markering van ongesloten CRLF Markdown-codeblokken en stabielere Mermaid-diagrammen (stateDiagram-v2, block-beta).
+• Veilig opslaan & betrouwbaarheid: atomair opslaan met veilige geheugenmapping, vertaalde meldingen bij extern gewijzigde bestanden en bijgewerkt privacymanifest."""
 
 SV_DESC = """miu är en enkel och lättviktig text- och kodredigerare som gör allt från dagliga anteckningar till Markdown-skrivande och programmering bekvämt och smidigt.
 
@@ -445,11 +445,11 @@ Inga annonser, ingen spårning och ingen datainsamling. Allt fungerar 100 % offl
 Som dagligt anteckningsblock eller pålitlig kodredigerare – vi hoppas att miu gör din skrivstund lite trevligare."""
 
 SV_WHATS_NEW = """Tack för att du använder miu.
-Version 1.0.50 utökar syntaxmarkering och kommentarsväxling till 65 språkkategorier (över 230 filändelser och konfigurationsfiler):
+Version 1.0.51 stärker offlinesäkerheten i Live-förhandsgranskning, förbättrar precisionen i syntaxmarkering och Mermaid-diagram samt gör filsparning ännu tryggare:
 
-• Fullt stöd för Lisp-språkfamiljen: syntaxmarkering, radkommentarer (;) och blockkommentarer (#| ... |#) för Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel och Janet.
-• Stora förbättringar för Assembly: utökat stöd för x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS och WebAssembly (.wat, .wast).
-• 15 nya språk och 70+ filändelser: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig m.fl."""
+• Offlineisolering och säkerhet i förhandsgranskningen: strikt offline-CSP, blockering av externa nätverksanrop, HTML/URL-sanering, kryptografisk kontroll för uppgiftslistor, säker visning av textfiler som börjar med '<' och snabb Markdown-tolkning.
+• Högre precision i syntax och Mermaid: bättre hantering av trippelcitat i Python och blockkommentarer i alla 65 språkkategorier, snabb markering av oavslutade CRLF Markdown-kodblock och stabilare Mermaid-diagram (stateDiagram-v2, block-beta).
+• Säker filsparning och tillförlitlighet: atomär sparning med säker minnesmappning, översatta omladdningsdialoger vid externa filändringar och uppdaterat integritetsmanifest."""
 
 DA_DESC = """miu er en enkel og let tekst- og kodeeditor, der gør alt fra daglige noter til Markdown-skrivning og programmering behageligt og ubesværet.
 
@@ -478,11 +478,11 @@ Ingen reklamer, ingen sporing og ingen dataindsamling. Alt fungerer 100 % offlin
 Uanset om du bruger miu som daglig notesblok eller som kodeeditor, håber vi, at den gør din skrivetid lidt mere behagelig."""
 
 DA_WHATS_NEW = """Tak fordi du bruger miu.
-Version 1.0.50 udvider syntaksfremhævning og kommentarskift til 65 sprogkategorier (over 230 filtyper og konfigurationsfiler):
+Version 1.0.51 styrker offlinesikkerheden i Live-forhåndsvisning, forbedrer præcisionen i syntaksfremhævning og Mermaid-diagrammer og gør fillagring endnu mere sikker:
 
-• Fuld understøttelse af Lisp-sprogfamilien: syntaksfremhævning, linjekommentarer (;) og blokkommentarer (#| ... |#) til Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel og Janet.
-• Store forbedringer til Assembly: udvidet understøttelse af x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS og WebAssembly (.wat, .wast).
-• 15 nye sprog og 70+ filtyper: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig m.fl."""
+• Offlineisolering og sikkerhed i forhåndsvisning: striks offline-CSP, blokering af eksterne netværkskald, HTML/URL-rensning, kryptografisk kontrol af opgavelister, sikker visning af tekstfiler der starter med '<' og hurtig Markdown-analyse.
+• Præcision i syntaks og Mermaid: forbedret håndtering af tredobbelte anførselstegn i Python og blokkommentarer i alle 65 sprogkategorier, hurtig fremhævning af uafsluttede CRLF Markdown-kodeblokke samt mere stabile Mermaid-diagrammer (stateDiagram-v2, block-beta).
+• Sikker lagring og pålidelighed: atomisk fillagring med sikker hukommelsesmapning, oversatte genindlæsningsbeskeder og opdateret privatlivsmanifest."""
 
 NO_DESC = """miu er et enkelt og lett tekst- og koderedigeringsprogram som gjør alt fra daglige notater til Markdown-skriving og programmering behagelig og uanstrengt.
 
@@ -511,11 +511,11 @@ Ingen reklame, ingen sporing og ingen datainnsamling. Alt fungerer 100 % offline
 Enten du bruker miu som daglig notisblokk eller som en pålitelig kodeeditor, håper vi den gjør skrivetiden din litt hyggeligere."""
 
 NO_WHATS_NEW = """Takk for at du bruker miu.
-Versjon 1.0.50 utvider syntaksutheving og kommentuveksling til 65 språkkategorier (over 230 filtyper og konfigurasjonsfiler):
+Versjon 1.0.51 styrker offlinesikkerheten i direkte forhåndsvisning, gir høyere presisjon i syntaksutheving og Mermaid-diagrammer og gjør fillagring enda tryggere:
 
-• Full støtte for Lisp-språkfamilien: syntaksutheving, linjekommentarer (;) og blokkommentarer (#| ... |#) for Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel og Janet.
-• Store forbedringer for Assembly: utvidet støtte for x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS og WebAssembly (.wat, .wast).
-• 15 nye språk og 70+ filtyper: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig m.m."""
+• Offlineisolering og sikkerhet i forhåndsvisning: streng offline-CSP, blokkering av eksterne nettverkskall, HTML/URL-rensing, kryptografisk bekreftelse for oppgavelister, trygg visning av tekstfiler som starter med «<» og rask Markdown-analyse.
+• Presisjon i syntaks og Mermaid: bedre håndtering av trippelanførselstegn i Python og blokkommentarer i alle 65 språkkategorier, rask utheving av uavsluttede CRLF Markdown-kodeblokker og mer stabile Mermaid-diagrammer (stateDiagram-v2, block-beta).
+• Trygg lagring og pålitelighet: atomisk fillagring med sikker minnekartlegging, oversatte varsler ved eksterne filendringer og oppdatert personvernmanifest."""
 
 FI_DESC = """miu on yksinkertainen ja kevyt teksti- ja koodieditori, joka tekee päivittäisistä muistiinpanoista, Markdown-kirjoittamisesta ja ohjelmoinnista miellyttävää ja vaivatonta.
 
@@ -544,11 +544,11 @@ Ei mainoksia, ei seurantaa eikä tiedonkeruuta. Kaikki toimii 100 % offline-tila
 Käytitpä miuta päivittäisenä muistiona tai luotettavana koodieditorina, toivomme sen tekevän kirjoitushetkistäsi hieman mukavampia."""
 
 FI_WHATS_NEW = """Kiitos, että käytät miuta.
-Versio 1.0.50 laajentaa syntaksin korostuksen ja kommenttien vaihdon 65 kielikategoriaan (yli 230 tiedostopäätettä ja asetustiedostoa):
+Versio 1.0.51 vahvistaa reaaliaikaisen esikatselun offline-tietoturvaa, parantaa syntaksin korostuksen ja Mermaid-kaavioiden tarkkuutta sekä tekee tallennuksesta entistä luotettavampaa:
 
-• Täysi tuki Lisp-kieliperheelle: syntaksin korostus, rivikommentit (;) ja lohkokommentit (#| ... |#) kielille Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel ja Janet.
-• Merkittäviä parannuksia Assembly-tukeen: x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS ja WebAssembly (.wat, .wast).
-• 15 uutta kieltä ja 70+ tiedostopäätettä: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig ym."""
+• Esikatselun offline-eristys ja tietoturva: tiukka offline-CSP, ulkoisten verkkopyyntöjen esto, HTML/URL-puhdistus, tehtävälistojen kryptografinen varmennus, '<'-merkillä alkavien tekstitiedostojen turvallinen näyttö ja nopea Markdown-jäsennys.
+• Syntaksin ja Mermaid-kaavioiden tarkkuus: parannettu Pythonin kolmoislainausmerkkien ja lohkokommenttien käsittely kaikissa 65 kielikategoriassa, sulkemattomien CRLF Markdown -koodilohkojen nopea korostus ja vakaammat Mermaid-kaaviot (stateDiagram-v2, block-beta).
+• Turvallinen tallennus: atominen tiedostotallennus turvallisella muistikuvauksella, lokalisoidut uudelleenlatausilmoitukset ja päivitetty tietosuojamanifesti."""
 
 PL_DESC = """miu to prosty, lekki edytor tekstu i kodu, zaprojektowany tak, aby codzienne notatki, pisanie w Markdown oraz programowanie były wygodne i przyjemne.
 
@@ -577,11 +577,11 @@ Brak reklam, brak śledzenia i brak gromadzenia danych. Wszystko działa w 100% 
 Zarówno jako codzienny notatnik, jak i niezawodny edytor kodu – mamy nadzieję, że miu uprzyjemni Twój czas spędzony na pisaniu."""
 
 PL_WHATS_NEW = """Dziękujemy za korzystanie z aplikacji miu.
-Wersja 1.0.50 rozszerza kolorowanie składni i przełączanie komentarzy do 65 kategorii języków (ponad 230 rozszerzeń i plików konfiguracyjnych):
+Wersja 1.0.51 wzmacnia bezpieczeństwo offline podglądu na żywo, zwiększa precyzję kolorowania składni i diagramów Mermaid oraz poprawia bezpieczeństwo zapisu plików:
 
-• Pełna obsługa rodziny języków Lisp: kolorowanie składni, komentarze wierszowe (;) i blokowe (#| ... |#) dla Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel i Janet.
-• Rozbudowana obsługa asemblera (Assembly): x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS oraz WebAssembly (.wat, .wast).
-• 15 nowych języków i 70+ rozszerzeń: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig i inne."""
+• Izolacja offline i bezpieczeństwo podglądu: ścisła polityka CSP offline, blokada połączeń zewnętrznych, oczyszczanie HTML/URL, kryptograficzna weryfikacja list zadań, bezpieczne wyświetlanie plików tekstowych zaczynających się od „<” oraz szybkie parsowanie Markdown.
+• Precyzja składni i diagramów Mermaid: ulepszona obsługa potrójnych cudzysłowów Pythona i komentarzy blokowych w 65 kategoriach języków, szybkie kolorowanie niezamkniętych bloków kodu Markdown (CRLF) oraz stabilność Mermaid (stateDiagram-v2, block-beta).
+• Bezpieczny zapis i niezawodność: zapis atomowy z bezpiecznym mapowaniem pamięci, przetłumaczone komunikaty przeładowania zmodyfikowanych plików i manifest prywatności."""
 
 CS_DESC = """miu je jednoduchý a lehký textový a kódový editor, se kterým je psaní každodenních poznámek, textů v Markdownu i programování pohodlné a příjemné.
 
@@ -610,11 +610,11 @@ Hledání a nahrazování (s regulárními výrazy), více kurzorů, čísla ř�
 Ať už miu používáte jako každodenní zápisník nebo jako spolehlivý editor kódu, věříme, že vám zpříjemní každou chvíli u psaní."""
 
 CS_WHATS_NEW = """Děkujeme, že používáte miu.
-Verze 1.0.50 rozšiřuje zvýrazňování syntaxe a přepínání komentářů na 65 kategorií jazyků (více než 230 přípon a konfiguračních souborů):
+Verze 1.0.51 posiluje offline zabezpečení živého náhledu, zpřesňuje zvýrazňování syntaxe i diagramy Mermaid a zvyšuje spolehlivost ukládání souborů:
 
-• Plná podpora rodiny jazyků Lisp: zvýrazňování syntaxe, řádkové (;) a blokové (#| ... |#) komentáře pro Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel a Janet.
-• Rozsáhlé vylepšení podpory assembleru (Assembly): x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS a WebAssembly (.wat, .wast).
-• 15 nových jazyků a 70+ přípon: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig a další."""
+• Offline izolace a zabezpečení náhledu: přísná offline politika CSP, blokování externích síťových požadavků, čištění HTML/URL, kryptografické ověření seznamů úkolů, bezpečné zobrazení textových souborů začínajících znakem „<“ a rychlé zpracování Markdownu.
+• Přesnost syntaxe a Mermaid: vylepšené zpracování trojitých uvozovek v Pythonu a blokových komentářů v 65 kategoriích jazyků, rychlé zvýrazňování neuzavřených bloků kódu Markdown (CRLF) a stabilita Mermaid (stateDiagram-v2, block-beta).
+• Bezpečné ukládání: atomické ukládání s bezpečným přemapováním paměti, lokalizované výzvy k opětovnému načtení změněných souborů a manifest soukromí."""
 
 HU_DESC = """A miu egy egyszerű, könnyed szöveg- és kódszerkesztő, amely a napi gyors jegyzeteléstől a Markdown-szövegíráson át a programozásig minden helyzetben kényelmes használatot nyújt.
 
@@ -643,11 +643,11 @@ Nincsenek reklámok, nincs követés és nincs adatgyűjtés. Minden funkció 10
 Akár mindennapi jegyzettömbként, akár megbízható kódszerkesztőként használja, reméljük, hogy a miu kellemesebbé teszi az írással töltött időt."""
 
 HU_WHATS_NEW = """Köszönjük, hogy a miu alkalmazást használja.
-Az 1.0.50-es verzió 65 nyelvi kategóriára (több mint 230 fájlkiterjesztésre és konfigurációs fájlra) bővíti a szintaxiskiemelést és a megjegyzések kezelését:
+Az 1.0.51-es verzió erősíti az Élő előnézet offline biztonságát, növeli a szintaxiskiemelés és a Mermaid-diagramok pontosságát, valamint még biztonságosabbá teszi a fájlmentést:
 
-• Teljes Lisp nyelvcsalád támogatás: szintaxiskiemelés, sorkomment (;) és blokk-komment (#| ... |#) Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel és Janet nyelvekhez.
-• Bővített Assembly támogatás: x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS és WebAssembly (.wat, .wast).
-• 15 új nyelv és 70+ kiterjesztés: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig és egyebek."""
+• Offline elszigetelés és biztonság az előnézetben: szigorú offline CSP, külső hálózati kérések tiltása, HTML/URL-tisztítás, kriptográfiai ellenőrzés a feladatlistákhoz, a „<” jellel kezdődő szövegfájlok biztonságos megjelenítése és gyors Markdown-elemzés.
+• Szintaxis és Mermaid pontosság: fejlesztett Python tripla idézőjel- és blokk-komment-kezelés mind a 65 nyelvi kategóriában, lezáratlan CRLF Markdown-kódblokkok gyors kiemelése és stabilabb Mermaid (stateDiagram-v2, block-beta) megjelenítés.
+• Biztonságos fájlmentés: atomi mentés biztonságos memórialeképezéssel, honosított újratöltési értesítések és adatvédelmi jegyzék."""
 
 RO_DESC = """miu este un editor de text și cod simplu și ușor, creat pentru ca notițele zilnice, redactarea în Markdown și programarea să fie cât mai plăcute și confortabile.
 
@@ -676,11 +676,11 @@ Fără reclame, fără urmărire și fără colectare de date. Totul funcționea
 Fie ca agendă de zi cu zi, fie ca editor de cod de încredere, sperăm că miu vă va face timpul petrecut scriind mai plăcut."""
 
 RO_WHATS_NEW = """Vă mulțumim că folosiți miu.
-Versiunea 1.0.50 extinde evidențierea sintaxei și comutarea comentariilor la 65 de categorii de limbaje (peste 230 de extensii și fișiere de configurare):
+Versiunea 1.0.51 consolidează securitatea offline a Previzualizării live, crește precizia evidențierii sintaxei și a diagramelor Mermaid și îmbunătățește siguranța salvării fișierelor:
 
-• Suport complet pentru familia Lisp: evidențiere sintaxă, comentarii pe linie (;) și comentarii bloc (#| ... |#) pentru Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel și Janet.
-• Îmbunătățiri majore pentru Assembly: suport extins pentru x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS și WebAssembly (.wat, .wast).
-• 15 limbaje noi și 70+ extensii: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig și multe altele."""
+• Izolare offline și securitate în Previzualizare: politică CSP offline strictă, blocarea conexiunilor externe, igienizare HTML/URL, verificare criptografică pentru listele de sarcini, afișare sigură a fișierelor text care încep cu „<” și analiză rapidă Markdown.
+• Precizie în sintaxă și Mermaid: analiză îmbunătățită a ghilimelelor triple Python și a comentariilor bloc în cele 65 de categorii de limbaje, evidențiere rapidă a blocurilor Markdown CRLF neînchise și stabilitate în Mermaid (stateDiagram-v2, block-beta).
+• Salvare sigură: salvare atomică cu remapare sigură a memoriei, mesaje traduse pentru reîncărcarea fișierelor modificate extern și manifest de confidențialitate."""
 
 EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επεξεργαστής κειμένου και κώδικα, σχεδιασμένος ώστε οι καθημερινές σημειώσεις, η συγγραφή σε Markdown και ο προγραμματισμός να γίνονται άνετα και ευχάριστα.
 
@@ -709,11 +709,11 @@ EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επ�
 Είτε ως καθημερινό σημειωματάριο είτε ως αξιόπιστος επεξεργαστής κώδικα, ελπίζουμε το miu να κάνει τον χρόνο που αφιερώνετε στο γράψιμο πιο ευχάριστο."""
 
 EL_WHATS_NEW = """Σας ευχαριστούμε που χρησιμοποιείτε το miu.
-Η έκδοση 1.0.50 επεκτείνει την επισήμανση σύνταξης και την εναλλαγή σχολίων σε 65 κατηγορίες γλωσσών (πάνω από 230 επεκτάσεις και αρχεία ρυθμίσεων):
+Η έκδοση 1.0.51 ενισχύει την ασφάλεια εκτός σύνδεσης της Ζωντανής προεπισκόπησης, βελτιώνει την ακρίβεια επισήμανσης σύνταξης και διαγραμμάτων Mermaid και αναβαθμίζει την ασφάλεια αποθήκευσης:
 
-• Πλήρης υποστήριξη για την οικογένεια Lisp: επισήμανση σύνταξης, σχόλια γραμμής (;) και μπλοκ (#| ... |#) για Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel και Janet.
-• Σημαντικές βελτιώσεις για Assembly: x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS και WebAssembly (.wat, .wast).
-• 15 νέες γλώσσες και 70+ επεκτάσεις: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig κ.ά."""
+• Απομόνωση εκτός σύνδεσης & ασφάλεια προεπισκόπησης: αυστηρή πολιτική CSP εκτός σύνδεσης, φραγή εξωτερικών συνδέσεων, καθαρισμός HTML/URL, κρυπτογραφική επαλήθευση λιστών εργασιών, ασφαλής εμφάνιση αρχείων που ξεκινούν με «<» και γρήγορη ανάλυση Markdown.
+• Ακρίβεια σύνταξης & Mermaid: βελτιωμένη αναγνώριση τριπλών εισαγωγικών Python και σχολίων μπλοκ στις 65 κατηγορίες γλωσσών, γρήγορη επισήμανση ανοιχτών μπλοκ Markdown (CRLF) και σταθερότητα Mermaid (stateDiagram-v2, block-beta).
+• Ασφαλής αποθήκευση: ατομική εγγραφή αρχείων με ασφαλή αντιστοίχιση μνήμης, μεταφρασμένες ειδοποιήσεις επαναφόρτωσης και ενημερωμένο μανιφέστο απορρήτου."""
 
 TR_DESC = """miu; günlük kısa notlardan Markdown yazılarına ve programlamaya kadar her türlü metin çalışmasını keyifli ve rahat hale getirmek için tasarlanmış sade ve hafif bir metin ve kod düzenleyicidir.
 
@@ -742,11 +742,11 @@ Reklam, takip veya veri toplama yoktur. Tüm özellikler cihazınızda %100 çev
 İster günlük not defteriniz ister güvenilir kod düzenleyiciniz olarak, miu'nun yazma zamanınızı daha keyifli hale getirmesini dileriz."""
 
 TR_WHATS_NEW = """miu'yu kullandığınız için teşekkür ederiz.
-1.0.50 sürümü, sözdizimi vurgulama ve yorum satırı geçişini 65 dil kategorisine (230'dan fazla dosya uzantısı ve yapılandırma dosyası) genişletir:
+1.0.51 sürümü, Canlı Önizleme için çevrimdışı güvenliği güçlendirir, sözdizimi vurgulama ile Mermaid diyagramlarının hassasiyetini artırır ve dosya kaydetme güvenilirliğini iyileştirir:
 
-• Lisp Dil Ailesi İçin Tam Destek: Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel ve Janet için sözdizimi vurgulama, ';' satır yorumu ve '#| ... |#' blok yorumu.
-• Kapsamlı Assembly Geliştirmeleri: x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS ve WebAssembly (.wat, .wast) desteği.
-• 15 Yeni Dil ve 70+ Uzantı: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig ve daha fazlası."""
+• Canlı Önizleme Çevrimdışı Güvenliği: sıkı çevrimdışı CSP, dış ağ erişimi engelleme, HTML/URL temizleme, görev listeleri için kriptografik doğrulama, '<' ile başlayan metin dosyalarının güvenli gösterimi ve hızlı Markdown ayrıştırma.
+• Sözdizimi ve Mermaid Hassasiyeti: 65 dil kategorisinde Python üçlü tırnak ve blok yorum analizi, kapatılmamış CRLF Markdown kod bloklarında hızlı vurgulama ve Mermaid (stateDiagram-v2, block-beta) kararlılığı.
+• Güvenli Dosya Kaydetme: güvenli bellek eşlemeli atomik dosya kaydetme, dış değişikliklerde yerelleştirilmiş yeniden yükleme bildirimleri ve gizlilik bildirimi desteği."""
 
 UK_DESC = """miu — це простий і легкий редактор тексту та коду, створений для того, щоб щоденні нотатки, написання текстів у Markdown і програмування були максимально зручними та приємними.
 
@@ -775,11 +775,11 @@ UK_DESC = """miu — це простий і легкий редактор тек
 Як щоденний записник або надійний редактор коду — сподіваємося, що miu зробить ваш час за письмом приємнішим."""
 
 UK_WHATS_NEW = """Дякуємо, що користуєтеся miu.
-У версії 1.0.50 підсвічування синтаксису та перемикання коментарів розширено до 65 категорій мов (понад 230 розширень і конфігураційних файлів):
+У версії 1.0.51 посилено офлайн-безпеку перегляду наживо, підвищено точність підсвічування синтаксису та діаграм Mermaid, а також покращено надійність збереження файлів:
 
-• Повна підтримка сімейства Lisp: підсвічування синтаксису, рядкові (;) та блокові (#| ... |#) коментарі для Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel і Janet.
-• Масштабне розширення підтримки Assembly: x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS і WebAssembly (.wat, .wast).
-• 15 нових мов і 70+ розширень: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig тощо."""
+• Офлайн-ізоляція та безпека перегляду: сувора політика CSP, блокування зовнішніх мережевих запитів, очищення HTML/URL, криптографічна перевірка списків завдань, безпечне відображення текстових файлів із початковим «<» та швидкий розбір Markdown.
+• Точність синтаксису та Mermaid: покращено розбір потрійних лапок Python і блокових коментарів у 65 категоріях мов, швидке підсвічування незакритих блоків Markdown (CRLF) і стабільність Mermaid (stateDiagram-v2, block-beta).
+• Надійне збереження: атомарний запис із безпечним оновленням пам’яті, локалізовані сповіщення про перезавантаження змінених файлів і маніфест конфіденційності."""
 
 VI_DESC = """miu là trình soạn thảo văn bản và mã nguồn đơn giản, gọn nhẹ, mang lại cảm giác thoải mái cho mọi nhu cầu từ ghi chú nhanh hàng ngày, viết tài liệu Markdown cho đến lập trình.
 
@@ -808,11 +808,11 @@ Không quảng cáo, không theo dõi và không thu thập dữ liệu. Mọi t
 Dù dùng làm sổ tay hàng ngày hay trình sửa code đáng tin cậy, hy vọng miu sẽ giúp khoảng thời gian viết lách của bạn thêm phần dễ chịu."""
 
 VI_WHATS_NEW = """Cảm ơn bạn đã luôn sử dụng miu.
-Phiên bản 1.0.50 mở rộng tô sáng cú pháp và bật/tắt chú thích lên 65 nhóm ngôn ngữ (hơn 230 phần mở rộng và tệp cấu hình):
+Phiên bản 1.0.51 tăng cường bảo mật ngoại tuyến cho Xem trước trực tiếp, nâng cao độ chính xác tô sáng cú pháp & sơ đồ Mermaid, đồng thời cải thiện độ an toàn khi lưu tệp:
 
-• Hỗ trợ đầy đủ họ ngôn ngữ Lisp: tô sáng cú pháp, chú thích dòng (;) và chú thích khối (#| ... |#) cho Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel và Janet.
-• Nâng cấp toàn diện Assembly: hỗ trợ x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS và WebAssembly (.wat, .wast).
-• Thêm 15 ngôn ngữ mới & 70+ phần mở rộng: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, v.v."""
+• Cô lập ngoại tuyến & bảo mật Xem trước: áp dụng CSP ngoại tuyến nghiêm ngặt, chặn kết nối mạng bên ngoài, làm sạch HTML/URL, xác thực mật mã cho danh sách công việc, hiển thị an toàn tệp văn bản bắt đầu bằng '<' và phân tích Markdown nhanh.
+• Độ chính xác cú pháp & Mermaid: cải thiện xử lý chuỗi ba dấu nháy Python và chú thích khối trên 65 nhóm ngôn ngữ, tô sáng nhanh khối mã Markdown CRLF chưa đóng và tăng độ ổn định Mermaid (stateDiagram-v2, block-beta).
+• Lưu tệp an toàn: lưu nguyên tử với ánh xạ bộ nhớ an toàn, bản địa hóa thông báo tải lại tệp thay đổi bên ngoài và bổ sung kê khai quyền riêng tư."""
 
 TH_DESC = """miu คือแอปแก้ไขข้อความและโค้ดที่เรียบง่ายและทำงานได้อย่างรวดเร็ว ออกแบบมาเพื่อให้ทั้งการจดบันทึกประจำวัน การเขียนบทความด้วย Markdown และการเขียนโปรแกรมเป็นเรื่องที่สบายตาและน่าใช้งาน
 
@@ -841,11 +841,11 @@ TH_DESC = """miu คือแอปแก้ไขข้อความและ
 ไม่ว่าจะใช้เป็นสมุดโน้ตประจำวันหรือเครื่องมือเขียนโค้ดคู่ใจ เราหวังว่า miu จะช่วยให้ช่วงเวลาแห่งการเขียนของคุณน่าเพลิดเพลินยิ่งขึ้น"""
 
 TH_WHATS_NEW = """ขอบคุณที่ใช้บริการ miu เสมอมา
-ในเวอร์ชัน 1.0.50 เราได้ขยายการเน้นไวยากรณ์และสลับความคิดเห็นเป็น 65 หมวดหมู่ภาษา (นามสกุลไฟล์และไฟล์ตั้งค่ากว่า 230 รายการ):
+ในเวอร์ชัน 1.0.51 เราได้ยกระดับความปลอดภัยแบบออฟไลน์ของพรีวิวสด เพิ่มความแม่นยำของการเน้นไวยากรณ์และแผนภาพ Mermaid รวมถึงปรับปรุงการบันทึกไฟล์ให้ปลอดภัยยิ่งขึ้น:
 
-• รองรับตระกูลภาษา Lisp อย่างเต็มรูปแบบ: เน้นไวยากรณ์ สลับความคิดเห็นบรรทัด (;) และความคิดเห็นบล็อก (#| ... |#) สำหรับ Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel และ Janet
-• ยกระดับการรองรับภาษา Assembly: รองรับ x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS และ WebAssembly (.wat, .wast)
-• เพิ่ม 15 ภาษาใหม่และนามสกุลไฟล์กว่า 70 รายการ: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig และอื่นๆ"""
+• การแยกการทำงานแบบออฟไลน์และความปลอดภัยของพรีวิว: ใช้ CSP แบบออฟไลน์ที่เข้มงวด บล็อกการเชื่อมต่อภายนอก คัดกรอง HTML/URL ตรวจสอบโทเค็นเข้ารหัสสำหรับรายการงาน แสดงไฟล์ข้อความที่ขึ้นต้นด้วย '<' อย่างปลอดภัย และประมวลผล Markdown อย่างรวดเร็ว
+• ความแม่นยำของไวยากรณ์และ Mermaid: ปรับปรุงการวิเคราะห์อัญประกาศสามชั้นของ Python และความคิดเห็นบล็อกใน 65 หมวดหมู่ภาษา ไฮไลต์บล็อกโค้ด Markdown (CRLF) ที่ยังไม่ปิดอย่างรวดเร็ว และเพิ่มความเสถียรของ Mermaid (stateDiagram-v2, block-beta)
+• การบันทึกไฟล์อย่างปลอดภัย: บันทึกไฟล์แบบอะตอมมิกพร้อมอัปเดตหน่วยความจำอย่างปลอดภัย แปลข้อความแจ้งเตือนโหลดซ้ำครบทุกภาษา และรองรับ Privacy Manifest"""
 
 ID_DESC = """miu adalah editor teks dan kode yang sederhana serta ringan, dirancang agar nyaman digunakan mulai dari mencatat ide harian, menulis dokumen Markdown, hingga pemrograman.
 
@@ -874,11 +874,11 @@ Tanpa iklan, tanpa pelacakan, dan tanpa pengumpulan data. Semua fitur berjalan 1
 Baik sebagai buku catatan sehari-hari maupun editor kode andalan, semoga miu dapat membuat waktu menulis Anda menjadi lebih menyenangkan."""
 
 ID_WHATS_NEW = """Terima kasih telah menggunakan miu.
-Versi 1.0.50 memperluas penyorotan sintaks dan alih komentar ke 65 kategori bahasa (lebih dari 230 ekstensi dan file konfigurasi):
+Versi 1.0.51 memperkuat keamanan offline Pratinjau Langsung, meningkatkan akurasi penyorotan sintaks dan diagram Mermaid, serta menyempurnakan keandalan penyimpanan file:
 
-• Dukungan Penuh Keluarga Bahasa Lisp: penyorotan sintaks, komentar baris (;), dan komentar blok (#| ... |#) untuk Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel, dan Janet.
-• Peningkatan Besar Bahasa Assembly: x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS, dan WebAssembly (.wat, .wast).
-• 15 Bahasa Baru & 70+ Ekstensi: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig, dan lainnya."""
+• Isolasi Offline & Keamanan Pratinjau: penerapan CSP offline ketat, pemblokiran jaringan eksternal, sanitasi HTML/URL, verifikasi kriptografi daftar tugas, tampilan aman file teks berawalan '<', dan penguraian Markdown cepat.
+• Akurasi Sintaks & Mermaid: perbaikan deteksi tanda kutip tiga Python dan komentar blok di 65 kategori bahasa, penyorotan cepat blok kode Markdown CRLF terbuka, serta stabilitas Mermaid (stateDiagram-v2, block-beta).
+• Penyimpanan File Aman: penyimpanan atomik dengan pemetaan memori aman, pelokalan dialog muat ulang file, dan dukungan manifes privasi."""
 
 MS_DESC = """miu ialah penyunting teks dan kod yang ringkas serta ringan, direka untuk memberikan keselesaan sama ada ketika mencatat nota harian, menulis dokumen Markdown mahupun melakukan pengaturcaraan.
 
@@ -907,11 +907,11 @@ Tiada iklan, tiada penjejakan dan tiada pengumpulan data. Semua ciri berfungsi 1
 Sama ada sebagai buku nota harian atau penyunting kod yang boleh dipercayai, kami berharap miu menjadikan masa menulis anda lebih menyenangkan."""
 
 MS_WHATS_NEW = """Terima kasih kerana menggunakan miu.
-Versi 1.0.50 memperluas sorotan sintaks dan togol komen kepada 65 kategori bahasa (lebih 230 sambungan dan fail konfigurasi):
+Versi 1.0.51 memperkukuh keselamatan luar talian Pratonton Langsung, meningkatkan ketepatan sorotan sintaks dan rajah Mermaid, serta menambah baik keselamatan simpanan fail:
 
-• Sokongan Penuh Keluarga Bahasa Lisp: sorotan sintaks, komen baris (;) dan komen blok (#| ... |#) untuk Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel dan Janet.
-• Penambahbaikan Besar Bahasa Assembly: x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS dan WebAssembly (.wat, .wast).
-• 15 Bahasa Baharu & 70+ Sambungan: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig dan banyak lagi."""
+• Pengasingan Luar Talian & Keselamatan Pratonton: CSP luar talian ketat, sekatan rangkaian luaran, pembersihan HTML/URL, pengesahan kriptografi senarai tugas, paparan selamat fail teks bermula dengan '<' dan penghuraian Markdown pantas.
+• Ketepatan Sintaks & Mermaid: penambahbaikan petikan tiga kali Python dan komen blok dalam 65 kategori bahasa, sorotan pantas blok kod Markdown CRLF belum ditutup serta kestabilan Mermaid (stateDiagram-v2, block-beta).
+• Simpanan Fail Selamat: simpanan atomik dengan pemetaan memori selamat, penyetempatan mesej muat semula fail dan sokongan manifes privasi."""
 
 HI_DESC = """miu एक सरल और हल्का टेक्स्ट व कोड एडिटर है, जिसे रोज़मर्रा के छोटे नोट्स से लेकर Markdown लेखन और प्रोग्रामिंग तक हर काम को सहज और आरामदायक बनाने के लिए डिज़ाइन किया गया है।
 
@@ -940,11 +940,11 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 और अन्य एन्कोडिंग
 चाहे आप इसे दैनिक नोटपैड के रूप में उपयोग करें या एक भरोसेमंद कोड एडिटर के रूप में, हमें उम्मीद है कि miu आपके लिखने के समय को और सुखद बनाएगा।"""
 
 HI_WHATS_NEW = """miu का उपयोग करने के लिए धन्यवाद।
-संस्करण 1.0.50 में सिंटैक्स हाइलाइटिंग और कमेंट टॉगलिंग का 65 भाषा श्रेणियों (230 से अधिक फ़ाइल एक्सटेंशन और कॉन्फ़िगरेशन फ़ाइलों) में विस्तार किया गया है:
+संस्करण 1.0.51 में लाइव प्रीव्यू की ऑफ़लाइन सुरक्षा को और मजबूत किया गया है, सिंटैक्स हाइलाइटिंग व Mermaid आरेखों की सटीकता बढ़ाई गई है तथा फ़ाइल सेविंग को अधिक सुरक्षित बनाया गया है:
 
-• Lisp भाषा परिवार के लिए पूर्ण समर्थन: Common Lisp (.lisp, .lsp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj, .cljs, .edn), Hy, Fennel और Janet के लिए सिंटैक्स हाइलाइटिंग, ';' लाइन कमेंट और '#| ... |#' ब्लॉक कमेंट।
-• असेंबली भाषा (Assembly) में बड़े सुधार: x86/x64 (SSE/AVX/AVX-512), ARM/AArch64, RISC-V, MIPS, NASM/MASM/GAS और WebAssembly (.wat, .wast) समर्थन।
-• 15 नई भाषाएं और 70+ एक्सटेंशन: Objective-C/C++ (.m, .mm), Groovy/Gradle/Jenkinsfile, OCaml/SML/ReScript, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal/Delphi, Ada, Prolog, Vimscript, Nix, Apple Metal (.metal), BUILD, Gemfile, .gitignore, .editorconfig आदि।"""
+• लाइव प्रीव्यू ऑफ़लाइन आइसोलेशन और सुरक्षा: सख्त ऑफ़लाइन CSP, बाहरी नेटवर्क अवरोधन, HTML/URL स्वच्छता, टास्क-लिस्ट चेकबॉक्स हेतु क्रिप्टोग्राफ़िक सत्यापन, '<' से शुरू होने वाली टेक्स्ट फ़ाइलों का सुरक्षित प्रदर्शन और तेज़ Markdown पार्सिंग।
+• सिंटैक्स और Mermaid सटीकता: सभी 65 भाषा श्रेणियों में Python ट्रिपल-कोट्स व ब्लॉक कमेंट पहचान में सुधार, अधूरे CRLF Markdown कोड ब्लॉक की तेज़ हाइलाइटिंग और Mermaid (stateDiagram-v2, block-beta) स्थिरता।
+• सुरक्षित फ़ाइल सेविंग: सुरक्षित मेमोरी-मैप अपडेट के साथ एटॉमिक सेविंग, बाहरी बदलाव पर अनूदित रीलोड संदेश और गोपनीयता मैनिफ़ेस्ट समर्थन।"""
 
 SUPPORT_URL = "https://github.com/kenjinote/miu"
 

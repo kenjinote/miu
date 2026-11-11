@@ -874,8 +874,8 @@ inline RailroadNode applyRepeat(RailroadNode primary, const std::optional<std::s
   const std::string& r = *repeat;
   size_t star = r.find('*');
   bool exact = (star == std::string::npos);
-  double min = (star != std::string::npos && star > 0) || exact ? std::stod(r) : 0.0;
-  double max = exact ? min : (star < r.size() - 1 ? std::stod(r.substr(star + 1)) : std::numeric_limits<double>::infinity());
+  double min = (star != std::string::npos && star > 0) || exact ? safeStod(star == std::string::npos ? r : r.substr(0, star), "railroad") : 0.0;
+  double max = exact ? min : (star < r.size() - 1 ? safeStod(r.substr(star + 1), "railroad") : std::numeric_limits<double>::infinity());
   return (min == 0.0 && max == 1.0) ? makeOptional(std::move(primary)) : makeRepetition(std::move(primary), min, max);
 }
 

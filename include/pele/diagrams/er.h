@@ -1702,6 +1702,32 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
             cnodes[i].parent = -1;
         }
     }
+    {
+        int cn = static_cast<int>(cnodes.size());
+        for (int i = 0; i < cn; i++) {
+            int p = cnodes[i].parent;
+            if (p < 0 || p >= cn || p == i || !cnodes[p].isGroup) cnodes[i].parent = -1;
+        }
+        std::vector<uint8_t> pState(cn, 0);
+        for (int i = 0; i < cn; i++) {
+            if (pState[i] != 0) continue;
+            int cur = i;
+            while (cur >= 0 && pState[cur] == 0) {
+                pState[cur] = 1;
+                int nx = cnodes[cur].parent;
+                if (nx >= 0 && pState[nx] == 1) {
+                    cnodes[cur].parent = -1;
+                    break;
+                }
+                cur = nx;
+            }
+            for (int k = i; k >= 0 && pState[k] == 1; ) {
+                int nx = cnodes[k].parent;
+                pState[k] = 2;
+                k = nx;
+            }
+        }
+    }
 
     LayeredOptions lopt;
     lopt.nodeSep = numberOption(config, "er", "nodeSpacing", NODE_SEP);

@@ -60,3 +60,5 @@
 "View" = "Nézet";
 "Tab" = "Tabulátor";
 "No Recent Files" = "Nincsenek legutóbbi fájlok";
+"Reload" = "Újratöltés";
+"Failed to save file." = "Nem sikerült menteni a fájlt.";

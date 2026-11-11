@@ -36,6 +36,7 @@ import android.view.inputmethod.InputConnection;
 import android.view.inputmethod.InputMethodManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -46,12 +47,15 @@ import android.widget.PopupWindow;
 import android.widget.TextView;
 import android.widget.Toast;
 import androidx.appcompat.widget.AppCompatEditText;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public class MainActivity extends NativeActivity {
     static { System.loadLibrary("miu"); }
@@ -60,6 +64,7 @@ public class MainActivity extends NativeActivity {
     public native void commitText(String text);
     public native void setComposingText(String text);
     public native void deleteSurroundingText();
+    public native void deleteSurroundingTextUtf16(int beforeLength, int afterLength);
     public native void updateVisibleHeight(int bottomInset);
     public native void updateTopMargin(int topMargin);
     public native void cmdNewDocument();
@@ -109,7 +114,7 @@ public class MainActivity extends NativeActivity {
     public native void cmdSetHelpVisible(boolean visible);
     public native String cmdGetPreviewHtml(boolean isDark);
     public native String cmdGetPreviewDomUpdateJs(boolean isDark);
-    public native void cmdTogglePreviewTask(int lineIdx);
+    public native void cmdHandlePreviewMessage(String msg);
     public native float[] cmdGetViewState();
     public native void cmdSetViewState(float scrollX, float scrollY, int head, int anchor, boolean wordWrap);
     public native String cmdGetTextBeforeCursor(int length);
@@ -151,7 +156,7 @@ public class MainActivity extends NativeActivity {
     private long lastKnownModifiedTime = 0L;
     private boolean isShowingReloadPrompt = false;
     private Runnable pendingAction = null;
-    private int tempOpenSlot = 0;
+    private File activeTempOpenFile = null;
 
     // Live Preview state
     private PopupWindow previewPopup;
@@ -373,9 +378,32 @@ public class MainActivity extends NativeActivity {
                 }
             }
         });
+        cleanUnusedOpenTempFiles();
         Intent intent = getIntent();
         if (intent != null) handleIncomingIntent(intent);
         imeView.postDelayed(this::showSoftwareKeyboardIfNeeded, 300);
+    }
+
+    private void cleanUnusedOpenTempFiles() {
+        try {
+            File cacheOpenDir = new File(getFilesDir(), "open_cache");
+            File[] files = cacheOpenDir.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    if (activeTempOpenFile == null || !f.equals(activeTempOpenFile)) {
+                        //noinspection ResultOfMethodCallIgnored
+                        f.delete();
+                    }
+                }
+            }
+            for (int i = 0; i <= 1; i++) {
+                File legacy = new File(getCacheDir(), "miu_temp_open_" + i + ".txt");
+                if (legacy.exists()) {
+                    //noinspection ResultOfMethodCallIgnored
+                    legacy.delete();
+                }
+            }
+        } catch (Exception ignored) {}
     }
 
     @Override protected void onResume() {
@@ -405,11 +433,8 @@ public class MainActivity extends NativeActivity {
     public class MiuPreviewBridge {
         @JavascriptInterface
         public void postMessage(String msg) {
-            if (msg != null && msg.startsWith("toggle_task:")) {
-                try {
-                    int lineIdx = Integer.parseInt(msg.substring("toggle_task:".length()).trim());
-                    runOnUiThread(() -> cmdTogglePreviewTask(lineIdx));
-                } catch (NumberFormatException ignored) {}
+            if (msg != null && msg.startsWith("toggle_task:") && msg.length() <= 256) {
+                runOnUiThread(() -> cmdHandlePreviewMessage(msg));
             }
         }
     }
@@ -679,14 +704,37 @@ public class MainActivity extends NativeActivity {
         WebSettings settings = previewWebView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(false);
+        settings.setDatabaseEnabled(false);
         settings.setAllowFileAccess(false);
         settings.setAllowContentAccess(false);
+        settings.setBlockNetworkLoads(true);
+        settings.setBlockNetworkImage(true);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setSupportZoom(true);
         settings.setBuiltInZoomControls(true);
         settings.setDisplayZoomControls(false);
         previewWebView.setBackgroundColor(isDarkThemeActive() ? Color.BLACK : Color.WHITE);
         previewWebView.addJavascriptInterface(new MiuPreviewBridge(), "miuPreview");
         previewWebView.setWebViewClient(new WebViewClient() {
+            private WebResourceResponse blockedOfflineResponse() {
+                return new WebResourceResponse("text/plain", "UTF-8", new ByteArrayInputStream(new byte[0]));
+            }
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                if (request == null || request.getUrl() == null) return blockedOfflineResponse();
+                String scheme = request.getUrl().getScheme();
+                if (scheme != null && "data".equalsIgnoreCase(scheme)) {
+                    return null;
+                }
+                return blockedOfflineResponse();
+            }
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
+                if (url != null && url.regionMatches(true, 0, "data:", 0, 5)) {
+                    return null;
+                }
+                return blockedOfflineResponse();
+            }
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 return true;
@@ -2205,6 +2253,11 @@ public class MainActivity extends NativeActivity {
             saveCurrentViewState();
             mainHandler.removeCallbacks(debouncedPreviewUpdateRunnable);
             cmdNewDocument();
+            if (activeTempOpenFile != null) {
+                //noinspection ResultOfMethodCallIgnored
+                activeTempOpenFile.delete();
+                activeTempOpenFile = null;
+            }
             currentDocumentUri = null;
             lastKnownModifiedTime = 0L;
             previewShellLoaded = false;
@@ -2394,13 +2447,15 @@ public class MainActivity extends NativeActivity {
         try {
             byte[] saveData = cmdGetSaveData();
             if (saveData != null) {
-                ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "wt");
-                if (pfd != null) {
-                    FileOutputStream fos = new FileOutputStream(pfd.getFileDescriptor());
-                    fos.write(saveData);
-                    fos.flush();
-                    fos.close();
-                    pfd.close();
+                try (ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "wt")) {
+                    if (pfd == null) {
+                        throw new IOException("Failed to open file descriptor for writing.");
+                    }
+                    try (FileOutputStream fos = new FileOutputStream(pfd.getFileDescriptor())) {
+                        fos.write(saveData);
+                        fos.flush();
+                        fos.getFD().sync();
+                    }
                 }
                 currentDocumentUri = uri;
                 lastKnownModifiedTime = queryLastModified(uri);
@@ -2454,26 +2509,59 @@ public class MainActivity extends NativeActivity {
         return result != null ? result : "Unknown";
     }
 
-    private void loadDocumentFromUri(Uri uri) {
+    private boolean isDisallowedFileUri(Uri uri) {
+        if (uri == null || !"file".equalsIgnoreCase(uri.getScheme())) return false;
+        String rawPath = uri.getPath();
+        if (rawPath == null || rawPath.isEmpty()) return true;
         try {
+            File target = new File(rawPath).getCanonicalFile();
+            String canon = target.getPath();
+            String appDataDir = new File(getApplicationInfo().dataDir).getCanonicalPath();
+            if (canon.equals(appDataDir) || canon.startsWith(appDataDir + File.separator)) return true;
+            if (canon.startsWith("/data/data/") || canon.startsWith("/data/user/") || canon.startsWith("/proc/") || canon.startsWith("/sys/")) return true;
+            return false;
+        } catch (IOException e) {
+            return true;
+        }
+    }
+
+    private void loadDocumentFromUri(Uri uri) {
+        File tempFile = null;
+        try {
+            if (uri == null || isDisallowedFileUri(uri)) {
+                Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
+                return;
+            }
             saveCurrentViewState();
-            InputStream inputStream = getContentResolver().openInputStream(uri);
-            if (inputStream == null) return;
-            int nextSlot = 1 - tempOpenSlot;
-            File tempFile = new File(getCacheDir(), "miu_temp_open_" + nextSlot + ".txt");
-            try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
-                byte[] buffer = new byte[8192];
-                int length;
-                while ((length = inputStream.read(buffer)) > 0) {
-                    outputStream.write(buffer, 0, length);
+            File openCacheDir = new File(getFilesDir(), "open_cache");
+            if (!openCacheDir.exists() && !openCacheDir.mkdirs()) {
+                Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            tempFile = new File(openCacheDir, "miu_open_" + UUID.randomUUID().toString() + ".tmp");
+            try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+                if (inputStream == null) {
+                    Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
+                    return;
                 }
-                outputStream.flush();
-            } finally {
-                try { inputStream.close(); } catch (Exception ignored) {}
+                try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
+                    byte[] buffer = new byte[32768];
+                    int length;
+                    while ((length = inputStream.read(buffer)) > 0) {
+                        outputStream.write(buffer, 0, length);
+                    }
+                    outputStream.flush();
+                }
             }
             String displayName = getFileName(uri);
             if (cmdOpenDocument(tempFile.getAbsolutePath())) {
-                tempOpenSlot = nextSlot;
+                File prevTemp = activeTempOpenFile;
+                activeTempOpenFile = tempFile;
+                tempFile = null;
+                if (prevTemp != null && !prevTemp.equals(activeTempOpenFile)) {
+                    //noinspection ResultOfMethodCallIgnored
+                    prevTemp.delete();
+                }
                 currentDocumentUri = uri;
                 lastKnownModifiedTime = queryLastModified(uri);
                 addRecentUri(uri);
@@ -2487,9 +2575,16 @@ public class MainActivity extends NativeActivity {
                 if (isLivePreviewVisible) updateLivePreviewContent(true);
                 hideSoftwareKeyboard();
                 Toast.makeText(this, getStringResourceByName("msg_doc_opened"), Toast.LENGTH_SHORT).show();
-            } else Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
+            } else {
+                Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
+            }
         } catch (Exception e) {
             Toast.makeText(this, getStringResourceByName("msg_read_error"), Toast.LENGTH_SHORT).show();
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                tempFile.delete();
+            }
         }
     }
 
@@ -2637,9 +2732,7 @@ public class MainActivity extends NativeActivity {
         @Override public boolean deleteSurroundingText(int beforeLength, int afterLength) {
             if (beforeLength > 0 || afterLength > 0) {
                 MainActivity.this.closeHelpUI();
-            }
-            for (int i = 0; i < beforeLength; i++) {
-                MainActivity.this.deleteSurroundingText();
+                MainActivity.this.deleteSurroundingTextUtf16(Math.max(0, beforeLength), Math.max(0, afterLength));
             }
             return true;
         }

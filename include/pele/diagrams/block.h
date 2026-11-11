@@ -795,7 +795,7 @@ inline void parseBlock(const std::string& src, BlockDb& db) {
 
     auto nodeStatement = [&]() -> Statement {
         NodeInfo first = parseNode();
-        int size = (i < types.size() && types[i] == T::SIZE) ? std::stoi(texts[i++]) : 1;
+        int size = (i < types.size() && types[i] == T::SIZE) ? std::clamp(safeStoi(texts[i++], "block"), 1, 1000) : 1;
         Block from;
         from.id = first.id;
         from.hasId = true;
@@ -884,11 +884,11 @@ inline void parseBlock(const std::string& src, BlockDb& db) {
         } else if (t == T::COLUMNS) {
             Block b;
             b.type = "column-setting";
-            b.columns = std::stoi(texts[i++]);
+            b.columns = std::clamp(safeStoi(texts[i++], "block"), 1, 1000);
             b.hasColumns = true;
             list.push_back({false, std::move(b), {}});
         } else if (t == T::SPACE_BLOCK) {
-            int w = std::stoi(texts[i++]);
+            int w = std::clamp(safeStoi(texts[i++], "block"), 1, 1000);
             Block b;
             b.id = db.generateId();
             b.hasId = true;
@@ -1146,8 +1146,8 @@ inline void measureCell(View& box, double gap, double inset) {
     double cw = 0.0;
     double tallest = 0.0;
     for (View* child : box.children) {
-        int px = (columns < 0) ? position : (position % columns);
-        int py = (columns < 0) ? 0 : (position / columns);
+        int px = (columns <= 0) ? position : (position % columns);
+        int py = (columns <= 0) ? 0 : (position / columns);
         int span = child->span >= 1 ? std::min(child->span, 1000) : 1;
         if (columns > 0 && span > columns - px) span = columns - px;
         child->span = span;

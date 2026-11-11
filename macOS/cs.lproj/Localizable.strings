@@ -60,3 +60,5 @@
 "View" = "Zobrazení";
 "Tab" = "Tabulátor";
 "No Recent Files" = "Žádné poslední soubory";
+"Reload" = "Znovu načíst";
+"Failed to save file." = "Nepodařilo se uložit soubor.";

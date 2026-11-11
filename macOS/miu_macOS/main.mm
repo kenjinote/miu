@@ -4,6 +4,31 @@
 
 static NSString *const kMiuRectangularSelectionType = @"jp.hack.miu.rectangular";
 static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
+static NSString *const kMiuMacRecentBookmarksKey = @"MiuMacRecentBookmarks";
+static NSString *const kMiuOfflineContentRulesJson = @"[{\"trigger\":{\"url-filter\":\"^(https?|wss?):.*\"},\"action\":{\"type\":\"block\"}}]";
+
+static inline std::string MiuStdStringFromNSString(NSString *s) {
+    if (!s) return "";
+    const char *u = [s UTF8String];
+    return u ? std::string(u) : "";
+}
+
+static inline NSString *MiuNSStringFromStdString(const std::string &s) {
+    if (s.empty()) return @"";
+    NSString *ns = [[NSString alloc] initWithBytes:s.data() length:s.size() encoding:NSUTF8StringEncoding];
+    if (ns) return ns;
+    std::string clean = MiuCore::SanitizeUtf8(s.data(), s.size());
+    ns = [[NSString alloc] initWithBytes:clean.data() length:clean.size() encoding:NSUTF8StringEncoding];
+    return ns ?: @"";
+}
+
+static inline void MiuShowSaveErrorAlert(void) {
+    NSAlert *errAlert = [[NSAlert alloc] init];
+    [errAlert setAlertStyle:NSAlertStyleWarning];
+    [errAlert setMessageText:NSLocalizedString(@"Failed to save file.", @"保存失敗")];
+    [errAlert addButtonWithTitle:@"OK"];
+    [errAlert runModal];
+}
 
 @class EditorView;
 
@@ -56,7 +81,11 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     WKWebView *previewWebView;
     MiuSplitterView *splitterView;
     MiuPreviewMessageHandler *previewMsgHandler;
+    NSURL *currentSecurityScopedURL;
 }
+- (void)saveSecurityScopedBookmarkForURL:(NSURL *)url;
+- (BOOL)openURLWithSecurityScope:(NSURL *)url;
+- (BOOL)openRecentPathWithBookmark:(NSString *)nsPath;
 - (void)layoutSplitViews;
 - (void)updatePreviewPane;
 - (void)updatePreviewBackground;
@@ -90,14 +119,14 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     if (!ev || !ev->editor) return;
     if ([message.name isEqualToString:@"miuPreview"] && [message.body isKindOfClass:[NSString class]]) {
         NSString *body = (NSString *)message.body;
-        if ([body hasPrefix:@"toggle_task:"]) {
-            int lineIdx = [[body substringFromIndex:12] intValue];
-            ev->editor->handlePreviewTaskToggle(lineIdx);
-        }
+        ev->editor->handlePreviewMessage(MiuStdStringFromNSString(body));
     }
 }
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
-    if (navigationAction.navigationType == WKNavigationTypeOther) {
+    NSURL *url = navigationAction.request.URL;
+    NSString *absStr = url ? [[url absoluteString] lowercaseString] : @"";
+    if (navigationAction.navigationType == WKNavigationTypeOther &&
+        ([absStr isEqualToString:@"about:blank"] || [absStr hasPrefix:@"about:blank#"])) {
         decisionHandler(WKNavigationActionPolicyAllow);
     } else {
         decisionHandler(WKNavigationActionPolicyCancel);
@@ -113,8 +142,8 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         MiuPreview::PreviewRenderResult res = ev->editor->getPreviewRenderResult();
         if (res.isMdOrMermaidShell) {
             std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, ev->editor->isDarkMode);
-            NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
-            if (jsNS) {
+            NSString *jsNS = MiuNSStringFromStdString(js);
+            if (jsNS.length > 0) {
                 [webView evaluateJavaScript:jsNS completionHandler:nil];
             }
         }
@@ -492,18 +521,68 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             NSWindow *window = [strongSelf window];
             if (!window) return;
             std::wstring currentPathW = strongSelf->editor->currentFilePath;
-            std::wstring untitledStr = UTF8ToW([NSLocalizedString(@"Untitled", @"新規ファイル名") UTF8String]);
+            std::wstring untitledStr = UTF8ToW(MiuStdStringFromNSString(NSLocalizedString(@"Untitled", @"新規ファイル名")));
             std::wstring fileName = currentPathW.empty() ? untitledStr : currentPathW.substr(currentPathW.find_last_of(L"/") + 1);
             std::wstring pinPrefix = strongSelf->editor->isAlwaysOnTop ? L"📌 " : L"";
             std::wstring titleText = pinPrefix + (strongSelf->editor->isDirty ? L"*" : L"") + fileName;
-            [window setTitle:[NSString stringWithUTF8String:WToUTF8(titleText).c_str()]];
+            [window setTitle:MiuNSStringFromStdString(WToUTF8(titleText))];
             [window setDocumentEdited:strongSelf->editor->isDirty];
             if (!currentPathW.empty()) {
-                NSString *currentPathNS = [NSString stringWithUTF8String:WToUTF8(currentPathW).c_str()];
-                [window setRepresentedURL:[NSURL fileURLWithPath:currentPathNS]];
+                NSString *currentPathNS = MiuNSStringFromStdString(WToUTF8(currentPathW));
+                if (currentPathNS.length > 0) {
+                    [window setRepresentedURL:[NSURL fileURLWithPath:currentPathNS]];
+                }
             } else {
                 [window setRepresentedURL:[[NSBundle mainBundle] bundleURL]];
             }
+        };
+        editor->cbCoordinateWriteFile = [weakSelf](const std::string& utf8Path, const std::string& rawBytes) -> bool {
+            __strong EditorView *strongSelf = weakSelf;
+            if (!strongSelf) return false;
+            NSString *nsPath = MiuNSStringFromStdString(utf8Path);
+            NSURL *targetURL = nil;
+            if (strongSelf->currentSecurityScopedURL &&
+                [strongSelf->currentSecurityScopedURL.path isEqualToString:nsPath]) {
+                targetURL = strongSelf->currentSecurityScopedURL;
+            } else if (nsPath.length > 0) {
+                targetURL = [NSURL fileURLWithPath:nsPath];
+            }
+            if (!targetURL) return false;
+            NSData *data = [NSData dataWithBytes:rawBytes.data() length:rawBytes.size()];
+            __block BOOL writeSuccess = NO;
+            NSError *coordError = nil;
+            NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+            [coordinator coordinateWritingItemAtURL:targetURL options:NSFileCoordinatorWritingForReplacing error:&coordError byAccessor:^(NSURL * _Nonnull newURL) {
+                NSFileManager *fm = [NSFileManager defaultManager];
+                NSURL *repDir = [fm URLForDirectory:NSItemReplacementDirectory
+                                           inDomain:NSUserDomainMask
+                                  appropriateForURL:newURL
+                                             create:YES
+                                              error:nil];
+                if (repDir) {
+                    NSURL *tmpURL = [repDir URLByAppendingPathComponent:@"miu_save.tmp"];
+                    if ([data writeToURL:tmpURL options:0 error:nil]) {
+                        if ([fm fileExistsAtPath:newURL.path]) {
+                            writeSuccess = [fm replaceItemAtURL:newURL
+                                                  withItemAtURL:tmpURL
+                                                 backupItemName:nil
+                                                        options:0
+                                               resultingItemURL:nil
+                                                          error:nil];
+                        } else {
+                            writeSuccess = [fm moveItemAtURL:tmpURL toURL:newURL error:nil];
+                        }
+                    }
+                    [fm removeItemAtURL:repDir error:nil];
+                }
+                if (!writeSuccess) {
+                    writeSuccess = [data writeToURL:newURL options:NSDataWritingAtomic error:nil];
+                }
+                if (!writeSuccess) {
+                    writeSuccess = [data writeToURL:newURL options:0 error:nil];
+                }
+            }];
+            return writeSuccess ? true : false;
         };
         editor->cbSetAlwaysOnTop = [weakSelf](bool onTop) {
             __strong EditorView *strongSelf = weakSelf;
@@ -522,14 +601,14 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             if (!strongSelf) return false;
             NSAlert *a = [NSAlert new];
             [a setMessageText:NSLocalizedString(@"File modified externally. Reload?", @"外部変更の確認")];
-            [a addButtonWithTitle:NSLocalizedString(@"Save", @"OK/Reload")];
+            [a addButtonWithTitle:NSLocalizedString(@"Reload", @"再読み込み")];
             [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
             return ([a runModal] == NSAlertFirstButtonReturn);
         };
         editor->cbSetClipboard = [weakSelf](const std::string& text, bool isRect) {
             NSPasteboard *pb = [NSPasteboard generalPasteboard];
             [pb clearContents];
-            [pb setString:[NSString stringWithUTF8String:text.c_str()] forType:NSPasteboardTypeString];
+            [pb setString:MiuNSStringFromStdString(text) forType:NSPasteboardTypeString];
             if (isRect) [pb setData:[NSData data] forType:kMiuRectangularSelectionType];
             __strong EditorView *strongSelf = weakSelf;
             if (strongSelf && strongSelf->editor && strongSelf->editor->lastCopyWasLine) {
@@ -544,7 +623,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             if (strongSelf && strongSelf->editor) {
                 strongSelf->editor->lastCopyWasLine = ([pb dataForType:kMiuLineSelectionType] != nil);
             }
-            return s ? [s UTF8String] : "";
+            return MiuStdStringFromNSString(s);
         };
         editor->cbShowReplaceAlert = [](int count) {
             NSAlert *alert = [[NSAlert alloc] init];
@@ -562,7 +641,15 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
             [a addButtonWithTitle:NSLocalizedString(@"Discard", @"破棄")];
             NSModalResponse r = [a runModal];
-            if (r == NSAlertFirstButtonReturn) return strongSelf->editor->currentFilePath.empty() ? strongSelf->editor->saveFileAs() : strongSelf->editor->saveFile(strongSelf->editor->currentFilePath);
+            if (r == NSAlertFirstButtonReturn) {
+                bool ok = strongSelf->editor->currentFilePath.empty()
+                    ? strongSelf->editor->saveFileAs()
+                    : strongSelf->editor->saveFile(strongSelf->editor->currentFilePath);
+                if (!ok && !strongSelf->editor->currentFilePath.empty()) {
+                    MiuShowSaveErrorAlert();
+                }
+                return ok;
+            }
             if (r == NSAlertThirdButtonReturn) { strongSelf->editor->isDirty = false; strongSelf->editor->updateTitleBar(); return true; }
             return false;
         };
@@ -573,14 +660,30 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             p.canCreateDirectories = YES;
             p.allowsOtherFileTypes = YES;
             p.extensionHidden = NO;
-            if ([p runModal] == NSModalResponseOK) return strongSelf->editor->saveFile(UTF8ToW([p.URL.path UTF8String]));
+            if ([p runModal] == NSModalResponseOK && p.URL && p.URL.path.length > 0) {
+                NSURL *pickedURL = p.URL;
+                BOOL granted = [pickedURL startAccessingSecurityScopedResource];
+                if (strongSelf->currentSecurityScopedURL && strongSelf->currentSecurityScopedURL != pickedURL) {
+                    [strongSelf->currentSecurityScopedURL stopAccessingSecurityScopedResource];
+                }
+                strongSelf->currentSecurityScopedURL = granted ? pickedURL : nil;
+                bool ok = strongSelf->editor->saveFile(UTF8ToW(MiuStdStringFromNSString(pickedURL.path)));
+                if (ok) {
+                    [strongSelf saveSecurityScopedBookmarkForURL:pickedURL];
+                } else {
+                    MiuShowSaveErrorAlert();
+                }
+                return ok;
+            }
             return false;
         };
         editor->cbOpenFile = [weakSelf]() -> bool {
             __strong EditorView *strongSelf = weakSelf;
             if (!strongSelf) return false;
             NSOpenPanel *p = [NSOpenPanel openPanel];
-            if ([p runModal] == NSModalResponseOK) return strongSelf->editor->openFileFromPath([[[p URLs] objectAtIndex:0].path UTF8String]);
+            if ([p runModal] == NSModalResponseOK && p.URLs.count > 0) {
+                return [strongSelf openURLWithSecurityScope:p.URLs.firstObject] ? true : false;
+            }
             return false;
         };
         CGFloat sw = 14.0;
@@ -668,11 +771,19 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     previewMsgHandler.editorView = self;
 
     WKWebViewConfiguration *cfg = [[WKWebViewConfiguration alloc] init];
+    cfg.websiteDataStore = [WKWebsiteDataStore nonPersistentDataStore];
     WKUserContentController *ucc = [[WKUserContentController alloc] init];
     [ucc addScriptMessageHandler:previewMsgHandler name:@"miuPreview"];
+    [[WKContentRuleListStore defaultStore] compileContentRuleListForIdentifier:@"MiuOfflineRuleList"
+                                                        encodedContentRuleList:kMiuOfflineContentRulesJson
+                                                             completionHandler:^(WKContentRuleList *ruleList, NSError *error) {
+        if (ruleList) {
+            [ucc addContentRuleList:ruleList];
+        }
+    }];
     std::string sbJsStr = std::string("(function(){") + MiuPreview::getPreviewScrollbarJs() + "})();";
-    NSString *sbJsNS = [NSString stringWithUTF8String:sbJsStr.c_str()];
-    if (sbJsNS) {
+    NSString *sbJsNS = MiuNSStringFromStdString(sbJsStr);
+    if (sbJsNS.length > 0) {
         WKUserScript *sbUserScript = [[WKUserScript alloc] initWithSource:sbJsNS
                                                             injectionTime:WKUserScriptInjectionTimeAtDocumentEnd
                                                          forMainFrameOnly:YES];
@@ -735,8 +846,8 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     if (!previewWebView) return;
     [self updatePreviewBackground];
     MiuPreview::PreviewRenderResult res = editor->getPreviewRenderResult();
-    NSString *fullHtmlNS = [NSString stringWithUTF8String:res.fullHtml.c_str()];
-    if (!fullHtmlNS) return;
+    NSString *fullHtmlNS = MiuNSStringFromStdString(res.fullHtml);
+    if (fullHtmlNS.length == 0) return;
 
     previewMsgHandler.pendingHtml = fullHtmlNS;
 
@@ -746,8 +857,8 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         [previewWebView loadHTMLString:fullHtmlNS baseURL:nil];
     } else {
         std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, editor->isDarkMode);
-        NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
-        if (jsNS) {
+        NSString *jsNS = MiuNSStringFromStdString(js);
+        if (jsNS.length > 0) {
             WKWebView *wv = previewWebView;
             MiuPreviewMessageHandler *mh = previewMsgHandler;
             [wv evaluateJavaScript:jsNS completionHandler:^(id result, NSError *error) {
@@ -758,6 +869,78 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
             }];
         }
     }
+}
+
+- (void)saveSecurityScopedBookmarkForURL:(NSURL *)url {
+    if (!url || url.path.length == 0) return;
+    NSData *bm = [url bookmarkDataWithOptions:NSURLBookmarkCreationWithSecurityScope
+               includingResourceValuesForKeys:nil
+                                relativeToURL:nil
+                                        error:nil];
+    if (!bm) {
+        bm = [url bookmarkDataWithOptions:0
+           includingResourceValuesForKeys:nil
+                            relativeToURL:nil
+                                    error:nil];
+    }
+    if (!bm) return;
+    NSDictionary *existing = [[NSUserDefaults standardUserDefaults] dictionaryForKey:kMiuMacRecentBookmarksKey];
+    NSMutableDictionary *dict = existing ? [existing mutableCopy] : [NSMutableDictionary dictionary];
+    dict[url.path] = bm;
+    [[NSUserDefaults standardUserDefaults] setObject:dict forKey:kMiuMacRecentBookmarksKey];
+}
+
+- (BOOL)openURLWithSecurityScope:(NSURL *)url {
+    if (!url || !editor || url.path.length == 0) return NO;
+    BOOL granted = [url startAccessingSecurityScopedResource];
+    bool ok = editor->openFileFromPath(MiuStdStringFromNSString(url.path));
+    if (ok) {
+        if (currentSecurityScopedURL && currentSecurityScopedURL != url) {
+            [currentSecurityScopedURL stopAccessingSecurityScopedResource];
+        }
+        currentSecurityScopedURL = granted ? url : nil;
+        [self saveSecurityScopedBookmarkForURL:url];
+        return YES;
+    }
+    if (granted && url != currentSecurityScopedURL) {
+        [url stopAccessingSecurityScopedResource];
+    }
+    return NO;
+}
+
+- (BOOL)openRecentPathWithBookmark:(NSString *)nsPath {
+    if (!nsPath || nsPath.length == 0 || !editor) return NO;
+    NSDictionary *dict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:kMiuMacRecentBookmarksKey];
+    NSData *bm = dict[nsPath];
+    if (bm) {
+        BOOL isStale = NO;
+        NSURL *resolved = [NSURL URLByResolvingBookmarkData:bm
+                                                    options:NSURLBookmarkResolutionWithSecurityScope
+                                              relativeToURL:nil
+                                        bookmarkDataIsStale:&isStale
+                                                      error:nil];
+        if (!resolved) {
+            resolved = [NSURL URLByResolvingBookmarkData:bm
+                                                 options:0
+                                           relativeToURL:nil
+                                     bookmarkDataIsStale:&isStale
+                                                   error:nil];
+        }
+        if (resolved && [self openURLWithSecurityScope:resolved]) {
+            if (isStale) [self saveSecurityScopedBookmarkForURL:resolved];
+            return YES;
+        }
+    }
+    NSURL *fallbackURL = [NSURL fileURLWithPath:nsPath];
+    if (fallbackURL && [self openURLWithSecurityScope:fallbackURL]) {
+        return YES;
+    }
+    std::string rawPath = MiuStdStringFromNSString(nsPath);
+    auto &rf = editor->recentFiles;
+    rf.erase(std::remove(rf.begin(), rf.end(), rawPath), rf.end());
+    editor->saveRecentFiles();
+    if (editor->cbUpdateRecentMenu) editor->cbUpdateRecentMenu();
+    return NO;
 }
 
 - (void)applySystemHighlightColor {
@@ -781,6 +964,10 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 
 - (void)dealloc {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    if (currentSecurityScopedURL) {
+        [currentSecurityScopedURL stopAccessingSecurityScopedResource];
+        currentSecurityScopedURL = nil;
+    }
     if (previewWebView) {
         [previewWebView.configuration.userContentController removeScriptMessageHandlerForName:@"miuPreview"];
     }
@@ -811,9 +998,10 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         NSArray *urls = [pboard readObjectsForClasses:@[[NSURL class]] options:nil];
         if (urls.count > 0) {
             if (editor->checkUnsavedChanges()) {
-                editor->openFileFromPath([[urls[0] path] UTF8String]);
-                [[self window] makeKeyAndOrderFront:nil];
-                return YES;
+                if ([self openURLWithSecurityScope:urls[0]]) {
+                    [[self window] makeKeyAndOrderFront:nil];
+                    return YES;
+                }
             }
         }
     }
@@ -829,7 +1017,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     if (![self window]) return;
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
     NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
-    if (!appVersion) appVersion = @"1.0.50";
+    if (!appVersion) appVersion = @"1.0.51";
     NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
     editor->appVersionStr = UTF8ToW([versionString UTF8String]);
     NSString *localizedHelp = NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧");
@@ -1271,16 +1459,16 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     [replaceAllBtn setFrame:NSMakeRect(70, 10, 105, 32)];
     [replaceBtn setFrame:NSMakeRect(175, 10, 85, 32)];
     [findBtn setFrame:NSMakeRect(260, 10, 90, 32)];
-    if (!editor->searchQuery.empty()) [findTextField setStringValue:[NSString stringWithUTF8String:editor->searchQuery.c_str()]];
-    if (!editor->replaceQuery.empty()) [replaceTextField setStringValue:[NSString stringWithUTF8String:editor->replaceQuery.c_str()]];
+    if (!editor->searchQuery.empty()) [findTextField setStringValue:MiuNSStringFromStdString(editor->searchQuery)];
+    if (!editor->replaceQuery.empty()) [replaceTextField setStringValue:MiuNSStringFromStdString(editor->replaceQuery)];
     [[self window] addChildWindow:findPanel ordered:NSWindowAbove];
     [findPanel makeKeyAndOrderFront:nil];
     [findPanel makeFirstResponder:findTextField];
 }
 
 - (void)updateFindQueries {
-    editor->searchQuery = [[findTextField stringValue] UTF8String];
-    editor->replaceQuery = [[replaceTextField stringValue] UTF8String];
+    editor->searchQuery = MiuStdStringFromNSString([findTextField stringValue]);
+    editor->replaceQuery = MiuStdStringFromNSString([replaceTextField stringValue]);
 }
 
 - (void)controlTextDidChange:(NSNotification *)obj {
@@ -1537,7 +1725,17 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
         if (shift && ([lowerChar isEqualToString:@"k"] || [lowerChar isEqualToString:@"l"])) { editor->deleteLine(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"d"]) { editor->selectNextOccurrence(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"a"]) { editor->selectAll(); [self setNeedsDisplay:YES]; return; }
-        if ([lowerChar isEqualToString:@"s"]) { shift ? editor->saveFileAs() : (editor->currentFilePath.empty() ? editor->saveFileAs() : editor->saveFile(editor->currentFilePath)); [self setNeedsDisplay:YES]; return; }
+        if ([lowerChar isEqualToString:@"s"]) {
+            if (shift || editor->currentFilePath.empty()) {
+                editor->saveFileAs();
+            } else {
+                if (!editor->saveFile(editor->currentFilePath)) {
+                    MiuShowSaveErrorAlert();
+                }
+            }
+            [self setNeedsDisplay:YES];
+            return;
+        }
         if ([lowerChar isEqualToString:@"c"]) { editor->copyToClipboard(); return; }
         if ([lowerChar isEqualToString:@"x"]) { editor->cutToClipboard(); [self setNeedsDisplay:YES]; return; }
         if ([lowerChar isEqualToString:@"v"]) { editor->pasteFromClipboard(); [self setNeedsDisplay:YES]; return; }
@@ -1751,7 +1949,8 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
 }
 
 - (void)setMarkedText:(id)s selectedRange:(NSRange)sr replacementRange:(NSRange)rr {
-    editor->imeComp = [([s isKindOfClass:[NSAttributedString class]] ? [s string] : s) UTF8String];
+    NSString *str = [s isKindOfClass:[NSAttributedString class]] ? [(NSAttributedString *)s string] : (NSString *)s;
+    editor->imeComp = MiuStdStringFromNSString(str);
     if (!editor->imeComp.empty()) editor->ensureCaretVisible();
     [self setNeedsDisplay:YES];
 }
@@ -1803,7 +2002,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     if (v && v->editor) {
         if (v->editor->recentFiles.empty()) v->editor->loadRecentFiles();
         for (const auto& pathStr : v->editor->recentFiles) {
-            NSString *nsPath = [NSString stringWithUTF8String:pathStr.c_str()];
+            NSString *nsPath = MiuNSStringFromStdString(pathStr);
             if (nsPath.length > 0) {
                 NSMenuItem *item = [[NSMenuItem alloc] initWithTitle:[nsPath lastPathComponent]
                                                               action:@selector(openRecentFileItem:)
@@ -1831,10 +2030,14 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     EditorView *v = [self findEditorViewInWindow:[NSApp keyWindow]];
     if (v && v->editor) {
         if (v->editor->checkUnsavedChanges()) {
-            v->editor->openFileFromPath([path UTF8String]);
+            [v openRecentPathWithBookmark:path];
         }
     } else {
-        [self createWindowWithPath:[path UTF8String]];
+        [self createWindowWithPath:nullptr];
+        EditorView *newV = [self findEditorViewInWindow:self.windows.lastObject];
+        if (newV) {
+            [newV openRecentPathWithBookmark:path];
+        }
     }
 }
 
@@ -1843,6 +2046,7 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     if (v && v->editor) {
         v->editor->clearRecentFiles();
     }
+    [[NSUserDefaults standardUserDefaults] removeObjectForKey:kMiuMacRecentBookmarksKey];
     [self rebuildRecentFilesMenu];
 }
 
@@ -1880,7 +2084,12 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     };
 
     if (path) {
-        v->editor->openFileFromPath(path);
+        NSString *nsP = MiuNSStringFromStdString(std::string(path));
+        if (nsP.length > 0) {
+            [v openURLWithSecurityScope:[NSURL fileURLWithPath:nsP]];
+        } else {
+            v->editor->openFileFromPath(path);
+        }
     } else {
         v->editor->newFile();
         v->editor->showHelpPopup = true;
@@ -1977,12 +2186,19 @@ static NSString *const kMiuLineSelectionType = @"jp.hack.miu.lineselection";
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     [NSApp activateIgnoringOtherApps:YES];
     NSArray *args = [[NSProcessInfo processInfo] arguments];
-    if (args.count > 1) [self createWindowWithPath:[args[1] UTF8String]];
-    else if (self.windows.count == 0) [self createWindowWithPath:nullptr];
+    if (args.count > 1 && [args[1] isKindOfClass:[NSString class]] && ![args[1] hasPrefix:@"-"]) {
+        std::string argPath = MiuStdStringFromNSString(args[1]);
+        [self createWindowWithPath:argPath.empty() ? nullptr : argPath.c_str()];
+    } else if (self.windows.count == 0) {
+        [self createWindowWithPath:nullptr];
+    }
 }
 
 - (void)application:(NSApplication *)sender openFiles:(NSArray<NSString *> *)filenames {
-    for (NSString *path in filenames) [self createWindowWithPath:[path UTF8String]];
+    for (NSString *path in filenames) {
+        std::string pStr = MiuStdStringFromNSString(path);
+        if (!pStr.empty()) [self createWindowWithPath:pStr.c_str()];
+    }
     [sender replyToOpenOrPrint:NSApplicationDelegateReplySuccess];
 }
 

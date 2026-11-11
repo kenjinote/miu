@@ -60,3 +60,5 @@
 "View" = "보기";
 "Tab" = "탭";
 "No Recent Files" = "최근 항목 없음";
+"Reload" = "다시 불러오기";
+"Failed to save file." = "파일을 저장하지 못했습니다.";

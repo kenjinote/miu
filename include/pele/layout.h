@@ -1800,6 +1800,7 @@ inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>
     if (node.rank > maxRank) maxRank = node.rank;
   }
 
+  for (int ei = 0; ei < m; ei++) if (span[ei] <= 0) direct[ei] = 1;
   int segments = 0;
   for (int ei = 0; ei < m; ei++) if (!direct[ei]) segments += span[ei];
   std::vector<int> EF(segments, 0);
@@ -1880,8 +1881,31 @@ inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>
   std::vector<int> groupParent;
   if (hasGRP) {
     const auto& of = opt.groups->of;
-    const auto& parent = opt.groups->parent;
-    groupParent = parent;
+    groupParent = opt.groups->parent;
+    int gpSize = static_cast<int>(groupParent.size());
+    for (int i = 0; i < gpSize; i++) {
+      if (groupParent[i] < 0 || groupParent[i] >= gpSize || groupParent[i] == i) groupParent[i] = -1;
+    }
+    std::vector<uint8_t> gpState(gpSize, 0);
+    for (int i = 0; i < gpSize; i++) {
+      if (gpState[i] != 0) continue;
+      int cur = i;
+      while (cur >= 0 && gpState[cur] == 0) {
+        gpState[cur] = 1;
+        int nx = groupParent[cur];
+        if (nx >= 0 && gpState[nx] == 1) {
+          groupParent[cur] = -1;
+          break;
+        }
+        cur = nx;
+      }
+      for (int k = i; k >= 0 && gpState[k] == 1; ) {
+        int nx = groupParent[k];
+        gpState[k] = 2;
+        k = nx;
+      }
+    }
+    const auto& parent = groupParent;
     GRP.assign(n, 0);
     for (int i = 0; i < real; i++) GRP[i] = of[i];
     auto depth = [&](int gr) -> int {
@@ -3073,6 +3097,32 @@ inline Size layoutCompound(std::vector<CNode>& nodes, std::vector<CEdge>& edges,
   using namespace detail_compound;
   int n = static_cast<int>(nodes.size());
   if (n == 0) return {0, 0};
+
+  for (int i = 0; i < n; i++) {
+    int p = nodes[i].parent;
+    if (p < 0 || p >= n || p == i || !nodes[p].isGroup) nodes[i].parent = -1;
+  }
+  {
+    std::vector<uint8_t> pState(n, 0);
+    for (int i = 0; i < n; i++) {
+      if (pState[i] != 0) continue;
+      int cur = i;
+      while (cur >= 0 && pState[cur] == 0) {
+        pState[cur] = 1;
+        int nx = nodes[cur].parent;
+        if (nx >= 0 && pState[nx] == 1) {
+          nodes[cur].parent = -1;
+          break;
+        }
+        cur = nx;
+      }
+      for (int k = i; k >= 0 && pState[k] == 1; ) {
+        int nx = nodes[k].parent;
+        pState[k] = 2;
+        k = nx;
+      }
+    }
+  }
 
   auto depth = [&](int i) -> int {
     int d = 0;

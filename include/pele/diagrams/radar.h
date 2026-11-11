@@ -259,11 +259,11 @@ inline RadarAst parseRadar(const std::string& src) {
 
     auto entry = [&](bool detailed) -> EntryAst {
         if (!detailed) {
-            return {std::nullopt, std::stod(r.expect(T::number))};
+            return {std::nullopt, safeStod(r.expect(T::number), "radar")};
         }
         std::string axisRef = r.expect(T::id);
         r.accept(T::colon);
-        return {axisRef, std::stod(r.expect(T::number))};
+        return {axisRef, safeStod(r.expect(T::number), "radar")};
     };
 
     auto curve = [&]() -> CurveAst {
@@ -297,7 +297,7 @@ inline RadarAst parseRadar(const std::string& src) {
         opt.name = name;
         if (kind == T::showLegend) opt.bVal = (r.expect(T::boolean) == "true");
         else if (kind == T::graticule) opt.sVal = r.expect(T::graticuleValue);
-        else opt.nVal = std::stod(r.expect(T::number));
+        else opt.nVal = safeStod(r.expect(T::number), "radar");
         return opt;
     };
 

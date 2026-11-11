@@ -6,6 +6,7 @@
 //
 
 #import "SceneDelegate.h"
+#import "ViewController.h"
 
 @interface SceneDelegate ()
 
@@ -13,11 +14,39 @@
 
 @implementation SceneDelegate
 
+- (void)deliverURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts {
+    if (URLContexts.count == 0) return;
+    UIOpenURLContext *targetContext = nil;
+    for (UIOpenURLContext *ctx in URLContexts) {
+        if (ctx.URL && ctx.URL.isFileURL) {
+            targetContext = ctx;
+            break;
+        }
+    }
+    if (!targetContext || !targetContext.URL) return;
+    NSURL *incomingURL = targetContext.URL;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *rootVC = self.window.rootViewController;
+        if ([rootVC isKindOfClass:[UINavigationController class]]) {
+            rootVC = [(UINavigationController *)rootVC topViewController];
+        }
+        if ([rootVC isKindOfClass:[ViewController class]]) {
+            ViewController *vc = (ViewController *)rootVC;
+            [vc loadViewIfNeeded];
+            [vc openIncomingURL:incomingURL];
+        }
+    });
+}
+
 
 - (void)scene:(UIScene *)scene willConnectToSession:(UISceneSession *)session options:(UISceneConnectionOptions *)connectionOptions {
-    // Use this method to optionally configure and attach the UIWindow `window` to the provided UIWindowScene `scene`.
-    // If using a storyboard, the `window` property will automatically be initialized and attached to the scene.
-    // This delegate does not imply the connecting scene or session are new (see `application:configurationForConnectingSceneSession` instead).
+    if (connectionOptions.URLContexts.count > 0) {
+        [self deliverURLContexts:connectionOptions.URLContexts];
+    }
+}
+
+- (void)scene:(UIScene *)scene openURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts {
+    [self deliverURLContexts:URLContexts];
 }
 
 

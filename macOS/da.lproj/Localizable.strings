@@ -60,3 +60,5 @@
 "View" = "Oversigt";
 "Tab" = "Tabulator";
 "No Recent Files" = "Ingen seneste filer";
+"Reload" = "Genindlæs";
+"Failed to save file." = "Kunne ikke gemme filen.";

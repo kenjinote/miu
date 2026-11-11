@@ -663,7 +663,8 @@ inline OrderedJson parseOrderedJson(const std::string& text) {
         return formatJsonNumber(text.substr(static_cast<size_t>(start), static_cast<size_t>(at - start)));
     };
 
-    auto parseVal = [&](auto& self, const std::string& pointer) -> JsonVal {
+    auto parseVal = [&](auto& self, const std::string& pointer, int depth) -> JsonVal {
+        if (depth > 64) throw PeleError("JSON nesting exceeds maximum depth", "limit", "usecase");
         skip();
         int c = charCodeAt(text, at);
         if (c == 123) {
@@ -695,7 +696,7 @@ inline OrderedJson parseOrderedJson(const std::string& text) {
                 if (charCodeAt(text, at) != 58) throw PeleError("Invalid JSON token", "syntax", "usecase");
                 at++;
                 std::string childPtr = Pele::cat({pointer, "/", replaceAllStr(replaceAllStr(key, "~", "~0"), "/", "~1")});
-                v.obj[key] = self(self, childPtr);
+                v.obj[key] = self(self, childPtr, depth + 1);
                 ranges[key] = {from, created.size()};
                 skip();
                 int next = charCodeAt(text, at);
@@ -720,7 +721,7 @@ inline OrderedJson parseOrderedJson(const std::string& text) {
             }
             int idx = 0;
             for (;;) {
-                v.arr.push_back(self(self, pointer + "/" + std::to_string(idx++)));
+                v.arr.push_back(self(self, pointer + "/" + std::to_string(idx++), depth + 1));
                 skip();
                 int next = charCodeAt(text, at);
                 if (next == 93) {
@@ -768,7 +769,7 @@ inline OrderedJson parseOrderedJson(const std::string& text) {
         throw PeleError("Invalid JSON token", "syntax", "usecase");
     };
 
-    res.value = parseVal(parseVal, "");
+    res.value = parseVal(parseVal, "", 0);
     skip();
     if (at != n || res.value.type != JsonVal::Object) {
         throw PeleError("Invalid JSON", "syntax", "usecase");

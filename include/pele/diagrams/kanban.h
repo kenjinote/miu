@@ -359,7 +359,7 @@ inline Rendered renderKanbanModel(const KanbanModel& model, const Config& config
                     if (tPos != std::string::npos) {
                         replacedUrl.replace(tPos, 8, item.ticket);
                     }
-                    href = linkUrl(sanitizeUrl(decodeEntities(replacedUrl)), options);
+                    href = linkUrl(replacedUrl, options);
                 }
                 if (href.empty()) {
                     inner += textBlock(card.ticket, CARD_PAD, top, " class=\"pele-ticket\" fill=\"var(--_m)\"", icons);

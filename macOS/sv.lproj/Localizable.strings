@@ -60,3 +60,5 @@
 "View" = "Innehåll";
 "Tab" = "Tabb";
 "No Recent Files" = "Inga senaste filer";
+"Reload" = "Läs in igen";
+"Failed to save file." = "Det gick inte att spara filen.";

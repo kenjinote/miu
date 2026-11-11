@@ -15,6 +15,7 @@
 #include <functional>
 #include <cstring>
 #include <cstdint>
+#include <atomic>
 
 #if defined(__APPLE__)
 #include <CoreGraphics/CoreGraphics.h>
@@ -195,6 +196,11 @@ struct Editor {
 
     std::chrono::steady_clock::time_point zoomPopupEndTime;
     std::string zoomPopupText = "";
+    struct ToastTimerState {
+        std::atomic<bool> alive{true};
+        bool pending = false;
+    };
+    std::shared_ptr<ToastTimerState> toastTimerState = std::make_shared<ToastTimerState>();
 
     float currentFontSize = 14.0f;
     float lineHeight = 18.0f;
@@ -354,6 +360,7 @@ struct Editor {
     void togglePreview();
     MiuPreview::PreviewRenderResult getPreviewRenderResult();
     bool handlePreviewTaskToggle(int targetLineIdx);
+    bool handlePreviewMessage(const std::string& msg);
 
     // Search & Replace
     std::pair<std::string, bool> getHighlightTarget();

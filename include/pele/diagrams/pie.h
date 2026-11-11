@@ -178,7 +178,7 @@ inline PieAst parsePie(const std::string& src) {
             case T::string: {
                 std::string label = common_tokens::stringValue(r.take());
                 r.expect(T::colon);
-                double value = std::stod(r.expect(T::number));
+                double value = safeStod(r.expect(T::number), "pie");
                 ast.sections.push_back({label, value});
                 endOfLine();
                 break;

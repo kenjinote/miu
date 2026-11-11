@@ -60,3 +60,5 @@
 "View" = "Darstellung";
 "Tab" = "Tabulator";
 "No Recent Files" = "Keine letzten Dateien";
+"Reload" = "Neu laden";
+"Failed to save file." = "Datei konnte nicht gespeichert werden.";

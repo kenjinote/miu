@@ -224,7 +224,7 @@ inline std::string leftLabelSvg(const Label& label, double x, double top, const 
         const auto& spans = label.lines[i];
         double cy = top + (static_cast<double>(i) + 0.5) * label.lineHeight;
         bool anyIcon = false;
-        for (const auto& s : spans) if (s.hasIcon) { anyIcon = true; break; }
+        for (const auto& s : spans) if (s.hasIcon || s.hasMath) { anyIcon = true; break; }
         if (anyIcon) {
             double width = label.widths[i];
             Label sub = label;
@@ -1566,28 +1566,58 @@ inline std::string svgDocument(
 }
 
 inline std::string sanitizeUrl(const std::string& rawUrl) {
-    std::string u = trimStr(decodeEntities(rawUrl));
+    std::string decoded = decodeEntities(rawUrl);
+    std::string stripped;
+    stripped.reserve(decoded.size());
+    for (unsigned char c : decoded) {
+        if (c <= 0x1F || c == 0x7F) continue;
+        stripped.push_back(static_cast<char>(c));
+    }
+    std::string u = trimStr(stripped);
     if (u.empty()) return "about:blank";
-    std::string low = toLowerAscii(u);
-    if (startsWith(low, "javascript:") || startsWith(low, "data:") || startsWith(low, "vbscript:")) return "about:blank";
+    size_t colon = std::string::npos;
+    for (size_t i = 0; i < u.size(); i++) {
+        char c = u[i];
+        if (c == '/' || c == '?' || c == '#' || c == '\\') break;
+        if (c == ':') { colon = i; break; }
+    }
+    if (colon != std::string::npos) {
+        if (colon == 0) return "about:blank";
+        for (size_t i = 0; i < colon; i++) {
+            char c = u[i];
+            if (!isLetter(c) && !(i > 0 && (isDigit(c) || c == '+' || c == '.' || c == '-'))) {
+                return "about:blank";
+            }
+        }
+        std::string sc = toLowerAscii(u.substr(0, colon));
+        if (sc == "javascript" || sc == "data" || sc == "vbscript" || sc == "file" || sc == "blob") {
+            return "about:blank";
+        }
+    }
     return u;
 }
 
 inline std::string linkUrl(const std::string& url, const RenderOptions& options) {
     if (!options.links) return "";
     std::string s = sanitizeUrl(url);
-    if (s == "about:blank" || startsWith(s, "//") || startsWith(s, "\\\\")) return "";
-    size_t colon = s.find(':');
+    if (s == "about:blank" || startsWith(s, "//") || startsWith(s, "\\")) return "";
+    if (s.size() >= 2 && s[0] == '/' && s[1] == '\\') return "";
+    size_t colon = std::string::npos;
+    for (size_t i = 0; i < s.size(); i++) {
+        char c = s[i];
+        if (c == '/' || c == '?' || c == '#') break;
+        if (c == '\\') return "";
+        if (c == ':') { colon = i; break; }
+    }
     if (colon != std::string::npos) {
-        bool allScheme = colon > 0;
+        if (colon == 0) return "";
         for (size_t i = 0; i < colon; i++) {
             char c = s[i];
-            if (!isLetter(c) && !(i > 0 && (isDigit(c) || c == '+' || c == '.' || c == '-'))) { allScheme = false; break; }
+            if (!isLetter(c) && !(i > 0 && (isDigit(c) || c == '+' || c == '.' || c == '-'))) return "";
         }
-        if (allScheme) {
-            std::string sc = toLowerAscii(s.substr(0, colon));
-            if (sc != "http" && sc != "https" && sc != "mailto" && sc != "tel") return "";
-        }
+        std::string sc = toLowerAscii(s.substr(0, colon));
+        if (sc != "http" && sc != "https" && sc != "mailto" && sc != "tel") return "";
+        if ((sc == "http" || sc == "https") && s.compare(colon, 3, "://") != 0) return "";
     }
     return s;
 }
@@ -1595,11 +1625,24 @@ inline std::string linkUrl(const std::string& url, const RenderOptions& options)
 inline std::string imageUrl(const std::string& url, const RenderOptions& options) {
     if (!options.images) return "";
     std::string s = sanitizeUrl(url);
-    if (s == "about:blank" || startsWith(s, "//") || startsWith(s, "\\\\")) return "";
-    size_t colon = s.find(':');
+    if (s == "about:blank" || startsWith(s, "//") || startsWith(s, "\\")) return "";
+    if (s.size() >= 2 && s[0] == '/' && s[1] == '\\') return "";
+    size_t colon = std::string::npos;
+    for (size_t i = 0; i < s.size(); i++) {
+        char c = s[i];
+        if (c == '/' || c == '?' || c == '#') break;
+        if (c == '\\') return "";
+        if (c == ':') { colon = i; break; }
+    }
     if (colon != std::string::npos) {
+        if (colon == 0) return "";
+        for (size_t i = 0; i < colon; i++) {
+            char c = s[i];
+            if (!isLetter(c) && !(i > 0 && (isDigit(c) || c == '+' || c == '.' || c == '-'))) return "";
+        }
         std::string sc = toLowerAscii(s.substr(0, colon));
         if (sc != "http" && sc != "https") return "";
+        if (s.compare(colon, 3, "://") != 0) return "";
     }
     return s;
 }

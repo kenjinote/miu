@@ -1896,9 +1896,9 @@ inline void parseSequence(const std::string& src, SeqDb& db) {
         node.signalType = LINETYPE::AUTONUMBER;
         node.hasSignalType = true;
         if (types[i] == T_NUM) {
-            node.sequenceIndex = std::stod(texts[i++]);
+            node.sequenceIndex = safeStod(texts[i++], "sequence");
             node.hasSequenceIndex = true;
-            node.sequenceIndexStep = (types[i] == T_NUM) ? std::stod(texts[i++]) : 1.0;
+            node.sequenceIndexStep = (types[i] == T_NUM) ? safeStod(texts[i++], "sequence") : 1.0;
             node.hasSequenceIndexStep = true;
         } else if (types[i] == T_off) {
             i++;

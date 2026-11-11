@@ -60,3 +60,5 @@
 "View" = "Weergave";
 "Tab" = "Tab";
 "No Recent Files" = "Geen recente bestanden";
+"Reload" = "Opnieuw laden";
+"Failed to save file." = "Kan bestand niet opslaan.";

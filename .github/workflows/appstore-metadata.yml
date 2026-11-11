@@ -10,22 +10,42 @@ on:
 
 jobs:
   sync-metadata:
-    name: Sync App Store Connect Localizations & Submit (macOS 1.0.48)
+    name: Sync App Store Connect Localizations & Submit
     runs-on: ubuntu-latest
     env:
-      APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
-      APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
-      APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      HAS_ASC_SECRETS: ${{ secrets.APPSTORE_ISSUER_ID != '' && secrets.APPSTORE_KEY_ID != '' && secrets.APPSTORE_PRIVATE_KEY != '' }}
       SYNC_SCREENSHOTS: ${{ github.event.inputs.sync_screenshots }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Python dependencies & Sync App Store Metadata + Submit macOS 1.0.48
-        if: env.APPSTORE_ISSUER_ID != '' && env.APPSTORE_KEY_ID != '' && env.APPSTORE_PRIVATE_KEY != ''
+      - name: Install Python dependencies
+        if: env.HAS_ASC_SECRETS == 'true'
         run: |
-          pip3 install --quiet --break-system-packages pyjwt cryptography requests pillow numpy || pip3 install --quiet pyjwt cryptography requests pillow numpy
+          pip3 install --quiet --break-system-packages \
+            "pyjwt==2.10.1" "cryptography==44.0.2" "requests==2.32.3" "pillow==11.1.0" "numpy==2.2.3" || \
+          pip3 install --quiet \
+            "pyjwt==2.10.1" "cryptography==44.0.2" "requests==2.32.3" "pillow==11.1.0" "numpy==2.2.3" || \
+          pip3 install --quiet --break-system-packages \
+            "pyjwt>=2.8,<3" "cryptography>=42,<47" "requests>=2.31,<3" "pillow>=10,<12" "numpy>=1.26,<3"
+
+      - name: Sync App Store Metadata
+        if: env.HAS_ASC_SECRETS == 'true'
+        env:
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
           python3 scripts/appstore_metadata_sync.py --macos-only
           if [ "$SYNC_SCREENSHOTS" = "true" ]; then
-            python3 scripts/appstore_screenshots_sync.py --out-dir /tmp/asc_screenshots
+            python3 scripts/appstore_screenshots_sync.py --out-dir "$RUNNER_TEMP/asc_screenshots"
           fi
+
+      - name: Cleanup temporary files
+        if: always()
+        run: |
+          if [ -n "${RUNNER_TEMP:-}" ]; then
+            rm -rf "$RUNNER_TEMP/asc_screenshots" "$RUNNER_TEMP/asc_private_keys"
+          fi
+          rm -f "$HOME/.appstoreconnect/private_keys"/AuthKey_*.p8 2>/dev/null || true

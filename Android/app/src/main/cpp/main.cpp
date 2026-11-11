@@ -22,6 +22,8 @@
 #include <deque>
 #include <regex>
 #include <numeric>
+#include <random>
+#include <climits>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include <hb.h>
@@ -36,6 +38,42 @@
 #include "MiuPreview.h"
 #define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "miu", __VA_ARGS__))
 #define LOGE(...) ((void)__android_log_print(ANDROID_LOG_ERROR, "miu", __VA_ARGS__))
+struct JniEnvScope {
+    JavaVM* vm = nullptr;
+    JNIEnv* env = nullptr;
+    bool attached = false;
+    explicit JniEnvScope(JavaVM* v) : vm(v) {
+        if (!vm) return;
+        jint st = vm->GetEnv((void**)&env, JNI_VERSION_1_6);
+        if (st == JNI_EDETACHED) {
+            if (vm->AttachCurrentThread(&env, nullptr) == 0) {
+                attached = true;
+            } else {
+                env = nullptr;
+            }
+        } else if (st != JNI_OK) {
+            env = nullptr;
+        }
+    }
+    ~JniEnvScope() {
+        if (env && env->ExceptionCheck()) {
+            env->ExceptionClear();
+        }
+        if (attached && vm) {
+            vm->DetachCurrentThread();
+        }
+    }
+};
+static std::string generateRandomHexNonce() {
+    std::random_device rd;
+    uint64_t a = ((uint64_t)rd() << 32) ^ (uint64_t)rd() ^ (uint64_t)std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    uint64_t b = ((uint64_t)rd() << 32) ^ (uint64_t)rd() ^ 0x9E3779B97F4A7C15ULL;
+    a ^= a >> 30; a *= 0xBF58476D1CE4E5B9ULL; a ^= a >> 27; a *= 0x94D049BB133111EBULL; a ^= a >> 31;
+    b ^= b >> 30; b *= 0xBF58476D1CE4E5B9ULL; b ^= b >> 27; b *= 0x94D049BB133111EBULL; b ^= b >> 31;
+    char hex[36] = {};
+    std::snprintf(hex, sizeof(hex), "%08X%08X%08X%08X", (uint32_t)(a >> 32), (uint32_t)a, (uint32_t)(b >> 32), (uint32_t)b);
+    return std::string(hex);
+}
 void setEngineColorFromInt(float* target, int argb) {
     target[3] = ((argb >> 24) & 0xFF) / 255.0f;
     target[0] = ((argb >> 16) & 0xFF) / 255.0f;
@@ -259,6 +297,10 @@ struct WrapSegment {
 struct LineCache {
     std::vector<ShapedGlyph> glyphs;
     std::vector<WrapSegment> wrapSegments;
+    std::vector<SyntaxColor> syntaxColors;
+    uint64_t syntaxEditEpoch = 0;
+    uint64_t syntaxDefEpoch = 0;
+    int syntaxInBlock = -1;
     bool isShaped = false;
     bool isWrapped = false;
     float wrappedWidth = -1.0f;
@@ -322,6 +364,14 @@ struct Engine {
     SyntaxDef currentSyntax;
     std::string currentFileExt;
     std::vector<int> commentStateCache;
+    uint64_t editEpoch = 1;
+    uint64_t syntaxEpoch = 1;
+    std::vector<std::pair<size_t, size_t>> cachedSearchMatches;
+    uint64_t cachedSearchMatchesEpoch = 0;
+    std::string cachedSearchMatchesQuery;
+    bool cachedSearchMatchesCase = false;
+    bool cachedSearchMatchesWholeWord = false;
+    bool cachedSearchMatchesRegex = false;
     ActiveEmmetSession activeEmmetSession;
     std::string previewNonce;
     bool isSelectingGutter = false;
@@ -428,22 +478,43 @@ bool TextAtlas::loadGlyph(Engine* engine, int fontIndex, uint32_t glyphIndex) {
         return false;
     }
     FT_Bitmap* bmp = &targetFace->glyph->bitmap;
+    if ((bmp->width > 0 && bmp->rows > 0) && bmp->buffer == nullptr) return false;
     bool isColorGlyph = (bmp->pixel_mode == FT_PIXEL_MODE_BGRA);
     if (currentX + bmp->width + 1 >= width) {
         currentX = 0; currentY += maxRowHeight + 1; maxRowHeight = 0;
     }
     if (currentY + bmp->rows + 1 >= height) { LOGE("アトラスオーバー"); return false; }
+    const size_t absPitch = (size_t)(bmp->pitch < 0 ? -bmp->pitch : bmp->pitch);
     for (unsigned int row = 0; row < bmp->rows; ++row) {
+        const uint8_t* rowPtr = (bmp->pitch >= 0)
+            ? (bmp->buffer + (size_t)row * absPitch)
+            : (bmp->buffer + (size_t)(bmp->rows - 1 - row) * absPitch);
         for (unsigned int col = 0; col < bmp->width; ++col) {
             size_t dstIdx = ((currentY + row) * width + (currentX + col)) * 4;
             if (isColorGlyph) {
-                uint8_t* bgr = &bmp->buffer[row * bmp->pitch + col * 4];
-                pixels[dstIdx + 0] = bgr[2];
-                pixels[dstIdx + 1] = bgr[1];
-                pixels[dstIdx + 2] = bgr[0];
-                pixels[dstIdx + 3] = bgr[3];
+                if ((size_t)col * 4 + 3 < absPitch) {
+                    const uint8_t* bgr = rowPtr + (size_t)col * 4;
+                    pixels[dstIdx + 0] = bgr[2];
+                    pixels[dstIdx + 1] = bgr[1];
+                    pixels[dstIdx + 2] = bgr[0];
+                    pixels[dstIdx + 3] = bgr[3];
+                }
+            } else if (bmp->pixel_mode == FT_PIXEL_MODE_MONO) {
+                size_t byteIdx = (size_t)(col >> 3);
+                uint8_t gray = (byteIdx < absPitch && (rowPtr[byteIdx] & (0x80u >> (col & 7u)))) ? 255 : 0;
+                pixels[dstIdx + 0] = gray; pixels[dstIdx + 1] = gray; pixels[dstIdx + 2] = gray; pixels[dstIdx + 3] = gray;
+            } else if (bmp->pixel_mode == FT_PIXEL_MODE_GRAY2) {
+                size_t byteIdx = (size_t)(col >> 2);
+                uint8_t v2 = (byteIdx < absPitch) ? (uint8_t)((rowPtr[byteIdx] >> (6 - ((col & 3u) << 1))) & 0x03u) : 0;
+                uint8_t gray = (uint8_t)(v2 * 85u);
+                pixels[dstIdx + 0] = gray; pixels[dstIdx + 1] = gray; pixels[dstIdx + 2] = gray; pixels[dstIdx + 3] = gray;
+            } else if (bmp->pixel_mode == FT_PIXEL_MODE_GRAY4) {
+                size_t byteIdx = (size_t)(col >> 1);
+                uint8_t v4 = (byteIdx < absPitch) ? (uint8_t)((rowPtr[byteIdx] >> ((col & 1u) ? 0 : 4)) & 0x0Fu) : 0;
+                uint8_t gray = (uint8_t)(v4 * 17u);
+                pixels[dstIdx + 0] = gray; pixels[dstIdx + 1] = gray; pixels[dstIdx + 2] = gray; pixels[dstIdx + 3] = gray;
             } else {
-                uint8_t gray = bmp->buffer[row * bmp->pitch + col];
+                uint8_t gray = ((size_t)col < absPitch) ? rowPtr[col] : 0;
                 pixels[dstIdx + 0] = gray; pixels[dstIdx + 1] = gray; pixels[dstIdx + 2] = gray; pixels[dstIdx + 3] = gray;
             }
         }
@@ -520,6 +591,7 @@ void loadSyntaxForEngine(Engine* engine, const std::string& pathOrName) {
     engine->currentFileExt = extractSyntaxExtensionFromPath(pathOrName);
     loadSyntaxDefForExtension(engine->currentFileExt, engine->isDarkMode, engine->currentSyntax);
     engine->commentStateCache.clear();
+    engine->syntaxEpoch++;
 }
 
 bool checkInBlockComment(Engine* engine, int targetLine) {
@@ -535,77 +607,34 @@ bool checkInBlockComment(Engine* engine, int targetLine) {
             startLine = 1;
         }
         bool inComment = (engine->commentStateCache[startLine - 1] != 0);
-        const std::string& bcs = engine->currentSyntax.blockCommentStart;
-        const std::string& bce = engine->currentSyntax.blockCommentEnd;
-        const std::string& lc = engine->currentSyntax.lineComment;
-
         for (int li = startLine; li <= targetLine && li <= (int)engine->lineStarts.size(); ++li) {
             int prevLi = li - 1;
             size_t s = engine->lineStarts[prevLi];
             size_t e = (prevLi + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[prevLi + 1] : engine->pt.length();
             std::string lineStr = engine->pt.getRange(s, e - s);
-            size_t i = 0, n = lineStr.size();
-            bool inStr = false;
-            char strQuote = 0;
-            while (i < n) {
-                if (inComment) {
-                    if (i + bce.size() <= n && lineStr.compare(i, bce.size(), bce) == 0) {
-                        inComment = false;
-                        i += bce.size();
-                    } else {
-                        i++;
-                    }
-                } else if (inStr) {
-                    if (lineStr[i] == '\\' && i + 1 < n) i += 2;
-                    else if (lineStr[i] == strQuote) { inStr = false; i++; }
-                    else i++;
-                } else {
-                    if (!lc.empty() && i + lc.size() <= n && lineStr.compare(i, lc.size(), lc) == 0) {
-                        break;
-                    }
-                    if (i + bcs.size() <= n && lineStr.compare(i, bcs.size(), bcs) == 0) {
-                        inComment = true;
-                        i += bcs.size();
-                    } else if (engine->currentSyntax.disableSingleQuoteStrings && (
-                        (i + 2 < n && (lineStr[i] == '#' || lineStr[i] == '?') && lineStr[i + 1] == '\\') ||
-                        (i + 1 < n && lineStr[i] == '\\') ||
-                        (i + 1 < n && lineStr[i] == '?' && (lineStr[i + 1] == '"' || lineStr[i + 1] == ';' || lineStr[i + 1] == '|')))) {
-                        i += (lineStr[i] == '\\' || lineStr[i + 1] != '\\') ? 2 : 3;
-                    } else if (!engine->currentSyntax.disableStrings && (lineStr[i] == '"' || (!engine->currentSyntax.disableSingleQuoteStrings && lineStr[i] == '\''))) {
-                        inStr = true;
-                        strQuote = lineStr[i];
-                        i++;
-                    } else {
-                        i++;
-                    }
-                }
-            }
+            inComment = scanBlockCommentState(lineStr, engine->currentSyntax, inComment);
             engine->commentStateCache.push_back(inComment ? 1 : 0);
         }
     }
+    if (targetLine >= (int)engine->commentStateCache.size()) return false;
     return engine->commentStateCache[targetLine] != 0;
 }
 
 void notifyPreviewUpdateIfNeeded(Engine* engine) {
     if (!engine || !engine->app || !engine->app->activity || !engine->app->activity->vm) return;
-    JNIEnv* env = nullptr;
-    JavaVM* vm = engine->app->activity->vm;
-    bool needDetach = false;
-    if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
-        if (vm->AttachCurrentThread(&env, nullptr) != 0) return;
-        needDetach = true;
+    JniEnvScope scope(engine->app->activity->vm);
+    JNIEnv* env = scope.env;
+    if (!env) return;
+    jclass clazz = env->GetObjectClass(engine->app->activity->clazz);
+    if (!clazz) return;
+    jmethodID mid = env->GetMethodID(clazz, "onNativeTextChanged", "()V");
+    if (mid) {
+        env->CallVoidMethod(engine->app->activity->clazz, mid);
     }
-    if (env) {
-        jclass clazz = env->GetObjectClass(engine->app->activity->clazz);
-        jmethodID mid = env->GetMethodID(clazz, "onNativeTextChanged", "()V");
-        if (mid) {
-            env->CallVoidMethod(engine->app->activity->clazz, mid);
-        } else if (env->ExceptionCheck()) {
-            env->ExceptionClear();
-        }
-        env->DeleteLocalRef(clazz);
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
     }
-    if (needDetach) vm->DetachCurrentThread();
+    env->DeleteLocalRef(clazz);
 }
 
 void applyBatchToEmmetTabstops(Engine* engine, const EditBatch& batch) {
@@ -679,6 +708,8 @@ void performNewDocument(Engine* engine) {
     engine->newlineStr = "\n";
     engine->currentEncoding = ENC_UTF8_NOBOM;
     engine->currentCharset = "UTF-8";
+    engine->editEpoch++;
+    engine->previewNonce = generateRandomHexNonce();
     loadSyntaxForEngine(engine, "");
     updateTitleBarIfNeeded(engine);
     notifyPreviewUpdateIfNeeded(engine);
@@ -699,7 +730,7 @@ const std::regex* getCompiledSearchRegex(Engine* engine, const std::string& rawQ
     engine->cachedSearchRegexValid = false;
     if (!isSafeUserRegex(rawQuery)) return nullptr;
     std::string actualQuery = preprocessRegexQuery(rawQuery);
-    if (!isSafeUserRegex(actualQuery)) return nullptr;
+    if (!isSafeUserRegex(actualQuery, 32768)) return nullptr;
     try {
         std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
         if (!matchCase) flags |= std::regex_constants::icase;
@@ -713,7 +744,7 @@ const std::regex* getCompiledSearchRegex(Engine* engine, const std::string& rawQ
 size_t findText(Engine* engine, size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
     size_t len = engine->pt.length();
-    if (len == 0) return std::string::npos;
+    if (len == 0 && !isRegex) return std::string::npos;
     if (isRegex) {
         const std::regex* rePtr = getCompiledSearchRegex(engine, query, matchCase);
         if (!rePtr) return std::string::npos;
@@ -724,7 +755,7 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
             size_t foundPos = std::string::npos;
             size_t foundLen = 0;
             bool startsWithCaret = (!query.empty() && query[0] == '^');
-            bool endsWithDollar = (!query.empty() && query.back() == '$');
+            bool endsWithDollar = MiuCore::hasUnescapedTrailingDollar(query);
             if (forward) {
                 if (startPos > fullText.size()) startPos = 0;
                 size_t searchStartIdx = startPos;
@@ -845,7 +876,7 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
                 auto words_end = std::sregex_iterator();
                 size_t bestPos = std::string::npos;
                 size_t bestLen = 0;
-                size_t limit = (startPos == 0) ? len : startPos;
+                size_t limit = (startPos == 0) ? (len + 1) : startPos;
                 for (auto i = words_begin; i != words_end; ++i) {
                     size_t mPos = i->position();
                     size_t mLen = i->length();
@@ -899,23 +930,66 @@ size_t findText(Engine* engine, size_t startPos, const std::string& query, bool 
     return MiuCore::findSubstringFast(engine->pt, startPos, query, forward, matchCase, wholeWord, outLen);
 }
 void findNextCommand(Engine* engine, bool forward) {
-    if (engine->searchQuery.empty()) return;
+    if (!engine || engine->searchQuery.empty()) return;
     size_t currentCursorPos = forward ? (engine->cursors.empty() ? 0 : engine->cursors.back().end()) : (engine->cursors.empty() ? 0 : engine->cursors.back().start());
-    size_t matchLen = 0;
-    size_t pos = findText(engine, currentCursorPos, engine->searchQuery, forward, engine->searchMatchCase, engine->searchWholeWord, engine->searchRegex, &matchLen);
-    if (pos != std::string::npos) {
+    size_t searchStart = currentCursorPos;
+    bool hasWrapped = false;
+    size_t docLen = engine->pt.length();
+    while (true) {
+        size_t matchLen = 0;
+        size_t pos = findText(engine, searchStart, engine->searchQuery, forward, engine->searchMatchCase, engine->searchWholeWord, engine->searchRegex, &matchLen);
+        if (pos == std::string::npos) {
+            if (!forward && !hasWrapped && searchStart > 0) {
+                searchStart = 0;
+                hasWrapped = true;
+                continue;
+            }
+            return;
+        }
+        size_t matchEnd = pos + matchLen;
+        if (forward && !hasWrapped && docLen > 0 && pos >= searchStart && matchEnd <= currentCursorPos) {
+            if (searchStart >= docLen) {
+                searchStart = 0;
+                hasWrapped = true;
+                continue;
+            }
+            size_t nextStart = searchStart + MiuCore::utf8CharLenAt(engine->pt, searchStart);
+            if (searchStart + 1 < docLen && engine->pt.charAt(searchStart) == '\r' && engine->pt.charAt(searchStart + 1) == '\n') {
+                nextStart = searchStart + 2;
+            }
+            if (nextStart > docLen) {
+                searchStart = 0;
+                hasWrapped = true;
+            } else {
+                searchStart = nextStart;
+            }
+            continue;
+        }
         engine->cursors.clear();
-        engine->cursors.push_back({ pos + matchLen, pos, getXFromPos(engine, pos + matchLen) });
+        engine->cursors.push_back({ matchEnd, pos, getXFromPos(engine, matchEnd) });
         ensureCaretVisible(engine);
+        return;
     }
 }
 void replaceNextCommand(Engine* engine) {
-    if (engine->cursors.empty() || engine->searchQuery.empty()) return;
+    if (!engine || engine->cursors.empty() || engine->searchQuery.empty()) return;
     Cursor& c = engine->cursors.back();
-    if (!c.hasSelection()) { findNextCommand(engine, true); return; }
+    if (!c.hasSelection()) {
+        if (!engine->searchRegex) {
+            findNextCommand(engine, true);
+            return;
+        }
+        size_t zeroLen = 0;
+        size_t zeroPos = findText(engine, c.start(), engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, true, &zeroLen);
+        if (zeroPos != c.start() || zeroLen != 0) {
+            findNextCommand(engine, true);
+            return;
+        }
+    }
     size_t len = c.end() - c.start();
     size_t start = c.start();
     std::string selText = engine->pt.getRange(start, len);
+    bool match = false;
     std::string replacement = UnescapeString(engine->replaceQuery, engine->newlineStr);
     if (engine->searchRegex) {
         const std::regex* rePtr = getCompiledSearchRegex(engine, engine->searchQuery, engine->searchMatchCase);
@@ -927,6 +1001,7 @@ void replaceNextCommand(Engine* engine) {
             std::string rawFmt = UnescapeString(engine->replaceQuery, engine->newlineStr);
             std::string fmt = adjustCaretGroupReferences(rawFmt, startsWithCaret);
             if (std::regex_match(selText, m, re)) {
+                match = true;
                 replacement = m.format(fmt);
             } else if (start > 0) {
                 int backStep = 0;
@@ -938,17 +1013,46 @@ void replaceNextCommand(Engine* engine) {
                 }
                 if (backStep > 0) {
                     std::string extendedText = engine->pt.getRange(start - backStep, len + backStep);
-                    if (std::regex_match(extendedText, m, re)) replacement = m.format(fmt);
+                    if (std::regex_match(extendedText, m, re)) {
+                        match = true;
+                        replacement = m.format(fmt);
+                    }
                 }
             }
         } catch (...) {}
+    } else {
+        if (len == engine->searchQuery.size()) {
+            match = true;
+            for (size_t i = 0; i < len; ++i) {
+                char c1 = selText[i];
+                char c2 = engine->searchQuery[i];
+                if (!engine->searchMatchCase) {
+                    if (c1 >= 'A' && c1 <= 'Z') c1 = (char)(c1 + ('a' - 'A'));
+                    if (c2 >= 'A' && c2 <= 'Z') c2 = (char)(c2 + ('a' - 'A'));
+                }
+                if (c1 != c2) { match = false; break; }
+            }
+            if (match && engine->searchWholeWord) {
+                if (start > 0 && isWordChar(engine->pt.charAt(start - 1))) match = false;
+                if (match && start + len < engine->pt.length() && isWordChar(engine->pt.charAt(start + len))) match = false;
+            }
+        }
+    }
+    if (!match) {
+        findNextCommand(engine, true);
+        return;
     }
     EditBatch batch;
     batch.beforeCursors = engine->cursors;
-    engine->pt.erase(start, len);
-    batch.ops.push_back({ EditOp::Erase, start, selText });
-    engine->pt.insert(start, replacement);
-    batch.ops.push_back({ EditOp::Insert, start, replacement });
+    if (len > 0) {
+        engine->pt.erase(start, len);
+        batch.ops.push_back({ EditOp::Erase, start, selText });
+    }
+    if (!replacement.empty()) {
+        engine->pt.insert(start, replacement);
+        batch.ops.push_back({ EditOp::Insert, start, replacement });
+    }
+    rebuildLineStarts(engine);
     engine->cursors.clear();
     size_t newEnd = start + replacement.size();
     engine->cursors.push_back({ newEnd, start, getXFromPos(engine, newEnd) });
@@ -957,7 +1061,6 @@ void replaceNextCommand(Engine* engine) {
     applyBatchToEmmetTabstops(engine, batch);
     bool wasDirty = engine->isDirty;
     engine->isDirty = true;
-    rebuildLineStarts(engine);
     ensureCaretVisible(engine);
     if (!wasDirty) updateTitleBarIfNeeded(engine);
     notifyPreviewUpdateIfNeeded(engine);
@@ -975,7 +1078,7 @@ int replaceAllCommand(Engine* engine) {
         const std::regex& re = *rePtr;
         try {
             bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^');
-            bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
+            bool endsWithDollar = MiuCore::hasUnescapedTrailingDollar(engine->searchQuery);
             std::string rawFmt = UnescapeString(engine->replaceQuery, engine->newlineStr);
             std::string fmt = adjustCaretGroupReferences(rawFmt, startsWithCaret);
             auto searchStart = fullText.cbegin();
@@ -1285,20 +1388,37 @@ static DetectResult DetectEncodingEx(const char* buf, size_t len) {
     return res;
 }
 static std::string ConvertToUtf8(JNIEnv* env, const char* data, size_t len, const std::string& charsetName) {
-    if (len == 0) return "";
+    if (len == 0 || !data) return "";
     if (!env) return SanitizeUtf8(std::string(data, len));
-    jbyteArray bytes = env->NewByteArray(len);
-    if (env->ExceptionCheck()) {
-        env->ExceptionClear();
+    if (len > (size_t)INT_MAX) {
         return "Error: File is too large to open (Memory Allocation Failed).";
     }
-    env->SetByteArrayRegion(bytes, 0, len, (const jbyte*)data);
+    jbyteArray bytes = env->NewByteArray((jsize)len);
+    if (!bytes || env->ExceptionCheck()) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        return "Error: File is too large to open (Memory Allocation Failed).";
+    }
+    env->SetByteArrayRegion(bytes, 0, (jsize)len, (const jbyte*)data);
     jstring charset = env->NewStringUTF(charsetName.c_str());
     jclass stringClass = env->FindClass("java/lang/String");
+    if (!charset || !stringClass || env->ExceptionCheck()) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        if (bytes) env->DeleteLocalRef(bytes);
+        if (charset) env->DeleteLocalRef(charset);
+        if (stringClass) env->DeleteLocalRef(stringClass);
+        return "Error: File is too large to open (String Conversion Failed).";
+    }
     jmethodID ctor = env->GetMethodID(stringClass, "<init>", "([BLjava/lang/String;)V");
+    if (!ctor || env->ExceptionCheck()) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        env->DeleteLocalRef(bytes);
+        env->DeleteLocalRef(charset);
+        env->DeleteLocalRef(stringClass);
+        return "Error: File is too large to open (String Conversion Failed).";
+    }
     jstring jstr = (jstring)env->NewObject(stringClass, ctor, bytes, charset);
-    if (env->ExceptionCheck()) {
-        env->ExceptionClear();
+    if (!jstr || env->ExceptionCheck()) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
         env->DeleteLocalRef(bytes);
         env->DeleteLocalRef(charset);
         env->DeleteLocalRef(stringClass);
@@ -1385,6 +1505,8 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
     engine->isSelectingGutter = false;
     engine->isDraggingSelection = false;
     engine->imeComp.clear();
+    engine->editEpoch++;
+    engine->previewNonce = generateRandomHexNonce();
     loadSyntaxForEngine(engine, engine->displayFileName.empty() ? path : engine->displayFileName);
     updateTitleBarIfNeeded(engine);
     if (engine->pt.origPtr && engine->pt.origSize > 0) {
@@ -1396,19 +1518,16 @@ bool openDocumentFromFile(Engine* engine, const std::string& path, JNIEnv* env) 
     return true;
 }
 void updateThemeColors(Engine* engine) {
-    if (!engine->app || !engine->app->activity || !engine->app->activity->vm) return;
-    JNIEnv* env = nullptr;
-    JavaVM* vm = engine->app->activity->vm;
-    bool needDetach = false;
-    if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
-        if (vm->AttachCurrentThread(&env, nullptr) != 0) return;
-        needDetach = true;
-    }
+    if (!engine || !engine->app || !engine->app->activity || !engine->app->activity->vm) return;
+    JniEnvScope scope(engine->app->activity->vm);
+    JNIEnv* env = scope.env;
+    if (!env) return;
     int32_t uiMode = AConfiguration_getUiModeNight(engine->app->config);
     engine->isDarkMode = (uiMode == ACONFIGURATION_UI_MODE_NIGHT_YES);
     int isDarkInt = engine->isDarkMode ? 1 : 0;
     jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
-    jmethodID getThemeColorMid = env->GetMethodID(activityClass, "getThemeColor", "(II)I");
+    jmethodID getThemeColorMid = activityClass ? env->GetMethodID(activityClass, "getThemeColor", "(II)I") : nullptr;
+    if (env->ExceptionCheck()) env->ExceptionClear();
     auto setEngineColor = [](float* target, int argb, float alphaOverride = -1.0f) {
         target[0] = ((argb >> 16) & 0xFF) / 255.0f;
         target[1] = ((argb >> 8) & 0xFF) / 255.0f;
@@ -1421,6 +1540,7 @@ void updateThemeColors(Engine* engine) {
         int gutterBgArgb   = env->CallIntMethod(engine->app->activity->clazz, getThemeColorMid, 2, isDarkInt);
         int gutterTextArgb = env->CallIntMethod(engine->app->activity->clazz, getThemeColorMid, 3, isDarkInt);
         int accentArgb     = env->CallIntMethod(engine->app->activity->clazz, getThemeColorMid, 4, isDarkInt);
+        if (env->ExceptionCheck()) env->ExceptionClear();
         setEngineColor(engine->bgColor, bgArgb);
         setEngineColor(engine->textColor, textArgb);
         setEngineColor(engine->gutterBgColor, gutterBgArgb);
@@ -1448,14 +1568,13 @@ void updateThemeColors(Engine* engine) {
         }
     }
     loadSyntaxForEngine(engine, engine->displayFileName.empty() ? engine->currentFilePath : engine->displayFileName);
-    env->DeleteLocalRef(activityClass);
-    if (needDetach) {
-        vm->DetachCurrentThread();
-    }
+    if (activityClass) env->DeleteLocalRef(activityClass);
 }
 struct ImeEvent {
-    enum Type { Commit, Composing, Delete, DeleteForward, FinishComposing } type;
+    enum Type { Commit, Composing, Delete, DeleteForward, DeleteSurroundingUtf16, FinishComposing } type;
     std::string text;
+    int beforeLen = 0;
+    int afterLen = 0;
 };
 std::mutex g_imeMutex;
 std::deque<ImeEvent> g_imeQueue;
@@ -1581,6 +1700,7 @@ void rebuildLineStarts(Engine* engine) {
     engine->lineCaches.clear();
     engine->lineCaches.resize(engine->lineStarts.size());
     engine->commentStateCache.clear();
+    engine->editEpoch++;
 }
 static bool hasAnyNewlineChar(const std::string& s) {
     for (char c : s) {
@@ -1594,6 +1714,7 @@ void adjustLineStartsAndCachesSingleLine(Engine* engine, int editedLine, ptrdiff
         rebuildLineStarts(engine);
         return;
     }
+    engine->editEpoch++;
     for (size_t i = (size_t)editedLine + 1; i < engine->lineStarts.size(); ++i) {
         engine->lineStarts[i] = (size_t)((ptrdiff_t)engine->lineStarts[i] + delta);
     }
@@ -1602,6 +1723,8 @@ void adjustLineStartsAndCachesSingleLine(Engine* engine, int editedLine, ptrdiff
     editedCache.isWrapped = false;
     editedCache.glyphs.clear();
     editedCache.wrapSegments.clear();
+    editedCache.syntaxEditEpoch = 0;
+    editedCache.syntaxColors.clear();
     for (size_t i = (size_t)editedLine + 1; i < engine->lineCaches.size(); ++i) {
         LineCache& lc = engine->lineCaches[i];
         if (lc.isShaped) {
@@ -2597,6 +2720,128 @@ void deleteForwardAtCursors(Engine* engine) {
     }
     ensureCaretVisible(engine);
 }
+void deleteSurroundingUtf16AtCursors(Engine* engine, int beforeU16, int afterU16) {
+    if (!engine || engine->cursors.empty()) return;
+    if (beforeU16 <= 0 && afterU16 <= 0) return;
+    if (!engine->imeComp.empty()) {
+        std::string comp = engine->imeComp;
+        engine->imeComp.clear();
+        insertAtCursors(engine, comp);
+    }
+    bool anySelection = false;
+    for (const auto& c : engine->cursors) {
+        if (c.hasSelection()) { anySelection = true; break; }
+    }
+    if (anySelection && beforeU16 == 1 && afterU16 <= 0) {
+        backspaceAtCursors(engine);
+        return;
+    }
+    if (anySelection && beforeU16 <= 0 && afterU16 == 1) {
+        deleteForwardAtCursors(engine);
+        return;
+    }
+    engine->isRectSelecting = false;
+    EditBatch batch;
+    batch.beforeCursors = engine->cursors;
+
+    std::vector<size_t> indices(engine->cursors.size());
+    std::iota(indices.begin(), indices.end(), 0);
+    std::sort(indices.begin(), indices.end(), [&](size_t a, size_t b) {
+        return engine->cursors[a].start() > engine->cursors[b].start();
+    });
+
+    bool changed = false;
+    for (size_t idx : indices) {
+        Cursor& c = engine->cursors[idx];
+        size_t selStart = c.start();
+        size_t selEnd = c.end();
+        size_t docLen = engine->pt.length();
+        if (selStart > docLen) selStart = docLen;
+        if (selEnd > docLen) selEnd = docLen;
+
+        size_t eraseAfterEnd = selEnd;
+        int remAfter = afterU16;
+        while (eraseAfterEnd < docLen && remAfter > 0) {
+            unsigned char b0 = (unsigned char)engine->pt.charAt(eraseAfterEnd);
+            if (b0 == '\r' && eraseAfterEnd + 1 < docLen && engine->pt.charAt(eraseAfterEnd + 1) == '\n') {
+                eraseAfterEnd += 2;
+                remAfter = (remAfter > 2) ? (remAfter - 2) : 0;
+            } else {
+                size_t step = MiuCore::utf8CharLenAt(engine->pt, eraseAfterEnd);
+                int units = (step == 4) ? 2 : 1;
+                eraseAfterEnd = std::min(docLen, eraseAfterEnd + step);
+                remAfter = (remAfter > units) ? (remAfter - units) : 0;
+            }
+        }
+        if (eraseAfterEnd > selEnd) {
+            size_t afterByteLen = eraseAfterEnd - selEnd;
+            std::string delAfter = engine->pt.getRange(selEnd, afterByteLen);
+            engine->pt.erase(selEnd, afterByteLen);
+            batch.ops.push_back({ EditOp::Erase, selEnd, delAfter });
+            changed = true;
+            for (auto& o : engine->cursors) {
+                if (o.head > selEnd) o.head -= std::min(o.head - selEnd, afterByteLen);
+                if (o.anchor > selEnd) o.anchor -= std::min(o.anchor - selEnd, afterByteLen);
+            }
+            docLen = engine->pt.length();
+        }
+
+        size_t eraseBeforeStart = selStart;
+        int remBefore = beforeU16;
+        while (eraseBeforeStart > 0 && remBefore > 0) {
+            size_t p = eraseBeforeStart - 1;
+            if (engine->pt.charAt(p) == '\n' && p > 0 && engine->pt.charAt(p - 1) == '\r') {
+                p--;
+                remBefore = (remBefore > 2) ? (remBefore - 2) : 0;
+            } else {
+                while (p > 0 && ((unsigned char)engine->pt.charAt(p) & 0xC0) == 0x80) p--;
+                size_t cpBytes = eraseBeforeStart - p;
+                int units = (cpBytes == 4 && ((unsigned char)engine->pt.charAt(p) & 0xF8) == 0xF0) ? 2 : 1;
+                if (cpBytes == 3 && p >= 3) {
+                    std::string bytes = engine->pt.getRange(p, 3);
+                    if ((unsigned char)bytes[0] == 0xED && (unsigned char)bytes[1] >= 0xB0 && (unsigned char)bytes[1] <= 0xBF) {
+                        size_t highStart = p - 1;
+                        while (highStart > 0 && ((unsigned char)engine->pt.charAt(highStart) & 0xC0) == 0x80) highStart--;
+                        if (p - highStart == 3) {
+                            std::string hBytes = engine->pt.getRange(highStart, 3);
+                            if ((unsigned char)hBytes[0] == 0xED && (unsigned char)hBytes[1] >= 0xA0 && (unsigned char)hBytes[1] <= 0xAF) {
+                                p = highStart;
+                                units = 2;
+                            }
+                        }
+                    }
+                }
+                remBefore = (remBefore > units) ? (remBefore - units) : 0;
+            }
+            eraseBeforeStart = p;
+        }
+        if (selStart > eraseBeforeStart) {
+            size_t beforeByteLen = selStart - eraseBeforeStart;
+            std::string delBefore = engine->pt.getRange(eraseBeforeStart, beforeByteLen);
+            engine->pt.erase(eraseBeforeStart, beforeByteLen);
+            batch.ops.push_back({ EditOp::Erase, eraseBeforeStart, delBefore });
+            changed = true;
+            for (auto& o : engine->cursors) {
+                if (o.head > eraseBeforeStart) o.head -= std::min(o.head - eraseBeforeStart, beforeByteLen);
+                if (o.anchor > eraseBeforeStart) o.anchor -= std::min(o.anchor - eraseBeforeStart, beforeByteLen);
+            }
+        }
+    }
+
+    if (changed) {
+        rebuildLineStarts(engine);
+        for (auto& c : engine->cursors) c.desiredX = getXFromPos(engine, c.head);
+        mergeCursors(engine);
+        batch.afterCursors = engine->cursors;
+        engine->undo.push(batch);
+        applyBatchToEmmetTabstops(engine, batch);
+        bool wasDirty = engine->isDirty;
+        engine->isDirty = true;
+        if (!wasDirty) updateTitleBarIfNeeded(engine);
+        notifyPreviewUpdateIfNeeded(engine);
+    }
+    ensureCaretVisible(engine);
+}
 std::string internalCopy(Engine* engine) {
     bool hasSelection = false;
     for (const auto& c : engine->cursors) { if (c.hasSelection()) { hasSelection = true; break; } }
@@ -3504,6 +3749,19 @@ bool handlePreviewTaskToggleCommand(Engine* engine, int targetLineIdx) {
     batch.ops.push_back({ EditOp::Insert, docPos, newChar });
     batch.afterCursors = engine->cursors;
     engine->undo.push(batch);
+    engine->editEpoch++;
+    if (targetLineIdx < (int)engine->lineCaches.size()) {
+        auto& lc = engine->lineCaches[targetLineIdx];
+        lc.isShaped = false;
+        lc.isWrapped = false;
+        lc.glyphs.clear();
+        lc.wrapSegments.clear();
+        lc.syntaxEditEpoch = 0;
+        lc.syntaxColors.clear();
+    }
+    if ((int)engine->commentStateCache.size() > targetLineIdx + 1) {
+        engine->commentStateCache.resize(targetLineIdx + 1);
+    }
     updateDirtyFlag(engine);
     notifyPreviewUpdateIfNeeded(engine);
     return true;
@@ -3512,79 +3770,21 @@ static std::string NormalizeNewlines(const std::string& input, const std::string
     return MiuCore::NormalizeLineEndings(input, targetNewline.empty() ? std::string_view("\n") : std::string_view(targetNewline));
 }
 extern "C" {
-JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_commitText(JNIEnv* env, jobject thiz, jstring text) {
-    if (!g_engine || !text) return;
-    std::string raw = jstringToUtf8(env, text);
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    if (raw == "\n" || raw == "\r" || raw == "\r\n") {
-        g_imeQueue.push_back({ ImeEvent::Commit, "\n" });
-    } else {
-        g_imeQueue.push_back({ ImeEvent::Commit, NormalizeNewlines(raw, g_engine->newlineStr) });
-    }
-}
-JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_setComposingText(JNIEnv* env, jobject thiz, jstring text) {
-    if (!g_engine || !text) return;
-    std::string raw = jstringToUtf8(env, text);
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    g_imeQueue.push_back({ ImeEvent::Composing, raw });
-}
-JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteSurroundingText(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    g_imeQueue.push_back({ ImeEvent::Delete, "" });
-}
-JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateVisibleHeight(JNIEnv* env, jobject thiz, jint bottomInset) {
-    if (!g_engine) return;
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    float oldInset = g_engine->bottomInset;
-    g_engine->bottomInset = (float)bottomInset;
-    g_engine->isKeyboardShowing = (bottomInset > 0);
-    if (g_engine->bottomInset > oldInset) {
-        ensureCaretVisible(g_engine);
-    }
-}
-JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateTopMargin(JNIEnv* env, jobject thiz, jint topMargin) {
-    if (!g_engine) return;
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    g_engine->topMargin = (float)topMargin;
-    ensureCaretVisible(g_engine);
-}
-JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdNewDocument(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    performNewDocument(g_engine);
-    rebuildLineStarts(g_engine);
-    ensureCaretVisible(g_engine);
-}
-JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdOpenDocument(JNIEnv* env, jobject thiz, jstring path) {
-    if (!g_engine || !path) return JNI_FALSE;
-    std::string strPath = jstringToUtf8(env, path);
-    bool success = false;
-    if (!strPath.empty()) {
-        std::lock_guard<std::mutex> lock(g_imeMutex);
-        success = openDocumentFromFile(g_engine, strPath, env);
-        if (success) {
-            ensureCaretVisible(g_engine);
-        }
-    }
-    return success ? JNI_TRUE : JNI_FALSE;
-}
-JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetCharset(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return env->NewStringUTF("UTF-8");
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    return env->NewStringUTF(g_engine->currentCharset.c_str());
-}
-JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdIsDirty(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return JNI_FALSE;
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    return g_engine->isDirty ? JNI_TRUE : JNI_FALSE;
-}
 static jstring utf8ToJString(JNIEnv* env, const std::string& utf8) {
-    if (utf8.empty()) return env->NewStringUTF("");
+    if (!env) return nullptr;
+    if (utf8.empty()) {
+        jstring emptyStr = env->NewStringUTF("");
+        if (!emptyStr || env->ExceptionCheck()) {
+            env->ExceptionClear();
+            return nullptr;
+        }
+        return emptyStr;
+    }
     std::vector<jchar> u16;
-    u16.reserve(utf8.size());
+    u16.reserve(std::min(utf8.size(), (size_t)16 * 1024 * 1024));
     size_t i = 0, n = utf8.size();
     while (i < n) {
+        if (u16.size() + 2 > (size_t)INT_MAX) break;
         unsigned char c = (unsigned char)utf8[i];
         uint32_t cp = 0xFFFD;
         if (c < 0x80) {
@@ -3619,28 +3819,118 @@ static jstring utf8ToJString(JNIEnv* env, const std::string& utf8) {
             u16.push_back((jchar)(0xDC00 + (cp & 0x3FF)));
         }
     }
-    return env->NewString(u16.data(), (jsize)u16.size());
+    jstring res = env->NewString(u16.data(), (jsize)u16.size());
+    if (!res || env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    return res;
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_commitText(JNIEnv* env, jobject thiz, jstring text) {
+    if (!text) return;
+    std::string raw = jstringToUtf8(env, text);
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
+    if (raw == "\n" || raw == "\r" || raw == "\r\n") {
+        g_imeQueue.push_back({ ImeEvent::Commit, "\n" });
+    } else {
+        g_imeQueue.push_back({ ImeEvent::Commit, NormalizeNewlines(raw, g_engine->newlineStr) });
+    }
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_setComposingText(JNIEnv* env, jobject thiz, jstring text) {
+    if (!text) return;
+    std::string raw = jstringToUtf8(env, text);
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
+    g_imeQueue.push_back({ ImeEvent::Composing, raw });
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteSurroundingText(JNIEnv* env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
+    g_imeQueue.push_back({ ImeEvent::Delete, "" });
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteSurroundingTextUtf16(JNIEnv* env, jobject thiz, jint beforeLength, jint afterLength) {
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
+    int b = std::clamp((int)beforeLength, 0, 65536);
+    int a = std::clamp((int)afterLength, 0, 65536);
+    g_imeQueue.push_back({ ImeEvent::DeleteSurroundingUtf16, "", b, a });
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateVisibleHeight(JNIEnv* env, jobject thiz, jint bottomInset) {
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
+    float oldInset = g_engine->bottomInset;
+    g_engine->bottomInset = (float)bottomInset;
+    g_engine->isKeyboardShowing = (bottomInset > 0);
+    if (g_engine->bottomInset > oldInset) {
+        ensureCaretVisible(g_engine);
+    }
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_updateTopMargin(JNIEnv* env, jobject thiz, jint topMargin) {
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
+    g_engine->topMargin = (float)topMargin;
+    ensureCaretVisible(g_engine);
+}
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdNewDocument(JNIEnv* env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
+    performNewDocument(g_engine);
+    rebuildLineStarts(g_engine);
+    ensureCaretVisible(g_engine);
+}
+JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdOpenDocument(JNIEnv* env, jobject thiz, jstring path) {
+    if (!path) return JNI_FALSE;
+    std::string strPath = jstringToUtf8(env, path);
+    bool success = false;
+    if (!strPath.empty()) {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (!g_engine) return JNI_FALSE;
+        success = openDocumentFromFile(g_engine, strPath, env);
+        if (success) {
+            ensureCaretVisible(g_engine);
+        }
+    }
+    return success ? JNI_TRUE : JNI_FALSE;
+}
+JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetCharset(JNIEnv* env, jobject thiz) {
+    std::string cs = "UTF-8";
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (g_engine && !g_engine->currentCharset.empty()) {
+            cs = g_engine->currentCharset;
+        }
+    }
+    return utf8ToJString(env, cs);
+}
+JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdIsDirty(JNIEnv* env, jobject thiz) {
+    std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return JNI_FALSE;
+    return g_engine->isDirty ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextContent(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return env->NewStringUTF("");
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    std::string text = g_engine->pt.getRange(0, g_engine->pt.length());
+    std::string text;
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (!g_engine) return utf8ToJString(env, "");
+        text = g_engine->pt.getRange(0, g_engine->pt.length());
+    }
     return utf8ToJString(env, text);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMarkSaved(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     if (g_engine->isDirty) {
         g_engine->isDirty = false;
         updateTitleBarIfNeeded(g_engine);
     }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetSearchOptions(JNIEnv* env, jobject thiz, jstring query, jstring replace, jboolean matchCase, jboolean wholeWord, jboolean regex) {
-    if (!g_engine) return;
     std::string qStr = query ? jstringToUtf8(env, query) : "";
     std::string rStr = replace ? jstringToUtf8(env, replace) : "";
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->searchQuery = std::move(qStr);
     g_engine->replaceQuery = std::move(rStr);
     g_engine->searchMatchCase = matchCase;
@@ -3648,37 +3938,38 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetSearchOptions(JNIEnv*
     g_engine->searchRegex = regex;
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdFindNext(JNIEnv* env, jobject thiz, jboolean forward) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     findNextCommand(g_engine, forward);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdReplaceNext(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     replaceNextCommand(g_engine);
 }
 JNIEXPORT jint JNICALL Java_jp_hack_miu_MainActivity_cmdReplaceAll(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return 0;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return 0;
     return replaceAllCommand(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_finishComposingTextNative(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_imeQueue.push_back({ ImeEvent::FinishComposing, "" });
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetDisplayFileName(JNIEnv* env, jobject thiz, jstring name) {
-    if (!g_engine || !name) return;
+    if (!name) return;
     std::string strName = jstringToUtf8(env, name);
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->displayFileName = std::move(strName);
     loadSyntaxForEngine(g_engine, g_engine->displayFileName);
     updateTitleBarIfNeeded(g_engine);
     notifyPreviewUpdateIfNeeded(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdTop(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->isRectSelecting = false;
     g_engine->scrollY = 0.0f;
     g_engine->isFlinging = false;
@@ -3687,8 +3978,8 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdTop(JNIEnv* env, jobject
     g_engine->cursors.push_back({0, 0, getXFromPos(g_engine, 0)});
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdBottom(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->isRectSelecting = false;
     size_t len = g_engine->pt.length();
     g_engine->cursors.clear();
@@ -3696,8 +3987,8 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdBottom(JNIEnv* env, jobj
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdGoToLine(JNIEnv* env, jobject thiz, jint line) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->isRectSelecting = false;
     int totalLines = (int)g_engine->lineStarts.size();
     if (totalLines == 0) return;
@@ -3711,77 +4002,97 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdGoToLine(JNIEnv* env, jo
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT jint JNICALL Java_jp_hack_miu_MainActivity_cmdGetCurrentLine(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return 1;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return 1;
     size_t pos = g_engine->cursors.empty() ? 0 : g_engine->cursors.back().head;
     return getLineIdx(g_engine, pos) + 1;
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdUndo(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     performUndo(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdRedo(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     performRedo(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSelectAll(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->isRectSelecting = false;
     g_engine->cursors.clear();
     g_engine->cursors.push_back({g_engine->pt.length(), 0, 0.0f});
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdCopy(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return env->NewStringUTF("");
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    std::string t = internalCopy(g_engine);
+    std::string t;
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (!g_engine) return utf8ToJString(env, "");
+        t = internalCopy(g_engine);
+    }
     return utf8ToJString(env, t);
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdCut(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return env->NewStringUTF("");
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    std::string t = internalCopy(g_engine);
-    bool hasSelection = false;
-    for (const auto& c : g_engine->cursors) { if (c.hasSelection()) { hasSelection = true; break; } }
-    if (hasSelection) {
-        insertAtCursors(g_engine, "");
-    } else {
-        std::vector<Cursor> delRanges;
-        for (const auto& c : g_engine->cursors) {
-            int lineIdx = getLineIdx(g_engine, c.head);
-            size_t start = g_engine->lineStarts[lineIdx];
-            size_t end = (lineIdx + 1 < (int)g_engine->lineStarts.size()) ? g_engine->lineStarts[lineIdx + 1] : g_engine->pt.length();
-            if (end == g_engine->pt.length() && start > 0) {
-                char prev = g_engine->pt.charAt(start - 1);
-                if (prev == '\n') {
-                    start--;
-                    if (start > 0 && g_engine->pt.charAt(start - 1) == '\r') start--;
-                } else if (prev == '\r') start--;
+    std::string t;
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (!g_engine) return utf8ToJString(env, "");
+        t = internalCopy(g_engine);
+        bool hasSelection = false;
+        for (const auto& c : g_engine->cursors) { if (c.hasSelection()) { hasSelection = true; break; } }
+        if (hasSelection) {
+            insertAtCursors(g_engine, "");
+        } else {
+            std::vector<Cursor> delRanges;
+            for (const auto& c : g_engine->cursors) {
+                int lineIdx = getLineIdx(g_engine, c.head);
+                size_t start = g_engine->lineStarts[lineIdx];
+                size_t end = (lineIdx + 1 < (int)g_engine->lineStarts.size()) ? g_engine->lineStarts[lineIdx + 1] : g_engine->pt.length();
+                if (end == g_engine->pt.length() && start > 0) {
+                    char prev = g_engine->pt.charAt(start - 1);
+                    if (prev == '\n') {
+                        start--;
+                        if (start > 0 && g_engine->pt.charAt(start - 1) == '\r') start--;
+                    } else if (prev == '\r') start--;
+                }
+                delRanges.push_back({ end, start, 0.0f });
             }
-            delRanges.push_back({ end, start, 0.0f });
+            g_engine->cursors = delRanges;
+            insertAtCursors(g_engine, "");
         }
-        g_engine->cursors = delRanges;
-        insertAtCursors(g_engine, "");
     }
     return utf8ToJString(env, t);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdPaste(JNIEnv* env, jobject thiz, jstring text) {
-    if (!g_engine || !text) return;
+    if (!text) return;
     std::string rawStr = jstringToUtf8(env, text);
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     std::string normalizedStr = NormalizeNewlines(rawStr, g_engine->newlineStr);
     insertAtCursors(g_engine, normalizedStr);
 }
 JNIEXPORT jbyteArray JNICALL Java_jp_hack_miu_MainActivity_cmdGetSaveData(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return nullptr;
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    std::string utf8Text = g_engine->pt.getRange(0, g_engine->pt.length());
-    if (g_engine->currentEncoding == ENC_UTF8_NOBOM || g_engine->currentEncoding == ENC_UTF8_BOM) {
-        size_t bomSize = (g_engine->currentEncoding == ENC_UTF8_BOM) ? 3 : 0;
+    if (!env) return nullptr;
+    std::string utf8Text;
+    MiuEncoding enc = ENC_UTF8_NOBOM;
+    std::string charset = "UTF-8";
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (!g_engine) return nullptr;
+        utf8Text = g_engine->pt.getRange(0, g_engine->pt.length());
+        enc = g_engine->currentEncoding;
+        charset = g_engine->currentCharset;
+    }
+    if (enc == ENC_UTF8_NOBOM || enc == ENC_UTF8_BOM) {
+        size_t bomSize = (enc == ENC_UTF8_BOM) ? 3 : 0;
+        if (utf8Text.size() > (size_t)INT_MAX - bomSize) return nullptr;
         jbyteArray finalArray = env->NewByteArray((jsize)(bomSize + utf8Text.size()));
+        if (!finalArray || env->ExceptionCheck()) {
+            env->ExceptionClear();
+            return nullptr;
+        }
         if (bomSize == 3) {
             const uint8_t bom[3] = { 0xEF, 0xBB, 0xBF };
             env->SetByteArrayRegion(finalArray, 0, 3, (const jbyte*)bom);
@@ -3791,70 +4102,89 @@ JNIEXPORT jbyteArray JNICALL Java_jp_hack_miu_MainActivity_cmdGetSaveData(JNIEnv
         }
         return finalArray;
     }
-    if (g_engine->currentEncoding == ENC_UTF16LE || g_engine->currentEncoding == ENC_UTF16BE) {
-        bool be = (g_engine->currentEncoding == ENC_UTF16BE);
+    if (enc == ENC_UTF16LE || enc == ENC_UTF16BE) {
+        bool be = (enc == ENC_UTF16BE);
         std::string out = MiuCore::Utf8ToUtf16Bytes(utf8Text.data(), utf8Text.size(), be, true);
+        if (out.size() > (size_t)INT_MAX) return nullptr;
         jbyteArray finalArray = env->NewByteArray((jsize)out.size());
-        env->SetByteArrayRegion(finalArray, 0, (jsize)out.size(), (const jbyte*)out.data());
+        if (!finalArray || env->ExceptionCheck()) {
+            env->ExceptionClear();
+            return nullptr;
+        }
+        if (!out.empty()) {
+            env->SetByteArrayRegion(finalArray, 0, (jsize)out.size(), (const jbyte*)out.data());
+        }
         return finalArray;
     }
     jstring javaStr = utf8ToJString(env, utf8Text);
+    if (!javaStr) return nullptr;
     jclass stringClass = env->FindClass("java/lang/String");
+    if (!stringClass || env->ExceptionCheck()) {
+        env->ExceptionClear();
+        env->DeleteLocalRef(javaStr);
+        return nullptr;
+    }
     jmethodID getBytesMid = env->GetMethodID(stringClass, "getBytes", "(Ljava/lang/String;)[B");
-    jstring targetCharsetStr = env->NewStringUTF(g_engine->currentCharset.c_str());
+    if (!getBytesMid || env->ExceptionCheck()) {
+        env->ExceptionClear();
+        env->DeleteLocalRef(stringClass);
+        env->DeleteLocalRef(javaStr);
+        return nullptr;
+    }
+    jstring targetCharsetStr = utf8ToJString(env, charset.empty() ? "UTF-8" : charset);
+    if (!targetCharsetStr) {
+        env->DeleteLocalRef(stringClass);
+        env->DeleteLocalRef(javaStr);
+        return nullptr;
+    }
     jbyteArray targetBytes = (jbyteArray)env->CallObjectMethod(javaStr, getBytesMid, targetCharsetStr);
     if (env->ExceptionCheck()) {
         env->ExceptionClear();
         targetBytes = nullptr;
     }
-    if (!targetBytes) {
-        env->DeleteLocalRef(stringClass);
-        env->DeleteLocalRef(javaStr);
-        env->DeleteLocalRef(targetCharsetStr);
-        jbyteArray fallbackArray = env->NewByteArray((jsize)utf8Text.size());
-        if (!utf8Text.empty()) {
-            env->SetByteArrayRegion(fallbackArray, 0, (jsize)utf8Text.size(), (const jbyte*)utf8Text.data());
-        }
-        return fallbackArray;
-    }
-    jsize targetLen = env->GetArrayLength(targetBytes);
-    jbyte* targetElements = env->GetByteArrayElements(targetBytes, nullptr);
-    jbyteArray finalArray = env->NewByteArray(targetLen);
-    if (targetLen > 0 && targetElements) {
-        env->SetByteArrayRegion(finalArray, 0, targetLen, targetElements);
-    }
-    if (targetElements) {
-        env->ReleaseByteArrayElements(targetBytes, targetElements, JNI_ABORT);
-    }
     env->DeleteLocalRef(stringClass);
     env->DeleteLocalRef(javaStr);
     env->DeleteLocalRef(targetCharsetStr);
-    env->DeleteLocalRef(targetBytes);
-    return finalArray;
+    if (targetBytes) {
+        return targetBytes;
+    }
+    if (utf8Text.size() > (size_t)INT_MAX) return nullptr;
+    jbyteArray fallbackArray = env->NewByteArray((jsize)utf8Text.size());
+    if (!fallbackArray || env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    if (!utf8Text.empty()) {
+        env->SetByteArrayRegion(fallbackArray, 0, (jsize)utf8Text.size(), (const jbyte*)utf8Text.data());
+    }
+    return fallbackArray;
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetAutoSearchText(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return env->NewStringUTF("");
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    std::pair<std::string, bool> target = getHighlightTarget(g_engine);
-    std::string candidate = target.first;
-    bool isWord = target.second;
-    bool hasSelection = !g_engine->cursors.empty() && g_engine->cursors.back().hasSelection();
-    std::string result = g_engine->searchQuery;
-    if (hasSelection) {
-        if (!candidate.empty()) {
-            result = candidate;
+    std::string result;
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (!g_engine) return utf8ToJString(env, "");
+        std::pair<std::string, bool> target = getHighlightTarget(g_engine);
+        std::string candidate = target.first;
+        bool isWord = target.second;
+        bool hasSelection = !g_engine->cursors.empty() && g_engine->cursors.back().hasSelection();
+        result = g_engine->searchQuery;
+        if (hasSelection) {
+            if (!candidate.empty()) {
+                result = candidate;
+            }
+        } else {
+            if (g_engine->searchQuery.empty() && !candidate.empty() && isWord) {
+                result = candidate;
+            }
         }
-    } else {
-        if (g_engine->searchQuery.empty() && !candidate.empty() && isWord) {
-            result = candidate;
-        }
+        g_engine->searchQuery = result;
     }
-    g_engine->searchQuery = result;
     return utf8ToJString(env, result);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, jobject thiz, jint direction, jboolean isCtrl, jboolean keepAnchor) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->isRectSelecting = false;
     size_t len = g_engine->pt.length();
     int totalVisRows = getTotalVisualRows(g_engine);
@@ -4013,13 +4343,13 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveCursor(JNIEnv* env, 
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_deleteForwardText(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_imeQueue.push_back({ ImeEvent::DeleteForward, "" });
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveHomeEnd(JNIEnv* env, jobject thiz, jboolean isHome, jboolean isCtrl, jboolean keepAnchor) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->isRectSelecting = false;
     size_t len = g_engine->pt.length();
     for (auto& c : g_engine->cursors) {
@@ -4072,8 +4402,8 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveHomeEnd(JNIEnv* env,
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSelectNextOccurrence(JNIEnv* env, jobject thiz) {
-    if (!g_engine || g_engine->cursors.empty()) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine || g_engine->cursors.empty()) return;
     g_engine->isRectSelecting = false;
 
     Cursor c = g_engine->cursors.back();
@@ -4112,8 +4442,8 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSelectNextOccurrence(JNI
     }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdClearSelectionAndMultiCursor(JNIEnv* env, jobject thiz) {
-    if (!g_engine || g_engine->cursors.empty()) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine || g_engine->cursors.empty()) return;
     g_engine->isRectSelecting = false;
     g_engine->activeEmmetSession.clear();
     Cursor lastCursor = g_engine->cursors.back();
@@ -4125,8 +4455,8 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdClearSelectionAndMultiCu
     }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdPageMove(JNIEnv* env, jobject thiz, jboolean isUp, jboolean keepAnchor) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->isRectSelecting = false;
     float visibleH = getEditorVisibleH(g_engine) - g_engine->topMargin;
     if (visibleH < g_engine->lineHeight) visibleH = g_engine->lineHeight * 5.0f;
@@ -4163,8 +4493,8 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdPageMove(JNIEnv* env, jo
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdIndentLines(JNIEnv* env, jobject thiz, jboolean isUnindent) {
-    if (!g_engine || g_engine->cursors.empty()) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine || g_engine->cursors.empty()) return;
     bool hasSelection = false;
     for (const auto& c : g_engine->cursors) {
         if (c.hasSelection()) { hasSelection = true; break; }
@@ -4242,8 +4572,8 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdIndentLines(JNIEnv* env,
     }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdZoom(JNIEnv* env, jobject thiz, jint mode) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     float newSize = g_engine->currentFontSize;
     if (mode == 0) {
         newSize = 48.0f;
@@ -4268,13 +4598,13 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdZoom(JNIEnv* env, jobjec
     }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdToggleComment(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     toggleCommentCommand(g_engine);
 }
 JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdToggleWordWrap(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return JNI_FALSE;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return JNI_FALSE;
     g_engine->wordWrapEnabled = !g_engine->wordWrapEnabled;
     g_engine->scrollX = 0.0f;
     for (auto& lc : g_engine->lineCaches) lc.isWrapped = false;
@@ -4283,13 +4613,13 @@ JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdToggleWordWrap(JNIEn
     return g_engine->wordWrapEnabled ? JNI_TRUE : JNI_FALSE;
 }
 JNIEXPORT jboolean JNICALL Java_jp_hack_miu_MainActivity_cmdIsWordWrapEnabled(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return JNI_FALSE;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return JNI_FALSE;
     return g_engine->wordWrapEnabled ? JNI_TRUE : JNI_FALSE;
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetWordWrapEnabled(JNIEnv* env, jobject thiz, jboolean enabled) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->wordWrapEnabled = (enabled == JNI_TRUE);
     if (g_engine->wordWrapEnabled) g_engine->scrollX = 0.0f;
     for (auto& lc : g_engine->lineCaches) lc.isWrapped = false;
@@ -4297,43 +4627,43 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetWordWrapEnabled(JNIEn
     ensureCaretVisible(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdDeleteLine(JNIEnv* env, jobject thiz) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     deleteLineCommand(g_engine);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveLines(JNIEnv* env, jobject thiz, jboolean up) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     moveLinesCommand(g_engine, up == JNI_TRUE);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdDuplicateLines(JNIEnv* env, jobject thiz, jboolean up) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     duplicateLinesCommand(g_engine, up == JNI_TRUE);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdJumpToBracket(JNIEnv* env, jobject thiz, jboolean select) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     jumpToMatchingBracketCommand(g_engine, select == JNI_TRUE);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdConvertCase(JNIEnv* env, jobject thiz, jboolean toUpper) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     convertSelectedTextCommand(g_engine, toUpper == JNI_TRUE);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdAddCursor(JNIEnv* env, jobject thiz, jboolean up) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     addCursorCommand(g_engine, up == JNI_TRUE);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdMoveRectSelection(JNIEnv* env, jobject thiz, jint dLine, jint dCol) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     moveRectSelectionCommand(g_engine, (int)dLine, (int)dCol);
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetEditorViewportSize(JNIEnv* env, jobject thiz, jint widthPx, jint heightPx) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     float newW = (float)widthPx;
     float newH = (float)heightPx;
     bool wChanged = std::abs(g_engine->editorWidthOverride - newW) > 0.5f;
@@ -4350,55 +4680,82 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetEditorViewportSize(JN
     }
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetHelpVisible(JNIEnv* env, jobject thiz, jboolean visible) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->isHelpShowing = (visible == JNI_TRUE);
     if (g_engine->isHelpShowing) {
         g_engine->isKeyboardShowing = false;
     }
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetPreviewHtml(JNIEnv* env, jobject thiz, jboolean isDark) {
-    if (!g_engine) return env->NewStringUTF("");
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    static constexpr size_t PREVIEW_MAX_BYTES = 524288;
-    std::string text = g_engine->pt.getRange(0, std::min(g_engine->pt.length(), PREVIEW_MAX_BYTES + 1));
-    MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce);
-    return utf8ToJString(env, res.fullHtml);
+    std::string fullHtml;
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (!g_engine) return utf8ToJString(env, "");
+        if (g_engine->previewNonce.empty()) g_engine->previewNonce = generateRandomHexNonce();
+        static constexpr size_t PREVIEW_MAX_BYTES = 524288;
+        std::string text = g_engine->pt.getRange(0, std::min(g_engine->pt.length(), PREVIEW_MAX_BYTES + 1));
+        MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce);
+        fullHtml = std::move(res.fullHtml);
+    }
+    return utf8ToJString(env, fullHtml);
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetPreviewDomUpdateJs(JNIEnv* env, jobject thiz, jboolean isDark) {
-    if (!g_engine) return env->NewStringUTF("");
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    static constexpr size_t PREVIEW_MAX_BYTES = 524288;
-    std::string text = g_engine->pt.getRange(0, std::min(g_engine->pt.length(), PREVIEW_MAX_BYTES + 1));
-    MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce);
-    if (!res.isMdOrMermaidShell) return env->NewStringUTF("");
-    std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, isDark == JNI_TRUE);
+    std::string js;
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (!g_engine) return utf8ToJString(env, "");
+        if (g_engine->previewNonce.empty()) g_engine->previewNonce = generateRandomHexNonce();
+        static constexpr size_t PREVIEW_MAX_BYTES = 524288;
+        std::string text = g_engine->pt.getRange(0, std::min(g_engine->pt.length(), PREVIEW_MAX_BYTES + 1));
+        MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce);
+        if (!res.isMdOrMermaidShell) return utf8ToJString(env, "");
+        js = MiuPreview::buildDomUpdateJs(res.bodyContent, isDark == JNI_TRUE);
+    }
     return utf8ToJString(env, js);
 }
-JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdTogglePreviewTask(JNIEnv* env, jobject thiz, jint lineIdx) {
-    if (!g_engine) return;
+JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdHandlePreviewMessage(JNIEnv* env, jobject thiz, jstring msg) {
+    if (!msg) return;
+    std::string rawMsg = jstringToUtf8(env, msg);
     std::lock_guard<std::mutex> lock(g_imeMutex);
-    handlePreviewTaskToggleCommand(g_engine, (int)lineIdx);
+    if (!g_engine || g_engine->previewNonce.empty()) return;
+    static constexpr size_t PREVIEW_HEAD_BYTES = 4096;
+    std::string head = g_engine->pt.getRange(0, std::min(g_engine->pt.length(), PREVIEW_HEAD_BYTES));
+    int lineIdx = -1;
+    if (MiuPreview::parseVerifiedTaskToggleMessage(rawMsg, g_engine->previewNonce, g_engine->currentFileExt, head, lineIdx)) {
+        handlePreviewTaskToggleCommand(g_engine, lineIdx);
+    }
 }
 JNIEXPORT jfloatArray JNICALL Java_jp_hack_miu_MainActivity_cmdGetViewState(JNIEnv* env, jobject thiz) {
+    if (!env) return nullptr;
     jfloatArray arr = env->NewFloatArray(5);
-    if (!g_engine) return arr;
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    size_t head = g_engine->cursors.empty() ? 0 : g_engine->cursors.back().head;
-    size_t anchor = g_engine->cursors.empty() ? 0 : g_engine->cursors.back().anchor;
-    jfloat vals[5] = {
-        g_engine->scrollX,
-        g_engine->scrollY,
-        (jfloat)head,
-        (jfloat)anchor,
-        g_engine->wordWrapEnabled ? 1.0f : 0.0f
-    };
-    env->SetFloatArrayRegion(arr, 0, 5, vals);
+    if (!arr || env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return nullptr;
+    }
+    jfloat vals[5] = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f };
+    bool hasEngine = false;
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (g_engine) {
+            hasEngine = true;
+            size_t head = g_engine->cursors.empty() ? 0 : g_engine->cursors.back().head;
+            size_t anchor = g_engine->cursors.empty() ? 0 : g_engine->cursors.back().anchor;
+            vals[0] = g_engine->scrollX;
+            vals[1] = g_engine->scrollY;
+            vals[2] = (jfloat)head;
+            vals[3] = (jfloat)anchor;
+            vals[4] = g_engine->wordWrapEnabled ? 1.0f : 0.0f;
+        }
+    }
+    if (hasEngine) {
+        env->SetFloatArrayRegion(arr, 0, 5, vals);
+    }
     return arr;
 }
 JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetViewState(JNIEnv* env, jobject thiz, jfloat scrollX, jfloat scrollY, jint head, jint anchor, jboolean wordWrap) {
-    if (!g_engine) return;
     std::lock_guard<std::mutex> lock(g_imeMutex);
+    if (!g_engine) return;
     g_engine->wordWrapEnabled = (wordWrap == JNI_TRUE);
     for (auto& lc : g_engine->lineCaches) lc.isWrapped = false;
     size_t len = g_engine->pt.length();
@@ -4414,88 +4771,112 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdSetViewState(JNIEnv* env
     g_engine->scrollY = std::clamp((float)scrollY, 0.0f, maxScrollY);
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextBeforeCursor(JNIEnv* env, jobject thiz, jint length) {
-    if (!g_engine || g_engine->cursors.empty()) return env->NewStringUTF("");
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-    size_t pos = g_engine->cursors.back().head;
-    size_t start = pos;
-    int charsFound = 0;
-    while (start > 0 && charsFound < length) {
-        start--;
-        while (start > 0 && (g_engine->pt.charAt(start) & 0xC0) == 0x80) {
-            start--;
+    if (length <= 0) return utf8ToJString(env, "");
+    int targetU16 = std::min((int)length, 65536);
+    std::string text;
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (!g_engine || g_engine->cursors.empty()) return utf8ToJString(env, "");
+        size_t pos = g_engine->cursors.back().head;
+        size_t start = pos;
+        int u16Units = 0;
+        while (start > 0 && u16Units < targetU16) {
+            size_t prev = start - 1;
+            int contSteps = 0;
+            while (prev > 0 && contSteps < 3 && ((unsigned char)g_engine->pt.charAt(prev) & 0xC0) == 0x80) {
+                prev--;
+                contSteps++;
+            }
+            size_t seqLen = MiuCore::utf8CharLenAt(g_engine->pt, prev);
+            if (prev + seqLen != start) {
+                prev = start - 1;
+                seqLen = 1;
+            }
+            u16Units += (seqLen == 4) ? 2 : 1;
+            start = prev;
         }
-        charsFound++;
-    }
-    std::string text = g_engine->pt.getRange(start, pos - start);
-    if (!g_engine->imeComp.empty()) {
-        text += g_engine->imeComp;
+        text = g_engine->pt.getRange(start, pos - start);
+        if (!g_engine->imeComp.empty()) {
+            text += g_engine->imeComp;
+        }
     }
     return utf8ToJString(env, text);
 }
 JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetTextAfterCursor(JNIEnv* env, jobject thiz, jint length) {
-    if (!g_engine || g_engine->cursors.empty()) return env->NewStringUTF("");
-    std::lock_guard<std::mutex> lock(g_imeMutex);
-
-    size_t pos = g_engine->cursors.back().head;
-    size_t docLen = g_engine->pt.length();
-    size_t end = pos;
-    int charsFound = 0;
-    while (end < docLen && charsFound < length) {
-        unsigned char c = g_engine->pt.charAt(end);
-        if (c < 0x80) end += 1;
-        else if ((c & 0xE0) == 0xC0) end += 2;
-        else if ((c & 0xF0) == 0xE0) end += 3;
-        else if ((c & 0xF8) == 0xF0) end += 4;
-        else end += 1;
-        charsFound++;
+    if (length <= 0) return utf8ToJString(env, "");
+    int targetU16 = std::min((int)length, 65536);
+    std::string text;
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        if (!g_engine || g_engine->cursors.empty()) return utf8ToJString(env, "");
+        size_t pos = g_engine->cursors.back().head;
+        size_t docLen = g_engine->pt.length();
+        size_t end = pos;
+        int u16Units = 0;
+        while (end < docLen && u16Units < targetU16) {
+            size_t seqLen = MiuCore::utf8CharLenAt(g_engine->pt, end);
+            if (seqLen == 0) seqLen = 1;
+            u16Units += (seqLen == 4) ? 2 : 1;
+            end += seqLen;
+        }
+        if (end > docLen) end = docLen;
+        text = g_engine->pt.getRange(pos, end - pos);
     }
-    if (end > docLen) end = docLen;
-    std::string text = g_engine->pt.getRange(pos, end - pos);
     return utf8ToJString(env, text);
 }
 }
 void cleanupVulkan(Engine* engine) {
     if (engine->device == VK_NULL_HANDLE) return;
-    if (engine->blurPipeline != VK_NULL_HANDLE) vkDestroyPipeline(engine->device, engine->blurPipeline, nullptr);
-    if (engine->blurPipelineLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(engine->device, engine->blurPipelineLayout, nullptr);
-    if (engine->blurDescriptorPool != VK_NULL_HANDLE) vkDestroyDescriptorPool(engine->device, engine->blurDescriptorPool, nullptr);
-    if (engine->blurDescriptorSetLayout != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(engine->device, engine->blurDescriptorSetLayout, nullptr);
-    if (engine->offscreenFramebuffer != VK_NULL_HANDLE) vkDestroyFramebuffer(engine->device, engine->offscreenFramebuffer, nullptr);
-    if (engine->offscreenRenderPass != VK_NULL_HANDLE) vkDestroyRenderPass(engine->device, engine->offscreenRenderPass, nullptr);
-    if (engine->offscreenSampler != VK_NULL_HANDLE) vkDestroySampler(engine->device, engine->offscreenSampler, nullptr);
-    if (engine->offscreenImageView != VK_NULL_HANDLE) vkDestroyImageView(engine->device, engine->offscreenImageView, nullptr);
-    if (engine->offscreenImage != VK_NULL_HANDLE) vkDestroyImage(engine->device, engine->offscreenImage, nullptr);
-    if (engine->offscreenImageMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->offscreenImageMemory, nullptr);
-    if (engine->graphicsPipeline != VK_NULL_HANDLE) vkDestroyPipeline(engine->device, engine->graphicsPipeline, nullptr);
     vkDeviceWaitIdle(engine->device);
-    if (engine->vertexBuffer != VK_NULL_HANDLE) vkDestroyBuffer(engine->device, engine->vertexBuffer, nullptr);
-    if (engine->vertexBufferMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->vertexBufferMemory, nullptr);
-    if (engine->atlasStagingBuffer != VK_NULL_HANDLE) vkDestroyBuffer(engine->device, engine->atlasStagingBuffer, nullptr);
-    if (engine->atlasStagingMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->atlasStagingMemory, nullptr);
-    if (engine->pipelineLayout != VK_NULL_HANDLE) vkDestroyPipelineLayout(engine->device, engine->pipelineLayout, nullptr);
-    if (engine->descriptorPool != VK_NULL_HANDLE) vkDestroyDescriptorPool(engine->device, engine->descriptorPool, nullptr);
-    if (engine->descriptorSetLayout != VK_NULL_HANDLE) vkDestroyDescriptorSetLayout(engine->device, engine->descriptorSetLayout, nullptr);
-    if (engine->fontSampler != VK_NULL_HANDLE) vkDestroySampler(engine->device, engine->fontSampler, nullptr);
-    if (engine->fontImageView != VK_NULL_HANDLE) vkDestroyImageView(engine->device, engine->fontImageView, nullptr);
-    if (engine->fontImage != VK_NULL_HANDLE) vkDestroyImage(engine->device, engine->fontImage, nullptr);
-    if (engine->fontImageMemory != VK_NULL_HANDLE) vkFreeMemory(engine->device, engine->fontImageMemory, nullptr);
+    if (engine->blurPipeline != VK_NULL_HANDLE) { vkDestroyPipeline(engine->device, engine->blurPipeline, nullptr); engine->blurPipeline = VK_NULL_HANDLE; }
+    if (engine->blurPipelineLayout != VK_NULL_HANDLE) { vkDestroyPipelineLayout(engine->device, engine->blurPipelineLayout, nullptr); engine->blurPipelineLayout = VK_NULL_HANDLE; }
+    if (engine->blurDescriptorPool != VK_NULL_HANDLE) { vkDestroyDescriptorPool(engine->device, engine->blurDescriptorPool, nullptr); engine->blurDescriptorPool = VK_NULL_HANDLE; }
+    if (engine->blurDescriptorSetLayout != VK_NULL_HANDLE) { vkDestroyDescriptorSetLayout(engine->device, engine->blurDescriptorSetLayout, nullptr); engine->blurDescriptorSetLayout = VK_NULL_HANDLE; }
+    engine->blurDescriptorSet = VK_NULL_HANDLE;
+    if (engine->offscreenFramebuffer != VK_NULL_HANDLE) { vkDestroyFramebuffer(engine->device, engine->offscreenFramebuffer, nullptr); engine->offscreenFramebuffer = VK_NULL_HANDLE; }
+    if (engine->offscreenRenderPass != VK_NULL_HANDLE) { vkDestroyRenderPass(engine->device, engine->offscreenRenderPass, nullptr); engine->offscreenRenderPass = VK_NULL_HANDLE; }
+    if (engine->offscreenSampler != VK_NULL_HANDLE) { vkDestroySampler(engine->device, engine->offscreenSampler, nullptr); engine->offscreenSampler = VK_NULL_HANDLE; }
+    if (engine->offscreenImageView != VK_NULL_HANDLE) { vkDestroyImageView(engine->device, engine->offscreenImageView, nullptr); engine->offscreenImageView = VK_NULL_HANDLE; }
+    if (engine->offscreenImage != VK_NULL_HANDLE) { vkDestroyImage(engine->device, engine->offscreenImage, nullptr); engine->offscreenImage = VK_NULL_HANDLE; }
+    if (engine->offscreenImageMemory != VK_NULL_HANDLE) { vkFreeMemory(engine->device, engine->offscreenImageMemory, nullptr); engine->offscreenImageMemory = VK_NULL_HANDLE; }
+    if (engine->graphicsPipeline != VK_NULL_HANDLE) { vkDestroyPipeline(engine->device, engine->graphicsPipeline, nullptr); engine->graphicsPipeline = VK_NULL_HANDLE; }
+    if (engine->vertexBuffer != VK_NULL_HANDLE) { vkDestroyBuffer(engine->device, engine->vertexBuffer, nullptr); engine->vertexBuffer = VK_NULL_HANDLE; }
+    if (engine->vertexBufferMemory != VK_NULL_HANDLE) { vkFreeMemory(engine->device, engine->vertexBufferMemory, nullptr); engine->vertexBufferMemory = VK_NULL_HANDLE; }
+    if (engine->atlasStagingBuffer != VK_NULL_HANDLE) { vkDestroyBuffer(engine->device, engine->atlasStagingBuffer, nullptr); engine->atlasStagingBuffer = VK_NULL_HANDLE; }
+    if (engine->atlasStagingMemory != VK_NULL_HANDLE) { vkFreeMemory(engine->device, engine->atlasStagingMemory, nullptr); engine->atlasStagingMemory = VK_NULL_HANDLE; }
+    if (engine->pipelineLayout != VK_NULL_HANDLE) { vkDestroyPipelineLayout(engine->device, engine->pipelineLayout, nullptr); engine->pipelineLayout = VK_NULL_HANDLE; }
+    if (engine->descriptorPool != VK_NULL_HANDLE) { vkDestroyDescriptorPool(engine->device, engine->descriptorPool, nullptr); engine->descriptorPool = VK_NULL_HANDLE; }
+    if (engine->descriptorSetLayout != VK_NULL_HANDLE) { vkDestroyDescriptorSetLayout(engine->device, engine->descriptorSetLayout, nullptr); engine->descriptorSetLayout = VK_NULL_HANDLE; }
+    engine->descriptorSet = VK_NULL_HANDLE;
+    if (engine->fontSampler != VK_NULL_HANDLE) { vkDestroySampler(engine->device, engine->fontSampler, nullptr); engine->fontSampler = VK_NULL_HANDLE; }
+    if (engine->fontImageView != VK_NULL_HANDLE) { vkDestroyImageView(engine->device, engine->fontImageView, nullptr); engine->fontImageView = VK_NULL_HANDLE; }
+    if (engine->fontImage != VK_NULL_HANDLE) { vkDestroyImage(engine->device, engine->fontImage, nullptr); engine->fontImage = VK_NULL_HANDLE; }
+    if (engine->fontImageMemory != VK_NULL_HANDLE) { vkFreeMemory(engine->device, engine->fontImageMemory, nullptr); engine->fontImageMemory = VK_NULL_HANDLE; }
     for (hb_font_t* hb_font : engine->fallbackHbFonts) if (hb_font) hb_font_destroy(hb_font);
     engine->fallbackHbFonts.clear();
     if (engine->persistentHbBuf) { hb_buffer_destroy(engine->persistentHbBuf); engine->persistentHbBuf = nullptr; }
-    engine->lineCaches.clear();
+    for (auto& lc : engine->lineCaches) {
+        lc.isShaped = false;
+        lc.isWrapped = false;
+        lc.glyphs.clear();
+        lc.wrapSegments.clear();
+    }
     for (FT_Face face : engine->fallbackFaces) if (face) FT_Done_Face(face);
     engine->fallbackFaces.clear();
+    engine->fallbackFontScales.clear();
     engine->fallbackFontData.clear();
     if (engine->ftLibrary) { FT_Done_FreeType(engine->ftLibrary); engine->ftLibrary = nullptr; }
-    if (engine->imageAvailableSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(engine->device, engine->imageAvailableSemaphore, nullptr);
-    if (engine->renderFinishedSemaphore != VK_NULL_HANDLE) vkDestroySemaphore(engine->device, engine->renderFinishedSemaphore, nullptr);
-    if (engine->inFlightFence != VK_NULL_HANDLE) vkDestroyFence(engine->device, engine->inFlightFence, nullptr);
-    if (engine->commandPool != VK_NULL_HANDLE) vkDestroyCommandPool(engine->device, engine->commandPool, nullptr);
+    if (engine->imageAvailableSemaphore != VK_NULL_HANDLE) { vkDestroySemaphore(engine->device, engine->imageAvailableSemaphore, nullptr); engine->imageAvailableSemaphore = VK_NULL_HANDLE; }
+    if (engine->renderFinishedSemaphore != VK_NULL_HANDLE) { vkDestroySemaphore(engine->device, engine->renderFinishedSemaphore, nullptr); engine->renderFinishedSemaphore = VK_NULL_HANDLE; }
+    if (engine->inFlightFence != VK_NULL_HANDLE) { vkDestroyFence(engine->device, engine->inFlightFence, nullptr); engine->inFlightFence = VK_NULL_HANDLE; }
+    engine->commandBuffers.clear();
+    if (engine->commandPool != VK_NULL_HANDLE) { vkDestroyCommandPool(engine->device, engine->commandPool, nullptr); engine->commandPool = VK_NULL_HANDLE; }
     for (auto fb : engine->framebuffers) if (fb != VK_NULL_HANDLE) vkDestroyFramebuffer(engine->device, fb, nullptr);
     engine->framebuffers.clear();
-    if (engine->renderPass != VK_NULL_HANDLE) vkDestroyRenderPass(engine->device, engine->renderPass, nullptr);
+    if (engine->renderPass != VK_NULL_HANDLE) { vkDestroyRenderPass(engine->device, engine->renderPass, nullptr); engine->renderPass = VK_NULL_HANDLE; }
     for (auto iv : engine->swapchainImageViews) if (iv != VK_NULL_HANDLE) vkDestroyImageView(engine->device, iv, nullptr);
     engine->swapchainImageViews.clear();
+    engine->swapchainImages.clear();
     if (engine->swapchain != VK_NULL_HANDLE) { vkDestroySwapchainKHR(engine->device, engine->swapchain, nullptr); engine->swapchain = VK_NULL_HANDLE; }
     vkDestroyDevice(engine->device, nullptr); engine->device = VK_NULL_HANDLE;
     if (engine->surface != VK_NULL_HANDLE) { vkDestroySurfaceKHR(engine->instance, engine->surface, nullptr); engine->surface = VK_NULL_HANDLE; }
@@ -4750,6 +5131,10 @@ void recreateSwapchain(Engine* engine) {
     if (!engine->commandBuffers.empty()) {
         vkFreeCommandBuffers(engine->device, engine->commandPool, static_cast<uint32_t>(engine->commandBuffers.size()), engine->commandBuffers.data());
         engine->commandBuffers.clear();
+    }
+    if (engine->commandPool != VK_NULL_HANDLE) {
+        vkDestroyCommandPool(engine->device, engine->commandPool, nullptr);
+        engine->commandPool = VK_NULL_HANDLE;
     }
     for (auto iv : engine->swapchainImageViews) if (iv != VK_NULL_HANDLE) vkDestroyImageView(engine->device, iv, nullptr);
     engine->swapchainImageViews.clear();
@@ -5011,19 +5396,34 @@ bool initVulkan(Engine* engine) {
 }
 std::string GetResString(Engine* engine, const char* resName) {
     if (!engine || !engine->app || !engine->app->activity || !engine->app->activity->vm) return resName;
-    JNIEnv* env = nullptr; JavaVM* vm = engine->app->activity->vm; bool needDetach = false;
-    if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) { if (vm->AttachCurrentThread(&env, nullptr) != 0) return resName; needDetach = true; }
+    JniEnvScope scope(engine->app->activity->vm);
+    JNIEnv* env = scope.env;
     if (!env) return resName;
     jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
+    if (!activityClass || env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return resName;
+    }
     jmethodID getStrMethod = env->GetMethodID(activityClass, "getStringResourceByName", "(Ljava/lang/String;)Ljava/lang/String;");
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        getStrMethod = nullptr;
+    }
     std::string result = resName;
     if (getStrMethod) {
-        jstring jResName = env->NewStringUTF(resName); jstring jResult = (jstring)env->CallObjectMethod(engine->app->activity->clazz, getStrMethod, jResName);
-        if (jResult) { result = jstringToUtf8(env, jResult); env->DeleteLocalRef(jResult); }
-        env->DeleteLocalRef(jResName);
+        jstring jResName = utf8ToJString(env, resName ? resName : "");
+        if (jResName) {
+            jstring jResult = (jstring)env->CallObjectMethod(engine->app->activity->clazz, getStrMethod, jResName);
+            if (!env->ExceptionCheck() && jResult) {
+                result = jstringToUtf8(env, jResult);
+                env->DeleteLocalRef(jResult);
+            } else if (env->ExceptionCheck()) {
+                env->ExceptionClear();
+            }
+            env->DeleteLocalRef(jResName);
+        }
     }
     env->DeleteLocalRef(activityClass);
-    if (needDetach) vm->DetachCurrentThread();
     return result;
 }
 void updateTextVertices(Engine* engine) {
@@ -5038,15 +5438,30 @@ void updateTextVertices(Engine* engine) {
     };
     float textR = engine->textColor[0], textG = engine->textColor[1], textB = engine->textColor[2], textA = engine->textColor[3];
     float cursorWidth = std::max(2.0f, 4.0f * scale);
-    std::vector<std::pair<size_t, size_t>> searchMatches;
-    if (!engine->searchQuery.empty()) {
+    if (engine->searchQuery.empty()) {
+        engine->cachedSearchMatches.clear();
+        engine->cachedSearchMatchesQuery.clear();
+        engine->cachedSearchMatchesEpoch = engine->editEpoch;
+    } else if (engine->cachedSearchMatchesEpoch != engine->editEpoch ||
+               engine->cachedSearchMatchesQuery != engine->searchQuery ||
+               engine->cachedSearchMatchesCase != engine->searchMatchCase ||
+               engine->cachedSearchMatchesWholeWord != engine->searchWholeWord ||
+               engine->cachedSearchMatchesRegex != engine->searchRegex) {
+        engine->cachedSearchMatches.clear();
+        engine->cachedSearchMatchesEpoch = engine->editEpoch;
+        engine->cachedSearchMatchesQuery = engine->searchQuery;
+        engine->cachedSearchMatchesCase = engine->searchMatchCase;
+        engine->cachedSearchMatchesWholeWord = engine->searchWholeWord;
+        engine->cachedSearchMatchesRegex = engine->searchRegex;
         size_t docLen = engine->pt.length();
         if (engine->searchRegex) {
             const std::regex* rePtr = getCompiledSearchRegex(engine, engine->searchQuery, engine->searchMatchCase);
             if (rePtr) {
                 std::string fullText = engine->pt.getRange(0, docLen);
                 try {
-                    const std::regex& re = *rePtr; bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^'); bool endsWithDollar = (!engine->searchQuery.empty() && engine->searchQuery.back() == '$');
+                    const std::regex& re = *rePtr;
+                    bool startsWithCaret = (!engine->searchQuery.empty() && engine->searchQuery[0] == '^');
+                    bool endsWithDollar = MiuCore::hasUnescapedTrailingDollar(engine->searchQuery);
                     auto searchStart = fullText.cbegin(); std::smatch m; size_t currentOffset = 0; std::regex_constants::match_flag_type flags = std::regex_constants::match_default;
                     while (std::regex_search(searchStart, fullText.cend(), m, re, flags)) {
                         size_t matchPos = currentOffset + m.position(); size_t matchLen = m.length(); size_t anchorLen = 0;
@@ -5066,8 +5481,8 @@ void updateTextVertices(Engine* engine) {
                             size_t globalPos = contentPos;
                             if (globalPos == fullText.size() && !fullText.empty()) { bool isAfterNewline = false; if (globalPos > 0) { char c = fullText[globalPos - 1]; if (c == '\r' || c == '\n') isAfterNewline = true; } if (!isAfterNewline) shouldHighlight = false; }
                         }
-                        if (shouldHighlight && !searchMatches.empty()) { const auto& last = searchMatches.back(); if (last.first == contentPos && (last.second - last.first) == 0 && contentLen == 0) shouldHighlight = false; }
-                        if (shouldHighlight) searchMatches.push_back({ contentPos, contentPos + contentLen });
+                        if (shouldHighlight && !engine->cachedSearchMatches.empty()) { const auto& last = engine->cachedSearchMatches.back(); if (last.first == contentPos && (last.second - last.first) == 0 && contentLen == 0) shouldHighlight = false; }
+                        if (shouldHighlight) engine->cachedSearchMatches.push_back({ contentPos, contentPos + contentLen });
                         size_t step = matchLen;
                         if (step == 0) { bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol)); if (isBolCaret) step = 0; else step = MiuCore::utf8CharLenAt(fullText, matchPos); }
                         if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = MiuCore::utf8CharLenAt(fullText, matchPos);
@@ -5082,11 +5497,12 @@ void updateTextVertices(Engine* engine) {
             while (currentSearchPos < docLen) {
                 size_t matchLen = 0; size_t found = findText(engine, currentSearchPos, engine->searchQuery, true, engine->searchMatchCase, engine->searchWholeWord, false, &matchLen);
                 if (found == std::string::npos || found < currentSearchPos) break;
-                searchMatches.push_back({found, found + matchLen});
+                engine->cachedSearchMatches.push_back({found, found + matchLen});
                 if (matchLen == 0) currentSearchPos = found + 1; else currentSearchPos = found + matchLen;
             }
         }
     }
+    const auto& searchMatches = engine->cachedSearchMatches;
     std::vector<std::pair<size_t, size_t>> autoMatches; auto [autoStr, isWholeWord] = getHighlightTarget(engine);
     if (!autoStr.empty() && autoStr != engine->searchQuery) {
         size_t currentSearchPos = 0; size_t docLen = engine->pt.length();
@@ -5121,19 +5537,29 @@ void updateTextVertices(Engine* engine) {
             continue;
         }
         ensureLineWrapped(engine, lineIdx);
-        const auto& cache = engine->lineCaches[lineIdx];
+        LineCache& cache = engine->lineCaches[lineIdx];
         size_t lineStart = engine->lineStarts[lineIdx];
         size_t lineEnd = (lineIdx + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[lineIdx + 1] : engine->pt.length();
         size_t textEnd = lineEnd;
         if (textEnd > lineStart && engine->pt.charAt(textEnd - 1) == '\n') textEnd--;
         if (textEnd > lineStart && engine->pt.charAt(textEnd - 1) == '\r') textEnd--;
 
-        std::vector<SyntaxColor> lineSyntaxColors;
         if (engine->currentSyntax.active && (textEnd - lineStart) <= 10000) {
-            std::string lineStr = engine->pt.getRange(lineStart, textEnd - lineStart);
             bool inBlk = checkInBlockComment(engine, lineIdx);
-            scanSyntaxHighlighting(lineStr, engine->currentSyntax, inBlk, lineSyntaxColors, engine->isDarkMode);
+            int inBlkState = inBlk ? 1 : 0;
+            if (cache.syntaxEditEpoch != 1 || cache.syntaxDefEpoch != engine->syntaxEpoch || cache.syntaxInBlock != inBlkState) {
+                std::string lineStr = engine->pt.getRange(lineStart, textEnd - lineStart);
+                cache.syntaxColors.clear();
+                scanSyntaxHighlighting(lineStr, engine->currentSyntax, inBlk, cache.syntaxColors, engine->isDarkMode);
+                cache.syntaxEditEpoch = 1;
+                cache.syntaxDefEpoch = engine->syntaxEpoch;
+                cache.syntaxInBlock = inBlkState;
+            }
+        } else if (!cache.syntaxColors.empty() || cache.syntaxEditEpoch != 0) {
+            cache.syntaxColors.clear();
+            cache.syntaxEditEpoch = 0;
         }
+        const auto& lineSyntaxColors = cache.syntaxColors;
 
         // Draw gutter line number at the first visual row of this logical line
         if (firstLineTop + engine->lineHeight >= 0.0f && firstLineTop <= winH && !engine->fallbackFaces.empty()) {
@@ -5332,9 +5758,23 @@ void renderFrame(Engine* engine) {
     vkResetCommandBuffer(engine->commandBuffers[imageIndex], 0);
     VkCommandBufferBeginInfo beginInfo = {VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     vkBeginCommandBuffer(engine->commandBuffers[imageIndex], &beginInfo);
+    float snapBgColor[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    float snapTextColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    float snapEditorW = 0.0f;
+    float snapEditorH = 0.0f;
+    float snapTopMargin = 0.0f;
+    uint32_t snapVertexCount = 0;
     {
         std::lock_guard<std::mutex> lock(g_imeMutex);
         updateTextVertices(engine);
+        for (int i = 0; i < 4; ++i) {
+            snapBgColor[i] = engine->bgColor[i];
+            snapTextColor[i] = engine->textColor[i];
+        }
+        snapEditorW = engine->editorWidthOverride;
+        snapEditorH = engine->editorHeightOverride;
+        snapTopMargin = engine->topMargin;
+        snapVertexCount = engine->vertexCount;
         if (engine->atlas.isDirty) {
             vkDeviceWaitIdle(engine->device); uint32_t dy = engine->atlas.dirtyMinY; uint32_t dh = engine->atlas.dirtyMaxY - engine->atlas.dirtyMinY; uint32_t dw = engine->atlas.width;
             if (dh > 0) {
@@ -5361,27 +5801,27 @@ void renderFrame(Engine* engine) {
     }
     VkRenderPassBeginInfo offscreenRpBegin = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
     offscreenRpBegin.renderPass = engine->offscreenRenderPass; offscreenRpBegin.framebuffer = engine->offscreenFramebuffer; offscreenRpBegin.renderArea.extent = engine->swapchainExtent;
-    VkClearValue clearColor = {{{engine->bgColor[0], engine->bgColor[1], engine->bgColor[2], engine->bgColor[3]}}}; offscreenRpBegin.clearValueCount = 1; offscreenRpBegin.pClearValues = &clearColor;
+    VkClearValue clearColor = {{{snapBgColor[0], snapBgColor[1], snapBgColor[2], snapBgColor[3]}}}; offscreenRpBegin.clearValueCount = 1; offscreenRpBegin.pClearValues = &clearColor;
     vkCmdBeginRenderPass(engine->commandBuffers[imageIndex], &offscreenRpBegin, VK_SUBPASS_CONTENTS_INLINE);
     vkCmdBindPipeline(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->graphicsPipeline);
     VkViewport viewport = {0.0f, 0.0f, (float)engine->swapchainExtent.width, (float)engine->swapchainExtent.height, 0.0f, 1.0f}; vkCmdSetViewport(engine->commandBuffers[imageIndex], 0, 1, &viewport);
     uint32_t editorClipW = engine->swapchainExtent.width;
-    if (engine->editorWidthOverride > 0.0f && (uint32_t)engine->editorWidthOverride < editorClipW) {
-        editorClipW = std::max(1u, (uint32_t)engine->editorWidthOverride);
+    if (snapEditorW > 0.0f && (uint32_t)snapEditorW < editorClipW) {
+        editorClipW = std::max(1u, (uint32_t)snapEditorW);
     }
     uint32_t editorClipH = engine->swapchainExtent.height;
-    if (engine->editorHeightOverride > 0.0f && (uint32_t)engine->editorHeightOverride < editorClipH) {
-        editorClipH = std::max(1u, (uint32_t)engine->editorHeightOverride);
+    if (snapEditorH > 0.0f && (uint32_t)snapEditorH < editorClipH) {
+        editorClipH = std::max(1u, (uint32_t)snapEditorH);
     }
     VkRect2D editorScissor = {{0, 0}, {editorClipW, editorClipH}};
     vkCmdSetScissor(engine->commandBuffers[imageIndex], 0, 1, &editorScissor);
-    if (engine->vertexCount > 0) {
+    if (snapVertexCount > 0) {
         VkDeviceSize offsets[] = {0}; vkCmdBindVertexBuffers(engine->commandBuffers[imageIndex], 0, 1, &engine->vertexBuffer, offsets);
         vkCmdBindDescriptorSets(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->pipelineLayout, 0, 1, &engine->descriptorSet, 0, nullptr);
-        PushConstants pc; pc.screenWidth = (float)engine->swapchainExtent.width; pc.screenHeight = (float)engine->swapchainExtent.height;
-        pc.color[0] = engine->textColor[0]; pc.color[1] = engine->textColor[1]; pc.color[2] = engine->textColor[2]; pc.color[3] = engine->textColor[3];
+        PushConstants pc = {}; pc.screenWidth = (float)engine->swapchainExtent.width; pc.screenHeight = (float)engine->swapchainExtent.height;
+        pc.color[0] = snapTextColor[0]; pc.color[1] = snapTextColor[1]; pc.color[2] = snapTextColor[2]; pc.color[3] = snapTextColor[3];
         vkCmdPushConstants(engine->commandBuffers[imageIndex], engine->pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(PushConstants), &pc);
-        vkCmdDraw(engine->commandBuffers[imageIndex], engine->vertexCount, 1, 0, 0);
+        vkCmdDraw(engine->commandBuffers[imageIndex], snapVertexCount, 1, 0, 0);
     }
     vkCmdEndRenderPass(engine->commandBuffers[imageIndex]);
     VkRenderPassBeginInfo swapchainRpBegin = {VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
@@ -5394,7 +5834,7 @@ void renderFrame(Engine* engine) {
     VkRect2D fullScissor = {{0, 0}, engine->swapchainExtent};
     vkCmdSetScissor(engine->commandBuffers[imageIndex], 0, 1, &fullScissor);
     vkCmdBindDescriptorSets(engine->commandBuffers[imageIndex], VK_PIPELINE_BIND_POINT_GRAPHICS, engine->blurPipelineLayout, 0, 1, &engine->blurDescriptorSet, 0, nullptr);
-    BlurPushConstants blurPc; blurPc.topMargin = engine->topMargin; blurPc.screenHeight = (float)engine->swapchainExtent.height;
+    BlurPushConstants blurPc; blurPc.topMargin = snapTopMargin; blurPc.screenHeight = (float)engine->swapchainExtent.height;
     vkCmdPushConstants(engine->commandBuffers[imageIndex], engine->blurPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(BlurPushConstants), &blurPc);
     vkCmdDraw(engine->commandBuffers[imageIndex], 3, 1, 0, 0);
     vkCmdEndRenderPass(engine->commandBuffers[imageIndex]);
@@ -5410,21 +5850,41 @@ void renderFrame(Engine* engine) {
     VkResult presentResult = vkQueuePresentKHR(engine->graphicsQueue, &present);
     if (presentResult == VK_ERROR_OUT_OF_DATE_KHR) { recreateSwapchain(engine); }
 }
+void showKeyboardFromCpp(Engine* engine) {
+    if (!engine || !engine->app || !engine->app->activity || !engine->app->activity->vm) return;
+    engine->isKeyboardShowing = true;
+    JniEnvScope scope(engine->app->activity->vm);
+    JNIEnv* env = scope.env;
+    if (!env) return;
+    jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
+    if (!activityClass || env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return;
+    }
+    jmethodID showImeMethod = env->GetMethodID(activityClass, "showSoftwareKeyboard", "()V");
+    if (!env->ExceptionCheck() && showImeMethod) {
+        env->CallVoidMethod(engine->app->activity->clazz, showImeMethod);
+    }
+    if (env->ExceptionCheck()) env->ExceptionClear();
+    env->DeleteLocalRef(activityClass);
+}
 void dismissKeyboardFromCpp(Engine* engine) {
     if (!engine || !engine->app || !engine->app->activity || !engine->app->activity->vm) return;
     engine->isKeyboardShowing = false;
-    JNIEnv* env = nullptr;
-    bool needDetach = false;
-    if (engine->app->activity->vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
-        if (engine->app->activity->vm->AttachCurrentThread(&env, nullptr) == 0) needDetach = true;
+    JniEnvScope scope(engine->app->activity->vm);
+    JNIEnv* env = scope.env;
+    if (!env) return;
+    jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
+    if (!activityClass || env->ExceptionCheck()) {
+        env->ExceptionClear();
+        return;
     }
-    if (env) {
-        jclass activityClass = env->GetObjectClass(engine->app->activity->clazz);
-        jmethodID hideImeMethod = env->GetMethodID(activityClass, "hideSoftwareKeyboard", "()V");
-        if (hideImeMethod) env->CallVoidMethod(engine->app->activity->clazz, hideImeMethod);
-        env->DeleteLocalRef(activityClass);
+    jmethodID hideImeMethod = env->GetMethodID(activityClass, "hideSoftwareKeyboard", "()V");
+    if (!env->ExceptionCheck() && hideImeMethod) {
+        env->CallVoidMethod(engine->app->activity->clazz, hideImeMethod);
     }
-    if (needDetach) engine->app->activity->vm->DetachCurrentThread();
+    if (env->ExceptionCheck()) env->ExceptionClear();
+    env->DeleteLocalRef(activityClass);
 }
 void checkKeyboardVisibility(Engine* engine) {
     if (engine->isKeyboardShowing && !engine->cursors.empty() && engine->app->window != nullptr) {
@@ -5456,18 +5916,21 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
             engine->isHelpShowing = false;
             engine->ignoreTouchUntilUp = true;
             if (app->activity && app->activity->vm) {
-                JNIEnv* env = nullptr;
-                bool needDetach = false;
-                if (app->activity->vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) {
-                    if (app->activity->vm->AttachCurrentThread(&env, nullptr) == 0) needDetach = true;
-                }
+                JniEnvScope scope(app->activity->vm);
+                JNIEnv* env = scope.env;
                 if (env) {
                     jclass activityClass = env->GetObjectClass(app->activity->clazz);
-                    jmethodID closeHelpMid = env->GetMethodID(activityClass, "closeHelpUI", "()V");
-                    if (closeHelpMid) env->CallVoidMethod(app->activity->clazz, closeHelpMid);
-                    env->DeleteLocalRef(activityClass);
+                    if (activityClass && !env->ExceptionCheck()) {
+                        jmethodID closeHelpMid = env->GetMethodID(activityClass, "closeHelpUI", "()V");
+                        if (!env->ExceptionCheck() && closeHelpMid) {
+                            env->CallVoidMethod(app->activity->clazz, closeHelpMid);
+                        }
+                        if (env->ExceptionCheck()) env->ExceptionClear();
+                        env->DeleteLocalRef(activityClass);
+                    } else if (env->ExceptionCheck()) {
+                        env->ExceptionClear();
+                    }
                 }
-                if (needDetach) app->activity->vm->DetachCurrentThread();
             }
             return 1;
         }
@@ -5690,14 +6153,10 @@ static int32_t handleInput(struct android_app* app, AInputEvent* event) {
                 }
             } else if (engine->isSelecting) {
                 engine->isSelecting = false;
-                engine->isKeyboardShowing = true; JNIEnv* env = nullptr; app->activity->vm->AttachCurrentThread(&env, nullptr);
-                jclass activityClass = env->GetObjectClass(app->activity->clazz); jmethodID showImeMethod = env->GetMethodID(activityClass, "showSoftwareKeyboard", "()V");
-                if (showImeMethod) env->CallVoidMethod(app->activity->clazz, showImeMethod); env->DeleteLocalRef(activityClass); app->activity->vm->DetachCurrentThread();
+                showKeyboardFromCpp(engine);
 
             } else if (!engine->isDragging) {
-                engine->isKeyboardShowing = true; JNIEnv* env = nullptr; app->activity->vm->AttachCurrentThread(&env, nullptr);
-                jclass activityClass = env->GetObjectClass(app->activity->clazz); jmethodID showImeMethod = env->GetMethodID(activityClass, "showSoftwareKeyboard", "()V");
-                if (showImeMethod) env->CallVoidMethod(app->activity->clazz, showImeMethod); env->DeleteLocalRef(activityClass); app->activity->vm->DetachCurrentThread();
+                showKeyboardFromCpp(engine);
 
                 size_t targetPos = getDocPosFromPoint(engine, x, y);
                 if (engine->clickCount >= 3) selectLineAt(engine, targetPos);
@@ -5745,19 +6204,57 @@ void updateTitleBarIfNeeded(Engine* engine) {
     if (engine->lastTitleStr != titleStr) {
         engine->lastTitleStr = titleStr; LOGI("Title changed to: %s", titleStr.c_str());
         if (!engine->app || !engine->app->activity || !engine->app->activity->vm) return;
-        JNIEnv* env = nullptr; JavaVM* vm = engine->app->activity->vm; bool needDetach = false;
-        if (vm->GetEnv((void**)&env, JNI_VERSION_1_6) == JNI_EDETACHED) { if (vm->AttachCurrentThread(&env, nullptr) != 0) return; needDetach = true; }
-        jclass clazz = env->GetObjectClass(engine->app->activity->clazz); jmethodID mid = env->GetMethodID(clazz, "setOverlayTitle", "(Ljava/lang/String;)V");
-        if (mid) { jstring jTitle = utf8ToJString(env, titleStr); env->CallVoidMethod(engine->app->activity->clazz, mid, jTitle); env->DeleteLocalRef(jTitle); }
-        env->DeleteLocalRef(clazz); if (needDetach) vm->DetachCurrentThread();
+        JniEnvScope scope(engine->app->activity->vm);
+        JNIEnv* env = scope.env;
+        if (!env) return;
+        jclass clazz = env->GetObjectClass(engine->app->activity->clazz);
+        if (!clazz || env->ExceptionCheck()) {
+            env->ExceptionClear();
+            return;
+        }
+        jmethodID mid = env->GetMethodID(clazz, "setOverlayTitle", "(Ljava/lang/String;)V");
+        if (!env->ExceptionCheck() && mid) {
+            jstring jTitle = utf8ToJString(env, titleStr);
+            if (jTitle) {
+                env->CallVoidMethod(engine->app->activity->clazz, mid, jTitle);
+                if (env->ExceptionCheck()) env->ExceptionClear();
+                env->DeleteLocalRef(jTitle);
+            }
+        } else if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+        }
+        env->DeleteLocalRef(clazz);
     }
 }
 void android_main(struct android_app* app) {
-    Engine engine = {}; engine.app = app; app->userData = &engine; app->onAppCmd = onAppCmd; app->onInputEvent = handleInput; g_engine = &engine;
-    engine.pt.initEmpty(); rebuildLineStarts(&engine); engine.cursors.push_back({0, 0, 0.0f});
+    Engine engine = {};
+    engine.app = app;
+    engine.previewNonce = generateRandomHexNonce();
+    app->userData = &engine;
+    app->onAppCmd = onAppCmd;
+    app->onInputEvent = handleInput;
+    engine.pt.initEmpty();
+    rebuildLineStarts(&engine);
+    engine.cursors.push_back({0, 0, 0.0f});
+    {
+        std::lock_guard<std::mutex> lock(g_imeMutex);
+        g_engine = &engine;
+    }
     while (true) {
         int events; struct android_poll_source* source; int timeout = engine.isWindowReady ? 0 : -1;
-        while (ALooper_pollOnce(timeout, nullptr, &events, (void**)&source) >= 0) { if (source != nullptr) source->process(app, source); if (app->destroyRequested != 0) { cleanupVulkan(&engine); return; } timeout = engine.isWindowReady ? 0 : -1; }
+        while (ALooper_pollOnce(timeout, nullptr, &events, (void**)&source) >= 0) {
+            if (source != nullptr) source->process(app, source);
+            if (app->destroyRequested != 0) {
+                std::lock_guard<std::mutex> lock(g_imeMutex);
+                stopAsyncParsing(&engine);
+                engine.isWindowReady = false;
+                cleanupVulkan(&engine);
+                g_engine = nullptr;
+                g_imeQueue.clear();
+                return;
+            }
+            timeout = engine.isWindowReady ? 0 : -1;
+        }
         if (engine.isWindowReady) {
             {
                 std::lock_guard<std::mutex> lock(g_imeMutex);
@@ -5790,6 +6287,7 @@ void android_main(struct android_app* app) {
                     else if (ev.type == ImeEvent::FinishComposing) { if (!engine.imeComp.empty()) { std::string textToCommit = engine.imeComp; engine.imeComp.clear(); insertAtCursors(&engine, textToCommit); } }
                     else if (ev.type == ImeEvent::Delete) backspaceAtCursors(&engine);
                     else if (ev.type == ImeEvent::DeleteForward) deleteForwardAtCursors(&engine);
+                    else if (ev.type == ImeEvent::DeleteSurroundingUtf16) deleteSurroundingUtf16AtCursors(&engine, ev.beforeLen, ev.afterLen);
                 }
             }
             renderFrame(&engine);

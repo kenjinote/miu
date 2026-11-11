@@ -60,3 +60,5 @@
 "View" = "Visualización";
 "Tab" = "Tabulador";
 "No Recent Files" = "No hay archivos recientes";
+"Reload" = "Recargar";
+"Failed to save file." = "Error al guardar el archivo.";

@@ -2211,6 +2211,7 @@ inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edge
     if (node.rank > maxRank) maxRank = node.rank;
   }
 
+  for (int ei = 0; ei < m; ei++) if (span[ei] <= 0) direct[ei] = 1;
   int segments = 0;
   for (int ei = 0; ei < m; ei++) if (!direct[ei]) segments += span[ei];
   std::vector<int> EF(segments, 0);

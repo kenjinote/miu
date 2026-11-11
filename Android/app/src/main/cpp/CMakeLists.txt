@@ -25,7 +25,7 @@ set(PNG_LIBRARY png_static CACHE STRING "libpng library" FORCE)
 FetchContent_Declare(
         freetype
         GIT_REPOSITORY https://gitlab.freedesktop.org/freetype/freetype.git
-        GIT_TAG        VER-2-13-2 # 安定バージョン
+        GIT_TAG        VER-2-13-3 # CVE-2025-27363 修正済安定バージョン
 )
 
 # ★ PNG と ZLIB を有効化 (ZLIBはNDK標準のものを使用)

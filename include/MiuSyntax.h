@@ -110,29 +110,45 @@ static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) {
     if (pat.find("(https?|ftp)://") == 0) { m.kind = SyntaxRuleKind::Url; m.reqChar1 = ':'; m.reqChar2 = '/'; return m; }
     if (pat.find("@[a-zA-Z0-9.-]+") != std::string::npos) { m.kind = SyntaxRuleKind::Email; m.reqChar1 = '@'; return m; }
     if (!pat.empty()) {
-        if (pat[0] == '@' || pat[0] == '$' || pat[0] == '%' || pat[0] == '#' || pat[0] == ':' || pat[0] == '`' || pat[0] == '"' || pat[0] == '=' || pat[0] == '\'' || pat[0] == '&' || pat[0] == '<' || pat[0] == '-') m.reqChar1 = pat[0];
-        else if (pat.find("(?:#:|:)") == 0) m.reqChar1 = ':';
-        else if (pat.find("(?:#'|')") == 0) m.reqChar1 = '\'';
-        else if (pat.find(R"(\*[)") == 0) m.reqChar1 = '*';
-        else if (pat.find(R"(\+[)") == 0) m.reqChar1 = '+';
-        else if (pat.find(R"(\?)") == 0) m.reqChar1 = '?';
-        else if (pat.find(R"(\.)") == 0) m.reqChar1 = '.';
-        else if (pat.find(R"(\([*])") == 0) { m.reqChar1 = '('; m.reqChar2 = '*'; }
-        else if (pat.find("Windows ") == 0) m.reqChar1 = 'W';
-        else if (pat.find("</?") == 0) m.reqChar1 = '<';
-        else if (pat.find("&[#") == 0) m.reqChar1 = '&';
-        else if (pat.find(R"(\B#)") == 0) m.reqChar1 = '#';
-        else if (pat.find(R"(\\[a-zA-Z])") == 0) m.reqChar1 = '\\';
-        else if (pat.find(R"(\{)") == 0) m.reqChar1 = '{';
-        else if (pat.find(R"(\$)") == 0) m.reqChar1 = '$';
-        else if (pat.find(R"(\[<)") == 0) { m.reqChar1 = '['; m.reqChar2 = '<'; }
-        else if (pat.find("--[") == 0) m.reqChar1 = '-';
-        else if (pat.find("(?:^|[\\r\\n])[ \\t]*\\[") == 0) { m.reqChar1 = '['; m.reqChar2 = ']'; }
-        else if (pat.find("(?:^|[\\r\\n])\\+") == 0) m.reqChar1 = '+';
-        else if (pat.find("(?:^|[\\r\\n])-") == 0) m.reqChar1 = '-';
-        else if (pat.find("(?:^|[\\r\\n])@@") == 0) m.reqChar1 = '@';
-        else if (pat.find("(?=[ \\t]*=)") != std::string::npos || pat.find("(?==[^=])") != std::string::npos) m.reqChar1 = '=';
-        else if (pat.find("(?=[ \\t]*:") != std::string::npos || pat.find(":[a-zA-Z0-9_]+") != std::string::npos) m.reqChar1 = ':';
+        bool hasTopAlt = false;
+        {
+            int pDepth = 0;
+            bool inBrk = false;
+            for (size_t k = 0; k < pat.size(); ++k) {
+                char ch = pat[k];
+                if (ch == '\\') { k++; continue; }
+                if (inBrk) { if (ch == ']') inBrk = false; continue; }
+                if (ch == '[') { inBrk = true; continue; }
+                if (ch == '(') pDepth++;
+                else if (ch == ')' && pDepth > 0) pDepth--;
+                else if (ch == '|' && pDepth == 0) { hasTopAlt = true; break; }
+            }
+        }
+        if (!hasTopAlt) {
+            if (pat[0] == '@' || pat[0] == '$' || pat[0] == '%' || pat[0] == '#' || pat[0] == ':' || pat[0] == '`' || pat[0] == '"' || pat[0] == '=' || pat[0] == '\'' || pat[0] == '&' || pat[0] == '<' || pat[0] == '-') m.reqChar1 = pat[0];
+            else if (pat.find("(?:#:|:)") == 0) m.reqChar1 = ':';
+            else if (pat.find("(?:#'|')") == 0) m.reqChar1 = '\'';
+            else if (pat.find(R"(\*[)") == 0) m.reqChar1 = '*';
+            else if (pat.find(R"(\+[)") == 0) m.reqChar1 = '+';
+            else if (pat.find(R"(\?)") == 0) m.reqChar1 = '?';
+            else if (pat.find(R"(\.)") == 0) m.reqChar1 = '.';
+            else if (pat.find(R"(\([*])") == 0) { m.reqChar1 = '('; m.reqChar2 = '*'; }
+            else if (pat.find("Windows ") == 0) m.reqChar1 = 'W';
+            else if (pat.find("</?") == 0) m.reqChar1 = '<';
+            else if (pat.find("&[#") == 0) m.reqChar1 = '&';
+            else if (pat.find(R"(\B#)") == 0) m.reqChar1 = '#';
+            else if (pat.find(R"(\\[a-zA-Z])") == 0) m.reqChar1 = '\\';
+            else if (pat.find(R"(\{)") == 0) m.reqChar1 = '{';
+            else if (pat.find(R"(\$)") == 0) m.reqChar1 = '$';
+            else if (pat.find(R"(\[<)") == 0) { m.reqChar1 = '['; m.reqChar2 = '<'; }
+            else if (pat.find("--[") == 0) m.reqChar1 = '-';
+            else if (pat.find("(?:^|[\\r\\n])[ \\t]*\\[") == 0) { m.reqChar1 = '['; m.reqChar2 = ']'; }
+            else if (pat.find("(?:^|[\\r\\n])\\+") == 0) m.reqChar1 = '+';
+            else if (pat.find("(?:^|[\\r\\n])-") == 0) m.reqChar1 = '-';
+            else if (pat.find("(?:^|[\\r\\n])@@") == 0) m.reqChar1 = '@';
+            else if (pat.find("(?=[ \\t]*=)") != std::string::npos || pat.find("(?==[^=])") != std::string::npos) m.reqChar1 = '=';
+            else if (pat.find("(?=[ \\t]*:") != std::string::npos || pat.find(":[a-zA-Z0-9_]+") != std::string::npos) m.reqChar1 = ':';
+        }
     }
     return m;
 }
@@ -165,20 +181,42 @@ inline std::wstring extractSyntaxExtensionFromPath(const std::wstring& targetPat
     return ext;
 }
 
-inline std::wstring extractSyntaxExtensionFromUtf8Path(const std::string& utf8Path) {
-    std::wstring wpath;
-    wpath.reserve(utf8Path.size());
-    for (unsigned char c : utf8Path) wpath.push_back((wchar_t)c);
-    return extractSyntaxExtensionFromPath(wpath);
+inline std::string extractSyntaxExtensionFromPath(const std::string& utf8Path) {
+    size_t slashPos = utf8Path.find_last_of("\\/");
+    std::string baseName = (slashPos == std::string::npos) ? utf8Path : utf8Path.substr(slashPos + 1);
+    std::string lowerBase = baseName;
+    for (char& c : lowerBase) {
+        if (c >= 'A' && c <= 'Z') c = (char)(c + ('a' - 'A'));
+    }
+    std::string ext;
+    if (lowerBase == "dockerfile" || lowerBase == "containerfile" || lowerBase.rfind("dockerfile.", 0) == 0 || lowerBase.rfind("containerfile.", 0) == 0) ext = "dockerfile";
+    else if (lowerBase == "makefile" || lowerBase == "gnumakefile" || lowerBase == "bsdmakefile" || lowerBase == "justfile") ext = "makefile";
+    else if (lowerBase == "cmakelists.txt") ext = "cmake";
+    else if (lowerBase == ".env" || lowerBase.rfind(".env.", 0) == 0) ext = "env";
+    else if (lowerBase == ".bashrc" || lowerBase == ".bash_profile" || lowerBase == ".zshrc" || lowerBase == ".zprofile" || lowerBase == ".zshenv" || lowerBase == ".zlogin" || lowerBase == ".zlogout" || lowerBase == ".profile" || lowerBase == ".cshrc" || lowerBase == ".tcshrc" || lowerBase == ".kshrc" || lowerBase == "pkgbuild") ext = "sh";
+    else if (lowerBase == ".emacs" || lowerBase == ".sbclrc" || lowerBase == ".clisprc" || lowerBase == ".guile") ext = "lisp";
+    else if (lowerBase == "gemfile" || lowerBase == "rakefile" || lowerBase == "podfile" || lowerBase == "fastfile" || lowerBase == "appfile" || lowerBase == "matchfile" || lowerBase == "deliverfile" || lowerBase == "gymfile" || lowerBase == "scanfile" || lowerBase == "snapfile" || lowerBase == "brewfile" || lowerBase == "vagrantfile" || lowerBase == "berksfile" || lowerBase == "guardfile" || lowerBase == "capfile" || lowerBase == "thorfile" || lowerBase == "dangerfile") ext = "rb";
+    else if (lowerBase == "jenkinsfile") ext = "groovy";
+    else if (lowerBase == "build" || lowerBase == "build.bazel" || lowerBase == "workspace" || lowerBase == "workspace.bazel" || lowerBase == "sconstruct" || lowerBase == "sconscript" || lowerBase == "tiltfile") ext = "py";
+    else if (lowerBase == ".vimrc" || lowerBase == "_vimrc" || lowerBase == ".gvimrc" || lowerBase == "_gvimrc" || lowerBase == "vimrc" || lowerBase == "gvimrc" || lowerBase == ".exrc") ext = "vim";
+    else if (lowerBase == ".gitignore" || lowerBase == ".gitattributes" || lowerBase == ".dockerignore" || lowerBase == ".npmignore" || lowerBase == ".eslintignore" || lowerBase == ".prettierignore" || lowerBase == ".clang-format" || lowerBase == ".clang-tidy" || lowerBase == ".yamllint" || lowerBase == ".htaccess") ext = "conf";
+    else if (lowerBase == ".editorconfig" || lowerBase == ".gitconfig" || lowerBase == ".gitmodules" || lowerBase == ".npmrc" || lowerBase == ".yarnrc" || lowerBase == ".flake8" || lowerBase == ".pylintrc" || lowerBase == ".coveragerc") ext = "ini";
+    else if (lowerBase == ".prettierrc" || lowerBase == ".babelrc" || lowerBase == ".eslintrc" || lowerBase == ".stylelintrc" || lowerBase == ".hintrc" || lowerBase == ".swcrc") ext = "json";
+    else {
+        size_t dotPos = lowerBase.find_last_of('.');
+        if (dotPos != std::string::npos) ext = lowerBase.substr(dotPos + 1);
+    }
+    if (ext.empty()) return "";
+    return (ext[0] == '.') ? ext : ("." + ext);
 }
 
-inline std::string extractSyntaxExtensionFromPath(const std::string& utf8Path) {
-    std::wstring wext = extractSyntaxExtensionFromUtf8Path(utf8Path);
-    std::string ext;
-    ext.reserve(wext.size() + 1);
-    if (!wext.empty() && wext[0] != L'.') ext.push_back('.');
-    for (wchar_t wc : wext) ext.push_back((char)std::towlower(wc));
-    return ext;
+inline std::wstring extractSyntaxExtensionFromUtf8Path(const std::string& utf8Path) {
+    std::string ext = extractSyntaxExtensionFromPath(utf8Path);
+    if (!ext.empty() && ext[0] == '.') ext.erase(0, 1);
+    std::wstring wext;
+    wext.reserve(ext.size());
+    for (unsigned char c : ext) wext.push_back((wchar_t)c);
+    return wext;
 }
 
 inline void loadSyntaxDefForExtension(const std::wstring& ext, SyntaxDef& outSyntax, std::wstring& outLowerExt) {
@@ -265,21 +303,27 @@ regex: (\.|#|:)[a-zA-Z_-]+
 regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax7 = R"([markdown]
+no_strings: 1
 comment_block: <!-- -->
 regex: (?:^|[\r\n])[ \t]*#{1,6}[ \t]+[^\r\n]*
 regex_color: 0.3 0.7 0.9 1.0
 regex: (\*\*\*|___)[^*_\r\n\\]+(\*\*\*|___)|(\*\*|__)(?:[^*_\r\n\\]|\\.|[*][^*\r\n]|_[^_\r\n])+(\*\*|__)
 regex_color: 0.9 0.5 0.3 1.0
-regex: (?:^|[\r\n])[ \t]*`{3,}[^\r\n]*(?:\r\n|[\r\n])(?:[^\r\n]*(?:\r\n|[\r\n])){0,120}?[ \t]*`{3,}[ \t]*(?=\r|\n|$)|(?:^|[\r\n])[ \t]*~{3,}[^\r\n]*(?:\r\n|[\r\n])(?:[^\r\n]*(?:\r\n|[\r\n])){0,120}?[ \t]*~{3,}[ \t]*(?=\r|\n|$)|(?:^|[\r\n])[ \t]*(?:`{3,}|~{3,})[^\r\n]*|``+(?:[^`\r\n]|`[^`\r\n])+``+|`[^`\r\n\\]*(?:\\.[^`\r\n\\]*)*`
+regex: (?:^|[\r\n])[ \t]*`{3,}[^\r\n]*(?:\r\n|\r(?!\n)|\n)(?:[^\r\n]*(?:\r\n|\r(?!\n)|\n)){0,120}?[ \t]*`{3,}[ \t]*(?=\r|\n|$)|(?:^|[\r\n])[ \t]*~{3,}[^\r\n]*(?:\r\n|\r(?!\n)|\n)(?:[^\r\n]*(?:\r\n|\r(?!\n)|\n)){0,120}?[ \t]*~{3,}[ \t]*(?=\r|\n|$)|(?:^|[\r\n])[ \t]*(?:`{3,}|~{3,})[^\r\n]*|``+(?:[^`\r\n]|`[^`\r\n])+``+|`[^`\r\n\\]*(?:\\.[^`\r\n\\]*)*`
 regex_color: 0.5 0.7 0.5 1.0
 regex: (https?|ftp)://[^\s<>")\]]+
 regex_color: 0.2 0.6 0.8 1.0
 )";
         static constexpr const char* kSyntax8 = R"([rust]
+no_single_quote: 1
 keyword: as break const continue crate else enum extern fn for if impl in let loop match mod move mut pub ref return self Self static struct super trait type unsafe use where while async await dyn abstract become box do final macro override priv typeof unsized virtual yield
 literal: true false Option Result Some None Ok Err
 comment_line: //
 comment_block: /* */
+regex: '(?:\\(?:x[0-9a-fA-F]{2}|u\{[0-9a-fA-F_]{1,6}\}|.)|[^'\\\r\n])'
+regex_color: 0.64 0.08 0.08 1.0
+regex: '[a-zA-Z_][a-zA-Z0-9_]*\b
+regex_color: 0.85 0.65 0.35 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([a-zA-Z0-9_]*))\b
 regex_color: 0.4 0.7 0.6 1.0
 regex: #[ \t]*\[.*?\]
@@ -303,8 +347,6 @@ comment_block: /* */
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlLdD]*))\b
 regex_color: 0.4 0.7 0.6 1.0
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
-regex_color: 0.6 0.4 0.7 1.0
-regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
 regex_color: 0.6 0.4 0.7 1.0
 )";
         static constexpr const char* kSyntax11 = R"([powershell]
@@ -437,8 +479,6 @@ comment_line: //
 comment_block: /* */
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.6 0.4 0.7 1.0
-regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
-regex_color: 0.6 0.4 0.7 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
@@ -457,8 +497,6 @@ literal: true false null undefined
 comment_line: //
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.6 0.4 0.7 1.0
-regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
-regex_color: 0.6 0.4 0.7 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([a-zA-Z0-9_]*))\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
@@ -468,8 +506,6 @@ literal: true false null None Some Left Right Success Failure Nil
 comment_line: //
 comment_block: /* */
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
-regex_color: 0.6 0.4 0.7 1.0
-regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
 regex_color: 0.6 0.4 0.7 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlLdD]*))\b
 regex_color: 0.4 0.7 0.6 1.0
@@ -497,10 +533,15 @@ regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax31 = R"([fsharp]
+no_single_quote: 1
 keyword: abstract and as assert base begin class default delegate do done downcast downto elif else end exception extern false finally fixed for fun function global if in inherit inline interface internal lazy let match member module mutable namespace new not null of open or override private public rec return select static struct then to true try type upcast use val void when while with yield async seq task int float bool string unit list array option result
 literal: true false null None Some Ok Error
 comment_line: //
 comment_block: (* *)
+regex: '(?:\\.|[^'\\\r\n])'
+regex_color: 0.64 0.08 0.08 1.0
+regex: '[a-zA-Z_][a-zA-Z0-9_]*\b
+regex_color: 0.85 0.65 0.35 1.0
 regex: \[<[^>]+>\]
 regex_color: 0.6 0.4 0.7 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlLmUdD]*))\b
@@ -519,10 +560,13 @@ regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([a-zA-Z0-9_]*))\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax33 = R"([haskell]
+no_single_quote: 1
 keyword: as case class data default deriving do else family forall foreign hiding if import in infix infixl infixr instance let mdo module newtype of proc qualified rec then type where Int Integer Float Double Bool Char String Maybe Either IO Monad Functor Applicative Foldable Traversable Eq Ord Show Read Num Enum Bounded Monoid Semigroup
 literal: True False Nothing Just Left Right EQ LT GT otherwise
 comment_line: --
 comment_block: {- -}
+regex: '(?:\\[^\r\n']+|[^'\\\r\n])'
+regex_color: 0.64 0.08 0.08 1.0
 regex: \{-#.*?#-\}
 regex_color: 0.6 0.4 0.7 1.0
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
@@ -533,8 +577,6 @@ keyword: def defp defmodule defprotocol defimpl defmacro defmacrop defstruct def
 literal: true false nil
 comment_line: #
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
-regex_color: 0.6 0.4 0.7 1.0
-regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
 regex_color: 0.6 0.4 0.7 1.0
 regex: :[a-zA-Z_][a-zA-Z0-9_?!]*
 regex_color: 0.8 0.5 0.3 1.0
@@ -579,8 +621,6 @@ keyword: query mutation subscription fragment on type interface union enum input
 literal: true false null
 comment_line: #
 regex: @[a-zA-Z_][a-zA-Z0-9_]*
-regex_color: 0.6 0.4 0.7 1.0
-regex: \[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\]
 regex_color: 0.6 0.4 0.7 1.0
 regex: \$[a-zA-Z_][a-zA-Z0-9_]*
 regex_color: 0.8 0.5 0.3 1.0
@@ -1259,17 +1299,33 @@ inline void scanSyntaxHighlighting(
             for (auto it = words_begin; it != words_end; ++it) {
                 size_t mPos = (size_t)it->position();
                 size_t mLen = (size_t)it->length();
-                if (mPos > 0 && visibleText[mPos - 1] == '\\') continue;
+                if (mPos > 0 && visibleText[mPos - 1] == '\\' && visibleText[mPos] != '\r' && visibleText[mPos] != '\n') continue;
                 setEffect(mPos, mLen);
             }
         } catch (...) {}
     }
     size_t i = 0;
     size_t len = visibleText.length();
+    const bool symmetricBlockDelim = (!currentSyntax.commentBlockStart.empty() && currentSyntax.commentBlockStart == currentSyntax.commentBlockEnd);
     while (i < len) {
         if (inBlockComment) {
             size_t startStr = i;
-            size_t endComment = visibleText.find(currentSyntax.commentBlockEnd, i);
+            size_t endComment = std::string::npos;
+            size_t searchPos = i;
+            while (searchPos <= len) {
+                size_t cand = visibleText.find(currentSyntax.commentBlockEnd, searchPos);
+                if (cand == std::string::npos) break;
+                if (symmetricBlockDelim) {
+                    size_t bs = 0;
+                    while (cand > bs && visibleText[cand - 1 - bs] == '\\') ++bs;
+                    if ((bs & 1u) != 0) {
+                        searchPos = cand + 1;
+                        continue;
+                    }
+                }
+                endComment = cand;
+                break;
+            }
             if (endComment != std::string::npos) {
                 i = endComment + currentSyntax.commentBlockEnd.length();
                 inBlockComment = false;
@@ -1279,12 +1335,38 @@ inline void scanSyntaxHighlighting(
             applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::Comment);
         } else {
             if (!currentSyntax.commentBlockStart.empty() && visibleText.compare(i, currentSyntax.commentBlockStart.length(), currentSyntax.commentBlockStart) == 0) {
+                if (symmetricBlockDelim) {
+                    size_t bs = 0;
+                    while (i > bs && visibleText[i - 1 - bs] == '\\') ++bs;
+                    if ((bs & 1u) != 0) {
+                        i++;
+                        continue;
+                    }
+                }
+                size_t cbsLen = currentSyntax.commentBlockStart.length();
+                applySpan(i, cbsLen, (int)SyntaxTokenCategory::Comment);
+                i += cbsLen;
                 inBlockComment = true;
                 continue;
             }
             if (!currentSyntax.commentLine.empty() && visibleText.compare(i, currentSyntax.commentLine.length(), currentSyntax.commentLine) == 0) {
                 bool isLineComment = true;
-                if (currentSyntax.commentLine == "\"") {
+                const size_t clLen = currentSyntax.commentLine.length();
+                if (std::isalpha((unsigned char)currentSyntax.commentLine.back())) {
+                    bool prevBoundary = (i == 0 || !isStdWordChar(visibleText[i - 1]));
+                    bool nextBoundary = (i + clLen >= len || !isStdWordChar(visibleText[i + clLen]));
+                    size_t lineStart = visibleText.find_last_of("\r\n", i);
+                    lineStart = (lineStart == std::string::npos) ? 0 : lineStart + 1;
+                    bool atCommandStart = true;
+                    for (size_t k = lineStart; k < i; ++k) {
+                        char pc = visibleText[k];
+                        if (pc != ' ' && pc != '\t' && pc != '@') {
+                            if (pc == '&' || pc == '|' || pc == '(') atCommandStart = true;
+                            else atCommandStart = false;
+                        }
+                    }
+                    isLineComment = prevBoundary && nextBoundary && atCommandStart;
+                } else if (currentSyntax.commentLine == "\"") {
                     size_t lineStart = visibleText.find_last_of("\r\n", i);
                     lineStart = (lineStart == std::string::npos) ? 0 : lineStart + 1;
                     bool onlyWhitespaceBefore = true;
@@ -1419,4 +1501,126 @@ inline void scanSyntaxHighlighting(
             outColors[k] = sc;
         }
     });
+}
+
+inline bool scanBlockCommentState(std::string_view preText, const SyntaxDef& currentSyntax, bool initialInBlockComment = false) noexcept {
+    if (!currentSyntax.active || currentSyntax.commentBlockStart.empty() || currentSyntax.commentBlockEnd.empty()) {
+        return false;
+    }
+    if (preText.empty()) return initialInBlockComment;
+    if (!initialInBlockComment && preText.find(currentSyntax.commentBlockStart) == std::string_view::npos) {
+        return false;
+    }
+    const bool symmetricDelim = (currentSyntax.commentBlockStart == currentSyntax.commentBlockEnd);
+    const size_t len = preText.size();
+    const size_t cbsLen = currentSyntax.commentBlockStart.size();
+    const size_t cbeLen = currentSyntax.commentBlockEnd.size();
+    const size_t clLen = currentSyntax.commentLine.size();
+    auto isStdW = [](char c) noexcept -> bool {
+        return std::isalnum((unsigned char)c) || c == '_';
+    };
+    bool inBlockComment = initialInBlockComment;
+    size_t i = 0;
+    while (i < len) {
+        if (inBlockComment) {
+            size_t endComment = std::string_view::npos;
+            size_t searchPos = i;
+            while (searchPos <= len) {
+                size_t cand = preText.find(currentSyntax.commentBlockEnd, searchPos);
+                if (cand == std::string_view::npos) break;
+                if (symmetricDelim) {
+                    size_t bs = 0;
+                    while (cand > bs && preText[cand - 1 - bs] == '\\') ++bs;
+                    if ((bs & 1u) != 0) {
+                        searchPos = cand + 1;
+                        continue;
+                    }
+                }
+                endComment = cand;
+                break;
+            }
+            if (endComment != std::string_view::npos) {
+                i = endComment + cbeLen;
+                inBlockComment = false;
+            } else {
+                return true;
+            }
+        } else {
+            if (i + cbsLen <= len && preText.compare(i, cbsLen, currentSyntax.commentBlockStart) == 0) {
+                if (symmetricDelim) {
+                    size_t bs = 0;
+                    while (i > bs && preText[i - 1 - bs] == '\\') ++bs;
+                    if ((bs & 1u) != 0) {
+                        i++;
+                        continue;
+                    }
+                }
+                i += cbsLen;
+                inBlockComment = true;
+                continue;
+            }
+            if (clLen > 0 && i + clLen <= len && preText.compare(i, clLen, currentSyntax.commentLine) == 0) {
+                bool isLineComment = true;
+                if (std::isalpha((unsigned char)currentSyntax.commentLine.back())) {
+                    bool prevBoundary = (i == 0 || !isStdW(preText[i - 1]));
+                    bool nextBoundary = (i + clLen >= len || !isStdW(preText[i + clLen]));
+                    size_t lineStart = preText.find_last_of("\r\n", i);
+                    lineStart = (lineStart == std::string_view::npos) ? 0 : lineStart + 1;
+                    bool atCommandStart = true;
+                    for (size_t k = lineStart; k < i; ++k) {
+                        char pc = preText[k];
+                        if (pc != ' ' && pc != '\t' && pc != '@') {
+                            if (pc == '&' || pc == '|' || pc == '(') atCommandStart = true;
+                            else atCommandStart = false;
+                        }
+                    }
+                    isLineComment = prevBoundary && nextBoundary && atCommandStart;
+                } else if (currentSyntax.commentLine == "\"") {
+                    size_t lineStart = preText.find_last_of("\r\n", i);
+                    lineStart = (lineStart == std::string_view::npos) ? 0 : lineStart + 1;
+                    bool onlyWhitespaceBefore = true;
+                    for (size_t k = lineStart; k < i; ++k) {
+                        if (preText[k] != ' ' && preText[k] != '\t') {
+                            onlyWhitespaceBefore = false;
+                            break;
+                        }
+                    }
+                    if (!onlyWhitespaceBefore) {
+                        size_t eolCheck = preText.find_first_of("\r\n", i + 1);
+                        if (eolCheck == std::string_view::npos) eolCheck = len;
+                        bool hasClosingQuote = false;
+                        for (size_t k = i + 1; k < eolCheck; ++k) {
+                            if (preText[k] == '\\' && k + 1 < eolCheck) ++k;
+                            else if (preText[k] == '"') { hasClosingQuote = true; break; }
+                        }
+                        bool precededBySpace = (i > lineStart && (preText[i - 1] == ' ' || preText[i - 1] == '\t'));
+                        isLineComment = (precededBySpace && !hasClosingQuote);
+                    }
+                }
+                if (isLineComment) {
+                    size_t eol = preText.find_first_of("\r\n", i);
+                    i = (eol == std::string_view::npos) ? len : eol;
+                    continue;
+                }
+            }
+            if (currentSyntax.disableSingleQuoteStrings && currentSyntax.lispWords) {
+                if (i + 2 < len && preText[i] == '#' && preText[i + 1] == '\\') { i += 3; continue; }
+                if (i + 1 < len && preText[i] == '\\') { i += 2; continue; }
+                if (i + 2 < len && preText[i] == '?' && preText[i + 1] == '\\') { i += 3; continue; }
+                if (i + 1 < len && preText[i] == '?' && (preText[i + 1] == '"' || preText[i + 1] == ';' || preText[i + 1] == '|')) { i += 2; continue; }
+            }
+            if (!currentSyntax.disableStrings && (preText[i] == '"' || (!currentSyntax.disableSingleQuoteStrings && preText[i] == '\''))) {
+                char quote = preText[i++];
+                while (i < len) {
+                    if (preText[i] == '\\' && i + 1 < len) i += 2;
+                    else if (preText[i] == quote) { i++; break; }
+                    else if (preText[i] == '\n' || preText[i] == '\r') break;
+                    else i++;
+                }
+                continue;
+            }
+            i++;
+        }
+    }
+    return inBlockComment;
 }

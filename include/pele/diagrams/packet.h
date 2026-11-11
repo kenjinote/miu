@@ -182,10 +182,10 @@ inline PacketAst parsePacket(const std::string& src) {
             case T::plus: {
                 PacketBlockAst block;
                 if (r.accept(T::plus)) {
-                    block.bits = std::stoi(r.expect(T::intTok));
+                    block.bits = safeStoi(r.expect(T::intTok), "packet");
                 } else {
-                    block.start = std::stoi(r.take());
-                    if (r.accept(T::dash)) block.end = std::stoi(r.expect(T::intTok));
+                    block.start = safeStoi(r.take(), "packet");
+                    if (r.accept(T::dash)) block.end = safeStoi(r.expect(T::intTok), "packet");
                 }
                 r.expect(T::colon);
                 block.label = common_tokens::stringValue(r.expect(T::string));
@@ -220,7 +220,17 @@ inline PacketModel buildPacket(const PacketAst& ast, const Config& config, const
     std::vector<PacketBlock> word;
     int row = 1;
 
+    constexpr int MAX_PACKET_BITS = 65536;
     for (const auto& block : ast.blocks) {
+        if (block.start.has_value() && (*block.start < 0 || *block.start >= MAX_PACKET_BITS)) {
+            throw PeleError("Packet block start exceeds maximum bit limit.", "limit", "packet");
+        }
+        if (block.end.has_value() && (*block.end < 0 || *block.end >= MAX_PACKET_BITS)) {
+            throw PeleError("Packet block end exceeds maximum bit limit.", "limit", "packet");
+        }
+        if (block.bits.has_value() && (*block.bits < 0 || *block.bits > MAX_PACKET_BITS)) {
+            throw PeleError("Packet block bit count exceeds maximum bit limit.", "limit", "packet");
+        }
         if (block.start.has_value() && block.end.has_value() && *block.end < *block.start) {
             throw PeleError(
                 "Packet block " + std::to_string(*block.start) + " - " + std::to_string(*block.end) + " is invalid. End must be greater than start.",
@@ -229,6 +239,9 @@ inline PacketModel buildPacket(const PacketAst& ast, const Config& config, const
             );
         }
         int start = block.start.value_or(lastBit + 1);
+        if (start < 0 || start >= MAX_PACKET_BITS) {
+            throw PeleError("Packet diagram exceeds maximum bit limit.", "limit", "packet");
+        }
         if (start != lastBit + 1) {
             int endOrStart = block.end.value_or(start);
             throw PeleError(
@@ -244,7 +257,12 @@ inline PacketModel buildPacket(const PacketAst& ast, const Config& config, const
                 "packet"
             );
         }
-        int end = block.end.value_or(start + block.bits.value_or(1) - 1);
+        long long rawBits = block.bits.value_or(1);
+        long long rawEnd = block.end.has_value() ? static_cast<long long>(*block.end) : (static_cast<long long>(start) + rawBits - 1);
+        if (rawEnd < start || rawEnd >= MAX_PACKET_BITS) {
+            throw PeleError("Packet block end exceeds maximum bit limit.", "limit", "packet");
+        }
+        int end = static_cast<int>(rawEnd);
         int bits = block.bits.value_or(end - start + 1);
         lastBit = end;
 
@@ -384,6 +402,7 @@ inline Rendered drawPacket(const PacketModel& model, const Config& config, const
                 b.start = start;
                 b.end = end;
                 rows[index].push_back(std::move(b));
+                if (end >= block.end) break;
                 start = end + 1;
             }
         }

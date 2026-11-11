@@ -392,7 +392,7 @@ inline void parseVenn(const std::string& src, VennDb& db) {
         double size = 0.0;
         if (peek() == T::COLON) {
             take();
-            size = std::stod(expect(T::NUMERIC));
+            size = safeStod(expect(T::NUMERIC), "venn");
             hasSize = true;
         }
         if (isUnion) {

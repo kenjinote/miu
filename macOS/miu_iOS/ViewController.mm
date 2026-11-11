@@ -4,6 +4,51 @@
 #import <GameController/GameController.h>
 #import <WebKit/WebKit.h>
 
+static NSString *const kMiuIOSOfflineContentRulesJson = @"[{\"trigger\":{\"url-filter\":\"^(https?|wss?):.*\"},\"action\":{\"type\":\"block\"}}]";
+
+static inline std::string MiuIOSStdStringFromNSString(NSString *s) {
+    if (!s) return "";
+    const char *u = [s UTF8String];
+    return u ? std::string(u) : "";
+}
+
+static inline NSString *MiuIOSNSStringFromStdString(const std::string &s) {
+    if (s.empty()) return @"";
+    NSString *ns = [[NSString alloc] initWithBytes:s.data() length:s.size() encoding:NSUTF8StringEncoding];
+    if (ns) return ns;
+    std::string clean = MiuCore::SanitizeUtf8(s.data(), s.size());
+    ns = [[NSString alloc] initWithBytes:clean.data() length:clean.size() encoding:NSUTF8StringEncoding];
+    return ns ?: @"";
+}
+
+@interface MiuWeakDisplayLinkTarget : NSObject
+@property (nonatomic, weak) id target;
+@property (nonatomic, assign) SEL selector;
+- (instancetype)initWithTarget:(id)target selector:(SEL)selector;
+- (void)tick:(CADisplayLink *)link;
+@end
+
+@implementation MiuWeakDisplayLinkTarget
+- (instancetype)initWithTarget:(id)target selector:(SEL)selector {
+    if (self = [super init]) {
+        _target = target;
+        _selector = selector;
+    }
+    return self;
+}
+- (void)tick:(CADisplayLink *)link {
+    id strongTarget = self.target;
+    if (!strongTarget || !self.selector) {
+        [link invalidate];
+        return;
+    }
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    [strongTarget performSelector:self.selector withObject:link];
+#pragma clang diagnostic pop
+}
+@end
+
 @interface MiuIOSPreviewMessageHandler : NSObject <WKScriptMessageHandler, WKNavigationDelegate>
 @property (nonatomic, assign) Editor *editor;
 @property (nonatomic, assign) BOOL previewPageLoaded;
@@ -15,14 +60,14 @@
     if (!self.editor) return;
     if ([message.name isEqualToString:@"miuPreview"] && [message.body isKindOfClass:[NSString class]]) {
         NSString *body = (NSString *)message.body;
-        if ([body hasPrefix:@"toggle_task:"]) {
-            int lineIdx = [[body substringFromIndex:12] intValue];
-            self.editor->handlePreviewTaskToggle(lineIdx);
-        }
+        self.editor->handlePreviewMessage(MiuIOSStdStringFromNSString(body));
     }
 }
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
-    if (navigationAction.navigationType == WKNavigationTypeOther) {
+    NSURL *url = navigationAction.request.URL;
+    NSString *absStr = url ? [[url absoluteString] lowercaseString] : @"";
+    if (navigationAction.navigationType == WKNavigationTypeOther &&
+        ([absStr isEqualToString:@"about:blank"] || [absStr hasPrefix:@"about:blank#"])) {
         decisionHandler(WKNavigationActionPolicyAllow);
     } else {
         decisionHandler(WKNavigationActionPolicyCancel);
@@ -34,8 +79,8 @@
         MiuPreview::PreviewRenderResult res = self.editor->getPreviewRenderResult();
         if (res.isMdOrMermaidShell) {
             std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, self.editor->isDarkMode);
-            NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
-            if (jsNS) {
+            NSString *jsNS = MiuIOSNSStringFromStdString(js);
+            if (jsNS.length > 0) {
                 [webView evaluateJavaScript:jsNS completionHandler:nil];
             }
         }
@@ -188,6 +233,7 @@
 @property (nonatomic, copy) BOOL (^onDismissOpenRecentIfVisible)(void);
 @property (nonatomic, copy) void (^onDismissOpenRecentThenPerform)(void (^block)(void));
 @property (nonatomic, copy) void (^onSyncKeyboardLayout)(void);
+@property (nonatomic, copy) void (^onSaveFailedAction)(void);
 @property (nonatomic, strong) UIEditMenuInteraction *editMenuInteraction API_AVAILABLE(ios(16.0));
 @property (nonatomic, assign) CGFloat topRenderMargin;
 - (UIView *)activeAccessoryView;
@@ -294,6 +340,8 @@
     });
 }
 - (void)dealloc {
+    [_displayLink invalidate];
+    _displayLink = nil;
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 - (void)showEditMenuAtRect:(CGRect)rect {
@@ -675,13 +723,36 @@
     size_t lineByteLen = lineEnd - lineStart;
     if (lineByteLen == 0) return;
     std::string lineBytes = self.editor->pt.getRange(lineStart, lineByteLen);
-    NSString *lineStr = [NSString stringWithUTF8String:lineBytes.c_str()];
-    if (!lineStr || lineStr.length == 0) return;
+    NSString *lineStr = [[NSString alloc] initWithBytes:lineBytes.data() length:lineBytes.size() encoding:NSUTF8StringEncoding];
     size_t relativeTapByte = pos - lineStart;
     if (relativeTapByte > lineBytes.size()) relativeTapByte = lineBytes.size();
-    NSString *preTapStr = [[NSString alloc] initWithBytes:lineBytes.c_str() length:relativeTapByte encoding:NSUTF8StringEncoding];
-    NSUInteger tapCharIdx = preTapStr.length;
+    if (!lineStr || lineStr.length == 0) {
+        if (lineBytes.empty()) return;
+        size_t idx = (relativeTapByte < lineBytes.size()) ? relativeTapByte : (lineBytes.size() - 1);
+        auto isWordByte = [](unsigned char b) -> bool {
+            return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9') || b == '_' || b >= 0x80;
+        };
+        if (isWordByte((unsigned char)lineBytes[idx])) {
+            size_t s = idx, e = idx + 1;
+            while (s > 0 && isWordByte((unsigned char)lineBytes[s - 1])) s--;
+            while (e < lineBytes.size() && isWordByte((unsigned char)lineBytes[e])) e++;
+            *outStart = lineStart + s;
+            *outEnd = lineStart + e;
+        } else {
+            *outStart = lineStart + idx;
+            *outEnd = lineStart + idx + 1;
+        }
+        return;
+    }
+    while (relativeTapByte > 0 && !MiuCore::isUtf8CharBoundary(lineBytes, relativeTapByte)) {
+        relativeTapByte--;
+    }
+    NSString *preTapStr = [[NSString alloc] initWithBytes:lineBytes.data() length:relativeTapByte encoding:NSUTF8StringEncoding];
+    NSUInteger tapCharIdx = preTapStr ? preTapStr.length : 0;
     if (tapCharIdx >= lineStr.length && tapCharIdx > 0) tapCharIdx = lineStr.length - 1;
+    if (tapCharIdx < lineStr.length) {
+        tapCharIdx = [lineStr rangeOfComposedCharacterSequenceAtIndex:tapCharIdx].location;
+    }
     CFRange tokenRange = CFRangeMake(kCFNotFound, 0);
     CFStringTokenizerRef tokenizer = CFStringTokenizerCreate(kCFAllocatorDefault, (__bridge CFStringRef)lineStr, CFRangeMake(0, lineStr.length), kCFStringTokenizerUnitWordBoundary, NULL);
     if (tokenizer) {
@@ -696,20 +767,23 @@
         finalRange = NSMakeRange(tokenRange.location, tokenRange.length);
         NSCharacterSet *wordSet = [NSCharacterSet characterSetWithCharactersInString:@"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"];
         unichar c = [lineStr characterAtIndex:tapCharIdx];
-        if ([wordSet characterIsMember:c]) {
+        if (!CFStringIsSurrogateHighCharacter(c) && !CFStringIsSurrogateLowCharacter(c) && [wordSet characterIsMember:c]) {
             while (finalRange.location > 0) {
-                if ([wordSet characterIsMember:[lineStr characterAtIndex:finalRange.location - 1]]) {
+                unichar prevC = [lineStr characterAtIndex:finalRange.location - 1];
+                if (!CFStringIsSurrogateHighCharacter(prevC) && !CFStringIsSurrogateLowCharacter(prevC) && [wordSet characterIsMember:prevC]) {
                     finalRange.location--; finalRange.length++;
                 } else break;
             }
             while (finalRange.location + finalRange.length < lineStr.length) {
-                if ([wordSet characterIsMember:[lineStr characterAtIndex:finalRange.location + finalRange.length]]) {
+                unichar nextC = [lineStr characterAtIndex:finalRange.location + finalRange.length];
+                if (!CFStringIsSurrogateHighCharacter(nextC) && !CFStringIsSurrogateLowCharacter(nextC) && [wordSet characterIsMember:nextC]) {
                     finalRange.length++;
                 } else break;
             }
         }
+        finalRange = [lineStr rangeOfComposedCharacterSequencesForRange:finalRange];
     } else {
-        finalRange = NSMakeRange(tapCharIdx, 1);
+        finalRange = [lineStr rangeOfComposedCharacterSequenceAtIndex:tapCharIdx];
     }
     NSString *preMatchStr = [lineStr substringToIndex:finalRange.location];
     NSString *matchStr = [lineStr substringWithRange:finalRange];
@@ -945,7 +1019,8 @@
     [self stopMomentumScroll];
     _isScrolling = YES;
     _lastUpdateTime = CACurrentMediaTime();
-    _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(updateMomentumScroll:)];
+    MiuWeakDisplayLinkTarget *proxy = [[MiuWeakDisplayLinkTarget alloc] initWithTarget:self selector:@selector(updateMomentumScroll:)];
+    _displayLink = [CADisplayLink displayLinkWithTarget:proxy selector:@selector(tick:)];
     [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
 }
 - (void)stopMomentumScroll {
@@ -989,7 +1064,7 @@
         ? [(NSAttributedString *)markedText string]
         : (NSString *)markedText;
     [self.inputDelegate textWillChange:self];
-    self.editor->imeComp = (str && str.length > 0) ? [str UTF8String] : "";
+    self.editor->imeComp = MiuIOSStdStringFromNSString(str);
     self.editor->ensureCaretVisible();
     [self.inputDelegate textDidChange:self];
     [self setNeedsDisplay];
@@ -1042,7 +1117,7 @@
         }
     } else {
         self.editor->imeComp = "";
-        std::string raw = [text UTF8String] ? [text UTF8String] : "";
+        std::string raw = MiuIOSStdStringFromNSString(text);
         std::string norm;
         norm.reserve(raw.size());
         for (size_t i = 0; i < raw.size(); ++i) {
@@ -1130,7 +1205,7 @@
     if (!self.editor->imeComp.empty() && !self.editor->cursors.empty()) {
         size_t head = self.editor->cursors.back().head;
         if (start == head && len == self.editor->imeComp.size()) {
-            return [NSString stringWithUTF8String:self.editor->imeComp.c_str()];
+            return MiuIOSNSStringFromStdString(self.editor->imeComp);
         }
     }
     size_t ptLen = self.editor->pt.length();
@@ -1138,8 +1213,7 @@
     if (start + len > ptLen) len = ptLen - start;
     if (len == 0) return @"";
     std::string text = self.editor->pt.getRange(start, len);
-    NSString *nsStr = [NSString stringWithUTF8String:text.c_str()];
-    return nsStr ? nsStr : @"";
+    return MiuIOSNSStringFromStdString(text);
 }
 - (void)replaceRange:(UITextRange *)range withText:(NSString *)text {
     if (!self.editor || !range) return;
@@ -1160,7 +1234,7 @@
     self.editor->cursors.clear();
     Cursor c; c.head = end; c.anchor = start;
     self.editor->cursors.push_back(c);
-    self.editor->insertAtCursors([text UTF8String]);
+    self.editor->insertAtCursors(MiuIOSStdStringFromNSString(text));
     [self.inputDelegate textDidChange:self];
     [self setNeedsDisplay];
 }
@@ -1191,8 +1265,8 @@
     if (!self.editor->imeComp.empty() && !self.editor->cursors.empty()) {
         size_t head = self.editor->cursors.back().head;
         if (start == head && (end - start) == self.editor->imeComp.size()) {
-            NSString *imeStr = [NSString stringWithUTF8String:self.editor->imeComp.c_str()];
-            NSInteger imeCount = (NSInteger)(imeStr ? imeStr.length : 0);
+            NSString *imeStr = MiuIOSNSStringFromStdString(self.editor->imeComp);
+            NSInteger imeCount = (NSInteger)imeStr.length;
             return (fromIdx <= toIdx) ? imeCount : -imeCount;
         }
     }
@@ -2102,7 +2176,9 @@
     if (self.editor->currentFilePath.empty()) {
         self.editor->saveFileAs();
     } else {
-        self.editor->saveFile(self.editor->currentFilePath);
+        if (!self.editor->saveFile(self.editor->currentFilePath)) {
+            if (self.onSaveFailedAction) self.onSaveFailedAction();
+        }
     }
 }
 - (void)saveDocumentAs:(id)sender {
@@ -2588,6 +2664,8 @@ static NSString *s_iosClipboardSnapshot = nil;
 @property (nonatomic, copy) NSString *currentDocumentDisplayName;
 @property (nonatomic, copy) NSString *pendingExportFileName;
 @property (nonatomic, copy) NSString *pendingExportTempFilePath;
+@property (nonatomic, copy) void (^pendingPostSaveAction)(void);
+@property (nonatomic, strong) NSURL *pendingIncomingURL;
 @property (nonatomic, strong) UIStackView *headerStack;
 @property (nonatomic, strong) UIView *titleBarView;
 @property (nonatomic, strong) UILabel *titleLabel;
@@ -2712,11 +2790,24 @@ static NSString *s_iosClipboardSnapshot = nil;
     self.previewMsgHandler.editor = _editorEngine.get();
 
     WKWebViewConfiguration *cfg = [[WKWebViewConfiguration alloc] init];
+    cfg.websiteDataStore = [WKWebsiteDataStore nonPersistentDataStore];
     WKUserContentController *ucc = [[WKUserContentController alloc] init];
     [ucc addScriptMessageHandler:self.previewMsgHandler name:@"miuPreview"];
+    __weak typeof(self) weakRuleSelf = self;
+    [[WKContentRuleListStore defaultStore] compileContentRuleListForIdentifier:@"MiuOfflineRuleList"
+                                                        encodedContentRuleList:kMiuIOSOfflineContentRulesJson
+                                                             completionHandler:^(WKContentRuleList *ruleList, NSError *error) {
+        if (ruleList) {
+            [ucc addContentRuleList:ruleList];
+            __strong typeof(weakRuleSelf) strongRuleSelf = weakRuleSelf;
+            if (strongRuleSelf && strongRuleSelf.previewWebView) {
+                [strongRuleSelf.previewWebView.configuration.userContentController addContentRuleList:ruleList];
+            }
+        }
+    }];
     std::string sbJsStr = std::string("(function(){") + MiuPreview::getPreviewScrollbarJs() + "})();";
-    NSString *sbJsNS = [NSString stringWithUTF8String:sbJsStr.c_str()];
-    if (sbJsNS) {
+    NSString *sbJsNS = MiuIOSNSStringFromStdString(sbJsStr);
+    if (sbJsNS.length > 0) {
         WKUserScript *sbUserScript = [[WKUserScript alloc] initWithSource:sbJsNS
                                                             injectionTime:WKUserScriptInjectionTimeAtDocumentEnd
                                                          forMainFrameOnly:YES];
@@ -2834,8 +2925,8 @@ static NSString *s_iosClipboardSnapshot = nil;
     [self ensurePreviewViewsCreated];
     if (!self.previewWebView) return;
     MiuPreview::PreviewRenderResult res = _editorEngine->getPreviewRenderResult();
-    NSString *fullHtmlNS = [NSString stringWithUTF8String:res.fullHtml.c_str()];
-    if (!fullHtmlNS) return;
+    NSString *fullHtmlNS = MiuIOSNSStringFromStdString(res.fullHtml);
+    if (fullHtmlNS.length == 0) return;
 
     self.previewMsgHandler.pendingHtml = fullHtmlNS;
 
@@ -2845,8 +2936,8 @@ static NSString *s_iosClipboardSnapshot = nil;
         [self.previewWebView loadHTMLString:fullHtmlNS baseURL:nil];
     } else {
         std::string js = MiuPreview::buildDomUpdateJs(res.bodyContent, _editorEngine->isDarkMode);
-        NSString *jsNS = [NSString stringWithUTF8String:js.c_str()];
-        if (jsNS) {
+        NSString *jsNS = MiuIOSNSStringFromStdString(js);
+        if (jsNS.length > 0) {
             WKWebView *wv = self.previewWebView;
             MiuIOSPreviewMessageHandler *mh = self.previewMsgHandler;
             [wv evaluateJavaScript:jsNS completionHandler:^(id result, NSError *error) {
@@ -2862,14 +2953,14 @@ static NSString *s_iosClipboardSnapshot = nil;
     if (!path || path.length == 0) return nil;
     NSDictionary *dict = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"MiuRecentDisplayNames"];
     NSString *saved = dict[path];
-    if (saved && saved.length > 0 && !MiuIsLikelyTemporaryGuidFileName(saved.UTF8String)) {
+    if (saved && saved.length > 0 && !MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(saved))) {
         return saved;
     }
     return nil;
 }
 - (void)saveDisplayName:(NSString *)displayName forPath:(NSString *)path {
     if (!path || path.length == 0 || !displayName || displayName.length == 0) return;
-    if (MiuIsLikelyTemporaryGuidFileName(displayName.UTF8String)) return;
+    if (MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(displayName))) return;
     NSDictionary *existing = [[NSUserDefaults standardUserDefaults] dictionaryForKey:@"MiuRecentDisplayNames"];
     NSMutableDictionary *dict = existing ? [existing mutableCopy] : [NSMutableDictionary dictionary];
     dict[path] = displayName;
@@ -2880,8 +2971,9 @@ static NSString *s_iosClipboardSnapshot = nil;
     [url removeAllCachedResourceValues];
     std::vector<std::string> candidates;
     auto addCandidate = [&](NSString *str) {
-        if (str && str.length > 0 && str.UTF8String) {
-            candidates.push_back(std::string(str.UTF8String));
+        std::string u = MiuIOSStdStringFromNSString(str);
+        if (!u.empty()) {
+            candidates.push_back(u);
         }
     };
 
@@ -2923,7 +3015,7 @@ static NSString *s_iosClipboardSnapshot = nil;
         coordLastComponent = newURL.lastPathComponent;
         if (!originalFileExists &&
             coordLastComponent.length > 0 &&
-            !MiuIsLikelyTemporaryGuidFileName(coordLastComponent.UTF8String) &&
+            !MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(coordLastComponent)) &&
             newURL.path.length > 0 &&
             [fm fileExistsAtPath:newURL.path]) {
             bestURL = newURL;
@@ -2940,20 +3032,20 @@ static NSString *s_iosClipboardSnapshot = nil;
     addCandidate(url.lastPathComponent);
 
     NSString *rawLast = url.lastPathComponent;
-    if (rawLast.length > 0 && MiuIsLikelyTemporaryGuidFileName(rawLast.UTF8String)) {
+    if (rawLast.length > 0 && MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(rawLast))) {
         NSURL *parentDir = [url URLByDeletingLastPathComponent];
         NSString *parentName = parentDir.lastPathComponent;
         if (parentName.length > 0 &&
             [parentName pathExtension].length > 0 &&
             ![parentName isEqualToString:@"File Provider Storage"] &&
-            !MiuIsLikelyTemporaryGuidFileName(parentName.UTF8String)) {
+            !MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(parentName))) {
             addCandidate(parentName);
         }
         if (parentDir && parentDir.path.length > 0) {
             if (!originalFileExists) {
                 for (const auto& cand : candidates) {
                     if (!cand.empty() && !MiuIsLikelyTemporaryGuidFileName(cand)) {
-                        NSString *candNS = [NSString stringWithUTF8String:cand.c_str()];
+                        NSString *candNS = MiuIOSNSStringFromStdString(cand);
                         if (candNS.length > 0) {
                             NSURL *siblingURL = [parentDir URLByAppendingPathComponent:candNS];
                             if (siblingURL.path && [fm fileExistsAtPath:siblingURL.path]) {
@@ -2983,7 +3075,7 @@ static NSString *s_iosClipboardSnapshot = nil;
                     [itemURL getResourceValue:&isReg forKey:NSURLIsRegularFileKey error:nil];
                     if (isReg && !isReg.boolValue) continue;
                     NSString *itemName = itemURL.lastPathComponent;
-                    if (itemName.length == 0 || MiuIsLikelyTemporaryGuidFileName(itemName.UTF8String)) continue;
+                    if (itemName.length == 0 || MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(itemName))) continue;
                     NSDate *modDate = nil;
                     [itemURL getResourceValue:&modDate forKey:NSURLContentModificationDateKey error:nil];
                     if (modDate && fabs([modDate timeIntervalSinceNow]) <= 15.0) {
@@ -3000,7 +3092,7 @@ static NSString *s_iosClipboardSnapshot = nil;
                     }
                     hasNonGuidCandidate = YES;
                 }
-                if (!hasNonGuidCandidate && fallbackName.length > 0 && !MiuIsLikelyTemporaryGuidFileName(fallbackName.UTF8String)) {
+                if (!hasNonGuidCandidate && fallbackName.length > 0 && !MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(fallbackName))) {
                     NSURL *fallbackSibling = [parentDir URLByAppendingPathComponent:fallbackName];
                     if (fallbackSibling.path && [fm fileExistsAtPath:fallbackSibling.path]) {
                         addCandidate(fallbackName);
@@ -3016,11 +3108,13 @@ static NSString *s_iosClipboardSnapshot = nil;
 
     NSString *savedName = (url.path.length > 0) ? [self savedDisplayNameForPath:url.path] : nil;
     NSString *effectiveFallback = (fallbackName.length > 0) ? fallbackName : savedName;
-    std::string fallbackUtf8 = (effectiveFallback && effectiveFallback.UTF8String) ? std::string(effectiveFallback.UTF8String) : "";
+    std::string fallbackUtf8 = MiuIOSStdStringFromNSString(effectiveFallback);
     NSString *localizedUntitled = NSLocalizedString(@"Untitled", @"新規ファイル名");
-    std::string untitledUtf8 = (localizedUntitled && localizedUntitled.UTF8String) ? std::string(localizedUntitled.UTF8String) : "Untitled";
+    std::string untitledUtf8 = MiuIOSStdStringFromNSString(localizedUntitled);
+    if (untitledUtf8.empty()) untitledUtf8 = "Untitled";
     std::string resolvedUtf8 = MiuResolveDisplayFileName(candidates, fallbackUtf8, untitledUtf8);
-    NSString *resolvedNS = [NSString stringWithUTF8String:resolvedUtf8.c_str()] ?: localizedUntitled;
+    NSString *resolvedNS = MiuIOSNSStringFromStdString(resolvedUtf8);
+    if (resolvedNS.length == 0) resolvedNS = localizedUntitled;
     if (outDisplayName) {
         *outDisplayName = resolvedNS;
     }
@@ -3028,7 +3122,7 @@ static NSString *s_iosClipboardSnapshot = nil;
 }
 - (NSString *)displayFileNameForPath:(NSString *)fullPath {
     if (self.currentDocumentDisplayName.length > 0 &&
-        !MiuIsLikelyTemporaryGuidFileName(self.currentDocumentDisplayName.UTF8String)) {
+        !MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(self.currentDocumentDisplayName))) {
         return self.currentDocumentDisplayName;
     }
     NSString *saved = [self savedDisplayNameForPath:fullPath];
@@ -3038,22 +3132,23 @@ static NSString *s_iosClipboardSnapshot = nil;
     if (self.currentDocumentURL) {
         NSString *resolved = nil;
         [self resolveDocumentURL:self.currentDocumentURL fallbackName:self.pendingExportFileName outDisplayName:&resolved];
-        if (resolved.length > 0 && !MiuIsLikelyTemporaryGuidFileName(resolved.UTF8String)) {
+        if (resolved.length > 0 && !MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(resolved))) {
             self.currentDocumentDisplayName = resolved;
             return resolved;
         }
     }
     std::vector<std::string> candidates;
-    if (fullPath.length > 0 && fullPath.UTF8String) {
-        candidates.push_back(std::string(fullPath.UTF8String));
+    std::string fullPathUtf8 = MiuIOSStdStringFromNSString(fullPath);
+    if (!fullPathUtf8.empty()) {
+        candidates.push_back(fullPathUtf8);
     }
-    std::string fallbackUtf8 = (self.pendingExportFileName && self.pendingExportFileName.UTF8String)
-        ? std::string(self.pendingExportFileName.UTF8String)
-        : "";
+    std::string fallbackUtf8 = MiuIOSStdStringFromNSString(self.pendingExportFileName);
     NSString *localizedUntitled = NSLocalizedString(@"Untitled", @"新規ファイル名");
-    std::string untitledUtf8 = (localizedUntitled && localizedUntitled.UTF8String) ? std::string(localizedUntitled.UTF8String) : "Untitled";
+    std::string untitledUtf8 = MiuIOSStdStringFromNSString(localizedUntitled);
+    if (untitledUtf8.empty()) untitledUtf8 = "Untitled";
     std::string resolvedUtf8 = MiuResolveDisplayFileName(candidates, fallbackUtf8, untitledUtf8);
-    return [NSString stringWithUTF8String:resolvedUtf8.c_str()] ?: localizedUntitled;
+    NSString *resolvedNS = MiuIOSNSStringFromStdString(resolvedUtf8);
+    return (resolvedNS.length > 0) ? resolvedNS : localizedUntitled;
 }
 - (void)saveBookmarkForURL:(NSURL *)url {
     if (!url || !url.path) return;
@@ -3069,9 +3164,9 @@ static NSString *s_iosClipboardSnapshot = nil;
 }
 - (void)openRecentFileAtPath:(const std::string &)path {
     if (!_editorEngine) return;
-    NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
+    NSString *nsPath = MiuIOSNSStringFromStdString(path);
     NSString *savedName = [self savedDisplayNameForPath:nsPath];
-    NSURL *targetURL = nsPath ? [NSURL fileURLWithPath:nsPath] : nil;
+    NSURL *targetURL = nsPath.length > 0 ? [NSURL fileURLWithPath:nsPath] : nil;
     NSURL *scopedURL = nil;
     BOOL accessGranted = NO;
     BOOL bookmarkWasStale = NO;
@@ -3110,7 +3205,7 @@ static NSString *s_iosClipboardSnapshot = nil;
             }
         }
     }
-    std::string actualPath = (targetURL && targetURL.path) ? std::string(targetURL.path.UTF8String) : path;
+    std::string actualPath = (targetURL && targetURL.path) ? MiuIOSStdStringFromNSString(targetURL.path) : path;
     [self.editorView unmarkText];
     [self.editorView.inputDelegate selectionWillChange:self.editorView];
     [self.editorView.inputDelegate textWillChange:self.editorView];
@@ -3121,8 +3216,10 @@ static NSString *s_iosClipboardSnapshot = nil;
         NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
         [coordinator coordinateReadingItemAtURL:targetURL options:NSFileCoordinatorReadingWithoutChanges error:nil byAccessor:^(NSURL * _Nonnull newURL) {
             if (newURL && newURL.path.length > 0) {
-                coordOpenedPath = std::string(newURL.path.UTF8String);
-                coordSuccess = _editorEngine->openFileFromPath(coordOpenedPath);
+                coordOpenedPath = MiuIOSStdStringFromNSString(newURL.path);
+                if (!coordOpenedPath.empty()) {
+                    coordSuccess = _editorEngine->openFileFromPath(coordOpenedPath);
+                }
             }
         }];
         if (coordSuccess) {
@@ -3146,13 +3243,13 @@ static NSString *s_iosClipboardSnapshot = nil;
             if (targetURL && targetURL.path.length > 0) {
                 [self saveDisplayName:self.currentDocumentDisplayName forPath:targetURL.path];
             }
-            _editorEngine->loadSyntaxForExtension(self.currentDocumentDisplayName.UTF8String);
+            _editorEngine->loadSyntaxForExtension(MiuIOSStdStringFromNSString(self.currentDocumentDisplayName));
         }
         if (bookmarkWasStale && scopedURL) {
             [self saveBookmarkForURL:scopedURL];
         }
         if (self.searchField.text.length > 0) {
-            _editorEngine->searchQuery = self.searchField.text.UTF8String;
+            _editorEngine->searchQuery = MiuIOSStdStringFromNSString(self.searchField.text);
         }
         _editorEngine->updateTitleBar();
     } else {
@@ -3225,7 +3322,7 @@ static NSString *s_iosClipboardSnapshot = nil;
         [sheet addAction:emptyAction];
     } else {
         for (const auto& path : _editorEngine->recentFiles) {
-            NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
+            NSString *nsPath = MiuIOSNSStringFromStdString(path);
             if (!nsPath || nsPath.length == 0) continue;
             NSString *displayTitle = [self savedDisplayNameForPath:nsPath] ?: [nsPath lastPathComponent];
             [sheet addAction:[UIAlertAction actionWithTitle:displayTitle style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
@@ -3287,7 +3384,7 @@ static NSString *s_iosClipboardSnapshot = nil;
     [self.editorView.inputDelegate textWillChange:self.editorView];
     _editorEngine->newFile();
     if (self.searchField.text.length > 0) {
-        _editorEngine->searchQuery = self.searchField.text.UTF8String;
+        _editorEngine->searchQuery = MiuIOSStdStringFromNSString(self.searchField.text);
     }
     _editorEngine->ensureCaretVisible();
     [self.editorView.inputDelegate textDidChange:self.editorView];
@@ -3468,11 +3565,11 @@ static NSString *s_iosClipboardSnapshot = nil;
     _editorEngine = std::make_shared<Editor>();
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
     NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
-    if (!appVersion) appVersion = @"1.0.50";
+    if (!appVersion) appVersion = @"1.0.51";
     NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
-    _editorEngine->appVersionStr = UTF8ToW([versionString UTF8String]);
+    _editorEngine->appVersionStr = UTF8ToW(MiuIOSStdStringFromNSString(versionString));
     NSString *localizedHelp = NSLocalizedString(@"HelpText_iOS", nil);
-    _editorEngine->helpTextStr = UTF8ToW([localizedHelp UTF8String]);
+    _editorEngine->helpTextStr = UTF8ToW(MiuIOSStdStringFromNSString(localizedHelp));
     __weak typeof(self) weakSelf = self;
     _editorEngine->cbUpdateTitleBar = [weakSelf]() {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -3482,15 +3579,17 @@ static NSString *s_iosClipboardSnapshot = nil;
                 UIImage *iconImage = nil;
                 if (!strongSelf->_editorEngine->currentFilePath.empty()) {
                     std::string utf8Name = WToUTF8(strongSelf->_editorEngine->currentFilePath);
-                    NSString *fullPath = [NSString stringWithUTF8String:utf8Name.c_str()];
+                    NSString *fullPath = MiuIOSNSStringFromStdString(utf8Name);
                     fileName = [strongSelf displayFileNameForPath:fullPath];
-                    NSURL *fileURL = strongSelf.currentDocumentURL ?: [NSURL fileURLWithPath:fullPath];
-                    if (fileURL && MiuIsLikelyTemporaryGuidFileName(fileURL.lastPathComponent.UTF8String) && fileName.length > 0) {
+                    NSURL *fileURL = strongSelf.currentDocumentURL ?: (fullPath.length > 0 ? [NSURL fileURLWithPath:fullPath] : nil);
+                    if (fileURL && MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(fileURL.lastPathComponent)) && fileName.length > 0) {
                         fileURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:fileName]];
                     }
-                    UIDocumentInteractionController *docController = [UIDocumentInteractionController interactionControllerWithURL:fileURL];
-                    if (docController.icons.count > 0) {
-                        iconImage = docController.icons.lastObject;
+                    if (fileURL) {
+                        UIDocumentInteractionController *docController = [UIDocumentInteractionController interactionControllerWithURL:fileURL];
+                        if (docController.icons.count > 0) {
+                            iconImage = docController.icons.lastObject;
+                        }
                     }
                 } else {
                     iconImage = [UIImage imageNamed:@"TitleIcon"];
@@ -3505,7 +3604,7 @@ static NSString *s_iosClipboardSnapshot = nil;
     _editorEngine->cbCoordinateWriteFile = [weakSelf](const std::string& utf8Path, const std::string& rawBytes) -> bool {
         __strong typeof(self) strongSelf = weakSelf;
         if (!strongSelf) return false;
-        NSString *nsPath = [NSString stringWithUTF8String:utf8Path.c_str()];
+        NSString *nsPath = MiuIOSNSStringFromStdString(utf8Path);
         NSURL *targetURL = strongSelf.currentDocumentURL;
         if (!targetURL && nsPath.length > 0) {
             targetURL = [NSURL fileURLWithPath:nsPath];
@@ -3516,12 +3615,12 @@ static NSString *s_iosClipboardSnapshot = nil;
         NSError *coordError = nil;
         NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
         [coordinator coordinateWritingItemAtURL:targetURL options:NSFileCoordinatorWritingForReplacing error:&coordError byAccessor:^(NSURL * _Nonnull newURL) {
-            writeSuccess = [data writeToURL:newURL options:0 error:nil];
+            writeSuccess = [data writeToURL:newURL options:NSDataWritingAtomic error:nil];
             if (!writeSuccess) {
-                writeSuccess = [data writeToURL:newURL options:NSDataWritingAtomic error:nil];
+                writeSuccess = [data writeToURL:newURL options:0 error:nil];
             }
         }];
-        return writeSuccess ? true : false;
+        return (coordError == nil && writeSuccess) ? true : false;
     };
     _editorEngine->cbNeedsDisplay = [weakSelf]() {
         __strong typeof(self) strongSelf = weakSelf;
@@ -3605,13 +3704,16 @@ static NSString *s_iosClipboardSnapshot = nil;
     };
     _editorEngine->cbSaveFileAs = [weakSelf]() -> bool {
         __strong typeof(self) strongSelf = weakSelf;
-        if (strongSelf) [strongSelf presentDocumentPickerForSaving];
+        if (strongSelf) {
+            strongSelf.pendingPostSaveAction = nil;
+            [strongSelf presentDocumentPickerForSaving];
+        }
         return true;
     };
     _editorEngine->cbSetClipboard = [weakSelf](const std::string& text, bool isRect) {
         if (text.empty()) return;
-        NSString *nsText = [[NSString alloc] initWithBytes:text.data() length:text.length() encoding:NSUTF8StringEncoding];
-        if (nsText) {
+        NSString *nsText = MiuIOSNSStringFromStdString(text);
+        if (nsText.length > 0) {
             [UIPasteboard generalPasteboard].string = nsText;
             s_iosClipboardSnapshot = [nsText copy];
             s_iosClipboardIsRect = isRect ? YES : NO;
@@ -3629,9 +3731,7 @@ static NSString *s_iosClipboardSnapshot = nil;
         if (strongSelf && strongSelf->_editorEngine) {
             strongSelf->_editorEngine->lastCopyWasLine = (sameAsInternal && s_iosClipboardIsLine) ? true : false;
         }
-        const char *utf8Str = [str UTF8String];
-        if (utf8Str) return std::string(utf8Str);
-        return "";
+        return MiuIOSStdStringFromNSString(str);
     };
     _editorEngine->cbShowReplaceAlert = [weakSelf](int count) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -3652,7 +3752,7 @@ static NSString *s_iosClipboardSnapshot = nil;
             UIAlertController *alert = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"File modified externally. Reload?", nil)
                                                                            message:nil
                                                                     preferredStyle:UIAlertControllerStyleAlert];
-            [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Save", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Reload", nil) style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull action) {
                 if (strongSelf->_editorEngine && !strongSelf->_editorEngine->currentFilePath.empty()) {
                     strongSelf->_editorEngine->isDirty = false;
                     strongSelf->_editorEngine->openFileFromPath(WToUTF8(strongSelf->_editorEngine->currentFilePath));
@@ -3668,6 +3768,12 @@ static NSString *s_iosClipboardSnapshot = nil;
     _editorEngine->isDarkMode = isDark;
     _editorEngine->initGraphics();
     self.editorView.editor = _editorEngine.get();
+    self.editorView.onSaveFailedAction = ^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (strongSelf) {
+            [strongSelf showSaveFailedAlert];
+        }
+    };
     self.editorView.onSyncKeyboardLayout = ^{
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (!strongSelf) return;
@@ -3698,7 +3804,7 @@ static NSString *s_iosClipboardSnapshot = nil;
         } else {
             NSMutableArray<UIAction *> *fileActions = [NSMutableArray array];
             for (const auto& path : strongSelf->_editorEngine->recentFiles) {
-                NSString *nsPath = [NSString stringWithUTF8String:path.c_str()];
+                NSString *nsPath = MiuIOSNSStringFromStdString(path);
                 if (!nsPath || nsPath.length == 0) continue;
                 NSString *displayTitle = [strongSelf savedDisplayNameForPath:nsPath] ?: [nsPath lastPathComponent];
                 std::string capturedPath = path;
@@ -3795,6 +3901,36 @@ static NSString *s_iosClipboardSnapshot = nil;
     self.scrollToTopHelper.backgroundColor = [UIColor clearColor];
     self.scrollToTopHelper.userInteractionEnabled = YES;
     [self.view insertSubview:self.scrollToTopHelper atIndex:0];
+    if (self.pendingIncomingURL) {
+        NSURL *urlToOpen = self.pendingIncomingURL;
+        self.pendingIncomingURL = nil;
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self openIncomingURL:urlToOpen];
+        });
+    }
+}
+- (void)showSaveFailedAlert {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIAlertController *errAlert = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Failed to save file.", nil)
+                                                                          message:nil
+                                                                   preferredStyle:UIAlertControllerStyleAlert];
+        [errAlert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
+        [self presentViewController:errAlert animated:YES completion:nil];
+    });
+}
+- (void)openIncomingURL:(NSURL *)url {
+    if (!url || !url.isFileURL) return;
+    if (!self.isViewLoaded || !_editorEngine) {
+        self.pendingIncomingURL = url;
+        return;
+    }
+    __weak typeof(self) weakSelf = self;
+    [self confirmSaveIfNeededWithAction:^{
+        __strong typeof(weakSelf) strongSelf = weakSelf;
+        if (!strongSelf) return;
+        strongSelf->_isExportingDocument = NO;
+        [strongSelf openPickedOrIncomingDocumentURL:url];
+    }];
 }
 #pragma mark - UIScrollViewDelegate (Scroll To Top)
 - (BOOL)scrollViewShouldScrollToTop:(UIScrollView *)scrollView {
@@ -3829,22 +3965,27 @@ static NSString *s_iosClipboardSnapshot = nil;
 }
 - (void)confirmSaveIfNeededWithAction:(void(^)(void))action {
     if (!_editorEngine || !_editorEngine->isDirty) {
-        action();
+        if (action) action();
         return;
     }
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:NSLocalizedString(@"Unsaved Changes", nil)
                                                                    message:NSLocalizedString(@"Save changes?", nil)
                                                             preferredStyle:UIAlertControllerStyleAlert];
     [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Save", nil) style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull alertAction) {
+        if (!self->_editorEngine) return;
         if (!self->_editorEngine->currentFilePath.empty()) {
-            self->_editorEngine->saveFile(self->_editorEngine->currentFilePath);
-            action();
+            if (self->_editorEngine->saveFile(self->_editorEngine->currentFilePath)) {
+                if (action) action();
+            } else {
+                [self showSaveFailedAlert];
+            }
         } else {
+            self.pendingPostSaveAction = action;
             [self presentDocumentPickerForSaving];
         }
     }]];
     [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Don't Save", nil) style:UIAlertActionStyleDestructive handler:^(UIAlertAction * _Nonnull alertAction) {
-        action();
+        if (action) action();
     }]];
     [alert addAction:[UIAlertAction actionWithTitle:NSLocalizedString(@"Cancel", nil) style:UIAlertActionStyleCancel handler:nil]];
     [self presentViewController:alert animated:YES completion:nil];
@@ -3853,7 +3994,21 @@ static NSString *s_iosClipboardSnapshot = nil;
     if (_editorEngine) {
         _editorEngine->saveCurrentViewState();
     }
+    if (self.currentDocumentURL) {
+        [self.currentDocumentURL stopAccessingSecurityScopedResource];
+        self.currentDocumentURL = nil;
+    }
+    if (self.previewMsgHandler) {
+        self.previewMsgHandler.editor = nullptr;
+    }
+    if (self.splitterView) {
+        self.splitterView.editor = nullptr;
+    }
+    if (self.editorView) {
+        self.editorView.editor = nullptr;
+    }
     if (self.previewWebView) {
+        self.previewWebView.navigationDelegate = nil;
         [self.previewWebView.configuration.userContentController removeScriptMessageHandlerForName:@"miuPreview"];
     }
     if (_blurAnimators) {
@@ -4131,6 +4286,7 @@ static NSString *s_iosClipboardSnapshot = nil;
 }
 - (void)presentDocumentPickerForOpening {
     _isExportingDocument = NO;
+    self.pendingPostSaveAction = nil;
     NSArray<UTType *> *types = @[UTTypePlainText, UTTypeSourceCode, UTTypeData, UTTypeContent];
     UIDocumentPickerViewController *picker = [[UIDocumentPickerViewController alloc] initForOpeningContentTypes:types asCopy:NO];
     picker.delegate = self;
@@ -4143,24 +4299,21 @@ static NSString *s_iosClipboardSnapshot = nil;
     std::string outBytes = _editorEngine->getEncodedContentForSaving();
     NSData *data = [NSData dataWithBytes:outBytes.data() length:outBytes.size()];
     std::string utf8Path = WToUTF8(_editorEngine->currentFilePath);
-    std::string dispUtf8 = (self.currentDocumentDisplayName && self.currentDocumentDisplayName.UTF8String)
-        ? std::string(self.currentDocumentDisplayName.UTF8String)
-        : "";
+    std::string dispUtf8 = MiuIOSStdStringFromNSString(self.currentDocumentDisplayName);
     NSString *localizedUntitled = NSLocalizedString(@"Untitled", @"新規ファイル名");
-    std::string untitledUtf8 = (localizedUntitled && localizedUntitled.UTF8String)
-        ? std::string(localizedUntitled.UTF8String)
-        : "Untitled";
+    std::string untitledUtf8 = MiuIOSStdStringFromNSString(localizedUntitled);
+    if (untitledUtf8.empty()) untitledUtf8 = "Untitled";
     std::string exportNameUtf8 = MiuBuildExportFileName(utf8Path, dispUtf8, untitledUtf8);
-    NSString *fileName = [NSString stringWithUTF8String:exportNameUtf8.c_str()];
+    NSString *fileName = MiuIOSNSStringFromStdString(exportNameUtf8);
     if (!fileName || fileName.length == 0) {
         fileName = localizedUntitled;
     }
     if (self.currentDocumentDisplayName.length > 0 &&
-        !MiuIsLikelyTemporaryGuidFileName(self.currentDocumentDisplayName.UTF8String)) {
+        !MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(self.currentDocumentDisplayName))) {
         self.pendingExportFileName = self.currentDocumentDisplayName;
     } else if (!utf8Path.empty()) {
-        NSString *lastComp = [[NSString stringWithUTF8String:utf8Path.c_str()] lastPathComponent];
-        self.pendingExportFileName = (lastComp.length > 0 && !MiuIsLikelyTemporaryGuidFileName(lastComp.UTF8String))
+        NSString *lastComp = [MiuIOSNSStringFromStdString(utf8Path) lastPathComponent];
+        self.pendingExportFileName = (lastComp.length > 0 && !MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(lastComp)))
             ? lastComp
             : nil;
     } else {
@@ -4182,14 +4335,11 @@ static NSString *s_iosClipboardSnapshot = nil;
     picker.delegate = self;
     [self presentViewController:picker animated:YES completion:nil];
 }
-- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
-    NSURL *url = urls.firstObject;
+- (void)openPickedOrIncomingDocumentURL:(NSURL *)url {
     if (!url || !_editorEngine) return;
     NSURL *scopedURL = url;
     BOOL accessGranted = [scopedURL startAccessingSecurityScopedResource];
-    NSString *fallbackName = _isExportingDocument
-        ? (self.pendingExportFileName ?: self.currentDocumentDisplayName)
-        : ((url.path.length > 0) ? [self savedDisplayNameForPath:url.path] : nil);
+    NSString *fallbackName = (url.path.length > 0) ? [self savedDisplayNameForPath:url.path] : nil;
     NSString *resolvedDisplayName = nil;
     NSURL *resolvedURL = [self resolveDocumentURL:url fallbackName:fallbackName outDisplayName:&resolvedDisplayName];
     if (resolvedURL && resolvedURL != url) {
@@ -4205,56 +4355,81 @@ static NSString *s_iosClipboardSnapshot = nil;
             url = resolvedURL;
         }
     }
-    if (!_isExportingDocument) {
-        std::string path = url.path ? std::string(url.path.UTF8String) : "";
-        [self.editorView unmarkText];
-        [self.editorView.inputDelegate selectionWillChange:self.editorView];
-        [self.editorView.inputDelegate textWillChange:self.editorView];
-        bool success = _editorEngine->openFileFromPath(path);
-        if (!success && url) {
-            __block bool coordSuccess = false;
-            __block std::string coordOpenedPath;
-            NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
-            [coordinator coordinateReadingItemAtURL:url options:NSFileCoordinatorReadingWithoutChanges error:nil byAccessor:^(NSURL * _Nonnull newURL) {
-                if (newURL && newURL.path.length > 0) {
-                    coordOpenedPath = std::string(newURL.path.UTF8String);
+    std::string path = MiuIOSStdStringFromNSString(url.path);
+    [self.editorView unmarkText];
+    [self.editorView.inputDelegate selectionWillChange:self.editorView];
+    [self.editorView.inputDelegate textWillChange:self.editorView];
+    bool success = !path.empty() && _editorEngine->openFileFromPath(path);
+    if (!success && url) {
+        __block bool coordSuccess = false;
+        __block std::string coordOpenedPath;
+        NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
+        [coordinator coordinateReadingItemAtURL:url options:NSFileCoordinatorReadingWithoutChanges error:nil byAccessor:^(NSURL * _Nonnull newURL) {
+            if (newURL && newURL.path.length > 0) {
+                coordOpenedPath = MiuIOSStdStringFromNSString(newURL.path);
+                if (!coordOpenedPath.empty()) {
                     coordSuccess = _editorEngine->openFileFromPath(coordOpenedPath);
                 }
-            }];
-            if (coordSuccess) {
-                success = true;
-                if (coordOpenedPath != path && !path.empty()) {
-                    _editorEngine->currentFilePath = UTF8ToW(path);
-                    _editorEngine->addToRecentFiles(path);
-                }
+            }
+        }];
+        if (coordSuccess) {
+            success = true;
+            if (coordOpenedPath != path && !path.empty()) {
+                _editorEngine->currentFilePath = UTF8ToW(path);
+                _editorEngine->addToRecentFiles(path);
             }
         }
-        if (success) {
-            if (self.currentDocumentURL && self.currentDocumentURL != scopedURL) {
-                [self.currentDocumentURL stopAccessingSecurityScopedResource];
-            }
-            self.currentDocumentURL = accessGranted ? scopedURL : nil;
-            self.currentDocumentDisplayName = resolvedDisplayName;
-            [self saveBookmarkForURL:scopedURL ?: url];
-            if (url.path.length > 0 && resolvedDisplayName.length > 0) {
-                [self saveDisplayName:resolvedDisplayName forPath:url.path];
-            }
-            if (resolvedDisplayName.length > 0) {
-                _editorEngine->loadSyntaxForExtension(resolvedDisplayName.UTF8String);
-            }
-            if (self.searchField.text.length > 0) {
-                _editorEngine->searchQuery = self.searchField.text.UTF8String;
-            }
-            _editorEngine->updateTitleBar();
-        } else {
-            if (accessGranted && scopedURL && scopedURL != self.currentDocumentURL) {
-                [scopedURL stopAccessingSecurityScopedResource];
-            }
+    }
+    if (success) {
+        if (self.currentDocumentURL && self.currentDocumentURL != scopedURL) {
+            [self.currentDocumentURL stopAccessingSecurityScopedResource];
         }
-        [self.editorView.inputDelegate textDidChange:self.editorView];
-        [self.editorView.inputDelegate selectionDidChange:self.editorView];
-        [self.editorView setNeedsDisplay];
+        self.currentDocumentURL = accessGranted ? scopedURL : nil;
+        self.currentDocumentDisplayName = resolvedDisplayName;
+        [self saveBookmarkForURL:scopedURL ?: url];
+        if (url.path.length > 0 && resolvedDisplayName.length > 0) {
+            [self saveDisplayName:resolvedDisplayName forPath:url.path];
+        }
+        if (resolvedDisplayName.length > 0) {
+            _editorEngine->loadSyntaxForExtension(MiuIOSStdStringFromNSString(resolvedDisplayName));
+        }
+        if (self.searchField.text.length > 0) {
+            _editorEngine->searchQuery = MiuIOSStdStringFromNSString(self.searchField.text);
+        }
+        _editorEngine->updateTitleBar();
     } else {
+        if (accessGranted && scopedURL && scopedURL != self.currentDocumentURL) {
+            [scopedURL stopAccessingSecurityScopedResource];
+        }
+    }
+    [self.editorView.inputDelegate textDidChange:self.editorView];
+    [self.editorView.inputDelegate selectionDidChange:self.editorView];
+    [self.editorView setNeedsDisplay];
+}
+- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
+    NSURL *url = urls.firstObject;
+    if (!url || !_editorEngine) return;
+    if (!_isExportingDocument) {
+        [self openPickedOrIncomingDocumentURL:url];
+    } else {
+        NSURL *scopedURL = url;
+        BOOL accessGranted = [scopedURL startAccessingSecurityScopedResource];
+        NSString *fallbackName = self.pendingExportFileName ?: self.currentDocumentDisplayName;
+        NSString *resolvedDisplayName = nil;
+        NSURL *resolvedURL = [self resolveDocumentURL:url fallbackName:fallbackName outDisplayName:&resolvedDisplayName];
+        if (resolvedURL && resolvedURL != url) {
+            BOOL resolvedAccess = [resolvedURL startAccessingSecurityScopedResource];
+            if (resolvedAccess) {
+                if (accessGranted && scopedURL != self.currentDocumentURL) {
+                    [scopedURL stopAccessingSecurityScopedResource];
+                }
+                scopedURL = resolvedURL;
+                url = resolvedURL;
+                accessGranted = YES;
+            } else if (resolvedURL.path.length > 0 && [[NSFileManager defaultManager] isReadableFileAtPath:resolvedURL.path]) {
+                url = resolvedURL;
+            }
+        }
         if (self.currentDocumentURL && self.currentDocumentURL != scopedURL) {
             [self.currentDocumentURL stopAccessingSecurityScopedResource];
         }
@@ -4268,12 +4443,11 @@ static NSString *s_iosClipboardSnapshot = nil;
             [[NSFileManager defaultManager] removeItemAtPath:self.pendingExportTempFilePath error:nil];
             self.pendingExportTempFilePath = nil;
         }
-        std::string path = url.path ? std::string(url.path.UTF8String) : "";
+        std::string path = MiuIOSStdStringFromNSString(url.path);
         std::wstring wpath = UTF8ToW(path);
         _editorEngine->currentFilePath = wpath;
-        std::string syntaxTarget = (resolvedDisplayName.length > 0 && resolvedDisplayName.UTF8String)
-            ? std::string(resolvedDisplayName.UTF8String)
-            : path;
+        std::string resolvedUtf8 = MiuIOSStdStringFromNSString(resolvedDisplayName);
+        std::string syntaxTarget = !resolvedUtf8.empty() ? resolvedUtf8 : path;
         _editorEngine->loadSyntaxForExtension(syntaxTarget);
         _editorEngine->recordFileMtime(path);
         _editorEngine->addToRecentFiles(path);
@@ -4283,51 +4457,58 @@ static NSString *s_iosClipboardSnapshot = nil;
         _editorEngine->updateTitleBar();
         [self.editorView setNeedsDisplay];
 
-        NSURL *pickedURL = url;
-        NSString *initialFallback = fallbackName;
-        __weak typeof(self) weakSelf = self;
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            __strong typeof(weakSelf) strongSelf = weakSelf;
-            if (!strongSelf || !strongSelf->_editorEngine || !pickedURL) return;
-            NSString *refreshedName = nil;
-            NSURL *refreshedURL = [strongSelf resolveDocumentURL:pickedURL fallbackName:initialFallback outDisplayName:&refreshedName];
-            if (refreshedName.length > 0 &&
-                !MiuIsLikelyTemporaryGuidFileName(refreshedName.UTF8String)) {
-                if (pickedURL.path.length > 0) {
-                    [strongSelf saveDisplayName:refreshedName forPath:pickedURL.path];
+        void (^postSaveAction)(void) = self.pendingPostSaveAction;
+        self.pendingPostSaveAction = nil;
+        if (postSaveAction) {
+            postSaveAction();
+        } else {
+            NSURL *pickedURL = url;
+            NSString *initialFallback = fallbackName;
+            __weak typeof(self) weakSelf = self;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.35 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                __strong typeof(weakSelf) strongSelf = weakSelf;
+                if (!strongSelf || !strongSelf->_editorEngine || !pickedURL) return;
+                NSString *refreshedName = nil;
+                NSURL *refreshedURL = [strongSelf resolveDocumentURL:pickedURL fallbackName:initialFallback outDisplayName:&refreshedName];
+                if (refreshedName.length > 0 &&
+                    !MiuIsLikelyTemporaryGuidFileName(MiuIOSStdStringFromNSString(refreshedName))) {
+                    if (pickedURL.path.length > 0) {
+                        [strongSelf saveDisplayName:refreshedName forPath:pickedURL.path];
+                    }
+                    if (refreshedURL && refreshedURL.path.length > 0) {
+                        [strongSelf saveDisplayName:refreshedName forPath:refreshedURL.path];
+                    }
+                    if (![refreshedName isEqualToString:strongSelf.currentDocumentDisplayName]) {
+                        strongSelf.currentDocumentDisplayName = refreshedName;
+                        strongSelf->_editorEngine->loadSyntaxForExtension(MiuIOSStdStringFromNSString(refreshedName));
+                        strongSelf->_editorEngine->updateTitleBar();
+                        [strongSelf.editorView setNeedsDisplay];
+                    }
                 }
-                if (refreshedURL && refreshedURL.path.length > 0) {
-                    [strongSelf saveDisplayName:refreshedName forPath:refreshedURL.path];
+                if (refreshedURL && refreshedURL.path.length > 0 && pickedURL.path.length > 0 &&
+                    ![refreshedURL.path isEqualToString:pickedURL.path]) {
+                    NSFileManager *fm = [NSFileManager defaultManager];
+                    if (![fm fileExistsAtPath:pickedURL.path] && [fm fileExistsAtPath:refreshedURL.path]) {
+                        std::string oldPath = MiuIOSStdStringFromNSString(pickedURL.path);
+                        std::string newPath = MiuIOSStdStringFromNSString(refreshedURL.path);
+                        auto &rf = strongSelf->_editorEngine->recentFiles;
+                        rf.erase(std::remove(rf.begin(), rf.end(), oldPath), rf.end());
+                        strongSelf->_editorEngine->currentFilePath = UTF8ToW(newPath);
+                        strongSelf->_editorEngine->recordFileMtime(newPath);
+                        strongSelf->_editorEngine->addToRecentFiles(newPath);
+                        [strongSelf saveBookmarkForURL:refreshedURL];
+                        strongSelf->_editorEngine->updateTitleBar();
+                    }
                 }
-                if (![refreshedName isEqualToString:strongSelf.currentDocumentDisplayName]) {
-                    strongSelf.currentDocumentDisplayName = refreshedName;
-                    strongSelf->_editorEngine->loadSyntaxForExtension(refreshedName.UTF8String);
-                    strongSelf->_editorEngine->updateTitleBar();
-                    [strongSelf.editorView setNeedsDisplay];
-                }
-            }
-            if (refreshedURL && refreshedURL.path.length > 0 && pickedURL.path.length > 0 &&
-                ![refreshedURL.path isEqualToString:pickedURL.path]) {
-                NSFileManager *fm = [NSFileManager defaultManager];
-                if (![fm fileExistsAtPath:pickedURL.path] && [fm fileExistsAtPath:refreshedURL.path]) {
-                    std::string oldPath = std::string(pickedURL.path.UTF8String);
-                    std::string newPath = std::string(refreshedURL.path.UTF8String);
-                    auto &rf = strongSelf->_editorEngine->recentFiles;
-                    rf.erase(std::remove(rf.begin(), rf.end(), oldPath), rf.end());
-                    strongSelf->_editorEngine->currentFilePath = UTF8ToW(newPath);
-                    strongSelf->_editorEngine->recordFileMtime(newPath);
-                    strongSelf->_editorEngine->addToRecentFiles(newPath);
-                    [strongSelf saveBookmarkForURL:refreshedURL];
-                    strongSelf->_editorEngine->updateTitleBar();
-                }
-            }
-        });
+            });
+        }
     }
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [self.editorView becomeFirstResponder];
     });
 }
 - (void)documentPickerWasCancelled:(UIDocumentPickerViewController *)controller {
+    self.pendingPostSaveAction = nil;
     if (self.pendingExportTempFilePath) {
         [[NSFileManager defaultManager] removeItemAtPath:self.pendingExportTempFilePath error:nil];
         self.pendingExportTempFilePath = nil;
@@ -4516,9 +4697,9 @@ static NSString *s_iosClipboardSnapshot = nil;
         size_t end = c.end();
         std::string selectedText = _editorEngine->pt.getRange(start, end - start);
         if (!selectedText.empty()) {
-            NSString *nsText = [NSString stringWithUTF8String:selectedText.c_str()];
+            NSString *nsText = MiuIOSNSStringFromStdString(selectedText);
             self.searchField.text = nsText;
-            _editorEngine->searchQuery = selectedText;
+            _editorEngine->searchQuery = MiuIOSStdStringFromNSString(nsText);
             dispatch_async(dispatch_get_main_queue(), ^{
                 [self.editorView setNeedsDisplay];
             });
@@ -4526,7 +4707,7 @@ static NSString *s_iosClipboardSnapshot = nil;
         }
     }
     if (self.searchField.text.length > 0) {
-        _editorEngine->searchQuery = self.searchField.text.UTF8String;
+        _editorEngine->searchQuery = MiuIOSStdStringFromNSString(self.searchField.text);
         [self.editorView setNeedsDisplay];
         return;
     }
@@ -4535,12 +4716,12 @@ static NSString *s_iosClipboardSnapshot = nil;
     [self.editorView getSmartWordRangeAtPos:head outStart:&wStart outEnd:&wEnd];
     if (wEnd > wStart) {
         std::string rawStr = _editorEngine->pt.getRange(wStart, wEnd - wStart);
-        NSString *candidate = [NSString stringWithUTF8String:rawStr.c_str()];
+        NSString *candidate = MiuIOSNSStringFromStdString(rawStr);
         if (candidate.length > 0) {
             NSString *trimmed = [candidate stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
             if (trimmed.length > 0) {
                 self.searchField.text = candidate;
-                _editorEngine->searchQuery = rawStr;
+                _editorEngine->searchQuery = MiuIOSStdStringFromNSString(candidate);
                 dispatch_async(dispatch_get_main_queue(), ^{
                     [self.editorView setNeedsDisplay];
                 });
@@ -4688,7 +4869,7 @@ static NSString *s_iosClipboardSnapshot = nil;
 }
 - (void)searchTextChanged:(UITextField *)sender {
     if (!_editorEngine) return;
-    _editorEngine->searchQuery = sender.text ? sender.text.UTF8String : "";
+    _editorEngine->searchQuery = MiuIOSStdStringFromNSString(sender.text);
     [self.editorView setNeedsDisplay];
 }
 - (void)doFindNext {
@@ -4699,7 +4880,7 @@ static NSString *s_iosClipboardSnapshot = nil;
             return;
         }
     } else {
-        _editorEngine->searchQuery = self.searchField.text.UTF8String;
+        _editorEngine->searchQuery = MiuIOSStdStringFromNSString(self.searchField.text);
     }
     [self.editorView.inputDelegate selectionWillChange:self.editorView];
     _editorEngine->findNext(true);
@@ -4714,7 +4895,7 @@ static NSString *s_iosClipboardSnapshot = nil;
             return;
         }
     } else {
-        _editorEngine->searchQuery = self.searchField.text.UTF8String;
+        _editorEngine->searchQuery = MiuIOSStdStringFromNSString(self.searchField.text);
     }
     [self.editorView.inputDelegate selectionWillChange:self.editorView];
     _editorEngine->findNext(false);
@@ -4725,8 +4906,8 @@ static NSString *s_iosClipboardSnapshot = nil;
     if (!_editorEngine || self.searchField.text.length == 0) return;
     [self.editorView.inputDelegate selectionWillChange:self.editorView];
     [self.editorView.inputDelegate textWillChange:self.editorView];
-    _editorEngine->searchQuery = self.searchField.text.UTF8String;
-    _editorEngine->replaceQuery = self.replaceField.text.UTF8String;
+    _editorEngine->searchQuery = MiuIOSStdStringFromNSString(self.searchField.text);
+    _editorEngine->replaceQuery = MiuIOSStdStringFromNSString(self.replaceField.text);
     _editorEngine->replaceNext();
     [self.editorView.inputDelegate textDidChange:self.editorView];
     [self.editorView.inputDelegate selectionDidChange:self.editorView];
@@ -4736,8 +4917,8 @@ static NSString *s_iosClipboardSnapshot = nil;
     if (!_editorEngine || self.searchField.text.length == 0) return;
     [self.editorView.inputDelegate selectionWillChange:self.editorView];
     [self.editorView.inputDelegate textWillChange:self.editorView];
-    _editorEngine->searchQuery = self.searchField.text.UTF8String;
-    _editorEngine->replaceQuery = self.replaceField.text.UTF8String;
+    _editorEngine->searchQuery = MiuIOSStdStringFromNSString(self.searchField.text);
+    _editorEngine->replaceQuery = MiuIOSStdStringFromNSString(self.replaceField.text);
     _editorEngine->replaceAll();
     [self.editorView.inputDelegate textDidChange:self.editorView];
     [self.editorView.inputDelegate selectionDidChange:self.editorView];

@@ -60,3 +60,5 @@
 "View" = "表示";
 "Tab" = "タブ";
 "No Recent Files" = "履歴なし";
+"Reload" = "再読み込み";
+"Failed to save file." = "ファイルの保存に失敗しました。";

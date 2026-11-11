@@ -9,6 +9,6 @@
 
 @interface ViewController : UIViewController
 
+- (void)openIncomingURL:(NSURL *)url;
 
 @end
-

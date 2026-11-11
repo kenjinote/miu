@@ -60,3 +60,5 @@
 "View" = "Vizualizare";
 "Tab" = "Tabulator";
 "No Recent Files" = "Niciun fișier recent";
+"Reload" = "Reîncarcă";
+"Failed to save file." = "Nu s-a putut salva fișierul.";

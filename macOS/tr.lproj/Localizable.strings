@@ -60,3 +60,5 @@
 "View" = "Görünüm";
 "Tab" = "Sekme";
 "No Recent Files" = "Son Kullanılan Dosya Yok";
+"Reload" = "Yeniden Yükle";
+"Failed to save file." = "Dosya kaydedilemedi.";

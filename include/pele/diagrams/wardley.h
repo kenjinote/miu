@@ -688,10 +688,10 @@ inline WardleyAst parseWardley(const std::string& src) {
         if (at(T::id) || at(T::name)) return r.take();
         r.fail("a name");
     };
-    auto number = [&]() -> double { return std::stod(r.expect(T::number)); };
-    auto intVal = [&]() -> int { return std::stoi(r.expect(T::intTok)); };
+    auto number = [&]() -> double { return safeStod(r.expect(T::number), "wardley"); };
+    auto intVal = [&]() -> int { return safeStoi(r.expect(T::intTok), "wardley"); };
     auto coordinate = [&]() -> double {
-        return at(T::number) ? std::stod(r.take()) : static_cast<double>(std::stoi(r.expect(T::intTok)));
+        return at(T::number) ? safeStod(r.take(), "wardley") : static_cast<double>(safeStoi(r.expect(T::intTok), "wardley"));
     };
     auto endOfLine = [&]() {
         if (at(-1)) return;

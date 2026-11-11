@@ -56,10 +56,10 @@ AR_DESC = """miu هو محرر نصوص وأكواد بسيط وخفيف، مص�
 • خصوصية تامة
 بدون إعلانات، وبدون تتبع، وبدون جمع بيانات. جميع الميزات تعمل بنسبة 100% دون اتصال بالإنترنت على جهازك."""
 
-AR_WHATS_NEW = """شكراً لاستخدامك miu. يوسّع الإصدار 1.0.50 تمييز الصياغة والتعليقات إلى 65 فئة لغوية (230+ امتداداً):
-• دعم كامل لعائلة Lisp: Common Lisp (.lisp, .cl) وEmacs Lisp (.el) وScheme (.scm) وRacket (.rkt) وClojure (.clj) مع تعليقات (;) و(#| |#).
-• تعزيز Assembly: دعم x86/x64 وARM64 وRISC-V وMIPS وWebAssembly (.wat).
-• 15 لغة جديدة: Objective-C وGroovy/Gradle وOCaml وErlang وFortran وCOBOL وPrisma وSolidity وNim وD وPascal وAda وProlog وVim وNix."""
+AR_WHATS_NEW = """شكراً لاستخدامك miu. يعزّز الإصدار 1.0.51 الأمان والاستقرار والدقة:
+• حماية المعاينة الفورية دون اتصال: سياسة CSP صارمة وحظر الشبكة الخارجية وتنقية HTML وعرض آمن للملفات التي تبدأ بـ (<) وتحليل سريع لـ Markdown.
+• دقة تمييز الصياغة وMermaid: تحسين علامات الاقتباس الثلاثية في Python والتعليقات في 65 فئة لغوية واستقرار مخططات stateDiagram-v2 وblock-beta.
+• تحسين حذف الرموز التعبيرية عبر لوحة المفاتيح ودقة عرض الخطوط."""
 
 HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנועד להפוך כל משימה – מרישום הערות יומיות מהירות ועד כתיבת מסמכי Markdown ותכנות – לנוחה ונעימה.
 
@@ -85,10 +85,10 @@ HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנוע
 • פרטיות מלאה
 ללא פרסומות, ללא מעקב וללא איסוף נתונים. הכל פועל 100% אופליין במכשיר שלכם."""
 
-HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.50 מרחיבה הדגשת תחביר והערות ל-65 קטגוריות שפה (230+ סיומות):
-• תמיכה מלאה במשפחת Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) עם הערות (;) ו-(#| |#).
-• שדרוג Assembly: תמיכה ב-x86/x64, ARM64, RISC-V, MIPS ו-WebAssembly (.wat).
-• 15 שפות חדשות: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim ו-Nix."""
+HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.51 משפרת את האבטחה, היציבות והדיוק:
+• הגנת תצוגה מקדימה אופליין: מדיניות CSP מחמירה, חסימת רשת חיצונית, סינון HTML/URL, הצגה בטוחה של קבצים המתחילים ב-(<) וניתוח מהיר של Markdown.
+• דיוק תחביר ו-Mermaid: שיפור מרכאות משולשות ב-Python והערות בלוק ב-65 קטגוריות שפה ויציבות דיאגרמות stateDiagram-v2 ו-block-beta.
+• תיקון מחיקת אימוג'י במקלדת ושיפור חדות הצגת גופנים."""
 
 SK_DESC = """miu je jednoduchý a ľahký textový a kódový editor, s ktorým je písanie každodenných poznámok, textov v Markdowne aj programovanie pohodlné a príjemné.
 
@@ -114,10 +114,10 @@ Hľadanie a nahrádzanie (s regulárnymi výrazmi), viac kurzorov, čísla riadk
 • Súkromie na prvom mieste
 Žiadne reklamy, žiadne sledovanie a žiadny zber dát. Všetko funguje 100 % offline priamo vo vašom zariadení."""
 
-SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.50 rozširuje zvýrazňovanie syntaxe na 65 kategórií jazykov (230+ prípon):
-• Plná podpora Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), komentáre (;) a (#| |#).
-• Rozšírený Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM a WebAssembly (.wat).
-• 15 nových jazykov: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim a Nix."""
+SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.51 zvyšuje bezpečnosť, presnosť a stabilitu:
+• Ochrana živého náhľadu: prísna offline CSP, blokovanie externej siete, čistenie HTML/URL, bezpečné zobrazenie textov od „<“ a rýchly Markdown.
+• Presnejšia syntax a Mermaid: lepšie trojité úvodzovky Pythonu a blokové komentáre (65 kategórií) a stabilita stateDiagram-v2 a block-beta.
+• Opravené mazanie emoji v klávesnici a ostrejšie písmo."""
 
 # ============================================================================
 # Short Descriptions (Strictly <= 80 characters for Google Play)
@@ -210,149 +210,149 @@ def adapt_desc_for_android(text: str) -> str:
     return out
 
 
-# Localized Android Release Notes for v1.0.50 (versionCode 57), strictly <= 500 chars each
+# Localized Android Release Notes for v1.0.51 (versionCode 58), strictly <= 500 chars each
 ANDROID_RELEASE_NOTES = {
-    "ja-JP": """いつも miu をご利用いただきありがとうございます。v1.0.50 ではシンタックスハイライトを全65言語カテゴリ（230種以上の拡張子）に拡充しました。
-・Lisp 系言語のフルサポート：Common Lisp (.lisp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .edn) 等のハイライト・行コメント切替（;）・ブロックコメントに対応。
-・Assembly の大幅強化：x86/x64、ARM64、RISC-V、MIPS、WebAssembly (.wat) に対応。
-・15種の新規言語（Objective-C、Groovy/Gradle、OCaml、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D、Pascal、Ada、Prolog、Vim、Nix）と設定ファイルを追加。""",
+    "ja-JP": """いつも miu をご利用いただきありがとうございます。v1.0.51 では安全性・描画精度・入力安定性を強化しました。
+・ライブプレビューのオフライン保護強化：厳格な CSP・外部通信遮断・HTMLサニタイズ・チェックリストの暗号検証を適用し、「<」で始まるテキストの安全な表示と高速 Markdown 解析に対応。
+・全65言語シンタックス＆Mermaid精度向上：Python 三重引用符・ブロックコメント解析、CRLF コードブロック高速強調、stateDiagram-v2・block-beta の安定性を改善。
+・絵文字・サロゲートペアの IME 削除修正とフォント描画精度の向上。""",
 
-    "en-US": """Thank you for using miu. Version 1.0.50 expands syntax highlighting to 65 language categories (230+ extensions):
-• Full Lisp Support: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), Hy, Fennel & Janet with ';' and '#| |#' comments.
-• Enhanced Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 New Languages: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "en-US": """Thank you for using miu. Version 1.0.51 enhances offline security, precision & stability:
+• Live Preview Security: Strict offline CSP, network blocking, HTML/URL sanitization, safe display of '<'-prefixed text files & fast O(N) Markdown parsing.
+• Syntax & Mermaid Precision: Improved Python triple quotes & block comments across 65 categories, fast CRLF code-fence highlighting, and stateDiagram-v2 & block-beta stability.
+• Fixed emoji IME deletion & sharper glyph rendering.""",
 
-    "zh-CN": """感谢您使用 miu。v1.0.50 将语法高亮与注释切换扩展至 65 种语言类别（230 余种扩展名与配置文件）：
-・新增 Lisp 系列语言完整支持：Common Lisp (.lisp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .edn) 等语法高亮与 `;` 行注释、`#| |#` 块注释。
-・全面强化汇编语言 (Assembly)：支持 x86/x64、ARM64、RISC-V、MIPS、NASM/MASM 与 WebAssembly (.wat)。
-・新增 15 种语言（Objective-C、Groovy/Gradle、OCaml、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D、Pascal、Ada、Prolog、Vimscript、Nix）及 70 余种配置文件。""",
+    "zh-CN": """感谢您使用 miu。v1.0.51 全面强化了离线安全防护、渲染精度与输入稳定性：
+・实时预览离线安全加固：启用严格离线 CSP、拦截外部网络请求、过滤 HTML/URL、任务列表勾选加密校验，安全显示以 `<` 开头的文本并加速 Markdown 解析。
+・65 种语言语法高亮与 Mermaid 精度提升：优化 Python 三引号与块注释识别、CRLF 未闭合代码块高速高亮及 stateDiagram-v2、block-beta 稳定性。
+・修复表情符号与四字节字符输入法退格删除问题，并优化字体渲染清晰度。""",
 
-    "zh-TW": """感謝您使用 miu。v1.0.50 將語法突顯與註解切換擴充至 65 種語言類別（230 餘種副檔名與設定檔）：
-・新增 Lisp 系列語言完整支援：Common Lisp (.lisp, .cl)、Emacs Lisp (.el)、Scheme (.scm)、Racket (.rkt)、Clojure (.clj, .edn) 等語法突顯與 `;` 行註解、`#| |#` 區塊註解。
-・全面強化組合語言 (Assembly)：支援 x86/x64、ARM64、RISC-V、MIPS、NASM/MASM 與 WebAssembly (.wat)。
-・新增 15 種語言（Objective-C、Groovy/Gradle、OCaml、Erlang、Fortran、COBOL、Prisma、Solidity、Nim、D、Pascal、Ada、Prolog、Vimscript、Nix）及 70 餘種設定檔。""",
+    "zh-TW": """感謝您使用 miu。v1.0.51 全面強化了離線安全防護、渲染精準度與輸入穩定性：
+・即時預覽離線安全加固：啟用嚴格離線 CSP、攔截外部網路請求、過濾 HTML/URL、工作清單核取加密驗證，安全顯示以 `<` 開頭的文字並加速 Markdown 解析。
+・65 種語言語法突顯與 Mermaid 精準度提升：最佳化 Python 三引號與區塊註解識別、CRLF 未閉合程式碼區塊高速突顯及 stateDiagram-v2、block-beta 穩定性。
+・修復表情符號與四位元組字元輸入法退格刪除問題，並最佳化字體渲染清晰度。""",
 
-    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다. v1.0.50에서는 구문 강조 및 주석 토글을 총 65개 언어 카테고리(230종 이상의 확장자)로 확장했습니다.
-・Lisp 계열 완벽 지원: Common Lisp(.lisp, .cl), Emacs Lisp(.el), Scheme(.scm), Racket(.rkt), Clojure(.clj, .edn) 구문 강조 및 ';' 줄 주석, '#| |#' 블록 주석 지원.
-・어셈블리어(Assembly) 강화: x86/x64, ARM64, RISC-V, MIPS, WebAssembly(.wat) 지원.
-・15종 신규 언어(Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vimscript, Nix) 및 설정 파일 추가.""",
+    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다. v1.0.51에서는 오프라인 보안·렌더링 정밀도·입력 안정성을 강화했습니다.
+・실시간 미리보기 오프라인 보안 강화: 엄격한 CSP·외부 네트워크 차단·HTML 살균·체크리스트 암호화 검증을 적용하고 '<'로 시작하는 텍스트 안전 표시 및 고속 Markdown 파싱 지원.
+・65개 언어 구문 강조 및 Mermaid 정밀도 향상: Python 삼중 따옴표·블록 주석 인식, CRLF 코드 블록 고속 강조 및 stateDiagram-v2·block-beta 안정성 개선.
+・이모지(서로게이트 페어) IME 삭제 수정 및 글꼴 렌더링 선명도 향상.""",
 
-    "de-DE": """Vielen Dank, dass Sie miu nutzen. Version 1.0.50 erweitert die Syntaxhervorhebung auf 65 Sprachkategorien (230+ Erweiterungen):
-• Volle Lisp-Unterstützung: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) inkl. (;)- & (#| |#)-Kommentaren.
-• Erweiterte Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 neue Sprachen: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "de-DE": """Vielen Dank, dass Sie miu nutzen. Version 1.0.51 verbessert Sicherheit, Präzision & Stabilität:
+• Live-Vorschau-Schutz: Strenge Offline-CSP, Netzwerkblockierung, HTML/URL-Bereinigung, sichere Anzeige von Texten mit „<“ und schnelles Markdown-Parsing.
+• Syntax & Mermaid: Bessere Python-Dreifachzitate & Blockkommentare (65 Kategorien), schnelles CRLF-Codeblock-Highlighting sowie stabilere stateDiagram-v2 & block-beta.
+• Emoji-Löschen per Tastatur korrigiert & schärfere Schrift.""",
 
-    "fr-FR": """Merci d’utiliser miu. La version 1.0.50 étend la coloration syntaxique à 65 catégories de langages (230+ extensions) :
-• Support Lisp : Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) avec commentaires (;) et (#| |#).
-• Assembleur enrichi : x86/x64, ARM64, RISC-V, MIPS, NASM/MASM et WebAssembly (.wat).
-• 15 nouveaux langages : Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim et Nix.""",
+    "fr-FR": """Merci d’utiliser miu. La version 1.0.51 renforce sécurité hors ligne, précision et stabilité :
+• Aperçu en direct sécurisé : CSP stricte hors ligne, blocage réseau, assainissement HTML/URL, affichage sûr des textes débutant par « < » et Markdown rapide.
+• Syntaxe & Mermaid : meilleurs triples guillemets Python et commentaires de bloc (65 langages) et stabilité accrue de stateDiagram-v2 et block-beta.
+• Suppression d’emojis au clavier corrigée et police plus nette.""",
 
-    "es-ES": """Gracias por usar miu. La versión 1.0.50 amplía el resaltado de sintaxis a 65 categorías de lenguajes (230+ extensiones):
-• Soporte Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) con comentarios (;) y (#| |#).
-• Assembly mejorado: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM y WebAssembly (.wat).
-• 15 nuevos lenguajes: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim y Nix.""",
+    "es-ES": """Gracias por usar miu. La versión 1.0.51 refuerza la seguridad sin conexión, precisión y estabilidad:
+• Vista Previa segura: CSP estricta sin conexión, bloqueo de red, saneamiento HTML/URL, vista segura de textos iniciados con '<' y análisis rápido de Markdown.
+• Sintaxis y Mermaid: mejoras en comillas triples Python y comentarios de bloque (65 lenguajes) y estabilidad en stateDiagram-v2 y block-beta.
+• Borrado de emojis en teclado corregido y fuentes más nítidas.""",
 
-    "it-IT": """Grazie per aver scelto miu. La versione 1.0.50 estende l’evidenziazione della sintassi a 65 categorie di linguaggi (230+ estensioni):
-• Supporto Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) con commenti (;) e (#| |#).
-• Assembly potenziato: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM e WebAssembly (.wat).
-• 15 nuovi linguaggi: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim e Nix.""",
+    "it-IT": """Grazie per aver scelto miu. La versione 1.0.51 migliora sicurezza offline, precisione e stabilità:
+• Anteprima sicura: CSP offline rigorosa, blocco rete esterna, sanificazione HTML/URL, vista sicura dei testi che iniziano con '<' e Markdown veloce.
+• Sintassi e Mermaid: migliorate triple virgolette Python e commenti a blocco (65 linguaggi) e stabilità di stateDiagram-v2 e block-beta.
+• Cancellazione di emoji da tastiera corretta e caratteri più nitidi.""",
 
-    "pt-BR": """Obrigado por usar o miu. A versão 1.0.50 expande o destaque de sintaxe para 65 categorias de linguagens (230+ extensões):
-• Suporte Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) com comentários (;) e (#| |#).
-• Assembly aprimorado: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM e WebAssembly (.wat).
-• 15 novas linguagens: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim e Nix.""",
+    "pt-BR": """Obrigado por usar o miu. A versão 1.0.51 reforça a segurança offline, precisão e estabilidade:
+• Segurança na Pré-visualização: CSP offline rigorosa, bloqueio de rede externa, sanitização HTML/URL, exibição segura de textos iniciados por '<' e Markdown rápido.
+• Sintaxe e Mermaid: melhorias em aspas triplas Python e comentários de bloco (65 categorias) e estabilidade em stateDiagram-v2 e block-beta.
+• Exclusão de emojis no teclado corrigida e fontes mais nítidas.""",
 
-    "ru-RU": """Спасибо, что пользуетесь miu. В версии 1.0.50 подсветка синтаксиса расширена до 65 категорий языков (230+ расширений):
-• Полная поддержка Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), комментарии (;) и (#| |#).
-• Обновление Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM и WebAssembly (.wat).
-• 15 новых языков: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim и Nix.""",
+    "ru-RU": """Спасибо, что пользуетесь miu. В версии 1.0.51 усилены офлайн-безопасность, точность и стабильность:
+• Защита предпросмотра: строгая CSP, блокировка внешних запросов, очистка HTML/URL, безопасный показ текстов с «<» и быстрый разбор Markdown.
+• Синтаксис и Mermaid: улучшен разбор тройных кавычек Python и блочных комментариев (65 категорий языков), повышена стабильность stateDiagram-v2 и block-beta.
+• Исправлено удаление эмодзи при вводе с клавиатуры и улучшена чёткость шрифтов.""",
 
-    "nl-NL": """Bedankt voor het gebruiken van miu. Versie 1.0.50 breidt syntaxmarkering uit naar 65 taalcategorieën (230+ extensies):
-• Volledige Lisp-steun: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) met (;)- & (#| |#)-commentaar.
-• Uitgebreide Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 nieuwe talen: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "nl-NL": """Bedankt voor het gebruiken van miu. Versie 1.0.51 verbetert offline beveiliging, precisie en stabiliteit:
+• Beveiliging Live Voorbeeld: strikte offline CSP, netwerkblokkering, HTML/URL-opschoning, veilige weergave van teksten beginnend met '<' en snelle Markdown-verwerking.
+• Syntax & Mermaid: betere Python-triple-quotes en blokcommentaar in 65 taalcategorieën en stabielere stateDiagram-v2 & block-beta.
+• Emoji-verwijdering via toetsenbord hersteld en scherpere lettertypeweergave.""",
 
-    "sv-SE": """Tack för att du använder miu. Version 1.0.50 utökar syntaxmarkering till 65 språkkategorier (230+ filändelser):
-• Fullt stöd för Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) med (;)- & (#| |#)-kommentarer.
-• Utökat stöd för Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 nya språk: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "sv-SE": """Tack för att du använder miu. Version 1.0.51 stärker offlinesäkerhet, precision och stabilitet:
+• Säker förhandsgranskning: strikt offline-CSP, blockering av externa anrop, HTML/URL-sanering, säker visning av texter som börjar med '<' och snabb Markdown-tolkning.
+• Syntax & Mermaid: bättre trippelcitat i Python och blockkommentarer i 65 språkkategorier samt stabilare stateDiagram-v2 och block-beta.
+• Åtgärdad borttagning av emojis via tangentbord och skarpare teckenåtergivning.""",
 
-    "da-DK": """Tak fordi du bruger miu. Version 1.0.50 udvider syntaksfremhævning til 65 sprogkategorier (230+ filtyper):
-• Fuld Lisp-støtte: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) med (;)- & (#| |#)-kommentarer.
-• Udvidet Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 nye sprog: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "da-DK": """Tak fordi du bruger miu. Version 1.0.51 styrker offlinesikkerhed, præcision og stabilitet:
+• Sikker forhåndsvisning: striks offline-CSP, blokering af eksterne netværkskald, HTML/URL-rensning, sikker visning af tekster der starter med '<' og hurtig Markdown-analyse.
+• Syntaks & Mermaid: bedre tredobbelte anførselstegn i Python og blokkommentarer i 65 sprogkategorier samt mere stabile stateDiagram-v2 og block-beta.
+• Rettet sletning af emojis via tastatur og skarpere skriftgengivelse.""",
 
-    "no-NO": """Takk for at du bruker miu. Versjon 1.0.50 utvider syntaksutheving til 65 språkkategorier (230+ filtyper):
-• Full Lisp-støtte: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) med (;)- & (#| |#)-kommentarer.
-• Utvidet Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 nye språk: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "no-NO": """Takk for at du bruker miu. Versjon 1.0.51 styrker offlinesikkerhet, presisjon og stabilitet:
+• Sikker forhåndsvisning: streng offline-CSP, blokkering av eksterne nettverkskall, HTML/URL-rensing, trygg visning av tekster som starter med «<» og rask Markdown-analyse.
+• Syntaks og Mermaid: bedre trippelanførselstegn i Python og blokkommentarer i 65 språkkategorier samt mer stabile stateDiagram-v2 og block-beta.
+• Rettet sletting av emojier via tastatur og skarpere skriftgjengivelse.""",
 
-    "fi-FI": """Kiitos, että käytät miuta. Versio 1.0.50 laajentaa syntaksin korostuksen 65 kielikategoriaan (230+ tiedostopäätettä):
-• Täysi Lisp-tuki: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) sekä (;)- ja (#| |#)-kommentit.
-• Laajennettu Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 uutta kieltä: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "fi-FI": """Kiitos, että käytät miuta. Versio 1.0.51 parantaa offline-tietoturvaa, tarkkuutta ja vakautta:
+• Esikatselun suoja: tiukka offline-CSP, ulkoisten yhteyksien esto, HTML/URL-puhdistus, '<'-alkuisten tekstien turvallinen näyttö ja nopea Markdown-jäsennys.
+• Syntaksi ja Mermaid: parempi Pythonin kolmoislainausmerkkien ja lohkokommenttien tuki (65 kielikategoriaa) sekä vakaammat stateDiagram-v2 ja block-beta.
+• Korjattu emojien poisto näppäimistöllä ja terävöitetty fonttien piirtoa.""",
 
-    "pl-PL": """Dziękujemy za korzystanie z miu. Wersja 1.0.50 rozszerza kolorowanie składni do 65 kategorii języków (230+ rozszerzeń):
-• Pełna obsługa Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) oraz komentarze (;) i (#| |#).
-• Rozbudowany Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM i WebAssembly (.wat).
-• 15 nowych języków: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim i Nix.""",
+    "pl-PL": """Dziękujemy za korzystanie z miu. Wersja 1.0.51 wzmacnia bezpieczeństwo offline, precyzję i stabilność:
+• Ochrona podglądu na żywo: ścisła CSP offline, blokada sieci zewnętrznej, czyszczenie HTML/URL, bezpieczne wyświetlanie tekstów od „<” i szybkie parsowanie Markdown.
+• Składnia i Mermaid: ulepszone potrójne cudzysłowy Pythona i komentarze blokowe (65 kategorii) oraz stabilniejsze stateDiagram-v2 i block-beta.
+• Poprawione usuwanie emoji z klawiatury i wyraźniejsze renderowanie czcionek.""",
 
-    "cs-CZ": """Děkujeme, že používáte miu. Verze 1.0.50 rozšiřuje zvýrazňování syntaxe na 65 kategorií jazyků (230+ přípon):
-• Plná podpora Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), komentáře (;) a (#| |#).
-• Rozšířený Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM a WebAssembly (.wat).
-• 15 nových jazyků: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim a Nix.""",
+    "cs-CZ": """Děkujeme, že používáte miu. Verze 1.0.51 posiluje offline zabezpečení, přesnost a stabilitu:
+• Ochrana živého náhledu: přísná offline CSP, blokování externí sítě, čištění HTML/URL, bezpečné zobrazení textů začínajících „<“ a rychlé zpracování Markdownu.
+• Syntaxe a Mermaid: lepší trojité uvozovky v Pythonu a blokové komentáře (65 kategorií jazyků) a stabilnější stateDiagram-v2 a block-beta.
+• Opraveno mazání emoji na klávesnici a ostřejší vykreslování písma.""",
 
     "sk": SK_WHATS_NEW,
 
-    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja. Az 1.0.50-es verzió 65 nyelvi kategóriára (230+ kiterjesztésre) bővíti a szintaxiskiemelést:
-• Teljes Lisp támogatás: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), (;) és (#| |#) megjegyzések.
-• Bővített Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 új nyelv: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja. Az 1.0.51-es verzió növeli az offline biztonságot és a pontosságot:
+• Élő előnézet védelme: szigorú offline CSP, külső hálózat tiltása, HTML/URL-tisztítás, a „<” jellel kezdődő szövegek biztonságos megjelenítése és gyors Markdown-elemzés.
+• Szintaxis és Mermaid: pontosabb Python tripla idézőjelek és blokk-kommentek (65 nyelvi kategória), stabilabb stateDiagram-v2 és block-beta.
+• Javított emoji-törlés billentyűzeten és élesebb betűmegjelenítés.""",
 
-    "ro": """Vă mulțumim că folosiți miu. Versiunea 1.0.50 extinde evidențierea sintaxei la 65 de categorii de limbaje (230+ extensii):
-• Suport Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), comentarii (;) și (#| |#).
-• Assembly extins: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 limbaje noi: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "ro": """Vă mulțumim că folosiți miu. Versiunea 1.0.51 crește securitatea offline, precizia și stabilitatea:
+• Protecție Previzualizare: CSP offline strictă, blocare rețea externă, igienizare HTML/URL, afișare sigură a textelor cu „<” și Markdown rapid.
+• Sintaxă și Mermaid: ghilimele triple Python și comentarii bloc îmbunătățite (65 de categorii) și stabilitate în stateDiagram-v2 și block-beta.
+• Ștergere corectă a emoji-urilor din tastatură și fonturi mai clare.""",
 
-    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu. Η έκδοση 1.0.50 επεκτείνει την επισήμανση σύνταξης σε 65 κατηγορίες γλωσσών (230+ επεκτάσεις):
-• Υποστήριξη Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), σχόλια (;) & (#| |#).
-• Ενισχυμένο Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 νέες γλώσσες: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu. Η έκδοση 1.0.51 ενισχύει την ασφάλεια, την ακρίβεια και τη σταθερότητα:
+• Ασφάλεια προεπισκόπησης: αυστηρή CSP εκτός σύνδεσης, φραγή δικτύου, καθαρισμός HTML/URL, ασφαλής εμφάνιση κειμένων με «<» και γρήγορη ανάλυση Markdown.
+• Σύνταξη & Mermaid: βελτιωμένα τριπλά εισαγωγικά Python και σχόλια μπλοκ (65 κατηγορίες) και σταθερότητα σε stateDiagram-v2 & block-beta.
+• Διόρθωση διαγραφής emoji στο πληκτρολόγιο και ευκρινέστερη απόδοση γραμματοσειρών.""",
 
-    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz. 1.0.50 sürümü sözdizimi vurgulamayı 65 dil kategorisine (230+ uzantı) genişletir:
-• Tam Lisp Desteği: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) ile (;) ve (#| |#) yorumları.
-• Gelişmiş Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 Yeni Dil: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz. 1.0.51 sürümü çevrimdışı güvenliği, hassasiyeti ve kararlılığı artırır:
+• Canlı Önizleme Güvenliği: Sıkı çevrimdışı CSP, dış ağ engelleme, HTML/URL temizleme, '<' ile başlayan metinlerin güvenli gösterimi ve hızlı Markdown ayrıştırma.
+• Sözdizimi ve Mermaid: 65 dil kategorisinde Python üçlü tırnak ve blok yorum iyileştirmeleri ile stateDiagram-v2 ve block-beta kararlılığı.
+• Klavyede emoji silme düzeltmesi ve daha net yazı tipi görünümü.""",
 
-    "uk": """Дякуємо, що користуєтеся miu. У версії 1.0.50 підсвічування синтаксису розширено до 65 категорій мов (230+ розширень):
-• Підтримка Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj), коментарі (;) і (#| |#).
-• Розширений Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM і WebAssembly (.wat).
-• 15 нових мов: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim і Nix.""",
+    "uk": """Дякуємо, що користуєтеся miu. У версії 1.0.51 посилено офлайн-безпеку, точність і стабільність:
+• Захист перегляду наживо: сувора CSP, блокування зовнішньої мережі, очищення HTML/URL, безпечний показ текстів із «<» та швидкий розбір Markdown.
+• Синтаксис і Mermaid: покращено потрійні лапки Python і блокові коментарі (65 категорій мов) та стабільність stateDiagram-v2 і block-beta.
+• Виправлено видалення емодзі з клавіатури та покращено чіткість шрифтів.""",
 
-    "vi": """Cảm ơn bạn đã sử dụng miu. Phiên bản 1.0.50 mở rộng tô sáng cú pháp lên 65 nhóm ngôn ngữ (230+ phần mở rộng):
-• Hỗ trợ họ Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) cùng chú thích (;) và (#| |#).
-• Nâng cấp Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 ngôn ngữ mới: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "vi": """Cảm ơn bạn đã sử dụng miu. Phiên bản 1.0.51 tăng cường bảo mật ngoại tuyến, độ chính xác và ổn định:
+• Bảo mật Xem trước: CSP ngoại tuyến nghiêm ngặt, chặn mạng ngoài, làm sạch HTML/URL, hiển thị an toàn văn bản bắt đầu bằng '<' và phân tích Markdown nhanh.
+• Cú pháp & Mermaid: cải thiện chuỗi ba dấu nháy Python và chú thích khối (65 nhóm ngôn ngữ) cùng độ ổn định stateDiagram-v2, block-beta.
+• Sửa lỗi xóa emoji trên bàn phím và hiển thị phông chữ sắc nét hơn.""",
 
-    "th": """ขอบคุณที่ใช้บริการ miu เวอร์ชัน 1.0.50 ขยายการเน้นไวยากรณ์เป็น 65 หมวดหมู่ภาษา (นามสกุลไฟล์กว่า 230 รายการ):
-• รองรับตระกูล Lisp เต็มรูปแบบ: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) พร้อมความคิดเห็น (;) และ (#| |#)
-• ยกระดับภาษา Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM และ WebAssembly (.wat)
-• เพิ่ม 15 ภาษาใหม่: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim และ Nix""",
+    "th": """ขอบคุณที่ใช้บริการ miu เวอร์ชัน 1.0.51 ยกระดับความปลอดภัยออฟไลน์ ความแม่นยำ และความเสถียร:
+• ความปลอดภัยของพรีวิวสด: CSP ออฟไลน์เข้มงวด บล็อกเครือข่ายภายนอก คัดกรอง HTML/URL แสดงข้อความที่ขึ้นต้นด้วย '<' อย่างปลอดภัย และแปลง Markdown เร็วขึ้น
+• ไวยากรณ์และ Mermaid: ปรับปรุงอัญประกาศสามชั้นของ Python และความคิดเห็นบล็อก (65 หมวดหมู่ภาษา) พร้อมความเสถียรของ stateDiagram-v2 และ block-beta
+• แก้ไขการลบอีโมจิด้วยแป้นพิมพ์และแสดงฟอนต์คมชัดยิ่งขึ้น""",
 
-    "id": """Terima kasih telah menggunakan miu. Versi 1.0.50 memperluas penyorotan sintaks ke 65 kategori bahasa (230+ ekstensi file):
-• Dukungan Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) dengan komentar (;) & (#| |#).
-• Peningkatan Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 Bahasa Baru: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "id": """Terima kasih telah menggunakan miu. Versi 1.0.51 meningkatkan keamanan offline, akurasi, dan stabilitas:
+• Keamanan Pratinjau: CSP offline ketat, blokir jaringan eksternal, sanitasi HTML/URL, tampilan aman teks berawalan '<', dan penguraian Markdown cepat.
+• Sintaks & Mermaid: perbaikan tanda kutip tiga Python & komentar blok (65 kategori bahasa) serta stabilitas stateDiagram-v2 & block-beta.
+• Perbaikan penghapusan emoji pada keyboard dan tampilan font lebih tajam.""",
 
-    "ms": """Terima kasih kerana menggunakan miu. Versi 1.0.50 memperluas sorotan sintaks kepada 65 kategori bahasa (230+ sambungan fail):
-• Sokongan Lisp: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) dengan komen (;) & (#| |#).
-• Penambahbaikan Assembly: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM & WebAssembly (.wat).
-• 15 Bahasa Baharu: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim & Nix.""",
+    "ms": """Terima kasih kerana menggunakan miu. Versi 1.0.51 memperkukuh keselamatan luar talian, ketepatan dan kestabilan:
+• Keselamatan Pratonton: CSP luar talian ketat, sekatan rangkaian luaran, pembersihan HTML/URL, paparan selamat teks bermula '<' dan penghuraian Markdown pantas.
+• Sintaks & Mermaid: penambahbaikan petikan tiga kali Python & komen blok (65 kategori) serta kestabilan stateDiagram-v2 & block-beta.
+• Pembaikan pemadaman emoji papan kekunci dan paparan fon lebih tajam.""",
 
-    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद। संस्करण 1.0.50 सिंटैक्स हाइलाइटिंग को 65 भाषा श्रेणियों (230+ एक्सटेंशन) तक विस्तारित करता है:
-• पूर्ण Lisp समर्थन: Common Lisp (.lisp, .cl), Emacs Lisp (.el), Scheme (.scm), Racket (.rkt), Clojure (.clj) तथा (;) और (#| |#) कमेंट।
-• उन्नत Assembly समर्थन: x86/x64, ARM64, RISC-V, MIPS, NASM/MASM और WebAssembly (.wat)।
-• 15 नई भाषाएं: Objective-C, Groovy/Gradle, OCaml, Erlang, Fortran, COBOL, Prisma, Solidity, Nim, D, Pascal, Ada, Prolog, Vim और Nix।""",
+    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद। संस्करण 1.0.51 ऑफ़लाइन सुरक्षा, सटीकता और स्थिरता को बढ़ाता है:
+• लाइव प्रीव्यू सुरक्षा: सख्त ऑफ़लाइन CSP, बाहरी नेटवर्क रोक, HTML/URL स्वच्छता, '<' से शुरू होने वाले टेक्स्ट का सुरक्षित प्रदर्शन और तेज़ Markdown पार्सिंग।
+• सिंटैक्स व Mermaid: 65 भाषा श्रेणियों में Python ट्रिपल-कोट्स व ब्लॉक कमेंट सुधार तथा stateDiagram-v2 और block-beta स्थिरता।
+• कीबोर्ड से इमोजी हटाने में सुधार और अधिक स्पष्ट फ़ॉन्ट रेंडरिंग।""",
 
     "ar": AR_WHATS_NEW,
     "iw-IL": HE_WHATS_NEW,

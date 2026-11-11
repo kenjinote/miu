@@ -11,7 +11,7 @@
   <Identity
     Name="18872KENJI.8904025CBD33"
     Publisher="CN=035A9AAC-915B-4CE1-AE39-1A101BED42F5"
-    Version="1.0.50.0" />
+    Version="1.0.51.0" />
 
   <Properties>
     <DisplayName>miu</DisplayName>
@@ -20,8 +20,7 @@
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal" MinVersion="10.0.0.0" MaxVersionTested="10.0.0.0" />
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.14393.0" MaxVersionTested="10.0.14393.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.14393.0" MaxVersionTested="10.0.19041.0" />
   </Dependencies>
 
   <Resources>

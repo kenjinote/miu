@@ -60,3 +60,5 @@
 "View" = "Vista";
 "Tab" = "Tabulazione";
 "No Recent Files" = "Nessun file recente";
+"Reload" = "Ricarica";
+"Failed to save file." = "Impossibile salvare il file.";

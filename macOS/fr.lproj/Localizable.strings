@@ -60,3 +60,5 @@
 "View" = "Présentation";
 "Tab" = "Tabulation";
 "No Recent Files" = "Aucun fichier récent";
+"Reload" = "Recharger";
+"Failed to save file." = "Échec de l’enregistrement du fichier.";
