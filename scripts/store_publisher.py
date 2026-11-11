@@ -1433,6 +1433,22 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
                 listings[lang]["baseListing"]["releaseNotes"] = notes
                 print(f"Updated release notes for [{lang}]")
 
+    # Restrict device family availability strictly to Desktop (matching Windows.Desktop in Package.appxmanifest)
+    dev_fams = submission_data.get("allowTargetFutureDeviceFamilies")
+    if isinstance(dev_fams, dict):
+        for fam_key in list(dev_fams.keys()):
+            dev_fams[fam_key] = (fam_key == "Desktop")
+        dev_fams["Desktop"] = True
+    else:
+        submission_data["allowTargetFutureDeviceFamilies"] = {
+            "Desktop": True,
+            "Mobile": False,
+            "Xbox": False,
+            "Team": False,
+            "Holographic": False,
+        }
+    submission_data["allowMicrosoftDecideAppAvailabilityToFutureDeviceFamilies"] = False
+
     # 5. PUT update to Dev Center API
     print(f"Updating submission {sub_id}...")
     put_url = f"https://manage.devcenter.microsoft.com/v1.0/my/applications/{product_id}/submissions/{sub_id}"
@@ -1449,7 +1465,7 @@ def commit_submission(headers, product_id, submission_id):
         raise RuntimeError(f"Failed to commit submission: {res.status_code} - {res.text}")
     print("Submission committed! It is now queued for certification.")
 
-def poll_submission_status(headers, product_id, submission_id, max_attempts=15, interval=10):
+def poll_submission_status(headers, product_id, submission_id, max_attempts=24, interval=10):
     status_url = f"https://manage.devcenter.microsoft.com/v1.0/my/applications/{product_id}/submissions/{submission_id}/status"
     for i in range(max_attempts):
         time.sleep(interval)
@@ -1458,6 +1474,8 @@ def poll_submission_status(headers, product_id, submission_id, max_attempts=15, 
             status_data = res.json()
             st = status_data.get("status")
             print(f"Status check ({i+1}/{max_attempts}): {st}")
+            if st == "CommitFailed":
+                raise RuntimeError(f"Microsoft Store commit failed: {status_data.get('statusDetails')}")
             if st not in ("CommitStarted", "PendingCommit"):
                 return st
     return "CommitProcessing"
