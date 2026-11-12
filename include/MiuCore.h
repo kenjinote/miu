@@ -1560,4 +1560,93 @@ inline size_t findSubstringFast(
     return pos;
 }
 
+// ============================================================================
+// 5. Dialog Work-Area Clamping & Visible-Parent Placement
+// ============================================================================
+
+struct DialogRect {
+    int left = 0;
+    int top = 0;
+    int right = 0;
+    int bottom = 0;
+};
+
+inline void clampRectPositionToWorkArea(
+    int& ioX,
+    int& ioY,
+    int winW,
+    int winH,
+    const DialogRect& workArea,
+    int margin = 0) noexcept
+{
+    const int64_t workW = (int64_t)workArea.right - (int64_t)workArea.left;
+    const int64_t workH = (int64_t)workArea.bottom - (int64_t)workArea.top;
+    if (workW <= 0 || workH <= 0) return;
+
+    int64_t effMarginX = (margin > 0) ? margin : 0;
+    if ((int64_t)winW + effMarginX * 2 > workW) {
+        effMarginX = (workW > (int64_t)winW) ? (workW - (int64_t)winW) / 2 : 0;
+    }
+    int64_t effMarginY = (margin > 0) ? margin : 0;
+    if ((int64_t)winH + effMarginY * 2 > workH) {
+        effMarginY = (workH > (int64_t)winH) ? (workH - (int64_t)winH) / 2 : 0;
+    }
+
+    int64_t x = ioX;
+    int64_t y = ioY;
+    const int64_t maxRight = (int64_t)workArea.right - effMarginX;
+    const int64_t minLeft  = (int64_t)workArea.left + effMarginX;
+    if (x + (int64_t)winW > maxRight) x = maxRight - (int64_t)winW;
+    if (x < minLeft) x = minLeft;
+
+    const int64_t maxBottom = (int64_t)workArea.bottom - effMarginY;
+    const int64_t minTop    = (int64_t)workArea.top + effMarginY;
+    if (y + (int64_t)winH > maxBottom) y = maxBottom - (int64_t)winH;
+    if (y < minTop) y = minTop;
+
+    ioX = (int)x;
+    ioY = (int)y;
+}
+
+inline void computeClampedDialogPosition(
+    int& outX,
+    int& outY,
+    int winW,
+    int winH,
+    const DialogRect& workArea,
+    const DialogRect* parentRect,
+    int margin = 0) noexcept
+{
+    const int64_t workW = (int64_t)workArea.right - (int64_t)workArea.left;
+    const int64_t workH = (int64_t)workArea.bottom - (int64_t)workArea.top;
+    if (workW <= 0 || workH <= 0) {
+        if (parentRect && parentRect->right > parentRect->left && parentRect->bottom > parentRect->top) {
+            outX = (int)((int64_t)parentRect->left + (((int64_t)parentRect->right - (int64_t)parentRect->left) - (int64_t)winW) / 2);
+            outY = (int)((int64_t)parentRect->top  + (((int64_t)parentRect->bottom - (int64_t)parentRect->top) - (int64_t)winH) / 2);
+        } else {
+            outX = 0;
+            outY = 0;
+        }
+        return;
+    }
+
+    int64_t x = (int64_t)workArea.left + (workW - (int64_t)winW) / 2;
+    int64_t y = (int64_t)workArea.top  + (workH - (int64_t)winH) / 2;
+
+    if (parentRect && parentRect->right > parentRect->left && parentRect->bottom > parentRect->top) {
+        const int64_t visLeft   = std::max<int64_t>(parentRect->left,   workArea.left);
+        const int64_t visTop    = std::max<int64_t>(parentRect->top,    workArea.top);
+        const int64_t visRight  = std::min<int64_t>(parentRect->right,  workArea.right);
+        const int64_t visBottom = std::min<int64_t>(parentRect->bottom, workArea.bottom);
+        if (visRight > visLeft && visBottom > visTop) {
+            x = visLeft + ((visRight - visLeft) - (int64_t)winW) / 2;
+            y = visTop  + ((visBottom - visTop) - (int64_t)winH) / 2;
+        }
+    }
+
+    outX = (int)x;
+    outY = (int)y;
+    clampRectPositionToWorkArea(outX, outY, winW, winH, workArea, margin);
+}
+
 } // namespace MiuCore
