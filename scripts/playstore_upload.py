@@ -147,7 +147,7 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
         )
         r_track.raise_for_status()
 
-    # Clear superseded legacy releases on 'alpha' and 'beta' when publishing to production
+    # Sync 'alpha' and 'beta' tracks if they hold superseded lower versionCodes
     if track == "production":
         for stale_track in ("beta", "alpha"):
             r_tr_get = requests.get(f"{base_url}/edits/{edit_id}/tracks/{stale_track}", headers=headers, timeout=30)
@@ -160,11 +160,21 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
                     if int(vc) < int(version_code)
                 ]
                 if stale_codes:
-                    print(f"Clearing superseded release(s) {stale_codes} from '{stale_track}' track...")
+                    print(f"Updating superseded release(s) {stale_codes} on '{stale_track}' track to {version_code} ({version_name})...")
                     r_clr = requests.put(
                         f"{base_url}/edits/{edit_id}/tracks/{stale_track}",
                         headers={**headers, "Content-Type": "application/json"},
-                        json={"track": stale_track, "releases": []},
+                        json={
+                            "track": stale_track,
+                            "releases": [
+                                {
+                                    "name": f"{version_code} ({version_name})",
+                                    "versionCodes": [str(version_code)],
+                                    "status": status,
+                                    "releaseNotes": release_notes,
+                                }
+                            ],
+                        },
                         timeout=60,
                     )
                     r_clr.raise_for_status()
