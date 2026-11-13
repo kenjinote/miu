@@ -7,6 +7,43 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.52": {
+        "ja-jp": """miu v1.0.52 リリースノート
+🪟 ダイアログの画面内配置補正（見切れ防止）＆ ライブプレビュー保護・描画精度の向上
+
+・タスクダイアログ・検索／置換ダイアログの画面外はみ出し防止:
+  メインウィンドウが画面端やディスプレイ外に半分以上見切れた状態で閉じるボタンを押した際などに、保存確認ダイアログや検索・置換・行移動ダイアログが画面外に表示されて操作不能になる問題を修正し、常に現在のモニターの作業領域内に収まるよう改善しました。
+・ライブプレビューのオフライン保護と高速描画:
+  厳格なオフライン CSP・外部通信遮断・HTMLサニタイズにより安全性を高め、Markdown / Mermaid / LaTeX の快適なプレビューを提供します。
+・全65言語シンタックスハイライト＆アトミック保存の安定性強化。""",
+
+        "en-us": """miu v1.0.52 Release Notes
+🪟 On-Screen Dialog Positioning Fix & Live Preview Security / Stability Improvements
+
+- Keep Confirmation & Editor Dialogs Inside Monitor Work Area:
+  Fixed an issue where closing a window positioned partially off-screen could place the save-confirmation task dialog (or Find, Replace, and Go-to-Line dialogs) outside visible monitor bounds; all dialogs are now automatically clamped within the active display's work area.
+- Offline Live Preview Protection & Fast Rendering:
+  Strict offline CSP, network blocking, and HTML/URL sanitization for safe, responsive Markdown, Mermaid, and LaTeX previews.
+- 65-language syntax highlighting precision and atomic file-saving reliability.""",
+
+        "zh-hans": """miu v1.0.52 更新日志
+🪟 修复对话框超出屏幕可视区域问题 & 实时预览离线安全与稳定性提升
+
+- 确保保存确认与查找/替换对话框始终显示在屏幕工作区内：
+  修复当主窗口有一半以上移出屏幕边缘时点击关闭按钮，保存确认对话框（以及查找、替换、跳转行对话框）可能显示在显示器外部导致无法操作的问题，现在所有对话框都会自动限制在当前显示器的可用工作区内。
+- 实时预览离线隔离与高速渲染：
+  提供严格的离线 CSP、外部网络拦截与 HTML/URL 净化，安全流畅地预览 Markdown、Mermaid 与 LaTeX。
+- 65 种语言语法高亮精度与原子化安全保存可靠性提升。""",
+
+        "ko": """miu v1.0.52 릴리스 노트
+🪟 대화 상자 화면 밖 표시 방지 수정 & 실시간 미리보기 보안·안정성 향상
+
+- 저장 확인 및 찾기/바꾸기 대화 상자 모니터 작업 영역 내 자동 배치:
+  메인 창이 화면 가장자리 밖으로 절반 이상 벗어난 상태에서 닫기 버튼을 눌렀을 때 저장 확인 대화 상자(및 찾기·바꾸기·줄 이동 창)가 모니터 밖에 표시되어 조작할 수 없던 문제를 수정하여, 항상 현재 디스플레이 작업 영역 안에 표시되도록 개선했습니다.
+- 실시간 미리보기 오프라인 보안 및 고속 렌더링:
+  엄격한 오프라인 CSP·외부 네트워크 차단·HTML 살균으로 안전한 Markdown, Mermaid, LaTeX 미리보기를 제공합니다.
+- 65개 언어 구문 강조 정밀도 및 원자적(Atomic) 파일 저장 안정성 강화."""
+    },
     "1.0.51": {
         "ja-jp": """miu v1.0.51 リリースノート
 🛡️ ライブプレビューのオフライン保護強化・シンタックス＆Mermaid精度向上・安全なファイル保存の改善

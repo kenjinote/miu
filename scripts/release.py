@@ -221,65 +221,54 @@ def main():
             # Default release notes template
             notes = f"# miu {release_name} リリースノート / Release Notes\n\n" + r"""## 🇯🇵 日本語 (Japanese)
 いつも **miu** をご利用いただきありがとうございます。
-v1.0.51 では、全プラットフォームにわたる**ライブプレビューの完全オフライン分離・セキュリティ強化**、**全65言語シンタックス＆Mermaid図表エンジンの精度向上**、および**アトミック保存・大容量処理・多言語IME入力の信頼性強化**を実施しました。
+v1.0.52 では、**Windows 版の自前タスクダイアログ・検索／置換ダイアログのディスプレイ内配置補正（見切れ防止）**、および **Android 版のランチャーアイコン表示修正・テストトラック統合** を実施しました。
 
-### ✨ 主な改善・セキュリティ強化内容
-- **ライブプレビューの完全オフライン分離・セキュリティ強化**:
-  - Markdown / HTML / SVG / Mermaid / LaTeX プレビューに厳格な Content Security Policy（CSP）と外部通信遮断（WebView2 / WKWebView / Android WebView）を適用し、外部リソースへの意図しない通信やスクリプト混入を防止しました。
-  - タスクリストのチェック切替ブリッジに暗号論的ノンス（ワンタイムトークン）検証を導入し、`<` で始まる非 Web テキストファイルの安全なエスケープ表示および長文インライン強調記法の線形時間 `O(N)` パースに対応しました。
-- **シンタックスハイライト＆Mermaid / LaTeX エンジンの精度・安定性向上**:
-  - Python 三重引用符や全65言語のブロックコメント終端解析の精度向上、CRLF 改行を含む未閉鎖 Markdown コードフェンスの高速ハイライト、Prolog `-->` 演算子・Batch `REM` 境界・Rust/F#/Haskell シングルクォート解析を改善しました。
-  - Mermaid `stateDiagram-v2` の複合状態、入れ子 `block-beta`、各種数値チャートの境界値保護と Emmet 展開の上限保護を強化しました。
-- **ファイル保存の安全性（アトミック保存）・大容量処理・多言語入力の改善**:
-  - アトミック保存と安全なメモリマップ（`mmap`）再マッピングにより上書き保存時のデータ保護を強化し、数GBクラスの分割保存に対応しました。
-  - UTF-16 サロゲートペア（絵文字・4バイト文字）の IME 削除精度向上、モノクロ（1-bit）グリフの鮮明な描画、外部変更通知「再読み込み」の多言語対応を改善しました。
+### ✨ 主な修正・改善内容
+- **Windows：自前タスクダイアログ・各種ダイアログのディスプレイ内配置補正**:
+  - メインウィンドウがディスプレイ端から半分以上見切れた状態で閉じるボタンを押した際、保存確認タスクダイアログ（および検索・置換・行移動ダイアログ）が画面外に表示されて操作できなくなる問題を修正し、常に現在のモニターの作業領域（ワークエリア）内に収まるよう改善しました。
+- **Android：ホーム画面・アプリ一覧のランチャー表示修正および配信トラック整理**:
+  - `AndroidManifest.xml` のランチャーカテゴリ指定を修正し、インストール直後からホーム画面・アプリ一覧・Google Play の「開く」ボタンより正常に起動できるよう修正しました。
+  - オープンテスト／クローズドテストトラックに残存していた古いテスト版を解消し、最新リリースに統一しました。
 
 ---
 
 ## 🇺🇸 English
 Thank you for using **miu**.
-Version 1.0.51 delivers comprehensive **Live Preview offline isolation & security hardening**, **syntax highlighting & Mermaid/LaTeX engine precision improvements**, and **atomic file-saving, large-file, and IME input reliability enhancements** across all platforms.
+Version 1.0.52 fixes **off-screen positioning of custom task & editor dialogs on Windows** and resolves **launcher icon visibility & legacy testing-track versions on Android**.
 
-### ✨ Key Security, Stability & Accuracy Improvements
-- **Live Preview Offline Isolation & Security Hardening**:
-  - Enforced strict offline Content Security Policy (CSP), network request blocking across WebView2 / WKWebView / Android WebView, and HTML tag/URL sanitization so previews remain 100% local and safe.
-  - Added per-session cryptographic nonce verification for task-list checkbox toggling, safe `<pre>` escaping for non-Web text files starting with `<`, and linear-time `O(N)` inline Markdown emphasis parsing.
-- **Syntax Highlighting & Mermaid / LaTeX Engine Precision**:
-  - Improved Python triple-quoted string and block-comment delimiter progression across all 65 language categories, linear-time highlighting for unclosed CRLF Markdown code fences, Prolog `-->` operator & Batch `REM` word-boundary accuracy, and Rust/F#/Haskell single-quote lifetimes/identifiers.
-  - Hardened Mermaid `stateDiagram-v2` composite states, nested `block-beta` layouts, numeric chart edge-case guards, and Emmet expansion caps.
-- **Atomic File Saving, Large-File Reliability & Input Enhancements**:
-  - Added atomic file saving with safe `mmap` remapping to protect files during saves, plus chunked multi-GB file writing on Windows.
-  - Fixed UTF-16 surrogate-pair (emoji & 4-byte character) IME deletion, improved 1-bit monochrome font glyph rendering, and localized external file modification reload prompts.
+### ✨ Key Fixes & Improvements
+- **Windows — Clamp Custom Task & Editor Dialogs Inside Monitor Work Area**:
+  - Fixed an issue where closing a window positioned more than halfway off-screen could place the save-confirmation task dialog (or Find, Replace, and Go-to-Line dialogs) outside visible monitor bounds. All dialogs are now clamped cleanly inside the active monitor's work area.
+- **Android — Launcher Visibility Fix & Testing Track Unification**:
+  - Fixed the `LAUNCHER` intent-filter category in `AndroidManifest.xml` so **miu** appears properly on the home screen, app drawer, and Google Play's **Open** button after installation.
+  - Cleared superseded legacy builds from open and closed testing tracks so all users receive the latest release.
 
 ---
 
 ## 🇨🇳 简体中文 (Simplified Chinese)
 感谢您使用 **miu**。
-v1.0.51 全面强化了**实时预览的离线隔离与安全防护**、**65 种语言语法高亮与 Mermaid/LaTeX 引擎精度**，并提升了**原子化文件保存、超大文件读写与多语言输入法（IME）稳定性**。
+v1.0.52 修复了 **Windows 版自定义任务对话框及查找/替换窗口超出显示器工作区的问题**，并修复了 **Android 版桌面图标显示与测试渠道版本同步问题**。
 
-- **实时预览完全离线隔离与安全加固**：为 Markdown / HTML / SVG / Mermaid / LaTeX 预览启用严格的离线安全策略（CSP）、拦截外部网络请求、净化 HTML 标签与链接，并为任务列表勾选交互加入加密随机令牌（Nonce）校验，安全转义以 `<` 开头的纯文本文件，实现线性时间 `O(N)` 行内强调解析。
-- **语法高亮与 Mermaid 图表引擎精度提升**：优化 Python 三引号与块注释闭合识别、包含 CRLF 换行的未闭合 Markdown 代码块高速高亮、Prolog `-->` 运算符、Batch `REM` 边界及 Rust/F#/Haskell 单引号解析；增强 Mermaid `stateDiagram-v2` 复合状态、`block-beta` 嵌套与数值图表的渲染稳定性。
-- **原子化安全保存、大文件支持与输入体验优化**：引入原子化保存与安全的内存映射（`mmap`）重映射机制，支持数 GB 超大文件分块保存，修复 UTF-16 代理对（表情符号与四字节字符）的输入法退格删除问题，并优化单色点阵字体渲染与外部修改重新加载提示的多语言本地化。
+- **Windows**：修复当主窗口有一半以上移出屏幕边缘时点击关闭按钮，保存确认对话框（及查找、替换、跳转行窗口）可能显示在屏幕外部无法操作的问题，确保始终限制在当前显示器工作区内。
+- **Android**：修复安装后主屏幕与应用列表中不显示应用图标且无法从 Google Play 直接打开的问题，并统一开放/封闭测试渠道至最新版本。
 
 ---
 
 ## 🇹🇼 繁體中文 (Traditional Chinese)
 感謝您使用 **miu**。
-v1.0.51 全面強化了**即時預覽的離線隔離與安全防護**、**65 種語言語法突顯與 Mermaid/LaTeX 引擎精準度**，並提升了**原子化檔案儲存、超大檔案讀寫與多語言輸入法（IME）穩定性**。
+v1.0.52 修正了 **Windows 版自訂工作對話方塊及尋找/取代視窗超出螢幕工作區的問題**，並修正了 **Android 版主畫面圖示顯示與測試軌道版本同步問題**。
 
-- **即時預覽完全離線隔離與安全加固**：為 Markdown / HTML / SVG / Mermaid / LaTeX 預覽啟用嚴格的離線安全原則（CSP）、攔截外部網路請求、淨化 HTML 標籤與連結，並為工作清單核取方塊互動加入加密隨機權杖（Nonce）驗證，安全轉義以 `<` 開頭的純文字檔，實現線性時間 `O(N)` 行內強調解析。
-- **語法突顯與 Mermaid 圖表引擎精準度提升**：最佳化 Python 三引號與區塊註解閉合識別、包含 CRLF 換行的未閉合 Markdown 程式碼區塊高速突顯、Prolog `-->` 運算子、Batch `REM` 邊界及 Rust/F#/Haskell 單引號解析；增強 Mermaid `stateDiagram-v2` 複合狀態、`block-beta` 巢狀與數值圖表的渲染穩定性。
-- **原子化安全儲存、大檔案支援與輸入體驗最佳化**：導入原子化儲存與安全的記憶體映射（`mmap`）重映射機制，支援數 GB 超大檔案分塊儲存，修復 UTF-16 代理對（表情符號與四位元組字元）的輸入法退格刪除問題，並最佳化單色點陣字體渲染與外部修改重新載入提示的多語言在地化。
+- **Windows**：修正當主視窗有一半以上超出螢幕邊緣時點擊關閉按鈕，儲存確認對話方塊（及尋找、取代、跳轉行視窗）可能顯示在螢幕外無法操作的問題，確保始終限制在目前顯示器工作區內。
+- **Android**：修正安裝後主畫面與應用程式清單中不顯示圖示且無法從 Google Play 直接開啟的問題，並統一開放/封閉測試軌道至最新版本。
 
 ---
 
 ## 🇰🇷 한국어 (Korean)
 언제나 **miu**를 이용해 주셔서 감사합니다.
-v1.0.51에서는 전 플랫폼에 걸쳐 **실시간 미리보기 완전 오프라인 격리 및 보안 강화**, **65개 언어 구문 강조 및 Mermaid/LaTeX 엔진 정밀도 향상**, 그리고 **원자적(Atomic) 파일 저장·대용량 처리·다국어 IME 입력 안정성 개선**을 진행했습니다.
+v1.0.52에서는 **Windows 버전 사용자 지정 작업 대화 상자 및 찾기/바꾸기 창의 모니터 작업 영역 내 자동 배치 수정**과 **Android 버전 런처 아이콘 표시 수정 및 테스트 트랙 통합**을 진행했습니다.
 
-- **실시간 미리보기 오프라인 격리 및 보안 강화**: Markdown / HTML / SVG / Mermaid / LaTeX 미리보기에 엄격한 오프라인 CSP 및 외부 네트워크 차단, HTML/URL 살균 처리를 적용하고 체크리스트 토글 브리지에 암호화 난스(Nonce) 검증을 도입했습니다. 또한 `<`로 시작하는 일반 텍스트의 안전한 이스케이프 표시 및 선형 시간 `O(N)` 인라인 강조 파싱을 지원합니다.
-- **구문 강조 및 Mermaid 다이어그램 엔진 정밀도 향상**: Python 삼중 따옴표 및 블록 주석 종결 인식 개선, CRLF 개행을 포함한 미종결 Markdown 코드 블록의 초고속 강조, Prolog `-->` 연산자·Batch `REM` 경계·Rust/F#/Haskell 작은따옴표 파싱 개선 및 Mermaid `stateDiagram-v2` 복합 상태·`block-beta`·수치 차트 렌더링 안정성을 강화했습니다.
-- **원자적 파일 저장·대용량 처리 및 입력 개선**: 원자적 파일 저장 및 안전한 메모리 맵(`mmap`) 재매핑으로 저장 중 데이터 보호를 강화하고 수 GB 대용량 분할 저장을 지원합니다. 또한 UTF-16 서로게이트 페어(이모지·4바이트 문자) IME 삭제 정확도 향상, 모노크롬 글리프 렌더링 개선 및 외부 파일 변경 새로고침 다국어 번역을 보강했습니다.
+- **Windows**: 메인 창이 화면 가장자리 밖으로 절반 이상 벗어난 상태에서 닫기 버튼을 눌렀을 때 저장 확인 대화 상자(및 찾기·바꾸기·줄 이동 창)가 화면 밖에 표시되어 조작할 수 없던 문제를 수정했습니다.
+- **Android**: 설치 후 홈 화면 및 앱 서랍에 아이콘이 표시되지 않아 실행할 수 없던 문제를 수정하고, 오픈/비공개 테스트 트랙을 최신 버전으로 통합했습니다.
 """
         elif os.path.exists(notes):
             with open(notes, "r", encoding="utf-8") as f:

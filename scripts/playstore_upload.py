@@ -122,10 +122,11 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
     except Exception:
         pass
 
-    print(f"Using {len(release_notes)} localized v1.0.51 releaseNotes for '{track}' track.")
+    version_name = "1.0.52"
+    print(f"Using {len(release_notes)} localized v{version_name} releaseNotes for '{track}' track.")
 
     for target_track in tracks_to_update:
-        rel_name = f"{version_code} (1.0.51)" if target_track == "production" else "1.0.51"
+        rel_name = f"{version_code} ({version_name})" if target_track == "production" else version_name
         print(f"Assigning versionCode {version_code} ({rel_name}) to track '{target_track}' (status={status})...")
         track_body = {
             "track": target_track,
@@ -145,6 +146,28 @@ def upload_to_play_store(aab_path: str, key_path: str, track: str = "internal", 
             timeout=60,
         )
         r_track.raise_for_status()
+
+    # Clear superseded legacy releases on 'alpha' and 'beta' when publishing to production
+    if track == "production":
+        for stale_track in ("beta", "alpha"):
+            r_tr_get = requests.get(f"{base_url}/edits/{edit_id}/tracks/{stale_track}", headers=headers, timeout=30)
+            if r_tr_get.status_code == 200:
+                existing_rels = r_tr_get.json().get("releases", [])
+                stale_codes = [
+                    vc
+                    for rel in existing_rels
+                    for vc in rel.get("versionCodes", [])
+                    if int(vc) < int(version_code)
+                ]
+                if stale_codes:
+                    print(f"Clearing superseded release(s) {stale_codes} from '{stale_track}' track...")
+                    r_clr = requests.put(
+                        f"{base_url}/edits/{edit_id}/tracks/{stale_track}",
+                        headers={**headers, "Content-Type": "application/json"},
+                        json={"track": stale_track, "releases": []},
+                        timeout=60,
+                    )
+                    r_clr.raise_for_status()
 
     # 4. Commit edit
     print(f"Committing edit {edit_id}...")

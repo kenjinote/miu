@@ -56,10 +56,10 @@ AR_DESC = """miu هو محرر نصوص وأكواد بسيط وخفيف، مص�
 • خصوصية تامة
 بدون إعلانات، وبدون تتبع، وبدون جمع بيانات. جميع الميزات تعمل بنسبة 100% دون اتصال بالإنترنت على جهازك."""
 
-AR_WHATS_NEW = """شكراً لاستخدامك miu. يعزّز الإصدار 1.0.51 الأمان والاستقرار والدقة:
-• حماية المعاينة الفورية دون اتصال: سياسة CSP صارمة وحظر الشبكة الخارجية وتنقية HTML وعرض آمن للملفات التي تبدأ بـ (<) وتحليل سريع لـ Markdown.
-• دقة تمييز الصياغة وMermaid: تحسين علامات الاقتباس الثلاثية في Python والتعليقات في 65 فئة لغوية واستقرار مخططات stateDiagram-v2 وblock-beta.
-• تحسين حذف الرموز التعبيرية عبر لوحة المفاتيح ودقة عرض الخطوط."""
+AR_WHATS_NEW = """شكراً لاستخدامك miu. يتضمن الإصدار 1.0.52 إصلاحات هامة للتشغيل والاستقرار:
+• إصلاح ظهور أيقونة التطبيق في الشاشة الرئيسية وقائمة التطبيقات وزر «فتح» في Google Play بعد التثبيت.
+• توحيد مسارات الاختبار المفتوح والمغلق لتسليم أحدث إصدار مستقر لجميع المستخدمين.
+• تعزيز حماية المعاينة الفورية دون اتصال ودقة تمييز الصياغة لـ 65 فئة لغوية ومخططات Mermaid."""
 
 HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנועד להפוך כל משימה – מרישום הערות יומיות מהירות ועד כתיבת מסמכי Markdown ותכנות – לנוחה ונעימה.
 
@@ -85,10 +85,10 @@ HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנוע
 • פרטיות מלאה
 ללא פרסומות, ללא מעקב וללא איסוף נתונים. הכל פועל 100% אופליין במכשיר שלכם."""
 
-HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.51 משפרת את האבטחה, היציבות והדיוק:
-• הגנת תצוגה מקדימה אופליין: מדיניות CSP מחמירה, חסימת רשת חיצונית, סינון HTML/URL, הצגה בטוחה של קבצים המתחילים ב-(<) וניתוח מהיר של Markdown.
-• דיוק תחביר ו-Mermaid: שיפור מרכאות משולשות ב-Python והערות בלוק ב-65 קטגוריות שפה ויציבות דיאגרמות stateDiagram-v2 ו-block-beta.
-• תיקון מחיקת אימוג'י במקלדת ושיפור חדות הצגת גופנים."""
+HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.52 כוללת תיקון חשוב להפעלה ויציבות:
+• תוקנה הופעת סמל האפליקציה במסך הבית, במגירת האפליקציות ובכפתור "פתח" ב-Google Play לאחר ההתקנה.
+• אוחדו מסלולי הבדיקה הפתוחים והסגורים כך שכל המשתמשים יקבלו את הגרסה העדכנית ביותר.
+• חיזוק אבטחת התצוגה המקדימה אופליין ודיוק הדגשת תחביר ב-65 שפות ודיאגרמות Mermaid."""
 
 SK_DESC = """miu je jednoduchý a ľahký textový a kódový editor, s ktorým je písanie každodenných poznámok, textov v Markdowne aj programovanie pohodlné a príjemné.
 
@@ -114,10 +114,10 @@ Hľadanie a nahrádzanie (s regulárnymi výrazmi), viac kurzorov, čísla riadk
 • Súkromie na prvom mieste
 Žiadne reklamy, žiadne sledovanie a žiadny zber dát. Všetko funguje 100 % offline priamo vo vašom zariadení."""
 
-SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.51 zvyšuje bezpečnosť, presnosť a stabilitu:
-• Ochrana živého náhľadu: prísna offline CSP, blokovanie externej siete, čistenie HTML/URL, bezpečné zobrazenie textov od „<“ a rýchly Markdown.
-• Presnejšia syntax a Mermaid: lepšie trojité úvodzovky Pythonu a blokové komentáre (65 kategórií) a stabilita stateDiagram-v2 a block-beta.
-• Opravené mazanie emoji v klávesnici a ostrejšie písmo."""
+SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.52 prináša dôležitú opravu spustenia a vylepšenia stability:
+• Opravené zobrazenie ikony aplikácie na domovskej obrazovke, v zozname aplikácií a tlačidla „Otvoriť“ v Google Play.
+• Zjednotené otvorené a uzavreté testovacie kanály na najnovšiu stabilnú verziu.
+• Posilnená offline ochrana živého náhľadu a presnosť zvýrazňovania syntaxe (65 kategórií) a diagramov Mermaid."""
 
 # ============================================================================
 # Short Descriptions (Strictly <= 80 characters for Google Play)
@@ -210,149 +210,149 @@ def adapt_desc_for_android(text: str) -> str:
     return out
 
 
-# Localized Android Release Notes for v1.0.51 (versionCode 58), strictly <= 500 chars each
+# Localized Android Release Notes for v1.0.52 (versionCode 59), strictly <= 500 chars each
 ANDROID_RELEASE_NOTES = {
-    "ja-JP": """いつも miu をご利用いただきありがとうございます。v1.0.51 では安全性・描画精度・入力安定性を強化しました。
-・ライブプレビューのオフライン保護強化：厳格な CSP・外部通信遮断・HTMLサニタイズ・チェックリストの暗号検証を適用し、「<」で始まるテキストの安全な表示と高速 Markdown 解析に対応。
-・全65言語シンタックス＆Mermaid精度向上：Python 三重引用符・ブロックコメント解析、CRLF コードブロック高速強調、stateDiagram-v2・block-beta の安定性を改善。
-・絵文字・サロゲートペアの IME 削除修正とフォント描画精度の向上。""",
+    "ja-JP": """いつも miu をご利用いただきありがとうございます。v1.0.52 では起動に関する重要な修正を行いました。
+・ホーム画面・アプリ一覧にアプリアイコンが表示されず開けない不具合を修正し、インストール後すぐに起動できるよう改善しました。
+・オープン／クローズドテストトラックを最新版に統合し、古いテスト版が配信される問題を解消しました。
+・オフライン ライブプレビュー保護および全65言語シンタックス・Mermaid図表の安定性を強化。""",
 
-    "en-US": """Thank you for using miu. Version 1.0.51 enhances offline security, precision & stability:
-• Live Preview Security: Strict offline CSP, network blocking, HTML/URL sanitization, safe display of '<'-prefixed text files & fast O(N) Markdown parsing.
-• Syntax & Mermaid Precision: Improved Python triple quotes & block comments across 65 categories, fast CRLF code-fence highlighting, and stateDiagram-v2 & block-beta stability.
-• Fixed emoji IME deletion & sharper glyph rendering.""",
+    "en-US": """Thank you for using miu. Version 1.0.52 includes an important launch fix & stability updates:
+• Fixed an issue where the app icon did not appear on the home screen or app drawer and could not be opened from Google Play after installation.
+• Unified open and closed testing tracks so all testers receive the latest release.
+• Includes offline Live Preview security hardening and 65-language syntax & Mermaid stability improvements.""",
 
-    "zh-CN": """感谢您使用 miu。v1.0.51 全面强化了离线安全防护、渲染精度与输入稳定性：
-・实时预览离线安全加固：启用严格离线 CSP、拦截外部网络请求、过滤 HTML/URL、任务列表勾选加密校验，安全显示以 `<` 开头的文本并加速 Markdown 解析。
-・65 种语言语法高亮与 Mermaid 精度提升：优化 Python 三引号与块注释识别、CRLF 未闭合代码块高速高亮及 stateDiagram-v2、block-beta 稳定性。
-・修复表情符号与四字节字符输入法退格删除问题，并优化字体渲染清晰度。""",
+    "zh-CN": """感谢您使用 miu。v1.0.52 包含重要的启动修复与稳定性改进：
+・修复安装后主屏幕与应用列表中不显示应用图标且无法从 Google Play 直接打开的问题。
+・统一开放测试与封闭测试渠道，确保所有用户获取最新稳定版本。
+・包含实时预览离线安全加固及 65 种语言语法高亮与 Mermaid 图表稳定性提升。""",
 
-    "zh-TW": """感謝您使用 miu。v1.0.51 全面強化了離線安全防護、渲染精準度與輸入穩定性：
-・即時預覽離線安全加固：啟用嚴格離線 CSP、攔截外部網路請求、過濾 HTML/URL、工作清單核取加密驗證，安全顯示以 `<` 開頭的文字並加速 Markdown 解析。
-・65 種語言語法突顯與 Mermaid 精準度提升：最佳化 Python 三引號與區塊註解識別、CRLF 未閉合程式碼區塊高速突顯及 stateDiagram-v2、block-beta 穩定性。
-・修復表情符號與四位元組字元輸入法退格刪除問題，並最佳化字體渲染清晰度。""",
+    "zh-TW": """感謝您使用 miu。v1.0.52 包含重要的啟動修復與穩定性改進：
+・修復安裝後主畫面與應用程式清單中不顯示圖示且無法從 Google Play 直接開啟的問題。
+・統一開放測試與封閉測試軌道，確保所有使用者取得最新穩定版本。
+・包含即時預覽離線安全加固及 65 種語言語法突顯與 Mermaid 圖表穩定性提升。""",
 
-    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다. v1.0.51에서는 오프라인 보안·렌더링 정밀도·입력 안정성을 강화했습니다.
-・실시간 미리보기 오프라인 보안 강화: 엄격한 CSP·외부 네트워크 차단·HTML 살균·체크리스트 암호화 검증을 적용하고 '<'로 시작하는 텍스트 안전 표시 및 고속 Markdown 파싱 지원.
-・65개 언어 구문 강조 및 Mermaid 정밀도 향상: Python 삼중 따옴표·블록 주석 인식, CRLF 코드 블록 고속 강조 및 stateDiagram-v2·block-beta 안정성 개선.
-・이모지(서로게이트 페어) IME 삭제 수정 및 글꼴 렌더링 선명도 향상.""",
+    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다. v1.0.52에서는 실행 관련 중요 수정 및 안정성 개선을 진행했습니다.
+・설치 후 홈 화면 및 앱 서랍에 아이콘이 표시되지 않아 앱을 열 수 없던 문제를 수정했습니다.
+・오픈/비공개 테스트 트랙을 최신 버전으로 통합하여 이전 테스트 버전이 배포되던 문제를 해결했습니다.
+・실시간 미리보기 오프라인 보안 강화 및 65개 언어 구문 강조·Mermaid 안정성 개선 포함.""",
 
-    "de-DE": """Vielen Dank, dass Sie miu nutzen. Version 1.0.51 verbessert Sicherheit, Präzision & Stabilität:
-• Live-Vorschau-Schutz: Strenge Offline-CSP, Netzwerkblockierung, HTML/URL-Bereinigung, sichere Anzeige von Texten mit „<“ und schnelles Markdown-Parsing.
-• Syntax & Mermaid: Bessere Python-Dreifachzitate & Blockkommentare (65 Kategorien), schnelles CRLF-Codeblock-Highlighting sowie stabilere stateDiagram-v2 & block-beta.
-• Emoji-Löschen per Tastatur korrigiert & schärfere Schrift.""",
+    "de-DE": """Vielen Dank, dass Sie miu nutzen. Version 1.0.52 enthält eine wichtige Startkorrektur:
+• Problem behoben, durch das das App-Symbol nach der Installation nicht im App-Drawer/Startbildschirm erschien und nicht geöffnet werden konnte.
+• Offene und geschlossene Test-Tracks auf die neueste Version vereinheitlicht.
+• Offline-Schutz der Live-Vorschau sowie Stabilität für 65 Sprachen & Mermaid-Diagramme verbessert.""",
 
-    "fr-FR": """Merci d’utiliser miu. La version 1.0.51 renforce sécurité hors ligne, précision et stabilité :
-• Aperçu en direct sécurisé : CSP stricte hors ligne, blocage réseau, assainissement HTML/URL, affichage sûr des textes débutant par « < » et Markdown rapide.
-• Syntaxe & Mermaid : meilleurs triples guillemets Python et commentaires de bloc (65 langages) et stabilité accrue de stateDiagram-v2 et block-beta.
-• Suppression d’emojis au clavier corrigée et police plus nette.""",
+    "fr-FR": """Merci d’utiliser miu. La version 1.0.52 apporte un correctif important au lancement :
+• Correction d’un problème empêchant l’affichage de l’icône sur l’écran d’accueil/tiroir d’applications et l’ouverture depuis Google Play.
+• Unification des canaux de test ouvert et fermé sur la dernière version stable.
+• Protection hors ligne renforcée de l’aperçu en direct et stabilité accrue pour 65 langages et Mermaid.""",
 
-    "es-ES": """Gracias por usar miu. La versión 1.0.51 refuerza la seguridad sin conexión, precisión y estabilidad:
-• Vista Previa segura: CSP estricta sin conexión, bloqueo de red, saneamiento HTML/URL, vista segura de textos iniciados con '<' y análisis rápido de Markdown.
-• Sintaxis y Mermaid: mejoras en comillas triples Python y comentarios de bloque (65 lenguajes) y estabilidad en stateDiagram-v2 y block-beta.
-• Borrado de emojis en teclado corregido y fuentes más nítidas.""",
+    "es-ES": """Gracias por usar miu. La versión 1.0.52 incluye una corrección importante de inicio:
+• Corregido un problema por el que el icono no aparecía en la pantalla de inicio ni en la lista de aplicaciones tras instalar.
+• Unificados los canales de prueba abierta y cerrada con la versión más reciente.
+• Mayor seguridad sin conexión en Vista Previa y estabilidad en 65 lenguajes y diagramas Mermaid.""",
 
-    "it-IT": """Grazie per aver scelto miu. La versione 1.0.51 migliora sicurezza offline, precisione e stabilità:
-• Anteprima sicura: CSP offline rigorosa, blocco rete esterna, sanificazione HTML/URL, vista sicura dei testi che iniziano con '<' e Markdown veloce.
-• Sintassi e Mermaid: migliorate triple virgolette Python e commenti a blocco (65 linguaggi) e stabilità di stateDiagram-v2 e block-beta.
-• Cancellazione di emoji da tastiera corretta e caratteri più nitidi.""",
+    "it-IT": """Grazie per aver scelto miu. La versione 1.0.52 include un’importante correzione di avvio:
+• Risolto un problema per cui l’icona dell’app non appariva nella schermata Home o nel menu app dopo l’installazione.
+• Unificati i canali di test aperto e chiuso alla versione più recente.
+• Sicurezza offline dell’anteprima e stabilità migliorate per 65 linguaggi e diagrammi Mermaid.""",
 
-    "pt-BR": """Obrigado por usar o miu. A versão 1.0.51 reforça a segurança offline, precisão e estabilidade:
-• Segurança na Pré-visualização: CSP offline rigorosa, bloqueio de rede externa, sanitização HTML/URL, exibição segura de textos iniciados por '<' e Markdown rápido.
-• Sintaxe e Mermaid: melhorias em aspas triplas Python e comentários de bloco (65 categorias) e estabilidade em stateDiagram-v2 e block-beta.
-• Exclusão de emojis no teclado corrigida e fontes mais nítidas.""",
+    "pt-BR": """Obrigado por usar o miu. A versão 1.0.52 inclui uma correção importante de inicialização:
+• Corrigido um problema em que o ícone do app não aparecia na tela inicial ou gaveta de apps nem abria pelo Google Play após instalar.
+• Faixas de teste aberto e fechado unificadas para entregar sempre a versão mais recente.
+• Segurança offline na Pré-visualização e estabilidade em 65 linguagens e diagramas Mermaid.""",
 
-    "ru-RU": """Спасибо, что пользуетесь miu. В версии 1.0.51 усилены офлайн-безопасность, точность и стабильность:
-• Защита предпросмотра: строгая CSP, блокировка внешних запросов, очистка HTML/URL, безопасный показ текстов с «<» и быстрый разбор Markdown.
-• Синтаксис и Mermaid: улучшен разбор тройных кавычек Python и блочных комментариев (65 категорий языков), повышена стабильность stateDiagram-v2 и block-beta.
-• Исправлено удаление эмодзи при вводе с клавиатуры и улучшена чёткость шрифтов.""",
+    "ru-RU": """Спасибо, что пользуетесь miu. В версии 1.0.52 исправлена важная ошибка запуска:
+• Исправлена проблема, из-за которой значок приложения не отображался на главном экране и в списке приложений после установки.
+• Каналы открытого и закрытого тестирования обновлены до актуальной версии.
+• Усилена офлайн-защита предпросмотра и стабильность подсветки 65 языков и диаграмм Mermaid.""",
 
-    "nl-NL": """Bedankt voor het gebruiken van miu. Versie 1.0.51 verbetert offline beveiliging, precisie en stabiliteit:
-• Beveiliging Live Voorbeeld: strikte offline CSP, netwerkblokkering, HTML/URL-opschoning, veilige weergave van teksten beginnend met '<' en snelle Markdown-verwerking.
-• Syntax & Mermaid: betere Python-triple-quotes en blokcommentaar in 65 taalcategorieën en stabielere stateDiagram-v2 & block-beta.
-• Emoji-verwijdering via toetsenbord hersteld en scherpere lettertypeweergave.""",
+    "nl-NL": """Bedankt voor het gebruiken van miu. Versie 1.0.52 bevat een belangrijke opstartfix:
+• Probleem opgelost waarbij het app-icoon na installatie niet op het startscherm of in de app-lijst verscheen.
+• Open en gesloten testkanalen samengevoegd naar de nieuwste versie.
+• Verbeterde offline beveiliging van Live Voorbeeld en stabiliteit voor 65 talen en Mermaid.""",
 
-    "sv-SE": """Tack för att du använder miu. Version 1.0.51 stärker offlinesäkerhet, precision och stabilitet:
-• Säker förhandsgranskning: strikt offline-CSP, blockering av externa anrop, HTML/URL-sanering, säker visning av texter som börjar med '<' och snabb Markdown-tolkning.
-• Syntax & Mermaid: bättre trippelcitat i Python och blockkommentarer i 65 språkkategorier samt stabilare stateDiagram-v2 och block-beta.
-• Åtgärdad borttagning av emojis via tangentbord och skarpare teckenåtergivning.""",
+    "sv-SE": """Tack för att du använder miu. Version 1.0.52 innehåller en viktig startkorrigering:
+• Åtgärdade ett fel där appikonen inte visades på hemskärmen eller i applådan efter installation.
+• Öppna och slutna testkanaler har uppdaterats till den senaste versionen.
+• Förbättrad offlinesäkerhet i förhandsgranskning samt stabilitet för 65 språk och Mermaid.""",
 
-    "da-DK": """Tak fordi du bruger miu. Version 1.0.51 styrker offlinesikkerhed, præcision og stabilitet:
-• Sikker forhåndsvisning: striks offline-CSP, blokering af eksterne netværkskald, HTML/URL-rensning, sikker visning af tekster der starter med '<' og hurtig Markdown-analyse.
-• Syntaks & Mermaid: bedre tredobbelte anførselstegn i Python og blokkommentarer i 65 sprogkategorier samt mere stabile stateDiagram-v2 og block-beta.
-• Rettet sletning af emojis via tastatur og skarpere skriftgengivelse.""",
+    "da-DK": """Tak fordi du bruger miu. Version 1.0.52 indeholder en vigtig opstartsrettelse:
+• Rettet en fejl, hvor appikonet ikke blev vist på startskærmen eller i appoversigten efter installation.
+• Åbne og lukkede testspor er opdateret til den nyeste udgivelse.
+• Styrket offlinesikkerhed i forhåndsvisning samt stabilitet for 65 sprog og Mermaid.""",
 
-    "no-NO": """Takk for at du bruker miu. Versjon 1.0.51 styrker offlinesikkerhet, presisjon og stabilitet:
-• Sikker forhåndsvisning: streng offline-CSP, blokkering av eksterne nettverkskall, HTML/URL-rensing, trygg visning av tekster som starter med «<» og rask Markdown-analyse.
-• Syntaks og Mermaid: bedre trippelanførselstegn i Python og blokkommentarer i 65 språkkategorier samt mer stabile stateDiagram-v2 og block-beta.
-• Rettet sletting av emojier via tastatur og skarpere skriftgjengivelse.""",
+    "no-NO": """Takk for at du bruker miu. Versjon 1.0.52 inneholder en viktig oppstartsrettelse:
+• Rettet en feil der appikonet ikke ble vist på startskjermen eller i appskuffen etter installasjon.
+• Åpne og lukkede testspor er oppdatert til nyeste versjon.
+• Styrket offlinesikkerhet i forhåndsvisning og stabilitet for 65 språk og Mermaid.""",
 
-    "fi-FI": """Kiitos, että käytät miuta. Versio 1.0.51 parantaa offline-tietoturvaa, tarkkuutta ja vakautta:
-• Esikatselun suoja: tiukka offline-CSP, ulkoisten yhteyksien esto, HTML/URL-puhdistus, '<'-alkuisten tekstien turvallinen näyttö ja nopea Markdown-jäsennys.
-• Syntaksi ja Mermaid: parempi Pythonin kolmoislainausmerkkien ja lohkokommenttien tuki (65 kielikategoriaa) sekä vakaammat stateDiagram-v2 ja block-beta.
-• Korjattu emojien poisto näppäimistöllä ja terävöitetty fonttien piirtoa.""",
+    "fi-FI": """Kiitos, että käytät miuta. Versio 1.0.52 sisältää tärkeän käynnistyskorjauksen:
+• Korjattu ongelma, jonka vuoksi sovelluskuvake ei näkynyt aloitusnäytöllä tai sovellusvalikossa asennuksen jälkeen.
+• Avoimet ja suljetut testauskanavat on yhtenäistetty uusimpaan versioon.
+• Parannettu esikatselun offline-suojaa sekä 65 kielen ja Mermaid-kaavioiden vakautta.""",
 
-    "pl-PL": """Dziękujemy za korzystanie z miu. Wersja 1.0.51 wzmacnia bezpieczeństwo offline, precyzję i stabilność:
-• Ochrona podglądu na żywo: ścisła CSP offline, blokada sieci zewnętrznej, czyszczenie HTML/URL, bezpieczne wyświetlanie tekstów od „<” i szybkie parsowanie Markdown.
-• Składnia i Mermaid: ulepszone potrójne cudzysłowy Pythona i komentarze blokowe (65 kategorii) oraz stabilniejsze stateDiagram-v2 i block-beta.
-• Poprawione usuwanie emoji z klawiatury i wyraźniejsze renderowanie czcionek.""",
+    "pl-PL": """Dziękujemy za korzystanie z miu. Wersja 1.0.52 zawiera ważną poprawkę uruchamiania:
+• Naprawiono błąd, przez który ikona aplikacji nie pojawiała się na ekranie głównym ani na liście aplikacji po instalacji.
+• Ujednolicono otwarte i zamknięte ścieżki testowe do najnowszej wersji.
+• Wzmocniono ochronę podglądu offline oraz stabilność dla 65 języków i diagramów Mermaid.""",
 
-    "cs-CZ": """Děkujeme, že používáte miu. Verze 1.0.51 posiluje offline zabezpečení, přesnost a stabilitu:
-• Ochrana živého náhledu: přísná offline CSP, blokování externí sítě, čištění HTML/URL, bezpečné zobrazení textů začínajících „<“ a rychlé zpracování Markdownu.
-• Syntaxe a Mermaid: lepší trojité uvozovky v Pythonu a blokové komentáře (65 kategorií jazyků) a stabilnější stateDiagram-v2 a block-beta.
-• Opraveno mazání emoji na klávesnici a ostřejší vykreslování písma.""",
+    "cs-CZ": """Děkujeme, že používáte miu. Verze 1.0.52 přináší důležitou opravu spouštění:
+• Opraven problém, kdy se ikona aplikace po instalaci nezobrazovala na ploše ani v seznamu aplikací.
+• Sjednoceny otevřené a uzavřené testovací kanály na nejnovější verzi.
+• Posílena offline ochrana živého náhledu a stabilita pro 65 jazyků a diagramy Mermaid.""",
 
     "sk": SK_WHATS_NEW,
 
-    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja. Az 1.0.51-es verzió növeli az offline biztonságot és a pontosságot:
-• Élő előnézet védelme: szigorú offline CSP, külső hálózat tiltása, HTML/URL-tisztítás, a „<” jellel kezdődő szövegek biztonságos megjelenítése és gyors Markdown-elemzés.
-• Szintaxis és Mermaid: pontosabb Python tripla idézőjelek és blokk-kommentek (65 nyelvi kategória), stabilabb stateDiagram-v2 és block-beta.
-• Javított emoji-törlés billentyűzeten és élesebb betűmegjelenítés.""",
+    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja. Az 1.0.52-es verzió fontos indítási javítást tartalmaz:
+• Javítva a hiba, amely miatt az alkalmazás ikonja telepítés után nem jelent meg a kezdőképernyőn és az alkalmazáslistában.
+• A nyílt és zárt tesztelési csatornák egyesítve lettek a legújabb verzióra.
+• Megerősített offline előnézeti védelem és 65 nyelvi kategória, valamint Mermaid stabilitás.""",
 
-    "ro": """Vă mulțumim că folosiți miu. Versiunea 1.0.51 crește securitatea offline, precizia și stabilitatea:
-• Protecție Previzualizare: CSP offline strictă, blocare rețea externă, igienizare HTML/URL, afișare sigură a textelor cu „<” și Markdown rapid.
-• Sintaxă și Mermaid: ghilimele triple Python și comentarii bloc îmbunătățite (65 de categorii) și stabilitate în stateDiagram-v2 și block-beta.
-• Ștergere corectă a emoji-urilor din tastatură și fonturi mai clare.""",
+    "ro": """Vă mulțumim că folosiți miu. Versiunea 1.0.52 include o remediere importantă de lansare:
+• S-a remediat problema prin care pictograma aplicației nu apărea pe ecranul de pornire sau în lista de aplicații după instalare.
+• Canalele de testare deschisă și închisă au fost actualizate la cea mai recentă versiune.
+• Protecție offline sporită pentru Previzualizare și stabilitate pentru 65 de limbaje și Mermaid.""",
 
-    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu. Η έκδοση 1.0.51 ενισχύει την ασφάλεια, την ακρίβεια και τη σταθερότητα:
-• Ασφάλεια προεπισκόπησης: αυστηρή CSP εκτός σύνδεσης, φραγή δικτύου, καθαρισμός HTML/URL, ασφαλής εμφάνιση κειμένων με «<» και γρήγορη ανάλυση Markdown.
-• Σύνταξη & Mermaid: βελτιωμένα τριπλά εισαγωγικά Python και σχόλια μπλοκ (65 κατηγορίες) και σταθερότητα σε stateDiagram-v2 & block-beta.
-• Διόρθωση διαγραφής emoji στο πληκτρολόγιο και ευκρινέστερη απόδοση γραμματοσειρών.""",
+    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu. Η έκδοση 1.0.52 περιλαμβάνει σημαντική διόρθωση εκκίνησης:
+• Διορθώθηκε πρόβλημα όπου το εικονίδιο της εφαρμογής δεν εμφανιζόταν στην αρχική οθόνη ή στη λίστα εφαρμογών μετά την εγκατάσταση.
+• Ενοποιήθηκαν τα κανάλια ανοιχτής και κλειστής δοκιμής στην τελευταία έκδοση.
+• Ενισχυμένη προστασία προεπισκόπησης εκτός σύνδεσης και σταθερότητα σε 65 γλώσσες & Mermaid.""",
 
-    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz. 1.0.51 sürümü çevrimdışı güvenliği, hassasiyeti ve kararlılığı artırır:
-• Canlı Önizleme Güvenliği: Sıkı çevrimdışı CSP, dış ağ engelleme, HTML/URL temizleme, '<' ile başlayan metinlerin güvenli gösterimi ve hızlı Markdown ayrıştırma.
-• Sözdizimi ve Mermaid: 65 dil kategorisinde Python üçlü tırnak ve blok yorum iyileştirmeleri ile stateDiagram-v2 ve block-beta kararlılığı.
-• Klavyede emoji silme düzeltmesi ve daha net yazı tipi görünümü.""",
+    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz. 1.0.52 sürümü önemli bir başlatma düzeltmesi içerir:
+• Kurulumdan sonra uygulama simgesinin ana ekranda ve uygulama listesinde görünmemesi sorunu giderildi.
+• Açık ve kapalı test kanalları en güncel sürümle birleştirildi.
+• Canlı Önizleme çevrimdışı güvenliği ile 65 dil ve Mermaid şema kararlılığı güçlendirildi.""",
 
-    "uk": """Дякуємо, що користуєтеся miu. У версії 1.0.51 посилено офлайн-безпеку, точність і стабільність:
-• Захист перегляду наживо: сувора CSP, блокування зовнішньої мережі, очищення HTML/URL, безпечний показ текстів із «<» та швидкий розбір Markdown.
-• Синтаксис і Mermaid: покращено потрійні лапки Python і блокові коментарі (65 категорій мов) та стабільність stateDiagram-v2 і block-beta.
-• Виправлено видалення емодзі з клавіатури та покращено чіткість шрифтів.""",
+    "uk": """Дякуємо, що користуєтеся miu. Версія 1.0.52 містить важливе виправлення запуску:
+• Виправлено помилку, через яку значок програми не відображався на головному екрані та в списку програм після встановлення.
+• Канали відкритого й закритого тестування оновлено до актуальної версії.
+• Посилено офлайн-захист перегляду та стабільність для 65 мов і діаграм Mermaid.""",
 
-    "vi": """Cảm ơn bạn đã sử dụng miu. Phiên bản 1.0.51 tăng cường bảo mật ngoại tuyến, độ chính xác và ổn định:
-• Bảo mật Xem trước: CSP ngoại tuyến nghiêm ngặt, chặn mạng ngoài, làm sạch HTML/URL, hiển thị an toàn văn bản bắt đầu bằng '<' và phân tích Markdown nhanh.
-• Cú pháp & Mermaid: cải thiện chuỗi ba dấu nháy Python và chú thích khối (65 nhóm ngôn ngữ) cùng độ ổn định stateDiagram-v2, block-beta.
-• Sửa lỗi xóa emoji trên bàn phím và hiển thị phông chữ sắc nét hơn.""",
+    "vi": """Cảm ơn bạn đã sử dụng miu. Phiên bản 1.0.52 bao gồm bản sửa lỗi khởi chạy quan trọng:
+• Khắc phục lỗi biểu tượng ứng dụng không hiển thị trên màn hình chính hoặc danh sách ứng dụng sau khi cài đặt.
+• Đồng bộ các kênh thử nghiệm mở và đóng lên phiên bản mới nhất.
+• Tăng cường bảo mật Xem trước ngoại tuyến cùng độ ổn định cho 65 ngôn ngữ và sơ đồ Mermaid.""",
 
-    "th": """ขอบคุณที่ใช้บริการ miu เวอร์ชัน 1.0.51 ยกระดับความปลอดภัยออฟไลน์ ความแม่นยำ และความเสถียร:
-• ความปลอดภัยของพรีวิวสด: CSP ออฟไลน์เข้มงวด บล็อกเครือข่ายภายนอก คัดกรอง HTML/URL แสดงข้อความที่ขึ้นต้นด้วย '<' อย่างปลอดภัย และแปลง Markdown เร็วขึ้น
-• ไวยากรณ์และ Mermaid: ปรับปรุงอัญประกาศสามชั้นของ Python และความคิดเห็นบล็อก (65 หมวดหมู่ภาษา) พร้อมความเสถียรของ stateDiagram-v2 และ block-beta
-• แก้ไขการลบอีโมจิด้วยแป้นพิมพ์และแสดงฟอนต์คมชัดยิ่งขึ้น""",
+    "th": """ขอบคุณที่ใช้บริการ miu เวอร์ชัน 1.0.52 มีการแก้ไขสำคัญเกี่ยวกับการเปิดแอป:
+• แก้ไขปัญหาที่ไอคอนแอปไม่แสดงบนหน้าจอหลักและหน้ารวมแอปหลังติดตั้ง ทำให้สามารถเปิดใช้งานได้ทันที
+• รวมแทร็กการทดสอบแบบเปิดและแบบปิดให้เป็นเวอร์ชันล่าสุดเดียวกัน
+• เสริมความปลอดภัยพรีวิวออฟไลน์และความเสถียรของการเน้นไวยากรณ์ 65 ภาษาและ Mermaid""",
 
-    "id": """Terima kasih telah menggunakan miu. Versi 1.0.51 meningkatkan keamanan offline, akurasi, dan stabilitas:
-• Keamanan Pratinjau: CSP offline ketat, blokir jaringan eksternal, sanitasi HTML/URL, tampilan aman teks berawalan '<', dan penguraian Markdown cepat.
-• Sintaks & Mermaid: perbaikan tanda kutip tiga Python & komentar blok (65 kategori bahasa) serta stabilitas stateDiagram-v2 & block-beta.
-• Perbaikan penghapusan emoji pada keyboard dan tampilan font lebih tajam.""",
+    "id": """Terima kasih telah menggunakan miu. Versi 1.0.52 mencakup perbaikan penting saat membuka aplikasi:
+• Memperbaiki masalah ikon aplikasi yang tidak muncul di layar utama atau daftar aplikasi setelah instalasi.
+• Menyatukan jalur pengujian terbuka dan tertutup ke versi terbaru.
+• Peningkatan keamanan Pratinjau offline serta stabilitas 65 bahasa dan diagram Mermaid.""",
 
-    "ms": """Terima kasih kerana menggunakan miu. Versi 1.0.51 memperkukuh keselamatan luar talian, ketepatan dan kestabilan:
-• Keselamatan Pratonton: CSP luar talian ketat, sekatan rangkaian luaran, pembersihan HTML/URL, paparan selamat teks bermula '<' dan penghuraian Markdown pantas.
-• Sintaks & Mermaid: penambahbaikan petikan tiga kali Python & komen blok (65 kategori) serta kestabilan stateDiagram-v2 & block-beta.
-• Pembaikan pemadaman emoji papan kekunci dan paparan fon lebih tajam.""",
+    "ms": """Terima kasih kerana menggunakan miu. Versi 1.0.52 merangkumi pembaikan pelancaran penting:
+• Membaiki isu ikon aplikasi tidak muncul pada skrin utama atau senarai aplikasi selepas pemasangan.
+• Menyatukan saluran ujian terbuka dan tertutup kepada versi terkini.
+• Peningkatan keselamatan Pratonton luar talian serta kestabilan 65 bahasa dan rajah Mermaid.""",
 
-    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद। संस्करण 1.0.51 ऑफ़लाइन सुरक्षा, सटीकता और स्थिरता को बढ़ाता है:
-• लाइव प्रीव्यू सुरक्षा: सख्त ऑफ़लाइन CSP, बाहरी नेटवर्क रोक, HTML/URL स्वच्छता, '<' से शुरू होने वाले टेक्स्ट का सुरक्षित प्रदर्शन और तेज़ Markdown पार्सिंग।
-• सिंटैक्स व Mermaid: 65 भाषा श्रेणियों में Python ट्रिपल-कोट्स व ब्लॉक कमेंट सुधार तथा stateDiagram-v2 और block-beta स्थिरता।
-• कीबोर्ड से इमोजी हटाने में सुधार और अधिक स्पष्ट फ़ॉन्ट रेंडरिंग।""",
+    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद। संस्करण 1.0.52 में ऐप लॉन्च से जुड़ा महत्वपूर्ण सुधार शामिल है:
+• इंस्टॉल करने के बाद होम स्क्रीन और ऐप सूची में ऐप आइकन न दिखने और न खुलने की समस्या ठीक की गई।
+• ओपन और क्लोज़्ड टेस्टिंग ट्रैक को नवीनतम संस्करण पर एकीकृत किया गया।
+• ऑफ़लाइन लाइव प्रीव्यू सुरक्षा और 65 भाषाओं व Mermaid डायग्राम की स्थिरता को बेहतर बनाया गया।""",
 
     "ar": AR_WHATS_NEW,
     "iw-IL": HE_WHATS_NEW,
