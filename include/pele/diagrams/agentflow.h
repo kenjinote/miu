@@ -1879,7 +1879,12 @@ inline AgentTokens tokenize(const std::string& src) {
                     type = CALLBACKARGS;
                     break;
             }
-            if (type != -1) emitFlat(type, n);
+            if (type != -1) {
+                emitFlat(type, n);
+                if (state == S_acc_title || state == S_acc_descr || state == S_acc_descr_multiline) {
+                    emitFlat(EOF_TOK, n);
+                }
+            }
             break;
         }
 
@@ -1943,8 +1948,12 @@ inline AgentTokens tokenize(const std::string& src) {
                     advance(p + 1);
                 } else {
                     size_t e = src.find('}', p);
-                    if (e == std::string::npos) e = n;
-                    emit(acc_descr_multiline_value, e);
+                    if (e == std::string::npos) {
+                        pop();
+                        emit(acc_descr_multiline_value, n);
+                    } else {
+                        emit(acc_descr_multiline_value, e);
+                    }
                 }
                 break;
 
@@ -3854,6 +3863,7 @@ inline Rendered drawAgentflow(
             int k = loopSeen[ce.src]++;
             path = Flowchart::loopPath(cnodes[static_cast<size_t>(ce.src)], view.w, view.h, k, flowsSideways(ce.src), LOOP, markerTrim(endType), ce);
         } else {
+            if (ce.route.size() < 6) continue;
             std::vector<double> route = ce.route;
             const auto& vSrc = views[static_cast<size_t>(ce.src)];
             const auto& vDst = views[static_cast<size_t>(ce.dst)];

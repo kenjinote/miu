@@ -30,6 +30,66 @@ static inline void MiuShowSaveErrorAlert(void) {
     [errAlert runModal];
 }
 
+static void MiuLoadOfflineContentRuleList(void (^completion)(WKContentRuleList * _Nullable ruleList)) {
+    static WKContentRuleList *s_cachedRuleList = nil;
+    static NSMutableArray<void (^)(WKContentRuleList *)> *s_pendingCallbacks = nil;
+    static BOOL s_isCompiling = NO;
+
+    if (s_cachedRuleList) {
+        if (completion) completion(s_cachedRuleList);
+        return;
+    }
+    if (!s_pendingCallbacks) {
+        s_pendingCallbacks = [NSMutableArray array];
+    }
+    if (completion) {
+        [s_pendingCallbacks addObject:[completion copy]];
+    }
+    if (s_isCompiling) {
+        return;
+    }
+    s_isCompiling = YES;
+
+    void (^finishWithRuleList)(WKContentRuleList * _Nullable) = ^(WKContentRuleList * _Nullable compiled) {
+        if (compiled) {
+            s_cachedRuleList = compiled;
+        }
+        s_isCompiling = NO;
+        NSArray<void (^)(WKContentRuleList *)> *callbacks = [s_pendingCallbacks copy];
+        [s_pendingCallbacks removeAllObjects];
+        for (void (^cb)(WKContentRuleList *) in callbacks) {
+            cb(compiled);
+        }
+    };
+
+    WKContentRuleListStore *store = [WKContentRuleListStore defaultStore];
+    if (!store) {
+        finishWithRuleList(nil);
+        return;
+    }
+    [store lookUpContentRuleListForIdentifier:@"MiuOfflineRuleList"
+                            completionHandler:^(WKContentRuleList *lookedUp, NSError *lookUpErr) {
+        if (lookedUp && lookUpErr == nil) {
+            finishWithRuleList(lookedUp);
+            return;
+        }
+        [store compileContentRuleListForIdentifier:@"MiuOfflineRuleList"
+                            encodedContentRuleList:kMiuOfflineContentRulesJson
+                                 completionHandler:^(WKContentRuleList *compiled, NSError *compileErr) {
+            if (compiled && compileErr == nil) {
+                finishWithRuleList(compiled);
+                return;
+            }
+            NSString *retryId = [NSString stringWithFormat:@"MiuOfflineRuleList_%@", [[NSUUID UUID] UUIDString]];
+            [store compileContentRuleListForIdentifier:retryId
+                                encodedContentRuleList:kMiuOfflineContentRulesJson
+                                     completionHandler:^(WKContentRuleList *retryCompiled, NSError *retryErr) {
+                finishWithRuleList((retryCompiled && retryErr == nil) ? retryCompiled : nil);
+            }];
+        }];
+    }];
+}
+
 @class EditorView;
 
 @interface MiuPreviewMessageHandler : NSObject <WKScriptMessageHandler, WKNavigationDelegate>
@@ -81,6 +141,8 @@ static inline void MiuShowSaveErrorAlert(void) {
     WKWebView *previewWebView;
     MiuSplitterView *splitterView;
     MiuPreviewMessageHandler *previewMsgHandler;
+    BOOL previewRuleListReady;
+    BOOL pendingPreviewUpdate;
     NSURL *currentSecurityScopedURL;
 }
 - (void)saveSecurityScopedBookmarkForURL:(NSURL *)url;
@@ -100,6 +162,12 @@ static inline void MiuShowSaveErrorAlert(void) {
 - (void)replaceAllAction:(id)sender;
 - (void)showGoToLinePanel;
 - (void)jumpToLine:(NSInteger)line;
+- (void)saveDocument:(id)sender;
+- (void)saveDocumentAs:(id)sender;
+- (void)showFindAction:(id)sender;
+- (void)showReplaceAction:(id)sender;
+- (void)showGoToLineAction:(id)sender;
+- (void)closeAuxiliaryPanelsAndReleaseResources;
 - (void)cut:(id)sender;
 - (void)copy:(id)sender;
 - (void)paste:(id)sender;
@@ -125,7 +193,9 @@ static inline void MiuShowSaveErrorAlert(void) {
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
     NSURL *url = navigationAction.request.URL;
     NSString *absStr = url ? [[url absoluteString] lowercaseString] : @"";
-    if (navigationAction.navigationType == WKNavigationTypeOther &&
+    BOOL isMainFrame = (navigationAction.targetFrame != nil && navigationAction.targetFrame.isMainFrame);
+    if (isMainFrame &&
+        navigationAction.navigationType == WKNavigationTypeOther &&
         ([absStr isEqualToString:@"about:blank"] || [absStr hasPrefix:@"about:blank#"])) {
         decisionHandler(WKNavigationActionPolicyAllow);
     } else {
@@ -152,6 +222,8 @@ static inline void MiuShowSaveErrorAlert(void) {
 - (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(WKNavigation *)navigation withError:(NSError *)error {
     self.previewPageLoaded = NO;
     if (error.code == NSURLErrorCancelled) return;
+    EditorView *ev = self.editorView;
+    if (!ev || !ev->previewRuleListReady) return;
     NSString *html = self.pendingHtml;
     if (html) {
         self.pendingHtml = nil;
@@ -161,6 +233,8 @@ static inline void MiuShowSaveErrorAlert(void) {
 - (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error {
     self.previewPageLoaded = NO;
     if (error.code == NSURLErrorCancelled) return;
+    EditorView *ev = self.editorView;
+    if (!ev || !ev->previewRuleListReady) return;
     NSString *html = self.pendingHtml;
     if (html) {
         self.pendingHtml = nil;
@@ -454,7 +528,8 @@ static inline void MiuShowSaveErrorAlert(void) {
     if (([event modifierFlags] & NSEventModifierFlagCommand)) {
         NSString *ch = [[event charactersIgnoringModifiers] lowercaseString];
         if ([ch isEqualToString:@"f"]) {
-            [self.editorView showFindPanel:NO];
+            BOOL replaceMode = ([event modifierFlags] & NSEventModifierFlagOption) != 0;
+            [self.editorView showFindPanel:replaceMode];
             return YES;
         }
         if ([ch isEqualToString:@"h"] || [ch isEqualToString:@"r"]) {
@@ -531,9 +606,11 @@ static inline void MiuShowSaveErrorAlert(void) {
                 NSString *currentPathNS = MiuNSStringFromStdString(WToUTF8(currentPathW));
                 if (currentPathNS.length > 0) {
                     [window setRepresentedURL:[NSURL fileURLWithPath:currentPathNS]];
+                } else {
+                    [window setRepresentedURL:nil];
                 }
             } else {
-                [window setRepresentedURL:[[NSBundle mainBundle] bundleURL]];
+                [window setRepresentedURL:nil];
             }
         };
         editor->cbCoordinateWriteFile = [weakSelf](const std::string& utf8Path, const std::string& rawBytes) -> bool {
@@ -554,35 +631,47 @@ static inline void MiuShowSaveErrorAlert(void) {
             NSFileCoordinator *coordinator = [[NSFileCoordinator alloc] initWithFilePresenter:nil];
             [coordinator coordinateWritingItemAtURL:targetURL options:NSFileCoordinatorWritingForReplacing error:&coordError byAccessor:^(NSURL * _Nonnull newURL) {
                 NSFileManager *fm = [NSFileManager defaultManager];
+                NSURL *resolvedURL = [newURL URLByResolvingSymlinksInPath] ?: newURL;
+                NSNumber *origPerms = nil;
+                if (resolvedURL.path.length > 0 && [fm fileExistsAtPath:resolvedURL.path]) {
+                    NSDictionary *attrs = [fm attributesOfItemAtPath:resolvedURL.path error:nil];
+                    origPerms = attrs[NSFilePosixPermissions];
+                }
                 NSURL *repDir = [fm URLForDirectory:NSItemReplacementDirectory
                                            inDomain:NSUserDomainMask
-                                  appropriateForURL:newURL
+                                  appropriateForURL:resolvedURL
                                              create:YES
                                               error:nil];
                 if (repDir) {
                     NSURL *tmpURL = [repDir URLByAppendingPathComponent:@"miu_save.tmp"];
                     if ([data writeToURL:tmpURL options:0 error:nil]) {
-                        if ([fm fileExistsAtPath:newURL.path]) {
-                            writeSuccess = [fm replaceItemAtURL:newURL
+                        if (resolvedURL.path.length > 0 && [fm fileExistsAtPath:resolvedURL.path]) {
+                            writeSuccess = [fm replaceItemAtURL:resolvedURL
                                                   withItemAtURL:tmpURL
                                                  backupItemName:nil
                                                         options:0
                                                resultingItemURL:nil
                                                           error:nil];
                         } else {
-                            writeSuccess = [fm moveItemAtURL:tmpURL toURL:newURL error:nil];
+                            writeSuccess = [fm moveItemAtURL:tmpURL toURL:resolvedURL error:nil];
                         }
                     }
                     [fm removeItemAtURL:repDir error:nil];
                 }
                 if (!writeSuccess) {
-                    writeSuccess = [data writeToURL:newURL options:NSDataWritingAtomic error:nil];
+                    writeSuccess = [data writeToURL:resolvedURL options:NSDataWritingAtomic error:nil];
                 }
                 if (!writeSuccess) {
+                    writeSuccess = [data writeToURL:resolvedURL options:0 error:nil];
+                }
+                if (!writeSuccess && ![resolvedURL isEqual:newURL]) {
                     writeSuccess = [data writeToURL:newURL options:0 error:nil];
                 }
+                if (writeSuccess && origPerms != nil && resolvedURL.path.length > 0) {
+                    [fm setAttributes:@{NSFilePosixPermissions: origPerms} ofItemAtPath:resolvedURL.path error:nil];
+                }
             }];
-            return writeSuccess ? true : false;
+            return (coordError == nil && writeSuccess) ? true : false;
         };
         editor->cbSetAlwaysOnTop = [weakSelf](bool onTop) {
             __strong EditorView *strongSelf = weakSelf;
@@ -604,6 +693,45 @@ static inline void MiuShowSaveErrorAlert(void) {
             [a addButtonWithTitle:NSLocalizedString(@"Reload", @"再読み込み")];
             [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
             return ([a runModal] == NSAlertFirstButtonReturn);
+        };
+        editor->cbConfirmOverwriteExternalModify = [weakSelf]() -> bool {
+            __strong EditorView *strongSelf = weakSelf;
+            if (!strongSelf) return false;
+            NSAlert *a = [NSAlert new];
+            [a setAlertStyle:NSAlertStyleWarning];
+            [a setMessageText:NSLocalizedString(@"The file has been modified externally on disk.", @"外部変更の上書き確認")];
+            [a setInformativeText:NSLocalizedString(@"Saving now will overwrite external changes made by another application.", @"外部変更の上書き詳細")];
+            [a addButtonWithTitle:NSLocalizedString(@"Overwrite", @"上書き保存")];
+            [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
+            return ([a runModal] == NSAlertFirstButtonReturn);
+        };
+        editor->cbHandleLossyEncodingSave = [weakSelf]() -> int {
+            __strong EditorView *strongSelf = weakSelf;
+            if (!strongSelf || !strongSelf->editor) return 0;
+            NSAlert *a = [NSAlert new];
+            [a setAlertStyle:NSAlertStyleWarning];
+            [a setMessageText:NSLocalizedString(@"Some characters cannot be represented in the current encoding.", @"文字コード変換警告")];
+            [a setInformativeText:NSLocalizedString(@"Saving in the current encoding would replace unrepresentable characters with '?'. Choose Save as UTF-8 to preserve all characters losslessly.", @"文字コード変換警告詳細")];
+            [a addButtonWithTitle:NSLocalizedString(@"Save as UTF-8", @"UTF-8で保存")];
+            [a addButtonWithTitle:NSLocalizedString(@"Save As...", @"別名で保存...")];
+            [a addButtonWithTitle:NSLocalizedString(@"Cancel", @"キャンセル")];
+            NSModalResponse r = [a runModal];
+            if (r == NSAlertFirstButtonReturn) {
+                return 1;
+            }
+            if (r == NSAlertSecondButtonReturn) {
+                MiuEncoding prevEnc = strongSelf->editor->currentEncoding;
+                uint32_t prevCp = strongSelf->editor->currentCodePage;
+                strongSelf->editor->currentEncoding = ENC_UTF8_NOBOM;
+                strongSelf->editor->currentCodePage = kCFStringEncodingUTF8;
+                if (strongSelf->editor->saveFileAs()) {
+                    return 3;
+                }
+                strongSelf->editor->currentEncoding = prevEnc;
+                strongSelf->editor->currentCodePage = prevCp;
+                return 2;
+            }
+            return 0;
         };
         editor->cbSetClipboard = [weakSelf](const std::string& text, bool isRect) {
             NSPasteboard *pb = [NSPasteboard generalPasteboard];
@@ -645,12 +773,12 @@ static inline void MiuShowSaveErrorAlert(void) {
                 bool ok = strongSelf->editor->currentFilePath.empty()
                     ? strongSelf->editor->saveFileAs()
                     : strongSelf->editor->saveFile(strongSelf->editor->currentFilePath);
-                if (!ok && !strongSelf->editor->currentFilePath.empty()) {
+                if (!ok && !strongSelf->editor->currentFilePath.empty() && !strongSelf->editor->lastSaveAbortedByUser) {
                     MiuShowSaveErrorAlert();
                 }
                 return ok;
             }
-            if (r == NSAlertThirdButtonReturn) { strongSelf->editor->isDirty = false; strongSelf->editor->updateTitleBar(); return true; }
+            if (r == NSAlertThirdButtonReturn) return true;
             return false;
         };
         editor->cbSaveFileAs = [weakSelf]() -> bool {
@@ -662,16 +790,24 @@ static inline void MiuShowSaveErrorAlert(void) {
             p.extensionHidden = NO;
             if ([p runModal] == NSModalResponseOK && p.URL && p.URL.path.length > 0) {
                 NSURL *pickedURL = p.URL;
-                BOOL granted = [pickedURL startAccessingSecurityScopedResource];
-                if (strongSelf->currentSecurityScopedURL && strongSelf->currentSecurityScopedURL != pickedURL) {
-                    [strongSelf->currentSecurityScopedURL stopAccessingSecurityScopedResource];
-                }
-                strongSelf->currentSecurityScopedURL = granted ? pickedURL : nil;
+                NSURL *oldScopedURL = strongSelf->currentSecurityScopedURL;
+                BOOL sameURL = (oldScopedURL && [oldScopedURL isEqual:pickedURL]);
+                BOOL granted = sameURL ? YES : [pickedURL startAccessingSecurityScopedResource];
+                strongSelf->currentSecurityScopedURL = sameURL ? oldScopedURL : (granted ? pickedURL : nil);
                 bool ok = strongSelf->editor->saveFile(UTF8ToW(MiuStdStringFromNSString(pickedURL.path)));
                 if (ok) {
+                    if (oldScopedURL && !sameURL) {
+                        [oldScopedURL stopAccessingSecurityScopedResource];
+                    }
                     [strongSelf saveSecurityScopedBookmarkForURL:pickedURL];
                 } else {
-                    MiuShowSaveErrorAlert();
+                    if (!sameURL && granted) {
+                        [pickedURL stopAccessingSecurityScopedResource];
+                    }
+                    strongSelf->currentSecurityScopedURL = oldScopedURL;
+                    if (!strongSelf->editor->lastSaveAbortedByUser) {
+                        MiuShowSaveErrorAlert();
+                    }
                 }
                 return ok;
             }
@@ -767,6 +903,8 @@ static inline void MiuShowSaveErrorAlert(void) {
 - (void)ensurePreviewViewsCreated {
     if (previewWebView || ![self superview]) return;
     NSView *container = [self superview];
+    previewRuleListReady = NO;
+    pendingPreviewUpdate = NO;
     previewMsgHandler = [[MiuPreviewMessageHandler alloc] init];
     previewMsgHandler.editorView = self;
 
@@ -774,13 +912,21 @@ static inline void MiuShowSaveErrorAlert(void) {
     cfg.websiteDataStore = [WKWebsiteDataStore nonPersistentDataStore];
     WKUserContentController *ucc = [[WKUserContentController alloc] init];
     [ucc addScriptMessageHandler:previewMsgHandler name:@"miuPreview"];
-    [[WKContentRuleListStore defaultStore] compileContentRuleListForIdentifier:@"MiuOfflineRuleList"
-                                                        encodedContentRuleList:kMiuOfflineContentRulesJson
-                                                             completionHandler:^(WKContentRuleList *ruleList, NSError *error) {
+    __weak EditorView *weakRuleSelf = self;
+    MiuLoadOfflineContentRuleList(^(WKContentRuleList * _Nullable ruleList) {
+        __strong EditorView *strongRuleSelf = weakRuleSelf;
+        if (!strongRuleSelf) return;
         if (ruleList) {
             [ucc addContentRuleList:ruleList];
         }
-    }];
+        strongRuleSelf->previewRuleListReady = YES;
+        if (strongRuleSelf->previewWebView &&
+            (strongRuleSelf->pendingPreviewUpdate ||
+             (strongRuleSelf->editor && strongRuleSelf->editor->showPreview))) {
+            strongRuleSelf->pendingPreviewUpdate = NO;
+            [strongRuleSelf updatePreviewPane];
+        }
+    });
     std::string sbJsStr = std::string("(function(){") + MiuPreview::getPreviewScrollbarJs() + "})();";
     NSString *sbJsNS = MiuNSStringFromStdString(sbJsStr);
     if (sbJsNS.length > 0) {
@@ -845,6 +991,11 @@ static inline void MiuShowSaveErrorAlert(void) {
     [self ensurePreviewViewsCreated];
     if (!previewWebView) return;
     [self updatePreviewBackground];
+    if (!previewRuleListReady) {
+        editor->previewInitialLoaded = false;
+        pendingPreviewUpdate = YES;
+        return;
+    }
     MiuPreview::PreviewRenderResult res = editor->getPreviewRenderResult();
     NSString *fullHtmlNS = MiuNSStringFromStdString(res.fullHtml);
     if (fullHtmlNS.length == 0) return;
@@ -892,17 +1043,20 @@ static inline void MiuShowSaveErrorAlert(void) {
 
 - (BOOL)openURLWithSecurityScope:(NSURL *)url {
     if (!url || !editor || url.path.length == 0) return NO;
-    BOOL granted = [url startAccessingSecurityScopedResource];
+    NSURL *oldScopedURL = currentSecurityScopedURL;
+    BOOL sameURL = (oldScopedURL && [oldScopedURL isEqual:url]);
+    BOOL granted = sameURL ? YES : [url startAccessingSecurityScopedResource];
     bool ok = editor->openFileFromPath(MiuStdStringFromNSString(url.path));
     if (ok) {
-        if (currentSecurityScopedURL && currentSecurityScopedURL != url) {
-            [currentSecurityScopedURL stopAccessingSecurityScopedResource];
+        editor->showHelpPopup = false;
+        if (oldScopedURL && !sameURL) {
+            [oldScopedURL stopAccessingSecurityScopedResource];
         }
-        currentSecurityScopedURL = granted ? url : nil;
+        currentSecurityScopedURL = sameURL ? oldScopedURL : (granted ? url : nil);
         [self saveSecurityScopedBookmarkForURL:url];
         return YES;
     }
-    if (granted && url != currentSecurityScopedURL) {
+    if (!sameURL && granted) {
         [url stopAccessingSecurityScopedResource];
     }
     return NO;
@@ -950,9 +1104,9 @@ static inline void MiuShowSaveErrorAlert(void) {
             NSColor *highlightColor = [NSColor selectedTextBackgroundColor];
             NSColor *safeColor = [highlightColor colorUsingColorSpace:[NSColorSpace sRGBColorSpace]];
             if (!safeColor) safeColor = highlightColor;
-            if (editor->colSel) CGColorRelease(editor->colSel);
-            editor->colSel = [safeColor CGColor];
-            CGColorRetain(editor->colSel);
+            if (self->editor->colSel) CGColorRelease(self->editor->colSel);
+            self->editor->colSel = [safeColor CGColor];
+            CGColorRetain(self->editor->colSel);
         }];
     }
 }
@@ -1017,7 +1171,7 @@ static inline void MiuShowSaveErrorAlert(void) {
     if (![self window]) return;
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
     NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
-    if (!appVersion) appVersion = @"1.0.51";
+    if (!appVersion) appVersion = @"1.0.53";
     NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
     editor->appVersionStr = UTF8ToW([versionString UTF8String]);
     NSString *localizedHelp = NSLocalizedString(@"HelpText", @"ヘルプのショートカット一覧");
@@ -1129,15 +1283,57 @@ static inline void MiuShowSaveErrorAlert(void) {
 }
 - (void)toggleAlwaysOnTopAction:(id)sender { if (editor) { editor->toggleAlwaysOnTop(); [self setNeedsDisplay:YES]; } }
 - (void)showHelpAction:(id)sender { if (editor) { editor->showHelpPopup = !editor->showHelpPopup; [self setNeedsDisplay:YES]; } }
+- (void)saveDocument:(id)sender {
+    if (!editor) return;
+    if (editor->currentFilePath.empty()) {
+        editor->saveFileAs();
+    } else if (!editor->saveFile(editor->currentFilePath) && !editor->lastSaveAbortedByUser) {
+        MiuShowSaveErrorAlert();
+    }
+    [self setNeedsDisplay:YES];
+}
+- (void)saveDocumentAs:(id)sender {
+    if (!editor) return;
+    editor->saveFileAs();
+    [self setNeedsDisplay:YES];
+}
+- (void)showFindAction:(id)sender { [self showFindPanel:NO]; }
+- (void)showReplaceAction:(id)sender { [self showFindPanel:YES]; }
+- (void)showGoToLineAction:(id)sender { [self showGoToLinePanel]; }
+- (void)closeAuxiliaryPanelsAndReleaseResources {
+    if (findPanel) {
+        if ([findPanel parentWindow]) {
+            [[findPanel parentWindow] removeChildWindow:findPanel];
+        }
+        [findPanel orderOut:nil];
+        [findPanel close];
+        findPanel = nil;
+    }
+    if (goToLineWindow) {
+        if (self.window && goToLineWindow.sheetParent == self.window) {
+            [self.window endSheet:goToLineWindow];
+        }
+        [goToLineWindow orderOut:nil];
+        [goToLineWindow close];
+        goToLineWindow = nil;
+        goToLineTextField = nil;
+    }
+    if (currentSecurityScopedURL) {
+        [currentSecurityScopedURL stopAccessingSecurityScopedResource];
+        currentSecurityScopedURL = nil;
+    }
+}
 
 - (void)updateScrollers {
+    if (!editor) return;
     NSRect b = [self bounds];
     CGFloat sw = 14.0;
+    editor->clampScrollPositions((float)b.size.width, (float)b.size.height);
     ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
+    VScrollBarRange R = editor->getVerticalScrollBarRange((float)b.size.width, (float)b.size.height);
     bool needsV = L.needV;
     bool needsH = L.needH;
     float visibleWidth = L.textAreaW;
-    int totalLines = (editor->wordWrapEnabled && L.totalVisualLines > L.totalLines) ? L.totalVisualLines : L.totalLines;
     float maxLineWidth = editor->maxLineWidth;
 
     if (needsV) {
@@ -1153,12 +1349,10 @@ static inline void MiuShowSaveErrorAlert(void) {
     editor->visibleVScrollWidth = needsV ? (float)sw : 0.0f;
     editor->visibleHScrollHeight = needsH ? (float)sw : 0.0f;
 
-    int visibleLines = L.visibleLines;
-    [vScroller setKnobProportion:std::min(1.0, (double)visibleLines / std::max(1, totalLines))];
-    int maxV = std::max(0, totalLines - visibleLines);
-    int currentV = (editor->wordWrapEnabled && L.totalLines == 1 && L.totalVisualLines > 1) ? editor->vScrollSubLine : editor->vScrollPos;
-    if (needsV && maxV > 0) {
-        [vScroller setDoubleValue:std::clamp((double)currentV / maxV, 0.0, 1.0)];
+    double vProp = (R.totalUnits > 0.0) ? std::clamp(R.visibleUnits / R.totalUnits, 0.0, 1.0) : 1.0;
+    [vScroller setKnobProportion:vProp];
+    if (needsV && R.maxUnits > 0.0) {
+        [vScroller setDoubleValue:std::clamp(R.currentUnits / R.maxUnits, 0.0, 1.0)];
         [vScroller setEnabled:YES];
     } else {
         [vScroller setDoubleValue:0.0];
@@ -1186,19 +1380,14 @@ static inline void MiuShowSaveErrorAlert(void) {
 }
 
 - (void)scrollAction:(MiuScroller*)s {
+    if (!editor) return;
     NSRect b = [self bounds];
-    ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
     if (s == vScroller) {
-        int totalLines = (editor->wordWrapEnabled && L.totalVisualLines > L.totalLines) ? L.totalVisualLines : L.totalLines;
-        int maxV = std::max(0, totalLines - L.visibleLines);
-        if (editor->wordWrapEnabled && L.totalLines == 1 && L.totalVisualLines > 1) {
-            editor->vScrollSubLine = std::clamp((int)std::round([s doubleValue] * maxV), 0, maxV);
-        } else {
-            editor->vScrollPos = std::clamp((int)std::round([s doubleValue] * maxV), 0, maxV);
-        }
+        editor->setVerticalScrollFromRatio([s doubleValue], (float)b.size.width, (float)b.size.height);
     } else {
+        ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
         float maxH = std::max(0.0f, editor->maxLineWidth - L.textAreaW);
-        editor->hScrollPos = std::max(0, (int)([s doubleValue] * maxH));
+        editor->hScrollPos = std::max(0, (int)std::round([s doubleValue] * maxH));
     }
     [self setNeedsDisplay:YES];
 }
@@ -1211,8 +1400,13 @@ static inline void MiuShowSaveErrorAlert(void) {
 }
 
 - (void)mouseDown:(NSEvent *)e {
+    if (!editor) return;
     if (editor->showHelpPopup) { editor->showHelpPopup = false; [self setNeedsDisplay:YES]; }
     [[self window] makeFirstResponder:self];
+    if (!editor->imeComp.empty()) {
+        [self unmarkText];
+        [[self inputContext] discardMarkedText];
+    }
     NSPoint p = [self convertPoint:[e locationInWindow] fromView:nil];
     if (p.x > self.bounds.size.width - editor->visibleVScrollWidth || p.y > self.bounds.size.height - editor->visibleHScrollHeight) return;
 
@@ -1335,13 +1529,16 @@ static inline void MiuShowSaveErrorAlert(void) {
         return (float)cols * editor->charWidth;
     };
     if (isOption) {
+        if (editor->lineStarts.empty()) editor->rebuildLineStarts();
+        if (editor->lineStarts.empty()) return;
+        int maxLi = std::max(0, (int)editor->lineStarts.size() - 1);
         editor->cursors.clear();
         float startY = std::min((float)boxSelectStartPoint.y, (float)p.y);
         float endY = std::max((float)boxSelectStartPoint.y, (float)p.y);
         int startLine = (int)std::floor((startY + (float)editor->vScrollPos * editor->lineHeight) / editor->lineHeight);
         int endLine = (int)std::floor((endY + (float)editor->vScrollPos * editor->lineHeight) / editor->lineHeight);
-        startLine = std::clamp(startLine, 0, (int)editor->lineStarts.size() - 1);
-        endLine = std::clamp(endLine, 0, (int)editor->lineStarts.size() - 1);
+        startLine = std::clamp(startLine, 0, maxLi);
+        endLine = std::clamp(endLine, 0, maxLi);
         float rawStartX = (float)boxSelectStartPoint.x - editor->gutterWidth + (float)editor->hScrollPos;
         float rawEndX = (float)p.x - editor->gutterWidth + (float)editor->hScrollPos;
         float gridStartX = snapToGrid(rawStartX), gridEndX = snapToGrid(rawEndX);
@@ -1522,6 +1719,8 @@ static inline void MiuShowSaveErrorAlert(void) {
 
 - (void)jumpToLine:(NSInteger)line {
     if (!editor) return;
+    if (editor->lineStarts.empty()) editor->rebuildLineStarts();
+    if (editor->lineStarts.empty()) return;
     if (line < 1) line = 1;
     int totalLines = (int)editor->lineStarts.size();
     if (line > totalLines) line = totalLines;
@@ -1582,6 +1781,9 @@ static inline void MiuShowSaveErrorAlert(void) {
 }
 
 - (void)keyDown:(NSEvent *)e {
+    if (!editor) return;
+    if (editor->lineStarts.empty()) editor->rebuildLineStarts();
+    if (editor->lineStarts.empty()) return;
     unsigned short code = [e keyCode];
     NSString *chars = [e charactersIgnoringModifiers];
     bool cmd = ([e modifierFlags] & NSEventModifierFlagCommand) != 0;
@@ -1593,6 +1795,14 @@ static inline void MiuShowSaveErrorAlert(void) {
         editor->showHelpPopup = false;
         [self setNeedsDisplay:YES];
         if (code == 122) return;
+    }
+    if ([self hasMarkedText]) {
+        if (!cmd) {
+            [self.inputContext handleEvent:e];
+            return;
+        }
+        [self unmarkText];
+        [[self inputContext] discardMarkedText];
     }
     if (code == 122) { // F1
         editor->showHelpPopup = true;
@@ -1694,18 +1904,19 @@ static inline void MiuShowSaveErrorAlert(void) {
             return;
         }
         int totalLines = (int)editor->lineStarts.size();
+        int maxLineIdx = std::max(0, totalLines - 1);
         for (auto& c : editor->cursors) {
             int currentLine = editor->getLineIdx(c.head);
             int newLine = currentLine;
             if (code == 116) { newLine = std::max(0, currentLine - pageLines); }
-            else { newLine = std::min(totalLines - 1, currentLine + pageLines); }
-            if (code == 121 && newLine == totalLines - 1 && currentLine == totalLines - 1) c.head = editor->pt.length();
+            else { newLine = std::min(maxLineIdx, currentLine + pageLines); }
+            if (code == 121 && newLine == maxLineIdx && currentLine == maxLineIdx) c.head = editor->pt.length();
             else c.head = editor->getPosFromLineAndX(newLine, c.desiredX);
             if (!shift) { c.anchor = c.head; c.originalAnchorX = c.desiredX; }
             c.isVirtual = false;
         }
         if (code == 116) editor->vScrollPos = std::max(0, editor->vScrollPos - pageLines);
-        else editor->vScrollPos = std::min(totalLines - 1, editor->vScrollPos + pageLines);
+        else editor->vScrollPos = std::min(maxLineIdx, editor->vScrollPos + pageLines);
         editor->ensureCaretVisible();
         [self setNeedsDisplay:YES];
         return;
@@ -1713,6 +1924,10 @@ static inline void MiuShowSaveErrorAlert(void) {
     if (code == 99) { // F3
         [self findNextWithDirection:!shift];
         return;
+    }
+    if (cmd && opt && !ctrl && !shift) {
+        NSString *lowerOptChar = [chars lowercaseString];
+        if ([lowerOptChar isEqualToString:@"f"]) { [self showFindPanel:YES]; return; }
     }
     if (cmd && !opt) {
         NSString *lowerChar = [chars lowercaseString];
@@ -1729,7 +1944,7 @@ static inline void MiuShowSaveErrorAlert(void) {
             if (shift || editor->currentFilePath.empty()) {
                 editor->saveFileAs();
             } else {
-                if (!editor->saveFile(editor->currentFilePath)) {
+                if (!editor->saveFile(editor->currentFilePath) && !editor->lastSaveAbortedByUser) {
                     MiuShowSaveErrorAlert();
                 }
             }
@@ -1907,7 +2122,7 @@ static inline void MiuShowSaveErrorAlert(void) {
     ScrollBarLayout L = editor->getScrollBarLayout((float)b.size.width, (float)b.size.height);
     int maxV = std::max(0, L.totalLines - L.visibleLines);
     editor->vScrollPos = std::clamp(editor->vScrollPos - dy, 0, maxV);
-    int maxH = std::max(0, (int)std::ceil(editor->maxLineWidth - L.textAreaW));
+    int maxH = L.needH ? std::max(0, (int)std::ceil(editor->maxLineWidth - L.textAreaW)) : 0;
     editor->hScrollPos = std::clamp(editor->hScrollPos - (int)[e deltaX], 0, maxH);
     [self updateScrollers];
     [self setNeedsDisplay:YES];
@@ -1915,6 +2130,7 @@ static inline void MiuShowSaveErrorAlert(void) {
 
 - (void)insertText:(id)s replacementRange:(NSRange)r {
     NSString* t = [s isKindOfClass:[NSAttributedString class]] ? [s string] : s;
+    editor->imeComp.clear();
     if ([t isEqualToString:@"\r"] || [t isEqualToString:@"\n"] || [t isEqualToString:@"\r\n"]) {
         editor->insertNewlineWithAutoIndent();
     } else {
@@ -1944,19 +2160,53 @@ static inline void MiuShowSaveErrorAlert(void) {
             editor->insertAtCursors(norm);
         }
     }
-    editor->imeComp = "";
     [self setNeedsDisplay:YES];
 }
 
 - (void)setMarkedText:(id)s selectedRange:(NSRange)sr replacementRange:(NSRange)rr {
     NSString *str = [s isKindOfClass:[NSAttributedString class]] ? [(NSAttributedString *)s string] : (NSString *)s;
-    editor->imeComp = MiuStdStringFromNSString(str);
+    std::string incoming = MiuStdStringFromNSString(str);
+    if (editor->imeComp.empty() && !incoming.empty()) {
+        bool hasSel = false;
+        for (const auto& c : editor->cursors) {
+            if (c.hasSelection()) {
+                hasSel = true;
+                break;
+            }
+        }
+        if (hasSel) {
+            editor->insertAtCursors("");
+        }
+    }
+    editor->imeComp = std::move(incoming);
     if (!editor->imeComp.empty()) editor->ensureCaretVisible();
     [self setNeedsDisplay:YES];
 }
-- (void)unmarkText { editor->imeComp = ""; [self setNeedsDisplay:YES]; }
-- (BOOL)hasMarkedText { return !editor->imeComp.empty(); }
-- (NSRange)markedRange { return [self hasMarkedText] ? NSMakeRange(0, editor->imeComp.length()) : NSMakeRange(NSNotFound, 0); }
+- (void)unmarkText {
+    if (editor && !editor->imeComp.empty()) {
+        std::string committed = editor->imeComp;
+        editor->imeComp.clear();
+        bool usePadding = false;
+        for (const auto& c : editor->cursors) {
+            if (c.isVirtual) {
+                usePadding = true;
+                break;
+            }
+        }
+        if (usePadding) {
+            editor->insertAtCursorsWithPadding(committed);
+        } else {
+            editor->insertAtCursors(committed);
+        }
+    }
+    [self setNeedsDisplay:YES];
+}
+- (BOOL)hasMarkedText { return editor && !editor->imeComp.empty(); }
+- (NSRange)markedRange {
+    if (![self hasMarkedText]) return NSMakeRange(NSNotFound, 0);
+    NSString *compNS = MiuNSStringFromStdString(editor->imeComp);
+    return NSMakeRange(0, compNS ? [compNS length] : 0);
+}
 - (NSRange)selectedRange { return NSMakeRange(NSNotFound, 0); }
 - (void)doCommandBySelector:(SEL)s {
     if (s == @selector(deleteBackward:)) editor->backspaceAtCursors();
@@ -1967,10 +2217,52 @@ static inline void MiuShowSaveErrorAlert(void) {
 - (nullable NSAttributedString *)attributedSubstringForProposedRange:(NSRange)r actualRange:(NSRangePointer)ar { return nil; }
 - (NSArray*)validAttributesForMarkedText { return @[]; }
 - (NSRect)firstRectForCharacterRange:(NSRange)r actualRange:(NSRangePointer)ar {
-    if (editor->cursors.empty()) return NSZeroRect;
-    float x = editor->getXFromPos(editor->cursors.back().head);
-    float y = (float)(editor->getLineIdx(editor->cursors.back().head) - editor->vScrollPos) * editor->lineHeight;
-    return [[self window] convertRectToScreen:[self convertRect:NSMakeRect(editor->gutterWidth - (float)editor->hScrollPos + x, y, 2, editor->lineHeight) toView:nil]];
+    if (!editor || editor->cursors.empty() || ![self window]) return NSZeroRect;
+    if (ar) *ar = r;
+    if (editor->lineStarts.empty()) editor->rebuildLineStarts();
+    if (editor->lineStarts.empty()) return NSZeroRect;
+    const Cursor& c = editor->cursors.back();
+    int li = editor->getLineIdx(c.head);
+    float physX = editor->getXInLine(li, c.head);
+    float localX = editor->gutterWidth - (float)editor->hScrollPos + physX;
+    float localY = (float)(li - editor->vScrollPos) * editor->lineHeight;
+    if (editor->wordWrapEnabled) {
+        float vw = std::max(1.0f, (float)self.bounds.size.width - editor->gutterWidth - editor->visibleVScrollWidth);
+        auto subs = editor->getVisualSubLines(li, vw);
+        size_t lineStart = editor->lineStarts[li];
+        size_t rel = (c.head >= lineStart) ? (c.head - lineStart) : 0;
+        int subIdx = 0;
+        for (int sIdx = 0; sIdx < (int)subs.size(); ++sIdx) {
+            size_t se = subs[sIdx].byteStart + subs[sIdx].byteLen;
+            if (rel < se || (rel == se && (c.affinity || sIdx == (int)subs.size() - 1))) {
+                subIdx = sIdx;
+                break;
+            }
+        }
+        float subStartX = subs.empty() ? 0.0f : editor->getXInLine(li, lineStart + subs[subIdx].byteStart);
+        localX = editor->gutterWidth + (physX - subStartX);
+        int startLi = std::clamp(editor->vScrollPos, 0, std::max(0, (int)editor->lineStarts.size() - 1));
+        int visDelta = 0;
+        if (li >= startLi) {
+            for (int k = startLi; k < li; ++k) {
+                int sc = std::max(1, editor->getLineVisualCount(k, vw));
+                int stSub = (k == startLi) ? std::clamp(editor->vScrollSubLine, 0, sc - 1) : 0;
+                visDelta += std::max(0, sc - stSub);
+            }
+            int curStSub = (li == startLi) ? std::clamp(editor->vScrollSubLine, 0, std::max(0, (int)subs.size() - 1)) : 0;
+            visDelta += (subIdx - curStSub);
+        } else {
+            for (int k = li; k < startLi; ++k) {
+                int sc = std::max(1, editor->getLineVisualCount(k, vw));
+                int stSub = (k == li) ? subIdx : 0;
+                visDelta -= std::max(0, sc - stSub);
+            }
+            visDelta -= std::max(0, editor->vScrollSubLine);
+        }
+        localY = (float)visDelta * editor->lineHeight;
+    }
+    NSRect viewRect = NSMakeRect(localX, localY, 2.0, editor->lineHeight);
+    return [[self window] convertRectToScreen:[self convertRect:viewRect toView:nil]];
 }
 - (NSUInteger)characterIndexForPoint:(NSPoint)p { return 0; }
 @end
@@ -1984,6 +2276,10 @@ static inline void MiuShowSaveErrorAlert(void) {
 @interface AppDelegate : NSObject <NSApplicationDelegate, NSWindowDelegate>
 @property (strong) NSMutableArray<CustomWindow *> *windows;
 @property (strong) NSMenu *recentFilesMenu;
+- (EditorView *)activeEditorView;
+- (EditorView *)findEditorViewInWindow:(NSWindow *)window;
+- (void)createWindowWithURL:(NSURL *)url;
+- (void)createWindowWithPath:(const char*)path;
 @end
 
 @implementation AppDelegate
@@ -2027,7 +2323,7 @@ static inline void MiuShowSaveErrorAlert(void) {
 - (void)openRecentFileItem:(NSMenuItem *)sender {
     NSString *path = [sender representedObject];
     if (!path) return;
-    EditorView *v = [self findEditorViewInWindow:[NSApp keyWindow]];
+    EditorView *v = [self activeEditorView];
     if (v && v->editor) {
         if (v->editor->checkUnsavedChanges()) {
             [v openRecentPathWithBookmark:path];
@@ -2042,15 +2338,24 @@ static inline void MiuShowSaveErrorAlert(void) {
 }
 
 - (void)clearRecentFilesAction:(id)sender {
-    EditorView *v = [self findEditorViewInWindow:[NSApp keyWindow]];
-    if (v && v->editor) {
-        v->editor->clearRecentFiles();
+    BOOL clearedViaEditor = NO;
+    for (CustomWindow *win in self.windows) {
+        EditorView *ev = [self findEditorViewInWindow:win];
+        if (ev && ev->editor) {
+            ev->editor->clearRecentFiles();
+            clearedViaEditor = YES;
+        }
+    }
+    if (!clearedViaEditor) {
+        Editor tempEditor;
+        tempEditor.clearRecentFiles();
     }
     [[NSUserDefaults standardUserDefaults] removeObjectForKey:kMiuMacRecentBookmarksKey];
+    [[NSDocumentController sharedDocumentController] clearRecentDocuments:nil];
     [self rebuildRecentFilesMenu];
 }
 
-- (void)createWindowWithPath:(const char*)path {
+- (void)createWindowWithURL:(NSURL *)url {
     NSUInteger style = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable | NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskFullSizeContentView;
     CustomWindow *win = [[CustomWindow alloc] initWithContentRect:NSMakeRect(0, 0, 860, 620) styleMask:style backing:NSBackingStoreBuffered defer:NO];
     [win setReleasedWhenClosed:NO];
@@ -2083,12 +2388,9 @@ static inline void MiuShowSaveErrorAlert(void) {
         if (strongDelegate) [strongDelegate rebuildRecentFilesMenu];
     };
 
-    if (path) {
-        NSString *nsP = MiuNSStringFromStdString(std::string(path));
-        if (nsP.length > 0) {
-            [v openURLWithSecurityScope:[NSURL fileURLWithPath:nsP]];
-        } else {
-            v->editor->openFileFromPath(path);
+    if (url && url.isFileURL && url.path.length > 0) {
+        if (![v openURLWithSecurityScope:url]) {
+            v->editor->newFile();
         }
     } else {
         v->editor->newFile();
@@ -2105,6 +2407,17 @@ static inline void MiuShowSaveErrorAlert(void) {
     [win makeFirstResponder:v];
     [self.windows addObject:win];
     [self rebuildRecentFilesMenu];
+}
+
+- (void)createWindowWithPath:(const char*)path {
+    NSURL *url = nil;
+    if (path && *path) {
+        NSString *nsP = MiuNSStringFromStdString(std::string(path));
+        if (nsP.length > 0) {
+            url = [NSURL fileURLWithPath:nsP];
+        }
+    }
+    [self createWindowWithURL:url];
 }
 
 - (void)windowDidResize:(NSNotification *)notification {
@@ -2135,7 +2448,10 @@ static inline void MiuShowSaveErrorAlert(void) {
     [mainMenu addItem:appMenuItem];
     NSMenu *appMenu = [NSMenu new];
     [appMenuItem setSubmenu:appMenu];
-    NSString *quitTitle = [NSString stringWithFormat:NSLocalizedString(@"Quit", nil), appTitleNS];
+    NSString *quitFmt = NSLocalizedString(@"Quit", @"終了");
+    NSString *quitTitle = [quitFmt containsString:@"%@"]
+        ? [NSString stringWithFormat:quitFmt, appTitleNS]
+        : [NSString stringWithFormat:@"%@ %@", quitFmt, appTitleNS];
     [appMenu addItemWithTitle:quitTitle action:@selector(terminate:) keyEquivalent:@"q"];
 
     // File menu
@@ -2149,6 +2465,10 @@ static inline void MiuShowSaveErrorAlert(void) {
     self.recentFilesMenu = [[NSMenu alloc] initWithTitle:NSLocalizedString(@"Open Recent", @"最近使った項目を開く")];
     [recentItem setSubmenu:self.recentFilesMenu];
     [fileMenu addItem:recentItem];
+    [fileMenu addItem:[NSMenuItem separatorItem]];
+    [fileMenu addItemWithTitle:NSLocalizedString(@"Save", @"保存") action:@selector(saveDocument:) keyEquivalent:@"s"];
+    NSMenuItem *saveAsItem = [fileMenu addItemWithTitle:NSLocalizedString(@"Save As...", @"別名で保存...") action:@selector(saveDocumentAs:) keyEquivalent:@"S"];
+    [saveAsItem setKeyEquivalentModifierMask:NSEventModifierFlagCommand | NSEventModifierFlagShift];
     [fileMenu addItem:[NSMenuItem separatorItem]];
     [fileMenu addItemWithTitle:NSLocalizedString(@"Close", @"閉じる") action:@selector(performClose:) keyEquivalent:@"w"];
 
@@ -2165,6 +2485,11 @@ static inline void MiuShowSaveErrorAlert(void) {
     [editMenu addItemWithTitle:NSLocalizedString(@"Copy", @"コピー") action:@selector(copy:) keyEquivalent:@"c"];
     [editMenu addItemWithTitle:NSLocalizedString(@"Paste", @"貼り付け") action:@selector(paste:) keyEquivalent:@"v"];
     [editMenu addItemWithTitle:NSLocalizedString(@"Select All", @"すべて選択") action:@selector(selectAll:) keyEquivalent:@"a"];
+    [editMenu addItem:[NSMenuItem separatorItem]];
+    [editMenu addItemWithTitle:NSLocalizedString(@"Find...", @"検索...") action:@selector(showFindAction:) keyEquivalent:@"f"];
+    NSMenuItem *replaceItem = [editMenu addItemWithTitle:NSLocalizedString(@"Replace...", @"置換...") action:@selector(showReplaceAction:) keyEquivalent:@"f"];
+    [replaceItem setKeyEquivalentModifierMask:NSEventModifierFlagCommand | NSEventModifierFlagOption];
+    [editMenu addItemWithTitle:NSLocalizedString(@"Go to Line...", @"指定行へ移動...") action:@selector(showGoToLineAction:) keyEquivalent:@"g"];
     [editMenu addItem:[NSMenuItem separatorItem]];
     [editMenu addItemWithTitle:NSLocalizedString(@"Toggle Comment", @"コメント切替") action:@selector(toggleCommentAction:) keyEquivalent:@"/"];
 
@@ -2194,35 +2519,119 @@ static inline void MiuShowSaveErrorAlert(void) {
     }
 }
 
+- (EditorView *)activeEditorView {
+    EditorView *v = [self findEditorViewInWindow:[NSApp keyWindow]];
+    if (!v) v = [self findEditorViewInWindow:[NSApp mainWindow]];
+    if (!v && self.windows.count > 0) v = [self findEditorViewInWindow:self.windows.firstObject];
+    return v;
+}
+
+- (void)application:(NSApplication *)application openURLs:(NSArray<NSURL *> *)urls {
+    for (NSURL *url in urls) {
+        if (!url || !url.isFileURL || url.path.length == 0) continue;
+        if (self.windows.count == 1) {
+            CustomWindow *onlyWin = self.windows.firstObject;
+            EditorView *onlyView = [self findEditorViewInWindow:onlyWin];
+            if (onlyView && onlyView->editor &&
+                onlyView->editor->currentFilePath.empty() &&
+                !onlyView->editor->isDirty &&
+                onlyView->editor->pt.length() == 0) {
+                if ([onlyView openURLWithSecurityScope:url]) {
+                    [onlyWin makeKeyAndOrderFront:nil];
+                    [onlyWin makeFirstResponder:onlyView];
+                    [self rebuildRecentFilesMenu];
+                    continue;
+                }
+            }
+        }
+        [self createWindowWithURL:url];
+    }
+}
+
 - (void)application:(NSApplication *)sender openFiles:(NSArray<NSString *> *)filenames {
+    NSMutableArray<NSURL *> *urls = [NSMutableArray arrayWithCapacity:filenames.count];
     for (NSString *path in filenames) {
-        std::string pStr = MiuStdStringFromNSString(path);
-        if (!pStr.empty()) [self createWindowWithPath:pStr.c_str()];
+        if (path.length > 0) {
+            NSURL *u = [NSURL fileURLWithPath:path];
+            if (u) [urls addObject:u];
+        }
+    }
+    if (urls.count > 0) {
+        [self application:sender openURLs:urls];
     }
     [sender replyToOpenOrPrint:NSApplicationDelegateReplySuccess];
 }
 
 - (void)newDocument:(id)sender {
-    NSWindow *win = [NSApp keyWindow];
-    EditorView *v = [self findEditorViewInWindow:win];
-    if (v) {
+    EditorView *v = [self activeEditorView];
+    if (v && v->editor) {
+        if (!v->editor->checkUnsavedChanges()) return;
+        v->editor->isDirty = false;
+        if (v->currentSecurityScopedURL) {
+            [v->currentSecurityScopedURL stopAccessingSecurityScopedResource];
+            v->currentSecurityScopedURL = nil;
+        }
         v->editor->newFile();
     } else {
-        [self createWindowWithPath:nullptr];
+        [self createWindowWithURL:nil];
     }
 }
 
 - (void)openDocument:(id)sender {
-    NSWindow *win = [NSApp keyWindow];
-    EditorView *v = [self findEditorViewInWindow:win];
-    if (v) {
+    EditorView *v = [self activeEditorView];
+    if (v && v->editor) {
         v->editor->openFile();
     } else {
-        [self createWindowWithPath:nullptr];
+        [self createWindowWithURL:nil];
         CustomWindow *newWin = self.windows.lastObject;
         EditorView *newV = [self findEditorViewInWindow:newWin];
-        if (newV) newV->editor->openFile();
+        if (newV && newV->editor) newV->editor->openFile();
     }
+}
+
+- (void)saveDocument:(id)sender {
+    EditorView *v = [self activeEditorView];
+    if (v) [v saveDocument:sender];
+}
+
+- (void)saveDocumentAs:(id)sender {
+    EditorView *v = [self activeEditorView];
+    if (v) [v saveDocumentAs:sender];
+}
+
+- (void)showFindAction:(id)sender {
+    EditorView *v = [self activeEditorView];
+    if (v) [v showFindAction:sender];
+}
+
+- (void)showReplaceAction:(id)sender {
+    EditorView *v = [self activeEditorView];
+    if (v) [v showReplaceAction:sender];
+}
+
+- (void)showGoToLineAction:(id)sender {
+    EditorView *v = [self activeEditorView];
+    if (v) [v showGoToLineAction:sender];
+}
+
+- (void)toggleCommentAction:(id)sender {
+    EditorView *v = [self activeEditorView];
+    if (v) [v toggleCommentAction:sender];
+}
+
+- (void)toggleWordWrapAction:(id)sender {
+    EditorView *v = [self activeEditorView];
+    if (v) [v toggleWordWrapAction:sender];
+}
+
+- (void)togglePreviewAction:(id)sender {
+    EditorView *v = [self activeEditorView];
+    if (v) [v togglePreviewAction:sender];
+}
+
+- (void)toggleAlwaysOnTopAction:(id)sender {
+    EditorView *v = [self activeEditorView];
+    if (v) [v toggleAlwaysOnTopAction:sender];
 }
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender { return YES; }
@@ -2232,12 +2641,17 @@ static inline void MiuShowSaveErrorAlert(void) {
     if (v && v->editor) {
         v->editor->saveCurrentViewState();
         if (!v->editor->checkUnsavedChanges()) return NO;
+        v->editor->isDirty = false;
     }
     return YES;
 }
 
 - (void)windowWillClose:(NSNotification *)notification {
     CustomWindow *win = (CustomWindow *)notification.object;
+    EditorView *v = [self findEditorViewInWindow:win];
+    if (v) {
+        [v closeAuxiliaryPanelsAndReleaseResources];
+    }
     dispatch_async(dispatch_get_main_queue(), ^{
         [self.windows removeObject:win];
     });
@@ -2246,6 +2660,7 @@ static inline void MiuShowSaveErrorAlert(void) {
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender {
     NSArray *windowsToClose = [self.windows copy];
     for (CustomWindow *win in windowsToClose) {
+        if (![win isVisible] && ![win isMiniaturized]) continue;
         EditorView *v = [self findEditorViewInWindow:win];
         if (v && v->editor) {
             v->editor->saveCurrentViewState();
@@ -2257,6 +2672,18 @@ static inline void MiuShowSaveErrorAlert(void) {
 
 - (EditorView *)findEditorViewInWindow:(NSWindow *)window {
     if (!window) return nil;
+    if ([window isKindOfClass:[FindPanel class]]) {
+        EditorView *ev = ((FindPanel *)window).editorView;
+        if (ev) return ev;
+    }
+    if (window.sheetParent && window.sheetParent != window) {
+        EditorView *ev = [self findEditorViewInWindow:window.sheetParent];
+        if (ev) return ev;
+    }
+    if (window.parentWindow && window.parentWindow != window) {
+        EditorView *ev = [self findEditorViewInWindow:window.parentWindow];
+        if (ev) return ev;
+    }
     NSView *contentView = window.contentView;
     if ([contentView isKindOfClass:[EditorView class]]) {
         return (EditorView *)contentView;

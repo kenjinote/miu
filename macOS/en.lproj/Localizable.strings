@@ -62,3 +62,12 @@
 "No Recent Files" = "No Recent Files";
 "Reload" = "Reload";
 "Failed to save file." = "Failed to save file.";
+"Find..." = "Find...";
+"Go to Line..." = "Go to Line...";
+"Save As..." = "Save As...";
+"Overwrite" = "Overwrite";
+"Save as UTF-8" = "Save as UTF-8";
+"The file has been modified externally on disk." = "The file has been modified externally on disk.";
+"Saving now will overwrite external changes made by another application." = "Saving now will overwrite external changes made by another application.";
+"Some characters cannot be represented in the current encoding." = "Some characters cannot be represented in the current encoding.";
+"Saving in the current encoding would replace unrepresentable characters with '?'. Choose Save as UTF-8 to preserve all characters losslessly." = "Saving in the current encoding would replace unrepresentable characters with '?'. Choose Save as UTF-8 to preserve all characters losslessly.";

@@ -48,6 +48,8 @@
 #define IDS_REPLACE_BTN                 142
 #define IDS_REPLACE_ALL_BTN             143
 #define IDS_PREVIEW_TRUNCATED           144
+#define IDS_ENC_LOSS_PROMPT             145
+#define IDS_READONLY_PROMPT             146
 #define IDC_FIND_EDIT                   1001
 #define IDC_FIND_NEXT                   1002
 #define IDC_FIND_CANCEL                 1003
@@ -66,7 +68,7 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        145
+#define _APS_NEXT_RESOURCE_VALUE        147
 #define _APS_NEXT_COMMAND_VALUE         40001
 #define _APS_NEXT_CONTROL_VALUE         1014
 #define _APS_NEXT_SYMED_VALUE           101

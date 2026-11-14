@@ -43,12 +43,16 @@ inline std::vector<std::string> normalizeIds(const std::vector<std::string>& ids
     return out;
 }
 
+constexpr size_t MAX_VENN_SETS = 32;
+constexpr size_t MAX_VENN_SUBSETS = 2048;
+
 class VennDb : public DiagramMeta {
 public:
     std::vector<VennSubset> subsets;
     std::vector<VennText> textNodes;
     std::vector<VennStyle> styles;
-    Pele::FlatSet<std::string> known;
+    std::unordered_set<std::string> known;
+    std::unordered_set<std::string> distinctSets;
     std::vector<std::string> current;
     bool hasCurrent = false;
     bool indent = false;
@@ -58,7 +62,18 @@ public:
     }
 
     void addSubsetData(const std::vector<std::string>& ids, const std::string& label, bool hasLabel, double size, bool hasSize) {
+        if (subsets.size() >= MAX_VENN_SUBSETS) {
+            throw PeleError("Maximum Venn diagram subset count exceeded", "limit", "venn");
+        }
         auto sets = normalizeIds(ids);
+        for (const auto& s : sets) {
+            if (!distinctSets.count(s)) {
+                if (distinctSets.size() >= MAX_VENN_SETS) {
+                    throw PeleError("Maximum Venn diagram set count exceeded", "limit", "venn");
+                }
+                distinctSets.insert(s);
+            }
+        }
         current = sets;
         hasCurrent = true;
         if (sets.size() == 1) known.insert(sets[0]);
@@ -217,7 +232,7 @@ public:
                     size_t end = afterTitle;
                     while (end < n) {
                         int ch = charCodeAt(src, static_cast<int>(end));
-                        if (ch == 35 || ch == 10 || ch == 59) break;
+                        if (ch == 35 || ch == 10 || (ch == 59 && !isEntitySemicolon(src, end))) break;
                         end++;
                     }
                     if (end > afterTitle) return token(T::TITLE, end);
@@ -501,8 +516,8 @@ inline std::string keyOf(const std::vector<std::string>& ids) {
 }
 
 inline std::vector<VennSubset> ensurePairwiseSubsets(const std::vector<VennSubset>& subsets) {
-    Pele::FlatSet<std::string> present;
-    Pele::FlatMap<std::string, double> sizes;
+    std::unordered_set<std::string> present;
+    std::unordered_map<std::string, double> sizes;
     for (const auto& subset : subsets) {
         auto sorted = subset.sets;
         std::sort(sorted.begin(), sorted.end());
@@ -516,6 +531,7 @@ inline std::vector<VennSubset> ensurePairwiseSubsets(const std::vector<VennSubse
         std::sort(members.begin(), members.end());
         for (size_t i = 0; i + 1 < members.size(); i++) {
             for (size_t j = i + 1; j < members.size(); j++) {
+                if (subsets.size() + added.size() >= MAX_VENN_SUBSETS) break;
                 std::vector<std::string> pair = {members[i], members[j]};
                 std::string key = jsonStrArray(pair);
                 if (present.count(key)) continue;
@@ -525,7 +541,9 @@ inline std::vector<VennSubset> ensurePairwiseSubsets(const std::vector<VennSubse
                 double sz = (itA != sizes.end() && itB != sizes.end()) ? (std::min(itA->second, itB->second) / 4.0) : 2.5;
                 added.push_back({pair, sz, "", true});
             }
+            if (subsets.size() + added.size() >= MAX_VENN_SUBSETS) break;
         }
+        if (subsets.size() + added.size() >= MAX_VENN_SUBSETS) break;
     }
     if (added.empty()) return subsets;
     std::vector<VennSubset> res = subsets;
@@ -583,14 +601,22 @@ inline double circleMargin(const std::vector<Circle>& circles, const std::vector
 }
 
 inline Spot findSpot(const std::vector<Circle>& circles, const std::vector<int>& inside, const std::vector<int>& outside) {
+    if (inside.empty() || circles.empty()) return {0.0, 0.0, 0.0};
     double cx = 0.0;
     double cy = 0.0;
-    const Circle* smallest = &circles[inside[0]];
+    const Circle* smallest = nullptr;
+    size_t validCount = 0;
     for (int i : inside) {
+        if (i < 0 || static_cast<size_t>(i) >= circles.size()) continue;
+        ++validCount;
+    }
+    if (validCount == 0) return {0.0, 0.0, 0.0};
+    for (int i : inside) {
+        if (i < 0 || static_cast<size_t>(i) >= circles.size()) continue;
         const auto& c = circles[i];
-        cx += c.x / static_cast<double>(inside.size());
-        cy += c.y / static_cast<double>(inside.size());
-        if (c.r < smallest->r) smallest = &c;
+        cx += c.x / static_cast<double>(validCount);
+        cy += c.y / static_cast<double>(validCount);
+        if (!smallest || c.r < smallest->r) smallest = &c;
     }
     double r = smallest->r;
     double x = cx;
@@ -631,11 +657,17 @@ inline Spot findSpot(const std::vector<Circle>& circles, const std::vector<int>&
 }
 
 inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets) {
+    if (subsets.size() > MAX_VENN_SUBSETS) {
+        throw PeleError("Maximum Venn diagram subset count exceeded", "limit", "venn");
+    }
     std::vector<std::string> sizeOrder;
-    Pele::FlatMap<std::string, double> sizes;
+    std::unordered_map<std::string, double> sizes;
     auto setSize = [&](const std::string& id, double val, bool onlyIfNew) {
         auto it = sizes.find(id);
         if (it == sizes.end()) {
+            if (sizeOrder.size() >= MAX_VENN_SETS) {
+                throw PeleError("Maximum Venn diagram set count exceeded", "limit", "venn");
+            }
             sizeOrder.push_back(id);
             sizes[id] = val;
         } else if (!onlyIfNew) {
@@ -649,7 +681,7 @@ inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets)
         if (subset.sets.size() == 1) setSize(subset.sets[0], subset.size, false);
     }
 
-    Pele::FlatMap<std::string, int> index;
+    std::unordered_map<std::string, int> index;
     std::vector<Circle> circles;
     double largest = 0.0;
     for (const auto& id : sizeOrder) {
@@ -667,20 +699,25 @@ inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets)
     int n = static_cast<int>(circles.size());
     if (n < 2) return circles;
 
-    Pele::FlatMap<int, double> overlaps;
+    auto pairKey = [n](int a, int b) -> int64_t {
+        return static_cast<int64_t>(std::min(a, b)) * static_cast<int64_t>(n) + static_cast<int64_t>(std::max(a, b));
+    };
+    std::unordered_map<int64_t, double> overlaps;
     for (const auto& subset : ensurePairwiseSubsets(subsets)) {
         if (subset.sets.size() != 2) continue;
         int a = index[subset.sets[0]];
         int b = index[subset.sets[1]];
-        if (a != b) overlaps[std::min(a, b) * n + std::max(a, b)] = subset.size;
+        if (a != b) overlaps[pairKey(a, b)] = subset.size;
     }
-    Pele::FlatMap<int, double> wanted;
+    std::unordered_map<int64_t, double> wanted;
     for (const auto& [key, area] : overlaps) {
-        wanted[key] = distanceForOverlap(circles[key / n].r, circles[key % n].r, area);
+        int ca = static_cast<int>(key / static_cast<int64_t>(n));
+        int cb = static_cast<int>(key % static_cast<int64_t>(n));
+        wanted[key] = distanceForOverlap(circles[ca].r, circles[cb].r, area);
     }
     double gap = widest * 0.15;
     auto distance = [&](int a, int b) -> double {
-        auto it = wanted.find(a * n + b);
+        auto it = wanted.find(pairKey(a, b));
         return it != wanted.end() ? it->second : (circles[a].r + circles[b].r + gap);
     };
 
@@ -695,7 +732,7 @@ inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets)
         double bc = distance(1, 2);
         bool triple = false;
         for (const auto& subset : subsets) {
-            Pele::FlatSet<std::string> uniq(subset.sets.begin(), subset.sets.end());
+            std::unordered_set<std::string> uniq(subset.sets.begin(), subset.sets.end());
             if (uniq.size() == 3) { triple = true; break; }
         }
         for (int attempt = 0; attempt < 40; attempt++) {
@@ -738,7 +775,7 @@ inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets)
         std::fill(pulls.begin(), pulls.end(), 0);
         for (int a = 0; a < n; a++) {
             for (int b = a + 1; b < n; b++) {
-                auto it = wanted.find(a * n + b);
+                auto it = wanted.find(pairKey(a, b));
                 bool hasOverlap = (it != wanted.end());
                 double apart = circles[a].r + circles[b].r + gap;
                 double ux = circles[b].x - circles[a].x;
@@ -770,6 +807,7 @@ inline std::vector<Circle> layoutCircles(const std::vector<VennSubset>& subsets)
 }
 
 inline std::string regionPath(const std::vector<Circle>& circles) {
+    if (circles.empty()) return "";
     auto whole = [](const Circle& c) -> std::string {
         return Pele::cat({"M", num(c.x - c.r), ",", num(c.y), "A", num(c.r), ",", num(c.r), " 0 1 1 ", num(c.x + c.r), ",", num(c.y), "A", num(c.r), ",", num(c.r), " 0 1 1 ", num(c.x - c.r), ",", num(c.y), "Z"});
     };
@@ -871,7 +909,7 @@ inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, c
     double pad = options.padding;
 
     auto circles = layoutCircles(model.subsets);
-    Pele::FlatMap<std::string, int> index;
+    std::unordered_map<std::string, int> index;
     for (size_t i = 0; i < circles.size(); i++) index[circles[i].id] = static_cast<int>(i);
 
     std::unordered_map<std::string, std::vector<std::pair<std::string, std::string>>> styles;
@@ -939,17 +977,21 @@ inline Rendered renderVennModel(const VennDb& model, const Config& /*config*/, c
     for (const auto& key : statedOrder) {
         const auto& subset = stated[key];
         std::vector<std::string> sets;
-        Pele::FlatSet<std::string> seenSets;
+        std::unordered_set<std::string> seenSets;
         for (const auto& s : subset.sets) {
             if (seenSets.insert(s).second) sets.push_back(s);
         }
         std::vector<int> inside;
-        Pele::FlatSet<int> within;
+        std::unordered_set<int> within;
         for (const auto& id : sets) {
-            int idx = index[id];
+            auto idxIt = index.find(id);
+            if (idxIt == index.end()) continue;
+            int idx = idxIt->second;
+            if (idx < 0 || static_cast<size_t>(idx) >= circles.size()) continue;
             inside.push_back(idx);
             within.insert(idx);
         }
+        if (inside.empty()) continue;
         int smallest = inside[0];
         for (int i : inside) if (circles[i].r < circles[smallest].r) smallest = i;
         ResolvedStyle style = styleOf(key);

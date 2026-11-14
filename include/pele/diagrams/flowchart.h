@@ -1561,8 +1561,11 @@ inline std::vector<double> position(Graph& g, const LayeredOptions& opt) {
 
 } // namespace detail
 
-inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt) {
+inline LayeredResult layered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& rawOpt) {
     using namespace detail;
+    LayeredOptions opt = rawOpt;
+    opt.nodeSep = std::isfinite(opt.nodeSep) ? std::max(1.0, opt.nodeSep) : 40.0;
+    opt.rankSep = std::isfinite(opt.rankSep) ? std::max(1.0, opt.rankSep) : 48.0;
     int real = static_cast<int>(nodes.size());
     if (real == 0) return {0.0, 0.0, 0, 0};
     int m = static_cast<int>(edges.size());
@@ -2956,6 +2959,10 @@ inline CompoundResult compoundLayout(std::vector<CNode>& nodes, std::vector<CEdg
                 const auto& item = nodes[port.inner];
                 if (dummies[i] >= 0) {
                     std::vector<double> route = convert(ledges[k++].points);
+                    if (route.size() < 6) {
+                        port.route.clear();
+                        continue;
+                    }
                     size_t at = port.out ? route.size() - 3 : 0;
                     double bx = route[at];
                     double by = route[at + 1];
@@ -3022,7 +3029,7 @@ inline CompoundResult compoundLayout(std::vector<CNode>& nodes, std::vector<CEdg
         }
 
         auto append = [](std::vector<double>& route, const std::vector<double>& part, double ox, double oy) {
-            for (size_t i = 0; i < part.size(); i += 3) {
+            for (size_t i = 0; i + 2 < part.size(); i += 3) {
                 double x = part[i] + ox;
                 double y = part[i + 1] + oy;
                 size_t len = route.size();
@@ -3147,6 +3154,7 @@ inline CompoundResult compoundLayout(std::vector<CNode>& nodes, std::vector<CEdg
 // ============================================================================
 
 inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) {
+    if (route.size() < 6 || at + 1 >= route.size()) return -1;
     double dx = route[at] - c.x;
     double dy = route[at + 1] - c.y;
     if (std::abs(std::abs(dy) - c.h / 2.0) < 0.5) return dy < 0.0 ? 0 : 2;
@@ -3156,7 +3164,7 @@ inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) 
 
 template <typename ViewT>
 inline void insetRoute(std::vector<double>& route, size_t at, const ViewT& view, const CNode& c) {
-    if (c.isGroup) return;
+    if (c.isGroup || route.size() < 6 || at + 1 >= route.size()) return;
     int side = endSide(route, at, c);
     if (side == 0 || side == 2) {
         double amount = shapeInset(view.shape, view.w, view.h, side, route[at] - c.x) + (c.h - view.h) / 2.0;
@@ -3170,7 +3178,7 @@ inline void insetRoute(std::vector<double>& route, size_t at, const ViewT& view,
 using Crossings = std::unordered_map<int, std::vector<double>>;
 
 inline void markCrossings(Crossings& crossings, const std::vector<double>& route) {
-    for (size_t k = 0; k < route.size(); k += 3) {
+    for (size_t k = 0; k + 1 < route.size(); k += 3) {
         int key = static_cast<int>(std::round(route[k + 1]));
         crossings[key].push_back(route[k]);
     }
@@ -4952,7 +4960,12 @@ inline FlowTokens tokenizeFlowchart(const std::string& src) {
                 case callbackname_st: type = CALLBACKNAME; break;
                 case callbackargs_st: type = CALLBACKARGS; break;
             }
-            if (type != -1) emit(type, n, n);
+            if (type != -1) {
+                emit(type, n, n);
+                if (state == acc_title_st || state == acc_descr_st || state == acc_descr_multiline_st) {
+                    emit(EOF_TOK, n, n);
+                }
+            }
             break;
         }
 
@@ -5017,8 +5030,12 @@ inline FlowTokens tokenizeFlowchart(const std::string& src) {
                     p++;
                 } else {
                     size_t e = src.find('}', p);
-                    if (e == std::string::npos) e = n;
-                    emit(acc_descr_multiline_value, p, e);
+                    if (e == std::string::npos) {
+                        pop();
+                        emit(acc_descr_multiline_value, p, n);
+                    } else {
+                        emit(acc_descr_multiline_value, p, e);
+                    }
                 }
                 break;
 
@@ -6271,7 +6288,7 @@ struct NodeView {
 inline double flowNumberOption(const Config& section, const std::string& key, double fallback) {
     if (!section.isMap()) return fallback;
     const auto* v = section.get(key);
-    if (v && v->isNumber() && v->nVal > 0.0) return std::min(v->nVal, 2000.0);
+    if (v && v->isNumber() && std::isfinite(v->nVal) && v->nVal > 0.0) return std::max(1.0, std::min(v->nVal, 2000.0));
     return fallback;
 }
 
@@ -6434,9 +6451,9 @@ inline Rendered drawFlowchart(
     }
 
     LayeredOptions layoutOptions;
-    layoutOptions.nodeSep = flowNumberOption(flow, "nodeSpacing", NODE_SEP) * (tight ? 0.5 : 1.0);
+    layoutOptions.nodeSep = std::max(1.0, flowNumberOption(flow, "nodeSpacing", NODE_SEP) * (tight ? 0.5 : 1.0));
     layoutOptions.edgeSep = EDGE_SEP;
-    layoutOptions.rankSep = flowNumberOption(flow, "rankSpacing", RANK_SEP) * (tight ? 0.75 : 1.0);
+    layoutOptions.rankSep = std::max(1.0, flowNumberOption(flow, "rankSpacing", RANK_SEP) * (tight ? 0.75 : 1.0));
     layoutOptions.portSep = 20.0;
     layoutOptions.tracks = !defaultCurve.empty() && startsWith(defaultCurve, "step");
     layoutOptions.straight = defaultCurve == "linear";
@@ -6583,6 +6600,7 @@ inline Rendered drawFlowchart(
                 int k = loopSeen[ce.src]++;
                 path = loopPath(cnodes[ce.src], view.w, view.h, k, flowsSideways(ce.src), LOOP, markerTrim(endType), ce);
             } else {
+                if (ce.route.size() < 6) continue;
                 std::vector<double> route = ce.route;
                 double leaves = reach.of(ce.src, endSide(route, 0, cnodes[ce.src]));
                 double arrives = reach.of(ce.dst, endSide(route, route.size() - 3, cnodes[ce.dst]));

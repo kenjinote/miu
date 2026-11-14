@@ -62,3 +62,12 @@
 "No Recent Files" = "履歴なし";
 "Reload" = "再読み込み";
 "Failed to save file." = "ファイルの保存に失敗しました。";
+"Find..." = "検索...";
+"Go to Line..." = "指定行へ移動...";
+"Save As..." = "別名で保存...";
+"Overwrite" = "上書き";
+"Save as UTF-8" = "UTF-8 で保存";
+"The file has been modified externally on disk." = "ディスク上のファイルが外部で変更されています。";
+"Saving now will overwrite external changes made by another application." = "このまま保存すると、他のアプリケーションによる変更が上書きされます。";
+"Some characters cannot be represented in the current encoding." = "現在の文字コードでは表現できない文字が含まれています。";
+"Saving in the current encoding would replace unrepresentable characters with '?'. Choose Save as UTF-8 to preserve all characters losslessly." = "現在の文字コードで保存すると、表現できない文字は '?' に置き換えられます。すべての文字を保持するには「UTF-8 で保存」を選択してください。";

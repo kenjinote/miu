@@ -4,6 +4,7 @@ import android.app.NativeActivity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.UriPermission;
 import android.content.res.Configuration;
 import android.graphics.Canvas;
 import android.graphics.Color;
@@ -18,6 +19,8 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.provider.DocumentsContract;
+import android.provider.OpenableColumns;
+import android.system.Os;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
@@ -49,13 +52,20 @@ import android.widget.Toast;
 import androidx.appcompat.widget.AppCompatEditText;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MainActivity extends NativeActivity {
     static { System.loadLibrary("miu"); }
@@ -67,6 +77,7 @@ public class MainActivity extends NativeActivity {
     public native void deleteSurroundingTextUtf16(int beforeLength, int afterLength);
     public native void updateVisibleHeight(int bottomInset);
     public native void updateTopMargin(int topMargin);
+    public native void updateHorizontalMargins(int leftInset, int rightInset);
     public native void cmdNewDocument();
     public native boolean cmdOpenDocument(String filePath);
     public native String cmdGetCharset();
@@ -86,6 +97,7 @@ public class MainActivity extends NativeActivity {
     public native void cmdRedo();
     public native void cmdSelectAll();
     public native String cmdCut();
+    public native void cmdDeleteForCut();
     public native String cmdCopy();
     public native void cmdPaste(String text);
     public native int cmdGetCurrentLine();
@@ -113,15 +125,39 @@ public class MainActivity extends NativeActivity {
     public native void cmdSetEditorViewportSize(int widthPx, int heightPx);
     public native void cmdSetHelpVisible(boolean visible);
     public native String cmdGetPreviewHtml(boolean isDark);
+    public native boolean cmdIsLastPreviewMdOrMermaid();
     public native String cmdGetPreviewDomUpdateJs(boolean isDark);
     public native void cmdHandlePreviewMessage(String msg);
-    public native float[] cmdGetViewState();
-    public native void cmdSetViewState(float scrollX, float scrollY, int head, int anchor, boolean wordWrap);
+    public native double[] cmdGetViewState();
+    public native void cmdSetViewState(float scrollX, float scrollY, long head, long anchor, boolean wordWrap);
+    public native boolean cmdSaveInstanceDraft(String draftPath);
+    public native boolean cmdRestoreInstanceDraft(String draftPath);
     public native String cmdGetTextBeforeCursor(int length);
     public native String cmdGetTextAfterCursor(int length);
+    public native String cmdGetSelectedText();
+    public native boolean cmdWasLastSaveEncodingError();
+    public native void cmdSetEncodingUtf8();
+
+    private static MainActivity sActiveInstance = null;
+    private static String sInternalClipboardFallback = null;
+    private static boolean sInternalClipboardOversize = false;
+    private static long sInternalClipboardTimestamp = 0L;
+    private static final String INSTANCE_DRAFT_FILE = "instance_state_draft.bin";
+    private static final String STATE_HAS_DRAFT = "state_has_draft";
+    private static final String STATE_DOC_URI = "state_doc_uri";
+    private static final String STATE_LAST_MOD = "state_last_mod";
+    private static final String STATE_TEMP_OPEN_PATH = "state_temp_open_path";
+    private static final String STATE_PREVIEW_VISIBLE = "state_preview_visible";
+    private static final String STATE_PREVIEW_RATIO = "state_preview_ratio";
+    private static final String STATE_SEARCH_QUERY = "state_search_query";
+    private static final String STATE_REPLACE_QUERY = "state_replace_query";
+    private static final String STATE_MATCH_CASE = "state_match_case";
+    private static final String STATE_WHOLE_WORD = "state_whole_word";
+    private static final String STATE_REGEX = "state_regex";
 
     private ImeBridgeView imeView;
     private PopupWindow toolbarPopup;
+    private AlertDialog activeAlertDialog = null;
     private PopupWindow categoryPopup;
     private int activeCategoryIndex = -1;
     private View activeCategoryButton = null;
@@ -135,6 +171,8 @@ public class MainActivity extends NativeActivity {
     private int lastKeyboardHeight = 0;
     private int currentEffectiveBottomInset = 0;
     private int currentCppTopMargin = 0;
+    private int currentLeftInset = 0;
+    private int currentRightInset = 0;
     private boolean isSwitchingUI = false;
     private FrameLayout mainToolbar;
     private LinearLayout searchContainer;
@@ -152,9 +190,14 @@ public class MainActivity extends NativeActivity {
     private static final String PREFS_NAME = "miu_prefs";
     private static final String KEY_RECENT_URIS = "recent_uris";
     private static final int MAX_RECENT_FILES = 10;
+    private static final long MAX_OPEN_STREAM_BYTES = 256L * 1024L * 1024L;
     private Uri currentDocumentUri = null;
     private long lastKnownModifiedTime = 0L;
     private boolean isShowingReloadPrompt = false;
+    private volatile boolean isOpeningDocument = false;
+    private final AtomicLong openTaskGeneration = new AtomicLong(0L);
+    private AlertDialog activeLoadingDialog = null;
+    private final Set<String> sessionPersistedUris = Collections.synchronizedSet(new HashSet<>());
     private Runnable pendingAction = null;
     private File activeTempOpenFile = null;
 
@@ -232,6 +275,7 @@ public class MainActivity extends NativeActivity {
         else setTheme(initIsDark ? android.R.style.Theme_DeviceDefault : android.R.style.Theme_DeviceDefault_Light);
         requestWindowFeature(android.view.Window.FEATURE_NO_TITLE);
         super.onCreate(savedInstanceState);
+        sActiveInstance = this;
         updateSystemColors();
         boolean isDark = isDarkThemeActive();
         updateSystemUI(isDark);
@@ -285,20 +329,34 @@ public class MainActivity extends NativeActivity {
         rootView.setOnApplyWindowInsetsListener((v, insets) -> {
             int bottomInset = 0;
             int topInset = 0;
+            int leftInset = 0;
+            int rightInset = 0;
             int imeHeight = 0;
             int captionBarHeight = 0;
             boolean imeInsetVisible = false;
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                android.graphics.Insets sysAndCutout = insets.getInsets(
+                        WindowInsets.Type.systemBars() | WindowInsets.Type.displayCutout());
                 imeHeight = insets.getInsets(WindowInsets.Type.ime()).bottom;
-                int systemBars = insets.getInsets(WindowInsets.Type.systemBars()).bottom;
+                int systemBars = sysAndCutout.bottom;
                 lastSystemBarsBottomInset = systemBars;
                 bottomInset = Math.max(imeHeight, systemBars);
-                topInset = insets.getInsets(WindowInsets.Type.statusBars()).top;
+                topInset = sysAndCutout.top;
+                leftInset = sysAndCutout.left;
+                rightInset = sysAndCutout.right;
                 captionBarHeight = insets.getInsets(WindowInsets.Type.captionBar()).top;
                 imeInsetVisible = (imeHeight > 0) || insets.isVisible(WindowInsets.Type.ime());
             } else {
                 bottomInset = insets.getSystemWindowInsetBottom();
                 topInset = insets.getSystemWindowInsetTop();
+                leftInset = insets.getSystemWindowInsetLeft();
+                rightInset = insets.getSystemWindowInsetRight();
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P && insets.getDisplayCutout() != null) {
+                    topInset = Math.max(topInset, insets.getDisplayCutout().getSafeInsetTop());
+                    leftInset = Math.max(leftInset, insets.getDisplayCutout().getSafeInsetLeft());
+                    rightInset = Math.max(rightInset, insets.getDisplayCutout().getSafeInsetRight());
+                    bottomInset = Math.max(bottomInset, insets.getDisplayCutout().getSafeInsetBottom());
+                }
                 imeHeight = bottomInset > (rootView.getHeight() * 0.15) ? bottomInset : 0;
                 lastSystemBarsBottomInset = (imeHeight > 0) ? 0 : bottomInset;
                 imeInsetVisible = (imeHeight > 0);
@@ -307,6 +365,7 @@ public class MainActivity extends NativeActivity {
                 isToolbarRequestedByTap = false;
             }
             lastImeInsetVisible = imeInsetVisible;
+            float density = getResources().getDisplayMetrics().density;
             Configuration config = getResources().getConfiguration();
             boolean isDeskMode = (config.uiMode & Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_DESK;
             boolean isMultiWindow = false;
@@ -314,9 +373,12 @@ public class MainActivity extends NativeActivity {
                 isMultiWindow = isInMultiWindowMode();
             }
             boolean isDesktopOrWindowed = isDeskMode || isMultiWindow || captionBarHeight > 0;
-            int cppTopMargin = topInset;
+            int titleBarHeightPx = Math.round(24 * density);
+            int cppTopMargin;
             if (isDesktopOrWindowed) {
-                cppTopMargin = captionBarHeight > 0 ? captionBarHeight : (int)(48 * getResources().getDisplayMetrics().density);
+                cppTopMargin = captionBarHeight > 0 ? captionBarHeight : Math.round(48 * density);
+            } else {
+                cppTopMargin = topInset + titleBarHeightPx + Math.round(4 * density);
             }
             if (overlayTitleView != null) {
                 if (isDesktopOrWindowed) {
@@ -324,14 +386,24 @@ public class MainActivity extends NativeActivity {
                         titleOverlayPopup.dismiss();
                     }
                 } else {
+                    if (titleOverlayPopup != null && !titleOverlayPopup.isShowing() && !isFinishing() && !isDestroyed()) {
+                        titleOverlayPopup.showAtLocation(rootView, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0);
+                    }
+                    int relPopupTop = 0;
+                    if (titleOverlayPopup != null && titleOverlayPopup.isShowing()) {
+                        int[] popLoc = new int[2];
+                        int[] rootLoc = new int[2];
+                        uiOverlayContainer.getLocationOnScreen(popLoc);
+                        rootView.getLocationOnScreen(rootLoc);
+                        relPopupTop = Math.max(0, popLoc[1] - rootLoc[1]);
+                    }
                     FrameLayout.LayoutParams tp = (FrameLayout.LayoutParams) overlayTitleView.getLayoutParams();
-                    tp.topMargin = Math.max(10, topInset + (int)(4 * getResources().getDisplayMetrics().density) - 64);
+                    tp.topMargin = Math.max(0, topInset - relPopupTop) + Math.round(2 * density);
+                    tp.leftMargin = leftInset;
+                    tp.rightMargin = rightInset;
                     overlayTitleView.setLayoutParams(tp);
-                    if (titleOverlayPopup != null) {
-                        if (!titleOverlayPopup.isShowing() && !isFinishing() && !isDestroyed()) {
-                            titleOverlayPopup.showAtLocation(rootView, Gravity.TOP | Gravity.CENTER_HORIZONTAL, 0, 0);
-                        }
-                        titleOverlayPopup.update(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+                    if (titleOverlayPopup != null && titleOverlayPopup.isShowing()) {
+                        titleOverlayPopup.update(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     }
                 }
             }
@@ -352,11 +424,10 @@ public class MainActivity extends NativeActivity {
                 }
                 int toolbarHeight = toolbarPopup != null && toolbarPopup.getContentView() != null && toolbarPopup.getContentView().getHeight() > 0
                         ? toolbarPopup.getContentView().getHeight()
-                        : (int) (48 * getResources().getDisplayMetrics().density);
+                        : Math.round(48 * density);
                 currentEffectiveBottomInset = bottomInset + toolbarHeight;
                 updateVisibleHeight(currentEffectiveBottomInset);
-            } else {
-                if (isSwitchingUI) return insets;
+            } else if (!isSwitchingUI) {
                 if (isKeyboardOpen) {
                     mainHandler.removeCallbacks(hideToolbarRunnable);
                     mainHandler.postDelayed(hideToolbarRunnable, 100);
@@ -365,7 +436,10 @@ public class MainActivity extends NativeActivity {
                 currentEffectiveBottomInset = effectiveBottom;
                 updateVisibleHeight(effectiveBottom);
             }
+            currentLeftInset = leftInset;
+            currentRightInset = rightInset;
             currentCppTopMargin = cppTopMargin;
+            updateHorizontalMargins(leftInset, rightInset);
             updateTopMargin(cppTopMargin);
             updatePreviewLayout();
             return insets;
@@ -378,15 +452,116 @@ public class MainActivity extends NativeActivity {
                 }
             }
         });
-        cleanUnusedOpenTempFiles();
-        Intent intent = getIntent();
-        if (intent != null) handleIncomingIntent(intent);
+        if (savedInstanceState != null) {
+            String tempPath = savedInstanceState.getString(STATE_TEMP_OPEN_PATH, null);
+            if (tempPath != null && !tempPath.isEmpty()) {
+                File tf = new File(tempPath);
+                if (tf.exists()) {
+                    activeTempOpenFile = tf;
+                }
+            }
+            cleanUnusedOpenTempFiles();
+            String uriStr = savedInstanceState.getString(STATE_DOC_URI, null);
+            if (uriStr != null && !uriStr.isEmpty()) {
+                try {
+                    currentDocumentUri = Uri.parse(uriStr);
+                } catch (Exception ignored) {
+                    currentDocumentUri = null;
+                }
+            }
+            lastKnownModifiedTime = savedInstanceState.getLong(STATE_LAST_MOD, 0L);
+            previewSplitRatio = savedInstanceState.getFloat(STATE_PREVIEW_RATIO, 0.5f);
+            searchMatchCase = savedInstanceState.getBoolean(STATE_MATCH_CASE, false);
+            searchWholeWord = savedInstanceState.getBoolean(STATE_WHOLE_WORD, false);
+            searchRegex = savedInstanceState.getBoolean(STATE_REGEX, false);
+            String savedSearch = savedInstanceState.getString(STATE_SEARCH_QUERY, "");
+            String savedReplace = savedInstanceState.getString(STATE_REPLACE_QUERY, "");
+            if (searchField != null && savedSearch != null && !savedSearch.isEmpty()) {
+                searchField.setText(savedSearch);
+            }
+            if (replaceField != null && savedReplace != null && !savedReplace.isEmpty()) {
+                replaceField.setText(savedReplace);
+            }
+            cmdSetSearchOptions(
+                    savedSearch != null ? savedSearch : "",
+                    savedReplace != null ? savedReplace : "",
+                    searchMatchCase,
+                    searchWholeWord,
+                    searchRegex
+            );
+            File draftFile = new File(getNoBackupFilesDir(), INSTANCE_DRAFT_FILE);
+            boolean restoredDraft = false;
+            if (savedInstanceState.getBoolean(STATE_HAS_DRAFT, false) && draftFile.exists()) {
+                restoredDraft = cmdRestoreInstanceDraft(draftFile.getAbsolutePath());
+            }
+            if (!restoredDraft && currentDocumentUri != null) {
+                loadDocumentFromUri(currentDocumentUri);
+            }
+            if (savedInstanceState.getBoolean(STATE_PREVIEW_VISIBLE, false)) {
+                isLivePreviewVisible = true;
+                mainHandler.post(() -> {
+                    if (!isFinishing() && !isDestroyed() && isLivePreviewVisible) {
+                        updatePreviewLayout();
+                        updateLivePreviewContent(true);
+                        updateToolbarToggleStates();
+                    }
+                });
+            }
+            updateToolbarToggleStates();
+        } else {
+            File staleDraft = new File(getNoBackupFilesDir(), INSTANCE_DRAFT_FILE);
+            if (staleDraft.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                staleDraft.delete();
+            }
+            File legacyCacheDraft = new File(getCacheDir(), INSTANCE_DRAFT_FILE);
+            if (legacyCacheDraft.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                legacyCacheDraft.delete();
+            }
+            cleanUnusedOpenTempFiles();
+            Intent intent = getIntent();
+            if (intent != null) handleIncomingIntent(intent);
+        }
         imeView.postDelayed(this::showSoftwareKeyboardIfNeeded, 300);
+    }
+
+    @Override protected void onSaveInstanceState(Bundle outState) {
+        try {
+            File draftFile = new File(getNoBackupFilesDir(), INSTANCE_DRAFT_FILE);
+            boolean hasDraft = cmdSaveInstanceDraft(draftFile.getAbsolutePath());
+            if (!hasDraft && draftFile.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                draftFile.delete();
+            }
+            outState.putBoolean(STATE_HAS_DRAFT, hasDraft);
+        } catch (Exception ignored) {
+            outState.putBoolean(STATE_HAS_DRAFT, false);
+        }
+        if (currentDocumentUri != null) {
+            outState.putString(STATE_DOC_URI, currentDocumentUri.toString());
+        }
+        outState.putLong(STATE_LAST_MOD, lastKnownModifiedTime);
+        if (activeTempOpenFile != null && activeTempOpenFile.exists()) {
+            outState.putString(STATE_TEMP_OPEN_PATH, activeTempOpenFile.getAbsolutePath());
+        }
+        outState.putBoolean(STATE_PREVIEW_VISIBLE, isLivePreviewVisible);
+        outState.putFloat(STATE_PREVIEW_RATIO, previewSplitRatio);
+        outState.putBoolean(STATE_MATCH_CASE, searchMatchCase);
+        outState.putBoolean(STATE_WHOLE_WORD, searchWholeWord);
+        outState.putBoolean(STATE_REGEX, searchRegex);
+        if (searchField != null && searchField.getText() != null) {
+            outState.putString(STATE_SEARCH_QUERY, searchField.getText().toString());
+        }
+        if (replaceField != null && replaceField.getText() != null) {
+            outState.putString(STATE_REPLACE_QUERY, replaceField.getText().toString());
+        }
+        super.onSaveInstanceState(outState);
     }
 
     private void cleanUnusedOpenTempFiles() {
         try {
-            File cacheOpenDir = new File(getFilesDir(), "open_cache");
+            File cacheOpenDir = new File(getCacheDir(), "open_cache");
             File[] files = cacheOpenDir.listFiles();
             if (files != null) {
                 for (File f : files) {
@@ -394,6 +569,23 @@ public class MainActivity extends NativeActivity {
                         //noinspection ResultOfMethodCallIgnored
                         f.delete();
                     }
+                }
+            }
+            File legacyFilesOpenDir = new File(getFilesDir(), "open_cache");
+            File[] legacyFiles = legacyFilesOpenDir.listFiles();
+            if (legacyFiles != null) {
+                for (File f : legacyFiles) {
+                    if (activeTempOpenFile == null || !f.equals(activeTempOpenFile)) {
+                        //noinspection ResultOfMethodCallIgnored
+                        f.delete();
+                    }
+                }
+            }
+            if (legacyFilesOpenDir.exists()) {
+                File[] rem = legacyFilesOpenDir.listFiles();
+                if (rem == null || rem.length == 0) {
+                    //noinspection ResultOfMethodCallIgnored
+                    legacyFilesOpenDir.delete();
                 }
             }
             for (int i = 0; i <= 1; i++) {
@@ -426,6 +618,10 @@ public class MainActivity extends NativeActivity {
         String action = intent.getAction();
         Uri uri = intent.getData();
         if ((Intent.ACTION_VIEW.equals(action) || Intent.ACTION_EDIT.equals(action)) && uri != null) {
+            int flags = intent.getFlags();
+            if ((flags & Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION) != 0) {
+                takePersistablePermissionSafely(uri, flags);
+            }
             confirmSaveIfNeeded(() -> loadDocumentFromUri(uri));
         }
     }
@@ -536,10 +732,12 @@ public class MainActivity extends NativeActivity {
                         updatePreviewLayout();
                     }
                 } else {
-                    int totalW = getWindowFullWidth();
-                    if (totalW > 0) {
+                    int usableLeft = currentLeftInset;
+                    int usableRight = Math.max(usableLeft + 1, getWindowFullWidth() - currentRightInset);
+                    int usableW = usableRight - usableLeft;
+                    if (usableW > 0) {
                         float winX = event.getRawX() - winLoc[0];
-                        previewSplitRatio = Math.max(0.20f, Math.min(0.80f, winX / (float) totalW));
+                        previewSplitRatio = Math.max(0.20f, Math.min(0.80f, (winX - usableLeft) / (float) usableW));
                         updatePreviewLayout();
                     }
                 }
@@ -799,6 +997,10 @@ public class MainActivity extends NativeActivity {
         boolean isPortrait = (totalH > totalW);
         splitterView.setVerticalSplit(isPortrait);
 
+        int usableLeft = Math.max(0, currentLeftInset);
+        int usableRight = Math.max(usableLeft + 1, totalW - Math.max(0, currentRightInset));
+        int usableW = Math.max(1, usableRight - usableLeft);
+
         int popupX, popupY, popupW, popupH;
         if (isPortrait) {
             int minPaneH = Math.min(availH / 3, Math.round(60 * density));
@@ -807,21 +1009,21 @@ public class MainActivity extends NativeActivity {
             int splitterHitH = Math.round(24 * density);
             int halfSplitter = splitterHitH / 2;
 
-            popupX = 0;
+            popupX = usableLeft;
             popupY = Math.max(topMargin, splitY - halfSplitter);
-            popupW = totalW;
+            popupW = usableW;
             popupH = Math.max(1, visibleBottom - popupY);
             int webTop = Math.max(0, splitY - popupY);
             int webH = Math.max(1, visibleBottom - splitY);
 
-            FrameLayout.LayoutParams webParams = new FrameLayout.LayoutParams(totalW, webH);
+            FrameLayout.LayoutParams webParams = new FrameLayout.LayoutParams(usableW, webH);
             webParams.gravity = Gravity.TOP | Gravity.LEFT;
             webParams.leftMargin = 0;
             webParams.topMargin = webTop;
             previewWebView.setLayoutParams(webParams);
             previewWebView.setVisibility(View.VISIBLE);
 
-            FrameLayout.LayoutParams splitParams = new FrameLayout.LayoutParams(totalW, splitterHitH);
+            FrameLayout.LayoutParams splitParams = new FrameLayout.LayoutParams(usableW, splitterHitH);
             splitParams.gravity = Gravity.TOP | Gravity.LEFT;
             splitParams.leftMargin = 0;
             splitParams.topMargin = 0;
@@ -830,19 +1032,19 @@ public class MainActivity extends NativeActivity {
             splitterView.invalidate();
             previewOverlayContainer.requestLayout();
 
-            cmdSetEditorViewportSize(totalW, splitY);
+            cmdSetEditorViewportSize(usableRight, splitY);
         } else {
-            int minPaneW = Math.min(totalW / 3, Math.round(80 * density));
-            int splitX = Math.max(minPaneW, Math.min(totalW - minPaneW, Math.round(totalW * previewSplitRatio)));
+            int minPaneW = Math.min(usableW / 3, Math.round(80 * density));
+            int splitX = usableLeft + Math.max(minPaneW, Math.min(usableW - minPaneW, Math.round(usableW * previewSplitRatio)));
             int splitterHitW = Math.round(24 * density);
             int halfSplitter = splitterHitW / 2;
 
-            popupX = Math.max(0, splitX - halfSplitter);
+            popupX = Math.max(usableLeft, splitX - halfSplitter);
             popupY = topMargin;
-            popupW = Math.max(1, totalW - popupX);
+            popupW = Math.max(1, usableRight - popupX);
             popupH = availH;
             int webLeft = Math.max(0, splitX - popupX);
-            int webW = Math.max(1, totalW - splitX);
+            int webW = Math.max(1, usableRight - splitX);
 
             FrameLayout.LayoutParams webParams = new FrameLayout.LayoutParams(webW, availH);
             webParams.gravity = Gravity.TOP | Gravity.LEFT;
@@ -913,9 +1115,8 @@ public class MainActivity extends NativeActivity {
             }
         }
         String fullHtml = cmdGetPreviewHtml(isDark);
-        String domJsCheck = cmdGetPreviewDomUpdateJs(isDark);
         previewShellLoaded = false;
-        pendingPreviewShellIsMdOrMermaid = (domJsCheck != null && !domJsCheck.isEmpty());
+        pendingPreviewShellIsMdOrMermaid = cmdIsLastPreviewMdOrMermaid();
         pendingPreviewDomRefresh = false;
         previewWebView.loadDataWithBaseURL("https://miu.local/", fullHtml != null ? fullHtml : "", "text/html", "UTF-8", null);
     }
@@ -2142,8 +2343,11 @@ public class MainActivity extends NativeActivity {
     }
 
     private void actionCut() {
-        String text = cmdCut();
-        if (text != null && !text.isEmpty()) setClipboardText(text);
+        String text = cmdCopy();
+        if (text != null && !text.isEmpty()) {
+            if (!setClipboardText(text)) return;
+        }
+        cmdDeleteForCut();
     }
 
     private void actionCopy() {
@@ -2156,23 +2360,111 @@ public class MainActivity extends NativeActivity {
         if (text != null && !text.isEmpty()) cmdPaste(text);
     }
 
-    private void setClipboardText(String text) {
+    private boolean setClipboardText(String text) {
+        if (text == null) return false;
+        sInternalClipboardFallback = text;
+        boolean copiedToSystem = false;
         android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        if (clipboard != null) {
-            android.content.ClipData clip = android.content.ClipData.newPlainText("miu", text);
-            clipboard.setPrimaryClip(clip);
-            Toast.makeText(this, getStringResourceByName("msg_copied"), Toast.LENGTH_SHORT).show();
+        if (clipboard != null && text.length() <= 262144) {
+            try {
+                android.content.ClipData clip = android.content.ClipData.newPlainText("miu", text);
+                clipboard.setPrimaryClip(clip);
+                copiedToSystem = true;
+            } catch (RuntimeException ignored) {
+                copiedToSystem = false;
+            }
         }
+        if (copiedToSystem) {
+            sInternalClipboardOversize = false;
+            sInternalClipboardTimestamp = 0L;
+        } else {
+            sInternalClipboardOversize = true;
+            long sysTs = 0L;
+            if (clipboard != null) {
+                try {
+                    android.content.ClipDescription desc = clipboard.getPrimaryClipDescription();
+                    if (desc != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        sysTs = desc.getTimestamp();
+                    }
+                } catch (RuntimeException ignored) {}
+            }
+            sInternalClipboardTimestamp = sysTs;
+        }
+        Toast.makeText(this, getStringResourceByName("msg_copied"), Toast.LENGTH_SHORT).show();
+        return true;
     }
 
     private String getClipboardText() {
         android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-        if (clipboard != null && clipboard.hasPrimaryClip()) {
-            android.content.ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
-            CharSequence text = item.getText();
-            if (text != null) return text.toString();
+        android.content.ClipData clip = null;
+        if (clipboard != null) {
+            try {
+                clip = clipboard.getPrimaryClip();
+            } catch (RuntimeException ignored) {
+                clip = null;
+            }
         }
-        return null;
+        if (sInternalClipboardFallback != null && sInternalClipboardOversize) {
+            boolean externalNewer = false;
+            if (clip != null && clip.getItemCount() > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                android.content.ClipDescription desc = clip.getDescription();
+                if (desc != null && sInternalClipboardTimestamp > 0L && desc.getTimestamp() > sInternalClipboardTimestamp) {
+                    CharSequence label = desc.getLabel();
+                    if (label == null || !"miu".contentEquals(label)) {
+                        externalNewer = true;
+                    }
+                }
+            }
+            if (!externalNewer) {
+                return sInternalClipboardFallback;
+            }
+            sInternalClipboardOversize = false;
+        }
+        if (clip != null && clip.getItemCount() > 0) {
+            android.content.ClipData.Item item = clip.getItemAt(0);
+            if (item != null) {
+                CharSequence text = item.getText();
+                if (text != null) return text.toString();
+            }
+        }
+        return sInternalClipboardFallback;
+    }
+
+    private void showTrackedDialog(AlertDialog dialog) {
+        showTrackedDialog(dialog, null);
+    }
+
+    private void showTrackedDialog(AlertDialog dialog, Runnable onDismissExtra) {
+        if (dialog == null || isFinishing() || isDestroyed()) {
+            if (onDismissExtra != null) onDismissExtra.run();
+            return;
+        }
+        if (activeAlertDialog != null && activeAlertDialog.isShowing()) {
+            try {
+                activeAlertDialog.dismiss();
+            } catch (Exception ignored) {}
+        }
+        activeAlertDialog = dialog;
+        dialog.setOnDismissListener(d -> {
+            if (activeAlertDialog == dialog) {
+                activeAlertDialog = null;
+            }
+            if (onDismissExtra != null) {
+                onDismissExtra.run();
+            }
+        });
+        dialog.show();
+    }
+
+    private void dismissLoadingDialog() {
+        if (activeLoadingDialog != null) {
+            if (activeLoadingDialog.isShowing()) {
+                try {
+                    activeLoadingDialog.dismiss();
+                } catch (Exception ignored) {}
+            }
+            activeLoadingDialog = null;
+        }
     }
 
     private void actionGoTo() {
@@ -2220,7 +2512,7 @@ public class MainActivity extends NativeActivity {
                 if (imm != null) imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT);
             }, 100);
         });
-        dialog.show();
+        showTrackedDialog(dialog);
     }
 
     private void confirmSaveIfNeeded(Runnable nextAction) {
@@ -2245,11 +2537,14 @@ public class MainActivity extends NativeActivity {
             android.widget.Button neuBtn = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
             if (neuBtn != null) neuBtn.setTextColor(sysAccentColor);
         });
-        dialog.show();
+        showTrackedDialog(dialog);
     }
 
     private void actionNewDocument() {
         confirmSaveIfNeeded(() -> {
+            openTaskGeneration.incrementAndGet();
+            isOpeningDocument = false;
+            dismissLoadingDialog();
             saveCurrentViewState();
             mainHandler.removeCallbacks(debouncedPreviewUpdateRunnable);
             cmdNewDocument();
@@ -2282,21 +2577,105 @@ public class MainActivity extends NativeActivity {
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String raw = prefs.getString(KEY_RECENT_URIS, "");
         List<Uri> list = new ArrayList<>();
+        boolean pruned = false;
         if (raw != null && !raw.isEmpty()) {
             String[] parts = raw.split("\n");
             for (String p : parts) {
-                if (!p.trim().isEmpty()) {
+                String trimmed = p.trim();
+                if (!trimmed.isEmpty()) {
                     try {
-                        list.add(Uri.parse(p.trim()));
-                    } catch (Exception ignored) {}
+                        Uri parsed = Uri.parse(trimmed);
+                        if (canAddUriToRecents(parsed)) {
+                            list.add(parsed);
+                        } else {
+                            pruned = true;
+                        }
+                    } catch (Exception ignored) {
+                        pruned = true;
+                    }
                 }
+            }
+        }
+        if (pruned) {
+            if (list.isEmpty()) {
+                prefs.edit().remove(KEY_RECENT_URIS).apply();
+            } else {
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < list.size(); i++) {
+                    if (i > 0) sb.append("\n");
+                    sb.append(list.get(i).toString());
+                }
+                prefs.edit().putString(KEY_RECENT_URIS, sb.toString()).apply();
             }
         }
         return list;
     }
 
+    private boolean takePersistablePermissionSafely(Uri uri, int intentFlags) {
+        if (uri == null || !"content".equalsIgnoreCase(uri.getScheme())) return false;
+        int persistFlags = intentFlags & (Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+        if ((persistFlags & Intent.FLAG_GRANT_WRITE_URI_PERMISSION) == 0) {
+            try {
+                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                sessionPersistedUris.add(uri.toString());
+                return true;
+            } catch (SecurityException ignored) {
+                return false;
+            }
+        }
+        try {
+            getContentResolver().takePersistableUriPermission(uri, persistFlags);
+            sessionPersistedUris.add(uri.toString());
+            return true;
+        } catch (SecurityException e) {
+            try {
+                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                sessionPersistedUris.add(uri.toString());
+                return true;
+            } catch (SecurityException ignored) {
+                return false;
+            }
+        }
+    }
+
+    private boolean hasPersistedReadPermission(Uri uri) {
+        if (uri == null || !"content".equalsIgnoreCase(uri.getScheme())) return false;
+        if (sessionPersistedUris.contains(uri.toString())) return true;
+        try {
+            List<UriPermission> perms = getContentResolver().getPersistedUriPermissions();
+            if (perms != null) {
+                for (UriPermission perm : perms) {
+                    if (perm != null && uri.equals(perm.getUri()) && (perm.isReadPermission() || perm.isWritePermission())) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
+
+    private boolean canAddUriToRecents(Uri uri) {
+        if (uri == null) return false;
+        String scheme = uri.getScheme();
+        if ("content".equalsIgnoreCase(scheme)) {
+            return hasPersistedReadPermission(uri);
+        }
+        if ("file".equalsIgnoreCase(scheme)) {
+            if (isDisallowedFileUri(uri)) return false;
+            String path = uri.getPath();
+            if (path == null || path.isEmpty()) return false;
+            try {
+                File f = new File(path).getCanonicalFile();
+                return f.exists() && f.isFile() && f.canRead();
+            } catch (Exception ignored) {
+                return false;
+            }
+        }
+        return false;
+    }
+
     private void addRecentUri(Uri uri) {
-        if (uri == null) return;
+        if (uri == null || !canAddUriToRecents(uri)) return;
         List<Uri> list = getRecentUris();
         String target = uri.toString();
         for (int i = list.size() - 1; i >= 0; i--) {
@@ -2349,7 +2728,7 @@ public class MainActivity extends NativeActivity {
             android.widget.Button neuBtn = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
             if (neuBtn != null) neuBtn.setTextColor(sysAccentColor);
         });
-        dialog.show();
+        showTrackedDialog(dialog);
     }
 
     private String getViewStateKey(Uri uri) {
@@ -2357,10 +2736,12 @@ public class MainActivity extends NativeActivity {
     }
 
     private void saveCurrentViewState() {
-        float[] state = cmdGetViewState();
+        double[] state = cmdGetViewState();
         if (state == null || state.length < 5) return;
         String key = getViewStateKey(currentDocumentUri);
-        String val = state[0] + "," + state[1] + "," + ((int) state[2]) + "," + ((int) state[3]) + "," + (state[4] > 0.5f ? "1" : "0");
+        long head = Math.max(0L, Math.round(state[2]));
+        long anchor = Math.max(0L, Math.round(state[3]));
+        String val = ((float) state[0]) + "," + ((float) state[1]) + "," + head + "," + anchor + "," + (state[4] > 0.5 ? "1" : "0");
         getSharedPreferences(PREFS_NAME, MODE_PRIVATE).edit().putString(key, val).apply();
     }
 
@@ -2373,8 +2754,8 @@ public class MainActivity extends NativeActivity {
             if (parts.length >= 5) {
                 float sx = Float.parseFloat(parts[0]);
                 float sy = Float.parseFloat(parts[1]);
-                int head = Integer.parseInt(parts[2]);
-                int anchor = Integer.parseInt(parts[3]);
+                long head = Long.parseLong(parts[2]);
+                long anchor = Long.parseLong(parts[3]);
                 boolean ww = "1".equals(parts[4]);
                 cmdSetViewState(sx, sy, head, anchor, ww);
                 updateToolbarToggleStates();
@@ -2398,32 +2779,38 @@ public class MainActivity extends NativeActivity {
     }
 
     private void checkExternalDocumentModification() {
-        if (currentDocumentUri == null || lastKnownModifiedTime <= 0L || isShowingReloadPrompt) return;
+        if (currentDocumentUri == null || lastKnownModifiedTime <= 0L || isShowingReloadPrompt || isOpeningDocument) return;
         long currentMod = queryLastModified(currentDocumentUri);
         if (currentMod > lastKnownModifiedTime) {
-            lastKnownModifiedTime = currentMod;
             if (!cmdIsDirty()) {
                 loadDocumentFromUri(currentDocumentUri);
             } else {
                 isShowingReloadPrompt = true;
                 boolean isDark = isDarkThemeActive();
                 int dialogTheme = isDark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+                String keepMineLabel = "ja".equals(Locale.getDefault().getLanguage()) ? "自分の変更を維持" : "Keep Mine";
                 AlertDialog dialog = new AlertDialog.Builder(this, dialogTheme)
                         .setMessage(getStringResourceByName("reload_prompt"))
                         .setPositiveButton(android.R.string.ok, (d, which) -> {
+                            lastKnownModifiedTime = currentMod;
                             isShowingReloadPrompt = false;
                             loadDocumentFromUri(currentDocumentUri);
                         })
+                        .setNeutralButton(keepMineLabel, (d, which) -> {
+                            lastKnownModifiedTime = currentMod;
+                            isShowingReloadPrompt = false;
+                        })
                         .setNegativeButton(getStringResourceByName("toolbar_cancel"), (d, which) -> isShowingReloadPrompt = false)
-                        .setOnCancelListener(d -> isShowingReloadPrompt = false)
                         .create();
                 dialog.setOnShowListener(d -> {
                     android.widget.Button posBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
                     if (posBtn != null) posBtn.setTextColor(sysAccentColor);
                     android.widget.Button negBtn = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
                     if (negBtn != null) negBtn.setTextColor(sysAccentColor);
+                    android.widget.Button neuBtn = dialog.getButton(AlertDialog.BUTTON_NEUTRAL);
+                    if (neuBtn != null) neuBtn.setTextColor(sysAccentColor);
                 });
-                dialog.show();
+                showTrackedDialog(dialog, () -> isShowingReloadPrompt = false);
             }
         }
     }
@@ -2443,22 +2830,144 @@ public class MainActivity extends NativeActivity {
         startActivityForResult(intent, REQUEST_CODE_SAVE_DOCUMENT);
     }
 
+    private void verifyOpenedFdSafe(Uri uri, ParcelFileDescriptor pfd) throws IOException {
+        if (pfd == null) return;
+        String resolved = null;
+        try {
+            resolved = Os.readlink("/proc/self/fd/" + pfd.getFd());
+        } catch (Exception ignored) {}
+        if (resolved == null || !resolved.startsWith("/")) return;
+        boolean checkAllAppDataTrees = (uri == null || "file".equalsIgnoreCase(uri.getScheme()) || uri.getScheme() == null);
+        if (isDisallowedResolvedPath(resolved, checkAllAppDataTrees)) {
+            throw new SecurityException("Disallowed target file path.");
+        }
+    }
+
+    private static void writeAllChunks(OutputStream os, byte[] data) throws IOException {
+        int offset = 0;
+        final int chunkSize = 65536;
+        while (offset < data.length) {
+            int len = Math.min(chunkSize, data.length - offset);
+            os.write(data, offset, len);
+            offset += len;
+        }
+    }
+
+    private void writeBytesToUriSafely(Uri uri, byte[] data) throws IOException {
+        if (uri == null || data == null) {
+            throw new IOException("Invalid write arguments.");
+        }
+        if (isDisallowedFileUri(uri)) {
+            throw new SecurityException("Disallowed file URI.");
+        }
+        final String[] modes = new String[]{"wt", "rwt", "w"};
+        Exception lastOpenError = null;
+        ParcelFileDescriptor pfd = null;
+        for (String mode : modes) {
+            try {
+                pfd = getContentResolver().openFileDescriptor(uri, mode);
+                if (pfd != null) {
+                    break;
+                }
+            } catch (SecurityException | IllegalArgumentException | UnsupportedOperationException | FileNotFoundException e) {
+                lastOpenError = e;
+            }
+        }
+        if (pfd != null) {
+            try (ParcelFileDescriptor pfdClose = pfd;
+                 FileOutputStream fos = new ParcelFileDescriptor.AutoCloseOutputStream(pfdClose)) {
+                verifyOpenedFdSafe(uri, pfdClose);
+                writeAllChunks(fos, data);
+                fos.flush();
+                try {
+                    FileChannel channel = fos.getChannel();
+                    if (channel != null) {
+                        channel.truncate(data.length);
+                    }
+                } catch (Exception ignored) {}
+                try {
+                    pfdClose.getFileDescriptor().sync();
+                } catch (Exception ignored) {}
+                return;
+            }
+        }
+
+        OutputStream os = null;
+        for (String mode : modes) {
+            try {
+                os = getContentResolver().openOutputStream(uri, mode);
+                if (os != null) {
+                    break;
+                }
+            } catch (SecurityException | IllegalArgumentException | UnsupportedOperationException | FileNotFoundException e) {
+                lastOpenError = e;
+            }
+        }
+        if (os == null) {
+            try {
+                os = getContentResolver().openOutputStream(uri);
+            } catch (Exception e) {
+                lastOpenError = e;
+            }
+        }
+        if (os == null) {
+            if (lastOpenError instanceof SecurityException) throw (SecurityException) lastOpenError;
+            if (lastOpenError instanceof IOException) throw (IOException) lastOpenError;
+            throw new IOException("Failed to open output stream for writing.", lastOpenError);
+        }
+        try (OutputStream out = os) {
+            writeAllChunks(out, data);
+            out.flush();
+            if (out instanceof FileOutputStream) {
+                FileOutputStream fos = (FileOutputStream) out;
+                try {
+                    FileChannel channel = fos.getChannel();
+                    if (channel != null) {
+                        channel.truncate(data.length);
+                    }
+                } catch (Exception ignored) {}
+                try {
+                    fos.getFD().sync();
+                } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    private void promptSaveAsUtf8Instead(Uri uri, Runnable onSuccess) {
+        boolean isDark = isDarkThemeActive();
+        int dialogTheme = isDark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+        String msg = "ja".equals(Locale.getDefault().getLanguage())
+                ? "現在の文字コードで表現できない文字が含まれています。UTF-8として保存しますか？"
+                : "Characters cannot be represented in the current encoding. Save as UTF-8 instead?";
+        AlertDialog dialog = new AlertDialog.Builder(this, dialogTheme)
+                .setMessage(msg)
+                .setPositiveButton(android.R.string.yes, (d, which) -> {
+                    cmdSetEncodingUtf8();
+                    saveToUri(uri, onSuccess);
+                })
+                .setNegativeButton(getStringResourceByName("toolbar_cancel"), null)
+                .create();
+        dialog.setOnShowListener(d -> {
+            android.widget.Button posBtn = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            if (posBtn != null) posBtn.setTextColor(sysAccentColor);
+            android.widget.Button negBtn = dialog.getButton(AlertDialog.BUTTON_NEGATIVE);
+            if (negBtn != null) negBtn.setTextColor(sysAccentColor);
+        });
+        showTrackedDialog(dialog);
+    }
+
     private void saveToUri(Uri uri, Runnable onSuccess) {
+        if (uri == null || isDisallowedFileUri(uri)) {
+            Toast.makeText(this, getStringResourceByName("msg_save_fail"), Toast.LENGTH_SHORT).show();
+            return;
+        }
         try {
             byte[] saveData = cmdGetSaveData();
             if (saveData != null) {
-                try (ParcelFileDescriptor pfd = getContentResolver().openFileDescriptor(uri, "wt")) {
-                    if (pfd == null) {
-                        throw new IOException("Failed to open file descriptor for writing.");
-                    }
-                    try (FileOutputStream fos = new FileOutputStream(pfd.getFileDescriptor())) {
-                        fos.write(saveData);
-                        fos.flush();
-                        fos.getFD().sync();
-                    }
-                }
+                writeBytesToUriSafely(uri, saveData);
                 currentDocumentUri = uri;
-                lastKnownModifiedTime = queryLastModified(uri);
+                long queriedMod = queryLastModified(uri);
+                lastKnownModifiedTime = queriedMod > 0L ? queriedMod : System.currentTimeMillis();
                 addRecentUri(uri);
                 cmdSetDisplayFileName(getFileName(uri));
                 cmdMarkSaved();
@@ -2466,7 +2975,11 @@ public class MainActivity extends NativeActivity {
                 if (isLivePreviewVisible) updateLivePreviewContent(true);
                 Toast.makeText(this, getStringResourceByName("msg_doc_saved"), Toast.LENGTH_SHORT).show();
                 if (onSuccess != null) onSuccess.run();
-            } else Toast.makeText(this, getStringResourceByName("msg_encode_fail"), Toast.LENGTH_SHORT).show();
+            } else if (cmdWasLastSaveEncodingError()) {
+                promptSaveAsUtf8Instead(uri, onSuccess);
+            } else {
+                Toast.makeText(this, getStringResourceByName("msg_encode_fail"), Toast.LENGTH_SHORT).show();
+            }
         } catch (Exception e) {
             Toast.makeText(this, getStringResourceByName("msg_save_fail"), Toast.LENGTH_SHORT).show();
         }
@@ -2476,15 +2989,17 @@ public class MainActivity extends NativeActivity {
         super.onActivityResult(requestCode, resultCode, data);
         if (resultCode == RESULT_OK && data != null && data.getData() != null) {
             Uri uri = data.getData();
-            try {
-                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-            } catch (SecurityException e) {}
+            int flags = data.getFlags();
+            if (requestCode == REQUEST_CODE_SAVE_DOCUMENT && flags == 0) {
+                flags = Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION;
+            }
+            takePersistablePermissionSafely(uri, flags);
             if (requestCode == REQUEST_CODE_OPEN_DOCUMENT) loadDocumentFromUri(uri);
             else if (requestCode == REQUEST_CODE_SAVE_DOCUMENT) {
                 saveToUri(uri, pendingAction);
                 pendingAction = null;
             }
-        } else if (resultCode == RESULT_CANCELED) {
+        } else {
             if (requestCode == REQUEST_CODE_SAVE_DOCUMENT) pendingAction = null;
         }
     }
@@ -2509,83 +3024,294 @@ public class MainActivity extends NativeActivity {
         return result != null ? result : "Unknown";
     }
 
+    private static boolean isPathUnderDir(String candidatePath, String dirPath) {
+        if (candidatePath == null || dirPath == null || dirPath.isEmpty()) return false;
+        String normDir = dirPath.endsWith("/") && dirPath.length() > 1
+                ? dirPath.substring(0, dirPath.length() - 1)
+                : dirPath;
+        if ("/".equals(normDir)) return true;
+        return candidatePath.equals(normDir) || candidatePath.startsWith(normDir + "/");
+    }
+
+    private boolean isPathInsideDir(String path, File dir) {
+        if (path == null || dir == null) return false;
+        if (isPathUnderDir(path, dir.getAbsolutePath())) return true;
+        try {
+            if (isPathUnderDir(path, dir.getCanonicalPath())) return true;
+        } catch (IOException ignored) {}
+        return false;
+    }
+
+    private boolean isDisallowedResolvedPath(String path, boolean blockAllAppDataTrees) {
+        if (path == null || path.isEmpty()) return true;
+        if (isPathUnderDir(path, "/dev") ||
+            isPathUnderDir(path, "/proc") ||
+            isPathUnderDir(path, "/sys")) {
+            return true;
+        }
+        if (blockAllAppDataTrees && (
+            isPathUnderDir(path, "/data/data") ||
+            isPathUnderDir(path, "/data/user") ||
+            isPathUnderDir(path, "/data/user_de"))) {
+            return true;
+        }
+        if (getApplicationInfo() != null && getApplicationInfo().dataDir != null) {
+            if (isPathInsideDir(path, new File(getApplicationInfo().dataDir))) return true;
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            if (isPathInsideDir(path, getDataDir())) return true;
+        }
+        File filesDir = getFilesDir();
+        if (filesDir != null) {
+            if (isPathInsideDir(path, filesDir)) return true;
+            if (isPathInsideDir(path, filesDir.getParentFile())) return true;
+        }
+        if (isPathInsideDir(path, getCacheDir())) return true;
+        return false;
+    }
+
     private boolean isDisallowedFileUri(Uri uri) {
-        if (uri == null || !"file".equalsIgnoreCase(uri.getScheme())) return false;
+        if (uri == null) return true;
+        String scheme = uri.getScheme();
+        if (scheme != null && !"file".equalsIgnoreCase(scheme)) return false;
         String rawPath = uri.getPath();
         if (rawPath == null || rawPath.isEmpty()) return true;
         try {
-            File target = new File(rawPath).getCanonicalFile();
-            String canon = target.getPath();
-            String appDataDir = new File(getApplicationInfo().dataDir).getCanonicalPath();
-            if (canon.equals(appDataDir) || canon.startsWith(appDataDir + File.separator)) return true;
-            if (canon.startsWith("/data/data/") || canon.startsWith("/data/user/") || canon.startsWith("/proc/") || canon.startsWith("/sys/")) return true;
-            return false;
-        } catch (IOException e) {
+            File rawFile = new File(rawPath);
+            if (isDisallowedResolvedPath(rawFile.getAbsolutePath(), true)) return true;
+            String canon = rawFile.getCanonicalPath();
+            return isDisallowedResolvedPath(canon, true);
+        } catch (IOException | SecurityException e) {
             return true;
         }
     }
 
+    private long queryDeclaredStreamSize(Uri uri) {
+        if (uri == null) return -1L;
+        if ("content".equalsIgnoreCase(uri.getScheme())) {
+            try (android.database.Cursor cursor = getContentResolver().query(uri, new String[]{OpenableColumns.SIZE}, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst() && !cursor.isNull(0)) {
+                    return cursor.getLong(0);
+                }
+            } catch (Exception ignored) {}
+        } else if ("file".equalsIgnoreCase(uri.getScheme()) && uri.getPath() != null) {
+            File f = new File(uri.getPath());
+            if (f.exists() && f.isFile()) return f.length();
+        }
+        return -1L;
+    }
+
     private void loadDocumentFromUri(Uri uri) {
-        File tempFile = null;
-        try {
-            if (uri == null || isDisallowedFileUri(uri)) {
-                Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
-                return;
+        if (uri == null || isDisallowedFileUri(uri)) {
+            Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        saveCurrentViewState();
+        File openCacheDir = new File(getCacheDir(), "open_cache");
+        if (!openCacheDir.exists() && !openCacheDir.mkdirs()) {
+            Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        //noinspection ResultOfMethodCallIgnored
+        openCacheDir.setReadable(false, false);
+        //noinspection ResultOfMethodCallIgnored
+        openCacheDir.setReadable(true, true);
+        //noinspection ResultOfMethodCallIgnored
+        openCacheDir.setWritable(false, false);
+        //noinspection ResultOfMethodCallIgnored
+        openCacheDir.setWritable(true, true);
+        //noinspection ResultOfMethodCallIgnored
+        openCacheDir.setExecutable(false, false);
+        //noinspection ResultOfMethodCallIgnored
+        openCacheDir.setExecutable(true, true);
+        final long taskGen = openTaskGeneration.incrementAndGet();
+        isOpeningDocument = true;
+        dismissLoadingDialog();
+        final File tempFile = new File(openCacheDir, "miu_open_" + UUID.randomUUID().toString() + ".tmp");
+
+        final Runnable showProgressTask = () -> {
+            if (openTaskGeneration.get() != taskGen || !isOpeningDocument || isFinishing() || isDestroyed()) return;
+            boolean isDark = isDarkThemeActive();
+            int dialogTheme = isDark ? android.R.style.Theme_DeviceDefault_Dialog_Alert : android.R.style.Theme_DeviceDefault_Light_Dialog_Alert;
+            String loadingMsg = "ja".equals(Locale.getDefault().getLanguage()) ? "読み込み中..." : "Loading document...";
+            AlertDialog dlg = new AlertDialog.Builder(this, dialogTheme)
+                    .setMessage(loadingMsg)
+                    .setCancelable(true)
+                    .setNegativeButton(getStringResourceByName("toolbar_cancel"), (d, w) -> {
+                        openTaskGeneration.incrementAndGet();
+                        isOpeningDocument = false;
+                    })
+                    .setOnCancelListener(d -> {
+                        openTaskGeneration.incrementAndGet();
+                        isOpeningDocument = false;
+                    })
+                    .create();
+            dlg.setOnShowListener(d -> {
+                android.widget.Button negBtn = dlg.getButton(AlertDialog.BUTTON_NEGATIVE);
+                if (negBtn != null) negBtn.setTextColor(sysAccentColor);
+            });
+            activeLoadingDialog = dlg;
+            dlg.show();
+        };
+        mainHandler.postDelayed(showProgressTask, 250);
+
+        Thread worker = new Thread(() -> {
+            boolean exceededLimit = false;
+            boolean openFailed = false;
+            boolean readError = false;
+            boolean cancelled = false;
+            String displayName = "Unknown";
+            long modTime = 0L;
+            try {
+                if ("file".equalsIgnoreCase(uri.getScheme()) && isDisallowedFileUri(uri)) {
+                    openFailed = true;
+                } else {
+                    long declaredSize = queryDeclaredStreamSize(uri);
+                    if (declaredSize > MAX_OPEN_STREAM_BYTES) {
+                        exceededLimit = true;
+                    } else {
+                        if ("content".equalsIgnoreCase(uri.getScheme())) {
+                            try (ParcelFileDescriptor checkPfd = getContentResolver().openFileDescriptor(uri, "r")) {
+                                if (checkPfd != null) {
+                                    verifyOpenedFdSafe(uri, checkPfd);
+                                }
+                            } catch (SecurityException se) {
+                                openFailed = true;
+                            } catch (Exception ignored) {}
+                        }
+                        if (!openFailed) {
+                            try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
+                                if (inputStream == null) {
+                                    openFailed = true;
+                                } else {
+                                    try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
+                                        //noinspection ResultOfMethodCallIgnored
+                                        tempFile.setReadable(false, false);
+                                        //noinspection ResultOfMethodCallIgnored
+                                        tempFile.setReadable(true, true);
+                                        //noinspection ResultOfMethodCallIgnored
+                                        tempFile.setWritable(false, false);
+                                        //noinspection ResultOfMethodCallIgnored
+                                        tempFile.setWritable(true, true);
+                                        byte[] buffer = new byte[65536];
+                                        long totalBytes = 0L;
+                                        int length;
+                                        while ((length = inputStream.read(buffer)) != -1) {
+                                            if (openTaskGeneration.get() != taskGen || isFinishing() || isDestroyed()) {
+                                                cancelled = true;
+                                                break;
+                                            }
+                                            if (length == 0) continue;
+                                            totalBytes += length;
+                                            if (totalBytes > MAX_OPEN_STREAM_BYTES) {
+                                                exceededLimit = true;
+                                                break;
+                                            }
+                                            outputStream.write(buffer, 0, length);
+                                        }
+                                        if (!cancelled && !exceededLimit) {
+                                            outputStream.flush();
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!cancelled && !exceededLimit && !openFailed) {
+                    displayName = getFileName(uri);
+                    modTime = queryLastModified(uri);
+                }
+            } catch (SecurityException se) {
+                openFailed = true;
+            } catch (Exception e) {
+                readError = true;
+            } finally {
+                if (cancelled || exceededLimit || openFailed || readError || openTaskGeneration.get() != taskGen) {
+                    if (tempFile.exists()) {
+                        //noinspection ResultOfMethodCallIgnored
+                        tempFile.delete();
+                    }
+                }
             }
-            saveCurrentViewState();
-            File openCacheDir = new File(getFilesDir(), "open_cache");
-            if (!openCacheDir.exists() && !openCacheDir.mkdirs()) {
-                Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            tempFile = new File(openCacheDir, "miu_open_" + UUID.randomUUID().toString() + ".tmp");
-            try (InputStream inputStream = getContentResolver().openInputStream(uri)) {
-                if (inputStream == null) {
-                    Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
+
+            final boolean fExceeded = exceededLimit;
+            final boolean fOpenFailed = openFailed;
+            final boolean fReadError = readError;
+            final boolean fCancelled = cancelled;
+            final String fDisplayName = displayName;
+            final long fModTime = modTime;
+
+            mainHandler.post(() -> {
+                mainHandler.removeCallbacks(showProgressTask);
+                if (openTaskGeneration.get() != taskGen || isFinishing() || isDestroyed() || fCancelled) {
+                    if (openTaskGeneration.get() == taskGen) {
+                        isOpeningDocument = false;
+                        dismissLoadingDialog();
+                    }
+                    if (tempFile.exists()) {
+                        //noinspection ResultOfMethodCallIgnored
+                        tempFile.delete();
+                    }
                     return;
                 }
-                try (FileOutputStream outputStream = new FileOutputStream(tempFile)) {
-                    byte[] buffer = new byte[32768];
-                    int length;
-                    while ((length = inputStream.read(buffer)) > 0) {
-                        outputStream.write(buffer, 0, length);
+                isOpeningDocument = false;
+                dismissLoadingDialog();
+
+                if (fExceeded) {
+                    if (tempFile.exists()) {
+                        //noinspection ResultOfMethodCallIgnored
+                        tempFile.delete();
                     }
-                    outputStream.flush();
+                    String tooLargeMsg = "ja".equals(Locale.getDefault().getLanguage())
+                            ? "ファイルサイズが大きすぎます（上限 256 MB）"
+                            : "File exceeds maximum size limit (256 MB)";
+                    Toast.makeText(MainActivity.this, tooLargeMsg, Toast.LENGTH_LONG).show();
+                    return;
                 }
-            }
-            String displayName = getFileName(uri);
-            if (cmdOpenDocument(tempFile.getAbsolutePath())) {
-                File prevTemp = activeTempOpenFile;
-                activeTempOpenFile = tempFile;
-                tempFile = null;
-                if (prevTemp != null && !prevTemp.equals(activeTempOpenFile)) {
-                    //noinspection ResultOfMethodCallIgnored
-                    prevTemp.delete();
+                if (fOpenFailed || fReadError || !tempFile.exists()) {
+                    if (tempFile.exists()) {
+                        //noinspection ResultOfMethodCallIgnored
+                        tempFile.delete();
+                    }
+                    Toast.makeText(MainActivity.this, getStringResourceByName(fReadError ? "msg_read_error" : "msg_open_fail"), Toast.LENGTH_SHORT).show();
+                    return;
                 }
-                currentDocumentUri = uri;
-                lastKnownModifiedTime = queryLastModified(uri);
-                addRecentUri(uri);
-                cmdSetDisplayFileName(displayName);
-                cmdMarkSaved();
-                restoreViewStateForUri(uri);
-                mainHandler.removeCallbacks(debouncedPreviewUpdateRunnable);
-                previewShellLoaded = false;
-                pendingPreviewShellIsMdOrMermaid = false;
-                pendingPreviewDomRefresh = false;
-                if (isLivePreviewVisible) updateLivePreviewContent(true);
-                hideSoftwareKeyboard();
-                Toast.makeText(this, getStringResourceByName("msg_doc_opened"), Toast.LENGTH_SHORT).show();
-            } else {
-                Toast.makeText(this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
-            }
-        } catch (Exception e) {
-            Toast.makeText(this, getStringResourceByName("msg_read_error"), Toast.LENGTH_SHORT).show();
-        } finally {
-            if (tempFile != null && tempFile.exists()) {
-                //noinspection ResultOfMethodCallIgnored
-                tempFile.delete();
-            }
-        }
+                boolean opened = false;
+                try {
+                    opened = cmdOpenDocument(tempFile.getAbsolutePath());
+                } catch (Exception ignored) {}
+                if (opened) {
+                    File prevTemp = activeTempOpenFile;
+                    activeTempOpenFile = tempFile;
+                    if (prevTemp != null && !prevTemp.equals(activeTempOpenFile)) {
+                        //noinspection ResultOfMethodCallIgnored
+                        prevTemp.delete();
+                    }
+                    currentDocumentUri = uri;
+                    lastKnownModifiedTime = fModTime;
+                    addRecentUri(uri);
+                    cmdSetDisplayFileName(fDisplayName);
+                    cmdMarkSaved();
+                    restoreViewStateForUri(uri);
+                    mainHandler.removeCallbacks(debouncedPreviewUpdateRunnable);
+                    previewShellLoaded = false;
+                    pendingPreviewShellIsMdOrMermaid = false;
+                    pendingPreviewDomRefresh = false;
+                    if (isLivePreviewVisible) updateLivePreviewContent(true);
+                    hideSoftwareKeyboard();
+                    Toast.makeText(MainActivity.this, getStringResourceByName("msg_doc_opened"), Toast.LENGTH_SHORT).show();
+                } else {
+                    if (tempFile.exists()) {
+                        //noinspection ResultOfMethodCallIgnored
+                        tempFile.delete();
+                    }
+                    Toast.makeText(MainActivity.this, getStringResourceByName("msg_open_fail"), Toast.LENGTH_SHORT).show();
+                }
+            });
+        }, "miu-open-doc");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private boolean isHardwareKeyboardConnected() { return getResources().getConfiguration().keyboard == Configuration.KEYBOARD_QWERTY; }
@@ -2698,17 +3424,23 @@ public class MainActivity extends NativeActivity {
             return text != null ? text : "";
         }
         @Override
+        public CharSequence getSelectedText(int flags) {
+            return MainActivity.this.cmdGetSelectedText();
+        }
+        @Override
         public android.view.inputmethod.ExtractedText getExtractedText(android.view.inputmethod.ExtractedTextRequest request, int flags) {
             android.view.inputmethod.ExtractedText et = new android.view.inputmethod.ExtractedText();
             String before = MainActivity.this.cmdGetTextBeforeCursor(100);
+            String selected = MainActivity.this.cmdGetSelectedText();
             String after = MainActivity.this.cmdGetTextAfterCursor(100);
             if (before == null) before = "";
+            if (selected == null) selected = "";
             if (after == null) after = "";
-            et.text = before + after;
+            et.text = before + selected + after;
             et.partialStartOffset = -1;
             et.partialEndOffset = -1;
             et.selectionStart = before.length();
-            et.selectionEnd = before.length();
+            et.selectionEnd = before.length() + selected.length();
             return et;
         }
         @Override public boolean commitText(CharSequence text, int newCursorPosition) {
@@ -2779,7 +3511,8 @@ public class MainActivity extends NativeActivity {
                     else if (this == replaceField) { actionReplaceNext(); return true; }
                 }
                 if (keyCode == KeyEvent.KEYCODE_TAB) {
-                    View next = focusSearch(event.isShiftPressed() ? View.FOCUS_BACKWARD : View.FOCUS_FORWARD);
+                    int dir = event.isShiftPressed() ? View.FOCUS_BACKWARD : View.FOCUS_FORWARD;
+                    View next = (getParent() != null) ? getParent().focusSearch(this, dir) : null;
                     if (next != null) {
                         next.requestFocus();
                         return true;
@@ -2917,16 +3650,72 @@ public class MainActivity extends NativeActivity {
 
     @Override
     protected void onDestroy() {
-        saveCurrentViewState();
+        openTaskGeneration.incrementAndGet();
+        isOpeningDocument = false;
+        dismissLoadingDialog();
+        if (sActiveInstance == this) {
+            saveCurrentViewState();
+            sActiveInstance = null;
+        }
+        mainHandler.removeCallbacksAndMessages(null);
+        if (imeView != null) {
+            imeView.removeCallbacks(null);
+        }
+        if (activeAlertDialog != null) {
+            if (activeAlertDialog.isShowing()) {
+                try {
+                    activeAlertDialog.dismiss();
+                } catch (Exception ignored) {}
+            }
+            activeAlertDialog = null;
+        }
         dismissCategoryPopup();
-        if (helpPopup != null && helpPopup.isShowing()) {
-            helpPopup.dismiss();
+        if (toolbarPopup != null) {
+            if (toolbarPopup.isShowing()) {
+                try {
+                    toolbarPopup.dismiss();
+                } catch (Exception ignored) {}
+            }
+            toolbarPopup = null;
         }
-        if (previewPopup != null && previewPopup.isShowing()) {
-            previewPopup.dismiss();
+        if (helpPopup != null) {
+            if (helpPopup.isShowing()) {
+                try {
+                    helpPopup.dismiss();
+                } catch (Exception ignored) {}
+            }
+            helpPopup = null;
         }
-        if (titleOverlayPopup != null && titleOverlayPopup.isShowing()) {
-            titleOverlayPopup.dismiss();
+        if (previewPopup != null) {
+            if (previewPopup.isShowing()) {
+                try {
+                    previewPopup.dismiss();
+                } catch (Exception ignored) {}
+            }
+            previewPopup = null;
+        }
+        if (titleOverlayPopup != null) {
+            if (titleOverlayPopup.isShowing()) {
+                try {
+                    titleOverlayPopup.dismiss();
+                } catch (Exception ignored) {}
+            }
+            titleOverlayPopup = null;
+        }
+        if (previewWebView != null) {
+            try {
+                if (previewOverlayContainer != null) {
+                    previewOverlayContainer.removeView(previewWebView);
+                } else if (previewWebView.getParent() instanceof ViewGroup) {
+                    ((ViewGroup) previewWebView.getParent()).removeView(previewWebView);
+                }
+                previewWebView.stopLoading();
+                previewWebView.removeJavascriptInterface("miuPreview");
+                previewWebView.setWebChromeClient(null);
+                previewWebView.setWebViewClient(null);
+                previewWebView.destroy();
+            } catch (Exception ignored) {}
+            previewWebView = null;
         }
         super.onDestroy();
     }

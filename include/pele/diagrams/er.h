@@ -31,12 +31,13 @@ using StateDiagram::turnToFit;
 
 inline std::string num(double value) {
     if (!std::isfinite(value)) return "0";
+    value = std::clamp(value, -1e15, 1e15);
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
     bool neg = n < 0;
-    long long m = neg ? -n : n;
-    long long q = m / 100;
-    long long r = m % 100;
+    unsigned long long m = neg ? (0ULL - static_cast<unsigned long long>(n)) : static_cast<unsigned long long>(n);
+    unsigned long long q = m / 100ULL;
+    unsigned long long r = m % 100ULL;
     std::string s = (neg ? "-" : "") + std::to_string(q);
     if (r == 0) return s;
     if (r % 10 == 0) return s + "." + std::to_string(r / 10);
@@ -73,7 +74,8 @@ using Crossings = std::unordered_map<int, std::vector<double>>;
 
 inline void markCrossings(Crossings& crossings, const std::vector<double>& route) {
     for (size_t k = 0; k + 1 < route.size(); k += 3) {
-        int key = static_cast<int>(std::llround(route[k + 1]));
+        if (!std::isfinite(route[k]) || !std::isfinite(route[k + 1])) continue;
+        int key = static_cast<int>(std::llround(std::clamp(route[k + 1], -1e8, 1e8)));
         crossings[key].push_back(route[k]);
     }
 }
@@ -84,7 +86,8 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
     double left = c.x - c.w / 2.0;
     double half = width / 2.0;
     double candidates[3] = {left + pad - 6.0 + half, c.x, left + c.w - pad + 6.0 - half};
-    auto it = crossings.find(static_cast<int>(std::llround(top)));
+    if (!std::isfinite(top)) return candidates[0];
+    auto it = crossings.find(static_cast<int>(std::llround(std::clamp(top, -1e8, 1e8))));
     if (it == crossings.end()) return candidates[0];
     const auto& xs = it->second;
     double best = candidates[0];
@@ -1005,7 +1008,12 @@ inline Tokens tokenize(const std::string& src) {
                     p++;
                 } else {
                     size_t e = src.find('}', p);
-                    emit(T::acc_descr_multiline_value, p, e == std::string::npos ? n : e);
+                    if (e == std::string::npos) {
+                        state = S_INITIAL;
+                        emit(T::acc_descr_multiline_value, p, n);
+                    } else {
+                        emit(T::acc_descr_multiline_value, p, e);
+                    }
                 }
                 break;
             case S_style:
@@ -1048,6 +1056,11 @@ inline Tokens tokenize(const std::string& src) {
         types.push_back(last);
         texts.push_back("");
         starts.push_back(n);
+        if (last != T::EOF_TOK) {
+            types.push_back(T::EOF_TOK);
+            texts.push_back("");
+            starts.push_back(n);
+        }
     }
     types.push_back(T::END);
     texts.push_back("");
@@ -1522,7 +1535,7 @@ inline void spreadEnds(std::vector<CEdge>& cedges, const std::vector<CNode>& cno
 }
 
 inline void inset(std::vector<double>& route, size_t at, const NodeView& view, const CNode& c) {
-    if (c.isGroup) return;
+    if (c.isGroup || route.size() < 6 || at + 1 >= route.size()) return;
     double dx = route[at] - c.x;
     double dy = route[at + 1] - c.y;
     auto sign = [](double v) -> double { return v > 0.0 ? 1.0 : (v < 0.0 ? -1.0 : 0.0); };
@@ -1906,7 +1919,7 @@ inline Rendered draw(const ErDb& db, const Config& config, const RenderOptions& 
             bool direct = (route.size() == 6) && (dx < 0.01 || dy < 0.01 || std::hypot(dx, dy) <= 3.0 * MARKER_LENGTH);
             double stub = direct ? 0.0 : MARKER_LENGTH;
             EdgePath path = routePath(route, "", stub, stub);
-            d = stub > 0.0 ? Pele::cat({"M", num(path.sx), ",", num(path.sy), "L", path.d.substr(1), "L", num(path.ex), ",", num(path.ey)}) : path.d;
+            d = (stub > 0.0 && !path.d.empty()) ? Pele::cat({"M", num(path.sx), ",", num(path.sy), "L", path.d.substr(1), "L", num(path.ex), ",", num(path.ey)}) : path.d;
             start = erMarker(edge.arrowTypeStart, path.sx, path.sy, path.sdx, path.sdy);
             end = erMarker(edge.arrowTypeEnd, path.ex, path.ey, path.edx, path.edy);
         }

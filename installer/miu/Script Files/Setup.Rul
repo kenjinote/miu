@@ -13,6 +13,19 @@
 // Included header files ----------------------------------------------------
 #include "ifx.h"
 
+//---------------------------------------------------------------------------
+// OnBegin
+//
+// Ensure 64-bit registry hive is targeted across first install, repair,
+// upgrade, and uninstall on 64-bit Windows.
+//---------------------------------------------------------------------------
+function OnBegin()
+begin
+    if (SYSINFO.bIsWow64 != 0) then
+        REGDB_OPTIONS = REGDB_OPTIONS | REGDB_OPTION_WOW64_64KEY;
+    endif;
+end;
+
 
 //---------------------------------------------------------------------------                                                                        
 // OnFirstUIBefore
@@ -100,15 +113,12 @@ Dlg_SetupType2:
         goto Dlg_SdRegisterUser;
     else
         nSetupType = nResult;
-        if (nSetupType != CUSTOM) then
-            szTargetPath = TARGETDIR;
-            nSize = 0;
-            FeatureCompareSizeRequired( MEDIA, szTargetPath, nSize );
-            if (nSize != 0) then      
-                MessageBox( szSdStr_NotEnoughSpace, WARNING );
-                goto Dlg_SetupType2;
-            endif;
-        endif;   
+        szTargetPath = TARGETDIR;
+        nSize = 0;
+        if ((FeatureCompareSizeRequired( MEDIA, szTargetPath, nSize ) < 0) || (nSize != 0)) then
+            MessageBox( szSdStr_NotEnoughSpace, WARNING );
+            goto Dlg_SdWelcome;
+        endif;
     endif;
 
 Dlg_SdAskDestPath2:

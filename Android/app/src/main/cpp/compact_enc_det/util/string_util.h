@@ -45,11 +45,9 @@ inline int strncasecmp(const char* s1, const char* s2, size_t n) {
 #if defined(__GLIBC__) && ((__GLIBC__ > 2) || ((__GLIBC__ == 2) && (__GLIBC_MINOR__ >= 2)))
 #define HAVE_MEMRCHR
 #endif
-// ★ここから追加: Android (Bionic libc) の場合も標準の memrchr があるためフラグを立てる
 #if defined(__ANDROID__)
 #define HAVE_MEMRCHR
 #endif
-// ★ここまで追加
 #endif
 
 #ifndef HAVE_MEMRCHR

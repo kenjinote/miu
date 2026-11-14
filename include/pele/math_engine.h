@@ -29,7 +29,55 @@ inline std::string mathTrim(const std::string& s) {
     return s.substr(a, b - a);
 }
 
-inline std::string mathEsc(const std::string& s) {
+inline std::string mathSanitizeXmlUtf8(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    size_t i = 0;
+    const size_t n = s.size();
+    while (i < n) {
+        unsigned char b0 = static_cast<unsigned char>(s[i]);
+        if (b0 < 0x80) {
+            ++i;
+            if (b0 <= 0x08 || b0 == 0x0B || b0 == 0x0C || (b0 >= 0x0E && b0 <= 0x1F) || b0 == 0x7F) continue;
+            out.push_back(static_cast<char>(b0));
+        } else if ((b0 & 0xE0) == 0xC0) {
+            if (b0 < 0xC2 || i + 1 >= n) { ++i; continue; }
+            unsigned char b1 = static_cast<unsigned char>(s[i + 1]);
+            if ((b1 & 0xC0) != 0x80) { ++i; continue; }
+            out.append(s, i, 2);
+            i += 2;
+        } else if ((b0 & 0xF0) == 0xE0) {
+            if (i + 2 >= n) { ++i; continue; }
+            unsigned char b1 = static_cast<unsigned char>(s[i + 1]);
+            unsigned char b2 = static_cast<unsigned char>(s[i + 2]);
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80) { ++i; continue; }
+            if (b0 == 0xE0 && b1 < 0xA0) { ++i; continue; }
+            if (b0 == 0xED && b1 >= 0xA0) { i += 3; continue; }
+            uint32_t cp = (static_cast<uint32_t>(b0 & 0x0F) << 12) |
+                          (static_cast<uint32_t>(b1 & 0x3F) << 6) |
+                          static_cast<uint32_t>(b2 & 0x3F);
+            if (cp == 0xFFFE || cp == 0xFFFF) { i += 3; continue; }
+            out.append(s, i, 3);
+            i += 3;
+        } else if ((b0 & 0xF8) == 0xF0) {
+            if (b0 > 0xF4 || i + 3 >= n) { ++i; continue; }
+            unsigned char b1 = static_cast<unsigned char>(s[i + 1]);
+            unsigned char b2 = static_cast<unsigned char>(s[i + 2]);
+            unsigned char b3 = static_cast<unsigned char>(s[i + 3]);
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80) { ++i; continue; }
+            if (b0 == 0xF0 && b1 < 0x90) { ++i; continue; }
+            if (b0 == 0xF4 && b1 > 0x8F) { ++i; continue; }
+            out.append(s, i, 4);
+            i += 4;
+        } else {
+            ++i;
+        }
+    }
+    return out;
+}
+
+inline std::string mathEsc(const std::string& raw) {
+    std::string s = mathSanitizeXmlUtf8(raw);
     std::string out;
     out.reserve(s.size());
     for (char c : s) {
@@ -710,7 +758,7 @@ struct LatexParser {
 inline MathBox typesetLatexMath(const std::string& tex, double fontSize = 16.0, bool displayMode = true) {
     MathBox box;
     try {
-        std::string clean = mathTrim(tex);
+        std::string clean = mathTrim(mathSanitizeXmlUtf8(tex));
         if (clean.empty()) return box;
         LatexParser parser(clean, displayMode);
         MNode root = parser.parseExpr();

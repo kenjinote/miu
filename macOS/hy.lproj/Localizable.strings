@@ -62,3 +62,12 @@
 "No Recent Files" = "No Recent Files";
 "Reload" = "Վերաբեռնել";
 "Failed to save file." = "Չհաջողվեց պահպանել ֆայլը։";
+"Find..." = "Որոնել...";
+"Go to Line..." = "Անցնել տողին...";
+"Save As..." = "Պահպանել որպես...";
+"Overwrite" = "Վերագրանցել";
+"Save as UTF-8" = "Պահպանել որպես UTF-8";
+"The file has been modified externally on disk." = "Ֆայլը արտաքինից փոփոխվել է սկավառակի վրա։";
+"Saving now will overwrite external changes made by another application." = "Հիմա պահպանելը կվերագրանցի այլ հավելվածի կատարած արտաքին փոփոխությունները։";
+"Some characters cannot be represented in the current encoding." = "Որոշ նշաններ հնարավոր չէ ներկայացնել ընթացիկ կոդավորմամբ։";
+"Saving in the current encoding would replace unrepresentable characters with '?'. Choose Save as UTF-8 to preserve all characters losslessly." = "Ընթացիկ կոդավորմամբ պահպանելիս անհամատեղելի նշանները կփոխարինվեն '?'-ով։ Ընտրեք Պահպանել որպես UTF-8՝ բոլոր նշաններն անկորուստ պահպանելու համար։";

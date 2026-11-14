@@ -393,6 +393,10 @@ inline RadarModel buildRadar(const RadarAst& ast, const std::string& fallbackTit
     }
 
     for (const auto& c : ast.curves) {
+        if (c.entries.empty()) {
+            model.curves.push_back({c.name, c.label.value_or(c.name), {}});
+            continue;
+        }
         std::vector<double> entries;
         if (!c.entries[0].axisRef.has_value()) {
             for (const auto& e : c.entries) entries.push_back(e.value);
@@ -416,7 +420,7 @@ inline RadarModel buildRadar(const RadarAst& ast, const std::string& fallbackTit
     for (const auto& opt : ast.options) {
         if (opt.name == "showLegend") model.options.showLegend = opt.bVal;
         else if (opt.name == "graticule") model.options.graticule = opt.sVal;
-        else if (opt.name == "ticks") model.options.ticks = static_cast<int>(opt.nVal);
+        else if (opt.name == "ticks") model.options.ticks = std::isfinite(opt.nVal) ? static_cast<int>(std::clamp(opt.nVal, 1.0, static_cast<double>(MAX_TICKS))) : 5;
         else if (opt.name == "max") model.options.max = opt.nVal;
         else if (opt.name == "min") model.options.min = opt.nVal;
     }
@@ -454,13 +458,17 @@ inline double radarOption(const Config& config, const std::string& key, double f
 }
 
 inline double relativeRadius(double value, double minVal, double maxVal, double radius) {
+    double span = maxVal - minVal;
+    if (!std::isfinite(value) || !std::isfinite(span) || !(span > 1e-12)) return 0.0;
     double clipped = std::min(std::max(value, minVal), maxVal);
     double scaled = radius * (clipped - minVal);
-    return std::isfinite(scaled) ? scaled / (maxVal - minVal) : radius * ((clipped - minVal) / (maxVal - minVal));
+    return std::isfinite(scaled) ? scaled / span : radius * ((clipped - minVal) / span);
 }
 
 inline std::string closedRoundCurve(const std::vector<Point>& points, double tension) {
     size_t n = points.size();
+    if (n == 0) return "";
+    if (n == 1) return Pele::cat({"M", num(points[0].x), ",", num(points[0].y), " Z"});
     std::string d = Pele::cat({"M", num(points[0].x), ",", num(points[0].y)});
     for (size_t i = 0; i < n; i++) {
         const auto& p0 = points[(i + n - 1) % n];
@@ -515,9 +523,9 @@ inline Rendered drawRadar(const RadarModel& model, const Config& config, const R
 
     const auto& axes = model.axes;
     const auto& curves = model.curves;
-    int ticks = model.options.ticks;
+    int ticks = std::clamp(model.options.ticks, 0, MAX_TICKS);
     const std::string& graticule = model.options.graticule;
-    double minVal = model.options.min;
+    double minVal = std::isfinite(model.options.min) ? model.options.min : 0.0;
     size_t count = axes.size();
     constexpr double PI = 3.14159265358979323846;
 
@@ -531,10 +539,11 @@ inline Rendered drawRadar(const RadarModel& model, const Config& config, const R
     if (!model.options.max.has_value()) {
         for (const auto& curve : curves) {
             for (double v : curve.entries) {
-                if (v > maxVal) maxVal = v;
+                if (std::isfinite(v) && v > maxVal) maxVal = v;
             }
         }
     }
+    if (!std::isfinite(maxVal) || !(maxVal - minVal > 1e-12)) maxVal = minVal + 1.0;
 
     double x0 = -width / 2.0 - radarOption(config, "marginLeft", 16.0, 0.0, 2000.0);
     double x1 = width / 2.0 + radarOption(config, "marginRight", 16.0, 0.0, 2000.0);
@@ -574,7 +583,7 @@ inline Rendered drawRadar(const RadarModel& model, const Config& config, const R
     std::string shapes;
     for (size_t index = 0; index < curves.size(); index++) {
         const auto& curve = curves[index];
-        if (curve.entries.size() != count) continue;
+        if (count == 0 || curve.entries.size() != count) continue;
         std::vector<Point> points(count);
         for (size_t i = 0; i < count; i++) {
             double r = relativeRadius(curve.entries[i], minVal, maxVal, radius);

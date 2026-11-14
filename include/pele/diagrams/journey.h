@@ -111,7 +111,7 @@ inline int textEnd(const std::string& src, int from, bool colon) {
     int e = from;
     for (; e < n; e++) {
         int c = charCodeAt(src, e);
-        if (c == 35 || c == 10 || c == 59 || (colon && c == 58)) break;
+        if (c == 35 || c == 10 || (c == 59 && !isEntitySemicolon(src, static_cast<size_t>(e))) || (colon && c == 58)) break;
     }
     return e;
 }
@@ -174,14 +174,14 @@ inline int scanAccessibility(const std::string& src, int p, ScanTokens& out, int
     }
     if (!descr || c != 123) return p;
     q = skipSpaceUtf8(src, q + 1);
-    while (charCodeAt(src, q) != 125) {
-        size_t found = src.find('}', static_cast<size_t>(q));
-        int end = found == std::string::npos ? n : static_cast<int>(found);
-        emit(first + 4, q, end);
-        if (q == n) return n;
-        q = end;
+    if (charCodeAt(src, q) == 125) return q + 1;
+    size_t found = src.find('}', static_cast<size_t>(q));
+    if (found == std::string::npos) {
+        emit(first + 4, q, n);
+        return n;
     }
-    return q + 1;
+    emit(first + 4, q, static_cast<int>(found));
+    return static_cast<int>(found) + 1;
 }
 
 inline ScanTokens tokenizeJourney(const std::string& src) {

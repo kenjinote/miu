@@ -70,9 +70,22 @@ enum class SyntaxRuleKind : uint8_t {
     NumberKotlin,
     NumberSimple,
     Url,
+    UrlMarkdown,
     Email,
     CppInclude,
-    CppDirective
+    CppDirective,
+    XmlTag,
+    XmlAttrName,
+    XmlEntity,
+    CssPropName,
+    CssHexColor,
+    CssUnit,
+    CssSelector,
+    NixAttrName,
+    LineKeyBeforeEq,
+    LineKeyBeforeEqNoDot,
+    MakefileTarget,
+    AsmLabel
 };
 struct SyntaxRuleMeta {
     SyntaxRuleKind kind = SyntaxRuleKind::GenericRegex;
@@ -81,6 +94,7 @@ struct SyntaxRuleMeta {
 };
 struct SyntaxDef {
     bool active = false;
+    std::string lang;
     SyntaxWordSet keywords;
     SyntaxWordSet literals;
     std::string commentLine;
@@ -95,6 +109,17 @@ struct SyntaxDef {
     std::vector<std::pair<std::regex, SyntaxColor>> regexes;
     std::vector<SyntaxRuleMeta> ruleMetas;
 };
+static inline wchar_t toLowerAsciiW(wchar_t ch) noexcept {
+    return (ch >= L'A' && ch <= L'Z') ? (wchar_t)(ch + (L'a' - L'A')) : ch;
+}
+static inline char toLowerAsciiC(char ch) noexcept {
+    return (ch >= 'A' && ch <= 'Z') ? (char)(ch + ('a' - 'A')) : ch;
+}
+static inline bool hasOddPrecedingBackslashes(std::string_view sv, size_t pos) noexcept {
+    size_t bs = 0;
+    while (pos > bs && sv[pos - 1 - bs] == '\\') ++bs;
+    return (bs & 1u) != 0;
+}
 static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) {
     SyntaxRuleMeta m;
     if (pat == R"(#[ \t]*include[ \t]*[<"][^>"]+[>"])") { m.kind = SyntaxRuleKind::CppInclude; m.reqChar1 = '#'; return m; }
@@ -107,8 +132,21 @@ static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) {
     if (pat == R"(\b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlLdD]*))\b)") { m.kind = SyntaxRuleKind::NumberJava; return m; }
     if (pat == R"(\b([0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([fFlL]*))\b)") { m.kind = SyntaxRuleKind::NumberKotlin; return m; }
     if (pat == R"(\b([0-9]+(\.[0-9]+)?)\b)") { m.kind = SyntaxRuleKind::NumberSimple; return m; }
+    if (pat == R"((https?|ftp)://[^\s<>")\]]+)") { m.kind = SyntaxRuleKind::UrlMarkdown; m.reqChar1 = ':'; m.reqChar2 = '/'; return m; }
     if (pat.find("(https?|ftp)://") == 0) { m.kind = SyntaxRuleKind::Url; m.reqChar1 = ':'; m.reqChar2 = '/'; return m; }
     if (pat.find("@[a-zA-Z0-9.-]+") != std::string::npos) { m.kind = SyntaxRuleKind::Email; m.reqChar1 = '@'; return m; }
+    if (pat == R"(</?[a-zA-Z0-9:-]+>?)") { m.kind = SyntaxRuleKind::XmlTag; m.reqChar1 = '<'; return m; }
+    if (pat == R"(\b[a-zA-Z0-9:-]+(?=\s*=))") { m.kind = SyntaxRuleKind::XmlAttrName; m.reqChar1 = '='; return m; }
+    if (pat == R"(&[#a-zA-Z0-9]+;)") { m.kind = SyntaxRuleKind::XmlEntity; m.reqChar1 = '&'; m.reqChar2 = ';'; return m; }
+    if (pat == R"(\b[a-zA-Z-]+(?=\s*:))") { m.kind = SyntaxRuleKind::CssPropName; m.reqChar1 = ':'; return m; }
+    if (pat == R"(\B#[0-9a-fA-F]{3,6}\b)") { m.kind = SyntaxRuleKind::CssHexColor; m.reqChar1 = '#'; return m; }
+    if (pat == R"(\b(px|em|rem|vh|vw|%)\b)") { m.kind = SyntaxRuleKind::CssUnit; return m; }
+    if (pat == R"((\.|#|:)[a-zA-Z_-]+)") { m.kind = SyntaxRuleKind::CssSelector; return m; }
+    if (pat == R"([a-zA-Z0-9_.-]+[ \t]*(?==[^=]))") { m.kind = SyntaxRuleKind::NixAttrName; m.reqChar1 = '='; return m; }
+    if (pat == R"((?:^|[\r\n])[ \t]*[a-zA-Z0-9_.-]+(?=[ \t]*=))") { m.kind = SyntaxRuleKind::LineKeyBeforeEq; m.reqChar1 = '='; return m; }
+    if (pat == R"((?:^|[\r\n])[ \t]*[a-zA-Z0-9_-]+(?=[ \t]*=))") { m.kind = SyntaxRuleKind::LineKeyBeforeEqNoDot; m.reqChar1 = '='; return m; }
+    if (pat == R"((?:^|[\r\n])[a-zA-Z0-9_./-]+(?=[ \t]*:(?!=)))") { m.kind = SyntaxRuleKind::MakefileTarget; m.reqChar1 = ':'; return m; }
+    if (pat == R"((?:^|[\r\n])[ \t]*[a-zA-Z_.][a-zA-Z0-9_.$@]*(?=[ \t]*:))") { m.kind = SyntaxRuleKind::AsmLabel; m.reqChar1 = ':'; return m; }
     if (!pat.empty()) {
         bool hasTopAlt = false;
         {
@@ -160,7 +198,7 @@ inline std::wstring extractSyntaxExtensionFromPath(const std::wstring& targetPat
     size_t slashPos = targetPath.find_last_of(L"\\/");
     std::wstring baseName = (slashPos == std::wstring::npos) ? targetPath : targetPath.substr(slashPos + 1);
     std::wstring lowerBase = baseName;
-    for (auto& c : lowerBase) c = std::towlower(c);
+    for (auto& c : lowerBase) c = toLowerAsciiW(c);
     if (lowerBase == L"dockerfile" || lowerBase == L"containerfile" || lowerBase.rfind(L"dockerfile.", 0) == 0 || lowerBase.rfind(L"containerfile.", 0) == 0) ext = L"dockerfile";
     else if (lowerBase == L"makefile" || lowerBase == L"gnumakefile" || lowerBase == L"bsdmakefile" || lowerBase == L"justfile") ext = L"makefile";
     else if (lowerBase == L"cmakelists.txt") ext = L"cmake";
@@ -450,12 +488,14 @@ regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax22 = R"([latex]
+no_strings: 1
 comment_line: %
+comment_block: \begin{comment} \end{comment}
 regex: \\[a-zA-Z]+
 regex_color: 0.3 0.6 0.8 1.0
-regex: \{.*?\}
+regex: \{[^}\r\n]*\}
 regex_color: 0.8 0.5 0.3 1.0
-regex: \$.*?\$
+regex: \$(?:\\.|[^$\\\r\n])*\$
 regex_color: 0.6 0.4 0.7 1.0
 )";
         static constexpr const char* kSyntax23 = R"([default]
@@ -696,6 +736,7 @@ regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?([a-zA-Z0-9_]*))\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
         static constexpr const char* kSyntax45 = R"([verilog]
+no_single_quote: 1
 keyword: module endmodule input output inout wire reg logic bit byte shortint int longint integer time real shortreal realtime string event chandle enum struct union typedef packed signed unsigned always always_comb always_ff always_latch initial final begin end if else case casex casez default endcase for while repeat forever do break continue return function endfunction task endtask assign deassign force release posedge negedge edge or and not nand nor xor xnor buf notif0 notif1 bufif0 bufif1 parameter localparam specparam defparam generate endgenerate genvar interface endinterface modport clocking endclocking class endclass package endpackage import export virtual extends implements super this new null local protected rand randc constraint solve before property endproperty sequence endsequence assert assume cover fork join join_any join_none disable wait
 literal: highz0 highz1 strong0 strong1 pull0 pull1 weak0 weak1 supply0 supply1
 comment_line: //
@@ -711,6 +752,7 @@ regex_color: 0.4 0.7 0.6 1.0
 keyword: abs access after alias all and architecture array assert attribute begin block body buffer bus case component configuration constant disconnect downto else elsif end entity exit file for function generate generic group guarded if impure in inertial inout is label library linkage literal loop map mod nand new next nor not null of on open or others out package port postponed procedure process pure range record register reject rem report return rol ror select severity signal shared sla sll sra srl subtype then to transport type unaffected units until use variable wait when while with xnor xor std_logic std_logic_vector unsigned signed integer natural positive boolean bit bit_vector real time string std ieee work
 literal: true false TRUE FALSE rising_edge falling_edge
 comment_line: --
+comment_block: /* */
 regex: \b(0x[0-9a-fA-F]+|[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
 regex_color: 0.4 0.7 0.6 1.0
 )";
@@ -727,15 +769,15 @@ regex_color: 0.9 0.4 0.4 1.0
 )";
         static constexpr const char* kSyntax48 = R"([log]
 no_strings: 1
-keyword: INFO INFORMATION NOTICE DEBUG TRACE VERBOSE
-literal: WARN WARNING DEPRECATED CAUTION
+keyword: INFO INFORMATION NOTICE DEBUG TRACE VERBOSE info information notice debug trace verbose Info Information Notice Debug Trace Verbose
+literal: WARN WARNING DEPRECATED CAUTION warn warning deprecated caution Warn Warning Deprecated Caution
 regex: "[^"\r\n]*"
 regex_color: 0.8 0.55 0.35 1.0
 regex: :[0-9]{2}:[0-9]{2}(?:[.,][0-9]+)?(?:Z|[+-][0-9]{2}:?[0-9]{2})?\b
 regex_color: 0.4 0.7 0.65 1.0
 regex: \b[0-9]{4}[-/][0-9]{2}[-/][0-9]{2}\b
 regex_color: 0.4 0.7 0.65 1.0
-regex: \b(?:ERROR|FATAL|CRITICAL|SEVERE|PANIC|FAIL|FAILED|EXCEPTION|ERR)\b
+regex: \b(?:[Ee][Rr][Rr][Oo][Rr]|[Ff][Aa][Tt][Aa][Ll]|[Cc][Rr][Ii][Tt][Ii][Cc][Aa][Ll]|[Ss][Ee][Vv][Ee][Rr][Ee]|[Pp][Aa][Nn][Ii][Cc]|[Ff][Aa][Ii][Ll][Ee][Dd]|[Ff][Aa][Ii][Ll]|[Ee][Xx][Cc][Ee][Pp][Tt][Ii][Oo][Nn]|[Ee][Rr][Rr])\b
 regex_color: 0.95 0.35 0.35 1.0
 regex: (https?|ftp)://[^\s/$.?#].[^\s]*
 regex_color: 0.2 0.6 0.8 1.0
@@ -880,8 +922,6 @@ keyword: and array as asm begin case class const constructor destructor dispinte
 literal: true false nil True False Nil Self Result TRUE FALSE NIL
 comment_line: //
 comment_block: { }
-regex: \([*][\s\S]*?[*]\)
-regex_color: 0.42 0.6 0.33 1.0
 regex: \$[0-9a-fA-F]+
 regex_color: 0.4 0.7 0.6 1.0
 regex: \b([0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?)\b
@@ -1008,7 +1048,7 @@ regex_color: 0.4 0.7 0.6 1.0
             { L"nix", kSyntax64 }
         };
         std::wstring lowerExt = ext;
-        for (auto& c : lowerExt) c = std::towlower(c);
+        for (auto& c : lowerExt) c = toLowerAsciiW(c);
         if (!lowerExt.empty() && lowerExt[0] == L'.') lowerExt.erase(0, 1);
         const char* targetSyntaxPtr = kSyntax23;
         for (const auto& entry : syntaxTable) {
@@ -1017,7 +1057,7 @@ regex_color: 0.4 0.7 0.6 1.0
                 break;
             }
         }
-        static std::vector<std::pair<const char*, SyntaxDef>> compiledSyntaxCache;
+        thread_local std::vector<std::pair<const char*, SyntaxDef>> compiledSyntaxCache;
         for (const auto& cached : compiledSyntaxCache) {
             if (cached.first == targetSyntaxPtr) {
                 outSyntax = cached.second;
@@ -1068,6 +1108,10 @@ regex_color: 0.4 0.7 0.6 1.0
             std::string line = (nl == std::string::npos) ? targetSyntax.substr(linePos) : targetSyntax.substr(linePos, nl - linePos);
             linePos = (nl == std::string::npos) ? targetSyntax.size() : nl + 1;
             if (!line.empty() && line.back() == '\r') line.pop_back();
+            if (line.size() >= 3 && line.front() == '[' && line.back() == ']' && parsed.lang.empty()) {
+                parsed.lang = line.substr(1, line.size() - 2);
+                continue;
+            }
             if (line.find("keyword: ") == 0) {
                 size_t p = 9; std::string w;
                 while (nextWord(line, p, w)) parsed.keywords.insert(w);
@@ -1091,8 +1135,16 @@ regex_color: 0.4 0.7 0.6 1.0
                 float r, g, b, a;
                 if (nextFloat(line, p, r) && nextFloat(line, p, g) && nextFloat(line, p, b) && nextFloat(line, p, a)) {
                     try {
-                        parsed.regexes.push_back({ std::regex(lastRegex, std::regex_constants::optimize), SyntaxColor{r, g, b, a} });
-                        parsed.ruleMetas.push_back(classifySyntaxRegex(lastRegex));
+                        std::string cleanPat = lastRegex;
+                        std::regex_constants::syntax_option_type rxFlags = std::regex_constants::optimize;
+                        for (;;) {
+                            size_t icPos = cleanPat.find("(?i)");
+                            if (icPos == std::string::npos) break;
+                            cleanPat.erase(icPos, 4);
+                            rxFlags |= std::regex_constants::icase;
+                        }
+                        parsed.regexes.push_back({ std::regex(cleanPat, rxFlags), SyntaxColor{r, g, b, a} });
+                        parsed.ruleMetas.push_back(classifySyntaxRegex(cleanPat));
                     } catch (const std::regex_error&) {}
                 }
                 lastRegex = "";
@@ -1127,12 +1179,13 @@ template <typename ApplySpanFn>
 inline void scanSyntaxHighlighting(
     const SyntaxDef& currentSyntax,
     const std::string& visibleText,
-    bool inBlockComment,
+    int initialBlockState,
     ApplySpanFn&& applySpan)
 {
     if (visibleText.empty()) return;
     const size_t vLen = visibleText.size();
     const char* vData = visibleText.data();
+    const bool isLispSyntax = (currentSyntax.lang == "lisp" || (currentSyntax.commentBlockStart == "#|" && currentSyntax.commentBlockEnd == "|#"));
     auto isStdWordChar = [](char c) noexcept -> bool { return std::isalnum((unsigned char)c) || c == '_'; };
     auto isLispWordChar = [](char c) noexcept -> bool {
         return std::isalnum((unsigned char)c) || c == '_' || c == '-' || c == '*' || c == '+' ||
@@ -1150,15 +1203,16 @@ inline void scanSyntaxHighlighting(
         };
 
         if (meta.kind >= SyntaxRuleKind::NumberCpp && meta.kind <= SyntaxRuleKind::NumberSimple) {
+            const bool allowCppSep = (meta.kind == SyntaxRuleKind::NumberCpp);
             size_t p = 0;
             while (p < vLen) {
                 unsigned char ch = (unsigned char)vData[p];
                 bool isLispSignedOrRadix = false;
-                if (currentSyntax.lispWords && (p == 0 || (!isWChar(vData[p - 1]) && vData[p - 1] != '\\' && vData[p - 1] != ':'))) {
+                if (isLispSyntax && (p == 0 || (!isWChar(vData[p - 1]) && !hasOddPrecedingBackslashes(visibleText, p) && vData[p - 1] != ':'))) {
                     if ((ch == '+' || ch == '-') && p + 1 < vLen && std::isdigit((unsigned char)vData[p + 1])) {
                         isLispSignedOrRadix = true;
                     } else if (ch == '#' && p + 2 < vLen) {
-                        char r = (char)std::tolower((unsigned char)vData[p + 1]);
+                        char r = toLowerAsciiC(vData[p + 1]);
                         if ((r == 'x' && std::isxdigit((unsigned char)vData[p + 2])) ||
                             (r == 'b' && (vData[p + 2] == '0' || vData[p + 2] == '1')) ||
                             (r == 'o' && (vData[p + 2] >= '0' && vData[p + 2] <= '7'))) {
@@ -1166,26 +1220,40 @@ inline void scanSyntaxHighlighting(
                         }
                     }
                 }
-                if (isLispSignedOrRadix || (ch >= '0' && ch <= '9' && (p == 0 || (!isWChar(vData[p - 1]) && vData[p - 1] != '\\' && (!currentSyntax.lispWords || vData[p - 1] != ':'))))) {
+                if (isLispSignedOrRadix || (ch >= '0' && ch <= '9' && (p == 0 || (!isWChar(vData[p - 1]) && !hasOddPrecedingBackslashes(visibleText, p) && (!isLispSyntax || vData[p - 1] != ':'))))) {
                     size_t start = p;
                     bool matchedBase = false;
-                    if (currentSyntax.lispWords && vData[p] == '#' && p + 2 < vLen) {
-                        char r = (char)std::tolower((unsigned char)vData[p + 1]);
+                    if (isLispSyntax && vData[p] == '#' && p + 2 < vLen) {
+                        char r = toLowerAsciiC(vData[p + 1]);
                         p += 2;
                         if (r == 'x') { while (p < vLen && std::isxdigit((unsigned char)vData[p])) p++; matchedBase = true; }
                         else if (r == 'b') { while (p < vLen && (vData[p] == '0' || vData[p] == '1')) p++; matchedBase = true; }
                         else if (r == 'o') { while (p < vLen && (vData[p] >= '0' && vData[p] <= '7')) p++; matchedBase = true; }
                     } else {
-                        if (currentSyntax.lispWords && (vData[p] == '+' || vData[p] == '-')) p++;
+                        if (isLispSyntax && (vData[p] == '+' || vData[p] == '-')) p++;
                         if (vData[p] == '0' && p + 2 <= vLen) {
                             char n1 = vData[p + 1];
                             if (meta.kind != SyntaxRuleKind::NumberSimple && meta.kind != SyntaxRuleKind::NumberRust && (n1 == 'x' || n1 == 'X') && p + 2 < vLen && std::isxdigit((unsigned char)vData[p + 2])) {
                                 p += 2;
-                                while (p < vLen && std::isxdigit((unsigned char)vData[p])) p++;
+                                while (p < vLen) {
+                                    if (std::isxdigit((unsigned char)vData[p])) p++;
+                                    else if (allowCppSep && vData[p] == '\'' && p + 1 < vLen && std::isxdigit((unsigned char)vData[p + 1])) p += 2;
+                                    else break;
+                                }
+                                if (meta.kind == SyntaxRuleKind::NumberCpp) {
+                                    while (p < vLen && (vData[p]=='l'||vData[p]=='L'||vData[p]=='u'||vData[p]=='U')) p++;
+                                }
                                 matchedBase = true;
-                            } else if (meta.kind == SyntaxRuleKind::NumberPy && n1 == 'b' && p + 2 < vLen && (vData[p + 2] == '0' || vData[p + 2] == '1')) {
+                            } else if ((meta.kind == SyntaxRuleKind::NumberPy || meta.kind == SyntaxRuleKind::NumberCpp) && (n1 == 'b' || (allowCppSep && n1 == 'B')) && p + 2 < vLen && (vData[p + 2] == '0' || vData[p + 2] == '1')) {
                                 p += 2;
-                                while (p < vLen && (vData[p] == '0' || vData[p] == '1')) p++;
+                                while (p < vLen) {
+                                    if (vData[p] == '0' || vData[p] == '1') p++;
+                                    else if (allowCppSep && vData[p] == '\'' && p + 1 < vLen && (vData[p + 1] == '0' || vData[p + 1] == '1')) p += 2;
+                                    else break;
+                                }
+                                if (meta.kind == SyntaxRuleKind::NumberCpp) {
+                                    while (p < vLen && (vData[p]=='l'||vData[p]=='L'||vData[p]=='u'||vData[p]=='U')) p++;
+                                }
                                 matchedBase = true;
                             } else if (meta.kind == SyntaxRuleKind::NumberPy && n1 == 'o' && p + 2 < vLen && (vData[p + 2] >= '0' && vData[p + 2] <= '7')) {
                                 p += 2;
@@ -1196,31 +1264,59 @@ inline void scanSyntaxHighlighting(
                     }
                     size_t dotPos = std::string::npos;
                     if (!matchedBase) {
-                        while (p < vLen && std::isdigit((unsigned char)vData[p])) p++;
-                        if (currentSyntax.lispWords && p + 1 < vLen && vData[p] == '/' && std::isdigit((unsigned char)vData[p + 1])) {
+                        while (p < vLen) {
+                            if (std::isdigit((unsigned char)vData[p])) p++;
+                            else if (allowCppSep && vData[p] == '\'' && p + 1 < vLen && std::isdigit((unsigned char)vData[p + 1])) p += 2;
+                            else break;
+                        }
+                        if (currentSyntax.lang == "verilog" && p + 2 < vLen && vData[p] == '\'') {
+                            size_t vp = p + 1;
+                            if (vp < vLen && (vData[vp] == 's' || vData[vp] == 'S')) vp++;
+                            if (vp < vLen) {
+                                char vb = toLowerAsciiC(vData[vp]);
+                                if (vb == 'b' || vb == 'o' || vb == 'd' || vb == 'h') {
+                                    vp++;
+                                    size_t vdStart = vp;
+                                    while (vp < vLen) {
+                                        char vc = vData[vp];
+                                        if (std::isxdigit((unsigned char)vc) || vc == '_' || vc == 'x' || vc == 'X' || vc == 'z' || vc == 'Z' || vc == '?') vp++;
+                                        else break;
+                                    }
+                                    if (vp > vdStart) p = vp;
+                                }
+                            }
+                        } else if (isLispSyntax && p + 1 < vLen && vData[p] == '/' && std::isdigit((unsigned char)vData[p + 1])) {
                             p += 2;
                             while (p < vLen && std::isdigit((unsigned char)vData[p])) p++;
                         } else {
                             if (p + 1 < vLen && vData[p] == '.' && std::isdigit((unsigned char)vData[p + 1])) {
                                 dotPos = p;
                                 p += 2;
-                                while (p < vLen && std::isdigit((unsigned char)vData[p])) p++;
+                                while (p < vLen) {
+                                    if (std::isdigit((unsigned char)vData[p])) p++;
+                                    else if (allowCppSep && vData[p] == '\'' && p + 1 < vLen && std::isdigit((unsigned char)vData[p + 1])) p += 2;
+                                    else break;
+                                }
                             }
                             if (meta.kind != SyntaxRuleKind::NumberSimple && p + 1 < vLen) {
                                 char expCh = vData[p];
                                 bool isExp = (expCh == 'e' || expCh == 'E') ||
-                                             (currentSyntax.lispWords && (expCh == 'd' || expCh == 'D' || expCh == 'f' || expCh == 'F' || expCh == 's' || expCh == 'S' || expCh == 'l' || expCh == 'L'));
+                                             (isLispSyntax && (expCh == 'd' || expCh == 'D' || expCh == 'f' || expCh == 'F' || expCh == 's' || expCh == 'S' || expCh == 'l' || expCh == 'L'));
                                 if (isExp) {
                                     size_t ep = p + 1;
                                     if (ep < vLen && (vData[ep] == '+' || vData[ep] == '-')) ep++;
                                     if (ep < vLen && std::isdigit((unsigned char)vData[ep])) {
                                         p = ep + 1;
-                                        while (p < vLen && std::isdigit((unsigned char)vData[p])) p++;
+                                        while (p < vLen) {
+                                            if (std::isdigit((unsigned char)vData[p])) p++;
+                                            else if (allowCppSep && vData[p] == '\'' && p + 1 < vLen && std::isdigit((unsigned char)vData[p + 1])) p += 2;
+                                            else break;
+                                        }
                                     }
                                 }
                             }
                         }
-                        if (currentSyntax.lispWords && p < vLen && (vData[p] == 'N' || vData[p] == 'M')) {
+                        if (isLispSyntax && p < vLen && (vData[p] == 'N' || vData[p] == 'M')) {
                             p++;
                         } else if (meta.kind == SyntaxRuleKind::NumberCpp) {
                             while (p < vLen && (vData[p]=='f'||vData[p]=='F'||vData[p]=='l'||vData[p]=='L'||vData[p]=='u'||vData[p]=='U')) p++;
@@ -1238,7 +1334,7 @@ inline void scanSyntaxHighlighting(
                     }
                     if (p == vLen || !isWChar(vData[p])) {
                         setEffect(start, p - start);
-                    } else if (dotPos != std::string::npos && !currentSyntax.lispWords) {
+                    } else if (dotPos != std::string::npos && !isLispSyntax) {
                         setEffect(start, dotPos - start);
                         p = dotPos + 1;
                     } else {
@@ -1254,7 +1350,7 @@ inline void scanSyntaxHighlighting(
         } else if (meta.kind == SyntaxRuleKind::CppInclude) {
             size_t p = 0;
             while ((p = visibleText.find('#', p)) != std::string::npos) {
-                if (p > 0 && vData[p - 1] == '\\') { p++; continue; }
+                if (hasOddPrecedingBackslashes(visibleText, p)) { p++; continue; }
                 size_t q = p + 1;
                 while (q < vLen && (vData[q] == ' ' || vData[q] == '\t')) q++;
                 if (q + 7 <= vLen && std::memcmp(vData + q, "include", 7) == 0) {
@@ -1278,7 +1374,7 @@ inline void scanSyntaxHighlighting(
         } else if (meta.kind == SyntaxRuleKind::CppDirective) {
             size_t p = 0;
             while ((p = visibleText.find('#', p)) != std::string::npos) {
-                if (p > 0 && vData[p - 1] == '\\') { p++; continue; }
+                if (hasOddPrecedingBackslashes(visibleText, p)) { p++; continue; }
                 size_t q = p + 1;
                 while (q < vLen && (vData[q] == ' ' || vData[q] == '\t')) q++;
                 size_t idStart = q;
@@ -1291,6 +1387,299 @@ inline void scanSyntaxHighlighting(
                 p++;
             }
             continue;
+        } else if (meta.kind == SyntaxRuleKind::Url || meta.kind == SyntaxRuleKind::UrlMarkdown) {
+            auto isRxSpace = [](char c) noexcept -> bool {
+                return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\v' || c == '\f';
+            };
+            size_t searchPos = 0;
+            size_t colonPos = 0;
+            while ((colonPos = visibleText.find("://", searchPos)) != std::string::npos) {
+                size_t schemeStart = std::string::npos;
+                if (colonPos >= 5 && std::memcmp(vData + colonPos - 5, "https", 5) == 0) schemeStart = colonPos - 5;
+                else if (colonPos >= 4 && std::memcmp(vData + colonPos - 4, "http", 4) == 0) schemeStart = colonPos - 4;
+                else if (colonPos >= 3 && std::memcmp(vData + colonPos - 3, "ftp", 3) == 0) schemeStart = colonPos - 3;
+                size_t after = colonPos + 3;
+                if (schemeStart != std::string::npos && !hasOddPrecedingBackslashes(visibleText, schemeStart)) {
+                    if (meta.kind == SyntaxRuleKind::UrlMarkdown) {
+                        auto isMdStop = [&](char c) noexcept -> bool {
+                            return isRxSpace(c) || c == '<' || c == '>' || c == '"' || c == ')' || c == ']';
+                        };
+                        if (after < vLen && !isMdStop(vData[after])) {
+                            size_t end = after + 1;
+                            while (end < vLen && !isMdStop(vData[end])) end++;
+                            setEffect(schemeStart, end - schemeStart);
+                            searchPos = end;
+                            continue;
+                        }
+                    } else {
+                        if (after + 1 < vLen) {
+                            char c0 = vData[after];
+                            char c1 = vData[after + 1];
+                            if (!isRxSpace(c0) && c0 != '/' && c0 != '$' && c0 != '.' && c0 != '?' && c0 != '#' && c1 != '\r' && c1 != '\n') {
+                                size_t end = after + 2;
+                                while (end < vLen && !isRxSpace(vData[end])) end++;
+                                setEffect(schemeStart, end - schemeStart);
+                                searchPos = end;
+                                continue;
+                            }
+                        }
+                    }
+                }
+                searchPos = after;
+            }
+            continue;
+        } else if (meta.kind == SyntaxRuleKind::Email) {
+            auto isEmailLocal = [](char c) noexcept -> bool {
+                unsigned char u = (unsigned char)c;
+                return std::isalnum(u) || c == '.' || c == '_' || c == '%' || c == '+' || c == '-';
+            };
+            auto isEmailDom = [](char c) noexcept -> bool {
+                unsigned char u = (unsigned char)c;
+                return std::isalnum(u) || c == '.' || c == '-';
+            };
+            size_t searchPos = 0;
+            size_t minLocalStart = 0;
+            size_t atPos = 0;
+            while ((atPos = visibleText.find('@', searchPos)) != std::string::npos) {
+                size_t localStart = atPos;
+                while (localStart > minLocalStart && isEmailLocal(vData[localStart - 1])) localStart--;
+                while (localStart < atPos) {
+                    bool prevW = (localStart > 0) && isStdWordChar(vData[localStart - 1]);
+                    bool curW = isStdWordChar(vData[localStart]);
+                    if (prevW != curW && !hasOddPrecedingBackslashes(visibleText, localStart)) break;
+                    localStart++;
+                }
+                size_t domEnd = atPos + 1;
+                size_t lastDot = std::string::npos;
+                bool allAlphaSinceDot = false;
+                size_t bestValidEnd = 0;
+                while (domEnd < vLen && isEmailDom(vData[domEnd])) {
+                    char dc = vData[domEnd];
+                    if (dc == '.') {
+                        if (lastDot != std::string::npos && lastDot > atPos + 1 && allAlphaSinceDot && (domEnd - lastDot - 1) >= 2) {
+                            bestValidEnd = domEnd;
+                        }
+                        lastDot = domEnd;
+                        allAlphaSinceDot = true;
+                    } else if (!std::isalpha((unsigned char)dc)) {
+                        allAlphaSinceDot = false;
+                    }
+                    domEnd++;
+                }
+                if (lastDot != std::string::npos && lastDot > atPos + 1 && allAlphaSinceDot &&
+                    (domEnd - lastDot - 1) >= 2 && (domEnd == vLen || !isStdWordChar(vData[domEnd]))) {
+                    bestValidEnd = domEnd;
+                }
+                if (localStart < atPos && bestValidEnd > atPos + 1) {
+                    setEffect(localStart, bestValidEnd - localStart);
+                    minLocalStart = bestValidEnd;
+                    searchPos = (domEnd > bestValidEnd) ? domEnd : bestValidEnd;
+                } else {
+                    minLocalStart = atPos + 1;
+                    searchPos = (domEnd > atPos + 1) ? domEnd : (atPos + 1);
+                }
+            }
+            continue;
+        } else if (meta.kind == SyntaxRuleKind::XmlTag) {
+            auto isTagCh = [](char c) noexcept -> bool {
+                return std::isalnum((unsigned char)c) || c == ':' || c == '-';
+            };
+            size_t p = 0;
+            while ((p = visibleText.find('<', p)) != std::string::npos) {
+                if (hasOddPrecedingBackslashes(visibleText, p)) { p++; continue; }
+                size_t q = p + 1;
+                if (q < vLen && vData[q] == '/') q++;
+                size_t nameStart = q;
+                while (q < vLen && isTagCh(vData[q])) q++;
+                if (q > nameStart) {
+                    if (q < vLen && vData[q] == '>') q++;
+                    setEffect(p, q - p);
+                    p = q;
+                } else {
+                    p++;
+                }
+            }
+            continue;
+        } else if (meta.kind == SyntaxRuleKind::XmlAttrName || meta.kind == SyntaxRuleKind::CssPropName) {
+            const char targetDelim = (meta.kind == SyntaxRuleKind::XmlAttrName) ? '=' : ':';
+            auto isNameCh = [&](char c) noexcept -> bool {
+                unsigned char u = (unsigned char)c;
+                if (meta.kind == SyntaxRuleKind::XmlAttrName) return std::isalnum(u) || c == ':' || c == '-';
+                return std::isalpha(u) || c == '-';
+            };
+            auto isRxSpace = [](char c) noexcept -> bool {
+                return c == ' ' || c == '\t' || c == '\r' || c == '\n' || c == '\v' || c == '\f';
+            };
+            size_t p = 0;
+            while (p < vLen) {
+                if (!isNameCh(vData[p])) { p++; continue; }
+                size_t runStart = p;
+                while (p < vLen && isNameCh(vData[p])) p++;
+                size_t eqPos = p;
+                while (eqPos < vLen && isRxSpace(vData[eqPos])) eqPos++;
+                if (eqPos < vLen && vData[eqPos] == targetDelim) {
+                    size_t s = runStart;
+                    while (s < p) {
+                        bool prevW = (s > 0) && isStdWordChar(vData[s - 1]);
+                        bool curW = isStdWordChar(vData[s]);
+                        if (prevW != curW && !hasOddPrecedingBackslashes(visibleText, s)) break;
+                        s++;
+                    }
+                    if (s < p) setEffect(s, p - s);
+                }
+            }
+            continue;
+        } else if (meta.kind == SyntaxRuleKind::XmlEntity) {
+            size_t p = 0;
+            while ((p = visibleText.find('&', p)) != std::string::npos) {
+                if (hasOddPrecedingBackslashes(visibleText, p)) { p++; continue; }
+                size_t q = p + 1;
+                while (q < vLen && (std::isalnum((unsigned char)vData[q]) || vData[q] == '#')) q++;
+                if (q > p + 1 && q < vLen && vData[q] == ';') {
+                    setEffect(p, q + 1 - p);
+                    p = q + 1;
+                } else {
+                    p = (q > p + 1) ? q : (p + 1);
+                }
+            }
+            continue;
+        } else if (meta.kind == SyntaxRuleKind::NixAttrName) {
+            auto isNixCh = [](char c) noexcept -> bool {
+                return std::isalnum((unsigned char)c) || c == '_' || c == '.' || c == '-';
+            };
+            size_t p = 0;
+            while (p < vLen) {
+                if (!isNixCh(vData[p])) { p++; continue; }
+                size_t s = p;
+                while (p < vLen && isNixCh(vData[p])) p++;
+                size_t eqPos = p;
+                while (eqPos < vLen && (vData[eqPos] == ' ' || vData[eqPos] == '\t')) eqPos++;
+                if (eqPos + 1 < vLen && vData[eqPos] == '=' && vData[eqPos + 1] != '=') {
+                    while (s < p && hasOddPrecedingBackslashes(visibleText, s)) s++;
+                    if (s < p) setEffect(s, eqPos - s);
+                }
+                p = (eqPos > p) ? eqPos : p;
+            }
+            continue;
+        } else if (meta.kind == SyntaxRuleKind::LineKeyBeforeEq || meta.kind == SyntaxRuleKind::LineKeyBeforeEqNoDot ||
+                   meta.kind == SyntaxRuleKind::MakefileTarget || meta.kind == SyntaxRuleKind::AsmLabel) {
+            const bool allowDot = (meta.kind != SyntaxRuleKind::LineKeyBeforeEqNoDot);
+            size_t ls = 0;
+            while (ls < vLen) {
+                size_t matchStart = ls;
+                size_t q = ls;
+                if (ls > 0) {
+                    if (vData[ls] != '\r' && vData[ls] != '\n') {
+                        size_t nl = visibleText.find_first_of("\r\n", ls);
+                        if (nl == std::string::npos) break;
+                        ls = nl;
+                        continue;
+                    }
+                    q = ls + 1;
+                }
+                if (meta.kind == SyntaxRuleKind::MakefileTarget) {
+                    size_t ks = q;
+                    while (q < vLen && (std::isalnum((unsigned char)vData[q]) || vData[q] == '_' || vData[q] == '.' || vData[q] == '/' || vData[q] == '-')) q++;
+                    if (q > ks) {
+                        size_t cPos = q;
+                        while (cPos < vLen && (vData[cPos] == ' ' || vData[cPos] == '\t')) cPos++;
+                        if (cPos < vLen && vData[cPos] == ':' && (cPos + 1 >= vLen || vData[cPos + 1] != '=')) {
+                            if (!hasOddPrecedingBackslashes(visibleText, matchStart)) setEffect(matchStart, q - matchStart);
+                        }
+                    }
+                } else if (meta.kind == SyntaxRuleKind::AsmLabel) {
+                    while (q < vLen && (vData[q] == ' ' || vData[q] == '\t')) q++;
+                    if (q < vLen && (std::isalpha((unsigned char)vData[q]) || vData[q] == '_' || vData[q] == '.')) {
+                        q++;
+                        while (q < vLen && (std::isalnum((unsigned char)vData[q]) || vData[q] == '_' || vData[q] == '.' || vData[q] == '$' || vData[q] == '@')) q++;
+                        size_t cPos = q;
+                        while (cPos < vLen && (vData[cPos] == ' ' || vData[cPos] == '\t')) cPos++;
+                        if (cPos < vLen && vData[cPos] == ':') {
+                            if (!hasOddPrecedingBackslashes(visibleText, matchStart)) setEffect(matchStart, q - matchStart);
+                        }
+                    }
+                } else {
+                    while (q < vLen && (vData[q] == ' ' || vData[q] == '\t')) q++;
+                    size_t ks = q;
+                    while (q < vLen && (std::isalnum((unsigned char)vData[q]) || vData[q] == '_' || vData[q] == '-' || (allowDot && vData[q] == '.'))) q++;
+                    if (q > ks) {
+                        size_t eqPos = q;
+                        while (eqPos < vLen && (vData[eqPos] == ' ' || vData[eqPos] == '\t')) eqPos++;
+                        if (eqPos < vLen && vData[eqPos] == '=') {
+                            if (!hasOddPrecedingBackslashes(visibleText, matchStart)) setEffect(matchStart, q - matchStart);
+                        }
+                    }
+                }
+                size_t nextNl = visibleText.find_first_of("\r\n", (ls == 0) ? 0 : (ls + 1));
+                if (nextNl == std::string::npos) break;
+                ls = nextNl;
+            }
+            continue;
+        } else if (meta.kind == SyntaxRuleKind::CssHexColor) {
+            size_t p = 0;
+            while ((p = visibleText.find('#', p)) != std::string::npos) {
+                if (!hasOddPrecedingBackslashes(visibleText, p) && (p == 0 || !isStdWordChar(vData[p - 1]))) {
+                    size_t q = p + 1;
+                    while (q < vLen && std::isxdigit((unsigned char)vData[q])) q++;
+                    size_t hexLen = q - (p + 1);
+                    if (hexLen >= 3 && hexLen <= 6 && (q == vLen || !isStdWordChar(vData[q]))) {
+                        setEffect(p, q - p);
+                        p = q;
+                        continue;
+                    }
+                }
+                p++;
+            }
+            continue;
+        } else if (meta.kind == SyntaxRuleKind::CssUnit) {
+            size_t p = 0;
+            while (p < vLen) {
+                char c = vData[p];
+                if (c == '%') {
+                    if (p > 0 && p + 1 < vLen && isStdWordChar(vData[p - 1]) && isStdWordChar(vData[p + 1]) &&
+                        !hasOddPrecedingBackslashes(visibleText, p)) {
+                        setEffect(p, 1);
+                    }
+                    p++;
+                } else if ((c == 'p' || c == 'e' || c == 'r' || c == 'v') &&
+                           (p == 0 || !isStdWordChar(vData[p - 1])) &&
+                           !hasOddPrecedingBackslashes(visibleText, p)) {
+                    size_t uLen = 0;
+                    if (c == 'p' && p + 2 <= vLen && vData[p + 1] == 'x') uLen = 2;
+                    else if (c == 'e' && p + 2 <= vLen && vData[p + 1] == 'm') uLen = 2;
+                    else if (c == 'r' && p + 3 <= vLen && vData[p + 1] == 'e' && vData[p + 2] == 'm') uLen = 3;
+                    else if (c == 'v' && p + 2 <= vLen && (vData[p + 1] == 'h' || vData[p + 1] == 'w')) uLen = 2;
+                    if (uLen > 0 && (p + uLen == vLen || !isStdWordChar(vData[p + uLen]))) {
+                        setEffect(p, uLen);
+                        p += uLen;
+                        continue;
+                    }
+                    p++;
+                } else {
+                    p++;
+                }
+            }
+            continue;
+        } else if (meta.kind == SyntaxRuleKind::CssSelector) {
+            size_t p = 0;
+            while (p < vLen) {
+                char c = vData[p];
+                if ((c == '.' || c == '#' || c == ':') && !hasOddPrecedingBackslashes(visibleText, p)) {
+                    size_t q = p + 1;
+                    while (q < vLen) {
+                        char d = vData[q];
+                        if ((d >= 'a' && d <= 'z') || (d >= 'A' && d <= 'Z') || d == '_' || d == '-') q++;
+                        else break;
+                    }
+                    if (q > p + 1) {
+                        setEffect(p, q - p);
+                        p = q;
+                        continue;
+                    }
+                }
+                p++;
+            }
+            continue;
         }
 
         try {
@@ -1299,60 +1688,224 @@ inline void scanSyntaxHighlighting(
             for (auto it = words_begin; it != words_end; ++it) {
                 size_t mPos = (size_t)it->position();
                 size_t mLen = (size_t)it->length();
-                if (mPos > 0 && visibleText[mPos - 1] == '\\' && visibleText[mPos] != '\r' && visibleText[mPos] != '\n') continue;
+                if (hasOddPrecedingBackslashes(visibleText, mPos) && visibleText[mPos] != '\r' && visibleText[mPos] != '\n') continue;
                 setEffect(mPos, mLen);
             }
         } catch (...) {}
     }
     size_t i = 0;
     size_t len = visibleText.length();
+    const bool isPythonLike = (currentSyntax.lang == "python" || (currentSyntax.commentBlockStart == "\"\"\"" && currentSyntax.commentBlockEnd == "\"\"\""));
+    const bool isPascalLike = (currentSyntax.lang == "pascal" || (currentSyntax.commentBlockStart == "{" && currentSyntax.commentBlockEnd == "}"));
+    const bool isLatexLike = (currentSyntax.lang == "latex" || (currentSyntax.commentLine == "%" && currentSyntax.disableStrings));
+    const bool isLispLike = isLispSyntax;
+    const bool isCobolLike = (currentSyntax.lang == "cobol");
+    const bool isBatchLike = (currentSyntax.lang == "batch" || currentSyntax.commentLine == "REM" || currentSyntax.commentLine == "rem");
+    const bool isNestableBlock = (
+        currentSyntax.lang == "julia" || currentSyntax.lang == "lisp" ||
+        currentSyntax.lang == "haskell" || currentSyntax.lang == "nim" ||
+        currentSyntax.lang == "ocaml" || currentSyntax.lang == "fsharp" ||
+        currentSyntax.lang == "rust" || currentSyntax.lang == "swift" ||
+        (currentSyntax.commentBlockStart == "#=" && currentSyntax.commentBlockEnd == "=#") ||
+        (currentSyntax.commentBlockStart == "#|" && currentSyntax.commentBlockEnd == "|#") ||
+        (currentSyntax.commentBlockStart == "{-" && currentSyntax.commentBlockEnd == "-}") ||
+        (currentSyntax.commentBlockStart == "#[" && currentSyntax.commentBlockEnd == "]#") ||
+        (currentSyntax.commentBlockStart == "(*" && currentSyntax.commentBlockEnd == "*)")
+    );
     const bool symmetricBlockDelim = (!currentSyntax.commentBlockStart.empty() && currentSyntax.commentBlockStart == currentSyntax.commentBlockEnd);
+    auto skipSingleQuoteNonString = [&](size_t pos) noexcept -> bool {
+        if (currentSyntax.lang == "verilog") return true;
+        if (currentSyntax.lang == "vhdl") {
+            if (pos > 0) {
+                unsigned char prev = (unsigned char)visibleText[pos - 1];
+                if (std::isalnum(prev) || prev == '_' || prev == ')' || prev == ']') return true;
+            }
+            if (!(pos + 2 < len && visibleText[pos + 2] == '\'' && visibleText[pos + 1] != '\r' && visibleText[pos + 1] != '\n')) return true;
+            return false;
+        }
+        if (currentSyntax.lang == "julia" || (currentSyntax.commentBlockStart == "#=" && currentSyntax.commentBlockEnd == "=#")) {
+            if (pos > 0) {
+                unsigned char prev = (unsigned char)visibleText[pos - 1];
+                if (std::isalnum(prev) || prev == '_' || prev == '!' || prev >= 0x80 || prev == ')' || prev == ']' || prev == '}' || prev == '\'') return true;
+            }
+        }
+        if (pos > 0 && std::isalnum((unsigned char)visibleText[pos - 1])) {
+            size_t k = pos - 1;
+            while (k > 0 && (std::isalnum((unsigned char)visibleText[k - 1]) || visibleText[k - 1] == '_' || visibleText[k - 1] == '.' || visibleText[k - 1] == '\'')) {
+                --k;
+            }
+            if (std::isdigit((unsigned char)visibleText[k]) ||
+                (visibleText[k] == '.' && k + 1 < pos && std::isdigit((unsigned char)visibleText[k + 1]))) {
+                return true;
+            }
+        }
+        return false;
+    };
+    int blockDepth = (initialBlockState > 0) ? initialBlockState : 0;
+    char pyBlockQuote = (isPythonLike && initialBlockState == 1) ? '"' : ((isPythonLike && initialBlockState == 2) ? '\'' : 0);
+    int pascalBlockKind = (isPascalLike && (initialBlockState == 1 || initialBlockState == 2)) ? initialBlockState : 0;
     while (i < len) {
-        if (inBlockComment) {
+        if (blockDepth > 0) {
             size_t startStr = i;
+            if (isPythonLike) {
+                size_t endPos = std::string::npos;
+                size_t k = i;
+                while (k + 3 <= len) {
+                    if (visibleText[k] == '\\') { k += 2; continue; }
+                    if ((pyBlockQuote == 0 || pyBlockQuote == '"') && visibleText.compare(k, 3, "\"\"\"") == 0) {
+                        endPos = k + 3;
+                        break;
+                    }
+                    if ((pyBlockQuote == 0 || pyBlockQuote == '\'') && visibleText.compare(k, 3, "'''") == 0) {
+                        endPos = k + 3;
+                        break;
+                    }
+                    ++k;
+                }
+                if (endPos != std::string::npos) {
+                    i = endPos;
+                    blockDepth = 0;
+                    pyBlockQuote = 0;
+                } else {
+                    i = len;
+                }
+                applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::Comment);
+                continue;
+            }
+            if (isPascalLike) {
+                size_t endPos = std::string::npos;
+                for (size_t k = i; k < len; ++k) {
+                    if ((pascalBlockKind == 0 || pascalBlockKind == 1) && visibleText[k] == '}') {
+                        endPos = k + 1;
+                        break;
+                    }
+                    if ((pascalBlockKind == 0 || pascalBlockKind == 2) && k + 1 < len && visibleText[k] == '*' && visibleText[k + 1] == ')') {
+                        endPos = k + 2;
+                        break;
+                    }
+                }
+                if (endPos != std::string::npos) {
+                    i = endPos;
+                    blockDepth = 0;
+                    pascalBlockKind = 0;
+                } else {
+                    i = len;
+                }
+                applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::Comment);
+                continue;
+            }
+            if (isNestableBlock && !symmetricBlockDelim) {
+                const size_t cbsLen = currentSyntax.commentBlockStart.length();
+                const size_t cbeLen = currentSyntax.commentBlockEnd.length();
+                size_t k = i;
+                while (k < len && blockDepth > 0) {
+                    if (k + cbsLen <= len && visibleText.compare(k, cbsLen, currentSyntax.commentBlockStart) == 0) {
+                        blockDepth++;
+                        k += cbsLen;
+                    } else if (k + cbeLen <= len && visibleText.compare(k, cbeLen, currentSyntax.commentBlockEnd) == 0) {
+                        blockDepth--;
+                        k += cbeLen;
+                    } else {
+                        k++;
+                    }
+                }
+                i = k;
+                applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::Comment);
+                continue;
+            }
             size_t endComment = std::string::npos;
             size_t searchPos = i;
             while (searchPos <= len) {
                 size_t cand = visibleText.find(currentSyntax.commentBlockEnd, searchPos);
                 if (cand == std::string::npos) break;
-                if (symmetricBlockDelim) {
-                    size_t bs = 0;
-                    while (cand > bs && visibleText[cand - 1 - bs] == '\\') ++bs;
-                    if ((bs & 1u) != 0) {
-                        searchPos = cand + 1;
-                        continue;
-                    }
+                if (symmetricBlockDelim && hasOddPrecedingBackslashes(visibleText, cand)) {
+                    searchPos = cand + 1;
+                    continue;
                 }
                 endComment = cand;
                 break;
             }
             if (endComment != std::string::npos) {
                 i = endComment + currentSyntax.commentBlockEnd.length();
-                inBlockComment = false;
+                blockDepth = 0;
             } else {
                 i = len;
             }
             applySpan(startStr, i - startStr, (int)SyntaxTokenCategory::Comment);
         } else {
-            if (!currentSyntax.commentBlockStart.empty() && visibleText.compare(i, currentSyntax.commentBlockStart.length(), currentSyntax.commentBlockStart) == 0) {
-                if (symmetricBlockDelim) {
-                    size_t bs = 0;
-                    while (i > bs && visibleText[i - 1 - bs] == '\\') ++bs;
-                    if ((bs & 1u) != 0) {
-                        i++;
-                        continue;
-                    }
+            if (isPythonLike && i + 3 <= len && (visibleText.compare(i, 3, "\"\"\"") == 0 || visibleText.compare(i, 3, "'''") == 0)) {
+                if (!hasOddPrecedingBackslashes(visibleText, i)) {
+                    pyBlockQuote = visibleText[i];
+                    applySpan(i, 3, (int)SyntaxTokenCategory::Comment);
+                    i += 3;
+                    blockDepth = (pyBlockQuote == '"') ? 1 : 2;
+                    continue;
+                }
+            }
+            if (isPascalLike && (visibleText[i] == '{' || (i + 1 < len && visibleText[i] == '(' && visibleText[i + 1] == '*'))) {
+                size_t cbsLen = (visibleText[i] == '{') ? 1 : 2;
+                pascalBlockKind = (visibleText[i] == '{') ? 1 : 2;
+                applySpan(i, cbsLen, (int)SyntaxTokenCategory::Comment);
+                i += cbsLen;
+                blockDepth = pascalBlockKind;
+                continue;
+            }
+            if (!isPythonLike && !isPascalLike && !currentSyntax.commentBlockStart.empty() &&
+                visibleText.compare(i, currentSyntax.commentBlockStart.length(), currentSyntax.commentBlockStart) == 0) {
+                if (symmetricBlockDelim && hasOddPrecedingBackslashes(visibleText, i)) {
+                    i++;
+                    continue;
                 }
                 size_t cbsLen = currentSyntax.commentBlockStart.length();
                 applySpan(i, cbsLen, (int)SyntaxTokenCategory::Comment);
                 i += cbsLen;
-                inBlockComment = true;
+                blockDepth = 1;
                 continue;
+            }
+            if (isCobolLike && (visibleText[i] == '*' || visibleText[i] == '/') && !(i + 1 < len && visibleText[i] == '*' && visibleText[i + 1] == '>')) {
+                size_t lineStart = visibleText.find_last_of("\r\n", i);
+                lineStart = (lineStart == std::string::npos) ? 0 : lineStart + 1;
+                if (i - lineStart <= 6) {
+                    bool seqAreaOk = true;
+                    for (size_t k = lineStart; k < i; ++k) {
+                        if (visibleText[k] != ' ' && !std::isdigit((unsigned char)visibleText[k])) {
+                            seqAreaOk = false;
+                            break;
+                        }
+                    }
+                    if (seqAreaOk) {
+                        size_t eol = visibleText.find_first_of("\r\n", i);
+                        if (eol == std::string::npos) eol = len;
+                        applySpan(lineStart, eol - lineStart, (int)SyntaxTokenCategory::Comment);
+                        i = eol;
+                        continue;
+                    }
+                }
+            }
+            if (isBatchLike && i + 1 < len && visibleText[i] == ':' && visibleText[i + 1] == ':') {
+                size_t lineStart = visibleText.find_last_of("\r\n", i);
+                lineStart = (lineStart == std::string::npos) ? 0 : lineStart + 1;
+                bool onlySpaceBefore = true;
+                for (size_t k = lineStart; k < i; ++k) {
+                    if (visibleText[k] != ' ' && visibleText[k] != '\t') {
+                        onlySpaceBefore = false;
+                        break;
+                    }
+                }
+                if (onlySpaceBefore) {
+                    size_t eol = visibleText.find_first_of("\r\n", i);
+                    if (eol == std::string::npos) eol = len;
+                    applySpan(i, eol - i, (int)SyntaxTokenCategory::Comment);
+                    i = eol;
+                    continue;
+                }
             }
             if (!currentSyntax.commentLine.empty() && visibleText.compare(i, currentSyntax.commentLine.length(), currentSyntax.commentLine) == 0) {
                 bool isLineComment = true;
                 const size_t clLen = currentSyntax.commentLine.length();
-                if (std::isalpha((unsigned char)currentSyntax.commentLine.back())) {
+                if (isLatexLike && hasOddPrecedingBackslashes(visibleText, i)) {
+                    isLineComment = false;
+                } else if (std::isalpha((unsigned char)currentSyntax.commentLine.back())) {
                     bool prevBoundary = (i == 0 || !isStdWordChar(visibleText[i - 1]));
                     bool nextBoundary = (i + clLen >= len || !isStdWordChar(visibleText[i + clLen]));
                     size_t lineStart = visibleText.find_last_of("\r\n", i);
@@ -1401,7 +1954,7 @@ inline void scanSyntaxHighlighting(
                     continue;
                 }
             }
-            if (currentSyntax.disableSingleQuoteStrings && currentSyntax.lispWords) {
+            if (currentSyntax.disableSingleQuoteStrings && isLispLike) {
                 if (i + 2 < len && visibleText[i] == '#' && visibleText[i + 1] == '\\') {
                     size_t startStr = i;
                     i += 3;
@@ -1433,17 +1986,64 @@ inline void scanSyntaxHighlighting(
                     continue;
                 }
             }
+            if (currentSyntax.disableSingleQuoteStrings && !currentSyntax.disableStrings && !isLispLike &&
+                currentSyntax.lang != "verilog" && visibleText[i] == '\'') {
+                bool canOpenChar = (i == 0 || !isStdWordChar(visibleText[i - 1])) ||
+                                   (currentSyntax.lang == "rust" && visibleText[i - 1] == 'b' && (i < 2 || !isStdWordChar(visibleText[i - 2])));
+                if (canOpenChar) {
+                    if (i + 2 < len && visibleText[i + 1] != '\'' && visibleText[i + 1] != '\\' &&
+                        visibleText[i + 1] != '\r' && visibleText[i + 1] != '\n') {
+                        size_t uLen = MiuCore::utf8CharLenAt(visibleText, i + 1);
+                        if (i + 1 + uLen < len && visibleText[i + 1 + uLen] == '\'') {
+                            applySpan(i, uLen + 2, (int)SyntaxTokenCategory::String);
+                            i += uLen + 2;
+                            continue;
+                        }
+                    }
+                    if (i + 3 < len && visibleText[i + 1] == '\\') {
+                        size_t lim = std::min(len, i + 14);
+                        size_t closePos = std::string::npos;
+                        for (size_t k = i + 3; k < lim; ++k) {
+                            if (visibleText[k] == '\r' || visibleText[k] == '\n') break;
+                            if (visibleText[k] == '\'') { closePos = k; break; }
+                        }
+                        if (closePos != std::string::npos) {
+                            applySpan(i, closePos + 1 - i, (int)SyntaxTokenCategory::String);
+                            i = closePos + 1;
+                            continue;
+                        }
+                    }
+                }
+            }
             if (!currentSyntax.disableStrings && (visibleText[i] == '"' || (!currentSyntax.disableSingleQuoteStrings && visibleText[i] == '\''))) {
+                if (visibleText[i] == '\'' && skipSingleQuoteNonString(i)) {
+                    i++;
+                    continue;
+                }
+                if (isPascalLike && visibleText[i] == '"') {
+                    i++;
+                    continue;
+                }
                 char quote = visibleText[i];
                 size_t startStr = i;
                 i++;
                 while (i < len) {
+                    if (isPascalLike && quote == '\'') {
+                        if (visibleText[i] == '\'') {
+                            if (i + 1 < len && visibleText[i + 1] == '\'') { i += 2; continue; }
+                            i++;
+                            break;
+                        }
+                        if (visibleText[i] == '\n' || visibleText[i] == '\r') break;
+                        i++;
+                        continue;
+                    }
                     if (visibleText[i] == '\\' && i + 1 < len) {
                         i += 2;
                     } else if (visibleText[i] == quote) {
                         i++;
                         break;
-                    } else if (visibleText[i] == '\n' || visibleText[i] == '\r') {
+                    } else if (!isLispLike && (visibleText[i] == '\n' || visibleText[i] == '\r')) {
                         break;
                     } else {
                         i++;
@@ -1472,7 +2072,7 @@ inline void scanSyntaxHighlighting(
 inline void scanSyntaxHighlighting(
     const std::string& visibleText,
     const SyntaxDef& currentSyntax,
-    bool inBlockComment,
+    int initialBlockState,
     std::vector<SyntaxColor>& outColors,
     bool isDarkMode = false)
 {
@@ -1480,10 +2080,11 @@ inline void scanSyntaxHighlighting(
     if (visibleText.empty() || !currentSyntax.active) return;
     SyntaxColor colComment = isDarkMode ? SyntaxColor{0.42f, 0.60f, 0.33f, 1.0f} : SyntaxColor{0.0f, 0.50f, 0.0f, 1.0f};
     SyntaxColor colString  = isDarkMode ? SyntaxColor{0.81f, 0.57f, 0.47f, 1.0f} : SyntaxColor{0.64f, 0.08f, 0.08f, 1.0f};
-    SyntaxColor colKeyword = isDarkMode ? SyntaxColor{0.34f, 0.61f, 0.84f, 1.0f} : SyntaxColor{0.0f, 0.0f, 1.0f, 1.0f};
+    SyntaxColor colKeyword = isDarkMode ? SyntaxColor{0.34f, 0.61f, 0.84f, 1.0f} : SyntaxColor{0.0f, 0.0f, 0.0f, 1.0f};
+    colKeyword = isDarkMode ? SyntaxColor{0.34f, 0.61f, 0.84f, 1.0f} : SyntaxColor{0.0f, 0.0f, 1.0f, 1.0f};
     SyntaxColor colLiteral = isDarkMode ? SyntaxColor{0.34f, 0.61f, 0.84f, 1.0f} : SyntaxColor{0.0f, 0.35f, 0.70f, 1.0f};
 
-    scanSyntaxHighlighting(currentSyntax, visibleText, inBlockComment, [&](size_t start, size_t len, int cat) {
+    scanSyntaxHighlighting(currentSyntax, visibleText, initialBlockState, [&](size_t start, size_t len, int cat) {
         SyntaxColor sc{0.0f, 0.0f, 0.0f, 0.0f};
         if (cat >= 0 && (size_t)cat < currentSyntax.regexes.size()) {
             sc = currentSyntax.regexes[cat].second;
@@ -1503,13 +2104,33 @@ inline void scanSyntaxHighlighting(
     });
 }
 
-inline bool scanBlockCommentState(std::string_view preText, const SyntaxDef& currentSyntax, bool initialInBlockComment = false) noexcept {
+inline int scanBlockCommentState(std::string_view preText, const SyntaxDef& currentSyntax, int initialBlockState = 0) noexcept {
     if (!currentSyntax.active || currentSyntax.commentBlockStart.empty() || currentSyntax.commentBlockEnd.empty()) {
-        return false;
+        return 0;
     }
-    if (preText.empty()) return initialInBlockComment;
-    if (!initialInBlockComment && preText.find(currentSyntax.commentBlockStart) == std::string_view::npos) {
-        return false;
+    if (preText.empty()) return (initialBlockState > 0) ? initialBlockState : 0;
+    const bool isPythonLike = (currentSyntax.lang == "python" || (currentSyntax.commentBlockStart == "\"\"\"" && currentSyntax.commentBlockEnd == "\"\"\""));
+    const bool isPascalLike = (currentSyntax.lang == "pascal" || (currentSyntax.commentBlockStart == "{" && currentSyntax.commentBlockEnd == "}"));
+    const bool isLatexLike = (currentSyntax.lang == "latex" || (currentSyntax.commentLine == "%" && currentSyntax.disableStrings));
+    const bool isLispLike = (currentSyntax.lang == "lisp" || (currentSyntax.commentBlockStart == "#|" && currentSyntax.commentBlockEnd == "|#"));
+    const bool isCobolLike = (currentSyntax.lang == "cobol");
+    const bool isBatchLike = (currentSyntax.lang == "batch" || currentSyntax.commentLine == "REM" || currentSyntax.commentLine == "rem");
+    const bool isNestableBlock = (
+        currentSyntax.lang == "julia" || currentSyntax.lang == "lisp" ||
+        currentSyntax.lang == "haskell" || currentSyntax.lang == "nim" ||
+        currentSyntax.lang == "ocaml" || currentSyntax.lang == "fsharp" ||
+        currentSyntax.lang == "rust" || currentSyntax.lang == "swift" ||
+        (currentSyntax.commentBlockStart == "#=" && currentSyntax.commentBlockEnd == "=#") ||
+        (currentSyntax.commentBlockStart == "#|" && currentSyntax.commentBlockEnd == "|#") ||
+        (currentSyntax.commentBlockStart == "{-" && currentSyntax.commentBlockEnd == "-}") ||
+        (currentSyntax.commentBlockStart == "#[" && currentSyntax.commentBlockEnd == "]#") ||
+        (currentSyntax.commentBlockStart == "(*" && currentSyntax.commentBlockEnd == "*)")
+    );
+    if (initialBlockState <= 0 &&
+        preText.find(currentSyntax.commentBlockStart) == std::string_view::npos &&
+        !(isPythonLike && preText.find("'''") != std::string_view::npos) &&
+        !(isPascalLike && preText.find("(*") != std::string_view::npos)) {
+        return 0;
     }
     const bool symmetricDelim = (currentSyntax.commentBlockStart == currentSyntax.commentBlockEnd);
     const size_t len = preText.size();
@@ -1519,49 +2140,185 @@ inline bool scanBlockCommentState(std::string_view preText, const SyntaxDef& cur
     auto isStdW = [](char c) noexcept -> bool {
         return std::isalnum((unsigned char)c) || c == '_';
     };
-    bool inBlockComment = initialInBlockComment;
+    auto isLispW = [](char c) noexcept -> bool {
+        return std::isalnum((unsigned char)c) || c == '_' || c == '-' || c == '*' || c == '+' ||
+               c == '!' || c == '?' || c == '/' || c == '<' || c == '>' || c == '=' || c == '&' || c == '#';
+    };
+    auto skipSingleQuoteNonString = [&](size_t pos) noexcept -> bool {
+        if (currentSyntax.lang == "verilog") return true;
+        if (currentSyntax.lang == "vhdl") {
+            if (pos > 0) {
+                unsigned char prev = (unsigned char)preText[pos - 1];
+                if (std::isalnum(prev) || prev == '_' || prev == ')' || prev == ']') return true;
+            }
+            if (!(pos + 2 < len && preText[pos + 2] == '\'' && preText[pos + 1] != '\r' && preText[pos + 1] != '\n')) return true;
+            return false;
+        }
+        if (currentSyntax.lang == "julia" || (currentSyntax.commentBlockStart == "#=" && currentSyntax.commentBlockEnd == "=#")) {
+            if (pos > 0) {
+                unsigned char prev = (unsigned char)preText[pos - 1];
+                if (std::isalnum(prev) || prev == '_' || prev == '!' || prev >= 0x80 || prev == ')' || prev == ']' || prev == '}' || prev == '\'') return true;
+            }
+        }
+        if (pos > 0 && std::isalnum((unsigned char)preText[pos - 1])) {
+            size_t k = pos - 1;
+            while (k > 0 && (std::isalnum((unsigned char)preText[k - 1]) || preText[k - 1] == '_' || preText[k - 1] == '.' || preText[k - 1] == '\'')) {
+                --k;
+            }
+            if (std::isdigit((unsigned char)preText[k]) ||
+                (preText[k] == '.' && k + 1 < pos && std::isdigit((unsigned char)preText[k + 1]))) {
+                return true;
+            }
+        }
+        return false;
+    };
+    int blockDepth = (initialBlockState > 0) ? initialBlockState : 0;
+    char pyBlockQuote = (isPythonLike && initialBlockState == 1) ? '"' : ((isPythonLike && initialBlockState == 2) ? '\'' : 0);
+    int pascalBlockKind = (isPascalLike && (initialBlockState == 1 || initialBlockState == 2)) ? initialBlockState : 0;
     size_t i = 0;
     while (i < len) {
-        if (inBlockComment) {
+        if (blockDepth > 0) {
+            if (isPythonLike) {
+                size_t endPos = std::string_view::npos;
+                size_t k = i;
+                while (k + 3 <= len) {
+                    if (preText[k] == '\\') { k += 2; continue; }
+                    if ((pyBlockQuote == 0 || pyBlockQuote == '"') && preText.compare(k, 3, "\"\"\"") == 0) {
+                        endPos = k + 3;
+                        break;
+                    }
+                    if ((pyBlockQuote == 0 || pyBlockQuote == '\'') && preText.compare(k, 3, "'''") == 0) {
+                        endPos = k + 3;
+                        break;
+                    }
+                    ++k;
+                }
+                if (endPos != std::string_view::npos) {
+                    i = endPos;
+                    blockDepth = 0;
+                    pyBlockQuote = 0;
+                    continue;
+                }
+                return (pyBlockQuote == '\'') ? 2 : 1;
+            }
+            if (isPascalLike) {
+                size_t endPos = std::string_view::npos;
+                for (size_t k = i; k < len; ++k) {
+                    if ((pascalBlockKind == 0 || pascalBlockKind == 1) && preText[k] == '}') {
+                        endPos = k + 1;
+                        break;
+                    }
+                    if ((pascalBlockKind == 0 || pascalBlockKind == 2) && k + 1 < len && preText[k] == '*' && preText[k + 1] == ')') {
+                        endPos = k + 2;
+                        break;
+                    }
+                }
+                if (endPos != std::string_view::npos) {
+                    i = endPos;
+                    blockDepth = 0;
+                    pascalBlockKind = 0;
+                    continue;
+                }
+                return (pascalBlockKind == 2) ? 2 : 1;
+            }
+            if (isNestableBlock && !symmetricDelim) {
+                size_t k = i;
+                while (k < len && blockDepth > 0) {
+                    if (k + cbsLen <= len && preText.compare(k, cbsLen, currentSyntax.commentBlockStart) == 0) {
+                        blockDepth++;
+                        k += cbsLen;
+                    } else if (k + cbeLen <= len && preText.compare(k, cbeLen, currentSyntax.commentBlockEnd) == 0) {
+                        blockDepth--;
+                        k += cbeLen;
+                    } else {
+                        k++;
+                    }
+                }
+                i = k;
+                if (blockDepth > 0) return blockDepth;
+                continue;
+            }
             size_t endComment = std::string_view::npos;
             size_t searchPos = i;
             while (searchPos <= len) {
                 size_t cand = preText.find(currentSyntax.commentBlockEnd, searchPos);
                 if (cand == std::string_view::npos) break;
-                if (symmetricDelim) {
-                    size_t bs = 0;
-                    while (cand > bs && preText[cand - 1 - bs] == '\\') ++bs;
-                    if ((bs & 1u) != 0) {
-                        searchPos = cand + 1;
-                        continue;
-                    }
+                if (symmetricDelim && hasOddPrecedingBackslashes(preText, cand)) {
+                    searchPos = cand + 1;
+                    continue;
                 }
                 endComment = cand;
                 break;
             }
             if (endComment != std::string_view::npos) {
                 i = endComment + cbeLen;
-                inBlockComment = false;
+                blockDepth = 0;
             } else {
-                return true;
+                return 1;
             }
         } else {
-            if (i + cbsLen <= len && preText.compare(i, cbsLen, currentSyntax.commentBlockStart) == 0) {
-                if (symmetricDelim) {
-                    size_t bs = 0;
-                    while (i > bs && preText[i - 1 - bs] == '\\') ++bs;
-                    if ((bs & 1u) != 0) {
-                        i++;
+            if (isPythonLike && i + 3 <= len && (preText.compare(i, 3, "\"\"\"") == 0 || preText.compare(i, 3, "'''") == 0)) {
+                if (!hasOddPrecedingBackslashes(preText, i)) {
+                    pyBlockQuote = preText[i];
+                    i += 3;
+                    blockDepth = (pyBlockQuote == '"') ? 1 : 2;
+                    continue;
+                }
+            }
+            if (isPascalLike && (preText[i] == '{' || (i + 1 < len && preText[i] == '(' && preText[i + 1] == '*'))) {
+                pascalBlockKind = (preText[i] == '{') ? 1 : 2;
+                i += (preText[i] == '{') ? 1 : 2;
+                blockDepth = pascalBlockKind;
+                continue;
+            }
+            if (!isPythonLike && !isPascalLike && i + cbsLen <= len && preText.compare(i, cbsLen, currentSyntax.commentBlockStart) == 0) {
+                if (symmetricDelim && hasOddPrecedingBackslashes(preText, i)) {
+                    i++;
+                    continue;
+                }
+                i += cbsLen;
+                blockDepth = 1;
+                continue;
+            }
+            if (isCobolLike && (preText[i] == '*' || preText[i] == '/') && !(i + 1 < len && preText[i] == '*' && preText[i + 1] == '>')) {
+                size_t lineStart = preText.find_last_of("\r\n", i);
+                lineStart = (lineStart == std::string_view::npos) ? 0 : lineStart + 1;
+                if (i - lineStart <= 6) {
+                    bool seqAreaOk = true;
+                    for (size_t k = lineStart; k < i; ++k) {
+                        if (preText[k] != ' ' && !std::isdigit((unsigned char)preText[k])) {
+                            seqAreaOk = false;
+                            break;
+                        }
+                    }
+                    if (seqAreaOk) {
+                        size_t eol = preText.find_first_of("\r\n", i);
+                        i = (eol == std::string_view::npos) ? len : eol;
                         continue;
                     }
                 }
-                i += cbsLen;
-                inBlockComment = true;
-                continue;
+            }
+            if (isBatchLike && i + 1 < len && preText[i] == ':' && preText[i + 1] == ':') {
+                size_t lineStart = preText.find_last_of("\r\n", i);
+                lineStart = (lineStart == std::string_view::npos) ? 0 : lineStart + 1;
+                bool onlySpaceBefore = true;
+                for (size_t k = lineStart; k < i; ++k) {
+                    if (preText[k] != ' ' && preText[k] != '\t') {
+                        onlySpaceBefore = false;
+                        break;
+                    }
+                }
+                if (onlySpaceBefore) {
+                    size_t eol = preText.find_first_of("\r\n", i);
+                    i = (eol == std::string_view::npos) ? len : eol;
+                    continue;
+                }
             }
             if (clLen > 0 && i + clLen <= len && preText.compare(i, clLen, currentSyntax.commentLine) == 0) {
                 bool isLineComment = true;
-                if (std::isalpha((unsigned char)currentSyntax.commentLine.back())) {
+                if (isLatexLike && hasOddPrecedingBackslashes(preText, i)) {
+                    isLineComment = false;
+                } else if (std::isalpha((unsigned char)currentSyntax.commentLine.back())) {
                     bool prevBoundary = (i == 0 || !isStdW(preText[i - 1]));
                     bool nextBoundary = (i + clLen >= len || !isStdW(preText[i + clLen]));
                     size_t lineStart = preText.find_last_of("\r\n", i);
@@ -1603,18 +2360,63 @@ inline bool scanBlockCommentState(std::string_view preText, const SyntaxDef& cur
                     continue;
                 }
             }
-            if (currentSyntax.disableSingleQuoteStrings && currentSyntax.lispWords) {
+            if (currentSyntax.disableSingleQuoteStrings && isLispLike) {
                 if (i + 2 < len && preText[i] == '#' && preText[i + 1] == '\\') { i += 3; continue; }
                 if (i + 1 < len && preText[i] == '\\') { i += 2; continue; }
-                if (i + 2 < len && preText[i] == '?' && preText[i + 1] == '\\') { i += 3; continue; }
-                if (i + 1 < len && preText[i] == '?' && (preText[i + 1] == '"' || preText[i + 1] == ';' || preText[i + 1] == '|')) { i += 2; continue; }
+                if (i + 2 < len && preText[i] == '?' && preText[i + 1] == '\\' && (i == 0 || !isLispW(preText[i - 1]))) { i += 3; continue; }
+                if (i + 1 < len && preText[i] == '?' && (preText[i + 1] == '"' || preText[i + 1] == ';' || preText[i + 1] == '|') && (i == 0 || !isLispW(preText[i - 1]))) { i += 2; continue; }
+            }
+            if (currentSyntax.disableSingleQuoteStrings && !currentSyntax.disableStrings && !isLispLike &&
+                currentSyntax.lang != "verilog" && preText[i] == '\'') {
+                bool canOpenChar = (i == 0 || !isStdW(preText[i - 1])) ||
+                                   (currentSyntax.lang == "rust" && preText[i - 1] == 'b' && (i < 2 || !isStdW(preText[i - 2])));
+                if (canOpenChar) {
+                    if (i + 2 < len && preText[i + 1] != '\'' && preText[i + 1] != '\\' &&
+                        preText[i + 1] != '\r' && preText[i + 1] != '\n') {
+                        size_t uLen = MiuCore::utf8CharLenAt(preText, i + 1);
+                        if (i + 1 + uLen < len && preText[i + 1 + uLen] == '\'') {
+                            i += uLen + 2;
+                            continue;
+                        }
+                    }
+                    if (i + 3 < len && preText[i + 1] == '\\') {
+                        size_t lim = std::min(len, i + 14);
+                        size_t closePos = std::string_view::npos;
+                        for (size_t k = i + 3; k < lim; ++k) {
+                            if (preText[k] == '\r' || preText[k] == '\n') break;
+                            if (preText[k] == '\'') { closePos = k; break; }
+                        }
+                        if (closePos != std::string_view::npos) {
+                            i = closePos + 1;
+                            continue;
+                        }
+                    }
+                }
             }
             if (!currentSyntax.disableStrings && (preText[i] == '"' || (!currentSyntax.disableSingleQuoteStrings && preText[i] == '\''))) {
+                if (preText[i] == '\'' && skipSingleQuoteNonString(i)) {
+                    i++;
+                    continue;
+                }
+                if (isPascalLike && preText[i] == '"') {
+                    i++;
+                    continue;
+                }
                 char quote = preText[i++];
                 while (i < len) {
+                    if (isPascalLike && quote == '\'') {
+                        if (preText[i] == '\'') {
+                            if (i + 1 < len && preText[i + 1] == '\'') { i += 2; continue; }
+                            i++;
+                            break;
+                        }
+                        if (preText[i] == '\n' || preText[i] == '\r') break;
+                        i++;
+                        continue;
+                    }
                     if (preText[i] == '\\' && i + 1 < len) i += 2;
                     else if (preText[i] == quote) { i++; break; }
-                    else if (preText[i] == '\n' || preText[i] == '\r') break;
+                    else if (!isLispLike && (preText[i] == '\n' || preText[i] == '\r')) break;
                     else i++;
                 }
                 continue;
@@ -1622,5 +2424,5 @@ inline bool scanBlockCommentState(std::string_view preText, const SyntaxDef& cur
             i++;
         }
     }
-    return inBlockComment;
+    return blockDepth;
 }

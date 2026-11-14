@@ -249,6 +249,10 @@ public:
         title = t;
     }
 
+    void setAccTitle(const std::string& t) {
+        accTitle = trimStartStr(t);
+    }
+
     void setAccDescription(const std::string& descr) {
         std::string out;
         size_t i = 0;
@@ -672,7 +676,7 @@ inline C4Tokens tokenizeC4(const std::string& src) {
         q = from;
         while (q < n) {
             int c = byteAt(q);
-            if (c == 35 || c == 10 || c == 59) break;
+            if (c == 35 || c == 10 || (c == 59 && !isEntitySemicolon(src, q))) break;
             q++;
         }
         if (q == from) return false;
@@ -901,8 +905,10 @@ inline C4Tokens tokenizeC4(const std::string& src) {
         }
 
         if (state == acc) {
+            bool wasAtEnd = (p >= n);
             emit(accValue, p, upTo('\n', p));
             state = INITIAL;
+            if (wasAtEnd) done = false;
             continue;
         }
 
@@ -910,7 +916,13 @@ inline C4Tokens tokenizeC4(const std::string& src) {
             p++;
             state = INITIAL;
         } else {
-            emit(T::acc_descr_multiline_value, p, upTo('}', p));
+            bool wasAtEnd = (p >= n);
+            size_t close = upTo('}', p);
+            emit(T::acc_descr_multiline_value, p, close);
+            if (p >= n) {
+                state = INITIAL;
+                if (wasAtEnd) done = false;
+            }
         }
     }
     return out;
@@ -1000,7 +1012,7 @@ inline void parseC4(const std::string& src, C4Db& db) {
             i++;
             if (t == T::acc_title) {
                 if (types[i] != T::acc_title_value) fail("'acc_title_value'");
-                db.setTitle(trimStr(text(i++)));
+                db.setAccTitle(trimStr(text(i++)));
             } else {
                 if (types[i] != T::acc_descr_value) fail("'acc_descr_value'");
                 db.setAccDescription(trimStr(text(i++)));

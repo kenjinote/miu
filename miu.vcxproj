@@ -88,10 +88,13 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>include</AdditionalIncludeDirectories>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -100,8 +103,8 @@
       <AdditionalOptions>/DEPENDENTLOADFLAG:0x800 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Manifest>
-      <EnableDpiAwareness>
-      </EnableDpiAwareness>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+      <AdditionalManifestFiles>$(IntDir)miu.longpath.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -110,10 +113,13 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <ControlFlowGuard>Guard</ControlFlowGuard>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <AdditionalIncludeDirectories>include</AdditionalIncludeDirectories>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -122,8 +128,8 @@
       <AdditionalOptions>/DEPENDENTLOADFLAG:0x800 %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Manifest>
-      <EnableDpiAwareness>
-      </EnableDpiAwareness>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+      <AdditionalManifestFiles>$(IntDir)miu.longpath.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -137,7 +143,7 @@
       <StringPooling>true</StringPooling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <ControlFlowGuard>Guard</ControlFlowGuard>
-      <AdditionalOptions>/Gw /Zc:inline /Brepro %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/bigobj /Gw /Zc:inline /Brepro %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -154,8 +160,8 @@
       <AdditionalOptions>/DEPENDENTLOADFLAG:0x800 /OPT:ICF=5 /Brepro %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Manifest>
-      <EnableDpiAwareness>
-      </EnableDpiAwareness>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+      <AdditionalManifestFiles>$(IntDir)miu.longpath.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -169,7 +175,7 @@
       <StringPooling>true</StringPooling>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
       <ControlFlowGuard>Guard</ControlFlowGuard>
-      <AdditionalOptions>/Gw /Zc:inline /Brepro %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/bigobj /Gw /Zc:inline /Brepro %(AdditionalOptions)</AdditionalOptions>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -186,12 +192,16 @@
       <AdditionalOptions>/DEPENDENTLOADFLAG:0x800 /OPT:ICF=5 /Brepro %(AdditionalOptions)</AdditionalOptions>
     </Link>
     <Manifest>
-      <EnableDpiAwareness>
-      </EnableDpiAwareness>
+      <EnableDpiAwareness>PerMonitorHighDPIAware</EnableDpiAwareness>
+      <AdditionalManifestFiles>$(IntDir)miu.longpath.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
     </Manifest>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Source.cpp" />
+    <ClCompile Include="include\compact_enc_det\compact_enc_det.cc" />
+    <ClCompile Include="include\compact_enc_det\compact_enc_det_hint_code.cc" />
+    <ClCompile Include="include\util\encodings\encodings.cc" />
+    <ClCompile Include="include\util\languages\languages.cc" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
@@ -205,4 +215,8 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <Target Name="GenerateMiuLongPathManifest" BeforeTargets="ComputeManifestInputsTargets;ComputeLinkSwitches;Link;Manifest">
+    <MakeDir Directories="$(IntDir)" />
+    <WriteLinesToFile File="$(IntDir)miu.longpath.manifest" Overwrite="true" WriteOnlyWhenDifferent="true" Encoding="UTF-8" Lines="&lt;?xml version=&quot;1.0&quot; encoding=&quot;utf-8&quot; standalone=&quot;yes&quot;?&gt;;&lt;assembly xmlns=&quot;urn:schemas-microsoft-com:asm.v1&quot; manifestVersion=&quot;1.0&quot;&gt;;  &lt;application xmlns=&quot;urn:schemas-microsoft-com:asm.v3&quot;&gt;;    &lt;windowsSettings&gt;;      &lt;dpiAwareness xmlns=&quot;http://schemas.microsoft.com/SMI/2016/WindowsSettings&quot;&gt;PerMonitorV2, PerMonitor&lt;/dpiAwareness&gt;;      &lt;longPathAware xmlns=&quot;http://schemas.microsoft.com/SMI/2016/WindowsSettings&quot;&gt;true&lt;/longPathAware&gt;;    &lt;/windowsSettings&gt;;  &lt;/application&gt;;&lt;/assembly&gt;" />
+  </Target>
 </Project>

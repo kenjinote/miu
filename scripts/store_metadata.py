@@ -34,12 +34,10 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.52 發行說明
-🪟 修正對話方塊超出螢幕可視區域問題 & 即時預覽離線安全與穩定性提升
-
-- 確保儲存確認與尋找/取代對話方塊始終顯示在螢幕工作區內：
-  修正當主視窗有一半以上超出螢幕邊緣時點擊關閉按鈕，儲存確認對話方塊（以及尋找、取代、跳轉行對話方塊）可能顯示在螢幕外導致無法操作的問題，現在所有對話方塊皆會自動限制在目前顯示器的可用工作區內。
-- 即時預覽離線安全加固、65 種語言語法突顯與原子化安全儲存穩定性提升。""",
+        "releaseNotes": """miu v1.0.53 更新內容
+・強化即時預覽離線安全保護，提升 Markdown、LaTeX 公式及 33 種 Mermaid 圖表渲染精準度
+・改進多行正規表示式尋找取代、Emmet 展開與 65 種語言語法突顯準確性
+・新增非 UTF-8 儲存字元遺失提醒，最佳化原子化安全儲存與多語言在地化細節""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -78,12 +76,10 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """miu v1.0.52 Versionshinweise
-🪟 Korrektur der Dialogpositionierung im sichtbaren Bildschirmbereich & Stabilitätsverbesserungen
-
-- Speichern-Bestätigung & Suchdialoge immer im sichtbaren Monitorbereich:
-  Problem behoben, bei dem das Schließen eines teilweise außerhalb des Bildschirms liegenden Fensters den Speichern-Bestätigungsdialog (sowie Suchen/Ersetzen/Gehe-zu-Zeile) außerhalb des sichtbaren Arbeitsbereichs anzeigen konnte.
-- Strenge Offline-Sicherheit für die Live-Vorschau, präzises Highlighting für 65 Sprachen & Mermaid sowie zuverlässiges atomares Speichern.""",
+        "releaseNotes": """Neuerungen in miu v1.0.53
+• Strengere Offline-Sicherheit für die Live-Vorschau sowie präzisere Darstellung von Markdown, LaTeX und allen 33 Mermaid-Diagrammtypen.
+• Verbesserte mehrzeilige Regex-Suche & -Ersetzung, Emmet-Erweiterung und Syntaxhervorhebung für 65 Sprachen.
+• Warnhinweis vor Zeichenverlust beim Speichern in Nicht-UTF-8, zuverlässigeres atomares Speichern und optimierte Lokalisierung.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -122,12 +118,10 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Notes de version miu v1.0.52
-🪟 Positionnement garanti des boîtes de dialogue à l’écran & améliorations de stabilité
-
-- Boîtes de dialogue toujours visibles dans la zone de travail de l’écran :
-  Correction d’un problème où la fermeture d’une fenêtre partiellement hors écran pouvait afficher la boîte de confirmation d’enregistrement (ainsi que Rechercher/Remplacer/Atteindre) hors de l’écran.
-- Aperçu en direct 100 % hors ligne sécurisé, coloration syntaxique pour 65 langages & Mermaid et sauvegarde atomique fiable.""",
+        "releaseNotes": """Nouveautés de miu v1.0.53
+• Sécurité hors ligne renforcée de l’aperçu en direct et rendu amélioré pour Markdown, LaTeX et les 33 types de diagrammes Mermaid.
+• Recherche/remplacement Regex multiligne, extension Emmet et coloration syntaxique de 65 langages plus précis.
+• Alerte de perte de caractères hors UTF-8, sauvegarde atomique fiabilisée et traductions affinées.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -166,12 +160,10 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Notas de la versión miu v1.0.52
-🪟 Corrección de posición de diálogos dentro de la pantalla y mejoras de estabilidad
-
-- Diálogos de confirmación y búsqueda siempre visibles dentro del monitor:
-  Corregido un problema por el que al cerrar una ventana parcialmente fuera de la pantalla, el diálogo de confirmación de guardado (y Buscar/Reemplazar/Ir a línea) podía mostrarse fuera del área visible del monitor.
-- Seguridad sin conexión en Vista Previa, resaltado para 65 lenguajes y Mermaid, y guardado atómico fiable.""",
+        "releaseNotes": """Novedades de miu v1.0.53
+• Mayor seguridad sin conexión en Vista Previa y mejor renderizado de Markdown, LaTeX y los 33 diagramas Mermaid.
+• Mejoras en búsqueda y reemplazo Regex multilínea, expansión Emmet y resaltado de sintaxis para 65 lenguajes.
+• Aviso de pérdida de caracteres al guardar fuera de UTF-8, guardado atómico más seguro y mejoras de localización.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -210,12 +202,10 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Notas de lançamento do miu v1.0.52
-🪟 Correção do posicionamento de diálogos dentro da tela e melhorias de estabilidade
-
-- Diálogos de confirmação e busca sempre visíveis na área de trabalho do monitor:
-  Corrigido um problema em que fechar uma janela parcialmente fora da tela podia exibir o diálogo de confirmação de salvamento (e Localizar/Substituir/Ir para linha) fora dos limites visíveis do monitor.
-- Segurança offline na Pré-visualização, destaque de sintaxe para 65 linguagens e Mermaid, e salvamento atômico confiável.""",
+        "releaseNotes": """Novidades do miu v1.0.53
+• Segurança offline reforçada na Pré-visualização e melhor renderização de Markdown, LaTeX e dos 33 diagramas Mermaid.
+• Melhorias na busca e substituição Regex multilinha, expansão Emmet e destaque de sintaxe para 65 linguagens.
+• Aviso de perda de caracteres ao salvar fora de UTF-8, salvamento atômico mais seguro e melhorias de tradução.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -254,12 +244,10 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Примечания к выпуску miu v1.0.52
-🪟 Исправление отображения диалоговых окон в пределах экрана и повышение стабильности
-
-- Диалоги сохранения и поиска всегда внутри рабочей области монитора:
-  Исправлена проблема, из-за которой при закрытии окна, частично выходящего за край экрана, диалог подтверждения сохранения (а также окна поиска, замены и перехода к строке) мог оказаться за пределами видимой области дисплея.
-- Офлайн-защита предпросмотра, подсветка 65 языков и диаграмм Mermaid, надёжное атомарное сохранение.""",
+        "releaseNotes": """Что нового в miu v1.0.53
+• Усилена офлайн-защита предпросмотра и улучшена отрисовка Markdown, формул LaTeX и всех 33 типов диаграмм Mermaid.
+• Повышена точность многострочного поиска Regex, автодополнения Emmet и подсветки синтаксиса 65 языков.
+• Добавлено предупреждение о потере символов при сохранении не в UTF-8, улучшены атомарное сохранение и локализация.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -298,12 +286,10 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Note di rilascio di miu v1.0.52
-🪟 Correzione del posizionamento delle finestre di dialogo sullo schermo e miglioramenti di stabilità
-
-- Finestre di conferma e ricerca sempre visibili nell’area di lavoro del monitor:
-  Risolto un problema per cui, chiudendo una finestra parzialmente fuori schermo, la finestra di conferma salvataggio (e Trova/Sostituisci/Vai alla riga) poteva apparire fuori dall’area visibile del display.
-- Sicurezza offline dell’anteprima, sintassi per 65 linguaggi e Mermaid, e salvataggio atomico affidabile.""",
+        "releaseNotes": """Novità di miu v1.0.53
+• Sicurezza offline potenziata nell’Anteprima dal vivo e resa migliorata per Markdown, LaTeX e tutti i 33 diagrammi Mermaid.
+• Ricerca e sostituzione Regex multiriga, espansione Emmet ed evidenziazione per 65 linguaggi più precisi.
+• Avviso di perdita caratteri nei salvataggi non UTF-8, salvataggio atomico ancora più sicuro e localizzazione rifinita.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -342,12 +328,10 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Informacje o wersji miu v1.0.52
-🪟 Poprawka pozycjonowania okien dialogowych na ekranie oraz ulepszenia stabilności
-
-- Okna potwierdzenia zapisu i wyszukiwania zawsze w obszarze roboczym monitora:
-  Naprawiono problem, przez który zamknięcie okna częściowo wystającego poza ekran mogło wyświetlić okno potwierdzenia zapisu (oraz Znajdź/Zamień/Przejdź do wiersza) poza widocznym obszarem ekranu.
-- Ochrona podglądu offline, składnia dla 65 języków i Mermaid oraz niezawodny zapis atomowy.""",
+        "releaseNotes": """Nowości w miu v1.0.53
+• Wzmocnione bezpieczeństwo podglądu offline oraz lepsze renderowanie Markdown, LaTeX i 33 diagramów Mermaid.
+• Ulepszone wielowierszowe wyszukiwanie Regex, rozwijanie Emmet i kolorowanie składni dla 65 języków.
+• Ostrzeżenie przed utratą znaków przy zapisie spoza UTF-8, pewniejszy zapis atomowy i dopracowana lokalizacja.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -386,12 +370,10 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Releaseopmerkingen miu v1.0.52
-🪟 Verbeterde positionering van dialoogvensters binnen het scherm & stabiliteitsverbeteringen
-
-- Bevestigings- en zoekvensters altijd binnen het zichtbare werkgebied van de monitor:
-  Probleem opgelost waarbij het sluiten van een deels buiten beeld geplaatst venster het opslagbevestigingsvenster (en Zoeken/Vervangen/Ga naar regel) buiten het zichtbare scherm kon plaatsen.
-- Offline beveiliging van Live Voorbeeld, 65 talen & Mermaid-precisie en betrouwbaar atomair opslaan.""",
+        "releaseNotes": """Nieuw in miu v1.0.53
+• Verbeterde offline beveiliging van Live Voorbeeld en nauwkeurigere weergave van Markdown, LaTeX en 33 Mermaid-diagrammen.
+• Betere meerregelige Regex-zoek- en vervangfunctie, Emmet-uitbreiding en syntaxisaccentuering voor 65 talen.
+• Waarschuwing bij tekenverlies buiten UTF-8, betrouwbaarder atomair opslaan en verfijnde lokalisatie.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -430,12 +412,10 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.52 Sürüm Notları
-🪟 İletişim Kutularının Ekran İçinde Konumlandırılması Düzeltmesi ve Kararlılık İyileştirmeleri
-
-- Kaydetme Onayı ve Arama Pencereleri Her Zaman Görünür Ekran Alanında:
-  Yarısından fazlası ekran dışına taşmış bir pencereyi kapatırken kaydetme onayı (ve Bul/Değiştir/Satıra Git) iletişim kutusunun ekran dışında kalması sorunu düzeltildi.
-- Çevrimdışı Canlı Önizleme güvenliği, 65 dil sözdizimi ve Mermaid kararlılığı ile güvenli atomik kaydetme.""",
+        "releaseNotes": """miu v1.0.53 Yenilikleri
+• Güçlendirilmiş çevrimdışı Canlı Önizleme güvenliği ve Markdown, LaTeX ile 33 Mermaid şemasında daha net görünüm.
+• Çok satırlı Regex bul/değiştir, Emmet genişletme ve 65 dil sözdizimi vurgulamada doğruluk iyileştirmeleri.
+• UTF-8 dışı kayıtlarda karakter kaybı uyarısı, daha güvenli atomik kaydetme ve çok dilli arayüz iyileştirmeleri.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -473,12 +453,10 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Ghi chú phát hành miu v1.0.52
-🪟 Sửa lỗi vị trí hộp thoại luôn nằm trong màn hình & tăng cường độ ổn định
-
-- Hộp thoại xác nhận lưu và tìm kiếm luôn hiển thị trong vùng làm việc của màn hình:
-  Khắc phục sự cố khi đóng cửa sổ bị khuất một phần ngoài mép màn hình khiến hộp thoại xác nhận lưu (và Tìm/Thay thế/Đi tới dòng) hiển thị ngoài vùng nhìn thấy.
-- Bảo mật Xem trước ngoại tuyến, tô sáng cú pháp 65 ngôn ngữ & Mermaid và lưu tệp nguyên tử an toàn.""",
+        "releaseNotes": """Có gì mới trong miu v1.0.53
+• Tăng cường bảo mật Xem trước ngoại tuyến và hiển thị chuẩn xác hơn cho Markdown, LaTeX cùng 33 loại sơ đồ Mermaid.
+• Cải thiện tìm/thay thế Regex nhiều dòng, gõ tắt Emmet và tô sáng cú pháp cho 65 ngôn ngữ.
+• Thêm cảnh báo mất ký tự khi lưu ngoài UTF-8, nâng cao lưu tệp nguyên tử an toàn và bản địa hóa đa ngôn ngữ.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -517,12 +495,10 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Примітки до випуску miu v1.0.52
-🪟 Виправлення розташування діалогових вікон у межах екрана та підвищення стабільності
-
-- Діалоги підтвердження збереження та пошуку завжди у видимій робочій області монітора:
-  Виправлено проблему, через яку під час закриття вікна, частково зміщеного за межі екрана, діалог підтвердження збереження (а також Пошук/Заміна/Перехід до рядка) міг відображатися за межами дисплея.
-- Офлайн-захист перегляду, підсвічування 65 мов і Mermaid та надійне атомарне збереження.""",
+        "releaseNotes": """Що нового в miu v1.0.53
+• Посилено офлайн-захист перегляду та покращено відображення Markdown, формул LaTeX і 33 типів діаграм Mermaid.
+• Покращено багаторядковий пошук і заміну Regex, розгортання Emmet та підсвічування синтаксису 65 мов.
+• Додано попередження про втрату символів під час збереження не в UTF-8, надійніше атомарне збереження й локалізацію.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -561,12 +537,10 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Catatan Rilis miu v1.0.52
-🪟 Perbaikan Posisi Dialog agar Selalu di Dalam Layar & Peningkatan Stabilitas
-
-- Dialog Konfirmasi Simpan & Pencarian Selalu di Area Kerja Monitor:
-  Memperbaiki masalah saat menutup jendela yang sebagian berada di luar tepi layar sehingga dialog konfirmasi simpan (serta Cari/Ganti/Ke Baris) muncul di luar batas layar.
-- Keamanan Pratinjau offline, penyorotan sintaks 65 bahasa & Mermaid, serta penyimpanan atomik yang andal.""",
+        "releaseNotes": """Yang Baru di miu v1.0.53
+• Keamanan offline Pratinjau Langsung diperkuat serta tampilan Markdown, LaTeX, dan 33 diagram Mermaid lebih akurat.
+• Peningkatan cari & ganti Regex multibaris, ekspansi Emmet, dan penyorotan sintaks 65 bahasa.
+• Peringatan kehilangan karakter saat menyimpan non-UTF-8, penyimpanan atomik lebih aman, dan perbaikan pelokalan.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -605,12 +579,10 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Poznámky k verzi miu v1.0.52
-🪟 Oprava umístění dialogových oken na obrazovce a vylepšení stability
-
-- Dialogy potvrzení uložení a hledání vždy ve viditelné pracovní oblasti monitoru:
-  Opraven problém, kdy zavření okna částečně přesahujícího mimo obrazovku mohlo zobrazit dialog potvrzení uložení (i Najít/Nahradit/Přejít na řádek) mimo viditelnou plochu displeje.
-- Offline zabezpečení živého náhledu, 65 jazyků a Mermaid a spolehlivé atomické ukládání.""",
+        "releaseNotes": """Novinky v miu v1.0.53
+• Posílené offline zabezpečení živého náhledu a přesnější vykreslování Markdownu, LaTeXu a 33 diagramů Mermaid.
+• Vylepšené víceřádkové hledání a nahrazování Regex, rozbalování Emmet a zvýrazňování syntaxe 65 jazyků.
+• Upozornění na ztrátu znaků mimo UTF-8, spolehlivější atomické ukládání a vylepšená lokalizace.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -649,12 +621,10 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Versionsinformation för miu v1.0.52
-🪟 Korrigering av dialogrutors placering inom skärmen & stabilitetsförbättringar
-
-- Dialogrutor för spara-bekräftelse och sökning hålls alltid inom skärmens arbetsyta:
-  Åtgärdade ett problem där stängning av ett fönster delvis utanför skärmkanten kunde placera spara-dialogen (samt Sök/Ersätt/Gå till rad) utanför den synliga skärmen.
-- Offlinesäkerhet i förhandsgranskning, 65 språk & Mermaid samt pålitlig atomär sparning.""",
+        "releaseNotes": """Nyheter i miu v1.0.53
+• Stärkt offlinesäkerhet i förhandsgranskningen samt förbättrad visning av Markdown, LaTeX och alla 33 Mermaid-diagram.
+• Förbättrad flerradig Regex-sök/ersätt, Emmet-utökning och syntaxmarkering för 65 språk.
+• Varning vid teckenförlust utanför UTF-8, tryggare atomär sparning och förfinad lokalisering.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -693,12 +663,10 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """บันทึกประจำรุ่น miu v1.0.52
-🪟 แก้ไขตำแหน่งกล่องโต้ตอบให้อยู่ในหน้าจอเสมอ และเพิ่มความเสถียร
-
-- กล่องโต้ตอบยืนยันการบันทึกและค้นหาแสดงอยู่ในพื้นที่ทำงานของจอภาพเสมอ:
-  แก้ไขปัญหาเมื่อปิดหน้าต่างที่ล้นออกนอกขอบจอเกินครึ่งแล้วทำให้กล่องยืนยันการบันทึก (รวมถึงค้นหา/แทนที่/ไปยังบรรทัด) แสดงอยู่นอกจอจนกดไม่ได้
-- ความปลอดภัยพรีวิวออฟไลน์ ไวยากรณ์ 65 ภาษาและ Mermaid พร้อมการบันทึกไฟล์แบบอะตอมมิกที่ปลอดภัย""",
+        "releaseNotes": """มีอะไรใหม่ใน miu v1.0.53
+• ยกระดับความปลอดภัยพรีวิวออฟไลน์ และแสดงผล Markdown, สมการ LaTeX และแผนภาพ Mermaid ทั้ง 33 รูปแบบได้แม่นยำขึ้น
+• ปรับปรุงการค้นหา/แทนที่ด้วย Regex หลายบรรทัด, Emmet และการไฮไลต์ไวยากรณ์ 65 ภาษา
+• เพิ่มการแจ้งเตือนอักขระตกหล่นเมื่อบันทึกนอก UTF-8 ปรับปรุงการบันทึกไฟล์แบบอะตอมมิกและการแปลภาษา""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -737,12 +705,10 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.52 रिलीज़ नोट्स
-🪟 डायलॉग को हमेशा स्क्रीन के भीतर रखने का सुधार और स्थिरता में वृद्धि
-
-- सेव पुष्टि और खोज डायलॉग हमेशा मॉनिटर के दृश्य कार्यक्षेत्र के भीतर:
-  जब मुख्य विंडो आंशिक रूप से स्क्रीन से बाहर हो और बंद करने का बटन दबाया जाए, तो सेव पुष्टि डायलॉग (तथा खोजें/बदलें/पंक्ति पर जाएं) के स्क्रीन से बाहर चले जाने की समस्या ठीक की गई।
-- ऑफ़लाइन लाइव प्रीव्यू सुरक्षा, 65 भाषाओं का सिंटैक्स व Mermaid सटीकता और सुरक्षित एटॉमिक फ़ाइल सेविंग।""",
+        "releaseNotes": """miu v1.0.53 में नया क्या है
+• ऑफ़लाइन लाइव प्रीव्यू सुरक्षा को मजबूत किया गया और Markdown, LaTeX व सभी 33 Mermaid आरेखों की रेंडरिंग सुधारी गई।
+• मल्टीलाइन Regex खोजें/बदलें, Emmet विस्तार और 65 भाषाओं के सिंटैक्स हाइलाइटिंग की सटीकता बढ़ाई गई।
+• गैर-UTF-8 सेव में अक्षर हानि चेतावनी, अधिक सुरक्षित एटॉमिक फ़ाइल सेविंग और बहुभाषी अनुवाद में सुधार।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -781,12 +747,10 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Note de lansare miu v1.0.52
-🪟 Corectarea poziționării casetelor de dialog pe ecran și îmbunătățiri de stabilitate
-
-- Casetele de confirmare a salvării și de căutare rămân mereu în zona vizibilă a monitorului:
-  S-a remediat o problemă prin care închiderea unei ferestre ieșite parțial în afara ecranului putea afișa dialogul de confirmare a salvării (și Căutare/Înlocuire/Salt la linie) în afara ecranului.
-- Protecție offline pentru Previzualizare, 65 de limbaje și Mermaid, plus salvare atomică sigură.""",
+        "releaseNotes": """Noutăți în miu v1.0.53
+• Securitate offline sporită în Previzualizare și redare îmbunătățită pentru Markdown, LaTeX și 33 de diagrame Mermaid.
+• Căutare și înlocuire Regex pe mai multe rânduri, extindere Emmet și sintaxă pentru 65 de limbaje mai precise.
+• Avertizare la pierderea caracterelor în afara UTF-8, salvare atomică sigură și localizare îmbunătățită.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -825,12 +789,10 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """miu v1.0.52 Kiadási megjegyzések
-🪟 Párbeszédpanelek képernyőn belüli elhelyezésének javítása és stabilitási fejlesztések
-
-- Mentési megerősítő és keresőablakok mindig a monitor látható munkaterületén belül:
-  Javítva a hiba, amely miatt a képernyőről részben kilógó ablak bezárásakor a mentést megerősítő párbeszédpanel (valamint a Keresés/Csere/Ugrás sorra) a látható kijelzőn kívülre kerülhetett.
-- Offline Élő előnézet védelem, 65 nyelvi kategória és Mermaid pontosság, biztonságos atomi mentés.""",
+        "releaseNotes": """A miu v1.0.53 újdonságai
+• Megerősített offline Élő előnézet-védelem, pontosabb Markdown, LaTeX és 33-féle Mermaid diagrammegjelenítés.
+• Fejlesztett többsoros Regex keresés és csere, Emmet-kibontás és 65 nyelvű szintaxiskiemelés.
+• Karaktervesztési figyelmeztetés nem UTF-8 mentésnél, még biztonságosabb atomi mentés és pontosított honosítás.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -869,12 +831,10 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Σημειώσεις έκδοσης miu v1.0.52
-🪟 Διόρθωση τοποθέτησης παραθύρων διαλόγου εντός οθόνης & βελτιώσεις σταθερότητας
-
-- Τα παράθυρα επιβεβαίωσης αποθήκευσης και αναζήτησης παραμένουν πάντα εντός της ορατής περιοχής της οθόνης:
-  Διορθώθηκε πρόβλημα όπου το κλείσιμο παραθύρου μερικώς εκτός οθόνης εμφάνιζε τον διάλογο αποθήκευσης (και Εύρεση/Αντικατάσταση/Μετάβαση σε γραμμή) εκτός ορατών ορίων.
-- Ασφάλεια προεπισκόπησης εκτός σύνδεσης, 65 γλώσσες & Mermaid και αξιόπιστη ατομική αποθήκευση.""",
+        "releaseNotes": """Τι νέο υπάρχει στο miu v1.0.53
+• Ενισχυμένη ασφάλεια προεπισκόπησης εκτός σύνδεσης και ακριβέστερη απόδοση Markdown, LaTeX και 33 διαγραμμάτων Mermaid.
+• Βελτιωμένη αναζήτηση/αντικατάσταση Regex πολλαπλών γραμμών, Emmet και επισήμανση σύνταξης 65 γλωσσών.
+• Προειδοποίηση απώλειας χαρακτήρων εκτός UTF-8, ασφαλέστερη ατομική αποθήκευση και βελτιωμένη μετάφραση.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -913,12 +873,10 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Udgivelsesnoter for miu v1.0.52
-🪟 Rettet placering af dialogbokse inden for skærmen & stabilitetsforbedringer
-
-- Gem-bekræftelse og søgedialoger holdes altid inden for skærmens arbejdsområde:
-  Rettet en fejl, hvor lukning af et vindue delvist uden for skærmen kunne placere gem-dialogen (samt Søg/Erstat/Gå til linje) uden for det synlige skærmområde.
-- Offlinesikkerhed i forhåndsvisning, 65 sprog & Mermaid samt pålidelig atomisk lagring.""",
+        "releaseNotes": """Nyheder i miu v1.0.53
+• Styrket offlinesikkerhed i Live-forhåndsvisning samt bedre visning af Markdown, LaTeX og alle 33 Mermaid-diagrammer.
+• Forbedret flerlinjet Regex-søg/erstat, Emmet-udvidelse og syntaksfremhævning for 65 sprog.
+• Advarsel ved tegntab uden for UTF-8, mere pålidelig atomisk lagring og forbedret lokalisering.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -957,12 +915,10 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """miu v1.0.52 Julkaisutiedot
-🪟 Valintaikkunoiden näytöllä pysymisen korjaus ja vakausparannukset
-
-- Tallennusvahvistus- ja hakuikkunat pysyvät aina näytön työalueella:
-  Korjattu ongelma, jossa osittain näytön ulkopuolella olevan ikkunan sulkeminen saattoi avata tallennusvahvistuksen (sekä Etsi/Korvaa/Siirry riville) näkyvän näytön ulkopuolelle.
-- Esikatselun offline-suojaus, 65 kielen ja Mermaid-kaavioiden tarkkuus sekä luotettava atominen tallennus.""",
+        "releaseNotes": """Uutta versiossa miu v1.0.53
+• Vahvistettu esikatselun offline-tietoturva sekä tarkempi Markdown-, LaTeX- ja 33 Mermaid-kaavion piirto.
+• Parannettu monirivinen Regex-haku ja -korvaus, Emmet-laajennus sekä 65 kielen syntaksinkorostus.
+• Varoitus merkkitappioista muussa kuin UTF-8-tallennuksessa, luotettavampi atominen tallennus ja päivitetty lokalisointi.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -1001,12 +957,10 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Utgivelsesnotater for miu v1.0.52
-🪟 Rettet plassering av dialogbokser innenfor skjermen og stabilitetsforbedringer
-
-- Lagrebekreftelse og søkedialoger vises alltid innenfor skjermens arbeidsområde:
-  Rettet en feil der lukking av et vindu delvis utenfor skjermkanten kunne plassere lagredialogen (samt Søk/Erstatt/Gå til linje) utenfor den synlige skjermen.
-- Offlinesikkerhet i forhåndsvisning, 65 språk og Mermaid samt pålitelig atomisk lagring.""",
+        "releaseNotes": """Nyheter i miu v1.0.53
+• Styrket offlinesikkerhet i forhåndsvisning og bedre visning av Markdown, LaTeX og alle 33 Mermaid-diagrammer.
+• Forbedret flerlinjet Regex-søk/erstatt, Emmet-utvidelse og syntaksutheving for 65 språk.
+• Varsel ved tegntap utenfor UTF-8, tryggere atomisk lagring og forbedret lokalisering.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -1045,12 +999,10 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Nota Keluaran miu v1.0.52
-🪟 Pembaikan Kedudukan Dialog Dalam Skrin & Peningkatan Kestabilan
-
-- Dialog Pengesahan Simpan & Carian Sentiasa Dalam Kawasan Kerja Monitor:
-  Membaiki isu apabila menutup tetingkap yang sebahagiannya berada di luar tepi skrin menyebabkan dialog pengesahan simpan (serta Cari/Ganti/Pergi ke Baris) muncul di luar kawasan skrin yang kelihatan.
-- Keselamatan Pratonton luar talian, penyerlahan sintaks 65 bahasa & Mermaid serta penyimpanan atomik yang boleh dipercayai.""",
+        "releaseNotes": """Baharu dalam miu v1.0.53
+• Keselamatan luar talian Pratonton Langsung diperkukuh serta paparan Markdown, LaTeX dan 33 rajah Mermaid lebih tepat.
+• Penambahbaikan cari & ganti Regex berbilang baris, pengembangan Emmet dan penyerlahan sintaks 65 bahasa.
+• Amaran kehilangan aksara bagi simpanan bukan UTF-8, simpanan atomik lebih selamat dan penyetempatan diperhalusi.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

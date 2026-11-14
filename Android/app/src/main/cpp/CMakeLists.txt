@@ -8,6 +8,7 @@ FetchContent_Declare(
         libpng
         GIT_REPOSITORY https://github.com/glennrp/libpng.git
         GIT_TAG        v1.6.43 # 安定バージョン
+        GIT_SHALLOW    TRUE
 )
 # libpngの不要なビルド(共有ライブラリやテスト)を無効化して高速化
 set(PNG_SHARED OFF CACHE BOOL "Disable shared png" FORCE)
@@ -26,6 +27,7 @@ FetchContent_Declare(
         freetype
         GIT_REPOSITORY https://gitlab.freedesktop.org/freetype/freetype.git
         GIT_TAG        VER-2-13-3 # CVE-2025-27363 修正済安定バージョン
+        GIT_SHALLOW    TRUE
 )
 
 # ★ PNG と ZLIB を有効化 (ZLIBはNDK標準のものを使用)
@@ -47,6 +49,7 @@ FetchContent_Declare(
         harfbuzz
         GIT_REPOSITORY https://github.com/harfbuzz/harfbuzz.git
         GIT_TAG        8.3.0 # 安定バージョン
+        GIT_SHALLOW    TRUE
 )
 
 # HarfBuzz側のFreeType連携を有効化する (これが hb-ft.h を使うために必須)
@@ -67,8 +70,8 @@ FetchContent_MakeAvailable(harfbuzz)
 # --------------------------------------------------------------------
 
 
-# --- 4. CED (compact_enc_det) の組み込み ---
-set(CED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/compact_enc_det)
+# --- 4. CED (compact_enc_det) の組み込み (共通 include/ ツリーを参照) ---
+set(CED_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../../../../../include)
 
 # CEDライブラリのビルド
 add_library(ced STATIC

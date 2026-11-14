@@ -290,7 +290,9 @@ inline Rendered drawPie(const PieModel& model, const Config& config, const Rende
     Label title = layoutLabel(model.title, false, measurer, size, pieTitleRoom(options), Style::Bold);
     double titleHeight = title.height > 0.0 ? title.height + 16.0 : 0.0;
 
-    auto toFixed0 = [](double v) {
+    auto toFixed0 = [](double v) -> std::string {
+        if (!std::isfinite(v)) return "0";
+        v = std::clamp(v, -1e15, 1e15);
         return std::to_string(static_cast<long long>(std::llround(v)));
     };
 

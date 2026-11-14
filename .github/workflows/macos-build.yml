@@ -2,6 +2,14 @@ name: macOS & iOS Xcode Build, Test & TestFlight
 
 on:
   workflow_dispatch:
+    inputs:
+      submit_for_review:
+        description: "Also attach build and submit for App Store Review"
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
 
 jobs:
   macos-xcodebuild:
@@ -9,6 +17,7 @@ jobs:
     runs-on: xcode-27
     env:
       HAS_ASC_SECRETS: ${{ secrets.APPSTORE_ISSUER_ID != '' && secrets.APPSTORE_KEY_ID != '' && secrets.APPSTORE_PRIVATE_KEY != '' }}
+      SUBMIT_FOR_REVIEW: ${{ github.event.inputs.submit_for_review }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -163,7 +172,7 @@ jobs:
               dev_certs = [c for c in certs if c.get("attributes", {}).get("certificateType") in dev_types]
               print(f"Found {len(dev_certs)} development certificate(s) on App Store Connect.")
               api_dev_certs = [c for c in dev_certs if "API" in (c.get("attributes", {}).get("name", "") + c.get("attributes", {}).get("displayName", ""))]
-              targets = api_dev_certs if api_dev_certs else (dev_certs[-1:] if len(dev_certs) >= 2 else [])
+              targets = api_dev_certs
               for c in targets:
                   cid = c["id"]
                   cname = c.get("attributes", {}).get("name", cid)
@@ -216,9 +225,13 @@ jobs:
             -authenticationKeyID "$APPSTORE_KEY_ID" \
             -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
 
-          echo "=== Preparing 1.0.51 Builds on TestFlight (macOS & iOS) & Submitting iOS & macOS 1.0.51 for App Review ==="
+          echo "=== Preparing 1.0.53 Builds on TestFlight (macOS & iOS) & Syncing Metadata ==="
           python3 scripts/appstore_metadata_sync.py --testflight-only
-          python3 scripts/appstore_metadata_sync.py
+          if [ "${SUBMIT_FOR_REVIEW:-false}" = "true" ]; then
+            python3 scripts/appstore_metadata_sync.py --submit
+          else
+            python3 scripts/appstore_metadata_sync.py
+          fi
 
       - name: Cleanup temporary signing credentials & keychain
         if: always()

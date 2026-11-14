@@ -178,10 +178,12 @@ public:
     }
     V& at(const K& k) {
         auto it = find(k);
+        if (it == data_.end()) throw std::out_of_range("FlatMap::at");
         return it->second;
     }
     const V& at(const K& k) const {
         auto it = find(k);
+        if (it == data_.end()) throw std::out_of_range("FlatMap::at");
         return it->second;
     }
     std::pair<iterator, bool> insert(const value_type& kv) {
@@ -225,27 +227,52 @@ inline int charCodeAt(const std::string& s, int pos) noexcept {
 
 inline uint32_t nextCodepoint(const std::string& s, size_t& i) noexcept {
     if (i >= s.size()) return 0;
+    const size_t start = i;
     unsigned char c = static_cast<unsigned char>(s[i++]);
-    if (c < 0x80) return c;
-    if ((c >> 5) == 0x6 && i < s.size()) {
-        uint32_t cp = ((c & 0x1F) << 6) | (static_cast<unsigned char>(s[i++]) & 0x3F);
-        return cp;
+    if (c < 0x80u) return c;
+    if (c >= 0xC2u && c <= 0xDFu && i < s.size()) {
+        unsigned char b1 = static_cast<unsigned char>(s[i]);
+        if ((b1 & 0xC0u) == 0x80u) {
+            ++i;
+            return ((static_cast<uint32_t>(c & 0x1Fu) << 6) | static_cast<uint32_t>(b1 & 0x3Fu));
+        }
+        i = start + 1;
+        return c;
     }
-    if ((c >> 4) == 0xE && i + 1 < s.size()) {
-        uint32_t cp = ((c & 0x0F) << 12) | ((static_cast<unsigned char>(s[i++]) & 0x3F) << 6);
-        cp |= (static_cast<unsigned char>(s[i++]) & 0x3F);
-        return cp;
+    if (c >= 0xE0u && c <= 0xEFu && i + 1 < s.size()) {
+        unsigned char b1 = static_cast<unsigned char>(s[i]);
+        unsigned char b2 = static_cast<unsigned char>(s[i + 1]);
+        if ((b1 & 0xC0u) == 0x80u && (b2 & 0xC0u) == 0x80u &&
+            !(c == 0xE0u && b1 < 0xA0u) && !(c == 0xEDu && b1 >= 0xA0u)) {
+            i += 2;
+            return (static_cast<uint32_t>(c & 0x0Fu) << 12) |
+                   (static_cast<uint32_t>(b1 & 0x3Fu) << 6) |
+                   static_cast<uint32_t>(b2 & 0x3Fu);
+        }
+        i = start + 1;
+        return c;
     }
-    if ((c >> 3) == 0x1E && i + 2 < s.size()) {
-        uint32_t cp = ((c & 0x07) << 18) | ((static_cast<unsigned char>(s[i++]) & 0x3F) << 12);
-        cp |= ((static_cast<unsigned char>(s[i++]) & 0x3F) << 6);
-        cp |= (static_cast<unsigned char>(s[i++]) & 0x3F);
-        return cp;
+    if (c >= 0xF0u && c <= 0xF4u && i + 2 < s.size()) {
+        unsigned char b1 = static_cast<unsigned char>(s[i]);
+        unsigned char b2 = static_cast<unsigned char>(s[i + 1]);
+        unsigned char b3 = static_cast<unsigned char>(s[i + 2]);
+        if ((b1 & 0xC0u) == 0x80u && (b2 & 0xC0u) == 0x80u && (b3 & 0xC0u) == 0x80u &&
+            !(c == 0xF0u && b1 < 0x90u) && !(c == 0xF4u && b1 >= 0x90u)) {
+            i += 3;
+            return (static_cast<uint32_t>(c & 0x07u) << 18) |
+                   (static_cast<uint32_t>(b1 & 0x3Fu) << 12) |
+                   (static_cast<uint32_t>(b2 & 0x3Fu) << 6) |
+                   static_cast<uint32_t>(b3 & 0x3Fu);
+        }
+        i = start + 1;
+        return c;
     }
+    i = start + 1;
     return c;
 }
 
 inline void appendCodepoint(std::string& out, uint32_t cp) {
+    if (cp >= 0xD800 && cp <= 0xDFFF) return;
     if (cp < 0x80) {
         out.push_back(static_cast<char>(cp));
     } else if (cp < 0x800) {
@@ -261,6 +288,50 @@ inline void appendCodepoint(std::string& out, uint32_t cp) {
         out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
         out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
     }
+}
+
+inline bool isEntitySemicolon(const std::string& s, size_t semiPos) noexcept {
+    if (semiPos >= s.size() || s[semiPos] != ';' || semiPos < 2) return false;
+    size_t minAmp = semiPos > 34 ? semiPos - 34 : 0;
+    size_t amp = semiPos;
+    while (amp > minAmp) {
+        --amp;
+        if (s[amp] == '&') {
+            size_t p = amp + 1;
+            if (p >= semiPos) return false;
+            if (s[p] == '#') {
+                ++p;
+                if (p >= semiPos) return false;
+                if (s[p] == 'x' || s[p] == 'X') {
+                    ++p;
+                    if (p >= semiPos) return false;
+                    for (; p < semiPos; ++p) {
+                        unsigned char ch = static_cast<unsigned char>(s[p]);
+                        bool hex = (ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F');
+                        if (!hex) return false;
+                    }
+                    return true;
+                }
+                for (; p < semiPos; ++p) {
+                    unsigned char ch = static_cast<unsigned char>(s[p]);
+                    if (ch < '0' || ch > '9') return false;
+                }
+                return true;
+            }
+            unsigned char first = static_cast<unsigned char>(s[p]);
+            if (!((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z'))) return false;
+            for (++p; p < semiPos; ++p) {
+                unsigned char ch = static_cast<unsigned char>(s[p]);
+                bool alnum = (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9');
+                if (!alnum) return false;
+            }
+            return true;
+        }
+        unsigned char c = static_cast<unsigned char>(s[amp]);
+        bool ok = c == '#' || (c >= '0' && c <= '9') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
+        if (!ok) return false;
+    }
+    return false;
 }
 
 inline std::vector<uint16_t> toUtf16(const std::string& s) {
@@ -731,15 +802,13 @@ inline int safeStoi(const std::string& s, const char* type = "") {
 }
 
 inline double safeStod(const std::string& s, const char* type = "") {
-    try {
-        double v = std::stod(s);
-        if (!std::isfinite(v)) throw PeleError("Non-finite numeric value: " + s, "syntax", type);
-        return v;
-    } catch (const PeleError&) {
-        throw;
-    } catch (...) {
-        throw PeleError("Numeric value out of range: " + s, "syntax", type);
-    }
+    if (s.empty()) throw PeleError("Numeric value out of range: " + s, "syntax", type);
+    const char* begin = s.c_str();
+    char* end = nullptr;
+    double v = std::strtod(begin, &end);
+    if (end == begin) throw PeleError("Numeric value out of range: " + s, "syntax", type);
+    if (!std::isfinite(v)) throw PeleError("Numeric value out of range: " + s, "syntax", type);
+    return v;
 }
 
 inline PeleError syntaxError(const std::string& type, const std::string& src, size_t offset, const std::string& detail, bool lexical = false) {
@@ -825,7 +894,7 @@ inline YamlValue yamlScalar(const std::string& raw) {
         try {
             size_t idx = 0;
             double d = std::stod(s, &idx);
-            if (idx == s.size()) return YamlValue::makeNumber(d);
+            if (idx == s.size() && std::isfinite(d)) return YamlValue::makeNumber(d);
         } catch (...) {}
     }
     return YamlValue::makeString(s);
@@ -1435,7 +1504,7 @@ inline std::string stripNewlineIndent(const std::string& s) {
 inline double numberOption(const Config& conf, const std::string& key, double fallback, double minVal, double maxVal) {
     if (!conf.isMap()) return fallback;
     const Config* v = conf.get(key);
-    if (v && v->isNumber() && v->nVal >= minVal) {
+    if (v && v->isNumber() && std::isfinite(v->nVal) && v->nVal >= minVal) {
         return std::min(v->nVal, maxVal);
     }
     return fallback;
@@ -1444,8 +1513,8 @@ inline double numberOption(const Config& conf, const std::string& key, double fa
 inline double numberOption(const Config& config, const std::string& key, double fallback) {
     if (!config.isMap()) return fallback;
     const Config* v = config.get(key);
-    if (v && v->isNumber() && v->nVal > 0.0) {
-        return std::min(v->nVal, 2000.0);
+    if (v && v->isNumber() && std::isfinite(v->nVal) && v->nVal > 0.0) {
+        return std::max(1.0, std::min(v->nVal, 2000.0));
     }
     return fallback;
 }

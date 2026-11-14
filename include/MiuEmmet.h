@@ -3,6 +3,7 @@
 #include <vector>
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cstring>
 #include <cstdlib>
 
@@ -168,11 +169,30 @@ static inline bool isKnownHtmlTagOrSnippet(const std::string& rawName){
         "time|title|tr|track|tt|u|ul|var|video|wbr|ri:d|ri:dpr|ri:v|ri:viewport|ri:a|ri:art|ri:t|ri:type|";
     return isInPipeList(kKnownList, normalized);
 }
-static std::string resolveNumbering(const std::string& input, int index, int total){
+static std::string escapeHtmlAttrQuotes(const std::string& s) {
+    if (s.find('"') == std::string::npos) return s;
+    std::string out;
+    out.reserve(s.size() + 12);
+    for (char ch : s) {
+        if (ch == '"') out += "&quot;";
+        else out += ch;
+    }
+    return out;
+}
+
+static inline size_t countPrecedingBackslashes(const std::string& s, size_t idx) noexcept {
+    size_t bs = 0;
+    while (idx > bs && s[idx - 1 - bs] == '\\') ++bs;
+    return bs;
+}
+
+static std::string resolveNumbering(const std::string& input, int64_t index, int64_t total){
+    static constexpr int64_t kMaxNumberingBase = 1000000000000000LL;
     std::string out;
     out.reserve(input.size() + 8);
     for (size_t i = 0; i < input.size(); ) {
-        if (input[i] == '\\' && i + 1 < input.size() && (input[i + 1] == '$' || input[i + 1] == '{' || input[i + 1] == '}')) {
+        if (input[i] == '\\' && i + 1 < input.size() &&
+            (input[i + 1] == '$' || input[i + 1] == '{' || input[i + 1] == '}' || input[i + 1] == '\\')) {
             out += input[i + 1];
             i += 2;
             continue;
@@ -183,8 +203,9 @@ static std::string resolveNumbering(const std::string& input, int index, int tot
                 dollarCount++;
                 i++;
             }
+            if (dollarCount > 256) dollarCount = 256;
             bool descending = false;
-            int base = 1;
+            int64_t base = 1;
             if (i < input.size() && input[i] == '@') {
                 size_t atPos = i;
                 i++;
@@ -192,10 +213,15 @@ static std::string resolveNumbering(const std::string& input, int index, int tot
                     descending = true;
                     i++;
                 }
-                int parsedBase = 0;
+                int64_t parsedBase = 0;
                 bool hasDigits = false;
                 while (i < input.size() && isAsciiDigit(input[i])) {
-                    parsedBase = parsedBase * 10 + (input[i] - '0');
+                    int64_t digit = (int64_t)(input[i] - '0');
+                    if (parsedBase <= (kMaxNumberingBase - digit) / 10) {
+                        parsedBase = parsedBase * 10 + digit;
+                    } else {
+                        parsedBase = kMaxNumberingBase;
+                    }
                     hasDigits = true;
                     i++;
                 }
@@ -205,7 +231,9 @@ static std::string resolveNumbering(const std::string& input, int index, int tot
                     i = atPos;
                 }
             }
-            int val = descending ? (total + base - 1 - index) : (base + index);
+            int64_t safeTotal = std::clamp<int64_t>(total, 0, kMaxNumberingBase);
+            int64_t safeIndex = std::clamp<int64_t>(index, 0, kMaxNumberingBase);
+            int64_t val = descending ? (safeTotal + base - 1 - safeIndex) : (base + safeIndex);
             if (val < 0) val = 0;
             std::string numStr = std::to_string(val);
             if (numStr.size() < dollarCount) {
@@ -219,7 +247,7 @@ static std::string resolveNumbering(const std::string& input, int index, int tot
     return out;
 }
 
-static std::string generateLorem(int wordCount, int iterationIndex){
+static std::string generateLorem(int64_t wordCount, int64_t iterationIndex){
     static constexpr const char* kWords[] = {
         "lorem", "ipsum", "dolor", "sit", "amet", "consectetur", "adipisicing", "elit",
         "sed", "do", "eiusmod", "tempor", "incididunt", "ut", "labore", "et", "dolore",
@@ -231,16 +259,16 @@ static std::string generateLorem(int wordCount, int iterationIndex){
         "sunt", "in", "culpa", "qui", "officia", "deserunt", "mollit", "anim", "id",
         "est", "laborum"
     };
-    constexpr int kNumWords = (int)(sizeof(kWords) / sizeof(kWords[0]));
+    constexpr int64_t kNumWords = (int64_t)(sizeof(kWords) / sizeof(kWords[0]));
     if (wordCount <= 0) wordCount = 30;
     if (wordCount > 2000) wordCount = 2000;
 
     std::string out;
-    int offset = (iterationIndex == 0) ? 0 : ((iterationIndex * 17) % kNumWords);
+    int64_t offset = (iterationIndex <= 0) ? 0 : (((iterationIndex % kNumWords) * 17) % kNumWords);
     bool capNext = true;
-    for (int i = 0; i < wordCount; ++i) {
+    for (int64_t i = 0; i < wordCount; ++i) {
         if (i > 0) out += ' ';
-        std::string w = kWords[(offset + i) % kNumWords];
+        std::string w = kWords[(size_t)((offset + i) % kNumWords)];
         if (capNext && !w.empty()) {
             w[0] = (char)std::toupper((unsigned char)w[0]);
             capNext = false;
@@ -273,13 +301,13 @@ struct HtmlNode {
     bool isTextOnly = false;
     bool isComment = false;
     bool isLorem = false;
-    int loremWords = 30;
+    int64_t loremWords = 30;
     std::string tag;
     std::string id;
     std::vector<std::string> classes;
     std::vector<Attr> attrs;
     std::string text;
-    int repeat = 1;
+    int64_t repeat = 1;
     bool hasExplicitRepeat = false;
     bool selfClose = false;
     std::string specialTemplate;
@@ -558,12 +586,20 @@ static void applySnippetDefaults(std::vector<HtmlNode>& pool, int nodeIdx){
     pool[nodeIdx].tag = canon;
 
     if (!defAttrs.empty()) {
+        auto sameAttrKey = [](const std::string& a, const std::string& b) -> bool {
+            std::string la = toLowerStr(a);
+            std::string lb = toLowerStr(b);
+            if (la == lb) return true;
+            if ((la == "for" && lb == "htmlfor") || (la == "htmlfor" && lb == "for")) return true;
+            if ((la == "class" && lb == "classname") || (la == "classname" && lb == "class")) return true;
+            return false;
+        };
         std::vector<Attr> merged;
         for (auto& da : defAttrs) {
             bool removed = false;
             bool overridden = false;
             for (const auto& ua : pool[nodeIdx].attrs) {
-                if (toLowerStr(ua.name) == toLowerStr(da.name)) {
+                if (sameAttrKey(ua.name, da.name)) {
                     if (ua.removeDefault) removed = true;
                     else {
                         merged.push_back(ua);
@@ -573,7 +609,7 @@ static void applySnippetDefaults(std::vector<HtmlNode>& pool, int nodeIdx){
                 }
             }
             if (da.name == "id" && !pool[nodeIdx].id.empty()) continue;
-            if (da.name == "class" && !pool[nodeIdx].classes.empty()) continue;
+            if ((da.name == "class" || toLowerStr(da.name) == "classname") && !pool[nodeIdx].classes.empty()) continue;
             if (!removed && !overridden) {
                 merged.push_back(da);
             }
@@ -582,7 +618,7 @@ static void applySnippetDefaults(std::vector<HtmlNode>& pool, int nodeIdx){
             if (ua.removeDefault) continue;
             bool alreadyIn = false;
             for (const auto& da : defAttrs) {
-                if (toLowerStr(ua.name) == toLowerStr(da.name)) {
+                if (sameAttrKey(ua.name, da.name)) {
                     alreadyIn = true;
                     break;
                 }
@@ -693,9 +729,9 @@ static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>
                 if (i < n && abbr[i] == '*') {
                     i++;
                     if (i >= n || !isAsciiDigit(abbr[i])) return false;
-                    int rep = 0;
+                    int64_t rep = 0;
                     while (i < n && isAsciiDigit(abbr[i])) {
-                        rep = rep * 10 + (abbr[i] - '0');
+                        if (rep <= 1000) rep = rep * 10 + (int64_t)(abbr[i] - '0');
                         if (rep > 1000) rep = 1000;
                         i++;
                     }
@@ -784,13 +820,23 @@ static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>
                                 a.isBoolean = false;
                                 if (i < n && (abbr[i] == '"' || abbr[i] == '\'')) {
                                     char q = abbr[i++];
-                                    size_t s = i;
+                                    std::string unescapedVal;
                                     while (i < n && abbr[i] != q) {
-                                        if (abbr[i] == '\\' && i + 1 < n) i++;
-                                        i++;
+                                        if (abbr[i] == '\\' && i + 1 < n) {
+                                            char escNext = abbr[i + 1];
+                                            if (escNext == '"' || escNext == '\'') {
+                                                unescapedVal += escNext;
+                                            } else {
+                                                unescapedVal += '\\';
+                                                unescapedVal += escNext;
+                                            }
+                                            i += 2;
+                                            continue;
+                                        }
+                                        unescapedVal += abbr[i++];
                                     }
                                     if (i >= n) return false;
-                                    a.value = abbr.substr(s, i - s);
+                                    a.value = std::move(unescapedVal);
                                     i++;
                                 } else if (i < n && abbr[i] == '{') {
                                     i++;
@@ -852,9 +898,9 @@ static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>
                     } else if (abbr[i] == '*' && i > startPos) {
                         i++;
                         if (i >= n || !isAsciiDigit(abbr[i])) return false;
-                        int rep = 0;
+                        int64_t rep = 0;
                         while (i < n && isAsciiDigit(abbr[i])) {
-                            rep = rep * 10 + (abbr[i] - '0');
+                            if (rep <= 1000) rep = rep * 10 + (int64_t)(abbr[i] - '0');
                             if (rep > 1000) rep = 1000;
                             i++;
                         }
@@ -886,10 +932,10 @@ static bool parseHtmlAbbreviation(const std::string& abbr, std::vector<HtmlNode>
                 if (lowerTag.compare(0, 5, "lorem") == 0 || lowerTag.compare(0, 6, "lipsum") == 0) {
                     size_t numStart = (lowerTag[1] == 'o') ? 5 : 6;
                     bool allDigits = true;
-                    int words = 0;
+                    int64_t words = 0;
                     for (size_t k = numStart; k < lowerTag.size(); ++k) {
                         if (!isAsciiDigit(lowerTag[k])) { allDigits = false; break; }
-                        words = words * 10 + (lowerTag[k] - '0');
+                        if (words <= 2000) words = words * 10 + (int64_t)(lowerTag[k] - '0');
                         if (words > 2000) words = 2000;
                     }
                     if (allDigits) {
@@ -1168,7 +1214,7 @@ static bool renderHtmlTree(
         for (int d = 0; d < depth; ++d) out += '\t';
     };
 
-    auto renderNodeList = [&](auto& self, const std::vector<int>& childIndices, int depth, int inheritedIdx, int inheritedTotal, bool multilineSiblings) -> void {
+    auto renderNodeList = [&](auto& self, const std::vector<int>& childIndices, int depth, int64_t inheritedIdx, int64_t inheritedTotal, bool multilineSiblings) -> void {
         if (budgetExceeded) return;
         if (depth > 64) { budgetExceeded = true; return; }
         bool firstRendered = true;
@@ -1179,15 +1225,15 @@ static bool renderHtmlTree(
             if (budgetExceeded) return;
             int nodeIdx = childIndices[ci];
             const HtmlNode& node = pool[nodeIdx];
-            int repCount = node.repeat;
+            int64_t repCount = node.repeat;
 
-            for (int r = 0; r < repCount; ++r) {
+            for (int64_t r = 0; r < repCount; ++r) {
                 if (++expandedNodes > kMaxExpandedNodes || out.size() > kMaxOutputBytes) {
                     budgetExceeded = true;
                     return;
                 }
-                int curIdx = node.hasExplicitRepeat ? r : inheritedIdx;
-                int curTotal = node.hasExplicitRepeat ? repCount : inheritedTotal;
+                int64_t curIdx = node.hasExplicitRepeat ? r : inheritedIdx;
+                int64_t curTotal = node.hasExplicitRepeat ? repCount : inheritedTotal;
 
                 if (node.isGroup) {
                     if (!firstRendered && multilineSiblings) {
@@ -1299,7 +1345,7 @@ static bool renderHtmlTree(
 
                 if (!node.id.empty()) {
                     out += " id=\"";
-                    out += resolveNumbering(node.id, curIdx, curTotal);
+                    out += escapeHtmlAttrQuotes(resolveNumbering(node.id, curIdx, curTotal));
                     out += '"';
                 }
 
@@ -1307,13 +1353,28 @@ static bool renderHtmlTree(
                     out += (mode == Mode::Jsx) ? " className=\"" : " class=\"";
                     for (size_t k = 0; k < node.classes.size(); ++k) {
                         if (k > 0) out += ' ';
-                        out += resolveNumbering(node.classes[k], curIdx, curTotal);
+                        out += escapeHtmlAttrQuotes(resolveNumbering(node.classes[k], curIdx, curTotal));
+                    }
+                    for (const auto& a : node.attrs) {
+                        std::string an = toLowerStr(resolveNumbering(a.name, curIdx, curTotal));
+                        if ((an == "class" || (mode == Mode::Jsx && an == "classname")) && !a.isBoolean && !a.isExpr) {
+                            std::string extraCls = escapeHtmlAttrQuotes(resolveNumbering(a.value, curIdx, curTotal));
+                            if (!extraCls.empty()) {
+                                out += ' ';
+                                out += extraCls;
+                            }
+                            if (a.hasTabstop) addStop();
+                        }
                     }
                     out += '"';
                 }
 
                 for (const auto& a : node.attrs) {
                     std::string attrName = resolveNumbering(a.name, curIdx, curTotal);
+                    std::string lowAttrName = toLowerStr(attrName);
+                    if (!node.classes.empty() && (lowAttrName == "class" || (mode == Mode::Jsx && lowAttrName == "classname")) && !a.isBoolean && !a.isExpr) {
+                        continue;
+                    }
                     if (mode == Mode::Jsx) {
                         if (attrName == "class") attrName = "className";
                         else if (attrName == "for") attrName = "htmlFor";
@@ -1330,7 +1391,7 @@ static bool renderHtmlTree(
                         out += '}';
                     } else {
                         out += "=\"";
-                        out += resolveNumbering(a.value, curIdx, curTotal);
+                        out += escapeHtmlAttrQuotes(resolveNumbering(a.value, curIdx, curTotal));
                         if (a.hasTabstop) addStop();
                         out += '"';
                     }
@@ -1393,7 +1454,7 @@ static bool renderHtmlTree(
     };
 
     bool rootMultiline = false;
-    int totalTop = 0;
+    int64_t totalTop = 0;
     for (int chIdx : pool[0].children) {
         const HtmlNode& ch = pool[chIdx];
         totalTop += ch.repeat;
@@ -2343,8 +2404,11 @@ static bool tryExpandCss(
     std::string& out,
     std::vector<Tabstop>& tabstops
 ){
+    static constexpr size_t kMaxEmmetOutputBytes = 256 * 1024;
+    static constexpr size_t kMaxCssParts = 2048;
     out.clear();
     tabstops.clear();
+    if (abbr.empty() || abbr.size() > 4096) return false;
     std::vector<std::string> parts;
     size_t start = 0;
     int parenDepth = 0;
@@ -2353,11 +2417,12 @@ static bool tryExpandCss(
         else if (abbr[i] == ')') parenDepth--;
         else if (abbr[i] == '+' && parenDepth == 0) {
             if (i == start) return false;
+            if (parts.size() >= kMaxCssParts) return false;
             parts.push_back(abbr.substr(start, i - start));
             start = i + 1;
         }
     }
-    if (start >= abbr.size()) return false;
+    if (start >= abbr.size() || parts.size() >= kMaxCssParts) return false;
     parts.push_back(abbr.substr(start));
 
     for (size_t idx = 0; idx < parts.size(); ++idx) {
@@ -2365,7 +2430,11 @@ static bool tryExpandCss(
             if (inlineMode) out += ' ';
             else out += newlineStr + baseIndent;
         }
-        if (!expandSingleCssAbbreviation(parts[idx], baseIndent, newlineStr, inlineMode, out, tabstops)) {
+        if (out.size() > kMaxEmmetOutputBytes ||
+            !expandSingleCssAbbreviation(parts[idx], baseIndent, newlineStr, inlineMode, out, tabstops) ||
+            out.size() > kMaxEmmetOutputBytes) {
+            out.clear();
+            tabstops.clear();
             return false;
         }
     }
@@ -2535,6 +2604,8 @@ static bool extractAbbreviationFromLine(
     bool& outInsideTagQuotes,
     bool& outInsideStyleAttr
 ){
+    static constexpr size_t kMaxAbbrScanBytes = 4096;
+    static constexpr size_t kMaxHtmlContextScanBytes = 16384;
     outInsideTagQuotes = false;
     outInsideStyleAttr = false;
     if (caretCol == 0 || caretCol > lineText.size()) return false;
@@ -2546,18 +2617,66 @@ static bool extractAbbreviationFromLine(
         if (decodeFullWidthAsciiAt(lineText, caretCol, fwNext) && (isIdentChar(fwNext) || fwNext == '$')) return false;
     }
 
+    const size_t minScanPos = (caretCol > kMaxAbbrScanBytes) ? (caretCol - kMaxAbbrScanBytes) : 0;
+    uint8_t closesHtmlTagBuf[kMaxAbbrScanBytes];
+    bool closesHtmlTagComputed = false;
+    auto doesGtCloseHtmlTag = [&](size_t gtPos) -> bool {
+        if (!closesHtmlTagComputed) {
+            std::memset(closesHtmlTagBuf, 0, sizeof(closesHtmlTagBuf));
+            const size_t ctxStart = (caretCol > kMaxHtmlContextScanBytes) ? (caretCol - kMaxHtmlContextScanBytes) : 0;
+            bool openTag = false;
+            int q = 0, br = 0, bk = 0;
+            for (size_t k = ctxStart; k < caretCol; ++k) {
+                if (k >= minScanPos) {
+                    closesHtmlTagBuf[k - minScanPos] = (openTag && q == 0 && br == 0 && bk == 0) ? 1u : 0u;
+                }
+                char kc = lineText[k];
+                if (kc == '\\' && k + 1 < caretCol) {
+                    if (k + 1 >= minScanPos) {
+                        closesHtmlTagBuf[(k + 1) - minScanPos] = (openTag && q == 0 && br == 0 && bk == 0) ? 1u : 0u;
+                    }
+                    k++;
+                    continue;
+                }
+                if (q != 0) {
+                    if (kc == q) q = 0;
+                } else if (br > 0) {
+                    if (kc == '{') br++;
+                    else if (kc == '}') br--;
+                } else if (bk > 0) {
+                    if (kc == '"' || kc == '\'') q = kc;
+                    else if (kc == '[') bk++;
+                    else if (kc == ']') bk--;
+                } else {
+                    if (kc == '"' || kc == '\'') q = kc;
+                    else if (kc == '{') br = 1;
+                    else if (kc == '[') bk = 1;
+                    else if (kc == '<' && k + 1 < caretCol && (isAsciiAlpha(lineText[k + 1]) || lineText[k + 1] == '/' || lineText[k + 1] == '!' || lineText[k + 1] == '?')) {
+                        openTag = true;
+                    } else if (kc == '>') {
+                        openTag = false;
+                    }
+                }
+            }
+            closesHtmlTagComputed = true;
+        }
+        return (gtPos >= minScanPos && gtPos < caretCol) ? (closesHtmlTagBuf[gtPos - minScanPos] != 0) : false;
+    };
+
     int braceDepth = 0;
     int bracketDepth = 0;
     int parenDepth = 0;
     char inAttrQuote = 0;
+    bool stoppedAtDelimiter = false;
+    bool hitScanLimit = false;
 
     size_t pos = caretCol;
-    while (pos > 0) {
+    while (pos > minScanPos) {
         size_t step = 1;
         char c = lineText[pos - 1];
         if ((unsigned char)c >= 0x80) {
             char fwCh = 0;
-            if (pos >= 3 && decodeFullWidthAsciiAt(lineText, pos - 3, fwCh)) {
+            if (pos >= 3 && pos - 3 >= minScanPos && decodeFullWidthAsciiAt(lineText, pos - 3, fwCh)) {
                 c = fwCh;
                 step = 3;
             } else {
@@ -2565,12 +2684,14 @@ static bool extractAbbreviationFromLine(
                     pos--;
                     continue;
                 }
+                stoppedAtDelimiter = true;
                 break;
             }
         }
 
         if (braceDepth > 0) {
-            if (step == 1 && pos >= 2 && lineText[pos - 2] == '\\') {
+            if (step == 1 && (countPrecedingBackslashes(lineText, pos - 1) & 1u) != 0) {
+                if (pos - minScanPos < 2) { hitScanLimit = true; break; }
                 pos -= 2;
                 continue;
             }
@@ -2581,7 +2702,7 @@ static bool extractAbbreviationFromLine(
         }
 
         if (inAttrQuote != 0) {
-            if (c == inAttrQuote && (step > 1 || pos < 2 || lineText[pos - 2] != '\\')) {
+            if (c == inAttrQuote && (step > 1 || (countPrecedingBackslashes(lineText, pos - 1) & 1u) == 0)) {
                 inAttrQuote = 0;
             }
             pos -= step;
@@ -2589,23 +2710,27 @@ static bool extractAbbreviationFromLine(
         }
 
         if (bracketDepth > 0) {
-            if (c == '"' || c == '\'') {
-                inAttrQuote = c;
-            } else if (c == '}') {
-                braceDepth++;
-            } else if (c == ']') {
-                bracketDepth++;
-            } else if (c == '[') {
-                bracketDepth--;
+            const bool escapedInBrk = (step == 1 && (countPrecedingBackslashes(lineText, pos - 1) & 1u) != 0);
+            if (!escapedInBrk) {
+                if (c == '"' || c == '\'') {
+                    inAttrQuote = c;
+                } else if (c == '}') {
+                    braceDepth++;
+                } else if (c == ']') {
+                    bracketDepth++;
+                } else if (c == '[') {
+                    bracketDepth--;
+                }
             }
             pos -= step;
             continue;
         }
 
-        if (c == '}') { braceDepth = 1; pos -= step; continue; }
-        if (c == '{') { break; }
-        if (c == ']') { bracketDepth = 1; pos -= step; continue; }
-        if (c == '[') { return false; }
+        const bool escapedTop = (step == 1 && (countPrecedingBackslashes(lineText, pos - 1) & 1u) != 0);
+        if (c == '}' && !escapedTop) { braceDepth = 1; pos -= step; continue; }
+        if (c == '{' && !escapedTop) { stoppedAtDelimiter = true; break; }
+        if (c == ']' && !escapedTop) { bracketDepth = 1; pos -= step; continue; }
+        if (c == '[' && !escapedTop) { return false; }
         if (c == ')') { parenDepth++; pos -= step; continue; }
         if (c == '(') {
             if (parenDepth > 0) { parenDepth--; pos -= step; continue; }
@@ -2614,38 +2739,16 @@ static bool extractAbbreviationFromLine(
 
         if (parenDepth == 0) {
             if (c == ' ' || c == '\t' || c == ';' || c == '"' || c == '\'') {
+                stoppedAtDelimiter = true;
                 break;
             }
             if (c == '<') {
+                stoppedAtDelimiter = true;
                 break;
             }
             if (c == '>' && step == 1) {
-                bool closesHtmlTag = false;
-                int q = 0, br = 0, bk = 0;
-                for (size_t k = 0; k < pos - 1; ++k) {
-                    char kc = lineText[k];
-                    if (kc == '\\' && k + 1 < pos - 1) { k++; continue; }
-                    if (q != 0) {
-                        if (kc == q) q = 0;
-                    } else if (br > 0) {
-                        if (kc == '{') br++;
-                        else if (kc == '}') br--;
-                    } else if (bk > 0) {
-                        if (kc == '"' || kc == '\'') q = kc;
-                        else if (kc == '[') bk++;
-                        else if (kc == ']') bk--;
-                    } else {
-                        if (kc == '"' || kc == '\'') q = kc;
-                        else if (kc == '{') br = 1;
-                        else if (kc == '[') bk = 1;
-                        else if (kc == '<' && k + 1 < pos - 1 && (isAsciiAlpha(lineText[k + 1]) || lineText[k + 1] == '/' || lineText[k + 1] == '!' || lineText[k + 1] == '?')) {
-                            closesHtmlTag = true;
-                        } else if (kc == '>') {
-                            closesHtmlTag = false;
-                        }
-                    }
-                }
-                if (closesHtmlTag) {
+                if (doesGtCloseHtmlTag(pos - 1)) {
+                    stoppedAtDelimiter = true;
                     break;
                 }
             }
@@ -2653,8 +2756,14 @@ static bool extractAbbreviationFromLine(
         pos -= step;
     }
 
-    if (braceDepth != 0 || bracketDepth != 0 || parenDepth != 0 || inAttrQuote != 0) {
+    if (hitScanLimit || braceDepth != 0 || bracketDepth != 0 || parenDepth != 0 || inAttrQuote != 0) {
         return false;
+    }
+    if (!stoppedAtDelimiter && minScanPos > 0) {
+        char prevCh = lineText[minScanPos - 1];
+        if (prevCh != ' ' && prevCh != '\t' && prevCh != ';' && prevCh != '"' && prevCh != '\'' && prevCh != '<' && prevCh != '{') {
+            return false;
+        }
     }
 
     if (pos >= caretCol) return false;
@@ -2662,7 +2771,8 @@ static bool extractAbbreviationFromLine(
     int quoteChar = 0;
     size_t quoteOpenPos = 0;
     int lastUnclosedLt = -1;
-    for (size_t k = 0; k < pos; ++k) {
+    const size_t quoteCtxStart = (pos > kMaxHtmlContextScanBytes) ? (pos - kMaxHtmlContextScanBytes) : 0;
+    for (size_t k = quoteCtxStart; k < pos; ++k) {
         char c = lineText[k];
         if (quoteChar != 0) {
             if (c == '\\' && k + 1 < pos) { k++; continue; }
@@ -2752,9 +2862,11 @@ inline ExpandResult expandOnLine(
     if (!insideCssBlock && !insideStyleAttr && (mode == Mode::Auto || mode == Mode::Html)) {
         int lineBraceBalance = 0;
         int q = 0;
-        for (size_t k = 0; k < abbrStart; ++k) {
+        const size_t braceCtxStart = (abbrStart > 16384) ? (abbrStart - 16384) : 0;
+        for (size_t k = braceCtxStart; k < abbrStart; ++k) {
             char ch = lineText[k];
             if (q != 0) {
+                if (ch == '\\' && k + 1 < abbrStart) { k++; continue; }
                 if (ch == q) q = 0;
             } else if (ch == '"' || ch == '\'') {
                 q = ch;

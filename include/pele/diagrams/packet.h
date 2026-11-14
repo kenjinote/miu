@@ -367,14 +367,15 @@ inline Rendered drawPacket(const PacketModel& model, const Config& config, const
         if (const auto* bo = pktCfg->get("bitOrder"); bo && bo->asString() == "descending") descending = true;
     }
 
-    int bitsPerRow = model.bitsPerRow;
+    int modelBitsPerRow = std::max(1, model.bitsPerRow);
+    int bitsPerRow = modelBitsPerRow;
     std::vector<std::vector<PacketBlock>> rows = model.rows;
     if (down) {
         double maxW = options.maxWidth > 0.0 ? options.maxWidth : 320.0;
         double count = std::max(1.0, std::floor((maxW - 2.0 * pad) / std::min(bitWidth, 18.0)));
-        bitsPerRow = std::min(bitsPerRow, std::max(8, static_cast<int>(std::pow(2.0, std::floor(std::log2(count))))));
+        bitsPerRow = std::max(1, std::min(bitsPerRow, std::max(8, static_cast<int>(std::pow(2.0, std::floor(std::log2(count)))))));
         int last = (!model.rows.empty() && !model.rows.back().empty()) ? model.rows.back().back().end : 0;
-        if (std::ceil(static_cast<double>(last + 1) / bitsPerRow) > 10000.0) bitsPerRow = model.bitsPerRow;
+        if (std::ceil(static_cast<double>(last + 1) / bitsPerRow) > 10000.0) bitsPerRow = modelBitsPerRow;
         bitWidth = std::min(bitWidth, std::max(18.0, (maxW - 2.0 * pad) / bitsPerRow));
 
         auto piece = [](const PacketBlock& block) { return block.bits == block.end - block.start; };
@@ -383,7 +384,7 @@ inline Rendered drawPacket(const PacketModel& model, const Config& config, const
             for (const auto& block : r) {
                 if (!whole.empty()) {
                     auto& prev = whole.back();
-                    if (piece(prev) && piece(block) && prev.label == block.label && block.start == prev.end + 1 && block.start % model.bitsPerRow == 0) {
+                    if (piece(prev) && piece(block) && prev.label == block.label && block.start == prev.end + 1 && block.start % modelBitsPerRow == 0) {
                         prev.end = block.end;
                         prev.bits = prev.end - prev.start;
                         continue;
@@ -394,6 +395,7 @@ inline Rendered drawPacket(const PacketModel& model, const Config& config, const
         }
         rows.clear();
         for (const auto& block : whole) {
+            if (block.start < 0 || block.end < block.start) continue;
             for (int start = block.start; start <= block.end;) {
                 int end = std::min(block.end, (start / bitsPerRow + 1) * bitsPerRow - 1);
                 size_t index = static_cast<size_t>(start / bitsPerRow);

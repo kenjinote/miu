@@ -258,16 +258,28 @@ inline TreemapAst parseTreemap(const std::string& src) {
 
         std::string strTok = r.expect(T::string);
         std::string name = strTok.size() >= 2 ? strTok.substr(1, strTok.size() - 2) : "";
-        int after = (kinds[r.i] == T::indentation) ? (r.i + 1) : r.i;
+        auto kindAt = [&](int idx) -> int {
+            return (idx >= 0 && idx < static_cast<int>(kinds.size())) ? kinds[static_cast<size_t>(idx)] : -1;
+        };
+        int after = (kindAt(r.i) == T::indentation) ? (r.i + 1) : r.i;
         TreemapRowEntry row;
         row.indent = indent;
         row.name = name;
-        if (kinds[after] == T::separator || kinds[after] == T::comma) {
+        if (kindAt(after) == T::separator || kindAt(after) == T::comma) {
             r.i = after + 1;
             r.accept(T::indentation);
             std::string numStr = replaceAllStr(r.expect(T::number), ",", "");
             row.isLeaf = true;
-            row.value = std::strtod(numStr.c_str(), nullptr);
+            double parsedVal = 0.0;
+            try {
+                parsedVal = std::stod(numStr);
+            } catch (...) {
+                parsedVal = (!numStr.empty() && numStr[0] == '-') ? -1e100 : 1e100;
+            }
+            if (!std::isfinite(parsedVal)) {
+                parsedVal = std::isnan(parsedVal) ? 0.0 : (parsedVal < 0.0 ? -1e100 : 1e100);
+            }
+            row.value = std::clamp(parsedVal, -1e100, 1e100);
         } else {
             row.isLeaf = false;
         }
@@ -281,6 +293,8 @@ inline TreemapAst parseTreemap(const std::string& src) {
 // src/diagrams/treemap/model.ts
 // ============================================================================
 
+constexpr size_t MAX_TREEMAP_NESTING_DEPTH = 64;
+
 struct TreemapNode {
     std::string name;
     bool isSection = false;
@@ -288,6 +302,23 @@ struct TreemapNode {
     std::optional<double> value;
     std::string classSelector;
     std::vector<std::string> cssCompiledStyles;
+
+    TreemapNode() = default;
+    TreemapNode(const TreemapNode&) = default;
+    TreemapNode(TreemapNode&&) noexcept = default;
+    TreemapNode& operator=(const TreemapNode&) = default;
+    TreemapNode& operator=(TreemapNode&&) noexcept = default;
+    ~TreemapNode() {
+        if (children.empty()) return;
+        std::vector<TreemapNode> work = std::move(children);
+        while (!work.empty()) {
+            std::vector<TreemapNode> grand = std::move(work.back().children);
+            work.pop_back();
+            if (!grand.empty()) {
+                work.insert(work.end(), std::make_move_iterator(grand.begin()), std::make_move_iterator(grand.end()));
+            }
+        }
+    }
 };
 
 struct TreemapItem {
@@ -309,6 +340,26 @@ inline std::vector<TreemapNode> buildHierarchy(const std::vector<TreemapItem>& i
     struct TempNode {
         TreemapNode data;
         std::vector<std::shared_ptr<TempNode>> children;
+
+        TempNode() = default;
+        TempNode(const TempNode&) = default;
+        TempNode(TempNode&&) noexcept = default;
+        TempNode& operator=(const TempNode&) = default;
+        TempNode& operator=(TempNode&&) noexcept = default;
+        ~TempNode() {
+            if (children.empty()) return;
+            std::vector<std::shared_ptr<TempNode>> work = std::move(children);
+            while (!work.empty()) {
+                auto cur = std::move(work.back());
+                work.pop_back();
+                if (cur && cur.use_count() == 1 && !cur->children.empty()) {
+                    for (auto& ch : cur->children) {
+                        work.push_back(std::move(ch));
+                    }
+                    cur->children.clear();
+                }
+            }
+        }
     };
     std::vector<std::shared_ptr<TempNode>> tempRoots;
     std::vector<std::pair<std::shared_ptr<TempNode>, int>> stack;
@@ -322,20 +373,26 @@ inline std::vector<TreemapNode> buildHierarchy(const std::vector<TreemapItem>& i
         if (item.isLeaf && item.value.has_value()) tn->data.value = item.value;
 
         while (!stack.empty() && stack.back().second >= item.level) stack.pop_back();
+        if (stack.size() >= MAX_TREEMAP_NESTING_DEPTH) {
+            throw PeleError("Maximum nesting depth exceeded", "limit", "treemap");
+        }
         if (stack.empty()) tempRoots.push_back(tn);
         else stack.back().first->children.push_back(tn);
         if (!item.isLeaf) stack.push_back({tn, item.level});
     }
 
-    auto convert = [](auto& self, const std::shared_ptr<TempNode>& tn) -> TreemapNode {
+    auto convert = [](auto& self, const std::shared_ptr<TempNode>& tn, int depth) -> TreemapNode {
+        if (depth > static_cast<int>(MAX_TREEMAP_NESTING_DEPTH)) {
+            throw PeleError("Maximum nesting depth exceeded", "limit", "treemap");
+        }
         TreemapNode out = tn->data;
         for (const auto& ch : tn->children) {
-            out.children.push_back(self(self, ch));
+            out.children.push_back(self(self, ch, depth + 1));
         }
         return out;
     };
     std::vector<TreemapNode> roots;
-    for (const auto& r : tempRoots) roots.push_back(convert(convert, r));
+    for (const auto& r : tempRoots) roots.push_back(convert(convert, r, 0));
     return roots;
 }
 
@@ -450,6 +507,8 @@ inline std::function<std::string(double)> treemapFormatter(const std::string& ra
     if (!m.valid) m = parseOne(",");
 
     return [m](double value) -> std::string {
+        if (!std::isfinite(value)) return "0";
+        value = std::clamp(value, -1e100, 1e100);
         double absVal = std::abs(value);
         std::string body;
         std::string suffix;
@@ -479,7 +538,11 @@ inline std::function<std::string(double)> treemapFormatter(const std::string& ra
             int prec = std::max(1, m.precision.value_or(12));
             std::ostringstream oss;
             oss << std::setprecision(prec) << absVal;
-            double rounded = std::stod(oss.str());
+            double rounded = absVal;
+            try {
+                double r = std::stod(oss.str());
+                if (std::isfinite(r)) rounded = r;
+            } catch (...) {}
             std::ostringstream oss2;
             oss2 << std::setprecision(15) << rounded;
             body = oss2.str();
@@ -503,7 +566,7 @@ inline std::function<std::string(double)> treemapFormatter(const std::string& ra
 
 struct Box {
     const TreemapNode* node = nullptr;
-    std::shared_ptr<Box> parent;
+    std::weak_ptr<Box> parent;
     int series = 0;
     double value = 0.0;
     std::vector<std::shared_ptr<Box>> children;
@@ -527,7 +590,7 @@ inline std::shared_ptr<Box> makeBox(const TreemapNode& node, const std::shared_p
     b->node = &node;
     b->parent = parent;
     b->series = series;
-    b->value = (!node.isSection && node.value.has_value() && std::isfinite(*node.value) && *node.value > 0.0) ? *node.value : 0.0;
+    b->value = (!node.isSection && node.value.has_value() && std::isfinite(*node.value) && *node.value > 0.0) ? std::min(*node.value, 1e100) : 0.0;
     return b;
 }
 
@@ -539,23 +602,51 @@ inline void squarify(std::vector<std::shared_ptr<Box>>& boxes, double total, dou
     double rest = total;
     size_t from = 0;
     while (from < boxes.size()) {
+        if (!(w > 0.0) || !(h > 0.0) || !(rest > 0.0) || !std::isfinite(rest)) {
+            for (size_t i = from; i < boxes.size(); i++) {
+                boxes[i]->x = std::round(x);
+                boxes[i]->y = std::round(y);
+                boxes[i]->w = 0.0;
+                boxes[i]->h = 0.0;
+            }
+            break;
+        }
         double scale = (w * h) / rest;
         double side = std::min(w, h);
+        if (!std::isfinite(scale) || !(scale > 0.0) || !(side > 0.0)) {
+            for (size_t i = from; i < boxes.size(); i++) {
+                boxes[i]->x = std::round(x);
+                boxes[i]->y = std::round(y);
+                boxes[i]->w = 0.0;
+                boxes[i]->h = 0.0;
+            }
+            break;
+        }
         double sum = boxes[from]->value * scale;
         double largest = sum;
-        double worst = std::max((side * side * largest) / (sum * sum), (sum * sum) / (side * side * largest));
+        double worst = (sum > 0.0) ? std::max((side * side * largest) / (sum * sum), (sum * sum) / (side * side * largest)) : std::numeric_limits<double>::infinity();
         size_t to = from + 1;
         while (to < boxes.size()) {
             double smallest = boxes[to]->value * scale;
+            if (!(smallest > 0.0)) break;
             double next = sum + smallest;
             double ratio = std::max((side * side * largest) / (next * next), (next * next) / (side * side * smallest));
-            if (ratio > worst) break;
+            if (!std::isfinite(ratio) || ratio > worst) break;
             worst = ratio;
             sum = next;
             to++;
         }
 
         double thickness = sum / side;
+        if (!std::isfinite(thickness) || !(thickness > 0.0)) {
+            for (size_t i = from; i < boxes.size(); i++) {
+                boxes[i]->x = std::round(x);
+                boxes[i]->y = std::round(y);
+                boxes[i]->w = 0.0;
+                boxes[i]->h = 0.0;
+            }
+            break;
+        }
         double offset = 0.0;
         for (size_t i = from; i < to; i++) {
             auto& b = boxes[i];
@@ -572,6 +663,10 @@ inline void squarify(std::vector<std::shared_ptr<Box>>& boxes, double total, dou
             b->h = std::round(by + bh - gy) - b->y;
             offset += length;
             rest -= b->value;
+        }
+        if (!(rest > 0.0)) {
+            rest = 0.0;
+            for (size_t i = to; i < boxes.size(); i++) rest += boxes[i]->value;
         }
         if (w >= h) {
             x += thickness;
@@ -602,7 +697,7 @@ inline std::vector<std::shared_ptr<Box>> layoutTreemap(const std::vector<Treemap
     }
     for (int i = static_cast<int>(all.size()) - 1; i >= 0; i--) {
         auto& b = all[static_cast<size_t>(i)];
-        if (b->parent) b->parent->value += b->value;
+        if (auto p = b->parent.lock()) p->value += b->value;
     }
 
     double gap = insets.gap;
@@ -806,7 +901,7 @@ inline Rendered renderTreemapModel(const TreemapModel& model, const Config& conf
         std::string own = titlePart(node.name);
         std::vector<std::string> path;
         if (!own.empty()) path.push_back(own);
-        for (auto p = b.parent; p != nullptr && !p->headed; p = p->parent) {
+        for (auto p = b.parent.lock(); p != nullptr && !p->headed; p = p->parent.lock()) {
             std::string section = titlePart(p->node->name);
             if (!section.empty()) path.insert(path.begin(), section);
         }

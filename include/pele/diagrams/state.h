@@ -1709,7 +1709,10 @@ inline std::vector<double> position(Graph& g, const LayeredOptions& opt) {
     return out;
 }
 
-inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt = {}) {
+inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& rawOpt = {}) {
+    LayeredOptions opt = rawOpt;
+    opt.nodeSep = std::isfinite(opt.nodeSep) ? std::max(1.0, opt.nodeSep) : 40.0;
+    opt.rankSep = std::isfinite(opt.rankSep) ? std::max(1.0, opt.rankSep) : 48.0;
     int real = static_cast<int>(nodes.size());
     if (real == 0) return {0.0, 0.0, 0, 0};
     int m = static_cast<int>(edges.size());
@@ -2679,6 +2682,7 @@ inline Side opposite(Side side) {
 }
 
 inline int endSide(const std::vector<double>& route, int at, const CNode& c) {
+    if (route.size() < 6 || at < 0 || static_cast<size_t>(at + 1) >= route.size()) return -1;
     double dx = route[at] - c.x;
     double dy = route[at + 1] - c.y;
     if (std::abs(std::abs(dy) - c.h / 2.0) < 0.5) return dy < 0.0 ? 0 : 2;
@@ -3135,6 +3139,10 @@ inline CompoundResult compoundLayout(
                 const auto& item = nodes[port.inner];
                 if (dummies[i] >= 0) {
                     auto route = convert(ledges[k++].points);
+                    if (route.size() < 6) {
+                        port.route.clear();
+                        continue;
+                    }
                     size_t at = port.out ? route.size() - 3 : 0;
                     double bx = route[at];
                     double by = route[at + 1];
@@ -3354,6 +3362,8 @@ struct StateNote {
     std::string text;
 };
 
+constexpr size_t MAX_STATE_NESTING_DEPTH = 64;
+
 struct Stmt;
 using StmtPtr = std::shared_ptr<Stmt>;
 
@@ -3374,6 +3384,13 @@ struct StateStmt {
     std::vector<std::string> classes;
     std::vector<std::string> styles;
     std::vector<std::string> textStyles;
+
+    StateStmt() = default;
+    StateStmt(const StateStmt&) = default;
+    StateStmt(StateStmt&&) noexcept = default;
+    StateStmt& operator=(const StateStmt&) = default;
+    StateStmt& operator=(StateStmt&&) noexcept = default;
+    ~StateStmt();
 };
 using StateStmtPtr = std::shared_ptr<StateStmt>;
 
@@ -3394,6 +3411,29 @@ struct Stmt {
     std::string url;
     std::string tooltip;
 };
+
+inline StateStmt::~StateStmt() {
+    if (doc.empty()) return;
+    std::vector<StmtPtr> work = std::move(doc);
+    auto harvest = [&](StateStmtPtr& sp) {
+        if (sp && sp.use_count() == 1 && !sp->doc.empty()) {
+            for (auto& child : sp->doc) {
+                if (child) work.push_back(std::move(child));
+            }
+            sp->doc.clear();
+        }
+    };
+    while (!work.empty()) {
+        StmtPtr cur = std::move(work.back());
+        work.pop_back();
+        if (cur && cur.use_count() == 1) {
+            harvest(cur->state);
+            harvest(cur->state1);
+            harvest(cur->state2);
+            harvest(cur->clickState);
+        }
+    }
+}
 
 inline StmtPtr makeStringStmt(const std::string& s) {
     auto p = std::make_shared<Stmt>();
@@ -3710,6 +3750,9 @@ inline StateGraph buildStateGraph(
         if (item->kind == "state") {
             visit(frame.item, item->state, frame.alt);
             if (item->state->hasDoc) {
+                if (stack.size() > MAX_STATE_NESTING_DEPTH + 1) {
+                    throw PeleError("Maximum nesting depth exceeded", "limit", "state");
+                }
                 bool nextAlt = !frame.alt;
                 stack.push_back({item->state, item->state->doc, 0, nextAlt});
             }
@@ -3743,6 +3786,42 @@ public:
     std::unordered_map<std::string, StateClassDef> classes;
     std::unordered_map<std::string, StateLink> links;
     StateGraph graph;
+
+    StateDb() = default;
+    StateDb(const StateDb&) = default;
+    StateDb(StateDb&&) noexcept = default;
+    StateDb& operator=(const StateDb&) = default;
+    StateDb& operator=(StateDb&&) noexcept = default;
+    ~StateDb() {
+        std::vector<StmtPtr> work = std::move(rootDoc);
+        for (auto& kv : states) {
+            if (kv.second && !kv.second->doc.empty()) {
+                for (auto& s : kv.second->doc) {
+                    if (s) work.push_back(std::move(s));
+                }
+                kv.second->doc.clear();
+            }
+        }
+        states.clear();
+        auto harvest = [&](StateStmtPtr& sp) {
+            if (sp && !sp->doc.empty()) {
+                for (auto& s : sp->doc) {
+                    if (s) work.push_back(std::move(s));
+                }
+                sp->doc.clear();
+            }
+        };
+        while (!work.empty()) {
+            StmtPtr cur = std::move(work.back());
+            work.pop_back();
+            if (cur) {
+                harvest(cur->state);
+                harvest(cur->state1);
+                harvest(cur->state2);
+                harvest(cur->clickState);
+            }
+        }
+    }
 
 private:
     int dividerCount = 0;
@@ -4520,10 +4599,10 @@ inline StateTokens tokenizeState(const std::string& src) {
                     j = p + 1;
                     while (j < n) {
                         int d = ch(j);
-                        if (d == 10 || d == 59) break;
+                        if (d == 10 || (d == 59 && !isEntitySemicolon(src, static_cast<size_t>(j)))) break;
                         if (d == 58) {
                             int after = ch(j + 1);
-                            if (j + 1 >= n || after == 58 || after == 10 || after == 59) break;
+                            if (j + 1 >= n || after == 58 || after == 10 || (after == 59 && !isEntitySemicolon(src, static_cast<size_t>(j + 1)))) break;
                             j++;
                         }
                         j++;
@@ -4672,7 +4751,12 @@ inline StateTokens tokenizeState(const std::string& src) {
                     continue;
                 }
                 size_t close = src.find('}', p);
-                emit(T::acc_descr_multiline_value, p, close == std::string::npos ? n : static_cast<int>(close));
+                if (close == std::string::npos) {
+                    emit(T::acc_descr_multiline_value, p, n);
+                    pop();
+                } else {
+                    emit(T::acc_descr_multiline_value, p, static_cast<int>(close));
+                }
                 continue;
             }
 
@@ -4772,11 +4856,11 @@ inline StateTokens tokenizeState(const std::string& src) {
                     int j = q + 1;
                     while (j < n) {
                         int d = ch(j);
-                        if (d == 58 || d == 10 || d == 59) break;
+                        if (d == 58 || d == 10 || (d == 59 && !isEntitySemicolon(src, static_cast<size_t>(j)))) break;
                         j++;
                     }
                     if (j > q + 1) {
-                        emitText(T::NOTE_TEXT, trimStr(src.substr(p + 2, j - (p + 2))), p, j);
+                        emitText(T::NOTE_TEXT, trimStr(src.substr(q + 1, j - (q + 1))), p, j);
                         pop();
                         continue;
                     }
@@ -4890,6 +4974,9 @@ inline void parseState(const std::string& src, StateDb& db) {
         doc.push_back(std::move(value));
     };
     auto open = [&](const std::string& id, const std::string& description) {
+        if (outer.size() >= MAX_STATE_NESTING_DEPTH) {
+            throw PeleError("Maximum nesting depth exceeded", "limit", "state");
+        }
         i++;
         auto st = std::make_shared<StateStmt>();
         st->id = id;
@@ -5250,8 +5337,10 @@ inline std::string stripMermaidClasses(const std::string& s) {
 }
 
 inline double titleX(const CNode& c, double width, const std::unordered_map<int, std::vector<double>>& crossings) {
-    auto it = crossings.find(static_cast<int>(std::llround(c.y - c.h / 2.0)));
-    if (it == crossings.end() || width == 0.0) return c.x;
+    double top = c.y - c.h / 2.0;
+    if (width == 0.0 || !std::isfinite(top)) return c.x;
+    auto it = crossings.find(static_cast<int>(std::llround(std::clamp(top, -1e8, 1e8))));
+    if (it == crossings.end()) return c.x;
     const auto& xs = it->second;
     double left = c.x - c.w / 2.0;
     double half = width / 2.0;
@@ -5597,7 +5686,8 @@ inline Rendered draw(const StateDb& db, const Config& config, const RenderOption
     for (const auto& e : cedges) {
         const auto& route = e.route;
         for (int k = 3; k < static_cast<int>(route.size()) - 3; k += 3) {
-            int key = static_cast<int>(std::llround(route[k + 1]));
+            if (!std::isfinite(route[k]) || !std::isfinite(route[k + 1])) continue;
+            int key = static_cast<int>(std::llround(std::clamp(route[k + 1], -1e8, 1e8)));
             crossings[key].push_back(route[k]);
         }
     }
@@ -5735,11 +5825,13 @@ inline Rendered draw(const StateDb& db, const Config& config, const RenderOption
     }
 
     auto attach = [&](std::vector<double>& route, int at, int i) {
+        if (route.size() < 6 || at < 0 || static_cast<size_t>(at + 1) >= route.size()) return;
         const auto& c = cnodes[i];
         if (c.isGroup) return;
         const auto& view = views[i];
         bool bar = (view.kind == K::Fork || view.kind == K::Join);
         int other = (at == 0) ? 3 : (at - 3);
+        if (other < 0 || static_cast<size_t>(other + 1) >= route.size()) return;
         for (int axis : {1, 0}) {
             double extent = axis ? c.h : c.w;
             double drawnExtent = axis ? view.h : view.w;
@@ -5806,10 +5898,11 @@ inline Rendered draw(const StateDb& db, const Config& config, const RenderOption
             ce.labelX = side ? (a.x + out + furthest + 4.0 + ce.labelW / 2.0) : a.x;
             ce.labelY = side ? (a.y - loopHeight[ce.src] / 2.0 + below) : (a.y + out + furthest * 0.75 + 4.0 + below);
         } else {
+            if (ce.route.size() < 6) continue;
             std::vector<double> route = ce.route;
             double leaves = reach.of(ce.src, endSide(route, 0, cnodes[ce.src]));
             double arrives = reach.of(ce.dst, endSide(route, static_cast<int>(route.size()) - 3, cnodes[ce.dst]));
-            for (size_t k = 0; k < route.size(); k += 3) {
+            for (size_t k = 0; k + 1 < route.size(); k += 3) {
                 route[k] += pad;
                 route[k + 1] += pad;
             }

@@ -62,3 +62,12 @@
 "No Recent Files" = "无最近使用的文件";
 "Reload" = "重新加载";
 "Failed to save file." = "无法保存文件。";
+"Find..." = "查找...";
+"Go to Line..." = "转到行...";
+"Save As..." = "存储为...";
+"Overwrite" = "覆盖";
+"Save as UTF-8" = "以 UTF-8 存储";
+"The file has been modified externally on disk." = "磁盘上的文件已被外部修改。";
+"Saving now will overwrite external changes made by another application." = "现在存储将覆盖其他应用程序所做的更改。";
+"Some characters cannot be represented in the current encoding." = "部分字符无法用当前编码表示。";
+"Saving in the current encoding would replace unrepresentable characters with '?'. Choose Save as UTF-8 to preserve all characters losslessly." = "使用当前编码存储会将无法表示的字符替换为 '?'。选择“以 UTF-8 存储”可无损保留所有字符。";

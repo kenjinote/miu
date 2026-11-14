@@ -23,7 +23,19 @@ MACOS_DIR = os.path.join(REPO_ROOT, "macOS")
 ASSETS_DIR = os.path.join(MACOS_DIR, "store_assets")
 
 BUNDLE_ID = "jp.hack.miu"
-TARGET_VERSION = "1.0.51"
+
+
+def _resolve_target_version() -> str:
+    pbx = os.path.join(MACOS_DIR, "miu.xcodeproj", "project.pbxproj")
+    if os.path.isfile(pbx):
+        with open(pbx, "r", encoding="utf-8", errors="replace") as f:
+            m = re.search(r"MARKETING_VERSION\s*=\s*([0-9]+\.[0-9]+\.[0-9]+)\s*;", f.read())
+            if m:
+                return m.group(1)
+    return "1.0.53"
+
+
+TARGET_VERSION = _resolve_target_version()
 BASE_URL = "https://api.appstoreconnect.apple.com/v1"
 
 # ============================================================================

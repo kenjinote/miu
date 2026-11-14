@@ -520,7 +520,7 @@ inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std
   const Config* mbn = git.isMap() ? git.get("mainBranchName") : nullptr;
   std::string mainName = (mbn && mbn->isString()) ? mbn->sVal : "main";
   const Config* mbo = git.isMap() ? git.get("mainBranchOrder") : nullptr;
-  double mainOrder = (mbo && mbo->isNumber()) ? mbo->nVal : 0.0;
+  double mainOrder = (mbo && mbo->isNumber() && std::isfinite(mbo->nVal)) ? mbo->nVal : 0.0;
 
   GitModel model;
   model.branches[mainName] = std::nullopt;
@@ -637,7 +637,9 @@ inline GitModel buildGit(const GitGraphAst& ast, const Config& config, const std
   }
 
   std::stable_sort(orders.begin(), orders.end(), [](const auto& a, const auto& b) {
-    return a.second < b.second;
+    double ao = std::isfinite(a.second) ? a.second : 0.0;
+    double bo = std::isfinite(b.second) ? b.second : 0.0;
+    return ao < bo;
   });
   for (const auto& p : orders) {
     model.lanes.push_back(p.first);
@@ -716,15 +718,19 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
   bool vertical = direction != "LR";
   bool flip = direction == "BT";
 
-  Pele::FlatMap<std::string, int> laneOf;
-  for (size_t i = 0; i < model.lanes.size(); ++i) {
-    laneOf[model.lanes[i]] = static_cast<int>(i);
+  std::vector<std::string> laneList = model.lanes;
+  if (laneList.empty() && !model.commits.empty()) {
+    laneList.push_back(!model.currentBranch.empty() ? model.currentBranch : "main");
   }
-  int laneCount = static_cast<int>(model.lanes.size());
+  Pele::FlatMap<std::string, int> laneOf;
+  for (size_t i = 0; i < laneList.size(); ++i) {
+    laneOf[laneList[i]] = static_cast<int>(i);
+  }
+  int laneCount = static_cast<int>(laneList.size());
   double medium = std::round(size * 0.875);
   std::vector<Label> names;
-  names.reserve(model.lanes.size());
-  for (const auto& name : model.lanes) {
+  names.reserve(laneList.size());
+  for (const auto& name : laneList) {
     names.push_back(plainLabel(showBranches ? name : "", measurer, medium, 4000.0));
   }
 
@@ -880,7 +886,7 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
       double cy = py(from + (vertical ? h : w) / 2.0, c);
       grow(px(-LABEL_GAP, c), py(-LABEL_GAP, c), px(-LABEL_GAP, c), py(-LABEL_GAP, c));
       grow(px(end + TAIL, c), py(end + TAIL, c), px(end + TAIL, c), py(end + TAIL, c));
-      Pele::appendCat(branches, {"<g class=\"pele-branch\" data-id=\"", escText(model.lanes[i]), "\">", "<path class=\"pele-lane\" d=\"M", point(-LABEL_GAP, c), "L", point(end + TAIL, c), "\" stroke=\"", color, "\" stroke-dasharray=\"2 4\"/>"});
+      Pele::appendCat(branches, {"<g class=\"pele-branch\" data-id=\"", escText(laneList[i]), "\">", "<path class=\"pele-lane\" d=\"M", point(-LABEL_GAP, c), "L", point(end + TAIL, c), "\" stroke=\"", color, "\" stroke-dasharray=\"2 4\"/>"});
       if (!name.lines.empty()) {
         grow(cx - w / 2.0, cy - h / 2.0, cx + w / 2.0, cy + h / 2.0);
         Pele::appendCat(branches, {"<rect x=\"", num(cx - w / 2.0), "\" y=\"", num(cy - h / 2.0), "\" width=\"", num(w), "\" height=\"", num(h), "\" fill=\"", color, "\"", ROUNDED, "/>", labelSvg(name, cx, cy, " class=\"pele-label\" fill=\"var(--_bg)\"")});
@@ -896,7 +902,13 @@ inline Rendered drawGit(const GitModel& model, const Config& config, const Rende
     }
   }
   if (parallel) {
-    for (auto& list : taken) std::sort(list.begin(), list.end());
+    for (auto& list : taken) {
+      std::sort(list.begin(), list.end(), [](double a, double b) {
+        double fa = std::isfinite(a) ? a : 0.0;
+        double fb = std::isfinite(b) ? b : 0.0;
+        return fa < fb;
+      });
+    }
   }
   auto busy = [&](int lane, double from, double to) -> bool {
     const auto& list = taken[lane];

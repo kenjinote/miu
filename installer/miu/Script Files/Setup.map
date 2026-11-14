@@ -416,7 +416,7 @@
 415  MessageBoxEx                                       isrt.obl(ISRTScriptDialogsPriv.obs)
 416  OnAbort                                            ifx.obl(EventsSetup.obs)
 417  OnAppSearch                                        ifx.obl(EventsSetup.obs)
-418  OnBegin                                            ifx.obl(EventsSetup.obs)
+418  OnBegin                                            Setup.obs
 419  OnCCPSearch                                        ifx.obl(EventsSetup.obs)
 420  OnCanceling                                        ifx.obl(EventsSetup.obs)
 421  OnCheckMediaPassword                               ifx.obl(EventsSetup.obs)

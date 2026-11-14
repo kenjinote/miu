@@ -413,6 +413,8 @@ inline TreeViewAst parseTreeView(const std::string& src) {
 // src/diagrams/treeview/model.ts & icons.ts
 // ============================================================================
 
+constexpr size_t MAX_TREEVIEW_NESTING_DEPTH = 64;
+
 struct TreeNode {
     int id = 0;
     int level = 0;
@@ -422,6 +424,26 @@ struct TreeNode {
     std::optional<std::string> cssClass;
     std::optional<std::string> description;
     std::vector<std::shared_ptr<TreeNode>> children;
+
+    TreeNode() = default;
+    TreeNode(const TreeNode&) = default;
+    TreeNode(TreeNode&&) noexcept = default;
+    TreeNode& operator=(const TreeNode&) = default;
+    TreeNode& operator=(TreeNode&&) noexcept = default;
+    ~TreeNode() {
+        if (children.empty()) return;
+        std::vector<std::shared_ptr<TreeNode>> work = std::move(children);
+        while (!work.empty()) {
+            auto cur = std::move(work.back());
+            work.pop_back();
+            if (cur && cur.use_count() == 1 && !cur->children.empty()) {
+                for (auto& ch : cur->children) {
+                    work.push_back(std::move(ch));
+                }
+                cur->children.clear();
+            }
+        }
+    }
 };
 
 struct TreeViewModel : public DiagramMeta {
@@ -446,6 +468,9 @@ inline TreeViewModel buildTreeView(const TreeViewAst& ast, const std::string& fa
         if (isDirectory) name.pop_back();
 
         while (level <= stack.back()->level) stack.pop_back();
+        if (stack.size() > MAX_TREEVIEW_NESTING_DEPTH) {
+            throw PeleError("Maximum nesting depth exceeded", "limit", "treeView");
+        }
         auto node = std::make_shared<TreeNode>();
         node->id = model.count++;
         node->level = level;

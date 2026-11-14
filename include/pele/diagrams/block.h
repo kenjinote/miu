@@ -8,6 +8,8 @@ namespace BlockDiagram {
 // src/diagrams/block/types.ts
 // ============================================================================
 
+constexpr size_t MAX_BLOCK_NESTING_DEPTH = 64;
+
 struct Block {
     std::string id;
     bool hasId = false;
@@ -34,6 +36,23 @@ struct Block {
     std::string css;
     std::string styleClass;
     std::string stylesStr;
+
+    Block() = default;
+    Block(const Block&) = default;
+    Block(Block&&) noexcept = default;
+    Block& operator=(const Block&) = default;
+    Block& operator=(Block&&) noexcept = default;
+    ~Block() {
+        if (children.empty()) return;
+        std::vector<Block> work = std::move(children);
+        while (!work.empty()) {
+            std::vector<Block> grand = std::move(work.back().children);
+            work.pop_back();
+            if (!grand.empty()) {
+                work.insert(work.end(), std::make_move_iterator(grand.begin()), std::make_move_iterator(grand.end()));
+            }
+        }
+    }
 };
 
 struct Statement {
@@ -177,7 +196,10 @@ public:
         return out;
     }
 
-    void buildBlockList(std::vector<Block>& list, Block& parent) {
+    void buildBlockList(std::vector<Block>& list, Block& parent, int depth = 0) {
+        if (depth > static_cast<int>(MAX_BLOCK_NESTING_DEPTH)) {
+            throw PeleError("Maximum nesting depth exceeded", "limit", "block");
+        }
         std::vector<Block> children;
         for (size_t at = 0; at < list.size(); at++) {
             Block block = list[at];
@@ -223,7 +245,8 @@ public:
                     knownIt->second.hasLabel = true;
                 }
                 // Also update existing child in `children` if in same container, or recursively in tree
-                auto updateExisting = [&](auto& self, std::vector<Block>& vec) -> void {
+                auto updateExisting = [&](auto& self, std::vector<Block>& vec, int d) -> void {
+                    if (d > static_cast<int>(MAX_BLOCK_NESTING_DEPTH)) return;
                     for (auto& existing : vec) {
                         if (existing.id == block.id) {
                             if (block.type != "na") existing.type = block.type;
@@ -233,11 +256,11 @@ public:
                             }
                             if (!block.directions.empty()) existing.directions = block.directions;
                         }
-                        self(self, existing.children);
+                        self(self, existing.children, d + 1);
                     }
                 };
-                updateExisting(updateExisting, children);
-                updateExisting(updateExisting, root.children);
+                updateExisting(updateExisting, children, 0);
+                updateExisting(updateExisting, root.children, 0);
             } else {
                 if (knownIt != namedStore.end()) {
                     block.classes = knownIt->second.classes;
@@ -260,23 +283,24 @@ public:
                 }
             } else if (fresh) {
                 if (!inner.empty()) {
-                    buildBlockList(inner, block);
+                    buildBlockList(inner, block, depth + 1);
                 }
                 children.push_back(std::move(block));
             }
         }
         // Apply any late style/class declarations to blocks in `children`
-        auto applyPendingStyles = [&](auto& self, std::vector<Block>& vec) -> void {
+        auto applyPendingStyles = [&](auto& self, std::vector<Block>& vec, int d) -> void {
+            if (d > static_cast<int>(MAX_BLOCK_NESTING_DEPTH)) return;
             for (auto& b : vec) {
                 auto it = namedStore.find(b.id);
                 if (it != namedStore.end()) {
                     if (!it->second.classes.empty()) b.classes = it->second.classes;
                     if (!it->second.styles.empty()) b.styles = it->second.styles;
                 }
-                self(self, b.children);
+                self(self, b.children, d + 1);
             }
         };
-        applyPendingStyles(applyPendingStyles, children);
+        applyPendingStyles(applyPendingStyles, children, 0);
         parent.children = std::move(children);
     }
 
@@ -627,6 +651,9 @@ inline Tokens tokenize(const std::string& src) {
             }
             p = n;
             if (type != -1) put(type, "", n);
+            if (state == acc_title || state == acc_descr || state == acc_descr_multiline) {
+                put(T::EOF_TOK, "", n);
+            }
             break;
         }
 
@@ -721,7 +748,12 @@ inline Tokens tokenize(const std::string& src) {
                     p++;
                 } else {
                     size_t e = src.find('}', p);
-                    emit(T::acc_descr_multiline_value, e == std::string::npos ? n : e);
+                    if (e == std::string::npos) {
+                        emit(T::acc_descr_multiline_value, n);
+                        pop();
+                    } else {
+                        emit(T::acc_descr_multiline_value, e);
+                    }
                 }
                 break;
         }
@@ -884,7 +916,8 @@ inline void parseBlock(const std::string& src, BlockDb& db) {
         } else if (t == T::COLUMNS) {
             Block b;
             b.type = "column-setting";
-            b.columns = std::clamp(safeStoi(texts[i++], "block"), 1, 1000);
+            int rawCols = safeStoi(texts[i++], "block");
+            b.columns = (rawCols == -1) ? -1 : std::clamp(rawCols, 1, 1000);
             b.hasColumns = true;
             list.push_back({false, std::move(b), {}});
         } else if (t == T::SPACE_BLOCK) {
@@ -899,10 +932,16 @@ inline void parseBlock(const std::string& src, BlockDb& db) {
             b.hasWidth = true;
             list.push_back({false, std::move(b), {}});
         } else if (t == T::KEY) {
+            if (open.size() >= MAX_BLOCK_NESTING_DEPTH) {
+                throw PeleError("Maximum nesting depth exceeded", "limit", "block");
+            }
             i++;
             open.push_back({std::move(list), {}, false});
             list.clear();
         } else if (t == T::ID_BLOCK) {
+            if (open.size() >= MAX_BLOCK_NESTING_DEPTH) {
+                throw PeleError("Maximum nesting depth exceeded", "limit", "block");
+            }
             i++;
             Statement hdr = nodeStatement();
             open.push_back({std::move(list), std::move(hdr), true});

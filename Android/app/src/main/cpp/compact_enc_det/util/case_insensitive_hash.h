@@ -33,7 +33,7 @@ struct CStringCaseHash {
   size_t operator()(const char *str) const {
     unsigned long hash_val = 0;
     while (*str) {
-      hash_val = 5*hash_val + tolower(*str);
+      hash_val = 5*hash_val + tolower(static_cast<unsigned char>(*str));
       str++;
     }
     return (size_t)hash_val;
@@ -54,8 +54,8 @@ struct CStringAlnumCaseHash {
   size_t operator()(const char *str) const {
     unsigned long hash_val = 0;
     while (*str) {
-      if (isalnum(*str)) {
-        hash_val = 5*hash_val + tolower(*str);
+      if (isalnum(static_cast<unsigned char>(*str))) {
+        hash_val = 5*hash_val + tolower(static_cast<unsigned char>(*str));
       }
       str++;
     }
@@ -67,13 +67,14 @@ struct CStringAlnumCaseEqual {
   bool operator()(const char *str1, const char *str2) const {
     while (true) {
       // Skip until each pointer is pointing to an alphanumeric char or '\0'
-      while (!isalnum(*str1) && (*str1 != '\0')) {
+      while (!isalnum(static_cast<unsigned char>(*str1)) && (*str1 != '\0')) {
         str1++;
       }
-      while (!isalnum(*str2) && (*str2 != '\0')) {
+      while (!isalnum(static_cast<unsigned char>(*str2)) && (*str2 != '\0')) {
         str2++;
       }
-      if (tolower(*str1) != tolower(*str2)) {
+      if (tolower(static_cast<unsigned char>(*str1)) !=
+          tolower(static_cast<unsigned char>(*str2))) {
         return false;       // mismatch on alphanumeric char or '\0'
       }
       if (*str1 == '\0') {  // in which case *str2 must be '\0' as well

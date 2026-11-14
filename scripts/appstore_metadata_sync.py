@@ -6,15 +6,34 @@ for miu (jp.hack.miu) across iOS and macOS platforms.
 """
 
 import os
+import re
 import sys
 import time
 import json
-import jwt
-import requests
+try:
+    import jwt
+except ImportError:
+    jwt = None
+try:
+    import requests
+except ImportError:
+    requests = None
 
 BUNDLE_ID = "jp.hack.miu"
-TARGET_VERSION = "1.0.51"
 BASE_URL = "https://api.appstoreconnect.apple.com/v1"
+
+
+def _resolve_target_version() -> str:
+    pbx = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "macOS", "miu.xcodeproj", "project.pbxproj")
+    if os.path.isfile(pbx):
+        with open(pbx, "r", encoding="utf-8", errors="replace") as f:
+            m = re.search(r"MARKETING_VERSION\s*=\s*([0-9]+\.[0-9]+\.[0-9]+)\s*;", f.read())
+            if m:
+                return m.group(1)
+    return "1.0.53"
+
+
+TARGET_VERSION = _resolve_target_version()
 
 # ============================================================================
 # Localized App Store Metadata (Simple, polite, and likable tone)
@@ -47,12 +66,10 @@ UTF-8やShift_JIS、EUC-JPなど、さまざまな文字コードを自動で判
 毎日のメモ帳としても、頼れるコードエディタとしても。
 miuが、あなたの「書く時間」を少しでも快適にするお手伝いができれば幸いです。"""
 
-JA_WHATS_NEW = """いつも miu をご利用いただきありがとうございます。
-v1.0.51 では、ライブプレビューのオフライン保護強化、シンタックスハイライト＆Mermaid図表エンジンの精度向上、およびファイル保存の安全性改善を実施しました。
-
-・ライブプレビューのオフライン分離・セキュリティ強化：Markdown / HTML / SVG / Mermaid / LaTeX プレビューに厳格なオフライン保護（CSP・外部通信遮断・HTMLサニタイズ・タスクリスト切替の暗号トークン検証）を適用し、「<」で始まるテキストファイルの安全なエスケープ表示と長文強調記法の高速描画を改善しました。
-・シンタックスハイライト＆Mermaid図表エンジンの精度向上：全65言語カテゴリにおけるブロックコメントや Python 三重引用符の解析、CRLF 改行を含む未閉鎖 Markdown コードブロックの高速ハイライト、および Mermaid（stateDiagram-v2 複合状態・block-beta・各種チャート）の描画安定性を強化しました。
-・安全なファイル保存と多言語対応の改善：アトミック保存と安全なメモリマップ更新による上書き保存時のデータ保護強化、外部変更検出時の「再読み込み」ローカライズ改善、およびプライバシーマニフェスト対応を行いました。"""
+JA_WHATS_NEW = """miu v1.0.53 アップデート内容
+・ライブプレビューのオフライン保護強化と Markdown / LaTeX 数式 / 全33種 Mermaid 図表の描画精度向上
+・複数行正規表現の検索・置換、Emmet 展開、全65言語シンタックスハイライトの精度改善
+・非 UTF-8 保存時の文字欠落確認、安全なアトミック保存、および多言語ローカライズの改善"""
 
 EN_DESC = """miu is a simple, lightweight text and code editor designed to make everything from quick daily notes to Markdown writing and programming feel effortless.
 
@@ -80,12 +97,10 @@ No ads, no tracking, and no data collection. Everything works 100% offline on yo
 
 Whether you use it as an everyday notepad or a reliable code editor, we hope miu makes your writing time a little more enjoyable."""
 
-EN_WHATS_NEW = """Thank you for using miu.
-Version 1.0.51 brings stronger offline security for Live Preview, higher precision across syntax highlighting and Mermaid diagrams, and safer file saving:
-
-• Live Preview Offline Isolation & Security: Enforced strict offline Content Security Policy (CSP), external network blocking, HTML/URL sanitization, and per-session cryptographic verification for task-list checkboxes, along with safe display of plain-text files starting with '<' and fast linear-time Markdown emphasis parsing.
-• Syntax Highlighting & Mermaid Precision: Improved Python triple-quoted strings and block-comment progression across all 65 language categories, fast highlighting for unclosed CRLF Markdown code fences, refined Prolog, Rust, F#, and Haskell token rules, and improved Mermaid stateDiagram-v2 composite states, block-beta layouts, and charts.
-• Safer File Saving & Reliability: Enhanced atomic file saving with safe memory-map remapping, localized external file modification "Reload" prompts, and bundled Privacy Manifest metadata."""
+EN_WHATS_NEW = """What's New in miu v1.0.53
+• Strengthened offline Live Preview security and improved Markdown, LaTeX math, and all 33 Mermaid diagram renderers.
+• Improved multiline Regex find & replace, Emmet expansion, and 65-language syntax highlighting precision.
+• Added character-loss confirmation for non-UTF-8 saves, enhanced atomic file saving, and refined 30+ language localization."""
 
 ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无论是记录日常随笔、撰写 Markdown 文档，还是编写程序代码，都能为您提供舒适顺畅的书写体验。
 
@@ -113,12 +128,10 @@ ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无�
 
 无论是作为日常便签，还是得力的代码编辑器，希望 miu 能陪伴您度过每一段愉快的书写时光。"""
 
-ZH_HANS_WHATS_NEW = """感谢您使用 miu。
-v1.0.51 强化了实时预览的离线安全保护，提升了语法高亮与 Mermaid 图表引擎精度，并优化了文件保存的可靠性：
-
-・实时预览完全离线隔离与安全加固：为 Markdown / HTML / SVG / Mermaid / LaTeX 预览启用严格的离线安全策略（CSP）、外部网络请求拦截、HTML/URL 过滤与任务列表勾选加密令牌校验，支持安全显示以 `<` 开头的纯文本文件并提升长文本解析速度。
-・语法高亮与 Mermaid 图表精度提升：优化全部 65 种语言类别的块注释与 Python 三引号识别、包含 CRLF 换行的未闭合 Markdown 代码块高速高亮，并增强 Mermaid（stateDiagram-v2 复合状态、block-beta 与数值图表）的渲染稳定性。
-・安全的文件保存与本地化改进：增强原子化文件保存与内存映射安全更新机制，完善外部文件修改“重新加载”多语言提示及隐私清单支持。"""
+ZH_HANS_WHATS_NEW = """miu v1.0.53 更新内容
+・强化实时预览离线安全保护，提升 Markdown、LaTeX 公式及 33 种 Mermaid 图表渲染精度
+・改进多行正则表达式查找替换、Emmet 展开与 65 种语言语法高亮准确性
+・新增非 UTF-8 保存字符丢失提醒，优化原子化安全保存与多语言本地化细节"""
 
 ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器。無論是記錄日常隨手筆記、撰寫 Markdown 文章，還是編寫程式碼，都能為您帶來舒適順暢的書寫體驗。
 
@@ -146,12 +159,10 @@ ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器�
 
 無論是作為日常記事本，還是可靠的程式碼編輯器，希望 miu 能讓您的書寫時光更加愉快。"""
 
-ZH_HANT_WHATS_NEW = """感謝您使用 miu。
-v1.0.51 強化了即時預覽的離線安全保護，提升了語法突顯與 Mermaid 圖表引擎精準度，並最佳化了檔案儲存的可靠性：
-
-・即時預覽完全離線隔離與安全加固：為 Markdown / HTML / SVG / Mermaid / LaTeX 預覽啟用嚴格的離線安全原則（CSP）、外部網路請求攔截、HTML/URL 過濾與工作清單核取加密權杖驗證，支援安全顯示以 `<` 開頭的純文字檔並提升長文本解析速度。
-・語法突顯與 Mermaid 圖表精準度提升：最佳化全部 65 種語言類別的區塊註解與 Python 三引號識別、包含 CRLF 換行的未閉合 Markdown 程式碼區塊高速突顯，並增強 Mermaid（stateDiagram-v2 複合狀態、block-beta 與數值圖表）的渲染穩定性。
-・安全的檔案儲存與在地化改進：增強原子化檔案儲存與記憶體映射安全更新機制，完善外部檔案修改「重新載入」多語言提示及隱私權資訊清單支援。"""
+ZH_HANT_WHATS_NEW = """miu v1.0.53 更新內容
+・強化即時預覽離線安全保護，提升 Markdown、LaTeX 公式及 33 種 Mermaid 圖表渲染精準度
+・改進多行正規表示式尋找取代、Emmet 展開與 65 種語言語法突顯準確性
+・新增非 UTF-8 儲存字元遺失提醒，最佳化原子化安全儲存與多語言在地化細節"""
 
 KO_DESC = """miu는 일상의 가벼운 메모부터 Markdown 글쓰기, 프로그래밍까지 편안하게 사용할 수 있는 심플한 텍스트 및 코드 에디터입니다.
 
@@ -180,12 +191,10 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 등 다양한 문자 인코딩을 자동으로 
 매일 쓰는 메모장으로도, 든든한 코드 에디터로도.
 miu가 당신의 글쓰기 시간을 조금 더 기분 좋게 만들어 드릴 수 있기를 바랍니다."""
 
-KO_WHATS_NEW = """언제나 miu를 이용해 주셔서 감사합니다.
-v1.0.51에서는 실시간 미리보기 오프라인 보안 강화, 구문 강조 및 Mermaid 다이어그램 정밀도 향상, 그리고 안전한 파일 저장 개선을 진행했습니다.
-
-・실시간 미리보기 오프라인 격리 및 보안 강화: Markdown / HTML / SVG / Mermaid / LaTeX 미리보기에 엄격한 오프라인 보안 정책(CSP·외부 네트워크 차단·HTML 살균·체크리스트 암호화 토큰 검증)을 적용하고, '<'로 시작하는 일반 텍스트 파일의 안전한 표시 및 긴 문서 인라인 강조 고속 파싱을 지원합니다.
-・구문 강조 및 Mermaid 다이어그램 정밀도 향상: 65개 언어 카테고리의 블록 주석 및 Python 삼중 따옴표 인식 개선, CRLF 개행을 포함한 미종결 Markdown 코드 블록 고속 강조, Mermaid(stateDiagram-v2 복합 상태·block-beta·차트) 렌더링 안정성을 강화했습니다.
-・안전한 파일 저장 및 다국어 개선: 원자적 파일 저장 및 안전한 메모리 맵 갱신으로 데이터 보호를 강화하고 외부 파일 변경 시 '다시 불러오기' 다국어 번역 및 개인정보 보호 매니페스트 지원을 보강했습니다."""
+KO_WHATS_NEW = """miu v1.0.53 업데이트 안내
+・실시간 미리보기 오프라인 보안 강화 및 Markdown·LaTeX 수식·33종 Mermaid 다이어그램 렌더링 정밀도 향상
+・다중 행 정규식 찾기/바꾸기, Emmet 확장 및 65개 언어 구문 강조 정확도 개선
+・비 UTF-8 저장 시 문자 손실 확인 추가, 원자적 안전 저장 및 다국어 번역 품질 개선"""
 
 DE_DESC = """miu ist ein schlichter, leichtgewichtiger Text- und Code-Editor, mit dem alltägliche Notizen, Markdown-Texte und Programmierarbeiten gleichermaßen angenehm von der Hand gehen.
 
@@ -213,12 +222,10 @@ Keine Werbung, kein Tracking und keine Datenübertragung. Alle Funktionen arbeit
 
 Ob als täglicher Notizblock oder als verlässlicher Code-Editor – wir hoffen, dass miu Ihnen das Schreiben jeden Tag ein Stück angenehmer macht."""
 
-DE_WHATS_NEW = """Vielen Dank, dass Sie miu nutzen.
-Version 1.0.51 verbessert die Offline-Sicherheit der Live-Vorschau, die Präzision der Syntaxhervorhebung und Mermaid-Diagramme sowie die Zuverlässigkeit beim Speichern:
-
-• Offline-Isolierung & Sicherheit der Live-Vorschau: Strenge Offline-CSP, Blockierung externer Netzwerkzugriffe, HTML/URL-Bereinigung und kryptografische Prüfung für Aufgabenlisten sowie sichere Darstellung von Textdateien mit führendem „<“ und schnelles Markdown-Parsing.
-• Präzisere Syntaxhervorhebung & Mermaid-Diagramme: Verbesserte Erkennung von Python-Dreifach-Anführungszeichen und Blockkommentaren in allen 65 Sprachkategorien, schnelles Highlighting offener CRLF-Markdown-Codeblöcke sowie stabilere Mermaid-Diagramme (stateDiagram-v2, block-beta).
-• Sicheres Speichern & Zuverlässigkeit: Verbessertes atomares Speichern mit sicherem Memory-Mapping, lokalisierte Hinweise zum Neuladen extern geänderter Dateien und aktualisiertes Datenschutzmanifest."""
+DE_WHATS_NEW = """Neuerungen in miu v1.0.53
+• Strengere Offline-Sicherheit für die Live-Vorschau sowie präzisere Darstellung von Markdown, LaTeX und allen 33 Mermaid-Diagrammtypen.
+• Verbesserte mehrzeilige Regex-Suche & -Ersetzung, Emmet-Erweiterung und Syntaxhervorhebung für 65 Sprachen.
+• Warnhinweis vor Zeichenverlust beim Speichern in Nicht-UTF-8, zuverlässigeres atomares Speichern und optimierte Lokalisierung."""
 
 FR_DESC = """miu est un éditeur de texte et de code simple et léger, conçu pour rendre aussi agréables la prise de notes quotidienne, la rédaction en Markdown et la programmation.
 
@@ -246,12 +253,10 @@ Aucune publicité, aucun suivi et aucune collecte de données. Tout fonctionne �
 
 Comme bloc-notes de tous les jours ou comme éditeur de code fiable, nous espérons que miu rendra vos moments d’écriture plus agréables."""
 
-FR_WHATS_NEW = """Merci d’utiliser miu.
-La version 1.0.51 renforce la sécurité hors ligne de l’aperçu en direct, la précision de la coloration syntaxique et des diagrammes Mermaid ainsi que la fiabilité d’enregistrement :
-
-• Isolation hors ligne et sécurité de l’aperçu en direct : politique CSP stricte hors ligne, blocage des requêtes réseau externes, assainissement HTML/URL, vérification cryptographique des listes de tâches, affichage sûr des fichiers texte commençant par « < » et analyse Markdown rapide.
-• Précision syntaxique et Mermaid : meilleure gestion des triples guillemets Python et commentaires de bloc dans les 65 catégories de langages, coloration rapide des blocs Markdown CRLF non fermés et stabilité accrue des diagrammes Mermaid (stateDiagram-v2, block-beta).
-• Enregistrement sécurisé et fiabilité : sauvegarde atomique améliorée avec remappage mémoire sûr, localisation des invites de rechargement de fichiers modifiés et manifeste de confidentialité intégré."""
+FR_WHATS_NEW = """Nouveautés de miu v1.0.53
+• Sécurité hors ligne renforcée de l’aperçu en direct et rendu amélioré pour Markdown, LaTeX et les 33 types de diagrammes Mermaid.
+• Recherche/remplacement Regex multiligne, extension Emmet et coloration syntaxique de 65 langages plus précis.
+• Alerte de perte de caractères hors UTF-8, sauvegarde atomique fiabilisée et traductions affinées."""
 
 ES_DESC = """miu es un editor de texto y código sencillo y ligero, pensado para que desde tus notas rápidas del día a día hasta la escritura en Markdown y la programación resulten cómodas y agradables.
 
@@ -279,12 +284,10 @@ Sin anuncios, sin rastreo y sin envío de datos. Todo funciona 100 % sin conexi�
 
 Ya sea como tu bloc de notas diario o como un editor de código de confianza, esperamos que miu haga más agradable tu tiempo de escritura."""
 
-ES_WHATS_NEW = """Gracias por usar miu.
-La versión 1.0.51 refuerza la seguridad sin conexión de la Vista Previa, mejora la precisión del resaltado de sintaxis y los diagramas Mermaid, y aumenta la seguridad al guardar archivos:
-
-• Aislamiento sin conexión y seguridad en Vista Previa: política CSP estricta sin conexión, bloqueo de red externa, saneamiento HTML/URL, verificación criptográfica en listas de tareas, visualización segura de archivos que comienzan con '<' y análisis rápido de Markdown.
-• Precisión en sintaxis y Mermaid: mejoras en comillas triples de Python y comentarios de bloque en las 65 categorías de lenguajes, resaltado rápido de bloques Markdown CRLF sin cerrar y mayor estabilidad en Mermaid (stateDiagram-v2, block-beta).
-• Guardado seguro y fiabilidad: guardado atómico mejorado con remapeo seguro en memoria, avisos traducidos al recargar archivos modificados externamente y manifiesto de privacidad incluido."""
+ES_WHATS_NEW = """Novedades de miu v1.0.53
+• Mayor seguridad sin conexión en Vista Previa y mejor renderizado de Markdown, LaTeX y los 33 diagramas Mermaid.
+• Mejoras en búsqueda y reemplazo Regex multilínea, expansión Emmet y resaltado de sintaxis para 65 lenguajes.
+• Aviso de pérdida de caracteres al guardar fuera de UTF-8, guardado atómico más seguro y mejoras de localización."""
 
 IT_DESC = """miu è un editor di testo e codice semplice e leggero, pensato per rendere piacevole ogni attività: dagli appunti quotidiani alla scrittura in Markdown, fino alla programmazione.
 
@@ -312,12 +315,10 @@ Nessuna pubblicità, nessun tracciamento e nessuna raccolta dati. Tutto funziona
 
 Come blocco note quotidiano o come affidabile editor di codice, speriamo che miu renda più piacevole il tuo tempo dedicato alla scrittura."""
 
-IT_WHATS_NEW = """Grazie per aver scelto miu.
-La versione 1.0.51 potenzia la sicurezza offline dell’Anteprima dal vivo, la precisione della sintassi e dei diagrammi Mermaid e l’affidabilità del salvataggio:
-
-• Isolamento offline e sicurezza dell’Anteprima: CSP offline rigorosa, blocco delle connessioni esterne, sanificazione HTML/URL, verifica crittografica per le liste di attività, visualizzazione sicura dei file di testo che iniziano con '<' e analisi Markdown veloce.
-• Precisione di sintassi e Mermaid: migliorata la gestione delle triple virgolette Python e dei commenti a blocco nelle 65 categorie di linguaggi, evidenziazione rapida dei blocchi Markdown CRLF aperti e maggiore stabilità per Mermaid (stateDiagram-v2, block-beta).
-• Salvataggio sicuro e affidabilità: salvataggio atomico con rimappatura sicura della memoria, avvisi localizzati di ricaricamento file e manifesto sulla privacy aggiornato."""
+IT_WHATS_NEW = """Novità di miu v1.0.53
+• Sicurezza offline potenziata nell’Anteprima dal vivo e resa migliorata per Markdown, LaTeX e tutti i 33 diagrammi Mermaid.
+• Ricerca e sostituzione Regex multiriga, espansione Emmet ed evidenziazione per 65 linguaggi più precisi.
+• Avviso di perdita caratteri nei salvataggi non UTF-8, salvataggio atomico ancora più sicuro e localizzazione rifinita."""
 
 PT_DESC = """O miu é um editor de texto e código simples e leve, criado para tornar desde as suas anotações diárias até a escrita em Markdown e a programação muito mais confortáveis.
 
@@ -345,12 +346,10 @@ Sem anúncios, sem rastreamento e sem coleta de dados. Tudo funciona 100% offlin
 
 Seja como seu bloco de notas do dia a dia ou como um editor de código confiável, esperamos que o miu torne o seu momento de escrever ainda mais agradável."""
 
-PT_WHATS_NEW = """Obrigado por usar o miu.
-A versão 1.0.51 reforça a segurança offline da Pré-visualização ao vivo, aprimora a precisão de sintaxe e diagramas Mermaid e torna o salvamento de arquivos ainda mais seguro:
-
-• Isolamento offline e segurança na Pré-visualização: CSP offline rigorosa, bloqueio de conexões externas, sanitização de HTML/URL, verificação criptográfica em listas de tarefas, exibição segura de textos iniciados por '<' e análise rápida de Markdown.
-• Precisão de sintaxe e Mermaid: melhor detecção de aspas triplas em Python e comentários de bloco nas 65 categorias de linguagens, destaque rápido em blocos Markdown CRLF abertos e maior estabilidade em Mermaid (stateDiagram-v2, block-beta).
-• Salvamento seguro e confiabilidade: gravação atômica aprimorada com remapeamento seguro de memória, avisos traduzidos ao recarregar arquivos modificados externamente e manifesto de privacidade atualizado."""
+PT_WHATS_NEW = """Novidades do miu v1.0.53
+• Segurança offline reforçada na Pré-visualização e melhor renderização de Markdown, LaTeX e dos 33 diagramas Mermaid.
+• Melhorias na busca e substituição Regex multilinha, expansão Emmet e destaque de sintaxe para 65 linguagens.
+• Aviso de perda de caracteres ao salvar fora de UTF-8, salvamento atômico mais seguro e melhorias de tradução."""
 
 RU_DESC = """miu — это простой и лёгкий текстовый и кодовый редактор, созданный для комфортной работы: от быстрых повседневных заметок и текстов в Markdown до программирования.
 
@@ -378,12 +377,10 @@ RU_DESC = """miu — это простой и лёгкий текстовый и
 
 В качестве ежедневного блокнота или надёжного редактора кода — надеемся, что miu сделает вашу работу с текстом ещё приятнее."""
 
-RU_WHATS_NEW = """Спасибо, что пользуетесь miu.
-В версии 1.0.51 усилена офлайн-защита предпросмотра, повышена точность подсветки синтаксиса и диаграмм Mermaid, а также улучшена надёжность сохранения файлов:
-
-• Офлайн-изоляция и безопасность предпросмотра: строгая политика CSP, блокировка внешних сетевых запросов, очистка HTML/URL, криптографическая проверка чекбоксов задач, безопасное отображение файлов с начальным символом «<» и быстрый разбор Markdown.
-• Точность подсветки синтаксиса и Mermaid: улучшена обработка тройных кавычек Python и блочных комментариев во всех 65 категориях языков, быстрая подсветка незакрытых блоков кода Markdown (CRLF) и стабильность Mermaid (stateDiagram-v2, block-beta).
-• Надёжное сохранение файлов: атомарная запись с безопасным обновлением памяти, локализация уведомления о перезагрузке изменённых файлов и обновлённый манифест конфиденциальности."""
+RU_WHATS_NEW = """Что нового в miu v1.0.53
+• Усилена офлайн-защита предпросмотра и улучшена отрисовка Markdown, формул LaTeX и всех 33 типов диаграмм Mermaid.
+• Повышена точность многострочного поиска Regex, автодополнения Emmet и подсветки синтаксиса 65 языков.
+• Добавлено предупреждение о потере символов при сохранении не в UTF-8, улучшены атомарное сохранение и локализация."""
 
 NL_DESC = """miu is een eenvoudige, lichtgewicht tekst- en code-editor waarmee u prettig werkt aan dagelijkse notities, Markdown-documenten en programmeerprojecten.
 
@@ -411,12 +408,10 @@ Geen advertenties, geen tracking en geen gegevensverzameling. Alles werkt 100% o
 
 Of u miu nu gebruikt als dagelijks notitieblok of als betrouwbare code-editor, we hopen dat het uw schrijfmomenten net wat aangenamer maakt."""
 
-NL_WHATS_NEW = """Bedankt voor het gebruiken van miu.
-Versie 1.0.51 verbetert de offline beveiliging van Live Voorbeeld, verhoogt de nauwkeurigheid van syntaxmarkering en Mermaid-diagrammen en maakt het opslaan van bestanden nog betrouwbaarder:
-
-• Offline isolatie en beveiliging van Live Voorbeeld: strikte offline CSP, blokkering van externe netwerkverzoeken, HTML/URL-opschoning, cryptografische verificatie voor takenlijsten, veilige weergave van tekstbestanden beginnend met '<' en snelle Markdown-verwerking.
-• Nauwkeurigere syntaxmarkering & Mermaid: verbeterde verwerking van driedubbele aanhalingstekens in Python en blokcommentaar in alle 65 taalcategorieën, snelle markering van ongesloten CRLF Markdown-codeblokken en stabielere Mermaid-diagrammen (stateDiagram-v2, block-beta).
-• Veilig opslaan & betrouwbaarheid: atomair opslaan met veilige geheugenmapping, vertaalde meldingen bij extern gewijzigde bestanden en bijgewerkt privacymanifest."""
+NL_WHATS_NEW = """Nieuw in miu v1.0.53
+• Verbeterde offline beveiliging van Live Voorbeeld en nauwkeurigere weergave van Markdown, LaTeX en 33 Mermaid-diagrammen.
+• Betere meerregelige Regex-zoek- en vervangfunctie, Emmet-uitbreiding en syntaxisaccentuering voor 65 talen.
+• Waarschuwing bij tekenverlies buiten UTF-8, betrouwbaarder atomair opslaan en verfijnde lokalisatie."""
 
 SV_DESC = """miu är en enkel och lättviktig text- och kodredigerare som gör allt från dagliga anteckningar till Markdown-skrivande och programmering bekvämt och smidigt.
 
@@ -444,12 +439,10 @@ Inga annonser, ingen spårning och ingen datainsamling. Allt fungerar 100 % offl
 
 Som dagligt anteckningsblock eller pålitlig kodredigerare – vi hoppas att miu gör din skrivstund lite trevligare."""
 
-SV_WHATS_NEW = """Tack för att du använder miu.
-Version 1.0.51 stärker offlinesäkerheten i Live-förhandsgranskning, förbättrar precisionen i syntaxmarkering och Mermaid-diagram samt gör filsparning ännu tryggare:
-
-• Offlineisolering och säkerhet i förhandsgranskningen: strikt offline-CSP, blockering av externa nätverksanrop, HTML/URL-sanering, kryptografisk kontroll för uppgiftslistor, säker visning av textfiler som börjar med '<' och snabb Markdown-tolkning.
-• Högre precision i syntax och Mermaid: bättre hantering av trippelcitat i Python och blockkommentarer i alla 65 språkkategorier, snabb markering av oavslutade CRLF Markdown-kodblock och stabilare Mermaid-diagram (stateDiagram-v2, block-beta).
-• Säker filsparning och tillförlitlighet: atomär sparning med säker minnesmappning, översatta omladdningsdialoger vid externa filändringar och uppdaterat integritetsmanifest."""
+SV_WHATS_NEW = """Nyheter i miu v1.0.53
+• Stärkt offlinesäkerhet i förhandsgranskningen samt förbättrad visning av Markdown, LaTeX och alla 33 Mermaid-diagram.
+• Förbättrad flerradig Regex-sök/ersätt, Emmet-utökning och syntaxmarkering för 65 språk.
+• Varning vid teckenförlust utanför UTF-8, tryggare atomär sparning och förfinad lokalisering."""
 
 DA_DESC = """miu er en enkel og let tekst- og kodeeditor, der gør alt fra daglige noter til Markdown-skrivning og programmering behageligt og ubesværet.
 
@@ -477,12 +470,10 @@ Ingen reklamer, ingen sporing og ingen dataindsamling. Alt fungerer 100 % offlin
 
 Uanset om du bruger miu som daglig notesblok eller som kodeeditor, håber vi, at den gør din skrivetid lidt mere behagelig."""
 
-DA_WHATS_NEW = """Tak fordi du bruger miu.
-Version 1.0.51 styrker offlinesikkerheden i Live-forhåndsvisning, forbedrer præcisionen i syntaksfremhævning og Mermaid-diagrammer og gør fillagring endnu mere sikker:
-
-• Offlineisolering og sikkerhed i forhåndsvisning: striks offline-CSP, blokering af eksterne netværkskald, HTML/URL-rensning, kryptografisk kontrol af opgavelister, sikker visning af tekstfiler der starter med '<' og hurtig Markdown-analyse.
-• Præcision i syntaks og Mermaid: forbedret håndtering af tredobbelte anførselstegn i Python og blokkommentarer i alle 65 sprogkategorier, hurtig fremhævning af uafsluttede CRLF Markdown-kodeblokke samt mere stabile Mermaid-diagrammer (stateDiagram-v2, block-beta).
-• Sikker lagring og pålidelighed: atomisk fillagring med sikker hukommelsesmapning, oversatte genindlæsningsbeskeder og opdateret privatlivsmanifest."""
+DA_WHATS_NEW = """Nyheder i miu v1.0.53
+• Styrket offlinesikkerhed i Live-forhåndsvisning samt bedre visning af Markdown, LaTeX og alle 33 Mermaid-diagrammer.
+• Forbedret flerlinjet Regex-søg/erstat, Emmet-udvidelse og syntaksfremhævning for 65 sprog.
+• Advarsel ved tegntab uden for UTF-8, mere pålidelig atomisk lagring og forbedret lokalisering."""
 
 NO_DESC = """miu er et enkelt og lett tekst- og koderedigeringsprogram som gjør alt fra daglige notater til Markdown-skriving og programmering behagelig og uanstrengt.
 
@@ -510,12 +501,10 @@ Ingen reklame, ingen sporing og ingen datainnsamling. Alt fungerer 100 % offline
 
 Enten du bruker miu som daglig notisblokk eller som en pålitelig kodeeditor, håper vi den gjør skrivetiden din litt hyggeligere."""
 
-NO_WHATS_NEW = """Takk for at du bruker miu.
-Versjon 1.0.51 styrker offlinesikkerheten i direkte forhåndsvisning, gir høyere presisjon i syntaksutheving og Mermaid-diagrammer og gjør fillagring enda tryggere:
-
-• Offlineisolering og sikkerhet i forhåndsvisning: streng offline-CSP, blokkering av eksterne nettverkskall, HTML/URL-rensing, kryptografisk bekreftelse for oppgavelister, trygg visning av tekstfiler som starter med «<» og rask Markdown-analyse.
-• Presisjon i syntaks og Mermaid: bedre håndtering av trippelanførselstegn i Python og blokkommentarer i alle 65 språkkategorier, rask utheving av uavsluttede CRLF Markdown-kodeblokker og mer stabile Mermaid-diagrammer (stateDiagram-v2, block-beta).
-• Trygg lagring og pålitelighet: atomisk fillagring med sikker minnekartlegging, oversatte varsler ved eksterne filendringer og oppdatert personvernmanifest."""
+NO_WHATS_NEW = """Nyheter i miu v1.0.53
+• Styrket offlinesikkerhet i forhåndsvisning og bedre visning av Markdown, LaTeX og alle 33 Mermaid-diagrammer.
+• Forbedret flerlinjet Regex-søk/erstatt, Emmet-utvidelse og syntaksutheving for 65 språk.
+• Varsel ved tegntap utenfor UTF-8, tryggere atomisk lagring og forbedret lokalisering."""
 
 FI_DESC = """miu on yksinkertainen ja kevyt teksti- ja koodieditori, joka tekee päivittäisistä muistiinpanoista, Markdown-kirjoittamisesta ja ohjelmoinnista miellyttävää ja vaivatonta.
 
@@ -543,12 +532,10 @@ Ei mainoksia, ei seurantaa eikä tiedonkeruuta. Kaikki toimii 100 % offline-tila
 
 Käytitpä miuta päivittäisenä muistiona tai luotettavana koodieditorina, toivomme sen tekevän kirjoitushetkistäsi hieman mukavampia."""
 
-FI_WHATS_NEW = """Kiitos, että käytät miuta.
-Versio 1.0.51 vahvistaa reaaliaikaisen esikatselun offline-tietoturvaa, parantaa syntaksin korostuksen ja Mermaid-kaavioiden tarkkuutta sekä tekee tallennuksesta entistä luotettavampaa:
-
-• Esikatselun offline-eristys ja tietoturva: tiukka offline-CSP, ulkoisten verkkopyyntöjen esto, HTML/URL-puhdistus, tehtävälistojen kryptografinen varmennus, '<'-merkillä alkavien tekstitiedostojen turvallinen näyttö ja nopea Markdown-jäsennys.
-• Syntaksin ja Mermaid-kaavioiden tarkkuus: parannettu Pythonin kolmoislainausmerkkien ja lohkokommenttien käsittely kaikissa 65 kielikategoriassa, sulkemattomien CRLF Markdown -koodilohkojen nopea korostus ja vakaammat Mermaid-kaaviot (stateDiagram-v2, block-beta).
-• Turvallinen tallennus: atominen tiedostotallennus turvallisella muistikuvauksella, lokalisoidut uudelleenlatausilmoitukset ja päivitetty tietosuojamanifesti."""
+FI_WHATS_NEW = """Uutta versiossa miu v1.0.53
+• Vahvistettu esikatselun offline-tietoturva sekä tarkempi Markdown-, LaTeX- ja 33 Mermaid-kaavion piirto.
+• Parannettu monirivinen Regex-haku ja -korvaus, Emmet-laajennus sekä 65 kielen syntaksinkorostus.
+• Varoitus merkkitappioista muussa kuin UTF-8-tallennuksessa, luotettavampi atominen tallennus ja päivitetty lokalisointi."""
 
 PL_DESC = """miu to prosty, lekki edytor tekstu i kodu, zaprojektowany tak, aby codzienne notatki, pisanie w Markdown oraz programowanie były wygodne i przyjemne.
 
@@ -576,12 +563,10 @@ Brak reklam, brak śledzenia i brak gromadzenia danych. Wszystko działa w 100% 
 
 Zarówno jako codzienny notatnik, jak i niezawodny edytor kodu – mamy nadzieję, że miu uprzyjemni Twój czas spędzony na pisaniu."""
 
-PL_WHATS_NEW = """Dziękujemy za korzystanie z aplikacji miu.
-Wersja 1.0.51 wzmacnia bezpieczeństwo offline podglądu na żywo, zwiększa precyzję kolorowania składni i diagramów Mermaid oraz poprawia bezpieczeństwo zapisu plików:
-
-• Izolacja offline i bezpieczeństwo podglądu: ścisła polityka CSP offline, blokada połączeń zewnętrznych, oczyszczanie HTML/URL, kryptograficzna weryfikacja list zadań, bezpieczne wyświetlanie plików tekstowych zaczynających się od „<” oraz szybkie parsowanie Markdown.
-• Precyzja składni i diagramów Mermaid: ulepszona obsługa potrójnych cudzysłowów Pythona i komentarzy blokowych w 65 kategoriach języków, szybkie kolorowanie niezamkniętych bloków kodu Markdown (CRLF) oraz stabilność Mermaid (stateDiagram-v2, block-beta).
-• Bezpieczny zapis i niezawodność: zapis atomowy z bezpiecznym mapowaniem pamięci, przetłumaczone komunikaty przeładowania zmodyfikowanych plików i manifest prywatności."""
+PL_WHATS_NEW = """Nowości w miu v1.0.53
+• Wzmocnione bezpieczeństwo podglądu offline oraz lepsze renderowanie Markdown, LaTeX i 33 diagramów Mermaid.
+• Ulepszone wielowierszowe wyszukiwanie Regex, rozwijanie Emmet i kolorowanie składni dla 65 języków.
+• Ostrzeżenie przed utratą znaków przy zapisie spoza UTF-8, pewniejszy zapis atomowy i dopracowana lokalizacja."""
 
 CS_DESC = """miu je jednoduchý a lehký textový a kódový editor, se kterým je psaní každodenních poznámek, textů v Markdownu i programování pohodlné a příjemné.
 
@@ -609,12 +594,10 @@ Hledání a nahrazování (s regulárními výrazy), více kurzorů, čísla ř�
 
 Ať už miu používáte jako každodenní zápisník nebo jako spolehlivý editor kódu, věříme, že vám zpříjemní každou chvíli u psaní."""
 
-CS_WHATS_NEW = """Děkujeme, že používáte miu.
-Verze 1.0.51 posiluje offline zabezpečení živého náhledu, zpřesňuje zvýrazňování syntaxe i diagramy Mermaid a zvyšuje spolehlivost ukládání souborů:
-
-• Offline izolace a zabezpečení náhledu: přísná offline politika CSP, blokování externích síťových požadavků, čištění HTML/URL, kryptografické ověření seznamů úkolů, bezpečné zobrazení textových souborů začínajících znakem „<“ a rychlé zpracování Markdownu.
-• Přesnost syntaxe a Mermaid: vylepšené zpracování trojitých uvozovek v Pythonu a blokových komentářů v 65 kategoriích jazyků, rychlé zvýrazňování neuzavřených bloků kódu Markdown (CRLF) a stabilita Mermaid (stateDiagram-v2, block-beta).
-• Bezpečné ukládání: atomické ukládání s bezpečným přemapováním paměti, lokalizované výzvy k opětovnému načtení změněných souborů a manifest soukromí."""
+CS_WHATS_NEW = """Novinky v miu v1.0.53
+• Posílené offline zabezpečení živého náhledu a přesnější vykreslování Markdownu, LaTeXu a 33 diagramů Mermaid.
+• Vylepšené víceřádkové hledání a nahrazování Regex, rozbalování Emmet a zvýrazňování syntaxe 65 jazyků.
+• Upozornění na ztrátu znaků mimo UTF-8, spolehlivější atomické ukládání a vylepšená lokalizace."""
 
 HU_DESC = """A miu egy egyszerű, könnyed szöveg- és kódszerkesztő, amely a napi gyors jegyzeteléstől a Markdown-szövegíráson át a programozásig minden helyzetben kényelmes használatot nyújt.
 
@@ -642,12 +625,10 @@ Nincsenek reklámok, nincs követés és nincs adatgyűjtés. Minden funkció 10
 
 Akár mindennapi jegyzettömbként, akár megbízható kódszerkesztőként használja, reméljük, hogy a miu kellemesebbé teszi az írással töltött időt."""
 
-HU_WHATS_NEW = """Köszönjük, hogy a miu alkalmazást használja.
-Az 1.0.51-es verzió erősíti az Élő előnézet offline biztonságát, növeli a szintaxiskiemelés és a Mermaid-diagramok pontosságát, valamint még biztonságosabbá teszi a fájlmentést:
-
-• Offline elszigetelés és biztonság az előnézetben: szigorú offline CSP, külső hálózati kérések tiltása, HTML/URL-tisztítás, kriptográfiai ellenőrzés a feladatlistákhoz, a „<” jellel kezdődő szövegfájlok biztonságos megjelenítése és gyors Markdown-elemzés.
-• Szintaxis és Mermaid pontosság: fejlesztett Python tripla idézőjel- és blokk-komment-kezelés mind a 65 nyelvi kategóriában, lezáratlan CRLF Markdown-kódblokkok gyors kiemelése és stabilabb Mermaid (stateDiagram-v2, block-beta) megjelenítés.
-• Biztonságos fájlmentés: atomi mentés biztonságos memórialeképezéssel, honosított újratöltési értesítések és adatvédelmi jegyzék."""
+HU_WHATS_NEW = """A miu v1.0.53 újdonságai
+• Megerősített offline Élő előnézet-védelem, pontosabb Markdown, LaTeX és 33-féle Mermaid diagrammegjelenítés.
+• Fejlesztett többsoros Regex keresés és csere, Emmet-kibontás és 65 nyelvű szintaxiskiemelés.
+• Karaktervesztési figyelmeztetés nem UTF-8 mentésnél, még biztonságosabb atomi mentés és pontosított honosítás."""
 
 RO_DESC = """miu este un editor de text și cod simplu și ușor, creat pentru ca notițele zilnice, redactarea în Markdown și programarea să fie cât mai plăcute și confortabile.
 
@@ -675,12 +656,10 @@ Fără reclame, fără urmărire și fără colectare de date. Totul funcționea
 
 Fie ca agendă de zi cu zi, fie ca editor de cod de încredere, sperăm că miu vă va face timpul petrecut scriind mai plăcut."""
 
-RO_WHATS_NEW = """Vă mulțumim că folosiți miu.
-Versiunea 1.0.51 consolidează securitatea offline a Previzualizării live, crește precizia evidențierii sintaxei și a diagramelor Mermaid și îmbunătățește siguranța salvării fișierelor:
-
-• Izolare offline și securitate în Previzualizare: politică CSP offline strictă, blocarea conexiunilor externe, igienizare HTML/URL, verificare criptografică pentru listele de sarcini, afișare sigură a fișierelor text care încep cu „<” și analiză rapidă Markdown.
-• Precizie în sintaxă și Mermaid: analiză îmbunătățită a ghilimelelor triple Python și a comentariilor bloc în cele 65 de categorii de limbaje, evidențiere rapidă a blocurilor Markdown CRLF neînchise și stabilitate în Mermaid (stateDiagram-v2, block-beta).
-• Salvare sigură: salvare atomică cu remapare sigură a memoriei, mesaje traduse pentru reîncărcarea fișierelor modificate extern și manifest de confidențialitate."""
+RO_WHATS_NEW = """Noutăți în miu v1.0.53
+• Securitate offline sporită în Previzualizare și redare îmbunătățită pentru Markdown, LaTeX și 33 de diagrame Mermaid.
+• Căutare și înlocuire Regex pe mai multe rânduri, extindere Emmet și sintaxă pentru 65 de limbaje mai precise.
+• Avertizare la pierderea caracterelor în afara UTF-8, salvare atomică sigură și localizare îmbunătățită."""
 
 EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επεξεργαστής κειμένου και κώδικα, σχεδιασμένος ώστε οι καθημερινές σημειώσεις, η συγγραφή σε Markdown και ο προγραμματισμός να γίνονται άνετα και ευχάριστα.
 
@@ -708,12 +687,10 @@ EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επ�
 
 Είτε ως καθημερινό σημειωματάριο είτε ως αξιόπιστος επεξεργαστής κώδικα, ελπίζουμε το miu να κάνει τον χρόνο που αφιερώνετε στο γράψιμο πιο ευχάριστο."""
 
-EL_WHATS_NEW = """Σας ευχαριστούμε που χρησιμοποιείτε το miu.
-Η έκδοση 1.0.51 ενισχύει την ασφάλεια εκτός σύνδεσης της Ζωντανής προεπισκόπησης, βελτιώνει την ακρίβεια επισήμανσης σύνταξης και διαγραμμάτων Mermaid και αναβαθμίζει την ασφάλεια αποθήκευσης:
-
-• Απομόνωση εκτός σύνδεσης & ασφάλεια προεπισκόπησης: αυστηρή πολιτική CSP εκτός σύνδεσης, φραγή εξωτερικών συνδέσεων, καθαρισμός HTML/URL, κρυπτογραφική επαλήθευση λιστών εργασιών, ασφαλής εμφάνιση αρχείων που ξεκινούν με «<» και γρήγορη ανάλυση Markdown.
-• Ακρίβεια σύνταξης & Mermaid: βελτιωμένη αναγνώριση τριπλών εισαγωγικών Python και σχολίων μπλοκ στις 65 κατηγορίες γλωσσών, γρήγορη επισήμανση ανοιχτών μπλοκ Markdown (CRLF) και σταθερότητα Mermaid (stateDiagram-v2, block-beta).
-• Ασφαλής αποθήκευση: ατομική εγγραφή αρχείων με ασφαλή αντιστοίχιση μνήμης, μεταφρασμένες ειδοποιήσεις επαναφόρτωσης και ενημερωμένο μανιφέστο απορρήτου."""
+EL_WHATS_NEW = """Τι νέο υπάρχει στο miu v1.0.53
+• Ενισχυμένη ασφάλεια προεπισκόπησης εκτός σύνδεσης και ακριβέστερη απόδοση Markdown, LaTeX και 33 διαγραμμάτων Mermaid.
+• Βελτιωμένη αναζήτηση/αντικατάσταση Regex πολλαπλών γραμμών, Emmet και επισήμανση σύνταξης 65 γλωσσών.
+• Προειδοποίηση απώλειας χαρακτήρων εκτός UTF-8, ασφαλέστερη ατομική αποθήκευση και βελτιωμένη μετάφραση."""
 
 TR_DESC = """miu; günlük kısa notlardan Markdown yazılarına ve programlamaya kadar her türlü metin çalışmasını keyifli ve rahat hale getirmek için tasarlanmış sade ve hafif bir metin ve kod düzenleyicidir.
 
@@ -741,12 +718,10 @@ Reklam, takip veya veri toplama yoktur. Tüm özellikler cihazınızda %100 çev
 
 İster günlük not defteriniz ister güvenilir kod düzenleyiciniz olarak, miu'nun yazma zamanınızı daha keyifli hale getirmesini dileriz."""
 
-TR_WHATS_NEW = """miu'yu kullandığınız için teşekkür ederiz.
-1.0.51 sürümü, Canlı Önizleme için çevrimdışı güvenliği güçlendirir, sözdizimi vurgulama ile Mermaid diyagramlarının hassasiyetini artırır ve dosya kaydetme güvenilirliğini iyileştirir:
-
-• Canlı Önizleme Çevrimdışı Güvenliği: sıkı çevrimdışı CSP, dış ağ erişimi engelleme, HTML/URL temizleme, görev listeleri için kriptografik doğrulama, '<' ile başlayan metin dosyalarının güvenli gösterimi ve hızlı Markdown ayrıştırma.
-• Sözdizimi ve Mermaid Hassasiyeti: 65 dil kategorisinde Python üçlü tırnak ve blok yorum analizi, kapatılmamış CRLF Markdown kod bloklarında hızlı vurgulama ve Mermaid (stateDiagram-v2, block-beta) kararlılığı.
-• Güvenli Dosya Kaydetme: güvenli bellek eşlemeli atomik dosya kaydetme, dış değişikliklerde yerelleştirilmiş yeniden yükleme bildirimleri ve gizlilik bildirimi desteği."""
+TR_WHATS_NEW = """miu v1.0.53 Yenilikleri
+• Güçlendirilmiş çevrimdışı Canlı Önizleme güvenliği ve Markdown, LaTeX ile 33 Mermaid şemasında daha net görünüm.
+• Çok satırlı Regex bul/değiştir, Emmet genişletme ve 65 dil sözdizimi vurgulamada doğruluk iyileştirmeleri.
+• UTF-8 dışı kayıtlarda karakter kaybı uyarısı, daha güvenli atomik kaydetme ve çok dilli arayüz iyileştirmeleri."""
 
 UK_DESC = """miu — це простий і легкий редактор тексту та коду, створений для того, щоб щоденні нотатки, написання текстів у Markdown і програмування були максимально зручними та приємними.
 
@@ -774,12 +749,10 @@ UK_DESC = """miu — це простий і легкий редактор тек
 
 Як щоденний записник або надійний редактор коду — сподіваємося, що miu зробить ваш час за письмом приємнішим."""
 
-UK_WHATS_NEW = """Дякуємо, що користуєтеся miu.
-У версії 1.0.51 посилено офлайн-безпеку перегляду наживо, підвищено точність підсвічування синтаксису та діаграм Mermaid, а також покращено надійність збереження файлів:
-
-• Офлайн-ізоляція та безпека перегляду: сувора політика CSP, блокування зовнішніх мережевих запитів, очищення HTML/URL, криптографічна перевірка списків завдань, безпечне відображення текстових файлів із початковим «<» та швидкий розбір Markdown.
-• Точність синтаксису та Mermaid: покращено розбір потрійних лапок Python і блокових коментарів у 65 категоріях мов, швидке підсвічування незакритих блоків Markdown (CRLF) і стабільність Mermaid (stateDiagram-v2, block-beta).
-• Надійне збереження: атомарний запис із безпечним оновленням пам’яті, локалізовані сповіщення про перезавантаження змінених файлів і маніфест конфіденційності."""
+UK_WHATS_NEW = """Що нового в miu v1.0.53
+• Посилено офлайн-захист перегляду та покращено відображення Markdown, формул LaTeX і 33 типів діаграм Mermaid.
+• Покращено багаторядковий пошук і заміну Regex, розгортання Emmet та підсвічування синтаксису 65 мов.
+• Додано попередження про втрату символів під час збереження не в UTF-8, надійніше атомарне збереження й локалізацію."""
 
 VI_DESC = """miu là trình soạn thảo văn bản và mã nguồn đơn giản, gọn nhẹ, mang lại cảm giác thoải mái cho mọi nhu cầu từ ghi chú nhanh hàng ngày, viết tài liệu Markdown cho đến lập trình.
 
@@ -807,12 +780,10 @@ Không quảng cáo, không theo dõi và không thu thập dữ liệu. Mọi t
 
 Dù dùng làm sổ tay hàng ngày hay trình sửa code đáng tin cậy, hy vọng miu sẽ giúp khoảng thời gian viết lách của bạn thêm phần dễ chịu."""
 
-VI_WHATS_NEW = """Cảm ơn bạn đã luôn sử dụng miu.
-Phiên bản 1.0.51 tăng cường bảo mật ngoại tuyến cho Xem trước trực tiếp, nâng cao độ chính xác tô sáng cú pháp & sơ đồ Mermaid, đồng thời cải thiện độ an toàn khi lưu tệp:
-
-• Cô lập ngoại tuyến & bảo mật Xem trước: áp dụng CSP ngoại tuyến nghiêm ngặt, chặn kết nối mạng bên ngoài, làm sạch HTML/URL, xác thực mật mã cho danh sách công việc, hiển thị an toàn tệp văn bản bắt đầu bằng '<' và phân tích Markdown nhanh.
-• Độ chính xác cú pháp & Mermaid: cải thiện xử lý chuỗi ba dấu nháy Python và chú thích khối trên 65 nhóm ngôn ngữ, tô sáng nhanh khối mã Markdown CRLF chưa đóng và tăng độ ổn định Mermaid (stateDiagram-v2, block-beta).
-• Lưu tệp an toàn: lưu nguyên tử với ánh xạ bộ nhớ an toàn, bản địa hóa thông báo tải lại tệp thay đổi bên ngoài và bổ sung kê khai quyền riêng tư."""
+VI_WHATS_NEW = """Có gì mới trong miu v1.0.53
+• Tăng cường bảo mật Xem trước ngoại tuyến và hiển thị chuẩn xác hơn cho Markdown, LaTeX cùng 33 loại sơ đồ Mermaid.
+• Cải thiện tìm/thay thế Regex nhiều dòng, gõ tắt Emmet và tô sáng cú pháp cho 65 ngôn ngữ.
+• Thêm cảnh báo mất ký tự khi lưu ngoài UTF-8, nâng cao lưu tệp nguyên tử an toàn và bản địa hóa đa ngôn ngữ."""
 
 TH_DESC = """miu คือแอปแก้ไขข้อความและโค้ดที่เรียบง่ายและทำงานได้อย่างรวดเร็ว ออกแบบมาเพื่อให้ทั้งการจดบันทึกประจำวัน การเขียนบทความด้วย Markdown และการเขียนโปรแกรมเป็นเรื่องที่สบายตาและน่าใช้งาน
 
@@ -840,12 +811,10 @@ TH_DESC = """miu คือแอปแก้ไขข้อความและ
 
 ไม่ว่าจะใช้เป็นสมุดโน้ตประจำวันหรือเครื่องมือเขียนโค้ดคู่ใจ เราหวังว่า miu จะช่วยให้ช่วงเวลาแห่งการเขียนของคุณน่าเพลิดเพลินยิ่งขึ้น"""
 
-TH_WHATS_NEW = """ขอบคุณที่ใช้บริการ miu เสมอมา
-ในเวอร์ชัน 1.0.51 เราได้ยกระดับความปลอดภัยแบบออฟไลน์ของพรีวิวสด เพิ่มความแม่นยำของการเน้นไวยากรณ์และแผนภาพ Mermaid รวมถึงปรับปรุงการบันทึกไฟล์ให้ปลอดภัยยิ่งขึ้น:
-
-• การแยกการทำงานแบบออฟไลน์และความปลอดภัยของพรีวิว: ใช้ CSP แบบออฟไลน์ที่เข้มงวด บล็อกการเชื่อมต่อภายนอก คัดกรอง HTML/URL ตรวจสอบโทเค็นเข้ารหัสสำหรับรายการงาน แสดงไฟล์ข้อความที่ขึ้นต้นด้วย '<' อย่างปลอดภัย และประมวลผล Markdown อย่างรวดเร็ว
-• ความแม่นยำของไวยากรณ์และ Mermaid: ปรับปรุงการวิเคราะห์อัญประกาศสามชั้นของ Python และความคิดเห็นบล็อกใน 65 หมวดหมู่ภาษา ไฮไลต์บล็อกโค้ด Markdown (CRLF) ที่ยังไม่ปิดอย่างรวดเร็ว และเพิ่มความเสถียรของ Mermaid (stateDiagram-v2, block-beta)
-• การบันทึกไฟล์อย่างปลอดภัย: บันทึกไฟล์แบบอะตอมมิกพร้อมอัปเดตหน่วยความจำอย่างปลอดภัย แปลข้อความแจ้งเตือนโหลดซ้ำครบทุกภาษา และรองรับ Privacy Manifest"""
+TH_WHATS_NEW = """มีอะไรใหม่ใน miu v1.0.53
+• ยกระดับความปลอดภัยพรีวิวออฟไลน์ และแสดงผล Markdown, สมการ LaTeX และแผนภาพ Mermaid ทั้ง 33 รูปแบบได้แม่นยำขึ้น
+• ปรับปรุงการค้นหา/แทนที่ด้วย Regex หลายบรรทัด, Emmet และการไฮไลต์ไวยากรณ์ 65 ภาษา
+• เพิ่มการแจ้งเตือนอักขระตกหล่นเมื่อบันทึกนอก UTF-8 ปรับปรุงการบันทึกไฟล์แบบอะตอมมิกและการแปลภาษา"""
 
 ID_DESC = """miu adalah editor teks dan kode yang sederhana serta ringan, dirancang agar nyaman digunakan mulai dari mencatat ide harian, menulis dokumen Markdown, hingga pemrograman.
 
@@ -873,12 +842,10 @@ Tanpa iklan, tanpa pelacakan, dan tanpa pengumpulan data. Semua fitur berjalan 1
 
 Baik sebagai buku catatan sehari-hari maupun editor kode andalan, semoga miu dapat membuat waktu menulis Anda menjadi lebih menyenangkan."""
 
-ID_WHATS_NEW = """Terima kasih telah menggunakan miu.
-Versi 1.0.51 memperkuat keamanan offline Pratinjau Langsung, meningkatkan akurasi penyorotan sintaks dan diagram Mermaid, serta menyempurnakan keandalan penyimpanan file:
-
-• Isolasi Offline & Keamanan Pratinjau: penerapan CSP offline ketat, pemblokiran jaringan eksternal, sanitasi HTML/URL, verifikasi kriptografi daftar tugas, tampilan aman file teks berawalan '<', dan penguraian Markdown cepat.
-• Akurasi Sintaks & Mermaid: perbaikan deteksi tanda kutip tiga Python dan komentar blok di 65 kategori bahasa, penyorotan cepat blok kode Markdown CRLF terbuka, serta stabilitas Mermaid (stateDiagram-v2, block-beta).
-• Penyimpanan File Aman: penyimpanan atomik dengan pemetaan memori aman, pelokalan dialog muat ulang file, dan dukungan manifes privasi."""
+ID_WHATS_NEW = """Yang Baru di miu v1.0.53
+• Keamanan offline Pratinjau Langsung diperkuat serta tampilan Markdown, LaTeX, dan 33 diagram Mermaid lebih akurat.
+• Peningkatan cari & ganti Regex multibaris, ekspansi Emmet, dan penyorotan sintaks 65 bahasa.
+• Peringatan kehilangan karakter saat menyimpan non-UTF-8, penyimpanan atomik lebih aman, dan perbaikan pelokalan."""
 
 MS_DESC = """miu ialah penyunting teks dan kod yang ringkas serta ringan, direka untuk memberikan keselesaan sama ada ketika mencatat nota harian, menulis dokumen Markdown mahupun melakukan pengaturcaraan.
 
@@ -906,12 +873,10 @@ Tiada iklan, tiada penjejakan dan tiada pengumpulan data. Semua ciri berfungsi 1
 
 Sama ada sebagai buku nota harian atau penyunting kod yang boleh dipercayai, kami berharap miu menjadikan masa menulis anda lebih menyenangkan."""
 
-MS_WHATS_NEW = """Terima kasih kerana menggunakan miu.
-Versi 1.0.51 memperkukuh keselamatan luar talian Pratonton Langsung, meningkatkan ketepatan sorotan sintaks dan rajah Mermaid, serta menambah baik keselamatan simpanan fail:
-
-• Pengasingan Luar Talian & Keselamatan Pratonton: CSP luar talian ketat, sekatan rangkaian luaran, pembersihan HTML/URL, pengesahan kriptografi senarai tugas, paparan selamat fail teks bermula dengan '<' dan penghuraian Markdown pantas.
-• Ketepatan Sintaks & Mermaid: penambahbaikan petikan tiga kali Python dan komen blok dalam 65 kategori bahasa, sorotan pantas blok kod Markdown CRLF belum ditutup serta kestabilan Mermaid (stateDiagram-v2, block-beta).
-• Simpanan Fail Selamat: simpanan atomik dengan pemetaan memori selamat, penyetempatan mesej muat semula fail dan sokongan manifes privasi."""
+MS_WHATS_NEW = """Baharu dalam miu v1.0.53
+• Keselamatan luar talian Pratonton Langsung diperkukuh serta paparan Markdown, LaTeX dan 33 rajah Mermaid lebih tepat.
+• Penambahbaikan cari & ganti Regex berbilang baris, pengembangan Emmet dan penyerlahan sintaks 65 bahasa.
+• Amaran kehilangan aksara bagi simpanan bukan UTF-8, simpanan atomik lebih selamat dan penyetempatan diperhalusi."""
 
 HI_DESC = """miu एक सरल और हल्का टेक्स्ट व कोड एडिटर है, जिसे रोज़मर्रा के छोटे नोट्स से लेकर Markdown लेखन और प्रोग्रामिंग तक हर काम को सहज और आरामदायक बनाने के लिए डिज़ाइन किया गया है।
 
@@ -939,12 +904,10 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 और अन्य एन्कोडिंग
 
 चाहे आप इसे दैनिक नोटपैड के रूप में उपयोग करें या एक भरोसेमंद कोड एडिटर के रूप में, हमें उम्मीद है कि miu आपके लिखने के समय को और सुखद बनाएगा।"""
 
-HI_WHATS_NEW = """miu का उपयोग करने के लिए धन्यवाद।
-संस्करण 1.0.51 में लाइव प्रीव्यू की ऑफ़लाइन सुरक्षा को और मजबूत किया गया है, सिंटैक्स हाइलाइटिंग व Mermaid आरेखों की सटीकता बढ़ाई गई है तथा फ़ाइल सेविंग को अधिक सुरक्षित बनाया गया है:
-
-• लाइव प्रीव्यू ऑफ़लाइन आइसोलेशन और सुरक्षा: सख्त ऑफ़लाइन CSP, बाहरी नेटवर्क अवरोधन, HTML/URL स्वच्छता, टास्क-लिस्ट चेकबॉक्स हेतु क्रिप्टोग्राफ़िक सत्यापन, '<' से शुरू होने वाली टेक्स्ट फ़ाइलों का सुरक्षित प्रदर्शन और तेज़ Markdown पार्सिंग।
-• सिंटैक्स और Mermaid सटीकता: सभी 65 भाषा श्रेणियों में Python ट्रिपल-कोट्स व ब्लॉक कमेंट पहचान में सुधार, अधूरे CRLF Markdown कोड ब्लॉक की तेज़ हाइलाइटिंग और Mermaid (stateDiagram-v2, block-beta) स्थिरता।
-• सुरक्षित फ़ाइल सेविंग: सुरक्षित मेमोरी-मैप अपडेट के साथ एटॉमिक सेविंग, बाहरी बदलाव पर अनूदित रीलोड संदेश और गोपनीयता मैनिफ़ेस्ट समर्थन।"""
+HI_WHATS_NEW = """miu v1.0.53 में नया क्या है
+• ऑफ़लाइन लाइव प्रीव्यू सुरक्षा को मजबूत किया गया और Markdown, LaTeX व सभी 33 Mermaid आरेखों की रेंडरिंग सुधारी गई।
+• मल्टीलाइन Regex खोजें/बदलें, Emmet विस्तार और 65 भाषाओं के सिंटैक्स हाइलाइटिंग की सटीकता बढ़ाई गई।
+• गैर-UTF-8 सेव में अक्षर हानि चेतावनी, अधिक सुरक्षित एटॉमिक फ़ाइल सेविंग और बहुभाषी अनुवाद में सुधार।"""
 
 SUPPORT_URL = "https://github.com/kenjinote/miu"
 
@@ -1189,7 +1152,7 @@ def get_headers():
 
 
 def get_app_id(headers):
-    r = requests.get(f"{BASE_URL}/apps?filter[bundleId]={BUNDLE_ID}", headers=headers)
+    r = requests.get(f"{BASE_URL}/apps?filter[bundleId]={BUNDLE_ID}", headers=headers, timeout=60)
     if r.status_code != 200:
         raise RuntimeError(f"Failed to query apps: HTTP {r.status_code} {r.text}")
     data = r.json().get("data", [])
@@ -1203,7 +1166,7 @@ def get_app_id(headers):
 
 def sync_app_info_localizations(app_id, app_name, headers):
     """Ensure App Info level localizations exist and sync privacyPolicyUrl from en-US to all target locales."""
-    r = requests.get(f"{BASE_URL}/apps/{app_id}/appInfos", headers=headers)
+    r = requests.get(f"{BASE_URL}/apps/{app_id}/appInfos", headers=headers, timeout=60)
     if r.status_code != 200:
         print(f"[Warn] Could not fetch appInfos: HTTP {r.status_code}")
         return
@@ -1229,7 +1192,7 @@ def sync_app_info_localizations(app_id, app_name, headers):
 
     for info in app_infos:
         iid = info["id"]
-        r_locs = requests.get(f"{BASE_URL}/appInfos/{iid}/appInfoLocalizations?limit=200", headers=headers)
+        r_locs = requests.get(f"{BASE_URL}/appInfos/{iid}/appInfoLocalizations?limit=200", headers=headers, timeout=60)
         if r_locs.status_code == 200:
             locs_data = r_locs.json().get("data", [])
             info_locs_map[iid] = locs_data
@@ -1301,7 +1264,7 @@ def sync_app_info_localizations(app_id, app_name, headers):
                         "attributes": patch_attrs,
                     }
                 }
-                res_p = requests.patch(f"{BASE_URL}/appInfoLocalizations/{loc_id}", headers=headers, json=patch_payload)
+                res_p = requests.patch(f"{BASE_URL}/appInfoLocalizations/{loc_id}", headers=headers, json=patch_payload, timeout=60)
                 if res_p.status_code == 200:
                     updated_count += 1
                     print(f"  [OK] Updated AppInfo {locale} name='{target_name}' (was '{cur_name}'), subtitle='{subtitle}'")
@@ -1327,13 +1290,13 @@ def sync_app_info_localizations(app_id, app_name, headers):
                         },
                     }
                 }
-                res = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
+                res = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload, timeout=60)
                 if res.status_code in (200, 201):
                     created_count += 1
                     print(f"  [+] Created AppInfo {locale} (name: 'miu', subtitle: '{subtitle}', privacyPolicyUrl: {privacy_url})")
                 else:
                     payload["data"]["attributes"]["name"] = fallback_name
-                    res2 = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload)
+                    res2 = requests.post(f"{BASE_URL}/appInfoLocalizations", headers=headers, json=payload, timeout=60)
                     if res2.status_code in (200, 201):
                         created_count += 1
                         print(f"  [+] Created AppInfo {locale} (name: '{fallback_name}', subtitle: '{subtitle}', privacyPolicyUrl: {privacy_url})")
@@ -1344,7 +1307,7 @@ def sync_app_info_localizations(app_id, app_name, headers):
 
 def get_or_create_editable_versions(app_id, headers, target_platforms=None):
     """Return list of (platform, version_id, version_string, state, has_live_version) to update."""
-    r = requests.get(f"{BASE_URL}/apps/{app_id}/appStoreVersions?limit=50", headers=headers)
+    r = requests.get(f"{BASE_URL}/apps/{app_id}/appStoreVersions?limit=50", headers=headers, timeout=60)
     if r.status_code != 200:
         raise RuntimeError(f"Failed to query appStoreVersions: HTTP {r.status_code} {r.text}")
 
@@ -1392,7 +1355,7 @@ def get_or_create_editable_versions(app_id, headers, target_platforms=None):
                     },
                 }
             }
-            res = requests.post(f"{BASE_URL}/appStoreVersions", headers=headers, json=create_payload)
+            res = requests.post(f"{BASE_URL}/appStoreVersions", headers=headers, json=create_payload, timeout=60)
             if res.status_code in (200, 201):
                 new_v = res.json()["data"]
                 targets.append((plat, new_v["id"], TARGET_VERSION, "PREPARE_FOR_SUBMISSION", False))
@@ -1414,12 +1377,12 @@ def get_or_create_editable_versions(app_id, headers, target_platforms=None):
             v_state = editable_v.get("attributes", {}).get("appStoreState", "")
             print(f"\n[{plat}] Found editable version {v_str} (ID: {v_id}, State: {v_state}, HasLive: {has_live})")
 
-            if v_state in ("WAITING_FOR_REVIEW", "IN_REVIEW"):
+            if v_state in ("WAITING_FOR_REVIEW", "IN_REVIEW") and "--submit" in sys.argv:
                 print(f"[{plat}] Version {v_str} is currently {v_state}; canceling active reviewSubmission to allow metadata update and re-submission...")
                 r_subs = requests.get(
                     f"{BASE_URL}/apps/{app_id}/reviewSubmissions?filter[platform]={plat}&limit=50",
                     headers=headers,
-                )
+                 timeout=60)
                 if r_subs.status_code == 200:
                     for sub in r_subs.json().get("data", []):
                         sub_id = sub["id"]
@@ -1432,7 +1395,7 @@ def get_or_create_editable_versions(app_id, headers, target_platforms=None):
                                     "attributes": {"canceled": True},
                                 }
                             }
-                            cr = requests.patch(f"{BASE_URL}/reviewSubmissions/{sub_id}", headers=headers, json=cancel_payload)
+                            cr = requests.patch(f"{BASE_URL}/reviewSubmissions/{sub_id}", headers=headers, json=cancel_payload, timeout=60)
                             print(f"[{plat}] Cancel reviewSubmission {sub_id} ({sub_state}): HTTP {cr.status_code}")
                             if cr.status_code in (200, 204):
                                 time.sleep(4)
@@ -1444,7 +1407,7 @@ def get_or_create_editable_versions(app_id, headers, target_platforms=None):
                     f"{BASE_URL}/appStoreVersions/{v_id}/relationships/build",
                     headers=headers,
                     json={"data": None},
-                )
+                 timeout=60)
                 print(f"[{plat}] Detached previous build before versionString update: HTTP {detach_r.status_code}")
 
                 patch_payload = {
@@ -1456,7 +1419,7 @@ def get_or_create_editable_versions(app_id, headers, target_platforms=None):
                         },
                     }
                 }
-                pr = requests.patch(f"{BASE_URL}/appStoreVersions/{v_id}", headers=headers, json=patch_payload)
+                pr = requests.patch(f"{BASE_URL}/appStoreVersions/{v_id}", headers=headers, json=patch_payload, timeout=60)
                 if pr.status_code == 200:
                     print(f"[{plat}] Updated versionString from {v_str} -> {TARGET_VERSION}")
                     v_str = TARGET_VERSION
@@ -1483,7 +1446,7 @@ def get_or_create_editable_versions(app_id, headers, target_platforms=None):
                     },
                 }
             }
-            res = requests.post(f"{BASE_URL}/appStoreVersions", headers=headers, json=create_payload)
+            res = requests.post(f"{BASE_URL}/appStoreVersions", headers=headers, json=create_payload, timeout=60)
             if res.status_code in (200, 201):
                 new_v = res.json()["data"]
                 targets.append((plat, new_v["id"], TARGET_VERSION, "PREPARE_FOR_SUBMISSION", has_live))
@@ -1502,7 +1465,7 @@ def get_or_create_editable_versions(app_id, headers, target_platforms=None):
 
 def sync_version_localizations(plat, version_id, version_str, state, has_live, headers):
     print(f"\n=== Syncing {plat} v{version_str} (ID: {version_id}, State: {state}) ===")
-    r = requests.get(f"{BASE_URL}/appStoreVersions/{version_id}/appStoreVersionLocalizations?limit=200", headers=headers)
+    r = requests.get(f"{BASE_URL}/appStoreVersions/{version_id}/appStoreVersionLocalizations?limit=200", headers=headers, timeout=60)
     if r.status_code != 200:
         print(f"[{plat}] Failed to fetch localizations: HTTP {r.status_code} {r.text}")
         return 0, 0
@@ -1536,7 +1499,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                     "attributes": attrs,
                 }
             }
-            res = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload)
+            res = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload, timeout=60)
             if res.status_code == 200:
                 updated_count += 1
                 print(f"  [OK] Updated {locale} (description + whatsNew + promotionalText + keywords + supportUrl)")
@@ -1554,7 +1517,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                         },
                     }
                 }
-                res2 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_desc_only)
+                res2 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_desc_only, timeout=60)
                 if res2.status_code == 200:
                     updated_count += 1
                     print(f"  [OK] Updated {locale} (description + promotionalText + keywords + supportUrl; whatsNew skipped)")
@@ -1571,7 +1534,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                             },
                         }
                     }
-                    res3 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_wn_only)
+                    res3 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_wn_only, timeout=60)
                     if res3.status_code == 200:
                         updated_count += 1
                         print(f"  [OK] Updated {locale} (whatsNew + promotionalText + supportUrl)")
@@ -1586,7 +1549,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                                 },
                             }
                         }
-                        res4 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_wn_promo)
+                        res4 = requests.patch(f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}", headers=headers, json=payload_wn_promo, timeout=60)
                         if res4.status_code == 200:
                             updated_count += 1
                             print(f"  [OK] Updated {locale} (whatsNew + promotionalText)")
@@ -1619,7 +1582,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                     },
                 }
             }
-            res = requests.post(f"{BASE_URL}/appStoreVersionLocalizations", headers=headers, json=payload)
+            res = requests.post(f"{BASE_URL}/appStoreVersionLocalizations", headers=headers, json=payload, timeout=60)
             if res.status_code in (200, 201):
                 created_count += 1
                 print(f"  [NEW] Created {locale} (description + whatsNew + promotionalText + keywords + supportUrl)")
@@ -1645,7 +1608,7 @@ def sync_version_localizations(plat, version_id, version_str, state, has_live, h
                         },
                     }
                 }
-                res2 = requests.post(f"{BASE_URL}/appStoreVersionLocalizations", headers=headers, json=payload_desc_only)
+                res2 = requests.post(f"{BASE_URL}/appStoreVersionLocalizations", headers=headers, json=payload_desc_only, timeout=60)
                 if res2.status_code in (200, 201):
                     created_count += 1
                     print(f"  [NEW] Created {locale} (description + promotionalText + keywords + supportUrl; whatsNew skipped)")
@@ -1672,7 +1635,7 @@ def attach_build_and_submit(app_id, targets):
             r_b = requests.get(
                 f"{BASE_URL}/builds?filter[app]={app_id}&filter[preReleaseVersion.platform]={plat}&filter[preReleaseVersion.version]={v_str}&sort=-uploadedDate&limit=10",
                 headers=headers,
-            )
+             timeout=60)
             if r_b.status_code != 200:
                 print(f"[{plat}] Failed to query builds: HTTP {r_b.status_code} {r_b.text[:200]}")
                 break
@@ -1709,7 +1672,7 @@ def attach_build_and_submit(app_id, targets):
                 "attributes": {"usesNonExemptEncryption": False},
             }
         }
-        requests.patch(f"{BASE_URL}/builds/{chosen_build_id}", headers=headers, json=enc_payload)
+        requests.patch(f"{BASE_URL}/builds/{chosen_build_id}", headers=headers, json=enc_payload, timeout=60)
 
         # Attach build to appStoreVersion
         rel_payload = {
@@ -1722,7 +1685,7 @@ def attach_build_and_submit(app_id, targets):
             f"{BASE_URL}/appStoreVersions/{v_id}/relationships/build",
             headers=headers,
             json=rel_payload,
-        )
+         timeout=60)
         if r_rel.status_code in (200, 204):
             print(f"[{plat}] Attached build {chosen_build_ver} ({chosen_build_id}) to version {v_str} ({v_id})!")
         else:
@@ -1732,7 +1695,7 @@ def attach_build_and_submit(app_id, targets):
         r_subs = requests.get(
             f"{BASE_URL}/apps/{app_id}/reviewSubmissions?filter[platform]={plat}&limit=20",
             headers=headers,
-        )
+         timeout=60)
         sub_id = None
         if r_subs.status_code == 200:
             for s in r_subs.json().get("data", []):
@@ -1758,7 +1721,7 @@ def attach_build_and_submit(app_id, targets):
                     },
                 }
             }
-            r_cs = requests.post(f"{BASE_URL}/reviewSubmissions", headers=headers, json=create_sub)
+            r_cs = requests.post(f"{BASE_URL}/reviewSubmissions", headers=headers, json=create_sub, timeout=60)
             if r_cs.status_code in (200, 201):
                 sub_id = r_cs.json()["data"]["id"]
                 print(f"[{plat}] Created reviewSubmission {sub_id}")
@@ -1776,7 +1739,7 @@ def attach_build_and_submit(app_id, targets):
                 },
             }
         }
-        r_item = requests.post(f"{BASE_URL}/reviewSubmissionItems", headers=headers, json=item_payload)
+        r_item = requests.post(f"{BASE_URL}/reviewSubmissionItems", headers=headers, json=item_payload, timeout=60)
         if r_item.status_code in (200, 201, 409):
             print(f"[{plat}] Added appStoreVersion {v_id} to reviewSubmission {sub_id} (HTTP {r_item.status_code})")
         else:
@@ -1790,7 +1753,7 @@ def attach_build_and_submit(app_id, targets):
                 "attributes": {"submitted": True},
             }
         }
-        r_sub_patch = requests.patch(f"{BASE_URL}/reviewSubmissions/{sub_id}", headers=headers, json=submit_payload)
+        r_sub_patch = requests.patch(f"{BASE_URL}/reviewSubmissions/{sub_id}", headers=headers, json=submit_payload, timeout=60)
         if r_sub_patch.status_code == 200:
             new_st = r_sub_patch.json().get("data", {}).get("attributes", {}).get("state", "")
             print(f"[{plat}] Successfully submitted {v_str} (build {chosen_build_ver}) for App Review! State: {new_st}")
@@ -1809,7 +1772,7 @@ def prepare_testflight_builds_only(app_id):
             r_b = requests.get(
                 f"{BASE_URL}/builds?filter[app]={app_id}&filter[preReleaseVersion.platform]={plat}&filter[preReleaseVersion.version]={TARGET_VERSION}&sort=-uploadedDate&limit=10",
                 headers=headers,
-            )
+             timeout=60)
             if r_b.status_code != 200:
                 print(f"[{plat}] Failed to query builds: HTTP {r_b.status_code} {r_b.text[:200]}")
                 break
@@ -1846,11 +1809,11 @@ def prepare_testflight_builds_only(app_id):
                 "attributes": {"usesNonExemptEncryption": False},
             }
         }
-        r_enc = requests.patch(f"{BASE_URL}/builds/{chosen_build_id}", headers=headers, json=enc_payload)
+        r_enc = requests.patch(f"{BASE_URL}/builds/{chosen_build_id}", headers=headers, json=enc_payload, timeout=60)
         print(f"[{plat}] Set usesNonExemptEncryption=False on TestFlight build {chosen_build_ver} ({chosen_build_id}): HTTP {r_enc.status_code}")
 
         # Sync TestFlight betaBuildLocalizations (What to Test) across locales
-        r_bbloc = requests.get(f"{BASE_URL}/builds/{chosen_build_id}/betaBuildLocalizations?limit=200", headers=headers)
+        r_bbloc = requests.get(f"{BASE_URL}/builds/{chosen_build_id}/betaBuildLocalizations?limit=200", headers=headers, timeout=60)
         existing_bbloc = {}
         if r_bbloc.status_code == 200:
             for item in r_bbloc.json().get("data", []):
@@ -1868,7 +1831,7 @@ def prepare_testflight_builds_only(app_id):
                         "attributes": {"whatsNew": whats_new},
                     }
                 }
-                rb = requests.patch(f"{BASE_URL}/betaBuildLocalizations/{bb_id}", headers=headers, json=bb_payload)
+                rb = requests.patch(f"{BASE_URL}/betaBuildLocalizations/{bb_id}", headers=headers, json=bb_payload, timeout=60)
                 if rb.status_code in (200, 204):
                     bb_ok += 1
             else:
@@ -1881,7 +1844,7 @@ def prepare_testflight_builds_only(app_id):
                         },
                     }
                 }
-                rb = requests.post(f"{BASE_URL}/betaBuildLocalizations", headers=headers, json=bb_payload)
+                rb = requests.post(f"{BASE_URL}/betaBuildLocalizations", headers=headers, json=bb_payload, timeout=60)
                 if rb.status_code in (200, 201):
                     bb_ok += 1
         print(f"[{plat}] Synced {bb_ok} TestFlight betaBuildLocalizations on build {chosen_build_ver}")
@@ -1920,7 +1883,10 @@ def main():
         total_ok += ok
         total_fail += fail
 
-    attach_build_and_submit(app_id, targets)
+    if "--submit" in sys.argv:
+        attach_build_and_submit(app_id, targets)
+    else:
+        print("\n[Info] Skipping attach_build_and_submit (pass --submit to attach build and submit for App Store Review).")
 
     print(f"\n=== Completed: {total_ok} localizations synced across {len(targets)} platform(s) (Failures: {total_fail}) ===")
     if total_ok == 0 and total_fail > 0:

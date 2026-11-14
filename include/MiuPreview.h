@@ -2,6 +2,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <unordered_map>
 #include <cstdio>
 #include <cstdint>
 #include <cstring>
@@ -95,56 +96,130 @@ inline std::string escapeHtmlBasic(std::string_view s) {
     inline bool mdParseLinkDestAndTitle(const std::string& s, size_t openParen, size_t& closeParenOut, std::string& urlOut, std::string& titleOut){
         size_t n = s.size();
         if (openParen >= n || s[openParen] != '(') return false;
+        const size_t scanLimit = (n - openParen > 4098) ? (openParen + 4098) : n;
         size_t i = openParen + 1;
-        while (i < n && mdIsSpace(s[i])) i++;
-        if (i >= n) return false;
+        while (i < scanLimit && mdIsSpace(s[i])) i++;
+        if (i >= scanLimit) return false;
         if (s[i] == ')') {
             urlOut.clear(); titleOut.clear(); closeParenOut = i; return true;
         }
-        std::string rawUrl;
+        size_t urlStart = i;
         if (s[i] == '<') {
             i++;
-            while (i < n && s[i] != '>' && s[i] != '\n' && s[i] != '\r' && s[i] != '<') {
-                if (s[i] == '\\' && i + 1 < n) { rawUrl += s[i]; rawUrl += s[i + 1]; i += 2; continue; }
-                rawUrl += s[i++];
+            urlStart = i;
+            while (i < scanLimit && s[i] != '>' && s[i] != '\n' && s[i] != '\r' && s[i] != '<') {
+                if (s[i] == '\\' && i + 1 < scanLimit) { i += 2; continue; }
+                i++;
             }
-            if (i >= n || s[i] != '>') return false;
+            if (i >= scanLimit || s[i] != '>') return false;
+            size_t urlEnd = i;
             i++;
-        } else {
-            int pDepth = 0;
-            while (i < n && !mdIsSpace(s[i])) {
-                if (s[i] == '\\' && i + 1 < n) { rawUrl += s[i]; rawUrl += s[i + 1]; i += 2; continue; }
-                if (s[i] == '(') { pDepth++; rawUrl += s[i++]; }
-                else if (s[i] == ')') {
-                    if (pDepth == 0) break;
-                    pDepth--; rawUrl += s[i++];
-                } else {
-                    rawUrl += s[i++];
+            bool hadSpace = false;
+            while (i < scanLimit && mdIsSpace(s[i])) { hadSpace = true; i++; }
+            size_t titleStart = 0, titleEnd = 0;
+            if (hadSpace && i < scanLimit && (s[i] == '"' || s[i] == '\'' || s[i] == '(')) {
+                char closeQ = (s[i] == '(') ? ')' : s[i];
+                i++;
+                titleStart = i;
+                while (i < scanLimit && s[i] != closeQ) {
+                    if (s[i] == '\\' && i + 1 < scanLimit) { i += 2; continue; }
+                    i++;
                 }
+                if (i >= scanLimit || s[i] != closeQ) return false;
+                titleEnd = i;
+                i++;
+                while (i < scanLimit && mdIsSpace(s[i])) i++;
             }
-            if (pDepth != 0) return false;
+            if (i >= scanLimit || s[i] != ')') return false;
+            closeParenOut = i;
+            urlOut = mdUnescapeString(s.substr(urlStart, urlEnd - urlStart));
+            titleOut = (titleEnd > titleStart) ? mdUnescapeString(s.substr(titleStart, titleEnd - titleStart)) : std::string();
+            return true;
         }
+        int pDepth = 0;
+        while (i < scanLimit && !mdIsSpace(s[i])) {
+            if (s[i] == '\\' && i + 1 < scanLimit) { i += 2; continue; }
+            if (s[i] == '(') {
+                pDepth++;
+                if (pDepth > 32) return false;
+                i++;
+            } else if (s[i] == ')') {
+                if (pDepth == 0) break;
+                pDepth--;
+                i++;
+            } else {
+                i++;
+            }
+        }
+        if (pDepth != 0) return false;
+        size_t urlEnd = i;
         bool hadSpace = false;
-        while (i < n && mdIsSpace(s[i])) { hadSpace = true; i++; }
-        std::string rawTitle;
-        if (hadSpace && i < n && (s[i] == '"' || s[i] == '\'' || s[i] == '(')) {
+        while (i < scanLimit && mdIsSpace(s[i])) { hadSpace = true; i++; }
+        size_t titleStart = 0, titleEnd = 0;
+        if (hadSpace && i < scanLimit && (s[i] == '"' || s[i] == '\'' || s[i] == '(')) {
             char closeQ = (s[i] == '(') ? ')' : s[i];
             i++;
-            while (i < n && s[i] != closeQ) {
-                if (s[i] == '\\' && i + 1 < n) { rawTitle += s[i]; rawTitle += s[i + 1]; i += 2; continue; }
-                rawTitle += s[i++];
+            titleStart = i;
+            while (i < scanLimit && s[i] != closeQ) {
+                if (s[i] == '\\' && i + 1 < scanLimit) { i += 2; continue; }
+                i++;
             }
-            if (i >= n || s[i] != closeQ) return false;
+            if (i >= scanLimit || s[i] != closeQ) return false;
+            titleEnd = i;
             i++;
-            while (i < n && mdIsSpace(s[i])) i++;
+            while (i < scanLimit && mdIsSpace(s[i])) i++;
         }
-        if (i >= n || s[i] != ')') return false;
+        if (i >= scanLimit || s[i] != ')') return false;
         closeParenOut = i;
-        urlOut = mdUnescapeString(rawUrl);
-        titleOut = mdUnescapeString(rawTitle);
+        urlOut = mdUnescapeString(s.substr(urlStart, urlEnd - urlStart));
+        titleOut = (titleEnd > titleStart) ? mdUnescapeString(s.substr(titleStart, titleEnd - titleStart)) : std::string();
         return true;
     }
+    inline bool mdDecodeStrictUtf8At(const std::string& s, size_t pos, size_t endPos, uint32_t& outCp, size_t& outLen) noexcept {
+        if (pos >= endPos) return false;
+        unsigned char b0 = (unsigned char)s[pos];
+        if (b0 < 0x80) {
+            outCp = b0;
+            outLen = 1;
+            return true;
+        }
+        if (b0 < 0xC2) return false; // stray continuation 0x80..0xBF or overlong 0xC0..0xC1
+        if (b0 <= 0xDF) {
+            if (pos + 1 >= endPos) return false;
+            unsigned char b1 = (unsigned char)s[pos + 1];
+            if ((b1 & 0xC0) != 0x80) return false;
+            outCp = ((uint32_t)(b0 & 0x1F) << 6) | (uint32_t)(b1 & 0x3F);
+            outLen = 2;
+            return true;
+        }
+        if (b0 <= 0xEF) {
+            if (pos + 2 >= endPos) return false;
+            unsigned char b1 = (unsigned char)s[pos + 1];
+            unsigned char b2 = (unsigned char)s[pos + 2];
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80) return false;
+            if (b0 == 0xE0 && b1 < 0xA0) return false; // overlong 3-byte
+            if (b0 == 0xED && b1 >= 0xA0) return false; // UTF-16 surrogates 0xD800..0xDFFF
+            outCp = ((uint32_t)(b0 & 0x0F) << 12) | ((uint32_t)(b1 & 0x3F) << 6) | (uint32_t)(b2 & 0x3F);
+            outLen = 3;
+            return true;
+        }
+        if (b0 <= 0xF4) {
+            if (pos + 3 >= endPos) return false;
+            unsigned char b1 = (unsigned char)s[pos + 1];
+            unsigned char b2 = (unsigned char)s[pos + 2];
+            unsigned char b3 = (unsigned char)s[pos + 3];
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80) return false;
+            if (b0 == 0xF0 && b1 < 0x90) return false; // overlong 4-byte
+            if (b0 == 0xF4 && b1 > 0x8F) return false; // > U+10FFFF
+            outCp = ((uint32_t)(b0 & 0x07) << 18) | ((uint32_t)(b1 & 0x3F) << 12) |
+                    ((uint32_t)(b2 & 0x3F) << 6) | (uint32_t)(b3 & 0x3F);
+            outLen = 4;
+            return true;
+        }
+        return false;
+    }
     inline bool mdIsSafeUrl(const std::string& rawUrl, bool isImage){
+        if (rawUrl.find('\0') != std::string::npos) return false;
         size_t a = 0, b = rawUrl.size();
         while (a < b && (unsigned char)rawUrl[a] <= 0x20) a++;
         while (b > a && (unsigned char)rawUrl[b - 1] <= 0x20) b--;
@@ -155,6 +230,14 @@ inline std::string escapeHtmlBasic(std::string_view s) {
             unsigned char c = (unsigned char)rawUrl[i];
             if (c < 0x20 || c == 0x7F) return false;
             if (c == ' ') continue;
+            if (c >= 0x80) {
+                uint32_t cp = 0;
+                size_t uLen = 0;
+                if (!mdDecodeStrictUtf8At(rawUrl, i, b, cp, uLen)) return false;
+                norm += 'x';
+                i += uLen - 1;
+                continue;
+            }
             if (c == '&') {
                 if (i + 1 < b && rawUrl[i + 1] == '#') {
                     size_t k = i + 2;
@@ -183,13 +266,17 @@ inline std::string escapeHtmlBasic(std::string_view s) {
                     if (hasDigits) {
                         if (k < b && rawUrl[k] == ';') i = k;
                         else i = k - 1;
-                        if (cpAccum <= 0x20 || cpAccum == 0x7F) continue;
+                        if (cpAccum < 0x20 || cpAccum == 0x7F || cpAccum > 0x10FFFF ||
+                            (cpAccum >= 0xD800 && cpAccum <= 0xDFFF)) {
+                            return false;
+                        }
+                        if (cpAccum == 0x20) continue;
                         if (cpAccum < 0x80) {
                             char dc = (char)cpAccum;
                             if (dc >= 'A' && dc <= 'Z') dc = (char)(dc + 32);
                             norm += dc;
                         } else {
-                            norm += '?';
+                            norm += 'x';
                         }
                         continue;
                     }
@@ -198,23 +285,38 @@ inline std::string escapeHtmlBasic(std::string_view s) {
                     while (k < b && (k - i) <= 32 && mdIsAlnum(rawUrl[k])) k++;
                     std::string ent = Emmet::toLowerStr(rawUrl.substr(i + 1, k - (i + 1)));
                     bool hasSemi = (k < b && rawUrl[k] == ';');
-                    if (ent == "colon") {
+                    if (ent == "colon" && hasSemi) {
                         norm += ':';
-                        i = hasSemi ? k : (k - 1);
+                        i = k;
                         continue;
-                    } else if (ent == "sol") {
+                    } else if (ent == "sol" && hasSemi) {
                         norm += '/';
-                        i = hasSemi ? k : (k - 1);
+                        i = k;
                         continue;
-                    } else if (ent == "bsol") {
+                    } else if (ent == "bsol" && hasSemi) {
                         norm += '\\';
-                        i = hasSemi ? k : (k - 1);
+                        i = k;
                         continue;
-                    } else if (ent == "tab" || ent == "newline") {
-                        i = hasSemi ? k : (k - 1);
-                        continue;
+                    } else if ((ent == "tab" || ent == "newline") && hasSemi) {
+                        return false;
                     } else if (ent == "amp" && hasSemi) {
                         norm += '&';
+                        i = k;
+                        continue;
+                    } else if (ent == "quot" && hasSemi) {
+                        norm += '"';
+                        i = k;
+                        continue;
+                    } else if (ent == "apos" && hasSemi) {
+                        norm += '\'';
+                        i = k;
+                        continue;
+                    } else if (ent == "lt" && hasSemi) {
+                        norm += '<';
+                        i = k;
+                        continue;
+                    } else if (ent == "gt" && hasSemi) {
+                        norm += '>';
                         i = k;
                         continue;
                     }
@@ -309,15 +411,36 @@ inline std::string escapeHtmlBasic(std::string_view s) {
         }
         return out;
     }
-    inline std::string mdCleanVerifiedUrlAttr(const std::string& rawUrl) {
+    inline std::string mdCleanVerifiedUrlAttr(const std::string& rawUrl, bool isImageSrc = false) {
+        if (!isImageSrc && (rawUrl.compare(0, 7, "http://") == 0 || rawUrl.compare(0, 8, "https://") == 0)) {
+            bool simpleSafeAscii = true;
+            for (unsigned char c : rawUrl) {
+                if (c <= 0x20 || c >= 0x7F || c == '&' || c == '<' || c == '>' || c == '"' || c == '\\') {
+                    simpleSafeAscii = false;
+                    break;
+                }
+            }
+            if (simpleSafeAscii) return rawUrl;
+        }
+        if (rawUrl.find('\0') != std::string::npos) return "";
+        if (!mdIsSafeUrl(rawUrl, isImageSrc)) return "";
         size_t a = 0, b = rawUrl.size();
         while (a < b && (unsigned char)rawUrl[a] <= 0x20) a++;
         while (b > a && (unsigned char)rawUrl[b - 1] <= 0x20) b--;
+        if (a >= b) return "";
         std::string decoded;
         decoded.reserve(b - a);
         for (size_t i = a; i < b; ++i) {
             unsigned char c = (unsigned char)rawUrl[i];
-            if (c < 0x20 || c == 0x7F) continue;
+            if (c < 0x20 || c == 0x7F) return "";
+            if (c >= 0x80) {
+                uint32_t ucp = 0;
+                size_t uLen = 0;
+                if (!mdDecodeStrictUtf8At(rawUrl, i, b, ucp, uLen)) return "";
+                decoded.append(rawUrl, i, uLen);
+                i += uLen - 1;
+                continue;
+            }
             if (c == '&') {
                 if (i + 1 < b && rawUrl[i + 1] == '#') {
                     size_t k = i + 2;
@@ -345,7 +468,7 @@ inline std::string escapeHtmlBasic(std::string_view s) {
                     }
                     if (hasDigits) {
                         i = (k < b && rawUrl[k] == ';') ? k : (k - 1);
-                        if (cp <= 0x1F || cp == 0x7F || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) continue;
+                        if (cp < 0x20 || cp == 0x7F || cp > 0x10FFFF || (cp >= 0xD800 && cp <= 0xDFFF)) return "";
                         if (cp < 0x80) decoded += (char)cp;
                         else if (cp < 0x800) {
                             decoded += (char)(0xC0 | (cp >> 6));
@@ -368,19 +491,91 @@ inline std::string escapeHtmlBasic(std::string_view s) {
                     std::string ent = Emmet::toLowerStr(rawUrl.substr(i + 1, k - (i + 1)));
                     bool hasSemi = (k < b && rawUrl[k] == ';');
                     if (ent == "amp" && hasSemi) { decoded += '&'; i = k; continue; }
-                    if (ent == "colon") { decoded += ':'; i = hasSemi ? k : (k - 1); continue; }
-                    if (ent == "sol") { decoded += '/'; i = hasSemi ? k : (k - 1); continue; }
-                    if (ent == "bsol") { decoded += '\\'; i = hasSemi ? k : (k - 1); continue; }
+                    if (ent == "colon" && hasSemi) { decoded += ':'; i = k; continue; }
+                    if (ent == "sol" && hasSemi) { decoded += '/'; i = k; continue; }
+                    if (ent == "bsol" && hasSemi) { decoded += '\\'; i = k; continue; }
                     if (ent == "quot" && hasSemi) { decoded += '"'; i = k; continue; }
                     if (ent == "apos" && hasSemi) { decoded += '\''; i = k; continue; }
                     if (ent == "lt" && hasSemi) { decoded += '<'; i = k; continue; }
                     if (ent == "gt" && hasSemi) { decoded += '>'; i = k; continue; }
-                    if (ent == "tab" || ent == "newline") { i = hasSemi ? k : (k - 1); continue; }
+                    if ((ent == "tab" || ent == "newline") && hasSemi) return "";
                 }
             }
             decoded += (char)c;
         }
-        return escapeHtmlBasic(decoded);
+        if (!mdIsSafeUrl(decoded, isImageSrc)) return "";
+        std::string out = escapeHtmlBasic(decoded);
+        if (!mdIsSafeUrl(out, isImageSrc)) return "";
+        return out;
+    }
+    inline std::string mdDecodeAttrEntitiesForTokenCheck(const std::string& val) {
+        std::string dec;
+        dec.reserve(val.size());
+        const size_t n = val.size();
+        for (size_t i = 0; i < n; ++i) {
+            unsigned char c = (unsigned char)val[i];
+            if (c < 0x20 || c == 0x7F) continue;
+            if (c == '&') {
+                if (i + 1 < n && val[i + 1] == '#') {
+                    size_t k = i + 2;
+                    uint64_t cp = 0;
+                    bool hasDigits = false;
+                    if (k < n && (val[k] == 'x' || val[k] == 'X')) {
+                        k++;
+                        while (k < n) {
+                            char hc = val[k];
+                            uint64_t v = 0;
+                            if (hc >= '0' && hc <= '9') v = (uint64_t)(hc - '0');
+                            else if (hc >= 'a' && hc <= 'f') v = (uint64_t)(hc - 'a' + 10);
+                            else if (hc >= 'A' && hc <= 'F') v = (uint64_t)(hc - 'A' + 10);
+                            else break;
+                            cp = std::min<uint64_t>(0x110000ULL, (cp << 4) | v);
+                            hasDigits = true;
+                            k++;
+                        }
+                    } else {
+                        while (k < n && val[k] >= '0' && val[k] <= '9') {
+                            cp = std::min<uint64_t>(0x110000ULL, cp * 10 + (uint64_t)(val[k] - '0'));
+                            hasDigits = true;
+                            k++;
+                        }
+                    }
+                    if (hasDigits) {
+                        i = (k < n && val[k] == ';') ? k : (k - 1);
+                        if (cp >= 0x20 && cp < 0x7F) dec += (char)cp;
+                        else if (cp >= 0x80 && cp <= 0x10FFFF && !(cp >= 0xD800 && cp <= 0xDFFF)) dec += 'x';
+                        continue;
+                    }
+                } else {
+                    size_t k = i + 1;
+                    while (k < n && (k - i) <= 32 && mdIsAlnum(val[k])) k++;
+                    std::string ent = Emmet::toLowerStr(val.substr(i + 1, k - (i + 1)));
+                    bool hasSemi = (k < n && val[k] == ';');
+                    if (ent == "lowbar" || ent == "underbar") {
+                        dec += '_';
+                        i = hasSemi ? k : (k - 1);
+                        continue;
+                    }
+                }
+            }
+            dec += (char)c;
+        }
+        return dec;
+    }
+    inline bool mdIsReservedDomIdentifier(const std::string& val) {
+        auto checkOne = [](const std::string& s) -> bool {
+            size_t a = 0, b = s.size();
+            while (a < b && (unsigned char)s[a] <= 0x20) a++;
+            while (b > a && (unsigned char)s[b - 1] <= 0x20) b--;
+            std::string low = Emmet::toLowerStr(s.substr(a, b - a));
+            if (low == "__miupending" || low == "__miuupdate" || low == "__miu_root" ||
+                low == "miupreview" || low == "content" ||
+                low.compare(0, 5, "__miu") == 0 || low.compare(0, 4, "__ag") == 0) {
+                return true;
+            }
+            return false;
+        };
+        return checkOne(val) || checkOne(mdDecodeAttrEntitiesForTokenCheck(val));
     }
     inline bool mdSanitizeHtmlTag(const std::string& tagContent, std::string& outTag){
         outTag.clear();
@@ -466,15 +661,49 @@ inline std::string escapeHtmlBasic(std::string_view s) {
                 }
                 if (attrName == "href") {
                     if (!mdIsSafeUrl(attrVal, false)) return false;
-                    built += " href=\"" + mdCleanVerifiedUrlAttr(attrVal) + "\"";
+                    std::string cleanHref = mdCleanVerifiedUrlAttr(attrVal, false);
+                    size_t ta = 0, tb = attrVal.size();
+                    while (ta < tb && (unsigned char)attrVal[ta] <= 0x20) ta++;
+                    if (ta < tb && cleanHref.empty()) return false;
+                    built += " href=\"" + cleanHref + "\"";
                 } else if (attrName == "src") {
                     if (!mdIsSafeUrl(attrVal, true)) return false;
-                    built += " src=\"" + mdCleanVerifiedUrlAttr(attrVal) + "\"";
+                    std::string cleanSrc = mdCleanVerifiedUrlAttr(attrVal, true);
+                    size_t ta = 0, tb = attrVal.size();
+                    while (ta < tb && (unsigned char)attrVal[ta] <= 0x20) ta++;
+                    if (ta < tb && cleanSrc.empty()) return false;
+                    built += " src=\"" + cleanSrc + "\"";
+                } else if (attrName == "id" || attrName == "name") {
+                    if (mdIsReservedDomIdentifier(attrVal)) {
+                        built += " " + attrName + "=\"user-content-" + escapeHtmlBasic(mdDecodeAttrEntitiesForTokenCheck(attrVal)) + "\"";
+                    } else {
+                        built += " " + attrName + "=\"" + mdEscapeAttrPreservingEntities(attrVal) + "\"";
+                    }
+                } else if (attrName == "class") {
+                    std::string filteredClasses;
+                    size_t ci = 0, cn = attrVal.size();
+                    while (ci < cn) {
+                        while (ci < cn && (unsigned char)attrVal[ci] <= 0x20) ci++;
+                        if (ci >= cn) break;
+                        size_t cs = ci;
+                        while (ci < cn && (unsigned char)attrVal[ci] > 0x20) ci++;
+                        std::string tok = attrVal.substr(cs, ci - cs);
+                        std::string lowRaw = Emmet::toLowerStr(tok);
+                        std::string lowDec = Emmet::toLowerStr(mdDecodeAttrEntitiesForTokenCheck(tok));
+                        if (lowRaw.compare(0, 5, "__ag_") == 0 || lowDec.compare(0, 5, "__ag_") == 0) {
+                            continue;
+                        }
+                        if (!filteredClasses.empty()) filteredClasses += ' ';
+                        filteredClasses += tok;
+                    }
+                    if (!filteredClasses.empty()) {
+                        built += " class=\"" + mdEscapeAttrPreservingEntities(filteredClasses) + "\"";
+                    }
                 } else {
                     built += " " + attrName + "=\"" + mdEscapeAttrPreservingEntities(attrVal) + "\"";
                 }
             } else {
-                if (attrName == "href" || attrName == "src") return false;
+                if (attrName == "href" || attrName == "src" || attrName == "id" || attrName == "name") return false;
                 built += " " + attrName;
             }
         }
@@ -488,65 +717,144 @@ inline std::string escapeHtmlBasic(std::string_view s) {
     }
     struct MdInlineIndex {
         std::vector<size_t> matchingBracket;
-        std::vector<uint32_t> suffixCloseStar;
-        std::vector<uint32_t> suffixCloseUnder;
+        std::vector<uint32_t> suffixCloseStar[3];
+        std::vector<uint32_t> suffixCloseUnder[3];
         std::vector<uint32_t> suffixCloseTilde;
+        std::vector<size_t> tickRunsSmall[4];
+        std::unordered_map<size_t, std::vector<size_t>> tickRunsLarge;
+
+        size_t findClosingBacktick(size_t afterPos, size_t ticks) const {
+            const std::vector<size_t>* vec = nullptr;
+            if (ticks >= 1 && ticks <= 3) {
+                vec = &tickRunsSmall[ticks];
+            } else {
+                auto it = tickRunsLarge.find(ticks);
+                if (it != tickRunsLarge.end()) vec = &it->second;
+            }
+            if (!vec || vec->empty()) return std::string::npos;
+            auto lb = std::lower_bound(vec->begin(), vec->end(), afterPos);
+            return (lb != vec->end()) ? *lb : std::string::npos;
+        }
     };
     inline MdInlineIndex mdBuildInlineIndex(const std::string& s) {
         MdInlineIndex idx;
         const size_t n = s.size();
-        idx.matchingBracket.assign(n, std::string::npos);
-        std::vector<size_t> bStack;
-        size_t i = 0;
-        while (i < n) {
-            if (s[i] == '\\' && i + 1 < n) { i += 2; continue; }
-            if (s[i] == '`') {
-                size_t ticks = 0;
-                while (i + ticks < n && s[i + ticks] == '`') ticks++;
-                size_t j = i + ticks;
-                while (j < n) {
-                    if (s[j] == '`') {
-                        size_t cticks = 0;
-                        while (j + cticks < n && s[j + cticks] == '`') cticks++;
-                        if (cticks == ticks) { j += cticks; break; }
-                        j += cticks;
-                    } else j++;
-                }
-                i = j;
+        bool hasOpenBrk = false, hasBrkParen = false, hasCloseParen = false;
+        bool hasStar = false, hasUnder = false, hasTilde = false;
+        for (size_t p = 0; p < n; ) {
+            char c = s[p];
+            if (c == '`') {
+                size_t len = 1;
+                while (p + len < n && s[p + len] == '`') len++;
+                if (len <= 3) idx.tickRunsSmall[len].push_back(p);
+                else idx.tickRunsLarge[len].push_back(p);
+                p += len;
                 continue;
             }
-            if (s[i] == '[') {
-                bStack.push_back(i);
-            } else if (s[i] == ']' && !bStack.empty()) {
-                idx.matchingBracket[bStack.back()] = i;
-                bStack.pop_back();
-            }
-            i++;
+            if (c == '[') hasOpenBrk = true;
+            else if (c == ']' && p + 1 < n && s[p + 1] == '(') hasBrkParen = true;
+            else if (c == ')') hasCloseParen = true;
+            else if (c == '*') hasStar = true;
+            else if (c == '_') hasUnder = true;
+            else if (c == '~' && p + 1 < n && s[p + 1] == '~') hasTilde = true;
+            p++;
         }
-        idx.suffixCloseStar.assign(n + 1, 0);
-        idx.suffixCloseUnder.assign(n + 1, 0);
-        idx.suffixCloseTilde.assign(n + 1, 0);
-        for (size_t k = n; k > 0; ) {
-            size_t pos = k - 1;
-            idx.suffixCloseStar[pos] = idx.suffixCloseStar[k];
-            idx.suffixCloseUnder[pos] = idx.suffixCloseUnder[k];
-            idx.suffixCloseTilde[pos] = idx.suffixCloseTilde[k];
-            char ch = s[pos];
-            if (ch == '*' || ch == '_' || ch == '~') {
-                size_t runStart = pos;
-                while (runStart > 0 && s[runStart - 1] == ch) runStart--;
-                bool prevSpace = (runStart == 0) || mdIsSpace(s[runStart - 1]);
-                bool nextAlnum = (pos + 1 < n) && mdIsAlnum(s[pos + 1]);
-                bool canClose = !prevSpace && (ch != '_' || !nextAlnum);
-                uint32_t add = canClose ? 1u : 0u;
-                for (size_t m = pos + 1; m > runStart; --m) {
-                    idx.suffixCloseStar[m - 1] = idx.suffixCloseStar[pos + 1] + (ch == '*' ? add : 0u);
-                    idx.suffixCloseUnder[m - 1] = idx.suffixCloseUnder[pos + 1] + (ch == '_' ? add : 0u);
-                    idx.suffixCloseTilde[m - 1] = idx.suffixCloseTilde[pos + 1] + (ch == '~' ? add : 0u);
+        if (hasOpenBrk && hasBrkParen && hasCloseParen) {
+            idx.matchingBracket.assign(n, std::string::npos);
+            std::vector<size_t> bStack;
+            size_t i = 0;
+            while (i < n) {
+                if (s[i] == '\\' && i + 1 < n) { i += 2; continue; }
+                if (s[i] == '`') {
+                    size_t ticks = 0;
+                    while (i + ticks < n && s[i + ticks] == '`') ticks++;
+                    size_t found = idx.findClosingBacktick(i + ticks, ticks);
+                    i = (found != std::string::npos) ? (found + ticks) : (i + ticks);
+                    continue;
                 }
-                k = runStart;
-            } else {
-                k--;
+                if (s[i] == '$') {
+                if (i + 3 < n && s[i + 1] == '$') {
+                    size_t closeMath = s.find("$$", i + 2);
+                    if (closeMath != std::string::npos && closeMath > i + 2) {
+                        i = closeMath + 2;
+                        continue;
+                    }
+                } else if ((i == 0 || s[i - 1] != '\\') && (i + 1 < n && s[i + 1] != '$')) {
+                    size_t closeMath = i + 1;
+                    while (closeMath < n) {
+                        if (s[closeMath] == '$' && s[closeMath - 1] != '\\') break;
+                        if (s[closeMath] == '\n' || s[closeMath] == '\r') { closeMath = n; break; }
+                        closeMath++;
+                    }
+                    if (closeMath < n && closeMath > i + 1) {
+                        std::string tex = s.substr(i + 1, closeMath - (i + 1));
+                        if (Pele::detail::looksLikeInlineMath(tex)) {
+                            i = closeMath + 1;
+                            continue;
+                        }
+                    }
+                }
+            }
+            if (s[i] == '[') {
+                    bStack.push_back(i);
+                } else if (s[i] == ']' && !bStack.empty()) {
+                    idx.matchingBracket[bStack.back()] = i;
+                    bStack.pop_back();
+                }
+                i++;
+            }
+        }
+        if (hasStar || hasUnder || hasTilde) {
+            if (hasStar) {
+                for (int d = 0; d < 3; ++d) idx.suffixCloseStar[d].assign(n + 1, 0);
+            }
+            if (hasUnder) {
+                for (int d = 0; d < 3; ++d) idx.suffixCloseUnder[d].assign(n + 1, 0);
+            }
+            if (hasTilde) {
+                idx.suffixCloseTilde.assign(n + 1, 0);
+            }
+            for (size_t k = n; k > 0; ) {
+                size_t pos = k - 1;
+                if (hasStar) {
+                    for (int d = 0; d < 3; ++d) idx.suffixCloseStar[d][pos] = idx.suffixCloseStar[d][k];
+                }
+                if (hasUnder) {
+                    for (int d = 0; d < 3; ++d) idx.suffixCloseUnder[d][pos] = idx.suffixCloseUnder[d][k];
+                }
+                if (hasTilde) {
+                    idx.suffixCloseTilde[pos] = idx.suffixCloseTilde[k];
+                }
+                char ch = s[pos];
+                if (ch == '*' || ch == '_' || ch == '~') {
+                    size_t runStart = pos;
+                    while (runStart > 0 && s[runStart - 1] == ch) runStart--;
+                    bool prevSpace = (runStart == 0) || mdIsSpace(s[runStart - 1]);
+                    bool nextAlnum = (pos + 1 < n) && mdIsAlnum(s[pos + 1]);
+                    bool canClose = !prevSpace && (ch != '_' || !nextAlnum);
+                    for (size_t m = pos + 1; m > runStart; --m) {
+                        size_t remRun = pos - (m - 1) + 1;
+                        if (hasStar) {
+                            for (int d = 0; d < 3; ++d) {
+                                uint32_t addStar = (ch == '*' && canClose && remRun >= (size_t)(d + 1)) ? 1u : 0u;
+                                idx.suffixCloseStar[d][m - 1] = idx.suffixCloseStar[d][pos + 1] + addStar;
+                            }
+                        }
+                        if (hasUnder) {
+                            for (int d = 0; d < 3; ++d) {
+                                uint32_t addUnder = (ch == '_' && canClose && remRun >= (size_t)(d + 1)) ? 1u : 0u;
+                                idx.suffixCloseUnder[d][m - 1] = idx.suffixCloseUnder[d][pos + 1] + addUnder;
+                            }
+                        }
+                        if (hasTilde) {
+                            uint32_t addTilde = (ch == '~' && canClose && (remRun == 2 || remRun == 3)) ? 1u : 0u;
+                            idx.suffixCloseTilde[m - 1] = idx.suffixCloseTilde[pos + 1] + addTilde;
+                        }
+                    }
+                    k = runStart;
+                } else {
+                    k--;
+                }
             }
         }
         return idx;
@@ -555,11 +863,11 @@ inline std::string escapeHtmlBasic(std::string_view s) {
         size_t n = s.size();
         if (start >= n) return std::string::npos;
         const std::vector<uint32_t>* sufVec = nullptr;
-        if (idx) {
-            if (ch == '*') sufVec = &idx->suffixCloseStar;
-            else if (ch == '_') sufVec = &idx->suffixCloseUnder;
+        if (idx && dlen >= 1 && dlen <= 3) {
+            if (ch == '*') sufVec = &idx->suffixCloseStar[dlen - 1];
+            else if (ch == '_') sufVec = &idx->suffixCloseUnder[dlen - 1];
             else if (ch == '~') sufVec = &idx->suffixCloseTilde;
-            if (sufVec && (*sufVec)[start] == 0) return std::string::npos;
+            if (sufVec && (sufVec->empty() || (*sufVec)[start] == 0)) return std::string::npos;
         }
         size_t i = start;
         int innerSingle = 0;
@@ -574,28 +882,62 @@ inline std::string escapeHtmlBasic(std::string_view s) {
             if (s[i] == '`') {
                 size_t ticks = 0;
                 while (i + ticks < n && s[i + ticks] == '`') ticks++;
-                size_t j = i + ticks;
-                while (j < n) {
-                    if (s[j] == '`') {
-                        size_t cticks = 0;
-                        while (j + cticks < n && s[j + cticks] == '`') cticks++;
-                        if (cticks == ticks) { j += cticks; break; }
-                        j += cticks;
-                    } else j++;
+                if (idx) {
+                    size_t found = idx->findClosingBacktick(i + ticks, ticks);
+                    i = (found != std::string::npos) ? (found + ticks) : (i + ticks);
+                } else {
+                    size_t j = i + ticks;
+                    size_t found = std::string::npos;
+                    while (j < n) {
+                        if (s[j] == '`') {
+                            size_t cticks = 0;
+                            while (j + cticks < n && s[j + cticks] == '`') cticks++;
+                            if (cticks == ticks) { found = j; break; }
+                            j += cticks;
+                        } else j++;
+                    }
+                    i = (found != std::string::npos) ? (found + ticks) : (i + ticks);
                 }
-                i = j;
                 continue;
             }
+            if (s[i] == '$') {
+                if (i + 3 < n && s[i + 1] == '$') {
+                    size_t closeMath = s.find("$$", i + 2);
+                    if (closeMath != std::string::npos && closeMath > i + 2) {
+                        i = closeMath + 2;
+                        continue;
+                    }
+                } else if ((i == 0 || s[i - 1] != '\\') && (i + 1 < n && s[i + 1] != '$')) {
+                    size_t closeMath = i + 1;
+                    while (closeMath < n) {
+                        if (s[closeMath] == '$' && s[closeMath - 1] != '\\') break;
+                        if (s[closeMath] == '\n' || s[closeMath] == '\r') { closeMath = n; break; }
+                        closeMath++;
+                    }
+                    if (closeMath < n && closeMath > i + 1) {
+                        std::string tex = s.substr(i + 1, closeMath - (i + 1));
+                        if (Pele::detail::looksLikeInlineMath(tex)) {
+                            i = closeMath + 1;
+                            continue;
+                        }
+                    }
+                }
+            }
             if (s[i] == '[') {
-                size_t rb = (idx && i < idx->matchingBracket.size()) ? idx->matchingBracket[i] : mdFindMatchingBracket(s, i);
+                size_t rb = idx ? ((i < idx->matchingBracket.size()) ? idx->matchingBracket[i] : std::string::npos) : mdFindMatchingBracket(s, i);
                 if (rb != std::string::npos && rb + 1 < n && s[rb + 1] == '(') {
                     size_t cp = 0; std::string u, t;
                     if (mdParseLinkDestAndTitle(s, rb + 1, cp, u, t)) { i = cp + 1; continue; }
                 }
             }
             if (s[i] == '<') {
-                size_t gt = s.find('>', i + 1);
-                if (gt != std::string::npos && gt - i <= 256) {
+                size_t gt = std::string::npos;
+                const size_t gtLimit = (n - i > 257) ? (i + 257) : n;
+                for (size_t k = i + 1; k < gtLimit; ++k) {
+                    if (s[k] == '\r' || s[k] == '\n') break;
+                    if (s[k] == '>') { gt = k; break; }
+                }
+                if (gt != std::string::npos && gt > i + 1) {
                     std::string inner = s.substr(i + 1, gt - i - 1);
                     if (inner.find("http://") == 0 || inner.find("https://") == 0 || mdIsSafeHtmlTag(inner)) {
                         i = gt + 1; continue;
@@ -656,7 +998,7 @@ inline std::string escapeHtmlBasic(std::string_view s) {
         std::string mml;
     };
     inline const std::string& cachedLatexToMathML(const std::string& tex, bool displayMode) {
-        static MathCacheSlot s_cache[512];
+        thread_local MathCacheSlot s_cache[512];
         uint64_t h = fnv1a64(tex.data(), tex.size(), displayMode ? 0x9E3779B97F4A7C15ULL : 14695981039346656037ULL);
         if (h == 0) h = 1;
         MathCacheSlot& slot = s_cache[h & 511];
@@ -679,7 +1021,7 @@ inline std::string escapeHtmlBasic(std::string_view s) {
         std::string svg;
     };
     inline const std::string& cachedMermaidRenderSvg(const std::string& code) {
-        static MermaidCacheSlot s_cache[128];
+        thread_local MermaidCacheSlot s_cache[128];
         uint64_t h = fnv1a64(code.data(), code.size());
         if (h == 0) h = 1;
         MermaidCacheSlot& slot = s_cache[h & 127];
@@ -706,6 +1048,12 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
     MdInlineIndex inlineIdx;
     if (useIdx) inlineIdx = mdBuildInlineIndex(s);
     const MdInlineIndex* pIdx = useIdx ? &inlineIdx : nullptr;
+    bool noMoreDoubleDollar = false;
+    bool noMoreHtmlCommentEnd = false;
+    bool noMoreGt = false;
+    size_t nextGtPos = 0;
+    bool noMoreSemi = false;
+    size_t nextSemiPos = 0;
     while (i < n) {
         if (s[i] == '\\' && i + 1 < n) {
             char nx = s[i + 1];
@@ -728,16 +1076,20 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
         if (s[i] == '`') {
             size_t ticks = 0;
             while (i + ticks < n && s[i + ticks] == '`') ticks++;
-            size_t j = i + ticks;
             size_t found = std::string::npos;
-            while (j < n) {
-                if (s[j] == '`') {
-                    size_t cticks = 0;
-                    while (j + cticks < n && s[j + cticks] == '`') cticks++;
-                    if (cticks == ticks) { found = j; break; }
-                    j += cticks;
-                } else {
-                    j++;
+            if (pIdx) {
+                found = pIdx->findClosingBacktick(i + ticks, ticks);
+            } else {
+                size_t j = i + ticks;
+                while (j < n) {
+                    if (s[j] == '`') {
+                        size_t cticks = 0;
+                        while (j + cticks < n && s[j + cticks] == '`') cticks++;
+                        if (cticks == ticks) { found = j; break; }
+                        j += cticks;
+                    } else {
+                        j++;
+                    }
                 }
             }
             if (found != std::string::npos) {
@@ -757,9 +1109,11 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
                 continue;
             }
         }
-        if (i + 3 < n && s[i] == '$' && s[i + 1] == '$') {
+        if (!noMoreDoubleDollar && i + 3 < n && s[i] == '$' && s[i + 1] == '$') {
             size_t closeMath = s.find("$$", i + 2);
-            if (closeMath != std::string::npos && closeMath > i + 2) {
+            if (closeMath == std::string::npos) {
+                noMoreDoubleDollar = true;
+            } else if (closeMath > i + 2) {
                 std::string tex = s.substr(i + 2, closeMath - (i + 2));
                 const std::string& mml = cachedLatexToMathML(tex, true);
                 if (!mml.empty()) {
@@ -789,13 +1143,13 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
             }
         }
         if (s[i] == '!' && i + 1 < n && s[i + 1] == '[') {
-            size_t rb = pIdx ? pIdx->matchingBracket[i + 1] : mdFindMatchingBracket(s, i + 1);
+            size_t rb = pIdx ? ((i + 1 < pIdx->matchingBracket.size()) ? pIdx->matchingBracket[i + 1] : std::string::npos) : mdFindMatchingBracket(s, i + 1);
             if (rb != std::string::npos && rb + 1 < n && s[rb + 1] == '(') {
                 size_t cp = 0; std::string url, title;
                 if (mdParseLinkDestAndTitle(s, rb + 1, cp, url, title)) {
-                    if (!mdIsSafeUrl(url, true)) url.clear();
+                    std::string cleanSrc = mdIsSafeUrl(url, true) ? mdCleanVerifiedUrlAttr(url, true) : std::string();
                     std::string alt = mdUnescapeString(s.substr(i + 2, rb - (i + 2)));
-                    r += "<img src=\""; r += escapeHtmlBasic(url);
+                    r += "<img src=\""; r += cleanSrc;
                     r += "\" alt=\""; r += escapeHtmlBasic(alt); r += "\"";
                     if (!title.empty()) { r += " title=\""; r += escapeHtmlBasic(title); r += "\""; }
                     r += " style=\"max-width:100%\">";
@@ -805,12 +1159,22 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
             }
         }
         if (s[i] == '[') {
-            size_t rb = pIdx ? pIdx->matchingBracket[i] : mdFindMatchingBracket(s, i);
+            size_t rb = pIdx ? ((i < pIdx->matchingBracket.size()) ? pIdx->matchingBracket[i] : std::string::npos) : mdFindMatchingBracket(s, i);
             if (rb != std::string::npos && rb + 1 < n && s[rb + 1] == '(') {
                 size_t cp = 0; std::string url, title;
                 if (mdParseLinkDestAndTitle(s, rb + 1, cp, url, title)) {
-                    if (!mdIsSafeUrl(url, false)) url = "#";
-                    r += "<a href=\""; r += escapeHtmlBasic(url); r += "\"";
+                    std::string cleanHref = "#";
+                    if (mdIsSafeUrl(url, false)) {
+                        size_t ua = 0, ub = url.size();
+                        while (ua < ub && (unsigned char)url[ua] <= 0x20) ua++;
+                        if (ua >= ub) {
+                            cleanHref.clear();
+                        } else {
+                            std::string cleaned = mdCleanVerifiedUrlAttr(url, false);
+                            if (!cleaned.empty()) cleanHref = std::move(cleaned);
+                        }
+                    }
+                    r += "<a href=\""; r += cleanHref; r += "\"";
                     if (!title.empty()) { r += " title=\""; r += escapeHtmlBasic(title); r += "\""; }
                     r += ">"; r += formatMarkdownInline(s.substr(i + 1, rb - (i + 1)), depth + 1); r += "</a>";
                     i = cp + 1;
@@ -819,29 +1183,70 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
             }
         }
         if (s[i] == '<') {
-            if (s.compare(i, 4, "<!--") == 0) {
+            if (!noMoreHtmlCommentEnd && i + 4 <= n && s[i + 1] == '!' && s[i + 2] == '-' && s[i + 3] == '-') {
                 size_t ce = s.find("-->", i + 4);
                 if (ce != std::string::npos) { i = ce + 3; continue; }
+                noMoreHtmlCommentEnd = true;
             }
-            size_t gt = s.find('>', i + 1);
-            if (gt != std::string::npos && gt > i + 1 && gt - i <= 512 && s.find_first_of("\r\n", i + 1) > gt) {
+            size_t gt = std::string::npos;
+            if (!noMoreGt && i + 2 < n && !mdIsSpace(s[i + 1]) && s[i + 1] != '<' && s[i + 1] != '>') {
+                if (nextGtPos <= i) {
+                    size_t f = s.find('>', i + 1);
+                    if (f == std::string::npos) noMoreGt = true;
+                    else nextGtPos = f;
+                }
+                if (!noMoreGt && nextGtPos > i + 1 && nextGtPos - i <= 513) {
+                    const char* spanPtr = s.data() + i + 1;
+                    const size_t spanLen = nextGtPos - (i + 1);
+                    if (std::memchr(spanPtr, '\n', spanLen) == nullptr &&
+                        std::memchr(spanPtr, '\r', spanLen) == nullptr) {
+                        gt = nextGtPos;
+                    }
+                }
+            }
+            if (gt != std::string::npos && gt > i + 1) {
                 std::string inner = s.substr(i + 1, gt - i - 1);
-                if ((inner.compare(0, 7, "http://") == 0 || inner.compare(0, 8, "https://") == 0 || inner.compare(0, 6, "ftp://") == 0) && inner.find(' ') == std::string::npos) {
-                    r += "<a href=\""; r += escapeHtmlBasic(inner); r += "\">"; r += escapeHtmlBasic(inner); r += "</a>";
-                    i = gt + 1;
-                    continue;
+                bool hasCtrlOrSpace = false;
+                for (unsigned char ic : inner) {
+                    if (ic <= 0x20 || ic == 0x7F) { hasCtrlOrSpace = true; break; }
                 }
-                if (inner.compare(0, 7, "mailto:") == 0 && inner.find(' ') == std::string::npos) {
-                    std::string addr = inner.substr(7);
-                    r += "<a href=\"mailto:"; r += escapeHtmlBasic(addr); r += "\">"; r += escapeHtmlBasic(addr); r += "</a>";
-                    i = gt + 1;
-                    continue;
-                }
-                size_t atPos = inner.find('@');
-                if (atPos != std::string::npos && atPos > 0 && atPos + 1 < inner.size() && inner.find(' ') == std::string::npos && inner.find('/') == std::string::npos && inner.find('.', atPos) != std::string::npos) {
-                    r += "<a href=\"mailto:"; r += escapeHtmlBasic(inner); r += "\">"; r += escapeHtmlBasic(inner); r += "</a>";
-                    i = gt + 1;
-                    continue;
+                if (!hasCtrlOrSpace) {
+                    std::string innerLow = Emmet::toLowerStr(inner.substr(0, std::min<size_t>(inner.size(), 10)));
+                    if (innerLow.compare(0, 7, "http://") == 0 || innerLow.compare(0, 8, "https://") == 0) {
+                        if (mdIsSafeUrl(inner, false)) {
+                            std::string cleanHref = mdCleanVerifiedUrlAttr(inner, false);
+                            if (!cleanHref.empty()) {
+                                r += "<a href=\""; r += cleanHref; r += "\">"; r += escapeHtmlBasic(inner); r += "</a>";
+                                i = gt + 1;
+                                continue;
+                            }
+                        }
+                    } else if (innerLow.compare(0, 7, "mailto:") == 0 && inner.size() > 7) {
+                        if (mdIsSafeUrl(inner, false)) {
+                            std::string cleanHref = mdCleanVerifiedUrlAttr(inner, false);
+                            if (!cleanHref.empty()) {
+                                std::string addr = inner.substr(7);
+                                r += "<a href=\""; r += cleanHref; r += "\">"; r += escapeHtmlBasic(addr); r += "</a>";
+                                i = gt + 1;
+                                continue;
+                            }
+                        }
+                    } else {
+                        size_t atPos = inner.find('@');
+                        if (atPos != std::string::npos && atPos > 0 && atPos + 1 < inner.size() &&
+                            inner.find(':') == std::string::npos && inner.find('/') == std::string::npos &&
+                            inner.find('\\') == std::string::npos && inner.find('.', atPos) != std::string::npos) {
+                            std::string mailUrl = "mailto:" + inner;
+                            if (mdIsSafeUrl(mailUrl, false)) {
+                                std::string cleanHref = mdCleanVerifiedUrlAttr(mailUrl, false);
+                                if (!cleanHref.empty()) {
+                                    r += "<a href=\""; r += cleanHref; r += "\">"; r += escapeHtmlBasic(inner); r += "</a>";
+                                    i = gt + 1;
+                                    continue;
+                                }
+                            }
+                        }
+                    }
                 }
                 std::string sanitizedTag;
                 if (mdSanitizeHtmlTag(inner, sanitizedTag)) {
@@ -851,31 +1256,38 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
                 }
             }
         }
-        if ((s.compare(i, 8, "https://") == 0 || s.compare(i, 7, "http://") == 0) &&
+        if (s[i] == 'h' && (s.compare(i, 8, "https://") == 0 || s.compare(i, 7, "http://") == 0) &&
             (i == 0 || mdIsSpace(s[i - 1]) || s[i - 1] == '(' || s[i - 1] == '[' || s[i - 1] == '*' || s[i - 1] == '_' || s[i - 1] == '~')) {
             size_t uEnd = i;
-            while (uEnd < n && !mdIsSpace(s[uEnd]) && s[uEnd] != '<' && s[uEnd] != '>' && s[uEnd] != '"') uEnd++;
+            size_t openParens = 0, closeParens = 0;
+            while (uEnd < n && !mdIsSpace(s[uEnd]) && (unsigned char)s[uEnd] > 0x20 && (unsigned char)s[uEnd] != 0x7F && s[uEnd] != '<' && s[uEnd] != '>' && s[uEnd] != '"') {
+                if (s[uEnd] == '(') openParens++;
+                else if (s[uEnd] == ')') closeParens++;
+                uEnd++;
+            }
             while (uEnd > i) {
                 char last = s[uEnd - 1];
                 if (last == '.' || last == ',' || last == ';' || last == ':' || last == '!' || last == '?' || last == '\'') {
                     uEnd--;
                 } else if (last == ')') {
-                    int pCount = 0;
-                    for (size_t k = i; k < uEnd; ++k) {
-                        if (s[k] == '(') pCount++;
-                        else if (s[k] == ')') pCount--;
+                    if (closeParens > openParens) {
+                        uEnd--;
+                        closeParens--;
+                    } else {
+                        break;
                     }
-                    if (pCount < 0) uEnd--;
-                    else break;
                 } else {
                     break;
                 }
             }
             if (uEnd > i + 8) {
                 std::string url = s.substr(i, uEnd - i);
-                r += "<a href=\""; r += escapeHtmlBasic(url); r += "\">"; r += escapeHtmlBasic(url); r += "</a>";
-                i = uEnd;
-                continue;
+                std::string cleanHref = mdCleanVerifiedUrlAttr(url, false);
+                if (!cleanHref.empty()) {
+                    r += "<a href=\""; r += cleanHref; r += "\">"; r += escapeHtmlBasic(url); r += "</a>";
+                    i = uEnd;
+                    continue;
+                }
             }
         }
         if (s[i] == '*' || s[i] == '_' || s[i] == '~') {
@@ -927,7 +1339,17 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
             continue;
         }
         if (s[i] == '&') {
-            size_t semi = s.find(';', i + 1);
+            size_t semi = std::string::npos;
+            if (!noMoreSemi && i + 2 < n && (s[i + 1] == '#' || mdIsAlnum(s[i + 1]))) {
+                if (nextSemiPos <= i) {
+                    size_t f = s.find(';', i + 1);
+                    if (f == std::string::npos) noMoreSemi = true;
+                    else nextSemiPos = f;
+                }
+                if (!noMoreSemi && nextSemiPos > i + 2 && nextSemiPos - i <= 32) {
+                    semi = nextSemiPos;
+                }
+            }
             if (semi != std::string::npos && semi > i + 2 && semi - i <= 32) {
                 bool validEnt = true;
                 if (s[i + 1] == '#') {
@@ -960,10 +1382,23 @@ inline std::string formatMarkdownInline(const std::string& s, int depth) {
             i++;
             continue;
         }
-        if (s[i] == '<') r += "&lt;";
-        else if (s[i] == '>') r += "&gt;";
-        else r += s[i];
+        if (s[i] == '<') { r += "&lt;"; i++; continue; }
+        if (s[i] == '>') { r += "&gt;"; i++; continue; }
+        size_t plainStart = i;
         i++;
+        while (i < n) {
+            char pc = s[i];
+            if (pc == '\\' || pc == '`' || pc == '$' || pc == '!' || pc == '[' ||
+                pc == '<' || pc == '>' || pc == 'h' || pc == '*' || pc == '_' ||
+                pc == '&') {
+                break;
+            }
+            if (pc == '~' && i + 1 < n && s[i + 1] == '~') {
+                break;
+            }
+            i++;
+        }
+        r.append(s, plainStart, i - plainStart);
     }
     return r;
 }
@@ -1000,31 +1435,99 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         }
         std::vector<std::string> cells;
         size_t start = 0, i = 0, n = t.size();
+        const bool useCellTicks = (n >= 64 && t.find('`') != std::string_view::npos);
+        MdInlineIndex cellTickIdx;
+        if (useCellTicks) {
+            for (size_t p = 0; p < n; ) {
+                if (t[p] == '`') {
+                    size_t len = 1;
+                    while (p + len < n && t[p + len] == '`') len++;
+                    if (len <= 3) cellTickIdx.tickRunsSmall[len].push_back(p);
+                    else cellTickIdx.tickRunsLarge[len].push_back(p);
+                    p += len;
+                } else {
+                    p++;
+                }
+            }
+        }
         while (i < n) {
             if (t[i] == '\\' && i + 1 < n) { i += 2; continue; }
             if (t[i] == '`') {
                 size_t ticks = 0;
                 while (i + ticks < n && t[i + ticks] == '`') ticks++;
-                size_t j = i + ticks;
-                while (j < n) {
-                    if (t[j] == '`') {
-                        size_t cticks = 0;
-                        while (j + cticks < n && t[j + cticks] == '`') cticks++;
-                        if (cticks == ticks) { j += cticks; break; }
-                        j += cticks;
-                    } else j++;
+                if (useCellTicks) {
+                    size_t found = cellTickIdx.findClosingBacktick(i + ticks, ticks);
+                    i = (found != std::string::npos) ? (found + ticks) : (i + ticks);
+                } else {
+                    size_t j = i + ticks;
+                    size_t found = std::string::npos;
+                    while (j < n) {
+                        if (t[j] == '`') {
+                            size_t cticks = 0;
+                            while (j + cticks < n && t[j + cticks] == '`') cticks++;
+                            if (cticks == ticks) { found = j; break; }
+                            j += cticks;
+                        } else j++;
+                    }
+                    i = (found != std::string::npos) ? (found + ticks) : (i + ticks);
                 }
-                i = j;
                 continue;
             }
             if (t[i] == '|') {
-                std::string_view c = trimSv(t.substr(start, i - start));
-                std::string u; u.reserve(c.size());
-                for (size_t k = 0; k < c.size(); ++k) {
-                    if (c[k] == '\\' && k + 1 < c.size() && c[k + 1] == '|') { u += '|'; k++; }
-                    else u += c[k];
-                }
-                cells.push_back(std::move(u));
+                auto unescapeCellPipes = [](std::string_view c) -> std::string {
+                    std::string u;
+                    u.reserve(c.size());
+                    const size_t cn = c.size();
+                    for (size_t k = 0; k < cn; ++k) {
+                        if (c[k] == '`') {
+                            size_t ticks = 0;
+                            while (k + ticks < cn && c[k + ticks] == '`') ticks++;
+                            size_t j = k + ticks;
+                            size_t found = std::string::npos;
+                            while (j < cn) {
+                                if (c[j] == '`') {
+                                    size_t ct = 0;
+                                    while (j + ct < cn && c[j + ct] == '`') ct++;
+                                    if (ct == ticks) { found = j; break; }
+                                    j += ct;
+                                } else j++;
+                            }
+                            size_t endIdx = (found != std::string::npos) ? (found + ticks) : (k + ticks);
+                            u.append(c.data() + k, endIdx - k);
+                            k = endIdx - 1;
+                            continue;
+                        }
+                        if (c[k] == '$' && (k == 0 || c[k - 1] != '\\')) {
+                            if (k + 3 < cn && c[k + 1] == '$') {
+                                size_t cm = c.find("$$", k + 2);
+                                if (cm != std::string_view::npos && cm > k + 2) {
+                                    u.append(c.data() + k, (cm + 2) - k);
+                                    k = cm + 1;
+                                    continue;
+                                }
+                            } else if (k + 1 < cn && c[k + 1] != '$') {
+                                size_t cm = k + 1;
+                                while (cm < cn) {
+                                    if (c[cm] == '$' && c[cm - 1] != '\\') break;
+                                    cm++;
+                                }
+                                if (cm < cn && cm > k + 1) {
+                                    u.append(c.data() + k, (cm + 1) - k);
+                                    k = cm;
+                                    continue;
+                                }
+                            }
+                        }
+                        if (c[k] == '\\' && k + 1 < cn && c[k + 1] == '|') {
+                            u += '|';
+                            k++;
+                        } else {
+                            u += c[k];
+                        }
+                    }
+                    return u;
+                };
+                cells.push_back(unescapeCellPipes(trimSv(t.substr(start, i - start))));
                 start = i + 1;
             }
             i++;
@@ -1032,8 +1535,48 @@ inline std::string convertMarkdownToHtml(const std::string& md, int depth) {
         {
             std::string_view c = trimSv(t.substr(start));
             std::string u; u.reserve(c.size());
-            for (size_t k = 0; k < c.size(); ++k) {
-                if (c[k] == '\\' && k + 1 < c.size() && c[k + 1] == '|') { u += '|'; k++; }
+            const size_t cn = c.size();
+            for (size_t k = 0; k < cn; ++k) {
+                if (c[k] == '`') {
+                    size_t ticks = 0;
+                    while (k + ticks < cn && c[k + ticks] == '`') ticks++;
+                    size_t j = k + ticks;
+                    size_t found = std::string::npos;
+                    while (j < cn) {
+                        if (c[j] == '`') {
+                            size_t ct = 0;
+                            while (j + ct < cn && c[j + ct] == '`') ct++;
+                            if (ct == ticks) { found = j; break; }
+                            j += ct;
+                        } else j++;
+                    }
+                    size_t endIdx = (found != std::string::npos) ? (found + ticks) : (k + ticks);
+                    u.append(c.data() + k, endIdx - k);
+                    k = endIdx - 1;
+                    continue;
+                }
+                if (c[k] == '$' && (k == 0 || c[k - 1] != '\\')) {
+                    if (k + 3 < cn && c[k + 1] == '$') {
+                        size_t cm = c.find("$$", k + 2);
+                        if (cm != std::string_view::npos && cm > k + 2) {
+                            u.append(c.data() + k, (cm + 2) - k);
+                            k = cm + 1;
+                            continue;
+                        }
+                    } else if (k + 1 < cn && c[k + 1] != '$') {
+                        size_t cm = k + 1;
+                        while (cm < cn) {
+                            if (c[cm] == '$' && c[cm - 1] != '\\') break;
+                            cm++;
+                        }
+                        if (cm < cn && cm > k + 1) {
+                            u.append(c.data() + k, (cm + 1) - k);
+                            k = cm;
+                            continue;
+                        }
+                    }
+                }
+                if (c[k] == '\\' && k + 1 < cn && c[k + 1] == '|') { u += '|'; k++; }
                 else u += c[k];
             }
             cells.push_back(std::move(u));
@@ -1800,38 +2343,51 @@ inline const char* getPreviewScrollbarJs() {
 
 
 inline const std::string& getPreviewCspNonce() {
-    static std::string s_nonce;
-    if (s_nonce.empty()) {
+    static const std::string s_nonce = []() -> std::string {
         std::random_device rd;
         uint64_t a = ((uint64_t)rd() << 32) ^ (uint64_t)rd() ^ (uint64_t)std::chrono::high_resolution_clock::now().time_since_epoch().count();
-        uint64_t b = ((uint64_t)rd() << 32) ^ (uint64_t)rd() ^ (uintptr_t)&s_nonce ^ 0x9E3779B97F4A7C15ULL;
+        uint64_t b = ((uint64_t)rd() << 32) ^ (uint64_t)rd() ^ (uintptr_t)&rd ^ 0x9E3779B97F4A7C15ULL;
         a ^= a >> 30; a *= 0xBF58476D1CE4E5B9ULL; a ^= a >> 27; a *= 0x94D049BB133111EBULL; a ^= a >> 31;
         b ^= b >> 30; b *= 0xBF58476D1CE4E5B9ULL; b *= 0x94D049BB133111EBULL; b ^= b >> 31;
         char hex[36] = {};
         std::snprintf(hex, sizeof(hex), "%08X%08X%08X%08X", (uint32_t)(a >> 32), (uint32_t)a, (uint32_t)(b >> 32), (uint32_t)b);
-        s_nonce = hex;
-    }
+        return std::string(hex);
+    }();
     return s_nonce;
 }
 
 inline std::string buildDomUpdateJs(const std::string& bodyContent, bool isDarkMode) {
+    static const char kHex[] = "0123456789abcdef";
     std::string js;
-    js.reserve(bodyContent.size() + 128);
-    js += "(function(h,d){window.__miuUpdate?window.__miuUpdate(h,d):(window.__miuPending={h:h,dk:d});})(\"";
-    for (size_t i = 0; i < bodyContent.size(); ++i) {
+    js.reserve(bodyContent.size() + 144);
+    js += "(function(h,d){(typeof window.__miuUpdate==='function')?window.__miuUpdate(h,d):(window.__miuPending={h:h,dk:d});})(\"";
+    size_t runStart = 0;
+    const size_t n = bodyContent.size();
+    for (size_t i = 0; i < n; ++i) {
         unsigned char c = (unsigned char)bodyContent[i];
+        if (c >= 0x20 && c != '\\' && c != '"' && c != 0xE2) {
+            continue;
+        }
+        if (c == 0xE2 && !(i + 2 < n && (unsigned char)bodyContent[i + 1] == 0x80 &&
+            ((unsigned char)bodyContent[i + 2] == 0xA8 || (unsigned char)bodyContent[i + 2] == 0xA9))) {
+            continue;
+        }
+        if (i > runStart) js.append(bodyContent, runStart, i - runStart);
         if (c == '\\') js += "\\\\";
         else if (c == '"') js += "\\\"";
         else if (c == '\n') js += "\\n";
         else if (c == '\r') js += "\\r";
-        else if (c == 0xE2 && i + 2 < bodyContent.size() && (unsigned char)bodyContent[i + 1] == 0x80 &&
-                 ((unsigned char)bodyContent[i + 2] == 0xA8 || (unsigned char)bodyContent[i + 2] == 0xA9)) {
+        else if (c == '\t') js += "\\t";
+        else if (c < 0x20) {
+            char esc[4] = { '\\', 'x', kHex[(c >> 4) & 0xF], kHex[c & 0xF] };
+            js.append(esc, 4);
+        } else {
             js += ((unsigned char)bodyContent[i + 2] == 0xA8) ? "\\u2028" : "\\u2029";
             i += 2;
-        } else {
-            js += (char)c;
         }
+        runStart = i + 1;
     }
+    if (runStart < n) js.append(bodyContent, runStart, n - runStart);
     js += isDarkMode ? "\",true);" : "\",false);";
     return js;
 }
@@ -1844,22 +2400,267 @@ struct PreviewRenderResult {
     std::string domUpdateJs;
 };
 
-inline bool looksLikeStandaloneHtmlOrSvg(const std::string& rawInput) {
-    size_t p = 0;
-    const size_t n = rawInput.size();
-    if (n >= 3 && (unsigned char)rawInput[0] == 0xEF && (unsigned char)rawInput[1] == 0xBB && (unsigned char)rawInput[2] == 0xBF) {
-        p = 3;
+namespace detail {
+    inline bool isHtmlSpace(char c) noexcept {
+        return c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f';
     }
-    while (p < n && (unsigned char)rawInput[p] <= 0x20) p++;
-    if (p >= n || rawInput[p] != '<') return false;
-    std::string head = Emmet::toLowerStr(rawInput.substr(p, std::min<size_t>(n - p, 512)));
-    if (head.compare(0, 14, "<!doctype html") == 0 || head.compare(0, 5, "<html") == 0 ||
-        head.compare(0, 5, "<head") == 0 || head.compare(0, 5, "<body") == 0 ||
-        head.compare(0, 4, "<svg") == 0) {
+    inline char asciiLowerChar(char c) noexcept {
+        return (c >= 'A' && c <= 'Z') ? (char)(c + 32) : c;
+    }
+    inline bool matchAsciiCI(const std::string& s, size_t pos, const char* lit, size_t litLen) noexcept {
+        if (pos + litLen > s.size()) return false;
+        for (size_t i = 0; i < litLen; ++i) {
+            if (asciiLowerChar(s[pos + i]) != lit[i]) return false;
+        }
         return true;
     }
-    if (head.compare(0, 5, "<?xml") == 0 || head.compare(0, 4, "<!--") == 0) {
-        return head.find("<html") != std::string::npos || head.find("<!doctype html") != std::string::npos || head.find("<svg") != std::string::npos;
+    inline bool isTagBoundaryChar(const std::string& s, size_t pos) noexcept {
+        if (pos >= s.size()) return true;
+        char c = s[pos];
+        return isHtmlSpace(c) || c == '/' || c == '>';
+    }
+    inline bool skipHtmlCommentAt(const std::string& s, size_t p, size_t& outAfter) noexcept {
+        const size_t n = s.size();
+        if (p + 4 > n || s.compare(p, 4, "<!--") != 0) return false;
+        size_t k = p + 4;
+        if (k < n && s[k] == '>') { outAfter = k + 1; return true; }
+        if (k + 1 < n && s[k] == '-' && s[k + 1] == '>') { outAfter = k + 2; return true; }
+        while (k < n) {
+            if (k + 2 < n && s[k] == '-' && s[k + 1] == '-' && s[k + 2] == '>') {
+                outAfter = k + 3;
+                return true;
+            }
+            if (k + 3 < n && s[k] == '-' && s[k + 1] == '-' && s[k + 2] == '!' && s[k + 3] == '>') {
+                outAfter = k + 4;
+                return true;
+            }
+            k++;
+        }
+        return false;
+    }
+    inline void skipHtmlTrivia(const std::string& s, size_t& p) noexcept {
+        const size_t n = s.size();
+        while (p < n) {
+            if (isHtmlSpace(s[p])) {
+                p++;
+                continue;
+            }
+            if (p + 4 <= n && s.compare(p, 4, "<!--") == 0) {
+                size_t after = p;
+                if (!skipHtmlCommentAt(s, p, after)) break;
+                p = after;
+                continue;
+            }
+            if (p + 2 <= n && s[p] == '<' && s[p + 1] == '?') {
+                size_t gt = s.find('>', p + 2);
+                if (gt == std::string::npos) break;
+                p = gt + 1;
+                continue;
+            }
+            break;
+        }
+    }
+    inline bool scanHtmlStartTagEnd(const std::string& s, size_t afterTagName, size_t& outAfterGt, bool& outSelfClosing) noexcept {
+        const size_t n = s.size();
+        size_t k = afterTagName;
+        outSelfClosing = false;
+        while (k < n) {
+            while (k < n && isHtmlSpace(s[k])) k++;
+            if (k >= n) return false;
+            if (s[k] == '>') {
+                outAfterGt = k + 1;
+                outSelfClosing = false;
+                return true;
+            }
+            if (s[k] == '/') {
+                k++;
+                if (k >= n) return false;
+                if (s[k] == '>') {
+                    outAfterGt = k + 1;
+                    outSelfClosing = true;
+                    return true;
+                }
+                continue;
+            }
+            // Attribute name (first char consumed even if '=')
+            k++;
+            while (k < n && !isHtmlSpace(s[k]) && s[k] != '/' && s[k] != '>' && s[k] != '=') k++;
+            while (k < n && isHtmlSpace(s[k])) k++;
+            if (k >= n) return false;
+            if (s[k] != '=') continue;
+            k++; // consume '='
+            while (k < n && isHtmlSpace(s[k])) k++;
+            if (k >= n) return false;
+            if (s[k] == '"' || s[k] == '\'') {
+                char q = s[k++];
+                while (k < n && s[k] != q) k++;
+                if (k >= n) return false;
+                k++;
+            } else if (s[k] == '>') {
+                outAfterGt = k + 1;
+                outSelfClosing = false;
+                return true;
+            } else {
+                while (k < n && !isHtmlSpace(s[k]) && s[k] != '>') k++;
+                if (k >= n) return false;
+                if (s[k] == '>') {
+                    outAfterGt = k + 1;
+                    outSelfClosing = false;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    inline size_t scanHtmlPrologueInsertPos(const std::string& rawInput, bool& outHasFullHtml) noexcept {
+        const size_t n = rawInput.size();
+        size_t p = 0;
+        outHasFullHtml = false;
+        // (a) Skip optional UTF-8 BOM
+        if (n >= 3 && (unsigned char)rawInput[0] == 0xEF &&
+            (unsigned char)rawInput[1] == 0xBB && (unsigned char)rawInput[2] == 0xBF) {
+            p = 3;
+        }
+        // (b) Skip whitespace, closed HTML comments, and <?...?> processing instructions
+        skipHtmlTrivia(rawInput, p);
+
+        // (c) Skip at most one <!doctype ...>
+        if (matchAsciiCI(rawInput, p, "<!doctype", 9) &&
+            (p + 9 < n && (isHtmlSpace(rawInput[p + 9]) || rawInput[p + 9] == '>'))) {
+            size_t k = p + 9;
+            char q = 0;
+            size_t firstGt = std::string::npos;
+            while (k < n) {
+                char c = rawInput[k];
+                if (c == '>' && firstGt == std::string::npos) {
+                    // In HTML5 DOCTYPE states, '>' terminates DOCTYPE even inside quotes
+                    firstGt = k;
+                    break;
+                }
+                if (q == 0 && (c == '"' || c == '\'')) q = c;
+                else if (q != 0 && c == q) q = 0;
+                k++;
+            }
+            if (firstGt == std::string::npos) {
+                return p;
+            }
+            outHasFullHtml = true;
+            p = firstGt + 1;
+            // (d) Skip trivia after <!doctype ...>
+            skipHtmlTrivia(rawInput, p);
+        }
+
+        // (e) Optional <html ...> start tag
+        if (matchAsciiCI(rawInput, p, "<html", 5) && (p + 5 < n) && isTagBoundaryChar(rawInput, p + 5)) {
+            size_t afterHtml = p;
+            bool selfClosingHtml = false;
+            if (!scanHtmlStartTagEnd(rawInput, p + 5, afterHtml, selfClosingHtml)) {
+                return p;
+            }
+            outHasFullHtml = true;
+            p = afterHtml;
+            skipHtmlTrivia(rawInput, p);
+        }
+
+        // (f) Optional <head ...> start tag (if self-closing <head/>, inject BEFORE <head/>)
+        if (matchAsciiCI(rawInput, p, "<head", 5) && (p + 5 < n) && isTagBoundaryChar(rawInput, p + 5)) {
+            size_t afterHead = p;
+            bool selfClosingHead = false;
+            if (!scanHtmlStartTagEnd(rawInput, p + 5, afterHead, selfClosingHead)) {
+                return p;
+            }
+            outHasFullHtml = true;
+            if (!selfClosingHead) {
+                p = afterHead;
+            }
+        }
+        return p;
+    }
+    inline bool hasExistingBaseElement(const std::string& rawInput) noexcept {
+        const size_t lim = std::min<size_t>(rawInput.size(), 8192);
+        for (size_t i = 0; i + 5 < lim; ++i) {
+            if (rawInput[i] == '<' && matchAsciiCI(rawInput, i, "<base", 5) && isTagBoundaryChar(rawInput, i + 5)) {
+                return true;
+            }
+        }
+        return false;
+    }
+} // namespace detail
+
+inline bool looksLikeStandaloneSvg(const std::string& rawInput) noexcept {
+    const size_t n = rawInput.size();
+    size_t p = 0;
+    if (n >= 3 && (unsigned char)rawInput[0] == 0xEF &&
+        (unsigned char)rawInput[1] == 0xBB && (unsigned char)rawInput[2] == 0xBF) {
+        p = 3;
+    }
+    auto skipXmlTrivia = [&]() noexcept {
+        while (p < n) {
+            if ((unsigned char)rawInput[p] <= 0x20) { p++; continue; }
+            if (p + 4 <= n && rawInput.compare(p, 4, "<!--") == 0) {
+                size_t ce = rawInput.find("-->", p + 4);
+                if (ce == std::string::npos) return false;
+                p = ce + 3;
+                continue;
+            }
+            if (p + 2 <= n && rawInput[p] == '<' && rawInput[p + 1] == '?') {
+                size_t pe = rawInput.find("?>", p + 2);
+                if (pe == std::string::npos) return false;
+                p = pe + 2;
+                continue;
+            }
+            break;
+        }
+        return true;
+    };
+    if (!skipXmlTrivia()) return false;
+    if (detail::matchAsciiCI(rawInput, p, "<!doctype", 9) && p + 9 < n && (unsigned char)rawInput[p + 9] <= 0x20) {
+        size_t k = p + 9;
+        while (k < n && (unsigned char)rawInput[k] <= 0x20) k++;
+        if (detail::matchAsciiCI(rawInput, k, "svg", 3) &&
+            (k + 3 < n && ((unsigned char)rawInput[k + 3] <= 0x20 || rawInput[k + 3] == '>' || rawInput[k + 3] == '['))) {
+            return true;
+        }
+        char q = 0;
+        int bDepth = 0;
+        while (k < n) {
+            char c = rawInput[k];
+            if (q != 0) {
+                if (c == q) q = 0;
+            } else {
+                if (c == '"' || c == '\'') q = c;
+                else if (c == '[') bDepth++;
+                else if (c == ']' && bDepth > 0) bDepth--;
+                else if (c == '>' && bDepth == 0) { k++; break; }
+            }
+            k++;
+        }
+        p = k;
+        if (!skipXmlTrivia()) return false;
+    }
+    if (detail::matchAsciiCI(rawInput, p, "<svg", 4) && detail::isTagBoundaryChar(rawInput, p + 4)) {
+        return true;
+    }
+    return false;
+}
+
+inline bool looksLikeStandaloneHtmlOrSvg(const std::string& rawInput) {
+    if (looksLikeStandaloneSvg(rawInput)) return true;
+    const size_t n = rawInput.size();
+    size_t p = 0;
+    if (n >= 3 && (unsigned char)rawInput[0] == 0xEF &&
+        (unsigned char)rawInput[1] == 0xBB && (unsigned char)rawInput[2] == 0xBF) {
+        p = 3;
+    }
+    detail::skipHtmlTrivia(rawInput, p);
+    if (p >= n || rawInput[p] != '<') return false;
+    if (detail::matchAsciiCI(rawInput, p, "<!doctype html", 14) && detail::isTagBoundaryChar(rawInput, p + 14)) {
+        return true;
+    }
+    if ((detail::matchAsciiCI(rawInput, p, "<html", 5) && detail::isTagBoundaryChar(rawInput, p + 5)) ||
+        (detail::matchAsciiCI(rawInput, p, "<head", 5) && detail::isTagBoundaryChar(rawInput, p + 5)) ||
+        (detail::matchAsciiCI(rawInput, p, "<body", 5) && detail::isTagBoundaryChar(rawInput, p + 5))) {
+        return true;
     }
     return false;
 }
@@ -1921,7 +2722,7 @@ inline PreviewRenderResult renderPreview(
         html += (isDarkMode ? "dark" : "light");
         html += "\"><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'nonce-";
         html += nonce;
-        html += "'; style-src 'unsafe-inline'; img-src https://miu.local data: blob:; font-src https://miu.local data:; media-src https://miu.local data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; ";
+        html += "'; style-src 'unsafe-inline'; img-src https://miu.local data: blob:; font-src https://miu.local data:; media-src https://miu.local data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; child-src 'none'; form-action 'none'; ";
         html += baseUriPolicy;
         html += "\">";
         html += baseHrefTag;
@@ -1972,7 +2773,7 @@ inline PreviewRenderResult renderPreview(
                 "});";
         }
         html +=
-            "if(window.__miuPending){var p=window.__miuPending;window.__miuPending=null;window.__miuUpdate(p.h,p.dk);}"
+            "if(window.__miuPending&&!(window.__miuPending instanceof Element)&&typeof window.__miuPending.h==='string'){var p=window.__miuPending;window.__miuPending=null;window.__miuUpdate(p.h,!!p.dk);}"
             "})();</script></body></html>";
         return res;
     }
@@ -1989,43 +2790,50 @@ inline PreviewRenderResult renderPreview(
         const char* webDefStyle = isDarkMode
             ? "<style>:where(:root,html,body){color-scheme:dark;background:#000000;color:#e6edf3;--sb-thumb:rgba(255,255,255,0.42);--sb-thumb-active:rgba(255,255,255,0.65)}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}html,body{scrollbar-width:none!important}*::-webkit-scrollbar{width:10px;height:10px;background:transparent}*::-webkit-scrollbar-track{background:transparent}*::-webkit-scrollbar-thumb{background:var(--sb-thumb);border-radius:9999px;border:2px solid transparent;background-clip:padding-box}*::-webkit-scrollbar-thumb:hover,*::-webkit-scrollbar-thumb:active{background:var(--sb-thumb-active);border:2px solid transparent;background-clip:padding-box}.__ag_sb_v,.__ag_sb_h{position:fixed!important;z-index:2147483647!important;display:flex!important;user-select:none!important;-webkit-user-select:none!important;touch-action:none!important;opacity:0;pointer-events:none;margin:0!important;padding:0!important;border:none!important;background:transparent!important;box-sizing:border-box!important}.__ag_sb_v{top:2px!important;bottom:2px!important;right:0!important;width:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:row!important}.__ag_sb_h{left:2px!important;right:2px!important;bottom:0!important;height:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:column!important}.__ag_sb_v[data-visible=\"true\"],.__ag_sb_h[data-visible=\"true\"]{opacity:1!important;pointer-events:auto!important}.__ag_sb_vt,.__ag_sb_ht{border-radius:9999px!important;background-color:var(--sb-thumb)!important;margin:0!important;padding:0!important;border:none!important;flex-shrink:0!important;box-sizing:border-box!important}.__ag_sb_vt{width:6px!important}.__ag_sb_ht{height:6px!important}.__ag_sb_v[data-expanded=\"true\"] .__ag_sb_vt{width:8px!important;background-color:var(--sb-thumb-active)!important}.__ag_sb_h[data-expanded=\"true\"] .__ag_sb_ht{height:8px!important;background-color:var(--sb-thumb-active)!important}</style>"
             : "<style>:where(:root,html,body){color-scheme:light;background:#ffffff;color:#1f2328;--sb-thumb:rgba(0,0,0,0.38);--sb-thumb-active:rgba(0,0,0,0.60)}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}html,body{scrollbar-width:none!important}*::-webkit-scrollbar{width:10px;height:10px;background:transparent}*::-webkit-scrollbar-track{background:transparent}*::-webkit-scrollbar-thumb{background:var(--sb-thumb);border-radius:9999px;border:2px solid transparent;background-clip:padding-box}*::-webkit-scrollbar-thumb:hover,*::-webkit-scrollbar-thumb:active{background:var(--sb-thumb-active);border:2px solid transparent;background-clip:padding-box}.__ag_sb_v,.__ag_sb_h{position:fixed!important;z-index:2147483647!important;display:flex!important;user-select:none!important;-webkit-user-select:none!important;touch-action:none!important;opacity:0;pointer-events:none;margin:0!important;padding:0!important;border:none!important;background:transparent!important;box-sizing:border-box!important}.__ag_sb_v{top:2px!important;bottom:2px!important;right:0!important;width:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:row!important}.__ag_sb_h{left:2px!important;right:2px!important;bottom:0!important;height:14px!important;justify-content:center!important;align-items:flex-start!important;flex-direction:column!important}.__ag_sb_v[data-visible=\"true\"],.__ag_sb_h[data-visible=\"true\"]{opacity:1!important;pointer-events:auto!important}.__ag_sb_vt,.__ag_sb_ht{border-radius:9999px!important;background-color:var(--sb-thumb)!important;margin:0!important;padding:0!important;border:none!important;flex-shrink:0!important;box-sizing:border-box!important}.__ag_sb_vt{width:6px!important}.__ag_sb_ht{height:6px!important}.__ag_sb_v[data-expanded=\"true\"] .__ag_sb_vt{width:8px!important;background-color:var(--sb-thumb-active)!important}.__ag_sb_h[data-expanded=\"true\"] .__ag_sb_ht{height:8px!important;background-color:var(--sb-thumb-active)!important}</style>";
-        std::string webCspMeta = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline' https://miu.local; style-src 'unsafe-inline' https://miu.local; img-src https://miu.local data: blob:; font-src https://miu.local data:; media-src https://miu.local data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; form-action 'none'; ";
-        webCspMeta += baseUriPolicy;
-        webCspMeta += "\">";
-        std::string lower = Emmet::toLowerStr(rawInput.substr(0, std::min(rawInput.size(), (size_t)1024)));
-        bool hasFullHtml = (lower.find("<html") != std::string::npos || lower.find("<!doctype") != std::string::npos);
-        if (hasFullHtml) {
-            const char* bTag = (!baseHrefTag.empty() && lower.find("<base") == std::string::npos) ? baseHrefTag.c_str() : "";
-            size_t hp = lower.find("<head>");
-            if (hp != std::string::npos) {
-                html.append(rawInput, 0, hp + 6);
-                html += webCspMeta;
-                html += bTag;
-                html += webDefStyle;
-                html.append(rawInput, hp + 6, std::string::npos);
-            } else {
-                html += webCspMeta;
-                html += bTag;
-                html += webDefStyle;
-                html += rawInput;
-            }
-            html += truncNotice;
-        } else {
+        const bool isStandaloneSvg = (currentExtension == L"svg" || looksLikeStandaloneSvg(rawInput));
+        if (isStandaloneSvg) {
+            std::string svgCspMeta = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'none'; style-src 'unsafe-inline' https://miu.local; img-src https://miu.local data: blob:; font-src https://miu.local data:; media-src https://miu.local data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; child-src 'none'; form-action 'none'; ";
+            svgCspMeta += baseUriPolicy;
+            svgCspMeta += "\">";
             html += "<!DOCTYPE html><html><head><meta charset=\"utf-8\">";
-            html += webCspMeta;
+            html += svgCspMeta;
             html += baseHrefTag;
             html += webDefStyle;
             html += "</head><body>";
             html += rawInput;
             html += truncNotice;
             html += "</body></html>";
+        } else {
+            std::string webCspMeta = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline' https://miu.local; style-src 'unsafe-inline' https://miu.local; img-src https://miu.local data: blob:; font-src https://miu.local data:; media-src https://miu.local data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; child-src 'none'; form-action 'none'; ";
+            webCspMeta += baseUriPolicy;
+            webCspMeta += "\">";
+            bool hasFullHtml = false;
+            const size_t insertPos = detail::scanHtmlPrologueInsertPos(rawInput, hasFullHtml);
+            if (hasFullHtml) {
+                const char* bTag = (!baseHrefTag.empty() && !detail::hasExistingBaseElement(rawInput)) ? baseHrefTag.c_str() : "";
+                html.append(rawInput, 0, insertPos);
+                html += webCspMeta;
+                html += bTag;
+                html += webDefStyle;
+                html.append(rawInput, insertPos, std::string::npos);
+                html += truncNotice;
+            } else {
+                html += "<!DOCTYPE html><html><head><meta charset=\"utf-8\">";
+                html += webCspMeta;
+                html += baseHrefTag;
+                html += webDefStyle;
+                html += "</head><body>";
+                html += rawInput;
+                html += truncNotice;
+                html += "</body></html>";
+            }
         }
     } else {
         html += "<!DOCTYPE html><html data-theme=\"";
         html += (isDarkMode ? "dark" : "light");
         html += "\"><head><meta charset=\"utf-8\"><meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'nonce-";
         html += nonce;
-        html += "'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; media-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; form-action 'none'; base-uri 'none';\">";
+        html += "'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; media-src 'none'; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; child-src 'none'; form-action 'none'; base-uri 'none';\">";
         html += kMdThemeStyle;
         html += "</head><body><pre>";
         html += escapeHtmlBasic(rawInput);
@@ -2118,6 +2926,166 @@ inline bool parseVerifiedTaskToggleMessage(
     }
     if (val < 0 || val > 100000000LL) return false;
     outLineIdx = (int)val;
+    return true;
+}
+
+inline bool findTaskCheckboxOffsetInLine(std::string_view line, size_t& outStateOffset) noexcept {
+    while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) {
+        line.remove_suffix(1);
+    }
+    const size_t n = line.size();
+    size_t p = 0;
+    while (p < n && (line[p] == ' ' || line[p] == '\t')) p++;
+    while (p < n && line[p] == '>') {
+        p++;
+        while (p < n && (line[p] == ' ' || line[p] == '\t')) p++;
+    }
+    if (p >= n) return false;
+
+    bool hasValidListMarker = false;
+    char c = line[p];
+    if ((c == '-' || c == '*' || c == '+') && p + 1 < n && (line[p + 1] == ' ' || line[p + 1] == '\t')) {
+        hasValidListMarker = true;
+        p += 2;
+        while (p < n && (line[p] == ' ' || line[p] == '\t')) p++;
+    } else if (c >= '0' && c <= '9') {
+        size_t d = p;
+        while (d < n && line[d] >= '0' && line[d] <= '9') d++;
+        if (d > p && (d - p) <= 9 && d + 1 < n &&
+            (line[d] == '.' || line[d] == ')') &&
+            (line[d + 1] == ' ' || line[d + 1] == '\t')) {
+            hasValidListMarker = true;
+            p = d + 2;
+            while (p < n && (line[p] == ' ' || line[p] == '\t')) p++;
+        }
+    }
+    if (!hasValidListMarker) return false;
+    if (p + 3 > n || line[p] != '[' || line[p + 2] != ']') return false;
+    char st = line[p + 1];
+    if (st != ' ' && st != 'x' && st != 'X') return false;
+    if (p + 3 < n && line[p + 3] != ' ' && line[p + 3] != '\t') return false;
+    outStateOffset = p + 1;
+    return true;
+}
+
+inline bool toggleTaskCheckboxInMarkdown(
+    std::string_view markdown,
+    int targetLineIdx,
+    size_t& outDocStatePos,
+    char& outOldState,
+    char& outNewState) noexcept
+{
+    if (targetLineIdx < 0) return false;
+    auto stripBqAndIndent = [](std::string_view ln, size_t& outPos, int& outIndent) noexcept {
+        size_t p = 0;
+        const size_t n = ln.size();
+        for (;;) {
+            int cols = 0;
+            size_t q = p;
+            while (q < n) {
+                if (ln[q] == ' ') { cols++; q++; }
+                else if (ln[q] == '\t') { cols += 4 - (cols % 4); q++; }
+                else break;
+            }
+            if (cols <= 3 && q < n && ln[q] == '>') {
+                p = q + 1;
+                if (p < n && (ln[p] == ' ' || ln[p] == '\t')) p++;
+                continue;
+            }
+            outPos = q;
+            outIndent = cols;
+            return;
+        }
+    };
+
+    bool inFence = false;
+    char fenceChar = 0;
+    size_t fenceLen = 0;
+    size_t pos = 0;
+    const size_t totalLen = markdown.size();
+    int curLine = 0;
+
+    while (pos <= totalLen) {
+        size_t eol = pos;
+        while (eol < totalLen && markdown[eol] != '\n' && markdown[eol] != '\r') eol++;
+        std::string_view line = markdown.substr(pos, eol - pos);
+
+        size_t fPos = 0;
+        int fIndent = 0;
+        stripBqAndIndent(line, fPos, fIndent);
+        bool isFenceLine = false;
+        if (!inFence) {
+            if (fIndent <= 3 && fPos < line.size() && (line[fPos] == '`' || line[fPos] == '~')) {
+                char fc = line[fPos];
+                size_t fl = 0;
+                while (fPos + fl < line.size() && line[fPos + fl] == fc) fl++;
+                if (fl >= 3) {
+                    std::string_view rest = line.substr(fPos + fl);
+                    if (fc != '`' || rest.find('`') == std::string_view::npos) {
+                        inFence = true;
+                        fenceChar = fc;
+                        fenceLen = fl;
+                        isFenceLine = true;
+                    }
+                }
+            }
+        } else {
+            if (fIndent <= 3 && fPos < line.size() && line[fPos] == fenceChar) {
+                size_t fl = 0;
+                while (fPos + fl < line.size() && line[fPos + fl] == fenceChar) fl++;
+                if (fl >= fenceLen) {
+                    bool onlySpace = true;
+                    for (size_t k = fPos + fl; k < line.size(); ++k) {
+                        if (line[k] != ' ' && line[k] != '\t') { onlySpace = false; break; }
+                    }
+                    if (onlySpace) {
+                        inFence = false;
+                        fenceChar = 0;
+                        fenceLen = 0;
+                        isFenceLine = true;
+                    }
+                }
+            }
+        }
+
+        if (curLine == targetLineIdx) {
+            if (inFence || isFenceLine) return false;
+            size_t relOff = 0;
+            if (!findTaskCheckboxOffsetInLine(line, relOff)) return false;
+            outDocStatePos = pos + relOff;
+            outOldState = markdown[outDocStatePos];
+            outNewState = (outOldState == ' ') ? 'x' : ' ';
+            return true;
+        }
+
+        if (eol >= totalLen) break;
+        if (markdown[eol] == '\r' && eol + 1 < totalLen && markdown[eol + 1] == '\n') pos = eol + 2;
+        else pos = eol + 1;
+        curLine++;
+        if (pos == totalLen && curLine < targetLineIdx) break;
+    }
+    return false;
+}
+
+inline bool toggleTaskCheckboxInMarkdown(std::string& markdown, int targetLineIdx, size_t* outDocStatePos = nullptr) {
+    size_t statePos = 0;
+    char oldSt = 0, newSt = 0;
+    if (!toggleTaskCheckboxInMarkdown(std::string_view(markdown), targetLineIdx, statePos, oldSt, newSt)) {
+        return false;
+    }
+    markdown[statePos] = newSt;
+    if (outDocStatePos) *outDocStatePos = statePos;
+    return true;
+}
+
+inline bool toggleTaskCheckboxInMarkdown(const std::string& markdown, int targetLineIdx, std::string& outMarkdown) {
+    size_t statePos = 0;
+    char oldSt = 0, newSt = 0;
+    if (!toggleTaskCheckboxInMarkdown(std::string_view(markdown), targetLineIdx, statePos, oldSt, newSt)) {
+        return false;
+    }
+    outMarkdown = markdown;
+    outMarkdown[statePos] = newSt;
     return true;
 }
 

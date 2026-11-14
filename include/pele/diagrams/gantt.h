@@ -161,25 +161,25 @@ struct GanttDate {
     setTime(composeMs(c.year, c.month0, c.day, h, m, s, ms, localTzOffsetMinutes()));
   }
 
-  void setDate(int d) {
+  void setDate(long long d) {
     if (!isValid()) return;
     CivilDate c = local();
     setTime(composeMs(c.year, c.month0, d, c.hours, c.minutes, c.seconds, c.ms, localTzOffsetMinutes()));
   }
 
-  void setMonth(int m0) {
+  void setMonth(long long m0) {
     if (!isValid()) return;
     CivilDate c = local();
     setTime(composeMs(c.year, m0, c.day, c.hours, c.minutes, c.seconds, c.ms, localTzOffsetMinutes()));
   }
 
-  void setMonth(int m0, int d) {
+  void setMonth(long long m0, long long d) {
     if (!isValid()) return;
     CivilDate c = local();
     setTime(composeMs(c.year, m0, d, c.hours, c.minutes, c.seconds, c.ms, localTzOffsetMinutes()));
   }
 
-  void setFullYear(int y) {
+  void setFullYear(long long y) {
     if (!isValid()) return;
     CivilDate c = local();
     setTime(composeMs(y, c.month0, c.day, c.hours, c.minutes, c.seconds, c.ms, localTzOffsetMinutes()));
@@ -237,9 +237,10 @@ inline int isoWeekday(const GanttDate& date) {
   return d == 0 ? 7 : d;
 }
 
-inline GanttDate addDays(const GanttDate& date, int days) {
+inline GanttDate addDays(const GanttDate& date, int64_t days) {
+  if (!date.isValid() || days < -10000000LL || days > 10000000LL) return GanttDate::invalid();
   GanttDate next = date;
-  next.setDate(next.getDate() + days);
+  next.setDate(static_cast<long long>(next.getDate()) + static_cast<long long>(days));
   return next;
 }
 
@@ -251,35 +252,48 @@ inline int daysInMonth(const GanttDate& date) {
 
 template <typename ApplyFn>
 inline GanttDate setCalendar(const GanttDate& date, ApplyFn apply) {
+  if (!date.isValid()) return GanttDate::invalid();
   GanttDate next = date;
   next.setDate(1);
   apply(next);
+  if (!next.isValid()) return GanttDate::invalid();
   next.setDate(std::min(date.getDate(), daysInMonth(next)));
   return next;
 }
 
 inline GanttDate add(const GanttDate& date, double amount, const std::string& unit) {
+  if (!date.isValid() || !std::isfinite(amount)) return GanttDate::invalid();
   if (unit == "M") {
-    return setCalendar(date, [&](GanttDate& d) { d.setMonth(date.getMonth() + static_cast<int>(amount)); });
+    if (std::abs(amount) > 1e5) return GanttDate::invalid();
+    int64_t delta = static_cast<int64_t>(std::trunc(amount));
+    return setCalendar(date, [&](GanttDate& d) { d.setMonth(static_cast<long long>(date.getMonth()) + static_cast<long long>(delta)); });
   }
   if (unit == "y") {
-    return setCalendar(date, [&](GanttDate& d) { d.setFullYear(date.getFullYear() + static_cast<int>(amount)); });
+    if (!std::isfinite(amount) || std::abs(amount) > 1e4) return GanttDate::invalid();
+    int64_t delta = static_cast<int64_t>(std::trunc(amount));
+    return setCalendar(date, [&](GanttDate& d) { d.setFullYear(static_cast<long long>(date.getFullYear()) + static_cast<long long>(delta)); });
   }
   if (unit == "d") {
-    return addDays(date, static_cast<int>(std::round(amount)));
+    if (!std::isfinite(amount) || std::abs(amount) > 1e6) return GanttDate::invalid();
+    return addDays(date, static_cast<int64_t>(std::llround(amount)));
   }
   if (unit == "w") {
-    return addDays(date, static_cast<int>(std::round(7.0 * amount)));
+    if (!std::isfinite(amount) || std::abs(amount) > 1e6) return GanttDate::invalid();
+    return addDays(date, static_cast<int64_t>(std::llround(7.0 * amount)));
   }
   if (unit == "h") {
+    if (std::abs(amount) > 1e9) return GanttDate::invalid();
     return GanttDate(date.getTime() + amount * 3600000.0);
   }
   if (unit == "m") {
+    if (std::abs(amount) > 1e9) return GanttDate::invalid();
     return GanttDate(date.getTime() + amount * 60000.0);
   }
   if (unit == "s") {
+    if (std::abs(amount) > 1e12) return GanttDate::invalid();
     return GanttDate(date.getTime() + amount * 1000.0);
   }
+  if (std::abs(amount) > 1e15) return GanttDate::invalid();
   return GanttDate(date.getTime() + amount);
 }
 
@@ -1252,7 +1266,7 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
     if (i >= n || !isSpaceAtUtf8(src, static_cast<size_t>(i), &nextI)) return -1;
     i = static_cast<int>(nextI);
     int startBody = i;
-    while (i < n && src[i] != '\n' && (!stopHash || src[i] != '#') && (!stopSemi || src[i] != ';')) i++;
+    while (i < n && src[i] != '\n' && (!stopHash || src[i] != '#') && (!stopSemi || src[i] != ';' || isEntitySemicolon(src, static_cast<size_t>(i)))) i++;
     return i > startBody ? i : -1;
   };
 
@@ -1415,6 +1429,9 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
         case S_click: type = T::click; break;
       }
       emit(type, n, n);
+      if (state == S_acc_title || state == S_acc_descr || state == S_acc_descr_multiline) {
+        emit(T::EOF_TOK, n, n);
+      }
       break;
     }
 
@@ -1450,7 +1467,7 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
           emit(T::taskTxt, p, e);
         } else {
           int e = p + 1;
-          while (e < n && src[e] != '#' && src[e] != '\n' && src[e] != ';') e++;
+          while (e < n && src[e] != '#' && src[e] != '\n' && (src[e] != ';' || isEntitySemicolon(src, static_cast<size_t>(e)))) e++;
           emit(e > p + 1 ? T::taskData : T::COLON, p, e);
         }
         break;
@@ -1467,7 +1484,9 @@ inline GanttTokens tokenizeGantt(const std::string& src) {
           state = S_INITIAL;
           p++;
         } else {
-          emit(T::acc_descr_multiline_value, p, until('}', p));
+          int e = until('}', p);
+          emit(T::acc_descr_multiline_value, p, e);
+          if (e >= n) state = S_INITIAL;
         }
         break;
       case S_href:
@@ -1582,7 +1601,12 @@ inline std::pair<double, std::string> parseDuration(const std::string& str) {
     else if (c < '0' || c > '9') return {std::numeric_limits<double>::quiet_NaN(), "ms"};
   }
   try {
-    return {std::stod(numPart), unit};
+    double val = std::stod(numPart);
+    double limit = (unit == "y") ? 1e4 : (unit == "M") ? 1e5 : (unit == "w" || unit == "d") ? 1e6 : (unit == "h" || unit == "m") ? 1e9 : (unit == "s") ? 1e12 : 1e15;
+    if (!std::isfinite(val) || std::abs(val) > limit) {
+      return {std::numeric_limits<double>::quiet_NaN(), "ms"};
+    }
+    return {val, unit};
   } catch (...) {
     return {std::numeric_limits<double>::quiet_NaN(), "ms"};
   }
@@ -1899,10 +1923,10 @@ private:
     std::string str = trimStr(raw);
     std::string tmpl = trimStr(dateFormat);
 
-    if ((tmpl == "x" || tmpl == "X") && !str.empty()) {
-      bool allDig = true;
-      for (char c : str) if (c < '0' || c > '9') { allDig = false; break; }
-      if (allDig) return checked(GanttDate( safeStod(str, "gantt") ), str);
+    if (tmpl != "X" && tmpl != "x" && isAllDigitsOrSign(str, false)) {
+      auto strictFirst = parse(str, tmpl);
+      if (strictFirst.has_value()) return *strictFirst;
+      return checked(GanttDate(safeStod(str, "gantt")), str);
     }
 
     std::string refList;
@@ -1918,6 +1942,11 @@ private:
 
     auto parsed = parse(str, tmpl);
     if (parsed.has_value()) return *parsed;
+
+    if ((tmpl == "X" || tmpl == "x") && isAllDigitsOrSign(str, false)) {
+      double scale = (tmpl == "X") ? 1000.0 : 1.0;
+      return checked(GanttDate(safeStod(str, "gantt") * scale), str);
+    }
 
     GanttDate fallback = parseJsFallbackDate(str);
     if (!isValid(fallback) || fallback.getFullYear() < -10000 || fallback.getFullYear() > 10000) {
@@ -2407,8 +2436,10 @@ inline Rendered renderGanttModel(GanttDb& model, const Config& config, const Ren
 
   std::string interval = model.tickInterval.value_or(textSetting(config, "tickInterval").value_or(""));
   std::string weekday = model.weekday.value_or(textSetting(config, "weekday").value_or("sunday"));
-  int count = std::max(2, std::min(10, static_cast<int>(std::floor(plotWidth / (sampleWidth + 24.0)))));
-  auto ivTicks = intervalTicks(interval, weekday, start, stop, static_cast<size_t>(std::ceil(plotWidth / 3.0)));
+  double rawCount = std::floor(plotWidth / std::max(1.0, sampleWidth + 24.0));
+  int count = std::isfinite(rawCount) ? static_cast<int>(std::clamp(rawCount, 2.0, 10.0)) : 2;
+  double maxIvTicks = std::isfinite(plotWidth) ? std::clamp(std::ceil(plotWidth / 3.0), 1.0, 100000.0) : 100.0;
+  auto ivTicks = intervalTicks(interval, weekday, start, stop, static_cast<size_t>(maxIvTicks));
   std::vector<double> ticks = ivTicks.has_value() ? *ivTicks : autoTicks(start, stop, count);
 
   std::string grid;

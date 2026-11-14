@@ -574,7 +574,12 @@ inline Tokens tokenize(const std::string& src) {
           p++;
         } else {
           size_t e = src.find('}', p);
-          emit(T::acc_descr_multiline_value, p, e == std::string::npos ? n : e);
+          if (e == std::string::npos) {
+            pop();
+            emit(T::acc_descr_multiline_value, p, n);
+          } else {
+            emit(T::acc_descr_multiline_value, p, e);
+          }
         }
         break;
     }
@@ -597,7 +602,10 @@ inline Tokens tokenize(const std::string& src) {
           : state == S_acc_descr_multiline
             ? T::acc_descr_multiline_value
             : -1;
-  if (last != -1) emit(last, n, n);
+  if (last != -1) {
+    emit(last, n, n);
+    if (last != T::TOK_EOF && last != T::qString) emit(T::TOK_EOF, n, n);
+  }
   emit(T::END, n, n);
   return Tokens{std::move(types), std::move(texts), std::move(starts)};
 }
@@ -1171,12 +1179,13 @@ constexpr double REQ_END_MARGIN = 14.0;
 
 inline std::string num(double value) {
   if (!std::isfinite(value)) return "0";
+  value = std::clamp(value, -1e15, 1e15);
   long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
   if (n == 0) return "0";
   bool neg = n < 0;
-  long long m = neg ? -n : n;
-  long long q = m / 100;
-  long long r = m % 100;
+  unsigned long long m = neg ? (0ULL - static_cast<unsigned long long>(n)) : static_cast<unsigned long long>(n);
+  unsigned long long q = m / 100ULL;
+  unsigned long long r = m % 100ULL;
   std::string s = (neg ? "-" : "") + std::to_string(q);
   if (r == 0) return s;
   if (r % 10 == 0) return s + "." + std::to_string(r / 10);
@@ -2733,8 +2742,9 @@ inline Rendered draw(const RequirementDb& model, const Config& /*_config*/, cons
         labelY = cy;
       }
     } else {
+      if (ce.route.size() < 6) continue;
       std::vector<double> route = ce.route;
-      for (size_t k = 0; k < route.size(); k += 3) {
+      for (size_t k = 0; k + 1 < route.size(); k += 3) {
         route[k] += ox;
         route[k + 1] += oy;
       }

@@ -50,10 +50,11 @@ inline double capWidth(const RenderOptions& options, double natural, double leas
 // ============================================================================
 
 inline double tickStep(double span, double count) {
-    if (!(span > 0.0) || !std::isfinite(span) || !std::isfinite(count)) return 1.0;
+    if (!(span > 1e-12) || !std::isfinite(span) || !(count > 0.0) || !std::isfinite(count)) return 1.0;
     double raw = span / std::max(count, 1.0);
-    if (!(raw > 0.0) || !std::isfinite(raw)) return 1.0;
+    if (!(raw > 1e-12) || !std::isfinite(raw)) return 1.0;
     double power = std::floor(std::log10(raw));
+    if (!std::isfinite(power) || power < -300.0 || power > 300.0) return 1.0;
     double unit = raw / std::pow(10.0, power);
     double factor = unit >= 7.07 ? 10.0 : unit >= 3.16 ? 5.0 : unit >= 1.41 ? 2.0 : 1.0;
     double step = power < 0.0 ? (-std::pow(10.0, -power) / factor) : (factor * std::pow(10.0, power));
@@ -430,7 +431,12 @@ inline XyTokens tokenize(const std::string& src) {
                 pop();
             } else {
                 size_t e = src.find('}', p);
-                emit(T::acc_descr_multiline_value, p, e == std::string::npos ? n : e);
+                if (e == std::string::npos) {
+                    emit(T::acc_descr_multiline_value, p, n);
+                    pop();
+                } else {
+                    emit(T::acc_descr_multiline_value, p, e);
+                }
             }
             continue;
         }
@@ -600,6 +606,11 @@ inline XyTokens tokenize(const std::string& src) {
     out.types.push_back(AT_END[state]);
     out.texts.push_back("");
     out.starts.push_back(n);
+    if (state == acc_title || state == acc_descr || state == acc_descr_multiline) {
+        out.types.push_back(T::EOF_TOK);
+        out.texts.push_back("");
+        out.starts.push_back(n);
+    }
     out.types.push_back(T::END);
     out.texts.push_back("");
     out.starts.push_back(n);
@@ -821,7 +832,7 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
     for (const auto& p : plots) if (p.type == "bar") bars++;
     double lo = finiteVal(model.yAxis.min).value_or(std::numeric_limits<double>::infinity());
     double hi = finiteVal(model.yAxis.max).value_or(-std::numeric_limits<double>::infinity());
-    bool exact = model.hasSetYAxis && std::isfinite(lo) && std::isfinite(hi) && lo != hi;
+    bool exact = model.hasSetYAxis && std::isfinite(lo) && std::isfinite(hi) && (std::abs(hi - lo) > 1e-12);
     if (!exact) {
         lo = std::numeric_limits<double>::infinity();
         hi = -std::numeric_limits<double>::infinity();
@@ -833,16 +844,20 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
                 if (*val > hi) hi = *val;
             }
         }
-        if (lo > hi) lo = hi = 0.0;
+        if (!std::isfinite(lo) || !std::isfinite(hi) || lo > hi) lo = hi = 0.0;
         if (bars > 0) {
             lo = std::min(lo, 0.0);
             hi = std::max(hi, 0.0);
         }
-        if (lo == hi) {
-            if (lo == 0.0) hi = 1.0;
-            else {
-                lo -= std::abs(lo) / 2.0;
-                hi += std::abs(hi) / 2.0;
+        if (!(hi - lo > 1e-12) || !std::isfinite(hi - lo)) {
+            double mid = std::isfinite(0.5 * (lo + hi)) ? (0.5 * (lo + hi)) : 0.0;
+            if (std::abs(mid) <= 1e-12) {
+                lo = (bars > 0 && mid >= 0.0) ? 0.0 : (mid - 0.5);
+                hi = lo + 1.0;
+            } else {
+                double halfSpan = std::max(std::abs(mid) * 0.5, 1e-9);
+                lo = mid - halfSpan;
+                hi = mid + halfSpan;
             }
         }
     }
@@ -853,9 +868,16 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
             lo = tickValue(step, std::floor(tickIndex(step, lo) + 1e-9));
             hi = tickValue(step, std::ceil(tickIndex(step, hi) - 1e-9));
         }
+        double span = hi - lo;
+        if (!std::isfinite(span) || !(std::abs(span) > 1e-12)) {
+            lo = 0.0;
+            hi = 1.0;
+            span = 1.0;
+        }
         std::vector<Mark> out;
         for (double val : ticksBetween(std::min(lo, hi), std::max(lo, hi), step)) {
-            out.push_back({(val - lo) / (hi - lo), textFn(jsNumberToString(val), small, 4000.0)});
+            double pos = (val - lo) / span;
+            out.push_back({std::isfinite(pos) ? pos : 0.5, textFn(jsNumberToString(val), small, 4000.0)});
         }
         return out;
     };
@@ -867,7 +889,7 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
     double inset = (x.type == "band" || bars > 0) ? (slot / 2.0) : 0.0;
     auto x0 = finiteVal(x.min, x.type == "linear");
     auto x1 = finiteVal(x.max, x.type == "linear");
-    bool ranged = x0.has_value() && x1.has_value() && (*x0 != *x1);
+    bool ranged = x0.has_value() && x1.has_value() && std::isfinite(*x0) && std::isfinite(*x1) && (std::abs(*x1 - *x0) > 1e-12);
     auto place = [&](size_t i, size_t n) -> double {
         if (x.type == "band") return (static_cast<double>(i) + 0.5) * slot;
         double frac = (n > 1) ? (static_cast<double>(i) / static_cast<double>(n - 1)) : (ranged ? 0.0 : 0.5);
@@ -907,9 +929,11 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
                 marks.push_back({(static_cast<double>(i) + 0.5) * slot, std::move(lbl)});
             }
         } else if (ranged) {
-            double step = tickStep(std::abs(*x1 - *x0), std::max(2.0, std::min(10.0, std::floor(length / (horizontal ? 32.0 : 80.0)))));
+            double xSpan = *x1 - *x0;
+            double step = tickStep(std::abs(xSpan), std::max(2.0, std::min(10.0, std::floor(length / (horizontal ? 32.0 : 80.0)))));
             for (double val : ticksBetween(std::min(*x0, *x1), std::max(*x0, *x1), step)) {
-                marks.push_back({inset + ((val - *x0) / (*x1 - *x0)) * (1.0 - 2.0 * inset), textFn(jsNumberToString(val), small, 4000.0)});
+                double frac = (std::isfinite(xSpan) && std::abs(xSpan) > 1e-12) ? ((val - *x0) / xSpan) : 0.5;
+                marks.push_back({inset + (std::isfinite(frac) ? frac : 0.5) * (1.0 - 2.0 * inset), textFn(jsNumberToString(val), small, 4000.0)});
             }
         } else if (x0.has_value()) {
             marks.push_back({0.5, textFn(jsNumberToString(*x0), small, 4000.0)});
@@ -957,7 +981,12 @@ inline Rendered renderXyChartModel(const XyChartDb& model, const Config& config,
 
     auto px = [&](double c, double v) -> double { return horizontal ? (left + v * plotWidth) : (left + c * plotWidth); };
     auto py = [&](double c, double v) -> double { return horizontal ? (top + c * plotHeight) : (bottom - v * plotHeight); };
-    auto scaleFn = [&](double value) -> double { return (value - lo) / (hi - lo); };
+    auto scaleFn = [&](double value) -> double {
+        double span = hi - lo;
+        if (!std::isfinite(value) || !std::isfinite(span) || !(std::abs(span) > 1e-12)) return 0.5;
+        double s = (value - lo) / span;
+        return std::isfinite(s) ? s : 0.5;
+    };
     auto clampFn = [](double v) -> double { return std::min(std::max(v, 0.0), 1.0); };
     auto rule = [&](double v) -> std::string {
         return horizontal

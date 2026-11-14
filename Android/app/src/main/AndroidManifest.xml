@@ -6,6 +6,8 @@
 
     <application
         android:allowBackup="true"
+        android:fullBackupContent="@xml/backup_rules"
+        android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -17,7 +19,7 @@
             android:name="jp.hack.miu.MainActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:configChanges="orientation|keyboard|keyboardHidden|screenSize|smallestScreenSize|screenLayout|uiMode|density"
+            android:configChanges="orientation|keyboard|keyboardHidden|screenSize|smallestScreenSize|screenLayout|uiMode|density|fontScale|locale|layoutDirection|colorMode|grammaticalGender|mcc|mnc|touchscreen|navigation"
             android:windowSoftInputMode="adjustResize"> <meta-data android:name="android.app.lib_name" android:value="miu" />
 
             <intent-filter>

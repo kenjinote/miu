@@ -62,3 +62,12 @@
 "No Recent Files" = "최근 항목 없음";
 "Reload" = "다시 불러오기";
 "Failed to save file." = "파일을 저장하지 못했습니다.";
+"Find..." = "찾기...";
+"Go to Line..." = "줄 이동...";
+"Save As..." = "별도 저장...";
+"Overwrite" = "덮어쓰기";
+"Save as UTF-8" = "UTF-8로 저장";
+"The file has been modified externally on disk." = "디스크의 파일이 외부에서 수정되었습니다.";
+"Saving now will overwrite external changes made by another application." = "지금 저장하면 다른 응용 프로그램에서 변경한 내용을 덮어씁니다.";
+"Some characters cannot be represented in the current encoding." = "일부 문자를 현재 인코딩으로 표현할 수 없습니다.";
+"Saving in the current encoding would replace unrepresentable characters with '?'. Choose Save as UTF-8 to preserve all characters losslessly." = "현재 인코딩으로 저장하면 표현할 수 없는 문자가 '?'로 대체됩니다. 모든 문자를 손실 없이 보존하려면 'UTF-8로 저장'을 선택하십시오.";

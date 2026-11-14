@@ -14,8 +14,9 @@ inline bool isInvalidXmlCodepoint(uint32_t cp) {
 inline bool hasInvalidXml(const std::string& text) {
     size_t i = 0;
     while (i < text.size()) {
+        size_t s = i;
         uint32_t cp = nextCodepoint(text, i);
-        if (isInvalidXmlCodepoint(cp)) return true;
+        if (isInvalidXmlCodepoint(cp) || (i - s == 1 && static_cast<unsigned char>(text[s]) >= 0x80)) return true;
     }
     return false;
 }
@@ -27,7 +28,7 @@ PELE_NOINLINE inline std::string esc(const std::string& text) {
     while (i < text.size()) {
         size_t s = i;
         uint32_t cp = nextCodepoint(text, i);
-        if (isInvalidXmlCodepoint(cp)) continue;
+        if (isInvalidXmlCodepoint(cp) || (i - s == 1 && static_cast<unsigned char>(text[s]) >= 0x80)) continue;
         if (cp == '&') out += "&amp;";
         else if (cp == '<') out += "&lt;";
         else if (cp == '>') out += "&gt;";
@@ -43,6 +44,7 @@ PELE_NOINLINE inline std::string escText(const std::string& text) {
 
 PELE_NOINLINE inline std::string num(double value) {
     if (!std::isfinite(value)) return "0";
+    value = std::clamp(value, -1e15, 1e15);
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
     char buf[32];
@@ -121,12 +123,20 @@ inline std::string extractAttrVal(const std::string& s, const std::string& key) 
 }
 
 inline std::string extractCssProp(const std::string& css, const std::string& prop) {
-    for (const auto& decl : splitStr(css, ';')) {
+    size_t start = 0;
+    while (start <= css.size()) {
+        size_t semi = start;
+        while (semi < css.size()) {
+            if (css[semi] == ';' && !isEntitySemicolon(css, semi)) break;
+            ++semi;
+        }
+        std::string decl = css.substr(start, semi - start);
         size_t colon = decl.find(':');
-        if (colon == std::string::npos) continue;
-        if (trimStr(decl.substr(0, colon)) == prop) {
+        if (colon != std::string::npos && trimStr(decl.substr(0, colon)) == prop) {
             return trimStr(decl.substr(colon + 1));
         }
+        if (semi >= css.size()) break;
+        start = semi + 1;
     }
     return "";
 }
@@ -308,7 +318,7 @@ inline bool isUnsafeCssValue(const std::string& v) {
         low.find("@import") != std::string::npos || low.find("image-set") != std::string::npos ||
         low.find("/*") != std::string::npos) return true;
     for (char c : v) {
-        if (c == '<' || c == '>' || c == '{' || c == '}' || c == ';' || c == '\\') return true;
+        if (c == '<' || c == '>' || c == '{' || c == '}' || c == ';' || c == '\\' || c == '&' || c == '"') return true;
     }
     return hasInvalidXml(v);
 }
@@ -556,11 +566,23 @@ inline bool parseColorLumAlpha(const std::string& raw, double& outLum, double& o
 inline std::string findStyleProp(const std::string& styleAttr, const std::string& prop) {
     for (const char* prefix : {"\"", ";"}) {
         std::string needle = std::string(prefix) + prop + ":";
-        size_t pos = styleAttr.find(needle);
-        if (pos != std::string::npos) {
+        size_t searchFrom = 0;
+        while (searchFrom < styleAttr.size()) {
+            size_t pos = styleAttr.find(needle, searchFrom);
+            if (pos == std::string::npos) break;
+            if (prefix[0] == ';' && isEntitySemicolon(styleAttr, pos)) {
+                searchFrom = pos + 1;
+                continue;
+            }
             size_t start = pos + needle.size();
-            size_t end = styleAttr.find_first_of(";\"", start);
-            return trimStr(styleAttr.substr(start, end == std::string::npos ? std::string::npos : end - start));
+            size_t end = start;
+            while (end < styleAttr.size()) {
+                char c = styleAttr[end];
+                if (c == '"') break;
+                if (c == ';' && !isEntitySemicolon(styleAttr, end)) break;
+                ++end;
+            }
+            return trimStr(styleAttr.substr(start, end - start));
         }
     }
     return "";
@@ -1068,6 +1090,8 @@ struct SideReach {
 };
 
 inline double writtenCoord(double v) {
+    if (!std::isfinite(v)) return 0.0;
+    v = std::clamp(v, -1e15, 1e15);
     long long n = static_cast<long long>(std::llround(v * 100.0));
     return n == 0 ? 0.0 : static_cast<double>(n) / 100.0;
 }
@@ -1080,6 +1104,7 @@ inline EdgePath routePath(
     double startReach = -1.0,
     double endReach = -1.0
 ) {
+    if (route.size() < 6 || route.size() % 3 != 0) return {};
     if (startReach < 0.0) startReach = startTrim > 0 ? startTrim + LEAD : 0.0;
     if (endReach < 0.0) endReach = endTrim > 0 ? endTrim + LEAD : 0.0;
     bool linear = (curve == "linear");
@@ -1117,6 +1142,7 @@ inline EdgePath routePath(
         axes.push_back(axis);
     }
     int last = static_cast<int>(xs.size()) - 1;
+    if (last < 1) return {};
     auto aligned = [&](int i) {
         return std::abs(xs[i] - xs[i - 1]) < 0.01 || std::abs(ys[i] - ys[i - 1]) < 0.01;
     };
@@ -1465,6 +1491,19 @@ inline std::string casing(const std::string& d, const std::string& markers, cons
     std::string width = thick ? "2.5" : findStyleProp(line, "stroke-width");
     std::string attrs;
     std::string style;
+    auto safeCasingCss = [](const std::string& v) -> bool {
+        if (hasInvalidXml(v)) return false;
+        for (size_t i = 0; i < v.size(); ++i) {
+            char c = v[i];
+            if (c == '<' || c == '>' || c == '"' || c == '{' || c == '}' || c == '\\') return false;
+            if (c == ';' && !isEntitySemicolon(v, i)) return false;
+            if (c == '&') {
+                size_t semi = v.find(';', i + 1);
+                if (semi == std::string::npos || !isEntitySemicolon(v, semi)) return false;
+            }
+        }
+        return true;
+    };
     if (!width.empty()) {
         std::string numPart = endsWith(width, "px") ? width.substr(0, width.size() - 2) : width;
         bool isPlainNum = !numPart.empty();
@@ -1472,15 +1511,15 @@ inline std::string casing(const std::string& d, const std::string& markers, cons
         if (isPlainNum) {
             try {
                 double wVal = std::stod(numPart);
-                if (wVal != 1.0) attrs = " stroke-width=\"" + num(wVal + CASE) + "\"";
+                if (std::isfinite(wVal) && wVal != 1.0) attrs = " stroke-width=\"" + num(wVal + CASE) + "\"";
             } catch (...) {}
-        } else {
+        } else if (safeCasingCss(width)) {
             Pele::appendCat(style, {"stroke-width:calc(", width, " + 4px);"});
         }
     }
     for (const char* prop : {"opacity", "stroke-opacity"}) {
         std::string val = findStyleProp(line, prop);
-        if (!val.empty()) style += std::string(prop) + ":" + val + ";";
+        if (!val.empty() && safeCasingCss(val)) style += std::string(prop) + ":" + val + ";";
     }
     std::string body = Pele::cat({"<path d=\"", d, "\"/>", replaceAllStr(markers, " class=\"pele-marker\"", "")});
     return (!attrs.empty() || !style.empty()) ? Pele::cat({"<g", attrs, (!style.empty() ? Pele::cat({" style=\"", style, "\""}) : ""), ">", body, "</g>"}) : body;

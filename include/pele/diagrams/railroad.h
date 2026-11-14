@@ -242,6 +242,8 @@ inline std::string rrUnescape(const std::string& text) {
   return out;
 }
 
+constexpr size_t MAX_RAILROAD_NESTING_DEPTH = 64;
+
 struct RailroadNode {
   std::string type; // "terminal", "nonterminal", "special", "sequence", "choice", "optional", "repetition"
   std::string value;
@@ -250,6 +252,23 @@ struct RailroadNode {
   double min = 0;
   double max = std::numeric_limits<double>::infinity();
   std::vector<RailroadNode> children;
+
+  RailroadNode() = default;
+  RailroadNode(const RailroadNode&) = default;
+  RailroadNode(RailroadNode&&) noexcept = default;
+  RailroadNode& operator=(const RailroadNode&) = default;
+  RailroadNode& operator=(RailroadNode&&) noexcept = default;
+  ~RailroadNode() {
+    if (children.empty()) return;
+    std::vector<RailroadNode> work = std::move(children);
+    while (!work.empty()) {
+      std::vector<RailroadNode> grand = std::move(work.back().children);
+      work.pop_back();
+      if (!grand.empty()) {
+        work.insert(work.end(), std::make_move_iterator(grand.begin()), std::make_move_iterator(grand.end()));
+      }
+    }
+  }
 };
 
 struct RailroadRule {
@@ -447,6 +466,9 @@ inline RailroadNode expression(TokenReader& r) {
       case T::optional:
       case T::oneOrMore:
       case T::zeroOrMore:
+        if (openStack.size() >= MAX_RAILROAD_NESTING_DEPTH) {
+          throw PeleError("Maximum nesting depth exceeded", "limit", "railroad");
+        }
         r.i++;
         r.expect(T::open);
         openStack.push_back({k, {}});
@@ -641,6 +663,9 @@ inline RailroadNode definition(TokenReader& r) {
       case T::group:
       case T::option:
       case T::repeat: {
+        if (stack.size() >= MAX_RAILROAD_NESTING_DEPTH) {
+          throw PeleError("Maximum nesting depth exceeded", "limit", "railroad");
+        }
         r.i++;
         stack.push_back(std::move(top));
         top = makeFrame(kind, kind + 1, except);
@@ -903,6 +928,9 @@ inline RailroadNode alternation(TokenReader& r) {
         break;
       case T::group:
       case T::option: {
+        if (stack.size() >= MAX_RAILROAD_NESTING_DEPTH) {
+          throw PeleError("Maximum nesting depth exceeded", "limit", "railroad");
+        }
         r.i++;
         stack.push_back(std::move(top));
         top = makeFrame(kind, kind + 1, std::move(repeat));
@@ -1059,6 +1087,9 @@ inline RailroadNode definition(TokenReader& r) {
         primary = makeSpecial(r.take());
         break;
       case T::group: {
+        if (stack.size() >= MAX_RAILROAD_NESTING_DEPTH) {
+          throw PeleError("Maximum nesting depth exceeded", "limit", "railroad");
+        }
         r.i++;
         stack.push_back(std::move(top));
         top = makeFrame(std::move(op));
@@ -1173,6 +1204,25 @@ struct Box {
   std::string text;
   std::string id;
   double reach = 0;
+
+  Box() = default;
+  Box(Kind k, double w, double u, double d, std::vector<Box> c, std::string t, std::string i, double r)
+    : kind(k), width(w), up(u), down(d), kids(std::move(c)), text(std::move(t)), id(std::move(i)), reach(r) {}
+  Box(const Box&) = default;
+  Box(Box&&) noexcept = default;
+  Box& operator=(const Box&) = default;
+  Box& operator=(Box&&) noexcept = default;
+  ~Box() {
+    if (kids.empty()) return;
+    std::vector<Box> work = std::move(kids);
+    while (!work.empty()) {
+      std::vector<Box> grand = std::move(work.back().kids);
+      work.pop_back();
+      if (!grand.empty()) {
+        work.insert(work.end(), std::make_move_iterator(grand.begin()), std::make_move_iterator(grand.end()));
+      }
+    }
+  }
 };
 
 struct Metrics {
@@ -1283,6 +1333,9 @@ inline Box measure(const RailroadNode& root, const Metrics& m, double room = std
     const RailroadNode* node = nodes[top];
     auto& results = done[top];
     if (results.size() < node->children.size()) {
+      if (nodes.size() > MAX_RAILROAD_NESTING_DEPTH + 4) {
+        throw PeleError("Maximum nesting depth exceeded", "limit", "railroad");
+      }
       const RailroadNode* child = &node->children[results.size()];
       nodes.push_back(child);
       done.push_back({});

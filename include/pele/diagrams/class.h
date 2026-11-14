@@ -30,12 +30,13 @@ using StateDiagram::turnToFit;
 
 inline std::string num(double value) {
     if (!std::isfinite(value)) return "0";
+    value = std::clamp(value, -1e15, 1e15);
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
     bool neg = n < 0;
-    long long m = neg ? -n : n;
-    long long q = m / 100;
-    long long r = m % 100;
+    unsigned long long m = neg ? (0ULL - static_cast<unsigned long long>(n)) : static_cast<unsigned long long>(n);
+    unsigned long long q = m / 100ULL;
+    unsigned long long r = m % 100ULL;
     std::string s = (neg ? "-" : "") + std::to_string(q);
     if (r == 0) return s;
     if (r % 10 == 0) return s + "." + std::to_string(r / 10);
@@ -249,7 +250,8 @@ using Crossings = std::unordered_map<int, std::vector<double>>;
 
 inline void markCrossings(Crossings& crossings, const std::vector<double>& route) {
     for (size_t k = 0; k + 1 < route.size(); k += 3) {
-        int key = static_cast<int>(std::llround(route[k + 1]));
+        if (!std::isfinite(route[k]) || !std::isfinite(route[k + 1])) continue;
+        int key = static_cast<int>(std::llround(std::clamp(route[k + 1], -1e8, 1e8)));
         crossings[key].push_back(route[k]);
     }
 }
@@ -260,7 +262,8 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
     double left = c.x - c.w / 2.0;
     double half = width / 2.0;
     double candidates[3] = {left + pad - 6.0 + half, c.x, left + c.w - pad + 6.0 - half};
-    auto it = crossings.find(static_cast<int>(std::llround(top)));
+    if (!std::isfinite(top)) return candidates[0];
+    auto it = crossings.find(static_cast<int>(std::llround(std::clamp(top, -1e8, 1e8))));
     if (it == crossings.end()) return candidates[0];
     const auto& xs = it->second;
     double best = candidates[0];
@@ -281,7 +284,9 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
 
 inline bool titleCrossed(const CNode& c, double width, double x, const Crossings& crossings) {
     if (width <= 0.0) return false;
-    auto it = crossings.find(static_cast<int>(std::llround(c.y - c.h / 2.0)));
+    double top = c.y - c.h / 2.0;
+    if (!std::isfinite(top)) return false;
+    auto it = crossings.find(static_cast<int>(std::llround(std::clamp(top, -1e8, 1e8))));
     if (it == crossings.end()) return false;
     double left = c.x - c.w / 2.0;
     for (double cx : it->second) {
@@ -308,6 +313,7 @@ inline std::string struckTitle(
 }
 
 inline int endSide(const std::vector<double>& route, size_t at, const CNode& c) {
+    if (route.size() < 6 || at + 1 >= route.size()) return -1;
     double dx = route[at] - c.x;
     double dy = route[at + 1] - c.y;
     if (std::abs(std::abs(dy) - c.h / 2.0) < 0.5) return dy < 0.0 ? 0 : 2;
@@ -487,12 +493,14 @@ struct ClassInterface {
     std::string classId;
 };
 
+constexpr size_t MAX_NAMESPACE_DEPTH = 64;
+constexpr size_t MAX_NAMESPACES = 2048;
+
 struct NamespaceNode {
     std::string id;
     std::string label;
     std::unordered_map<std::string, ClassNodePtr> classes;
     std::unordered_map<std::string, ClassNotePtr> notes;
-    std::unordered_map<std::string, std::shared_ptr<NamespaceNode>> children;
     std::string parent;
     bool hasParent = false;
     bool explicitNs = false;
@@ -763,8 +771,17 @@ public:
     }
 
     std::string addNamespace(const std::string& id, const std::string& label = "", bool hasLabel = false) {
+        if (namespaceStack.size() >= MAX_NAMESPACE_DEPTH) {
+            throw PeleError("Maximum namespace nesting depth exceeded", "limit", "class");
+        }
         std::string prefix = namespaceStack.empty() ? "" : namespaceStack.back();
         std::string qualified = !prefix.empty() ? Pele::cat({prefix, ".", id}) : id;
+        size_t segCount = 1;
+        for (char ch : qualified) {
+            if (ch == '.' && ++segCount > MAX_NAMESPACE_DEPTH) {
+                throw PeleError("Maximum namespace nesting depth exceeded", "limit", "class");
+            }
+        }
         namespaceStack.push_back(qualified);
 
         auto itExisting = namespaces.find(qualified);
@@ -784,6 +801,9 @@ public:
             NamespaceNodePtr node;
             auto it = namespaces.find(current);
             if (it == namespaces.end()) {
+                if (namespacesList.size() >= MAX_NAMESPACES) {
+                    throw PeleError("Maximum namespace count exceeded", "limit", "class");
+                }
                 std::string part = qualified.substr(from, (leaf ? qualified.size() : dot) - from);
                 node = std::make_shared<NamespaceNode>();
                 node->id = current;
@@ -799,16 +819,11 @@ public:
                 node = it->second;
                 if (leaf) node->explicitNs = true;
             }
-            if (hasParentId) {
+            if (hasParentId && !node->hasParent) {
                 auto itParent = namespaces.find(parentId);
                 if (itParent != namespaces.end()) {
-                    if (!itParent->second->children.count(current)) {
-                        itParent->second->children[current] = node;
-                    }
-                    if (!node->hasParent) {
-                        node->parent = parentId;
-                        node->hasParent = true;
-                    }
+                    node->parent = parentId;
+                    node->hasParent = true;
                 }
             }
             if (leaf) return qualified;
@@ -1389,7 +1404,7 @@ inline Tokens tokenize(const std::string& src) {
                 size_t q = p + 1;
                 while (q < n) {
                     int ch = charCodeAt(src, static_cast<int>(q));
-                    if (ch == 58 || ch == 10 || ch == 59) break;
+                    if (ch == 58 || ch == 10 || (ch == 59 && !isEntitySemicolon(src, q))) break;
                     q++;
                 }
                 if (q > p + 1) return emit(T::LABEL, p, q);
@@ -1529,6 +1544,11 @@ inline Tokens tokenize(const std::string& src) {
             types.push_back(AT_END[state]);
             texts.push_back("");
             starts.push_back(n);
+            if (state == S_accTitle || state == S_accDescr || state == S_accDescrMultiline) {
+                types.push_back(AT_END[S_INITIAL]);
+                texts.push_back("");
+                starts.push_back(n);
+            }
             break;
         }
         size_t nextCpPos = p;
@@ -1677,7 +1697,9 @@ inline Tokens tokenize(const std::string& src) {
                     pop();
                     p++;
                 } else {
-                    emit(T::acc_descr_multiline_value, p, until('}'));
+                    size_t e = until('}');
+                    emit(T::acc_descr_multiline_value, p, e);
+                    if (e >= n) pop();
                 }
                 break;
         }
@@ -1817,6 +1839,9 @@ inline void parseClassDiagram(const std::string& src, ClassDb& db) {
     auto namespaceStatement = [&]() {
         std::vector<Frame> open;
         for (;;) {
+            if (open.size() >= MAX_NAMESPACE_DEPTH) {
+                throw PeleError("Maximum namespace nesting depth exceeded", "limit", "class");
+            }
             i++;
             std::string ns = name(false);
             std::string id = (types[i] == T::SQS) ? db.addNamespace(ns, classLabel(), true) : db.addNamespace(ns);
@@ -2413,6 +2438,7 @@ inline Rendered draw(const ClassDb& db, const Config& config, const RenderOption
 
     auto attach = [&](size_t edgeIdx, size_t at, int item, double room, int order, End& outEnd) -> bool {
         auto& route = cedges[edgeIdx].route;
+        if (route.size() < 6 || at + 1 >= route.size()) return false;
         const auto& c = cnodes[item];
         int side = endSide(route, at, c);
         if (side < 0) return false;
@@ -2501,7 +2527,7 @@ inline Rendered draw(const ClassDb& db, const Config& config, const RenderOption
     }
 
     auto straightenEnd = [&](std::vector<double>& route, bool hasEndVal, const End& end, double room, bool first) {
-        if (!hasEndVal || room <= 0.0) return;
+        if (route.size() < 6 || !hasEndVal || room <= 0.0) return;
         int across = end.side & 1;
         size_t at = first ? 0 : (route.size() - 3);
         size_t along = at + 1 - across;
@@ -2730,6 +2756,7 @@ inline Rendered draw(const ClassDb& db, const Config& config, const RenderOption
             path.edx = -1.0;
             path.edy = 0.0;
         } else {
+            if (ce.route.size() < 6) continue;
             auto& route = ce.route;
             for (size_t k = 0; k + 1 < route.size(); k += 3) {
                 route[k] += ox;

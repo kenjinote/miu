@@ -156,6 +156,14 @@ struct ActiveEmmetSession {
     int currentGroupIndex = -1;
 };
 
+struct VScrollBarRange {
+    double currentUnits = 0.0;
+    double visibleUnits = 1.0;
+    double totalUnits = 1.0;
+    double maxUnits = 0.0;
+    bool needV = false;
+};
+
 struct FileViewState {
     int vScrollPos = 0;
     int vScrollSubLine = 0;
@@ -189,6 +197,7 @@ struct Editor {
     bool searchRegex = false;
     bool isReplaceMode = false;
     mutable std::regex cachedSearchRegex;
+    mutable MiuCore::RegexPreprocessInfo cachedRegexInfo;
     mutable std::string cachedSearchRegexPattern;
     mutable bool cachedSearchRegexIc = false;
     mutable bool cachedSearchRegexValid = false;
@@ -198,7 +207,7 @@ struct Editor {
     std::string zoomPopupText = "";
     struct ToastTimerState {
         std::atomic<bool> alive{true};
-        bool pending = false;
+        std::atomic<bool> pending{false};
     };
     std::shared_ptr<ToastTimerState> toastTimerState = std::make_shared<ToastTimerState>();
 
@@ -264,6 +273,9 @@ struct Editor {
     std::string customAppSupportDir;
     uint64_t lastKnownMtime = 0;
     uint64_t lastKnownFileSize = 0;
+    bool isPromptingExternalModify = false;
+    bool externalModifyAlertIsAsync = false;
+    bool lastSaveAbortedByUser = false;
 
 #if defined(__APPLE__)
     CGColorRef colBackground = NULL, colText = NULL, colGutterBg = NULL, colGutterText = NULL, colSel = NULL, colCaret = NULL;
@@ -292,6 +304,9 @@ struct Editor {
     std::function<void(bool)> cbSetAlwaysOnTop;
     std::function<void()> cbUpdateRecentMenu;
     std::function<bool()> cbShowExternalModifyAlert;
+    std::function<bool()> cbConfirmOverwriteExternalModify;
+    // Returns: 0 = Cancel/Abort, 1 = Save as UTF-8, 2 = Handled externally (pending/cancelled), 3 = Handled externally (saved)
+    std::function<int()> cbHandleLossyEncodingSave;
     std::function<bool(const std::string& utf8Path, const std::string& rawBytes)> cbCoordinateWriteFile;
 
     // Core methods
@@ -334,6 +349,7 @@ struct Editor {
 
     // Syntax highlighting
     void loadSyntaxForExtension(const std::string& pathOrExt);
+    int getBlockCommentState(int targetLine);
     bool checkInBlockComment(int targetLine);
 
     // Layout, Soft Wrap & Scrollbars
@@ -344,6 +360,9 @@ struct Editor {
     bool canFastAdjustLineStarts(const std::string& s) const;
     void adjustLineStartsSingleLine(size_t editPos, ptrdiff_t delta);
     ScrollBarLayout getScrollBarLayout(float clientW, float clientH);
+    VScrollBarRange getVerticalScrollBarRange(float clientW, float clientH);
+    void setVerticalScrollFromRatio(double ratio, float clientW, float clientH);
+    void clampScrollPositions(float clientW, float clientH);
     ScrollMetrics getVScrollMetrics(float clientW, float clientH);
     ScrollMetrics getHScrollMetrics(float clientW, float clientH);
     std::vector<VisualSubLine> getVisualSubLines(int lineIdx, float wrapWidth);
@@ -398,7 +417,9 @@ struct Editor {
     void performUndo();
     void performRedo();
     bool checkUnsavedChanges();
-    std::string getEncodedContentForSaving();
+    bool canEncodeLosslesslyInCurrentEncoding() const;
+    bool hasUnacknowledgedExternalModification() const;
+    std::string getEncodedContentForSaving(bool* outFellBackToUtf8 = nullptr);
     bool saveFileElevated(const std::string& utf8Path, const std::string& rawBytes);
     bool saveFile(const std::wstring& p);
     bool saveFileAs();

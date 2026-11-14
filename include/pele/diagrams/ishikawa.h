@@ -4,9 +4,31 @@
 namespace Pele {
 namespace IshikawaDiagram {
 
+constexpr size_t MAX_ISHIKAWA_NESTING_DEPTH = 64;
+
 struct IshikawaNode {
     std::string text;
     std::vector<std::shared_ptr<IshikawaNode>> children;
+
+    IshikawaNode() = default;
+    IshikawaNode(const IshikawaNode&) = default;
+    IshikawaNode(IshikawaNode&&) noexcept = default;
+    IshikawaNode& operator=(const IshikawaNode&) = default;
+    IshikawaNode& operator=(IshikawaNode&&) noexcept = default;
+    ~IshikawaNode() {
+        if (children.empty()) return;
+        std::vector<std::shared_ptr<IshikawaNode>> work = std::move(children);
+        while (!work.empty()) {
+            auto cur = std::move(work.back());
+            work.pop_back();
+            if (cur && cur.use_count() == 1 && !cur->children.empty()) {
+                for (auto& ch : cur->children) {
+                    work.push_back(std::move(ch));
+                }
+                cur->children.clear();
+            }
+        }
+    }
 };
 
 struct IshikawaModel : public DiagramMeta {
@@ -33,6 +55,9 @@ public:
         if (!baseLevel.has_value()) baseLevel = rawLevel;
         int level = std::max(rawLevel - *baseLevel + 1, 1);
         while (stack.size() > 1 && stack.back().level >= level) stack.pop_back();
+        if (stack.size() > MAX_ISHIKAWA_NESTING_DEPTH) {
+            throw PeleError("Maximum nesting depth exceeded", "limit", "ishikawa");
+        }
         stack.back().node->children.push_back(node);
         stack.push_back({level, node});
     }

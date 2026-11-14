@@ -62,3 +62,12 @@
 "No Recent Files" = "No Recent Files";
 "Reload" = "Tún Gbé Wọlé";
 "Failed to save file." = "Kùnà láti fi fáìlì pamọ́.";
+"Find..." = "Wá...";
+"Go to Line..." = "Lọ sí Ìlà...";
+"Save As..." = "Fi Pamọ́ Bí...";
+"Overwrite" = "Kọ Lé Lórí";
+"Save as UTF-8" = "Fi pamọ́ bí UTF-8";
+"The file has been modified externally on disk." = "A ti yí fáìlì náà padà láti ìta lórí díìsìkì.";
+"Saving now will overwrite external changes made by another application." = "Fífi pamọ́ báyìí yóò kọ lé àwọn àyípadà tí ètò míì ṣe.";
+"Some characters cannot be represented in the current encoding." = "Àwọn lẹ́tà kan kò ṣeé fi hàn nínú ìkọ̀wé lọ́wọ́lọ́wọ́.";
+"Saving in the current encoding would replace unrepresentable characters with '?'. Choose Save as UTF-8 to preserve all characters losslessly." = "Fífi pamọ́ nínú ìkọ̀wé lọ́wọ́lọ́wọ́ yóò fi '?' rọ́pò àwọn lẹ́tà tí kò báramu. Yan Fi pamọ́ bí UTF-8 láti pa gbogbo lẹ́tà mọ́ láìsí àdánù.";

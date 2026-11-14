@@ -29,7 +29,7 @@
 #include <arm_neon.h>
 #endif
 
-const std::wstring APP_VERSION = L"v1.0.51";
+const std::wstring APP_VERSION = L"v1.0.53";
 const std::wstring APP_TITLE = L"miu";
 
 using MiuCore::SanitizeUtf8;
@@ -200,21 +200,51 @@ static std::string LocalToUtf8(const char* data, size_t len, CFStringEncoding en
     return SanitizeUtf8(res.data(), res.size());
 }
 
-static std::string Utf8ToLocal(const std::string& utf8, CFStringEncoding encoding) {
+static std::string Utf8ToLocal(const std::string& utf8, CFStringEncoding encoding, bool* outLossless = nullptr) {
+    if (outLossless) *outLossless = true;
     if (utf8.empty()) return "";
+    bool inputWasValidUtf8 = true;
     CFStringRef str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)utf8.data(), utf8.size(), kCFStringEncodingUTF8, false);
     if (!str) {
+        inputWasValidUtf8 = false;
         std::string clean = SanitizeUtf8(utf8.data(), utf8.size());
         str = CFStringCreateWithBytes(kCFAllocatorDefault, (const UInt8*)clean.data(), clean.size(), kCFStringEncodingUTF8, false);
     }
-    if (!str) return "";
+    if (!str) {
+        if (outLossless) *outLossless = false;
+        return "";
+    }
     CFIndex len = CFStringGetLength(str);
-    CFIndex maxSize = CFStringGetMaximumSizeForEncoding(len, encoding) + 1;
-    std::vector<char> buf(maxSize);
+    if (len == 0) {
+        CFRelease(str);
+        if (outLossless) *outLossless = inputWasValidUtf8;
+        return "";
+    }
+    CFIndex losslessNeeded = 0;
+    CFIndex losslessConverted = CFStringGetBytes(str, CFRangeMake(0, len), encoding, 0, false, NULL, 0, &losslessNeeded);
+    if (losslessConverted == len && inputWasValidUtf8) {
+        if (losslessNeeded <= 0) {
+            CFRelease(str);
+            return "";
+        }
+        std::vector<char> buf((size_t)losslessNeeded);
+        CFIndex usedBufLen = 0;
+        CFStringGetBytes(str, CFRangeMake(0, len), encoding, 0, false, (UInt8*)buf.data(), losslessNeeded, &usedBufLen);
+        CFRelease(str);
+        return (usedBufLen > 0) ? std::string(buf.data(), (size_t)usedBufLen) : std::string();
+    }
+    if (outLossless) *outLossless = false;
+    CFIndex lossyNeeded = 0;
+    CFStringGetBytes(str, CFRangeMake(0, len), encoding, '?', false, NULL, 0, &lossyNeeded);
+    if (lossyNeeded <= 0) {
+        CFRelease(str);
+        return "";
+    }
+    std::vector<char> buf((size_t)lossyNeeded);
     CFIndex usedBufLen = 0;
-    CFStringGetBytes(str, CFRangeMake(0, len), encoding, '?', false, (UInt8*)buf.data(), maxSize, &usedBufLen);
+    CFStringGetBytes(str, CFRangeMake(0, len), encoding, '?', false, (UInt8*)buf.data(), lossyNeeded, &usedBufLen);
     CFRelease(str);
-    if (usedBufLen > 0) return std::string(buf.data(), usedBufLen);
+    if (usedBufLen > 0) return std::string(buf.data(), (size_t)usedBufLen);
     return "";
 }
 #else
@@ -303,78 +333,191 @@ static std::string LocalToUtf8(const char* data, size_t len, uint32_t codePage) 
     return SanitizeUtf8(res.data(), res.size());
 }
 
-static std::string Utf8ToLocal(const std::string& utf8, uint32_t codePage) {
+static std::string Utf8ToLocal(const std::string& utf8, uint32_t codePage, bool* outLossless = nullptr) {
+    if (outLossless) *outLossless = true;
     if (utf8.empty()) return "";
-    std::wstring w = UTF8ToW(utf8);
-    int sz = WideCharToMultiByte(codePage, 0, w.data(), (int)w.size(), nullptr, 0, nullptr, nullptr);
-    if (sz <= 0) return utf8;
-    std::string res(sz, '\0');
-    WideCharToMultiByte(codePage, 0, w.data(), (int)w.size(), res.data(), sz, nullptr, nullptr);
+    if (codePage == CP_UTF8 || codePage == 0) {
+        if (outLossless) *outLossless = MiuCore::IsValidUtf8(utf8.data(), utf8.size());
+        return utf8;
+    }
+    int wsz = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(), (int)utf8.size(), nullptr, 0);
+    bool validUtf8 = (wsz > 0);
+    std::wstring w;
+    if (validUtf8) {
+        w.resize((size_t)wsz);
+        MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, utf8.data(), (int)utf8.size(), w.data(), wsz);
+    } else {
+        w = UTF8ToW(SanitizeUtf8(utf8.data(), utf8.size()));
+    }
+    if (w.empty()) {
+        if (outLossless) *outLossless = false;
+        return "";
+    }
+    BOOL usedDefault = FALSE;
+    DWORD flags = WC_NO_BEST_FIT_CHARS;
+    SetLastError(0);
+    int sz = WideCharToMultiByte(codePage, flags, w.data(), (int)w.size(), nullptr, 0, nullptr, &usedDefault);
+    bool supportsUsedDefault = true;
+    if (sz <= 0 && GetLastError() == ERROR_INVALID_FLAGS) {
+        supportsUsedDefault = false;
+        flags = 0;
+        sz = WideCharToMultiByte(codePage, 0, w.data(), (int)w.size(), nullptr, 0, nullptr, nullptr);
+    }
+    if (sz <= 0) {
+        if (outLossless) *outLossless = false;
+        return "";
+    }
+    std::string res((size_t)sz, '\0');
+    usedDefault = FALSE;
+    WideCharToMultiByte(codePage, flags, w.data(), (int)w.size(), res.data(), sz, nullptr, supportsUsedDefault ? &usedDefault : nullptr);
+    if (outLossless) {
+        if (!validUtf8) {
+            *outLossless = false;
+        } else if (supportsUsedDefault) {
+            *outLossless = (usedDefault == FALSE);
+        } else {
+            *outLossless = (LocalToUtf8(res.data(), res.size(), codePage) == utf8);
+        }
+    }
     return res;
 }
 #endif
 
 bool MappedFile::open(const char* path) {
+    close();
 #if defined(__APPLE__)
     if (!path || !*path) return false;
-    fd = ::open(path, O_RDONLY);
+    int openFlags = O_RDONLY | O_NONBLOCK;
+#ifdef O_CLOEXEC
+    openFlags |= O_CLOEXEC;
+#endif
+    fd = ::open(path, openFlags);
     if (fd == -1) return false;
-    struct stat sb;
-    if (fstat(fd, &sb) == -1 || S_ISDIR(sb.st_mode)) { ::close(fd); fd = -1; return false; }
-    size = (size_t)sb.st_size;
-    if (size == 0) {
+    struct stat sb{};
+    if (fstat(fd, &sb) == -1 || !S_ISREG(sb.st_mode) || sb.st_size < 0) {
         ::close(fd);
         fd = -1;
+        return false;
+    }
+    uint64_t rawSize = (uint64_t)sb.st_size;
+#if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
+    static constexpr uint64_t kMaxSafeFileBytes = 256ULL * 1024ULL * 1024ULL;
+#else
+    static constexpr uint64_t kMaxSafeFileBytes = 512ULL * 1024ULL * 1024ULL;
+#endif
+    if (rawSize > kMaxSafeFileBytes || rawSize > (uint64_t)SIZE_MAX) {
+        ::close(fd);
+        fd = -1;
+        return false;
+    }
+    // Clear O_NONBLOCK after verifying S_ISREG so cloud/dataless regular files materialize reliably
+    int fl = ::fcntl(fd, F_GETFL);
+    if (fl != -1 && (fl & O_NONBLOCK)) {
+        (void)::fcntl(fd, F_SETFL, fl & ~O_NONBLOCK);
+    }
+    size_t targetSize = (size_t)rawSize;
+    if (targetSize == 0) {
+        ::close(fd);
+        fd = -1;
+        size = 0;
         ptr = nullptr;
         return true;
     }
-    // For files <= 16MB, copy into heap buffer and immediately unmap/close fd
-    // so external FileProvider/iCloud mutations or unmapping never cause SIGBUS/SIGSEGV.
-    if (size <= 16 * 1024 * 1024) {
-        char* mapped = (char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-        if (mapped != MAP_FAILED) {
-            winFallbackBuf.assign(mapped, size);
-            munmap(mapped, size);
-            ::close(fd);
-            fd = -1;
-            ptr = winFallbackBuf.data();
-            return true;
-        }
-        winFallbackBuf.resize(size);
-        size_t totalRead = 0;
-        while (totalRead < size) {
-            ssize_t r = ::read(fd, winFallbackBuf.data() + totalRead, size - totalRead);
-            if (r <= 0) break;
-            totalRead += (size_t)r;
-        }
+    try {
+        winFallbackBuf.resize(targetSize);
+    } catch (...) {
         ::close(fd);
         fd = -1;
-        if (totalRead == size) {
-            ptr = winFallbackBuf.data();
-            return true;
-        }
         winFallbackBuf.clear();
         size = 0;
         ptr = nullptr;
         return false;
     }
-    ptr = (char*)mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
-    if (ptr == MAP_FAILED) {
-        ptr = nullptr;
-        ::close(fd);
-        fd = -1;
-        size = 0;
-        return false;
+    // Read into owned heap buffer via pread and close fd immediately so external file
+    // truncation or iCloud eviction can never deliver SIGBUS.
+    size_t totalRead = 0;
+    while (totalRead < targetSize) {
+        size_t toRead = std::min<size_t>(targetSize - totalRead, 4ULL * 1024ULL * 1024ULL);
+        ssize_t r = ::pread(fd, winFallbackBuf.data() + totalRead, toRead, (off_t)totalRead);
+        if (r < 0) {
+            if (errno == EINTR) continue;
+            ::close(fd);
+            fd = -1;
+            winFallbackBuf.clear();
+            size = 0;
+            ptr = nullptr;
+            return false;
+        }
+        if (r == 0) {
+            // Concurrently truncated on disk: trim to bytes actually read
+            winFallbackBuf.resize(totalRead);
+            break;
+        }
+        totalRead += (size_t)r;
     }
+    ::close(fd);
+    fd = -1;
+    size = winFallbackBuf.size();
+    ptr = (size > 0) ? winFallbackBuf.data() : nullptr;
     return true;
 #else
-    std::ifstream ifs(UTF8ToW(path), std::ios::binary | std::ios::ate);
-    if (!ifs) return false;
-    size = (size_t)ifs.tellg();
-    ifs.seekg(0, std::ios::beg);
-    winFallbackBuf.resize(size);
-    if (size > 0) ifs.read(winFallbackBuf.data(), size);
-    ptr = size > 0 ? winFallbackBuf.data() : nullptr;
+    if (!path || !*path) return false;
+    std::wstring wpath = UTF8ToW(path);
+    if (wpath.empty()) return false;
+    DWORD attrs = GetFileAttributesW(wpath.c_str());
+    if (attrs == INVALID_FILE_ATTRIBUTES || (attrs & FILE_ATTRIBUTE_DIRECTORY) != 0) {
+        return false;
+    }
+    HANDLE hFile = CreateFileW(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                               nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (hFile == INVALID_HANDLE_VALUE) return false;
+    if (GetFileType(hFile) != FILE_TYPE_DISK) {
+        CloseHandle(hFile);
+        return false;
+    }
+    LARGE_INTEGER li{};
+    if (!GetFileSizeEx(hFile, &li) || li.QuadPart < 0 ||
+        (uint64_t)li.QuadPart > 512ULL * 1024ULL * 1024ULL ||
+        (uint64_t)li.QuadPart > (uint64_t)SIZE_MAX) {
+        CloseHandle(hFile);
+        return false;
+    }
+    size_t targetSize = (size_t)li.QuadPart;
+    if (targetSize == 0) {
+        CloseHandle(hFile);
+        size = 0;
+        ptr = nullptr;
+        return true;
+    }
+    try {
+        winFallbackBuf.resize(targetSize);
+    } catch (...) {
+        CloseHandle(hFile);
+        winFallbackBuf.clear();
+        size = 0;
+        ptr = nullptr;
+        return false;
+    }
+    size_t totalRead = 0;
+    while (totalRead < targetSize) {
+        DWORD chunk = (DWORD)std::min<size_t>(targetSize - totalRead, 4ULL * 1024ULL * 1024ULL);
+        DWORD got = 0;
+        if (!ReadFile(hFile, winFallbackBuf.data() + totalRead, chunk, &got, nullptr)) {
+            CloseHandle(hFile);
+            winFallbackBuf.clear();
+            size = 0;
+            ptr = nullptr;
+            return false;
+        }
+        if (got == 0) {
+            winFallbackBuf.resize(totalRead);
+            break;
+        }
+        totalRead += (size_t)got;
+    }
+    CloseHandle(hFile);
+    size = winFallbackBuf.size();
+    ptr = (size > 0) ? winFallbackBuf.data() : nullptr;
     return true;
 #endif
 }
@@ -383,6 +526,7 @@ void MappedFile::close() {
 #if defined(__APPLE__)
     if (!winFallbackBuf.empty()) {
         winFallbackBuf.clear();
+        winFallbackBuf.shrink_to_fit();
         ptr = nullptr;
     } else if (ptr && ptr != MAP_FAILED) {
         munmap(ptr, size);
@@ -393,6 +537,7 @@ void MappedFile::close() {
     size = 0;
 #else
     winFallbackBuf.clear();
+    winFallbackBuf.shrink_to_fit();
     ptr = nullptr;
     size = 0;
 #endif
@@ -637,6 +782,8 @@ void Editor::selectWordAt(size_t pos, bool addSelection) {
 }
 
 void Editor::selectLineAt(size_t pos, bool addSelection) {
+    if (lineStarts.empty()) rebuildLineStarts();
+    if (lineStarts.empty()) return;
     rollbackPadding();
     isRectSelecting = false;
     int li = getLineIdx(pos);
@@ -728,6 +875,8 @@ void Editor::performDragMove(size_t targetPos) {
 
 void Editor::insertAtCursorsWithPadding(const std::string& text) {
     if (cursors.empty()) return;
+    if (lineStarts.empty()) rebuildLineStarts();
+    if (lineStarts.empty()) return;
     EditBatch batch;
     batch.beforeCursors = cursors;
     commitPadding(batch);
@@ -762,18 +911,22 @@ void Editor::insertAtCursorsWithPadding(const std::string& text) {
                 for (auto& oc : cursors) { if (oc.head >= lineEnd) oc.head += padding.size(); if (oc.anchor >= lineEnd) oc.anchor += padding.size(); }
             }
         }
-        pt.insert(targetPos, text);
-        batch.ops.push_back({ EditOp::Insert, targetPos, text });
-        for (auto& oc : cursors) { if (oc.head >= targetPos) oc.head += text.size(); if (oc.anchor >= targetPos) oc.anchor += text.size(); }
+        if (!text.empty()) {
+            pt.insert(targetPos, text);
+            batch.ops.push_back({ EditOp::Insert, targetPos, text });
+            for (auto& oc : cursors) { if (oc.head >= targetPos) oc.head += text.size(); if (oc.anchor >= targetPos) oc.anchor += text.size(); }
+        }
         c.desiredX = getXInLine(li, c.head);
         c.originalAnchorX = c.desiredX;
         c.isVirtual = false;
         c.affinity = false;
     }
     isRectSelecting = false;
-    batch.afterCursors = cursors;
-    undo.push(batch);
-    applyBatchToEmmetTabstops(batch);
+    if (!batch.ops.empty()) {
+        batch.afterCursors = cursors;
+        undo.push(batch);
+        applyBatchToEmmetTabstops(batch);
+    }
     rebuildLineStarts();
     ensureCaretVisible();
     updateDirtyFlag();
@@ -782,6 +935,8 @@ void Editor::insertAtCursorsWithPadding(const std::string& text) {
 
 void Editor::insertNewlineWithAutoIndent() {
     if (cursors.empty()) return;
+    if (lineStarts.empty()) rebuildLineStarts();
+    if (lineStarts.empty()) return;
     rollbackPadding();
     isRectSelecting = false;
     EditBatch batch;
@@ -902,8 +1057,21 @@ void Editor::insertRectangularBlock(const std::string& text) {
     batch.beforeCursors = cursors;
     auto sortedCursors = cursors;
     std::sort(sortedCursors.begin(), sortedCursors.end(), [](const Cursor& a, const Cursor& b) { return a.start() < b.start(); });
-    size_t basePos = sortedCursors[0].head;
-    float baseX = sortedCursors[0].desiredX;
+    for (int ci = (int)sortedCursors.size() - 1; ci >= 0; --ci) {
+        if (sortedCursors[ci].hasSelection()) {
+            size_t s = sortedCursors[ci].start(), e = sortedCursors[ci].end();
+            std::string delText = pt.getRange(s, e - s);
+            pt.erase(s, e - s);
+            batch.ops.push_back({ EditOp::Erase, s, delText });
+        }
+    }
+    if (!batch.ops.empty()) {
+        rebuildLineStarts();
+    }
+    size_t basePos = sortedCursors[0].start();
+    float baseX = sortedCursors[0].hasSelection()
+        ? getXInLine(getLineIdx(basePos), basePos)
+        : sortedCursors[0].desiredX;
     int startLineIdx = getLineIdx(basePos);
     int requiredTotalLines = startLineIdx + (int)lines.size();
     if (requiredTotalLines > (int)lineStarts.size()) {
@@ -914,6 +1082,7 @@ void Editor::insertRectangularBlock(const std::string& text) {
         batch.ops.push_back({ EditOp::Insert, eofPos, newLines });
         rebuildLineStarts();
     }
+    std::vector<size_t> relEndOffsets(lines.size(), 0);
     for (int i = (int)lines.size() - 1; i >= 0; --i) {
         int targetLineIdx = startLineIdx + i;
         std::string content = lines[i];
@@ -935,19 +1104,24 @@ void Editor::insertRectangularBlock(const std::string& text) {
         } else {
             insertPos = getPosFromLineAndX(targetLineIdx, baseX);
         }
-        pt.insert(insertPos, content);
-        batch.ops.push_back({ EditOp::Insert, insertPos, content });
+        if (!content.empty()) {
+            pt.insert(insertPos, content);
+            batch.ops.push_back({ EditOp::Insert, insertPos, content });
+        }
+        relEndOffsets[i] = (insertPos - lineStart) + content.size();
         rebuildLineStarts();
     }
     cursors.clear();
     for (int i = 0; i < (int)lines.size(); ++i) {
         int li = startLineIdx + i;
-        float finalX = baseX + (float)UTF8ToW(lines[i]).length() * charWidth;
-        size_t p = getPosFromLineAndX(li, finalX);
+        size_t p = std::min(pt.length(), lineStarts[li] + relEndOffsets[i]);
+        float finalX = getXInLine(li, p);
         cursors.push_back({ p, p, finalX, finalX, false, false });
     }
-    batch.afterCursors = cursors;
-    undo.push(batch);
+    if (!batch.ops.empty()) {
+        batch.afterCursors = cursors;
+        undo.push(batch);
+    }
     rebuildLineStarts();
     ensureCaretVisible();
     updateDirtyFlag();
@@ -1872,27 +2046,32 @@ void Editor::loadSyntaxForExtension(const std::string& pathOrExt) {
     commentStateCache.clear();
 }
 
-bool Editor::checkInBlockComment(int targetLine) {
-    if (!currentSyntax.active || currentSyntax.blockCommentStart.empty() || currentSyntax.blockCommentEnd.empty() || targetLine <= 0) {
-        return false;
+int Editor::getBlockCommentState(int targetLine) {
+    if (!currentSyntax.active || currentSyntax.commentBlockStart.empty() || currentSyntax.commentBlockEnd.empty() || targetLine <= 0) {
+        return 0;
     }
-    if ((int)commentStateCache.size() <= targetLine) {
+    int clampedTarget = std::min(targetLine, (int)lineStarts.size());
+    if ((int)commentStateCache.size() <= clampedTarget) {
         int startLine = (int)commentStateCache.size();
         if (startLine == 0) {
             commentStateCache.push_back(0);
             startLine = 1;
         }
-        bool inComment = (commentStateCache[startLine - 1] != 0);
-        for (int li = startLine; li <= targetLine && li <= (int)lineStarts.size(); ++li) {
+        int state = commentStateCache[startLine - 1];
+        for (int li = startLine; li <= clampedTarget; ++li) {
             int prevLi = li - 1;
             size_t s = lineStarts[prevLi];
             size_t e = (prevLi + 1 < (int)lineStarts.size()) ? lineStarts[prevLi + 1] : pt.length();
             std::string lineStr = pt.getRange(s, e - s);
-            inComment = scanBlockCommentState(lineStr, currentSyntax, inComment);
-            commentStateCache.push_back(inComment ? 1 : 0);
+            state = scanBlockCommentState(lineStr, currentSyntax, state);
+            commentStateCache.push_back(state);
         }
     }
-    return commentStateCache[targetLine] != 0;
+    return (clampedTarget >= 0 && clampedTarget < (int)commentStateCache.size()) ? commentStateCache[clampedTarget] : 0;
+}
+
+bool Editor::checkInBlockComment(int targetLine) {
+    return getBlockCommentState(targetLine) != 0;
 }
 
 float Editor::getEffectiveTextWidth(float viewW) const {
@@ -1992,25 +2171,30 @@ ScrollBarLayout Editor::getScrollBarLayout(float clientW, float clientH) {
         L.needH = false;
         L.hBarH = 0.0f;
         L.visibleLines = std::max(1, (int)(clientH / lineHeight));
-        L.needV = (L.totalLines > L.visibleLines) || (vScrollPos > 0) || (vScrollSubLine > 0);
-        float prelimWrapW = std::max(1.0f, clientW - gutterWidth - (L.needV ? barSize : 0.0f));
-        if (L.totalLines == 1) {
-            int count = getLineVisualCount(0, prelimWrapW);
-            L.totalVisualLines = std::max(1, count);
-            if (L.totalVisualLines > L.visibleLines) L.needV = true;
-        } else if (!L.needV) {
-            int visSum = 0;
+        if (L.totalLines <= 2000) {
+            float noBarWrapW = std::max(1.0f, clientW - gutterWidth);
+            int visNoBar = 0;
             for (int i = 0; i < L.totalLines; ++i) {
-                visSum += getLineVisualCount(i, prelimWrapW);
-                if (visSum > L.visibleLines) {
-                    L.needV = true;
-                    break;
-                }
+                visNoBar += std::max(1, getLineVisualCount(i, noBarWrapW));
             }
-            L.totalVisualLines = std::max(L.totalLines, visSum);
+            L.needV = (visNoBar > L.visibleLines) || (vScrollPos > 0) || (vScrollSubLine > 0);
+            L.vBarW = L.needV ? barSize : 0.0f;
+            L.textAreaW = std::max(1.0f, clientW - gutterWidth - L.vBarW);
+            if (L.vBarW > 0.0f) {
+                int visWithBar = 0;
+                for (int i = 0; i < L.totalLines; ++i) {
+                    visWithBar += std::max(1, getLineVisualCount(i, L.textAreaW));
+                }
+                L.totalVisualLines = std::max(1, visWithBar);
+            } else {
+                L.totalVisualLines = std::max(1, visNoBar);
+            }
+        } else {
+            L.needV = true;
+            L.vBarW = barSize;
+            L.textAreaW = std::max(1.0f, clientW - gutterWidth - L.vBarW);
+            L.totalVisualLines = L.totalLines;
         }
-        L.vBarW = L.needV ? barSize : 0.0f;
-        L.textAreaW = std::max(1.0f, clientW - gutterWidth - L.vBarW);
         L.textAreaH = std::max(1.0f, clientH);
         return L;
     }
@@ -2036,20 +2220,170 @@ ScrollBarLayout Editor::getScrollBarLayout(float clientW, float clientH) {
     return L;
 }
 
+VScrollBarRange Editor::getVerticalScrollBarRange(float clientW, float clientH) {
+    ScrollBarLayout L = getScrollBarLayout(clientW, clientH);
+    VScrollBarRange R;
+    R.needV = L.needV;
+    R.visibleUnits = (double)std::max(1, L.visibleLines);
+    if (!wordWrapEnabled) {
+        R.totalUnits = (double)std::max(1, L.totalLines);
+        R.maxUnits = std::max(0.0, R.totalUnits - R.visibleUnits);
+        R.currentUnits = std::clamp((double)vScrollPos, 0.0, R.maxUnits);
+        return R;
+    }
+    int clampedVPos = std::clamp(vScrollPos, 0, std::max(0, L.totalLines - 1));
+    if (L.totalLines <= 2000) {
+        int totalVis = 0;
+        int curVis = 0;
+        for (int i = 0; i < L.totalLines; ++i) {
+            int sc = std::max(1, getLineVisualCount(i, L.textAreaW));
+            if (i < clampedVPos) {
+                curVis += sc;
+            } else if (i == clampedVPos) {
+                curVis += std::clamp(vScrollSubLine, 0, sc - 1);
+            }
+            totalVis += sc;
+        }
+        R.totalUnits = (double)std::max(1, totalVis);
+        R.maxUnits = std::max(0.0, R.totalUnits - R.visibleUnits);
+        R.currentUnits = std::clamp((double)curVis, 0.0, R.maxUnits);
+    } else {
+        int remVis = std::max(1, L.visibleLines);
+        int maxLi = L.totalLines - 1;
+        int maxSub = 0;
+        for (int i = L.totalLines - 1; i >= 0; --i) {
+            int sc = std::max(1, getLineVisualCount(i, L.textAreaW));
+            if (remVis <= sc) {
+                maxLi = i;
+                maxSub = sc - remVis;
+                remVis = 0;
+                break;
+            }
+            remVis -= sc;
+            maxLi = i;
+            maxSub = 0;
+        }
+        if (remVis > 0) {
+            maxLi = 0;
+            maxSub = 0;
+        }
+        int maxLiSc = std::max(1, getLineVisualCount(maxLi, L.textAreaW));
+        int curSc = std::max(1, getLineVisualCount(clampedVPos, L.textAreaW));
+        double subFrac = (double)std::clamp(vScrollSubLine, 0, curSc - 1) / (double)curSc;
+        R.maxUnits = std::max(0.0, (double)maxLi + (double)maxSub / (double)maxLiSc);
+        R.totalUnits = R.maxUnits + R.visibleUnits;
+        R.currentUnits = std::clamp((double)clampedVPos + subFrac, 0.0, R.maxUnits);
+    }
+    return R;
+}
+
+void Editor::setVerticalScrollFromRatio(double ratio, float clientW, float clientH) {
+    ratio = std::clamp(ratio, 0.0, 1.0);
+    ScrollBarLayout L = getScrollBarLayout(clientW, clientH);
+    VScrollBarRange R = getVerticalScrollBarRange(clientW, clientH);
+    if (!wordWrapEnabled) {
+        vScrollPos = (int)std::round(ratio * R.maxUnits);
+        vScrollSubLine = 0;
+        return;
+    }
+    if (R.maxUnits <= 0.0 || L.totalLines <= 0) {
+        vScrollPos = 0;
+        vScrollSubLine = 0;
+        return;
+    }
+    if (L.totalLines <= 2000) {
+        int targetVis = (int)std::round(ratio * R.maxUnits);
+        int acc = 0;
+        int newLi = 0;
+        int newSub = 0;
+        for (int i = 0; i < L.totalLines; ++i) {
+            int sc = std::max(1, getLineVisualCount(i, L.textAreaW));
+            if (targetVis < acc + sc || i == L.totalLines - 1) {
+                newLi = i;
+                newSub = std::clamp(targetVis - acc, 0, sc - 1);
+                break;
+            }
+            acc += sc;
+        }
+        vScrollPos = newLi;
+        vScrollSubLine = newSub;
+    } else {
+        double target = ratio * R.maxUnits;
+        int newLi = std::clamp((int)std::floor(target), 0, std::max(0, L.totalLines - 1));
+        double frac = std::clamp(target - (double)newLi, 0.0, 1.0);
+        int sc = std::max(1, getLineVisualCount(newLi, L.textAreaW));
+        int newSub = (int)std::round(frac * (double)sc);
+        if (newSub >= sc && newLi + 1 < L.totalLines) {
+            newLi++;
+            newSub = 0;
+        } else {
+            newSub = std::clamp(newSub, 0, sc - 1);
+        }
+        vScrollPos = newLi;
+        vScrollSubLine = newSub;
+    }
+    clampScrollPositions(clientW, clientH);
+}
+
+void Editor::clampScrollPositions(float clientW, float clientH) {
+    if (lineStarts.empty()) {
+        vScrollPos = 0;
+        vScrollSubLine = 0;
+        hScrollPos = 0;
+        return;
+    }
+    ScrollBarLayout L = getScrollBarLayout(clientW, clientH);
+    if (!wordWrapEnabled) {
+        int maxV = std::max(0, L.totalLines - L.visibleLines);
+        vScrollPos = std::clamp(vScrollPos, 0, maxV);
+        vScrollSubLine = 0;
+        int maxH = L.needH ? std::max(0, (int)std::ceil(maxLineWidth - L.textAreaW)) : 0;
+        hScrollPos = std::clamp(hScrollPos, 0, maxH);
+        return;
+    }
+    hScrollPos = 0;
+    vScrollPos = std::clamp(vScrollPos, 0, std::max(0, L.totalLines - 1));
+    int curSc = std::max(1, getLineVisualCount(vScrollPos, L.textAreaW));
+    vScrollSubLine = std::clamp(vScrollSubLine, 0, curSc - 1);
+
+    int remVis = std::max(1, L.visibleLines);
+    int maxLi = L.totalLines - 1;
+    int maxSub = 0;
+    for (int i = L.totalLines - 1; i >= 0; --i) {
+        int sc = std::max(1, getLineVisualCount(i, L.textAreaW));
+        if (remVis <= sc) {
+            maxLi = i;
+            maxSub = sc - remVis;
+            remVis = 0;
+            break;
+        }
+        remVis -= sc;
+        maxLi = i;
+        maxSub = 0;
+    }
+    if (remVis > 0) {
+        maxLi = 0;
+        maxSub = 0;
+    }
+    if (vScrollPos > maxLi || (vScrollPos == maxLi && vScrollSubLine > maxSub)) {
+        vScrollPos = maxLi;
+        vScrollSubLine = maxSub;
+    }
+}
+
 ScrollMetrics Editor::getVScrollMetrics(float clientW, float clientH) {
     ScrollBarLayout L = getScrollBarLayout(clientW, clientH);
+    VScrollBarRange R = getVerticalScrollBarRange(clientW, clientH);
     ScrollMetrics M;
     M.trackStart = 2.0f;
     M.trackEnd = std::max(M.trackStart + 1.0f, L.textAreaH - 2.0f);
     M.trackLen = M.trackEnd - M.trackStart;
-    int totalForScroll = (wordWrapEnabled && L.totalVisualLines > L.totalLines) ? L.totalVisualLines : L.totalLines;
-    int currentPos = (wordWrapEnabled && L.totalLines == 1 && L.totalVisualLines > 1) ? vScrollSubLine : vScrollPos;
-    M.maxScroll = std::max(0, totalForScroll - L.visibleLines);
-    float ratio = (totalForScroll > 0) ? std::clamp((float)L.visibleLines / (float)totalForScroll, 0.05f, 1.0f) : 1.0f;
+    M.maxScroll = (int)std::ceil(R.maxUnits);
+    float ratio = (R.totalUnits > 0.0) ? std::clamp((float)(R.visibleUnits / R.totalUnits), 0.05f, 1.0f) : 1.0f;
     M.thumbSize = std::max(24.0f, M.trackLen * ratio);
     if (M.thumbSize > M.trackLen) M.thumbSize = M.trackLen;
     float scrollableTrack = std::max(0.0f, M.trackLen - M.thumbSize);
-    float posRatio = (M.maxScroll > 0) ? std::clamp((float)currentPos / (float)M.maxScroll, 0.0f, 1.0f) : 0.0f;
+    float posRatio = (R.maxUnits > 0.0) ? std::clamp((float)(R.currentUnits / R.maxUnits), 0.0f, 1.0f) : 0.0f;
     M.thumbPos = M.trackStart + scrollableTrack * posRatio;
     return M;
 }
@@ -2060,7 +2394,7 @@ ScrollMetrics Editor::getHScrollMetrics(float clientW, float clientH) {
     M.trackStart = gutterWidth + 2.0f;
     M.trackEnd = std::max(M.trackStart + 1.0f, clientW - L.vBarW - 2.0f);
     M.trackLen = M.trackEnd - M.trackStart;
-    M.maxScroll = std::max(0, (int)std::ceil(maxLineWidth - L.textAreaW));
+    M.maxScroll = L.needH ? std::max(0, (int)std::ceil(maxLineWidth - L.textAreaW)) : 0;
     float ratio = (maxLineWidth > 0.0f) ? std::clamp(L.textAreaW / maxLineWidth, 0.05f, 1.0f) : 1.0f;
     M.thumbSize = std::max(24.0f, M.trackLen * ratio);
     if (M.thumbSize > M.trackLen) M.thumbSize = M.trackLen;
@@ -2122,6 +2456,16 @@ std::vector<VisualSubLine> Editor::getVisualSubLines(int lineIdx, float wrapWidt
                 CFIndex count = CTTypesetterSuggestClusterBreak(ts, curU16, availW);
                 if (count <= 0) count = 1;
                 if (curU16 + count > totalU16) count = totalU16 - curU16;
+                while (curU16 + count < totalU16 && u16ToByte[curU16 + count] == u16ToByte[curU16]) {
+                    count++;
+                }
+                if (curU16 + count < totalU16) {
+                    UniChar hi = CFStringGetCharacterAtIndex(cf, curU16 + count - 1);
+                    UniChar lo = CFStringGetCharacterAtIndex(cf, curU16 + count);
+                    if (hi >= 0xD800 && hi <= 0xDBFF && lo >= 0xDC00 && lo <= 0xDFFF) {
+                        count++;
+                    }
+                }
                 size_t bStart = u16ToByte[curU16];
                 size_t bEnd = u16ToByte[curU16 + count];
                 subs.push_back({ bStart, bEnd - bStart, (size_t)curU16, (size_t)count });
@@ -2197,15 +2541,16 @@ bool Editor::isVisualLineWrapBoundary(int lineIdx, size_t pos, float wrapWidth) 
 
 void Editor::scrollVisualLines(int deltaVisualLines) {
     if (deltaVisualLines == 0 || lineStarts.empty()) return;
+    float vw = 800.0f, vh = 600.0f;
+    if (cbGetViewSize) cbGetViewSize(vw, vh);
     if (!wordWrapEnabled) {
         vScrollPos = std::clamp(vScrollPos + deltaVisualLines, 0, std::max(0, (int)lineStarts.size() - 1));
         vScrollSubLine = 0;
+        clampScrollPositions(vw, vh);
         updateScrollBars();
         if (cbNeedsDisplay) cbNeedsDisplay();
         return;
     }
-    float vw = 800.0f, vh = 600.0f;
-    if (cbGetViewSize) cbGetViewSize(vw, vh);
     float wrapW = getEffectiveTextWidth(vw);
     int totalLines = (int)lineStarts.size();
 
@@ -2238,12 +2583,15 @@ void Editor::scrollVisualLines(int deltaVisualLines) {
             rem--;
         }
     }
+    clampScrollPositions(vw, vh);
     updateScrollBars();
     if (cbNeedsDisplay) cbNeedsDisplay();
 }
 
 void Editor::moveVisualUpDown(bool up, bool extendSelection) {
     if (cursors.empty()) return;
+    if (lineStarts.empty()) rebuildLineStarts();
+    if (lineStarts.empty()) return;
     rollbackPadding();
     isRectSelecting = false;
     float vw = 800.0f, vh = 600.0f;
@@ -2317,6 +2665,8 @@ void Editor::moveVisualUpDown(bool up, bool extendSelection) {
 
 void Editor::moveVisualHome(bool extendSelection) {
     if (cursors.empty()) return;
+    if (lineStarts.empty()) rebuildLineStarts();
+    if (lineStarts.empty()) return;
     rollbackPadding();
     isRectSelecting = false;
     float vw = 800.0f, vh = 600.0f;
@@ -2357,6 +2707,8 @@ void Editor::moveVisualHome(bool extendSelection) {
 
 void Editor::moveVisualEnd(bool extendSelection) {
     if (cursors.empty()) return;
+    if (lineStarts.empty()) rebuildLineStarts();
+    if (lineStarts.empty()) return;
     rollbackPadding();
     isRectSelecting = false;
     float vw = 800.0f, vh = 600.0f;
@@ -2456,18 +2808,26 @@ MiuPreview::PreviewRenderResult Editor::getPreviewRenderResult() {
 
 bool Editor::handlePreviewTaskToggle(int targetLineIdx) {
     if (targetLineIdx < 0 || targetLineIdx >= (int)lineStarts.size()) return false;
+    rollbackPadding();
+    isRectSelecting = false;
+    if (targetLineIdx < 0 || targetLineIdx >= (int)lineStarts.size()) return false;
     size_t s = lineStarts[targetLineIdx];
     size_t e = (targetLineIdx + 1 < (int)lineStarts.size()) ? lineStarts[targetLineIdx + 1] : pt.length();
     std::string lineStr = pt.getRange(s, e - s);
 
-    size_t bracketPos = lineStr.find('[');
-    if (bracketPos == std::string::npos || bracketPos + 2 >= lineStr.size() || lineStr[bracketPos + 2] != ']') {
+    size_t stateOffset = 0;
+    if (!MiuPreview::findTaskCheckboxOffsetInLine(lineStr, stateOffset) || stateOffset >= lineStr.size()) {
         return false;
     }
-    char curState = lineStr[bracketPos + 1];
-    if (curState != ' ' && curState != 'x' && curState != 'X') return false;
+    std::string fullDoc = pt.getRange(0, pt.length());
+    size_t verifiedDocPos = 0;
+    char oldSt = 0, newSt = 0;
+    if (!MiuPreview::toggleTaskCheckboxInMarkdown(fullDoc, targetLineIdx, verifiedDocPos, oldSt, newSt)) {
+        return false;
+    }
+    size_t docPos = s + stateOffset;
+    char curState = lineStr[stateOffset];
     std::string newChar = (curState == ' ') ? "x" : " ";
-    size_t docPos = s + bracketPos + 1;
 
     EditBatch batch;
     batch.beforeCursors = cursors;
@@ -2476,6 +2836,9 @@ bool Editor::handlePreviewTaskToggle(int targetLineIdx) {
     batch.ops.push_back({ EditOp::Erase, docPos, oldChar });
     pt.insert(docPos, newChar);
     batch.ops.push_back({ EditOp::Insert, docPos, newChar });
+    if ((int)commentStateCache.size() > targetLineIdx) {
+        commentStateCache.resize(targetLineIdx + 1);
+    }
     batch.afterCursors = cursors;
     undo.push(batch);
     updateDirtyFlag();
@@ -2525,20 +2888,21 @@ std::string Editor::preprocessRegexQuery(const std::string& query) {
 }
 
 const std::regex* Editor::getCompiledSearchRegex(const std::string& rawQuery, bool matchCase) const {
-    if (rawQuery.empty() || !isSafeUserRegex(rawQuery)) return nullptr;
+    if (rawQuery.empty() || !MiuCore::isSafeUserRegex(rawQuery)) return nullptr;
     bool ic = !matchCase;
     if (cachedSearchRegexValid && cachedSearchRegexPattern == rawQuery && cachedSearchRegexIc == ic) {
         return &cachedSearchRegex;
     }
-    std::string actualQuery = MiuCore::preprocessRegexQuery(rawQuery);
-    if (!isSafeUserRegex(actualQuery, 32768)) {
+    MiuCore::RegexPreprocessInfo info = MiuCore::preprocessRegexEx(rawQuery);
+    if (info.pattern.size() > 32768) {
         cachedSearchRegexValid = false;
         return nullptr;
     }
     try {
         std::regex_constants::syntax_option_type flags = std::regex_constants::ECMAScript;
         if (ic) flags |= std::regex_constants::icase;
-        cachedSearchRegex = std::regex(actualQuery, flags);
+        cachedSearchRegex = std::regex(info.pattern, flags);
+        cachedRegexInfo = std::move(info);
         cachedSearchRegexPattern = rawQuery;
         cachedSearchRegexIc = ic;
         cachedSearchRegexValid = true;
@@ -2564,13 +2928,14 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
         const std::regex* rePtr = getCompiledSearchRegex(query, matchCase);
         if (!rePtr) return std::string::npos;
         const std::regex& re = *rePtr;
+        const auto& reInfo = cachedRegexInfo;
         std::string fullText = pt.getRange(0, len);
         try {
             std::smatch m;
             size_t foundPos = std::string::npos;
             size_t foundLen = 0;
-            bool startsWithCaret = (!query.empty() && query[0] == '^');
-            bool endsWithDollar = MiuCore::hasUnescapedTrailingDollar(query);
+            bool hasBolCaret = reInfo.hasAnyBolCaret;
+            bool endsWithDollar = reInfo.endsWithDollar;
             if (forward) {
                 if (startPos > fullText.size()) startPos = 0;
                 size_t searchStartIdx = startPos;
@@ -2589,11 +2954,18 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                 while (std::regex_search(searchStartIter, fullText.cend(), m, re, searchFlags)) {
                     size_t currentMatchPos = searchStartIdx + m.position();
                     size_t currentMatchLen = m.length();
-                    size_t anchorLen = 0;
-                    if (startsWithCaret && m.size() > 1 && m[1].matched) anchorLen = m.length(1);
+                    bool matchedBolGroup = false;
+                    size_t anchorLen = MiuCore::computeMatchAnchorLen(m, reInfo, &matchedBolGroup);
                     size_t contentPos = currentMatchPos + anchorLen;
                     size_t contentLen = currentMatchLen - anchorLen;
                     bool isValid = (contentPos >= startPos);
+                    if (isValid && matchedBolGroup && anchorLen == 1 && currentMatchPos < fullText.size() && fullText[currentMatchPos] == '\r' &&
+                        currentMatchPos + 1 < fullText.size() && fullText[currentMatchPos + 1] == '\n') {
+                        isValid = false;
+                    }
+                    if (isValid && (!MiuCore::isUtf8CharBoundary(fullText, currentMatchPos) || !MiuCore::isUtf8CharBoundary(fullText, contentPos))) {
+                        isValid = false;
+                    }
                     if (isValid && endsWithDollar) {
                         bool isAtLineEnd = false;
                         size_t checkPos = contentPos + contentLen;
@@ -2610,7 +2982,7 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                     if (isValid) {
                         foundPos = contentPos;
                         foundLen = contentLen;
-                        if (startsWithCaret && endsWithDollar && foundLen == 0 && foundPos == fullText.size() && !fullText.empty()) {
+                        if (hasBolCaret && endsWithDollar && foundLen == 0 && foundPos == fullText.size() && !fullText.empty()) {
                             bool isAfterNewline = (foundPos > 0 && (fullText[foundPos - 1] == '\r' || fullText[foundPos - 1] == '\n'));
                             if (!isAfterNewline) isValid = false;
                         }
@@ -2618,7 +2990,7 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                     }
                     size_t step = currentMatchLen;
                     if (step == 0) {
-                        bool isBolCaret = (startsWithCaret && !(searchFlags & std::regex_constants::match_not_bol));
+                        bool isBolCaret = (hasBolCaret && !(searchFlags & std::regex_constants::match_not_bol));
                         step = isBolCaret ? 0 : MiuCore::utf8CharLenAt(fullText, currentMatchPos);
                     }
                     if (step == 0 && (searchFlags & std::regex_constants::match_not_bol)) step = MiuCore::utf8CharLenAt(fullText, currentMatchPos);
@@ -2635,9 +3007,10 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                 size_t bestPos = std::string::npos, bestLen = 0;
                 size_t limit = (startPos == 0) ? (len + 1) : startPos;
                 for (auto i = words_begin; i != words_end; ++i) {
-                    size_t mPos = i->position(), mLen = i->length(), aLen = 0;
-                    if (startsWithCaret && i->size() > 1 && (*i)[1].matched) aLen = i->length(1);
-                    if (startsWithCaret && aLen == 1 && mPos < fullText.size() && fullText[mPos] == '\r') {
+                    size_t mPos = i->position(), mLen = i->length();
+                    bool matchedBolGroup = false;
+                    size_t aLen = MiuCore::computeMatchAnchorLen(*i, reInfo, &matchedBolGroup);
+                    if (matchedBolGroup && aLen == 1 && mPos < fullText.size() && fullText[mPos] == '\r') {
                         if (mPos + 1 < fullText.size() && fullText[mPos + 1] == '\n') continue;
                     }
                     size_t contentStart = mPos + aLen;
@@ -2650,6 +3023,10 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
                             if (c != '\r' && c != '\n') continue;
                             if (contentLen == 0 && c == '\n' && checkPos > 0 && fullText[checkPos - 1] == '\r') continue;
                         }
+                    }
+                    if (hasBolCaret && endsWithDollar && contentLen == 0 && contentStart == fullText.size() && !fullText.empty()) {
+                        bool isAfterNewline = (contentStart > 0 && (fullText[contentStart - 1] == '\r' || fullText[contentStart - 1] == '\n'));
+                        if (!isAfterNewline) continue;
                     }
                     if (contentStart < limit) {
                         bestPos = contentStart;
@@ -2693,8 +3070,8 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
 
     auto checkValidMatch = [&](size_t cand) -> bool {
         if (wholeWord) {
-            if (cand > 0 && isWordChar(pt.charAt(cand - 1))) return false;
-            if (cand + qLen < len && isWordChar(pt.charAt(cand + qLen))) return false;
+            if (!MiuCore::isWordBoundaryBefore(pt, cand)) return false;
+            if (!MiuCore::isWordBoundaryAfter(pt, cand + qLen)) return false;
         }
         if (isGraphemeSplit(cand)) return false;
         return true;
@@ -2842,27 +3219,49 @@ void Editor::replaceNext() {
         const std::regex* rePtr = getCompiledSearchRegex(searchQuery, searchMatchCase);
         if (!rePtr) return;
         const std::regex& re = *rePtr;
+        const auto& reInfo = cachedRegexInfo;
         try {
             std::smatch m;
-            bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
             std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
-            std::string fmt = MiuCore::adjustCaretGroupReferences(rawFmt, startsWithCaret);
-            if (std::regex_match(selText, m, re)) {
-                match = true;
-            } else if (start > 0) {
+            bool atBol = (start == 0 || pt.charAt(start - 1) == '\n' ||
+                          (pt.charAt(start - 1) == '\r' && !(start < pt.length() && pt.charAt(start) == '\n')));
+            std::regex_constants::match_flag_type matchFlags = atBol
+                ? std::regex_constants::match_default
+                : std::regex_constants::match_not_bol;
+            if (std::regex_match(selText.cbegin(), selText.cend(), m, re, matchFlags)) {
+                match = (MiuCore::computeMatchAnchorLen(m, reInfo) == 0);
+            }
+            if (!match && start > 0) {
                 int backStep = 0;
                 if (pt.charAt(start - 1) == '\n') {
                     backStep = 1;
                     if (start > 1 && pt.charAt(start - 2) == '\r') backStep = 2;
-                } else if (pt.charAt(start - 1) == '\r') {
+                } else if (pt.charAt(start - 1) == '\r' && !(start < pt.length() && pt.charAt(start) == '\n')) {
                     backStep = 1;
                 }
                 if (backStep > 0) {
                     std::string extendedText = pt.getRange(start - backStep, len + backStep);
-                    if (std::regex_match(extendedText, m, re)) match = true;
+                    std::regex_constants::match_flag_type extFlags = (start - (size_t)backStep == 0)
+                        ? std::regex_constants::match_default
+                        : std::regex_constants::match_not_bol;
+                    if (std::regex_match(extendedText.cbegin(), extendedText.cend(), m, re, extFlags) &&
+                        MiuCore::computeMatchAnchorLen(m, reInfo) == (size_t)backStep) {
+                        match = true;
+                    }
                 }
             }
-            if (match) replacement = m.format(fmt);
+            if (match && reInfo.endsWithDollar) {
+                size_t checkPos = start + len;
+                if (checkPos < pt.length()) {
+                    char cAfter = pt.charAt(checkPos);
+                    if (cAfter != '\r' && cAfter != '\n') match = false;
+                    else if (len == 0 && cAfter == '\n' && checkPos > 0 && pt.charAt(checkPos - 1) == '\r') match = false;
+                }
+            }
+            if (match) {
+                std::string fullText = pt.getRange(0, pt.length());
+                replacement = MiuCore::formatRegexReplacement(m, fullText, start, len, rawFmt, reInfo);
+            }
         } catch (...) {}
     } else {
         if (len == searchQuery.length()) {
@@ -2876,8 +3275,8 @@ void Editor::replaceNext() {
                 if (c1 != c2) { match = false; break; }
             }
             if (match && searchWholeWord) {
-                if (start > 0 && isWordChar(pt.charAt(start - 1))) match = false;
-                if (match && start + len < pt.length() && isWordChar(pt.charAt(start + len))) match = false;
+                if (!MiuCore::isWordBoundaryBefore(pt, start)) match = false;
+                if (match && !MiuCore::isWordBoundaryAfter(pt, start + len)) match = false;
             }
         }
         if (match) replacement = replaceQuery;
@@ -2922,10 +3321,10 @@ void Editor::replaceAll() {
         const std::regex* rePtr = getCompiledSearchRegex(searchQuery, searchMatchCase);
         if (!rePtr) return;
         const std::regex& cachedRegex = *rePtr;
-        bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
-        bool endsWithDollar = MiuCore::hasUnescapedTrailingDollar(searchQuery);
+        const auto& reInfo = cachedRegexInfo;
+        bool hasBolCaret = reInfo.hasAnyBolCaret;
+        bool endsWithDollar = reInfo.endsWithDollar;
         std::string rawFmt = UnescapeString(replaceQuery, newlineStr);
-        std::string fmt = MiuCore::adjustCaretGroupReferences(rawFmt, startsWithCaret);
         try {
             auto searchStart = fullText.cbegin();
             std::smatch m;
@@ -2934,20 +3333,19 @@ void Editor::replaceAll() {
             while (std::regex_search(searchStart, fullText.cend(), m, cachedRegex, flags)) {
                 size_t matchPos = currentOffset + m.position();
                 size_t matchLen = m.length();
-                size_t anchorLen = 0;
-                if (startsWithCaret && m.size() > 1 && m[1].matched) anchorLen = m.length(1);
+                bool matchedBolGroup = false;
+                size_t anchorLen = MiuCore::computeMatchAnchorLen(m, reInfo, &matchedBolGroup);
                 size_t contentPos = matchPos + anchorLen;
                 size_t contentLen = matchLen - anchorLen;
-                if (endsWithDollar && contentLen > 0) {
-                    if (fullText[contentPos + contentLen - 1] == '\n') {
-                        contentLen--;
-                        if (contentLen > 0 && fullText[contentPos + contentLen - 1] == '\r') contentLen--;
-                    } else if (fullText[contentPos + contentLen - 1] == '\r') {
-                        contentLen--;
-                    }
-                }
                 bool isValid = true;
-                if (endsWithDollar) {
+                if (matchedBolGroup && anchorLen == 1 && matchPos < fullText.size() && fullText[matchPos] == '\r' &&
+                    matchPos + 1 < fullText.size() && fullText[matchPos + 1] == '\n') {
+                    isValid = false;
+                }
+                if (isValid && (!MiuCore::isUtf8CharBoundary(fullText, matchPos) || !MiuCore::isUtf8CharBoundary(fullText, contentPos))) {
+                    isValid = false;
+                }
+                if (isValid && endsWithDollar) {
                     bool isAtLineEnd = false;
                     size_t checkPos = contentPos + contentLen;
                     if (checkPos >= fullText.size()) isAtLineEnd = true;
@@ -2960,7 +3358,7 @@ void Editor::replaceAll() {
                     }
                     if (!isAtLineEnd) isValid = false;
                 }
-                if (isValid && startsWithCaret && endsWithDollar && contentLen == 0 && contentPos == fullText.size() && !fullText.empty()) {
+                if (isValid && hasBolCaret && endsWithDollar && contentLen == 0 && contentPos == fullText.size() && !fullText.empty()) {
                     bool isAfterNewline = (contentPos > 0 && (fullText[contentPos - 1] == '\r' || fullText[contentPos - 1] == '\n'));
                     if (!isAfterNewline) isValid = false;
                 }
@@ -2969,11 +3367,15 @@ void Editor::replaceAll() {
                     if (last.start == contentPos && last.len == 0 && contentLen == 0) isValid = false;
                 }
                 if (isValid) {
-                    matches.push_back({ contentPos, contentLen, m.format(fmt) });
+                    matches.push_back({
+                        contentPos,
+                        contentLen,
+                        MiuCore::formatRegexReplacement(m, fullText, contentPos, contentLen, rawFmt, reInfo)
+                    });
                 }
                 size_t step = matchLen;
                 if (step == 0) {
-                    bool isBolCaret = (startsWithCaret && !(flags & std::regex_constants::match_not_bol));
+                    bool isBolCaret = (hasBolCaret && !(flags & std::regex_constants::match_not_bol));
                     step = isBolCaret ? 0 : MiuCore::utf8CharLenAt(fullText, matchPos);
                 }
                 if (step == 0 && (flags & std::regex_constants::match_not_bol)) step = MiuCore::utf8CharLenAt(fullText, matchPos);
@@ -3288,36 +3690,38 @@ size_t Editor::getPosFromLineAndX(int li, float tx) {
 
 size_t Editor::getDocPosFromPoint(float x, float y) {
     if (lineStarts.empty()) return 0;
+    int maxLi = std::max(0, (int)lineStarts.size() - 1);
     if (!wordWrapEnabled) {
         float absY = y + (float)vScrollPos * lineHeight;
-        int li = std::clamp((int)std::floor(absY / lineHeight), 0, (int)lineStarts.size() - 1);
+        int li = std::clamp((int)std::floor(absY / lineHeight), 0, maxLi);
         return getPosFromLineAndX(li, x - gutterWidth + (float)hScrollPos);
     }
     float vw = 800.0f, vh = 600.0f;
     if (cbGetViewSize) cbGetViewSize(vw, vh);
     float wrapW = getEffectiveTextWidth(vw);
     int visualRowOffset = std::max(0, (int)std::floor(y / lineHeight));
-    int curLi = std::clamp(vScrollPos, 0, (int)lineStarts.size() - 1);
+    int curLi = std::clamp(vScrollPos, 0, maxLi);
     int curSub = std::max(0, vScrollSubLine);
     while (visualRowOffset > 0 && curLi < (int)lineStarts.size()) {
         auto subs = getVisualSubLines(curLi, wrapW);
-        int remInLine = (int)subs.size() - 1 - curSub;
+        int remInLine = std::max(0, (int)subs.size() - 1) - curSub;
         if (visualRowOffset <= remInLine) {
             curSub += visualRowOffset;
             visualRowOffset = 0;
             break;
         }
-        visualRowOffset -= (remInLine + 1);
+        visualRowOffset -= std::max(1, remInLine + 1);
         if (curLi + 1 < (int)lineStarts.size()) {
             curLi++;
             curSub = 0;
         } else {
-            curSub = (int)subs.size() - 1;
+            curSub = std::max(0, (int)subs.size() - 1);
             break;
         }
     }
     auto subs = getVisualSubLines(curLi, wrapW);
-    curSub = std::clamp(curSub, 0, (int)subs.size() - 1);
+    if (subs.empty()) return lineStarts[curLi];
+    curSub = std::clamp(curSub, 0, std::max(0, (int)subs.size() - 1));
     size_t lineStart = lineStarts[curLi];
     size_t subStartPos = lineStart + subs[curSub].byteStart;
     size_t subEndPos = subStartPos + subs[curSub].byteLen;
@@ -3328,6 +3732,8 @@ size_t Editor::getDocPosFromPoint(float x, float y) {
 
 void Editor::ensureCaretVisible() {
     if (cursors.empty()) return;
+    if (lineStarts.empty()) rebuildLineStarts();
+    if (lineStarts.empty()) return;
     Cursor& c = cursors.back();
     float viewWidth = 800.0f, viewHeight = 600.0f;
     if (cbGetViewSize) cbGetViewSize(viewWidth, viewHeight);
@@ -3619,9 +4025,11 @@ void Editor::insertAtCursors(const std::string& t) {
         c.isVirtual = false;
         c.affinity = false;
     }
-    b.afterCursors = cursors;
-    undo.push(b);
-    applyBatchToEmmetTabstops(b);
+    if (!b.ops.empty()) {
+        b.afterCursors = cursors;
+        undo.push(b);
+        applyBatchToEmmetTabstops(b);
+    }
     ensureCaretVisible();
     updateDirtyFlag();
     if (cbUpdatePreview && showPreview) cbUpdatePreview();
@@ -3882,6 +4290,8 @@ void Editor::convertSelectedText(bool toUpper) {
 }
 
 void Editor::copyToClipboard() {
+    if (lineStarts.empty()) rebuildLineStarts();
+    if (lineStarts.empty()) return;
     bool hasSelection = false;
     for (const auto& c : cursors) if (c.hasSelection()) { hasSelection = true; break; }
     std::string t;
@@ -3948,6 +4358,8 @@ void Editor::pasteFromClipboard() {
     std::string utf8 = NormalizeNewlines(rawClip, newlineStr);
     std::string normalizedLineCopy = NormalizeNewlines(lastLineCopyText, newlineStr);
     if (isRectMarker) {
+        std::vector<Cursor> originalCursors = cursors;
+        size_t prevUndoSize = undo.undoStack.size();
         if (cursors.size() <= 1) {
             size_t basePos = cursors.empty() ? 0 : cursors[0].head;
             float baseX = getXFromPos(basePos);
@@ -3971,6 +4383,12 @@ void Editor::pasteFromClipboard() {
             }
         }
         insertRectangularBlock(utf8);
+        if (undo.undoStack.size() > prevUndoSize) {
+            undo.undoStack.back().beforeCursors = originalCursors;
+            undo.undoStack.back().afterCursors = cursors;
+        } else {
+            cursors = originalCursors;
+        }
     } else if (lastCopyWasLine && (lastLineCopyText.empty() || rawClip == lastLineCopyText || utf8 == normalizedLineCopy)) {
         bool hasAnySelection = false;
         for (const auto& c : cursors) if (c.hasSelection()) { hasAnySelection = true; break; }
@@ -3979,7 +4397,9 @@ void Editor::pasteFromClipboard() {
         } else {
             rollbackPadding();
             rebuildLineStarts();
+            if (lineStarts.empty()) return;
             std::vector<Cursor> originalCursors = cursors;
+            size_t prevUndoSize = undo.undoStack.size();
             std::vector<size_t> relativeOffsets;
             for (auto& c : cursors) {
                 int lineIdx = getLineIdx(c.head);
@@ -3989,22 +4409,26 @@ void Editor::pasteFromClipboard() {
                 c.anchor = lineStart;
             }
             insertAtCursors(utf8);
-            for (size_t i = 0; i < cursors.size() && i < relativeOffsets.size(); ++i) {
-                int lineIdx = getLineIdx(cursors[i].head);
-                size_t lineStart = lineStarts[lineIdx];
-                size_t lineEnd = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
-                if (lineEnd > lineStart && pt.charAt(lineEnd - 1) == '\n') lineEnd--;
-                if (lineEnd > lineStart && pt.charAt(lineEnd - 1) == '\r') lineEnd--;
-                cursors[i].head = std::min(lineStart + relativeOffsets[i], lineEnd);
-                cursors[i].anchor = cursors[i].head;
-                cursors[i].desiredX = getXFromPos(cursors[i].head);
-            }
-            if (!undo.undoStack.empty()) {
+            if (undo.undoStack.size() > prevUndoSize) {
+                if (!lineStarts.empty()) {
+                    for (size_t i = 0; i < cursors.size() && i < relativeOffsets.size(); ++i) {
+                        int lineIdx = getLineIdx(cursors[i].head);
+                        size_t lineStart = lineStarts[lineIdx];
+                        size_t lineEnd = (lineIdx + 1 < (int)lineStarts.size()) ? lineStarts[lineIdx + 1] : pt.length();
+                        if (lineEnd > lineStart && pt.charAt(lineEnd - 1) == '\n') lineEnd--;
+                        if (lineEnd > lineStart && pt.charAt(lineEnd - 1) == '\r') lineEnd--;
+                        cursors[i].head = std::min(lineStart + relativeOffsets[i], lineEnd);
+                        cursors[i].anchor = cursors[i].head;
+                        cursors[i].desiredX = getXFromPos(cursors[i].head);
+                    }
+                }
                 undo.undoStack.back().beforeCursors = originalCursors;
                 undo.undoStack.back().afterCursors = cursors;
+                ensureCaretVisible();
+                updateDirtyFlag();
+            } else {
+                cursors = originalCursors;
             }
-            ensureCaretVisible();
-            updateDirtyFlag();
         }
     } else {
         insertAtCursors(utf8);
@@ -4074,45 +4498,9 @@ static bool writeAllToPosixFd(int fd, const char* data, size_t len) {
 #endif
 
 bool Editor::saveFileElevated(const std::string& utf8Path, const std::string& rawBytes) {
-#if defined(__APPLE__) && (!defined(TARGET_OS_IPHONE) || !TARGET_OS_IPHONE)
-    char tmpTemplate[] = "/tmp/miu_elevated_XXXXXX";
-    int tmpFd = mkstemp(tmpTemplate);
-    if (tmpFd == -1) return false;
-    bool writeOk = writeAllToPosixFd(tmpFd, rawBytes.data(), rawBytes.size());
-    if (writeOk) ::fsync(tmpFd);
-    ::close(tmpFd);
-    if (!writeOk) {
-        ::unlink(tmpTemplate);
-        return false;
-    }
-    auto escapeShSingleQuote = [](const std::string& s) {
-        std::string out = "'";
-        for (char c : s) {
-            if (c == '\'') out += "'\\''";
-            else out += c;
-        }
-        out += "'";
-        return out;
-    };
-    std::string shellCmd = "cp -f " + escapeShSingleQuote(tmpTemplate) + " " + escapeShSingleQuote(utf8Path) +
-                           " && rm -f " + escapeShSingleQuote(tmpTemplate);
-    std::string appleScript;
-    appleScript.reserve(shellCmd.size() * 2 + 64);
-    appleScript += "do shell script \"";
-    for (char c : shellCmd) {
-        if (c == '\\' || c == '"') appleScript += '\\';
-        appleScript += c;
-    }
-    appleScript += "\" with administrator privileges";
-    std::string fullCmd = "/usr/bin/osascript -e " + escapeShSingleQuote(appleScript);
-    int ret = std::system(fullCmd.c_str());
-    ::unlink(tmpTemplate);
-    return (ret == 0);
-#else
     (void)utf8Path;
     (void)rawBytes;
     return false;
-#endif
 }
 
 bool MiuIsLikelyTemporaryGuidFileName(const std::string& fileName) {
@@ -4295,7 +4683,24 @@ std::string MiuResolveDisplayFileName(const std::vector<std::string>& candidates
     return localizedUntitledUtf8.empty() ? "Untitled" : localizedUntitledUtf8;
 }
 
-std::string Editor::getEncodedContentForSaving() {
+bool Editor::canEncodeLosslesslyInCurrentEncoding() const {
+    if (currentEncoding != ENC_LOCAL) return true;
+    std::string contentUtf8 = pt.getRange(0, pt.length());
+    bool lossless = true;
+    (void)Utf8ToLocal(contentUtf8, currentCodePage, &lossless);
+    return lossless;
+}
+
+bool Editor::hasUnacknowledgedExternalModification() const {
+    if (currentFilePath.empty() || lastKnownMtime == 0) return false;
+    std::string utf8Path = WToUTF8(currentFilePath);
+    struct stat sb{};
+    if (stat(utf8Path.c_str(), &sb) != 0) return false;
+    return ((uint64_t)sb.st_mtime != lastKnownMtime || (uint64_t)sb.st_size != lastKnownFileSize);
+}
+
+std::string Editor::getEncodedContentForSaving(bool* outFellBackToUtf8) {
+    if (outFellBackToUtf8) *outFellBackToUtf8 = false;
     rollbackPadding();
     std::string contentUtf8 = pt.getRange(0, pt.length());
     std::string outBytes;
@@ -4303,8 +4708,14 @@ std::string Editor::getEncodedContentForSaving() {
     if (currentEncoding == ENC_UTF16LE || currentEncoding == ENC_UTF16BE) {
         outBytes = Utf8ToUtf16Bytes(contentUtf8, currentEncoding == ENC_UTF16BE);
     } else if (currentEncoding == ENC_LOCAL) {
-        std::string localStr = Utf8ToLocal(contentUtf8, currentCodePage);
-        outBytes = !localStr.empty() ? localStr : contentUtf8;
+        bool lossless = true;
+        std::string localStr = Utf8ToLocal(contentUtf8, currentCodePage, &lossless);
+        if (!lossless) {
+            if (outFellBackToUtf8) *outFellBackToUtf8 = true;
+            outBytes = contentUtf8;
+        } else {
+            outBytes = localStr;
+        }
     } else if (currentEncoding == ENC_UTF8_BOM) {
         outBytes.assign("\xEF\xBB\xBF", 3);
         outBytes += contentUtf8;
@@ -4315,14 +4726,54 @@ std::string Editor::getEncodedContentForSaving() {
 }
 
 bool Editor::saveFile(const std::wstring& p) {
+    lastSaveAbortedByUser = false;
     rollbackPadding();
+
+    if (!currentFilePath.empty() && p == currentFilePath && hasUnacknowledgedExternalModification()) {
+        if (cbConfirmOverwriteExternalModify) {
+            if (!cbConfirmOverwriteExternalModify()) {
+                lastSaveAbortedByUser = true;
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+
     std::string contentUtf8 = pt.getRange(0, pt.length());
     std::string outBytes;
     if (currentEncoding == ENC_UTF16LE || currentEncoding == ENC_UTF16BE) {
         outBytes = Utf8ToUtf16Bytes(contentUtf8, currentEncoding == ENC_UTF16BE);
     } else if (currentEncoding == ENC_LOCAL) {
-        std::string localStr = Utf8ToLocal(contentUtf8, currentCodePage);
-        outBytes = !localStr.empty() ? localStr : contentUtf8;
+        bool lossless = true;
+        std::string localStr = Utf8ToLocal(contentUtf8, currentCodePage, &lossless);
+        if (!lossless) {
+            if (cbHandleLossyEncodingSave) {
+                int action = cbHandleLossyEncodingSave();
+                if (action == 1) {
+                    currentEncoding = ENC_UTF8_NOBOM;
+#if defined(__APPLE__)
+                    currentCodePage = kCFStringEncodingUTF8;
+#else
+                    currentCodePage = 0;
+#endif
+                    outBytes = contentUtf8;
+                } else if (action == 3) {
+                    lastSaveAbortedByUser = true;
+                    return true;
+                } else if (action == 2) {
+                    lastSaveAbortedByUser = true;
+                    return false;
+                } else {
+                    lastSaveAbortedByUser = true;
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        } else {
+            outBytes = localStr;
+        }
     } else if (currentEncoding == ENC_UTF8_BOM) {
         outBytes.assign("\xEF\xBB\xBF", 3);
         outBytes += contentUtf8;
@@ -4333,9 +4784,9 @@ bool Editor::saveFile(const std::wstring& p) {
     // Detach PieceTable from any active OS mmap before overwriting the file so
     // neither atomic replacement nor in-place fallback can ever trigger SIGBUS.
     if (fileMap && fileMap->fd != -1) {
-        this->currentFileBuffer = std::move(contentUtf8);
+        this->currentFileBuffer = contentUtf8;
         pt.initFromFile(this->currentFileBuffer.data(), this->currentFileBuffer.size());
-        fileMap->close();
+        fileMap.reset();
     }
 
     std::string utf8Path = WToUTF8(p);
@@ -4446,6 +4897,10 @@ bool Editor::saveFile(const std::wstring& p) {
                 this->currentFileBuffer.shrink_to_fit();
             }
         }
+    } else if (fileMap) {
+        this->currentFileBuffer = std::move(contentUtf8);
+        pt.initFromFile(this->currentFileBuffer.data(), this->currentFileBuffer.size());
+        fileMap.reset();
     }
 
     currentFilePath = p;
@@ -4505,13 +4960,15 @@ bool Editor::openFileFromPath(const std::string& p) {
         pt.initFromFile(ptr, sz);
         detectNewlineStyle(ptr, sz);
     }
-    fileMap = std::move(newMap);
+    fileMap = usedDecodedBuffer ? nullptr : std::move(newMap);
     currentFilePath = UTF8ToW(p);
     loadSyntaxForExtension(p);
     recordFileMtime(p);
     addToRecentFiles(p);
     undo.clear();
     isDirty = false;
+    isPromptingExternalModify = false;
+    lastSaveAbortedByUser = false;
     vScrollPos = 0;
     vScrollSubLine = 0;
     hScrollPos = 0;
@@ -4542,6 +4999,7 @@ void Editor::newFile() {
         isRectSelecting = false;
         activeEmmetSession.active = false;
         pt.initEmpty();
+        fileMap.reset();
         currentFilePath.clear();
         currentFileExt.clear();
         currentEncoding = ENC_UTF8_NOBOM;
@@ -4549,6 +5007,7 @@ void Editor::newFile() {
         currentSyntax = SyntaxDef();
         commentStateCache.clear();
         this->currentFileBuffer.clear();
+        this->currentFileBuffer.shrink_to_fit();
         newlineStr = "\n";
         undo.clear();
         isDirty = false;
@@ -4557,6 +5016,8 @@ void Editor::newFile() {
         hScrollPos = 0;
         lastKnownMtime = 0;
         lastKnownFileSize = 0;
+        isPromptingExternalModify = false;
+        lastSaveAbortedByUser = false;
         cursors.clear();
         cursors.push_back({ 0, 0, 0.0f, 0.0f, false, false });
         rebuildLineStarts();
@@ -4620,14 +5081,12 @@ void Editor::updateThemeColors() {
         loadSyntaxDefForExtension(currentFileExt, isDarkMode, currentSyntax);
     }
 #if defined(__APPLE__)
-    if (colBackground) {
-        CGColorRelease(colBackground);
-        CGColorRelease(colText);
-        CGColorRelease(colGutterBg);
-        CGColorRelease(colGutterText);
-        CGColorRelease(colSel);
-        CGColorRelease(colCaret);
-    }
+    if (colBackground) CGColorRelease(colBackground);
+    if (colText) CGColorRelease(colText);
+    if (colGutterBg) CGColorRelease(colGutterBg);
+    if (colGutterText) CGColorRelease(colGutterText);
+    if (colSel) CGColorRelease(colSel);
+    if (colCaret) CGColorRelease(colCaret);
     if (colNewlineMark) CGColorRelease(colNewlineMark);
     if (colBracketBg) CGColorRelease(colBracketBg);
     if (colBracketBorder) CGColorRelease(colBracketBorder);
@@ -4957,6 +5416,7 @@ void Editor::recordFileMtime(const std::string& path) {
 
 bool Editor::checkFileModification() {
     if (currentFilePath.empty() || lastKnownMtime == 0) return false;
+    if (isPromptingExternalModify) return false;
     std::string utf8Path = WToUTF8(currentFilePath);
     struct stat sb;
     if (stat(utf8Path.c_str(), &sb) != 0) return false;
@@ -4964,22 +5424,32 @@ bool Editor::checkFileModification() {
     uint64_t diskSize = (uint64_t)sb.st_size;
     if (diskMtime == lastKnownMtime && diskSize == lastKnownFileSize) return false;
 
-    lastKnownMtime = diskMtime;
-    lastKnownFileSize = diskSize;
     if (!isDirty) {
         openFileFromPath(utf8Path);
         return true;
     }
-    if (cbShowExternalModifyAlert && cbShowExternalModifyAlert()) {
+    if (!cbShowExternalModifyAlert) {
+        return false;
+    }
+    isPromptingExternalModify = true;
+    bool reload = cbShowExternalModifyAlert();
+    if (externalModifyAlertIsAsync) {
+        return false;
+    }
+    isPromptingExternalModify = false;
+    if (reload) {
         isDirty = false;
         openFileFromPath(utf8Path);
         return true;
     }
+    lastKnownMtime = diskMtime;
+    lastKnownFileSize = diskSize;
     return false;
 }
 
 #if defined(__APPLE__)
 void Editor::render(CGContextRef ctx, float w, float h) {
+    if (lineStarts.empty()) rebuildLineStarts();
     ScrollBarLayout sbLayout = getScrollBarLayout(w, h);
     visibleVScrollWidth = sbLayout.vBarW;
     visibleHScrollHeight = sbLayout.hBarH;
@@ -4993,6 +5463,7 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     CGContextSetFillColorWithColor(ctx, colBackground);
     CGContextFillRect(ctx, CGRectMake(gutterWidth, 0, w - gutterWidth, h));
 #endif
+    if (lineStarts.empty()) return;
     CGContextSetTextMatrix(ctx, CGAffineTransformMakeScale(1.0, -1.0));
     float vw = std::max(0.0f, w - gutterWidth - visibleVScrollWidth);
     float vh = std::max(0.0f, h - visibleHScrollHeight);
@@ -5081,8 +5552,8 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             size_t docPos = visByteStart + searchPos;
             bool shouldHighlight = true;
             if (isWholeWord) {
-                if (docPos > 0 && isWordChar(pt.charAt(docPos - 1))) shouldHighlight = false;
-                if (shouldHighlight && (docPos + autoStr.length() < pt.length()) && isWordChar(pt.charAt(docPos + autoStr.length()))) shouldHighlight = false;
+                if (!MiuCore::isWordBoundaryBefore(pt, docPos)) shouldHighlight = false;
+                if (shouldHighlight && !MiuCore::isWordBoundaryAfter(pt, docPos + autoStr.length())) shouldHighlight = false;
             }
             if (shouldHighlight) {
                 int li = getLineIdx(docPos);
@@ -5104,24 +5575,51 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             if (rePtr) {
                 try {
                     const std::regex& re = *rePtr;
-                    bool startsWithCaret = (!searchQuery.empty() && searchQuery[0] == '^');
+                    const auto& reInfo = cachedRegexInfo;
                     auto searchStartIter = visibleText.cbegin();
                     std::smatch m;
                     std::regex_constants::match_flag_type matchFlags = std::regex_constants::match_default;
+                    if (visByteStart > 0) {
+                        char prevCh = pt.charAt(visByteStart - 1);
+                        if (prevCh != '\n' && !(prevCh == '\r' && (visByteStart >= pt.length() || pt.charAt(visByteStart) != '\n'))) {
+                            matchFlags |= std::regex_constants::match_not_bol;
+                        }
+                    }
                     while (std::regex_search(searchStartIter, visibleText.cend(), m, re, matchFlags)) {
                         size_t matchPos = std::distance(visibleText.cbegin(), searchStartIter) + m.position();
                         size_t matchLen = m.length();
-                        size_t anchorLen = (startsWithCaret && m.size() > 1 && m[1].matched) ? (size_t)m.length(1) : 0;
+                        bool matchedBolGroup = false;
+                        size_t anchorLen = MiuCore::computeMatchAnchorLen(m, reInfo, &matchedBolGroup);
                         size_t contentPos = matchPos + anchorLen;
                         size_t contentLen = matchLen - anchorLen;
-                        if (contentLen > 0) {
+                        bool isValid = !(matchedBolGroup && anchorLen == 1 && matchPos < visibleText.size() && visibleText[matchPos] == '\r' &&
+                                         matchPos + 1 < visibleText.size() && visibleText[matchPos + 1] == '\n');
+                        if (isValid && (!MiuCore::isUtf8CharBoundary(visibleText, matchPos) || !MiuCore::isUtf8CharBoundary(visibleText, contentPos))) {
+                            isValid = false;
+                        }
+                        if (isValid && reInfo.endsWithDollar) {
+                            size_t checkDocPos = visByteStart + contentPos + contentLen;
+                            if (checkDocPos < pt.length()) {
+                                char c = pt.charAt(checkDocPos);
+                                if (c != '\r' && c != '\n') isValid = false;
+                                else if (contentLen == 0 && c == '\n' && checkDocPos > 0 && pt.charAt(checkDocPos - 1) == '\r') isValid = false;
+                            }
+                        }
+                        if (isValid && contentLen > 0) {
                             size_t currentDrawPos = visByteStart + contentPos;
                             int li = getLineIdx(currentDrawPos);
                             forEachVisualSpanRect(li, currentDrawPos, currentDrawPos + contentLen, 0.0f, [&](CGRect r) {
                                 CGContextFillRect(ctx, r);
                             });
                         }
-                        size_t step = (matchLen > 0) ? matchLen : MiuCore::utf8CharLenAt(visibleText, matchPos);
+                        size_t step = matchLen;
+                        if (step == 0) {
+                            bool isBolCaret = (reInfo.hasAnyBolCaret && !(matchFlags & std::regex_constants::match_not_bol));
+                            step = isBolCaret ? 0 : MiuCore::utf8CharLenAt(visibleText, matchPos);
+                        }
+                        if (step == 0 && (matchFlags & std::regex_constants::match_not_bol)) {
+                            step = MiuCore::utf8CharLenAt(visibleText, matchPos);
+                        }
                         size_t advance = m.position() + step;
                         if (std::distance(searchStartIter, visibleText.cend()) < (ptrdiff_t)advance) break;
                         std::advance(searchStartIter, advance);
@@ -5133,15 +5631,19 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             std::string q = searchQuery;
             std::string t = visibleText;
             if (!searchMatchCase) {
-                std::transform(q.begin(), q.end(), q.begin(), ::tolower);
-                std::transform(t.begin(), t.end(), t.begin(), ::tolower);
+                auto asciiLower = [](unsigned char ch) -> char {
+                    return (ch >= 'A' && ch <= 'Z') ? (char)(ch + ('a' - 'A')) : (char)ch;
+                };
+                std::transform(q.begin(), q.end(), q.begin(), asciiLower);
+                std::transform(t.begin(), t.end(), t.begin(), asciiLower);
             }
             size_t offset = 0;
             while ((offset = t.find(q, offset)) != std::string::npos) {
                 bool match = true;
                 if (searchWholeWord) {
-                    if (offset > 0 && isWordChar(visibleText[offset - 1])) match = false;
-                    if (match && (offset + q.length() < visibleText.length()) && isWordChar(visibleText[offset + q.length()])) match = false;
+                    size_t docMatchPos = visByteStart + offset;
+                    if (!MiuCore::isWordBoundaryBefore(pt, docMatchPos)) match = false;
+                    if (match && !MiuCore::isWordBoundaryAfter(pt, docMatchPos + q.length())) match = false;
                 }
                 if (match) {
                     size_t currentDrawPos = visByteStart + offset;
@@ -5230,15 +5732,15 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             }
         }
 
-        bool inBlockComment = checkInBlockComment(i);
+        int blockCommentState = getBlockCommentState(i);
         if (currentSyntax.active && !ls.empty()) {
-            scanSyntaxHighlighting(ls, currentSyntax, inBlockComment, lineSyntaxColors, isDarkMode);
+            scanSyntaxHighlighting(ls, currentSyntax, blockCommentState, lineSyntaxColors, isDarkMode);
         } else {
             lineSyntaxColors.clear();
         }
 
         auto subs = getVisualSubLines(i, vw);
-        int startSub = (i == start && wordWrapEnabled) ? std::clamp(vScrollSubLine, 0, (int)subs.size() - 1) : 0;
+        int startSub = (i == start && wordWrapEnabled) ? std::clamp(vScrollSubLine, 0, std::max(0, (int)subs.size() - 1)) : 0;
 
         int imeOwnerSub = -1;
         if (imIdx != std::string::npos && !subs.empty()) {
@@ -5279,8 +5781,32 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                     CFAttributedStringSetAttribute(mas, CFRangeMake(0, cfLen), kCTForegroundColorAttributeName, colText);
                     CFAttributedStringSetAttribute(mas, CFRangeMake(0, cfLen), kCTParagraphStyleAttributeName, paragraphStyle);
 
-                    // Apply syntax highlight runs
-                    if (!lineSyntaxColors.empty()) {
+                    // Precompute O(N) byte->UTF-16 index table once per visible subline
+                    std::vector<CFIndex> subByteToU16;
+                    if (!lineSyntaxColors.empty() || (imIdx != std::string::npos && subIdx == imeOwnerSub)) {
+                        subByteToU16.assign(subStr.size() + 1, cfLen);
+                        size_t bp = 0;
+                        CFIndex u16p = 0;
+                        while (bp < subStr.size()) {
+                            unsigned char ch = (unsigned char)subStr[bp];
+                            size_t bStep = 1;
+                            CFIndex uStep = 1;
+                            if (ch < 0x80) { bStep = 1; uStep = 1; }
+                            else if ((ch & 0xE0) == 0xC0) { bStep = 2; uStep = 1; }
+                            else if ((ch & 0xF0) == 0xE0) { bStep = 3; uStep = 1; }
+                            else if ((ch & 0xF8) == 0xF0) { bStep = 4; uStep = 2; }
+                            size_t nextBp = std::min(subStr.size(), bp + bStep);
+                            for (size_t k = bp; k < nextBp; ++k) {
+                                subByteToU16[k] = std::min(cfLen, u16p);
+                            }
+                            u16p = std::min(cfLen, u16p + uStep);
+                            bp = nextBp;
+                        }
+                        subByteToU16[subStr.size()] = cfLen;
+                    }
+
+                    // Apply syntax highlight runs in O(N) without inner CFString allocations
+                    if (!lineSyntaxColors.empty() && !subByteToU16.empty()) {
                         size_t runStart = 0;
                         while (runStart < lsSubLen && lsSubStart + runStart < lineSyntaxColors.size()) {
                             SyntaxColor sc = lineSyntaxColors[lsSubStart + runStart];
@@ -5289,36 +5815,30 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                                 runEnd++;
                             }
                             if (sc.a > 0.0f) {
-                                CFStringRef preCf = CFStringCreateWithBytes(NULL, (const UInt8*)subStr.data(), runStart, kCFStringEncodingUTF8, false);
-                                CFStringRef segCf = CFStringCreateWithBytes(NULL, (const UInt8*)(subStr.data() + runStart), runEnd - runStart, kCFStringEncodingUTF8, false);
-                                CFIndex u16S = preCf ? CFStringGetLength(preCf) : 0;
-                                CFIndex u16L = segCf ? CFStringGetLength(segCf) : 0;
+                                CFIndex u16S = subByteToU16[std::min(runStart, subStr.size())];
+                                CFIndex u16E = subByteToU16[std::min(runEnd, subStr.size())];
+                                CFIndex u16L = (u16E > u16S) ? (u16E - u16S) : 0;
                                 if (u16L > 0 && u16S + u16L <= cfLen) {
                                     CGColorRef synCol = CGColorCreateGenericRGB(sc.r, sc.g, sc.b, sc.a);
                                     CFAttributedStringSetAttribute(mas, CFRangeMake(u16S, u16L), kCTForegroundColorAttributeName, synCol);
                                     CGColorRelease(synCol);
                                 }
-                                if (preCf) CFRelease(preCf);
-                                if (segCf) CFRelease(segCf);
                             }
                             runStart = runEnd;
                         }
                     }
 
-                    if (imIdx != std::string::npos && subIdx == imeOwnerSub && imIdx >= lsSubStart && imIdx <= lsSubStart + lsSubLen) {
+                    if (imIdx != std::string::npos && subIdx == imeOwnerSub && imIdx >= lsSubStart && imIdx <= lsSubStart + lsSubLen && !subByteToU16.empty()) {
                         size_t localIm = imIdx - lsSubStart;
-                        CFStringRef prefix = CFStringCreateWithBytes(NULL, (const UInt8*)subStr.data(), localIm, kCFStringEncodingUTF8, false);
-                        CFIndex prefixLen = prefix ? CFStringGetLength(prefix) : 0;
-                        CFStringRef icf = CFStringCreateWithBytes(NULL, (const UInt8*)imeComp.data(), imeComp.size(), kCFStringEncodingUTF8, false);
-                        CFIndex imeLen = icf ? CFStringGetLength(icf) : 0;
+                        CFIndex prefixLen = subByteToU16[std::min(localIm, subStr.size())];
+                        CFIndex endU16 = subByteToU16[std::min(localIm + imeComp.size(), subStr.size())];
+                        CFIndex imeLen = (endU16 > prefixLen) ? (endU16 - prefixLen) : 0;
                         int32_t style = kCTUnderlineStyleSingle;
                         CFNumberRef n = CFNumberCreate(NULL, kCFNumberSInt32Type, &style);
-                        if (prefixLen + imeLen <= cfLen) {
+                        if (imeLen > 0 && prefixLen + imeLen <= cfLen) {
                             CFAttributedStringSetAttribute(mas, CFRangeMake(prefixLen, imeLen), kCTUnderlineStyleAttributeName, n);
                         }
                         CFRelease(n);
-                        if (prefix) CFRelease(prefix);
-                        if (icf) CFRelease(icf);
                     }
 
                     CTLineRef tl = CTLineCreateWithAttributedString(mas);
@@ -5517,12 +6037,12 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             CFRelease(zcf);
             CGColorRelease(zTextCol);
         }
-        if (cbNeedsDisplay && toastTimerState && !toastTimerState->pending) {
-            toastTimerState->pending = true;
+        bool expectedPending = false;
+        if (cbNeedsDisplay && toastTimerState && toastTimerState->pending.compare_exchange_strong(expectedPending, true)) {
             std::shared_ptr<ToastTimerState> st = toastTimerState;
             auto cb = cbNeedsDisplay;
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                st->pending = false;
+                st->pending.store(false);
                 if (st->alive.load() && cb) {
                     cb();
                 }

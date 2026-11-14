@@ -536,11 +536,8 @@ typedef std::unordered_map<const char *, Encoding,
            CStringAlnumCaseEqual> EncodingMap;
 
 static const EncodingMap& GetEncodingMap() {
-  static EncodingMap encoding_map;
-  if (!encoding_map.empty()) {
-    // Already initialized
-    return encoding_map;
-  }
+  static const EncodingMap kEncodingMap = []() {
+    EncodingMap encoding_map;
 
   // Initialize the map with all the "standard" encoding names,
   // i.e., the ones returned by EncodingName and MimeEncodingName.
@@ -830,6 +827,8 @@ static const EncodingMap& GetEncodingMap() {
   encoding_map.erase("");
 
   return encoding_map;
+  }();
+  return kEncodingMap;
 }
 
 // ----------------------------------------------------------------------

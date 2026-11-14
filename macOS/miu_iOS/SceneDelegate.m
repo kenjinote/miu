@@ -14,6 +14,17 @@
 
 @implementation SceneDelegate
 
+- (ViewController *)activeEditorViewController {
+    UIViewController *rootVC = self.window.rootViewController;
+    if ([rootVC isKindOfClass:[UINavigationController class]]) {
+        rootVC = [(UINavigationController *)rootVC topViewController];
+    }
+    if ([rootVC isKindOfClass:[ViewController class]]) {
+        return (ViewController *)rootVC;
+    }
+    return nil;
+}
+
 - (void)deliverURLContexts:(NSSet<UIOpenURLContext *> *)URLContexts {
     if (URLContexts.count == 0) return;
     UIOpenURLContext *targetContext = nil;
@@ -25,15 +36,12 @@
     }
     if (!targetContext || !targetContext.URL) return;
     NSURL *incomingURL = targetContext.URL;
+    BOOL openInPlace = targetContext.options ? targetContext.options.openInPlace : YES;
     dispatch_async(dispatch_get_main_queue(), ^{
-        UIViewController *rootVC = self.window.rootViewController;
-        if ([rootVC isKindOfClass:[UINavigationController class]]) {
-            rootVC = [(UINavigationController *)rootVC topViewController];
-        }
-        if ([rootVC isKindOfClass:[ViewController class]]) {
-            ViewController *vc = (ViewController *)rootVC;
+        ViewController *vc = [self activeEditorViewController];
+        if (vc) {
             [vc loadViewIfNeeded];
-            [vc openIncomingURL:incomingURL];
+            [vc openIncomingURL:incomingURL openInPlace:openInPlace];
         }
     });
 }
@@ -67,6 +75,7 @@
 - (void)sceneWillResignActive:(UIScene *)scene {
     // Called when the scene will move from an active state to an inactive state.
     // This may occur due to temporary interruptions (ex. an incoming phone call).
+    [[self activeEditorViewController] saveRecoveryDraftIfNeeded];
 }
 
 
@@ -80,6 +89,7 @@
     // Called as the scene transitions from the foreground to the background.
     // Use this method to save data, release shared resources, and store enough scene-specific state information
     // to restore the scene back to its current state.
+    [[self activeEditorViewController] saveRecoveryDraftIfNeeded];
 }
 
 

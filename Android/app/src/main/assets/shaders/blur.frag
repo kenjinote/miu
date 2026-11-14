@@ -11,8 +11,8 @@ layout(push_constant) uniform BlurParams {
 void main() {
     float yPos = inUV.y * params.screenHeight;
 
-    // マージンより下はそのまま出力して早期リターン（負荷軽減）
-    if (yPos > params.topMargin) {
+    // マージンより下（または topMargin <= 0）はそのまま出力して早期リターン（0.0 / 0.0 NaN 防止・負荷軽減）
+    if (params.topMargin <= 0.001 || yPos > params.topMargin) {
         outColor = texture(texSampler, inUV);
         return;
     }
@@ -38,5 +38,5 @@ void main() {
             }
         }
     }
-    outColor = color / totalWeight;
+    outColor = (totalWeight > 0.0) ? (color / totalWeight) : texture(texSampler, inUV);
 }

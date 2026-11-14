@@ -594,7 +594,15 @@ inline OrderedJson parseOrderedJson(const std::string& text) {
         while (at < n) {
             int start = at;
             unsigned char ch = static_cast<unsigned char>(text[at++]);
-            if (ch == '"') return value;
+            if (ch == '"') {
+                std::string clean;
+                clean.reserve(value.size());
+                for (unsigned char b : value) {
+                    if (b <= 0x08 || b == 0x0B || b == 0x0C || (b >= 0x0E && b <= 0x1F) || b == 0x7F) continue;
+                    clean.push_back(static_cast<char>(b));
+                }
+                return clean;
+            }
             if (ch < 0x20) throw PeleError("Invalid JSON token", "syntax", "usecase");
             if (ch != '\\') {
                 value.push_back(static_cast<char>(ch));
@@ -626,7 +634,9 @@ inline OrderedJson parseOrderedJson(const std::string& text) {
                         }
                     }
                 }
-                appendCodepoint(value, u1);
+                if (!(u1 <= 0x08 || u1 == 0x0B || u1 == 0x0C || (u1 >= 0x0E && u1 <= 0x1F) || u1 == 0x7F || (u1 >= 0xD800 && u1 <= 0xDFFF) || u1 == 0xFFFE || u1 == 0xFFFF)) {
+                    appendCodepoint(value, u1);
+                }
             } else {
                 (void)start;
                 throw PeleError("Invalid JSON token", "syntax", "usecase");
@@ -2420,14 +2430,62 @@ struct View {
 
 inline double ucNumberOption(const Config& config, const std::string& key, double fallback) {
     if (const auto* uc = config.get("usecase"); uc && uc->isMap()) {
-        if (const auto* v = uc->get(key); v && v->isNumber() && v->nVal > 0) {
-            return std::min(v->nVal, 2000.0);
+        if (const auto* v = uc->get(key); v && v->isNumber() && std::isfinite(v->nVal) && v->nVal > 0) {
+            return std::max(1.0, std::min(v->nVal, 2000.0));
         }
     }
     return fallback;
 }
 
-inline std::string ucLiteral(const std::string& text) {
+inline std::string ucSanitizeXml(const std::string& s) {
+    std::string out;
+    out.reserve(s.size());
+    size_t i = 0;
+    const size_t n = s.size();
+    while (i < n) {
+        unsigned char b0 = static_cast<unsigned char>(s[i]);
+        if (b0 < 0x80) {
+            ++i;
+            if (b0 <= 0x08 || b0 == 0x0B || b0 == 0x0C || (b0 >= 0x0E && b0 <= 0x1F) || b0 == 0x7F) continue;
+            out.push_back(static_cast<char>(b0));
+        } else if ((b0 & 0xE0) == 0xC0) {
+            if (b0 < 0xC2 || i + 1 >= n) { ++i; continue; }
+            unsigned char b1 = static_cast<unsigned char>(s[i + 1]);
+            if ((b1 & 0xC0) != 0x80) { ++i; continue; }
+            out.append(s, i, 2);
+            i += 2;
+        } else if ((b0 & 0xF0) == 0xE0) {
+            if (i + 2 >= n) { ++i; continue; }
+            unsigned char b1 = static_cast<unsigned char>(s[i + 1]);
+            unsigned char b2 = static_cast<unsigned char>(s[i + 2]);
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80) { ++i; continue; }
+            if (b0 == 0xE0 && b1 < 0xA0) { ++i; continue; }
+            if (b0 == 0xED && b1 >= 0xA0) { i += 3; continue; }
+            uint32_t cp = (static_cast<uint32_t>(b0 & 0x0F) << 12) |
+                          (static_cast<uint32_t>(b1 & 0x3F) << 6) |
+                          static_cast<uint32_t>(b2 & 0x3F);
+            if (cp == 0xFFFE || cp == 0xFFFF) { i += 3; continue; }
+            out.append(s, i, 3);
+            i += 3;
+        } else if ((b0 & 0xF8) == 0xF0) {
+            if (b0 > 0xF4 || i + 3 >= n) { ++i; continue; }
+            unsigned char b1 = static_cast<unsigned char>(s[i + 1]);
+            unsigned char b2 = static_cast<unsigned char>(s[i + 2]);
+            unsigned char b3 = static_cast<unsigned char>(s[i + 3]);
+            if ((b1 & 0xC0) != 0x80 || (b2 & 0xC0) != 0x80 || (b3 & 0xC0) != 0x80) { ++i; continue; }
+            if (b0 == 0xF0 && b1 < 0x90) { ++i; continue; }
+            if (b0 == 0xF4 && b1 > 0x8F) { ++i; continue; }
+            out.append(s, i, 4);
+            i += 4;
+        } else {
+            ++i;
+        }
+    }
+    return out;
+}
+
+inline std::string ucLiteral(const std::string& rawText) {
+    std::string text = ucSanitizeXml(rawText);
     std::string out;
     out.reserve(text.size() + 8);
     for (unsigned char c : text) {
@@ -2441,7 +2499,8 @@ inline std::string ucLiteral(const std::string& text) {
 }
 
 inline Label ucText(const std::string& raw, bool markdown, const TextMeasurer& measurer, double size, double wrap, int base = 0) {
-    return layoutLabel((!raw.empty() && !markdown) ? ucLiteral(raw) : raw, markdown, measurer, size, wrap, base);
+    std::string clean = ucSanitizeXml(raw);
+    return layoutLabel((!clean.empty() && !markdown) ? ucLiteral(clean) : clean, markdown, measurer, size, wrap, base);
 }
 
 inline std::pair<double, double> ucAnchor(const View& view, const Flowchart::CNode& c, int side, double along) {
@@ -2482,6 +2541,7 @@ inline void ucAttachEnds(std::vector<Flowchart::CEdge>& cedges, const std::vecto
     std::vector<int> sideKeys;
     std::unordered_map<int, std::vector<UcEnd>> sides;
     auto add = [&](int index, std::vector<double>& route, size_t at, size_t next) {
+        if (route.size() < 6 || at + 1 >= route.size() || next + 1 >= route.size()) return;
         const auto& c = cnodes[index];
         if (c.isGroup) return;
         double dx = route[at] - c.x;
@@ -2565,8 +2625,10 @@ inline std::string ucFigure(const View& view, const IconResolver& icons) {
 }
 
 inline double ucTitleX(const Flowchart::CNode& c, double width, const Flowchart::Crossings& crossings) {
-    auto it = crossings.find(static_cast<int>(Flowchart::jsRound(c.y - c.h / 2.0)));
-    if (width == 0.0 || it == crossings.end()) return c.x;
+    double top = c.y - c.h / 2.0;
+    if (width == 0.0 || !std::isfinite(top)) return c.x;
+    auto it = crossings.find(static_cast<int>(Flowchart::jsRound(std::clamp(top, -1e8, 1e8))));
+    if (it == crossings.end()) return c.x;
     double left = c.x - c.w / 2.0 + 6.0;
     double right = c.x + c.w / 2.0 - 6.0;
     std::vector<double> cuts;

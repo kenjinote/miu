@@ -215,6 +215,7 @@ inline Tokens tokenizeQuadrant(const std::string& rawSrc) {
         int e = p;
         while (e < n && src[e] != 125) e++;
         emit(T_acc_descr_multiline_value, p, e);
+        if (e >= n) pop();
       }
       continue;
     }
@@ -440,6 +441,10 @@ inline Tokens tokenizeQuadrant(const std::string& rawSrc) {
   if (state < 6) {
     out.types.push_back(AT_END[state]);
     out.texts.push_back("");
+    if (state == 1 || state == 2 || state == 3 || state == 4) {
+      out.types.push_back(AT_END[0]);
+      out.texts.push_back("");
+    }
   }
   out.types.push_back(T_END);
   out.texts.push_back("");

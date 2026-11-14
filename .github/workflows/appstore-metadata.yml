@@ -7,6 +7,13 @@ on:
         description: "Also re-render and upload screenshots"
         required: false
         default: "false"
+      submit_for_review:
+        description: "Attach build and submit for App Store Review"
+        required: false
+        default: "false"
+
+permissions:
+  contents: read
 
 jobs:
   sync-metadata:
@@ -15,6 +22,7 @@ jobs:
     env:
       HAS_ASC_SECRETS: ${{ secrets.APPSTORE_ISSUER_ID != '' && secrets.APPSTORE_KEY_ID != '' && secrets.APPSTORE_PRIVATE_KEY != '' }}
       SYNC_SCREENSHOTS: ${{ github.event.inputs.sync_screenshots }}
+      SUBMIT_FOR_REVIEW: ${{ github.event.inputs.submit_for_review }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -38,8 +46,12 @@ jobs:
           APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
         run: |
           set -euo pipefail
-          python3 scripts/appstore_metadata_sync.py --macos-only
-          if [ "$SYNC_SCREENSHOTS" = "true" ]; then
+          if [ "${SUBMIT_FOR_REVIEW:-false}" = "true" ]; then
+            python3 scripts/appstore_metadata_sync.py --submit
+          else
+            python3 scripts/appstore_metadata_sync.py
+          fi
+          if [ "${SYNC_SCREENSHOTS:-false}" = "true" ]; then
             python3 scripts/appstore_screenshots_sync.py --out-dir "$RUNNER_TEMP/asc_screenshots"
           fi
 

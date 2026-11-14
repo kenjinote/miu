@@ -13,17 +13,32 @@ import time
 import json
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import requests
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+try:
+    import requests
+except ImportError:
+    requests = None
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 if SCRIPT_DIR not in sys.path:
     sys.path.insert(0, SCRIPT_DIR)
 
-from playstore_upload import get_access_token, PACKAGE_NAME, DEFAULT_KEY_PATH
+PACKAGE_NAME = "jp.hack.miu"
+DEFAULT_KEY_PATH = os.path.join(SCRIPT_DIR, "google_play_service_account.json")
 import appstore_metadata_sync as ams
-import appstore_screenshots_sync as ass
+
+Image = ImageDraw = ImageFilter = ImageFont = None
+ass = None
+
+
+def _ensure_imaging_deps():
+    global Image, ImageDraw, ImageFilter, ImageFont, ass
+    if Image is None:
+        from PIL import Image as _Image, ImageDraw as _ImageDraw, ImageFilter as _ImageFilter, ImageFont as _ImageFont
+        Image, ImageDraw, ImageFilter, ImageFont = _Image, _ImageDraw, _ImageFilter, _ImageFont
+    if ass is None:
+        import appstore_screenshots_sync as _ass
+        ass = _ass
 
 BASE_URL = f"https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{PACKAGE_NAME}"
 UPLOAD_BASE_URL = f"https://androidpublisher.googleapis.com/upload/androidpublisher/v3/applications/{PACKAGE_NAME}"
@@ -56,10 +71,10 @@ AR_DESC = """miu هو محرر نصوص وأكواد بسيط وخفيف، مص�
 • خصوصية تامة
 بدون إعلانات، وبدون تتبع، وبدون جمع بيانات. جميع الميزات تعمل بنسبة 100% دون اتصال بالإنترنت على جهازك."""
 
-AR_WHATS_NEW = """شكراً لاستخدامك miu. يتضمن الإصدار 1.0.52 إصلاحات هامة للتشغيل والاستقرار:
-• إصلاح ظهور أيقونة التطبيق في الشاشة الرئيسية وقائمة التطبيقات وزر «فتح» في Google Play بعد التثبيت.
-• توحيد مسارات الاختبار المفتوح والمغلق لتسليم أحدث إصدار مستقر لجميع المستخدمين.
-• تعزيز حماية المعاينة الفورية دون اتصال ودقة تمييز الصياغة لـ 65 فئة لغوية ومخططات Mermaid."""
+AR_WHATS_NEW = """الجديد في miu v1.0.53
+• تعزيز أمان المعاينة الفورية دون اتصال وتحسين عرض Markdown ومعادلات LaTeX وجميع مخططات Mermaid الـ 33.
+• تحسين البحث والاستبدال متعدد الأسطر (Regex) واختصارات Emmet وتمييز الصياغة لـ 65 لغة.
+• تنبيه قبل فقدان الأحرف عند الحفظ بترميز غير UTF-8، وتحسين الحفظ الذري الآمن ودعم اللغات."""
 
 HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנועד להפוך כל משימה – מרישום הערות יומיות מהירות ועד כתיבת מסמכי Markdown ותכנות – לנוחה ונעימה.
 
@@ -85,10 +100,10 @@ HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנוע
 • פרטיות מלאה
 ללא פרסומות, ללא מעקב וללא איסוף נתונים. הכל פועל 100% אופליין במכשיר שלכם."""
 
-HE_WHATS_NEW = """תודה שאתם משתמשים ב-miu. גרסה 1.0.52 כוללת תיקון חשוב להפעלה ויציבות:
-• תוקנה הופעת סמל האפליקציה במסך הבית, במגירת האפליקציות ובכפתור "פתח" ב-Google Play לאחר ההתקנה.
-• אוחדו מסלולי הבדיקה הפתוחים והסגורים כך שכל המשתמשים יקבלו את הגרסה העדכנית ביותר.
-• חיזוק אבטחת התצוגה המקדימה אופליין ודיוק הדגשת תחביר ב-65 שפות ודיאגרמות Mermaid."""
+HE_WHATS_NEW = """מה חדש ב-miu v1.0.53
+• חיזוק אבטחת התצוגה המקדימה אופליין ושיפור התצוגה של Markdown, נוסחאות LaTeX ו-33 סוגי דיאגרמות Mermaid.
+• שיפור חיפוש והחלפה מרובי-שורות ב-Regex, הרחבת Emmet והדגשת תחביר ל-65 שפות.
+• התראה לפני אובדן תווים בשמירה שאינה UTF-8, שמירה אטומית בטוחה יותר ושיפורי תרגום."""
 
 SK_DESC = """miu je jednoduchý a ľahký textový a kódový editor, s ktorým je písanie každodenných poznámok, textov v Markdowne aj programovanie pohodlné a príjemné.
 
@@ -114,10 +129,10 @@ Hľadanie a nahrádzanie (s regulárnymi výrazmi), viac kurzorov, čísla riadk
 • Súkromie na prvom mieste
 Žiadne reklamy, žiadne sledovanie a žiadny zber dát. Všetko funguje 100 % offline priamo vo vašom zariadení."""
 
-SK_WHATS_NEW = """Ďakujeme, že používate miu. Verzia 1.0.52 prináša dôležitú opravu spustenia a vylepšenia stability:
-• Opravené zobrazenie ikony aplikácie na domovskej obrazovke, v zozname aplikácií a tlačidla „Otvoriť“ v Google Play.
-• Zjednotené otvorené a uzavreté testovacie kanály na najnovšiu stabilnú verziu.
-• Posilnená offline ochrana živého náhľadu a presnosť zvýrazňovania syntaxe (65 kategórií) a diagramov Mermaid."""
+SK_WHATS_NEW = """Novinky v miu v1.0.53
+• Posilnené offline zabezpečenie živého náhľadu a presnejšie vykresľovanie Markdownu, LaTeXu a 33 diagramov Mermaid.
+• Vylepšené viacriadkové hľadanie a nahrádzanie Regex, rozbaľovanie Emmet a zvýrazňovanie syntaxe 65 jazykov.
+• Upozornenie na stratu znakov mimo UTF-8, spoľahlivejšie atomické ukladanie a vylepšená lokalizácia."""
 
 # ============================================================================
 # Short Descriptions (Strictly <= 80 characters for Google Play)
@@ -210,149 +225,149 @@ def adapt_desc_for_android(text: str) -> str:
     return out
 
 
-# Localized Android Release Notes for v1.0.52 (versionCode 59), strictly <= 500 chars each
+# Localized Android Release Notes for v1.0.53 (versionCode 60), strictly <= 500 chars each
 ANDROID_RELEASE_NOTES = {
-    "ja-JP": """いつも miu をご利用いただきありがとうございます。v1.0.52 では起動に関する重要な修正を行いました。
-・ホーム画面・アプリ一覧にアプリアイコンが表示されず開けない不具合を修正し、インストール後すぐに起動できるよう改善しました。
-・オープン／クローズドテストトラックを最新版に統合し、古いテスト版が配信される問題を解消しました。
-・オフライン ライブプレビュー保護および全65言語シンタックス・Mermaid図表の安定性を強化。""",
+    "ja-JP": """miu v1.0.53 アップデート内容
+・ライブプレビューのオフライン保護強化と Markdown / LaTeX 数式 / 全33種 Mermaid 図表の描画精度向上
+・複数行正規表現の検索・置換、Emmet 展開、全65言語シンタックスハイライトの精度改善
+・非 UTF-8 保存時の文字欠落確認、安全なアトミック保存、および多言語ローカライズの改善""",
 
-    "en-US": """Thank you for using miu. Version 1.0.52 includes an important launch fix & stability updates:
-• Fixed an issue where the app icon did not appear on the home screen or app drawer and could not be opened from Google Play after installation.
-• Unified open and closed testing tracks so all testers receive the latest release.
-• Includes offline Live Preview security hardening and 65-language syntax & Mermaid stability improvements.""",
+    "en-US": """What's New in miu v1.0.53
+• Strengthened offline Live Preview security and improved Markdown, LaTeX math, and all 33 Mermaid diagram renderers.
+• Improved multiline Regex find & replace, Emmet expansion, and 65-language syntax highlighting precision.
+• Added character-loss confirmation for non-UTF-8 saves, enhanced atomic file saving, and refined 30+ language localization.""",
 
-    "zh-CN": """感谢您使用 miu。v1.0.52 包含重要的启动修复与稳定性改进：
-・修复安装后主屏幕与应用列表中不显示应用图标且无法从 Google Play 直接打开的问题。
-・统一开放测试与封闭测试渠道，确保所有用户获取最新稳定版本。
-・包含实时预览离线安全加固及 65 种语言语法高亮与 Mermaid 图表稳定性提升。""",
+    "zh-CN": """miu v1.0.53 更新内容
+・强化实时预览离线安全保护，提升 Markdown、LaTeX 公式及 33 种 Mermaid 图表渲染精度
+・改进多行正则表达式查找替换、Emmet 展开与 65 种语言语法高亮准确性
+・新增非 UTF-8 保存字符丢失提醒，优化原子化安全保存与多语言本地化细节""",
 
-    "zh-TW": """感謝您使用 miu。v1.0.52 包含重要的啟動修復與穩定性改進：
-・修復安裝後主畫面與應用程式清單中不顯示圖示且無法從 Google Play 直接開啟的問題。
-・統一開放測試與封閉測試軌道，確保所有使用者取得最新穩定版本。
-・包含即時預覽離線安全加固及 65 種語言語法突顯與 Mermaid 圖表穩定性提升。""",
+    "zh-TW": """miu v1.0.53 更新內容
+・強化即時預覽離線安全保護，提升 Markdown、LaTeX 公式及 33 種 Mermaid 圖表渲染精準度
+・改進多行正規表示式尋找取代、Emmet 展開與 65 種語言語法突顯準確性
+・新增非 UTF-8 儲存字元遺失提醒，最佳化原子化安全儲存與多語言在地化細節""",
 
-    "ko-KR": """언제나 miu를 이용해 주셔서 감사합니다. v1.0.52에서는 실행 관련 중요 수정 및 안정성 개선을 진행했습니다.
-・설치 후 홈 화면 및 앱 서랍에 아이콘이 표시되지 않아 앱을 열 수 없던 문제를 수정했습니다.
-・오픈/비공개 테스트 트랙을 최신 버전으로 통합하여 이전 테스트 버전이 배포되던 문제를 해결했습니다.
-・실시간 미리보기 오프라인 보안 강화 및 65개 언어 구문 강조·Mermaid 안정성 개선 포함.""",
+    "ko-KR": """miu v1.0.53 업데이트 안내
+・실시간 미리보기 오프라인 보안 강화 및 Markdown·LaTeX 수식·33종 Mermaid 다이어그램 렌더링 정밀도 향상
+・다중 행 정규식 찾기/바꾸기, Emmet 확장 및 65개 언어 구문 강조 정확도 개선
+・비 UTF-8 저장 시 문자 손실 확인 추가, 원자적 안전 저장 및 다국어 번역 품질 개선""",
 
-    "de-DE": """Vielen Dank, dass Sie miu nutzen. Version 1.0.52 enthält eine wichtige Startkorrektur:
-• Problem behoben, durch das das App-Symbol nach der Installation nicht im App-Drawer/Startbildschirm erschien und nicht geöffnet werden konnte.
-• Offene und geschlossene Test-Tracks auf die neueste Version vereinheitlicht.
-• Offline-Schutz der Live-Vorschau sowie Stabilität für 65 Sprachen & Mermaid-Diagramme verbessert.""",
+    "de-DE": """Neuerungen in miu v1.0.53
+• Strengere Offline-Sicherheit für die Live-Vorschau sowie präzisere Darstellung von Markdown, LaTeX und allen 33 Mermaid-Diagrammtypen.
+• Verbesserte mehrzeilige Regex-Suche & -Ersetzung, Emmet-Erweiterung und Syntaxhervorhebung für 65 Sprachen.
+• Warnhinweis vor Zeichenverlust beim Speichern in Nicht-UTF-8, zuverlässigeres atomares Speichern und optimierte Lokalisierung.""",
 
-    "fr-FR": """Merci d’utiliser miu. La version 1.0.52 apporte un correctif important au lancement :
-• Correction d’un problème empêchant l’affichage de l’icône sur l’écran d’accueil/tiroir d’applications et l’ouverture depuis Google Play.
-• Unification des canaux de test ouvert et fermé sur la dernière version stable.
-• Protection hors ligne renforcée de l’aperçu en direct et stabilité accrue pour 65 langages et Mermaid.""",
+    "fr-FR": """Nouveautés de miu v1.0.53
+• Sécurité hors ligne renforcée de l’aperçu en direct et rendu amélioré pour Markdown, LaTeX et les 33 types de diagrammes Mermaid.
+• Recherche/remplacement Regex multiligne, extension Emmet et coloration syntaxique de 65 langages plus précis.
+• Alerte de perte de caractères hors UTF-8, sauvegarde atomique fiabilisée et traductions affinées.""",
 
-    "es-ES": """Gracias por usar miu. La versión 1.0.52 incluye una corrección importante de inicio:
-• Corregido un problema por el que el icono no aparecía en la pantalla de inicio ni en la lista de aplicaciones tras instalar.
-• Unificados los canales de prueba abierta y cerrada con la versión más reciente.
-• Mayor seguridad sin conexión en Vista Previa y estabilidad en 65 lenguajes y diagramas Mermaid.""",
+    "es-ES": """Novedades de miu v1.0.53
+• Mayor seguridad sin conexión en Vista Previa y mejor renderizado de Markdown, LaTeX y los 33 diagramas Mermaid.
+• Mejoras en búsqueda y reemplazo Regex multilínea, expansión Emmet y resaltado de sintaxis para 65 lenguajes.
+• Aviso de pérdida de caracteres al guardar fuera de UTF-8, guardado atómico más seguro y mejoras de localización.""",
 
-    "it-IT": """Grazie per aver scelto miu. La versione 1.0.52 include un’importante correzione di avvio:
-• Risolto un problema per cui l’icona dell’app non appariva nella schermata Home o nel menu app dopo l’installazione.
-• Unificati i canali di test aperto e chiuso alla versione più recente.
-• Sicurezza offline dell’anteprima e stabilità migliorate per 65 linguaggi e diagrammi Mermaid.""",
+    "it-IT": """Novità di miu v1.0.53
+• Sicurezza offline potenziata nell’Anteprima dal vivo e resa migliorata per Markdown, LaTeX e tutti i 33 diagrammi Mermaid.
+• Ricerca e sostituzione Regex multiriga, espansione Emmet ed evidenziazione per 65 linguaggi più precisi.
+• Avviso di perdita caratteri nei salvataggi non UTF-8, salvataggio atomico ancora più sicuro e localizzazione rifinita.""",
 
-    "pt-BR": """Obrigado por usar o miu. A versão 1.0.52 inclui uma correção importante de inicialização:
-• Corrigido um problema em que o ícone do app não aparecia na tela inicial ou gaveta de apps nem abria pelo Google Play após instalar.
-• Faixas de teste aberto e fechado unificadas para entregar sempre a versão mais recente.
-• Segurança offline na Pré-visualização e estabilidade em 65 linguagens e diagramas Mermaid.""",
+    "pt-BR": """Novidades do miu v1.0.53
+• Segurança offline reforçada na Pré-visualização e melhor renderização de Markdown, LaTeX e dos 33 diagramas Mermaid.
+• Melhorias na busca e substituição Regex multilinha, expansão Emmet e destaque de sintaxe para 65 linguagens.
+• Aviso de perda de caracteres ao salvar fora de UTF-8, salvamento atômico mais seguro e melhorias de tradução.""",
 
-    "ru-RU": """Спасибо, что пользуетесь miu. В версии 1.0.52 исправлена важная ошибка запуска:
-• Исправлена проблема, из-за которой значок приложения не отображался на главном экране и в списке приложений после установки.
-• Каналы открытого и закрытого тестирования обновлены до актуальной версии.
-• Усилена офлайн-защита предпросмотра и стабильность подсветки 65 языков и диаграмм Mermaid.""",
+    "ru-RU": """Что нового в miu v1.0.53
+• Усилена офлайн-защита предпросмотра и улучшена отрисовка Markdown, формул LaTeX и всех 33 типов диаграмм Mermaid.
+• Повышена точность многострочного поиска Regex, автодополнения Emmet и подсветки синтаксиса 65 языков.
+• Добавлено предупреждение о потере символов при сохранении не в UTF-8, улучшены атомарное сохранение и локализация.""",
 
-    "nl-NL": """Bedankt voor het gebruiken van miu. Versie 1.0.52 bevat een belangrijke opstartfix:
-• Probleem opgelost waarbij het app-icoon na installatie niet op het startscherm of in de app-lijst verscheen.
-• Open en gesloten testkanalen samengevoegd naar de nieuwste versie.
-• Verbeterde offline beveiliging van Live Voorbeeld en stabiliteit voor 65 talen en Mermaid.""",
+    "nl-NL": """Nieuw in miu v1.0.53
+• Verbeterde offline beveiliging van Live Voorbeeld en nauwkeurigere weergave van Markdown, LaTeX en 33 Mermaid-diagrammen.
+• Betere meerregelige Regex-zoek- en vervangfunctie, Emmet-uitbreiding en syntaxisaccentuering voor 65 talen.
+• Waarschuwing bij tekenverlies buiten UTF-8, betrouwbaarder atomair opslaan en verfijnde lokalisatie.""",
 
-    "sv-SE": """Tack för att du använder miu. Version 1.0.52 innehåller en viktig startkorrigering:
-• Åtgärdade ett fel där appikonen inte visades på hemskärmen eller i applådan efter installation.
-• Öppna och slutna testkanaler har uppdaterats till den senaste versionen.
-• Förbättrad offlinesäkerhet i förhandsgranskning samt stabilitet för 65 språk och Mermaid.""",
+    "sv-SE": """Nyheter i miu v1.0.53
+• Stärkt offlinesäkerhet i förhandsgranskningen samt förbättrad visning av Markdown, LaTeX och alla 33 Mermaid-diagram.
+• Förbättrad flerradig Regex-sök/ersätt, Emmet-utökning och syntaxmarkering för 65 språk.
+• Varning vid teckenförlust utanför UTF-8, tryggare atomär sparning och förfinad lokalisering.""",
 
-    "da-DK": """Tak fordi du bruger miu. Version 1.0.52 indeholder en vigtig opstartsrettelse:
-• Rettet en fejl, hvor appikonet ikke blev vist på startskærmen eller i appoversigten efter installation.
-• Åbne og lukkede testspor er opdateret til den nyeste udgivelse.
-• Styrket offlinesikkerhed i forhåndsvisning samt stabilitet for 65 sprog og Mermaid.""",
+    "da-DK": """Nyheder i miu v1.0.53
+• Styrket offlinesikkerhed i Live-forhåndsvisning samt bedre visning af Markdown, LaTeX og alle 33 Mermaid-diagrammer.
+• Forbedret flerlinjet Regex-søg/erstat, Emmet-udvidelse og syntaksfremhævning for 65 sprog.
+• Advarsel ved tegntab uden for UTF-8, mere pålidelig atomisk lagring og forbedret lokalisering.""",
 
-    "no-NO": """Takk for at du bruker miu. Versjon 1.0.52 inneholder en viktig oppstartsrettelse:
-• Rettet en feil der appikonet ikke ble vist på startskjermen eller i appskuffen etter installasjon.
-• Åpne og lukkede testspor er oppdatert til nyeste versjon.
-• Styrket offlinesikkerhet i forhåndsvisning og stabilitet for 65 språk og Mermaid.""",
+    "no-NO": """Nyheter i miu v1.0.53
+• Styrket offlinesikkerhet i forhåndsvisning og bedre visning av Markdown, LaTeX og alle 33 Mermaid-diagrammer.
+• Forbedret flerlinjet Regex-søk/erstatt, Emmet-utvidelse og syntaksutheving for 65 språk.
+• Varsel ved tegntap utenfor UTF-8, tryggere atomisk lagring og forbedret lokalisering.""",
 
-    "fi-FI": """Kiitos, että käytät miuta. Versio 1.0.52 sisältää tärkeän käynnistyskorjauksen:
-• Korjattu ongelma, jonka vuoksi sovelluskuvake ei näkynyt aloitusnäytöllä tai sovellusvalikossa asennuksen jälkeen.
-• Avoimet ja suljetut testauskanavat on yhtenäistetty uusimpaan versioon.
-• Parannettu esikatselun offline-suojaa sekä 65 kielen ja Mermaid-kaavioiden vakautta.""",
+    "fi-FI": """Uutta versiossa miu v1.0.53
+• Vahvistettu esikatselun offline-tietoturva sekä tarkempi Markdown-, LaTeX- ja 33 Mermaid-kaavion piirto.
+• Parannettu monirivinen Regex-haku ja -korvaus, Emmet-laajennus sekä 65 kielen syntaksinkorostus.
+• Varoitus merkkitappioista muussa kuin UTF-8-tallennuksessa, luotettavampi atominen tallennus ja päivitetty lokalisointi.""",
 
-    "pl-PL": """Dziękujemy za korzystanie z miu. Wersja 1.0.52 zawiera ważną poprawkę uruchamiania:
-• Naprawiono błąd, przez który ikona aplikacji nie pojawiała się na ekranie głównym ani na liście aplikacji po instalacji.
-• Ujednolicono otwarte i zamknięte ścieżki testowe do najnowszej wersji.
-• Wzmocniono ochronę podglądu offline oraz stabilność dla 65 języków i diagramów Mermaid.""",
+    "pl-PL": """Nowości w miu v1.0.53
+• Wzmocnione bezpieczeństwo podglądu offline oraz lepsze renderowanie Markdown, LaTeX i 33 diagramów Mermaid.
+• Ulepszone wielowierszowe wyszukiwanie Regex, rozwijanie Emmet i kolorowanie składni dla 65 języków.
+• Ostrzeżenie przed utratą znaków przy zapisie spoza UTF-8, pewniejszy zapis atomowy i dopracowana lokalizacja.""",
 
-    "cs-CZ": """Děkujeme, že používáte miu. Verze 1.0.52 přináší důležitou opravu spouštění:
-• Opraven problém, kdy se ikona aplikace po instalaci nezobrazovala na ploše ani v seznamu aplikací.
-• Sjednoceny otevřené a uzavřené testovací kanály na nejnovější verzi.
-• Posílena offline ochrana živého náhledu a stabilita pro 65 jazyků a diagramy Mermaid.""",
+    "cs-CZ": """Novinky v miu v1.0.53
+• Posílené offline zabezpečení živého náhledu a přesnější vykreslování Markdownu, LaTeXu a 33 diagramů Mermaid.
+• Vylepšené víceřádkové hledání a nahrazování Regex, rozbalování Emmet a zvýrazňování syntaxe 65 jazyků.
+• Upozornění na ztrátu znaků mimo UTF-8, spolehlivější atomické ukládání a vylepšená lokalizace.""",
 
     "sk": SK_WHATS_NEW,
 
-    "hu-HU": """Köszönjük, hogy a miu alkalmazást használja. Az 1.0.52-es verzió fontos indítási javítást tartalmaz:
-• Javítva a hiba, amely miatt az alkalmazás ikonja telepítés után nem jelent meg a kezdőképernyőn és az alkalmazáslistában.
-• A nyílt és zárt tesztelési csatornák egyesítve lettek a legújabb verzióra.
-• Megerősített offline előnézeti védelem és 65 nyelvi kategória, valamint Mermaid stabilitás.""",
+    "hu-HU": """A miu v1.0.53 újdonságai
+• Megerősített offline Élő előnézet-védelem, pontosabb Markdown, LaTeX és 33-féle Mermaid diagrammegjelenítés.
+• Fejlesztett többsoros Regex keresés és csere, Emmet-kibontás és 65 nyelvű szintaxiskiemelés.
+• Karaktervesztési figyelmeztetés nem UTF-8 mentésnél, még biztonságosabb atomi mentés és pontosított honosítás.""",
 
-    "ro": """Vă mulțumim că folosiți miu. Versiunea 1.0.52 include o remediere importantă de lansare:
-• S-a remediat problema prin care pictograma aplicației nu apărea pe ecranul de pornire sau în lista de aplicații după instalare.
-• Canalele de testare deschisă și închisă au fost actualizate la cea mai recentă versiune.
-• Protecție offline sporită pentru Previzualizare și stabilitate pentru 65 de limbaje și Mermaid.""",
+    "ro": """Noutăți în miu v1.0.53
+• Securitate offline sporită în Previzualizare și redare îmbunătățită pentru Markdown, LaTeX și 33 de diagrame Mermaid.
+• Căutare și înlocuire Regex pe mai multe rânduri, extindere Emmet și sintaxă pentru 65 de limbaje mai precise.
+• Avertizare la pierderea caracterelor în afara UTF-8, salvare atomică sigură și localizare îmbunătățită.""",
 
-    "el-GR": """Σας ευχαριστούμε που χρησιμοποιείτε το miu. Η έκδοση 1.0.52 περιλαμβάνει σημαντική διόρθωση εκκίνησης:
-• Διορθώθηκε πρόβλημα όπου το εικονίδιο της εφαρμογής δεν εμφανιζόταν στην αρχική οθόνη ή στη λίστα εφαρμογών μετά την εγκατάσταση.
-• Ενοποιήθηκαν τα κανάλια ανοιχτής και κλειστής δοκιμής στην τελευταία έκδοση.
-• Ενισχυμένη προστασία προεπισκόπησης εκτός σύνδεσης και σταθερότητα σε 65 γλώσσες & Mermaid.""",
+    "el-GR": """Τι νέο υπάρχει στο miu v1.0.53
+• Ενισχυμένη ασφάλεια προεπισκόπησης εκτός σύνδεσης και ακριβέστερη απόδοση Markdown, LaTeX και 33 διαγραμμάτων Mermaid.
+• Βελτιωμένη αναζήτηση/αντικατάσταση Regex πολλαπλών γραμμών, Emmet και επισήμανση σύνταξης 65 γλωσσών.
+• Προειδοποίηση απώλειας χαρακτήρων εκτός UTF-8, ασφαλέστερη ατομική αποθήκευση και βελτιωμένη μετάφραση.""",
 
-    "tr-TR": """miu'yu kullandığınız için teşekkür ederiz. 1.0.52 sürümü önemli bir başlatma düzeltmesi içerir:
-• Kurulumdan sonra uygulama simgesinin ana ekranda ve uygulama listesinde görünmemesi sorunu giderildi.
-• Açık ve kapalı test kanalları en güncel sürümle birleştirildi.
-• Canlı Önizleme çevrimdışı güvenliği ile 65 dil ve Mermaid şema kararlılığı güçlendirildi.""",
+    "tr-TR": """miu v1.0.53 Yenilikleri
+• Güçlendirilmiş çevrimdışı Canlı Önizleme güvenliği ve Markdown, LaTeX ile 33 Mermaid şemasında daha net görünüm.
+• Çok satırlı Regex bul/değiştir, Emmet genişletme ve 65 dil sözdizimi vurgulamada doğruluk iyileştirmeleri.
+• UTF-8 dışı kayıtlarda karakter kaybı uyarısı, daha güvenli atomik kaydetme ve çok dilli arayüz iyileştirmeleri.""",
 
-    "uk": """Дякуємо, що користуєтеся miu. Версія 1.0.52 містить важливе виправлення запуску:
-• Виправлено помилку, через яку значок програми не відображався на головному екрані та в списку програм після встановлення.
-• Канали відкритого й закритого тестування оновлено до актуальної версії.
-• Посилено офлайн-захист перегляду та стабільність для 65 мов і діаграм Mermaid.""",
+    "uk": """Що нового в miu v1.0.53
+• Посилено офлайн-захист перегляду та покращено відображення Markdown, формул LaTeX і 33 типів діаграм Mermaid.
+• Покращено багаторядковий пошук і заміну Regex, розгортання Emmet та підсвічування синтаксису 65 мов.
+• Додано попередження про втрату символів під час збереження не в UTF-8, надійніше атомарне збереження й локалізацію.""",
 
-    "vi": """Cảm ơn bạn đã sử dụng miu. Phiên bản 1.0.52 bao gồm bản sửa lỗi khởi chạy quan trọng:
-• Khắc phục lỗi biểu tượng ứng dụng không hiển thị trên màn hình chính hoặc danh sách ứng dụng sau khi cài đặt.
-• Đồng bộ các kênh thử nghiệm mở và đóng lên phiên bản mới nhất.
-• Tăng cường bảo mật Xem trước ngoại tuyến cùng độ ổn định cho 65 ngôn ngữ và sơ đồ Mermaid.""",
+    "vi": """Có gì mới trong miu v1.0.53
+• Tăng cường bảo mật Xem trước ngoại tuyến và hiển thị chuẩn xác hơn cho Markdown, LaTeX cùng 33 loại sơ đồ Mermaid.
+• Cải thiện tìm/thay thế Regex nhiều dòng, gõ tắt Emmet và tô sáng cú pháp cho 65 ngôn ngữ.
+• Thêm cảnh báo mất ký tự khi lưu ngoài UTF-8, nâng cao lưu tệp nguyên tử an toàn và bản địa hóa đa ngôn ngữ.""",
 
-    "th": """ขอบคุณที่ใช้บริการ miu เวอร์ชัน 1.0.52 มีการแก้ไขสำคัญเกี่ยวกับการเปิดแอป:
-• แก้ไขปัญหาที่ไอคอนแอปไม่แสดงบนหน้าจอหลักและหน้ารวมแอปหลังติดตั้ง ทำให้สามารถเปิดใช้งานได้ทันที
-• รวมแทร็กการทดสอบแบบเปิดและแบบปิดให้เป็นเวอร์ชันล่าสุดเดียวกัน
-• เสริมความปลอดภัยพรีวิวออฟไลน์และความเสถียรของการเน้นไวยากรณ์ 65 ภาษาและ Mermaid""",
+    "th": """มีอะไรใหม่ใน miu v1.0.53
+• ยกระดับความปลอดภัยพรีวิวออฟไลน์ และแสดงผล Markdown, สมการ LaTeX และแผนภาพ Mermaid ทั้ง 33 รูปแบบได้แม่นยำขึ้น
+• ปรับปรุงการค้นหา/แทนที่ด้วย Regex หลายบรรทัด, Emmet และการไฮไลต์ไวยากรณ์ 65 ภาษา
+• เพิ่มการแจ้งเตือนอักขระตกหล่นเมื่อบันทึกนอก UTF-8 ปรับปรุงการบันทึกไฟล์แบบอะตอมมิกและการแปลภาษา""",
 
-    "id": """Terima kasih telah menggunakan miu. Versi 1.0.52 mencakup perbaikan penting saat membuka aplikasi:
-• Memperbaiki masalah ikon aplikasi yang tidak muncul di layar utama atau daftar aplikasi setelah instalasi.
-• Menyatukan jalur pengujian terbuka dan tertutup ke versi terbaru.
-• Peningkatan keamanan Pratinjau offline serta stabilitas 65 bahasa dan diagram Mermaid.""",
+    "id": """Yang Baru di miu v1.0.53
+• Keamanan offline Pratinjau Langsung diperkuat serta tampilan Markdown, LaTeX, dan 33 diagram Mermaid lebih akurat.
+• Peningkatan cari & ganti Regex multibaris, ekspansi Emmet, dan penyorotan sintaks 65 bahasa.
+• Peringatan kehilangan karakter saat menyimpan non-UTF-8, penyimpanan atomik lebih aman, dan perbaikan pelokalan.""",
 
-    "ms": """Terima kasih kerana menggunakan miu. Versi 1.0.52 merangkumi pembaikan pelancaran penting:
-• Membaiki isu ikon aplikasi tidak muncul pada skrin utama atau senarai aplikasi selepas pemasangan.
-• Menyatukan saluran ujian terbuka dan tertutup kepada versi terkini.
-• Peningkatan keselamatan Pratonton luar talian serta kestabilan 65 bahasa dan rajah Mermaid.""",
+    "ms": """Baharu dalam miu v1.0.53
+• Keselamatan luar talian Pratonton Langsung diperkukuh serta paparan Markdown, LaTeX dan 33 rajah Mermaid lebih tepat.
+• Penambahbaikan cari & ganti Regex berbilang baris, pengembangan Emmet dan penyerlahan sintaks 65 bahasa.
+• Amaran kehilangan aksara bagi simpanan bukan UTF-8, simpanan atomik lebih selamat dan penyetempatan diperhalusi.""",
 
-    "hi-IN": """miu का उपयोग करने के लिए धन्यवाद। संस्करण 1.0.52 में ऐप लॉन्च से जुड़ा महत्वपूर्ण सुधार शामिल है:
-• इंस्टॉल करने के बाद होम स्क्रीन और ऐप सूची में ऐप आइकन न दिखने और न खुलने की समस्या ठीक की गई।
-• ओपन और क्लोज़्ड टेस्टिंग ट्रैक को नवीनतम संस्करण पर एकीकृत किया गया।
-• ऑफ़लाइन लाइव प्रीव्यू सुरक्षा और 65 भाषाओं व Mermaid डायग्राम की स्थिरता को बेहतर बनाया गया।""",
+    "hi-IN": """miu v1.0.53 में नया क्या है
+• ऑफ़लाइन लाइव प्रीव्यू सुरक्षा को मजबूत किया गया और Markdown, LaTeX व सभी 33 Mermaid आरेखों की रेंडरिंग सुधारी गई।
+• मल्टीलाइन Regex खोजें/बदलें, Emmet विस्तार और 65 भाषाओं के सिंटैक्स हाइलाइटिंग की सटीकता बढ़ाई गई।
+• गैर-UTF-8 सेव में अक्षर हानि चेतावनी, अधिक सुरक्षित एटॉमिक फ़ाइल सेविंग और बहुभाषी अनुवाद में सुधार।""",
 
     "ar": AR_WHATS_NEW,
     "iw-IL": HE_WHATS_NEW,
@@ -423,6 +438,7 @@ PLAY_LOCALE_CONFIG = {
 
 def get_android_slide_specs(prefix: str):
     """Adapt slide specs so badges and copy use Android/PC shortcuts (Alt+P, Ctrl+F, Ctrl+D)."""
+    _ensure_imaging_deps()
     specs = ass.get_slide_specs(prefix)
     for s in specs:
         s["badge"] = (
@@ -458,6 +474,7 @@ ANDROID_TABLET_BG_CACHE = {}
 
 def render_android_phone_slide(spec, font_bold_path, font_reg_path, target_size=(1080, 1920)):
     """Render an Android Phone Portrait marketing screenshot (9:16, 1080x1920) with top/bottom split preview."""
+    _ensure_imaging_deps()
     W, H = 900, 1600
     pal_key = (id(spec["palette"]), W, H)
     if pal_key not in ANDROID_PHONE_BG_CACHE:
@@ -655,6 +672,7 @@ def render_android_phone_slide(spec, font_bold_path, font_reg_path, target_size=
 
 def render_android_tablet_slide(spec, font_bold_path, font_reg_path, target_size=(1920, 1200)):
     """Render an Android Tablet Landscape screenshot (16:10, 1920x1200) with left/right split preview."""
+    _ensure_imaging_deps()
     W, H = 1440, 900
     pal_key = (id(spec["palette"]), W, H)
     if pal_key not in ANDROID_TABLET_BG_CACHE:
@@ -770,6 +788,7 @@ def render_android_tablet_slide(spec, font_bold_path, font_reg_path, target_size
 
 def render_android_prefix_sets(prefix: str, out_dir: str):
     """Render 5 phone screenshots and 5 tablet screenshots for a language prefix."""
+    _ensure_imaging_deps()
     os.makedirs(out_dir, exist_ok=True)
     fb, fr = ass.resolve_font_paths(prefix)
     specs = get_android_slide_specs(prefix)
@@ -815,6 +834,9 @@ def play_request(method: str, url: str, token: str, json_data=None, data=None, c
 
 
 def sync_play_store(out_dir: str, key_path: str, skip_screenshots: bool = False):
+    if requests is None:
+        raise ImportError("The 'requests' package is required for sync_play_store")
+    from playstore_upload import get_access_token
     print("=== Google Play Store Metadata, Release Notes & Screenshot Synchronizer ===")
     token = get_access_token(key_path)
 

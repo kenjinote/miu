@@ -688,7 +688,7 @@ inline Rendered verticalEventModel(const EventModelingModel& model, const Render
     for (const auto& relation : model.relations) {
         size_t s = relation.sourceIdx;
         size_t t = relation.targetIdx;
-        if (s == t) continue;
+        if (s >= model.boxes.size() || t >= model.boxes.size() || s == t) continue;
         size_t lo = std::min(s, t);
         size_t hi = std::max(s, t);
         if (hi - lo < 2) {
@@ -775,7 +775,7 @@ inline Rendered verticalEventModel(const EventModelingModel& model, const Render
     }
 
     for (const auto& relation : model.relations) {
-        if (relation.sourceIdx == relation.targetIdx) continue;
+        if (relation.sourceIdx >= placed.size() || relation.targetIdx >= placed.size() || relation.sourceIdx == relation.targetIdx) continue;
         const auto& s = placed[relation.sourceIdx];
         const auto& t = placed[relation.targetIdx];
         bool down = t.y > s.y;
@@ -880,7 +880,14 @@ inline Rendered drawEventModel(const EventModelingModel& model, const Config& co
     placed.reserve(model.boxes.size());
     for (size_t i = 0; i < model.boxes.size(); i++) {
         const auto& box = model.boxes[i];
-        auto& band = bands[bandByLaneIdx[box.lane.index]];
+        auto bandIt = bandByLaneIdx.find(box.lane.index);
+        if (bandIt == bandByLaneIdx.end()) {
+            Label label = layoutLabel(box.lane.label, false, measurer, small, 4000.0, Style::Bold);
+            labelColumn = std::max(labelColumn, label.width + 2.0 * LANE_PAD);
+            bandIt = bandByLaneIdx.emplace(box.lane.index, bands.size()).first;
+            bands.push_back({box.lane, std::move(label), -std::numeric_limits<double>::infinity(), 0.0, 0.0});
+        }
+        auto& band = bands[bandIt->second];
         Label name = layoutLabel(box.name, false, measurer, nameSize, 4000.0, Style::Bold);
         std::vector<std::string> data = (box.data.has_value() && !box.data->empty()) ? hardWrap(*box.data, DATA_COLUMNS) : std::vector<std::string>{};
         double w = std::max(BOX_MIN_WIDTH, std::max(name.width, widest(data, mono, Style::Mono)) + 2.0 * BOX_PAD_X);
@@ -940,7 +947,7 @@ inline Rendered drawEventModel(const EventModelingModel& model, const Config& co
     std::string edgesSvg;
     double trim = markerTrim("arrow_point");
     for (const auto& relation : model.relations) {
-        if (relation.sourceIdx == relation.targetIdx) continue;
+        if (relation.sourceIdx >= placed.size() || relation.targetIdx >= placed.size() || relation.sourceIdx == relation.targetIdx) continue;
         const auto& s = placed[relation.sourceIdx];
         const auto& t = placed[relation.targetIdx];
         std::string d, head;

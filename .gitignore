@@ -387,6 +387,7 @@ scripts/test_upload.py
 **/local.properties
 Android/.idea/deploymentTargetSelector.xml
 Android/.idea/deploymentTargetDropDown.xml
+Android/app/release/
 /build_screenshots_v2/
 /build_screenshots/
 /build_screenshots_android/

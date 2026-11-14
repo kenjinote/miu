@@ -10,5 +10,7 @@
 @interface ViewController : UIViewController
 
 - (void)openIncomingURL:(NSURL *)url;
+- (void)openIncomingURL:(NSURL *)url openInPlace:(BOOL)openInPlace;
+- (void)saveRecoveryDraftIfNeeded;
 
 @end

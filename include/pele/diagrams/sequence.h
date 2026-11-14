@@ -21,10 +21,12 @@
 namespace Pele::SequenceDiagram {
 
 inline std::string num(double value) {
+    if (!std::isfinite(value)) return "0";
+    value = std::clamp(value, -1e15, 1e15);
     long long n = static_cast<long long>(std::floor(value * 100.0 + 0.5));
     if (n == 0) return "0";
     bool neg = n < 0;
-    unsigned long long absN = neg ? static_cast<unsigned long long>(-n) : static_cast<unsigned long long>(n);
+    unsigned long long absN = neg ? (0ULL - static_cast<unsigned long long>(n)) : static_cast<unsigned long long>(n);
     unsigned long long whole = absN / 100;
     unsigned long long frac = absN % 100;
     std::string res = (neg ? "-" : "") + std::to_string(whole);
@@ -226,11 +228,30 @@ struct SeqStatement {
     bool sequenceVisible = false;
 };
 
+constexpr size_t MAX_SEQ_NESTING_DEPTH = 64;
+
 struct SeqItem {
     enum Kind { Empty, Statement, String, List } kind = Empty;
     SeqStatement stmt;
     std::string str;
     std::vector<SeqItem> list;
+
+    SeqItem() = default;
+    SeqItem(const SeqItem&) = default;
+    SeqItem(SeqItem&&) noexcept = default;
+    SeqItem& operator=(const SeqItem&) = default;
+    SeqItem& operator=(SeqItem&&) noexcept = default;
+    ~SeqItem() {
+        if (list.empty()) return;
+        std::vector<SeqItem> work = std::move(list);
+        while (!work.empty()) {
+            std::vector<SeqItem> grand = std::move(work.back().list);
+            work.pop_back();
+            if (!grand.empty()) {
+                work.insert(work.end(), std::make_move_iterator(grand.begin()), std::make_move_iterator(grand.end()));
+            }
+        }
+    }
 
     static SeqItem makeEmpty() {
         SeqItem it;
@@ -791,6 +812,9 @@ public:
         while (true) {
             if (item != nullptr) {
                 if (item->kind == SeqItem::List) {
+                    if (lists.size() > MAX_SEQ_NESTING_DEPTH + 4) {
+                        throw PeleError("Maximum nesting depth exceeded", "limit", "sequence");
+                    }
                     lists.push_back(&item->list);
                     at.push_back(0);
                 } else if (item->kind == SeqItem::Statement) {
@@ -1248,7 +1272,11 @@ inline Tokens tokenize(const std::string& src) {
         return true;
     };
     auto lineRun = [&](size_t q) -> size_t {
-        while (q < n && has(q, C_Line)) q++;
+        while (q < n) {
+            if (has(q, C_Line)) { q++; continue; }
+            if (src[q] == ';' && isEntitySemicolon(src, q)) { q++; continue; }
+            break;
+        }
         return q;
     };
     auto begin = [&](int type, size_t len, int next) {
@@ -1587,8 +1615,12 @@ inline Tokens tokenize(const std::string& src) {
                     pop();
                 } else {
                     size_t q = src.find('}', p);
-                    if (q == std::string::npos) q = n;
-                    emit(T_acc_descr_multiline_value, p, q);
+                    if (q == std::string::npos) {
+                        emit(T_acc_descr_multiline_value, p, n);
+                        pop();
+                    } else {
+                        emit(T_acc_descr_multiline_value, p, q);
+                    }
                 }
                 return true;
         }
@@ -1605,9 +1637,9 @@ inline Tokens tokenize(const std::string& src) {
 
     if (state == S_INITIAL || state == S_ALIAS) emit(T_NEWLINE, n, n);
     else if (state == S_LINE) emit(T_restOfLine, n, n);
-    else if (state == S_acc_title) emit(T_acc_title_value, n, n);
-    else if (state == S_acc_descr) emit(T_acc_descr_value, n, n);
-    else if (state == S_acc_descr_multiline) emit(T_acc_descr_multiline_value, n, n);
+    else if (state == S_acc_title) { emit(T_acc_title_value, n, n); emit(T_NEWLINE, n, n); }
+    else if (state == S_acc_descr) { emit(T_acc_descr_value, n, n); emit(T_NEWLINE, n, n); }
+    else if (state == S_acc_descr_multiline) { emit(T_acc_descr_multiline_value, n, n); emit(T_NEWLINE, n, n); }
     types.push_back(T_END);
     texts.push_back("");
     starts.push_back(n);
@@ -1910,8 +1942,17 @@ inline void parseSequence(const std::string& src, SeqDb& db) {
     };
 
     auto fold = [&](ParseFrame& frame, const std::string& divider, int keyKind, int signalType) -> std::vector<SeqItem> {
-        std::vector<SeqItem> list = std::move(frame.list);
-        for (int k = static_cast<int>(frame.sections.size()) - 1; k >= 0; k--) {
+        if (frame.sections.empty()) {
+            return std::move(frame.list);
+        }
+        size_t total = frame.list.size() + frame.sections.size();
+        for (const auto& sec : frame.sections) total += sec.list.size();
+        std::vector<SeqItem> flat;
+        flat.reserve(total + 1);
+        for (size_t k = 0; k < frame.sections.size(); k++) {
+            for (auto& item : frame.sections[k].list) {
+                flat.push_back(std::move(item));
+            }
             SeqStatement head;
             head.type = divider;
             head.signalType = signalType;
@@ -1920,12 +1961,14 @@ inline void parseSequence(const std::string& src, SeqDb& db) {
             if (keyKind == 0) { head.altText = parsed; head.hasAltText = true; }
             else if (keyKind == 1) { head.parText = parsed; head.hasParText = true; }
             else { head.optionText = parsed; head.hasOptionText = true; }
-            std::vector<SeqItem> combined = std::move(frame.sections[k].list);
-            combined.push_back(SeqItem::makeStmt(head));
-            combined.push_back(SeqItem::makeList(std::move(list)));
-            list = std::move(combined);
+            flat.push_back(SeqItem::makeStmt(std::move(head)));
         }
-        return list;
+        for (auto& item : frame.list) {
+            flat.push_back(std::move(item));
+        }
+        frame.sections.clear();
+        frame.list.clear();
+        return flat;
     };
 
     auto close = [&](ParseFrame& frame) -> SeqItem {
@@ -2193,6 +2236,9 @@ inline void parseSequence(const std::string& src, SeqDb& db) {
             case T_par_over:
             case T_critical:
             case T_box: {
+                if (stack.size() >= MAX_SEQ_NESTING_DEPTH) {
+                    throw PeleError("Maximum nesting depth exceeded", "limit", "sequence");
+                }
                 i++;
                 std::string text = expect(T_restOfLine);
                 stack.push_back(std::move(frame));

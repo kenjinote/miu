@@ -7,6 +7,27 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.53": {
+        "ja-jp": """miu v1.0.53 リリースノート
+・ライブプレビューのオフライン保護強化と Markdown / LaTeX 数式 / 全33種 Mermaid 図表の描画安定性向上
+・複数行正規表現検索・置換、Emmet 展開、全角矩形選択、全65言語シンタックスハイライトの精度改善
+・非 UTF-8 保存時の文字欠落確認、安全なアトミック保存、および OS 表示言語自動検出（日本語ほか多言語UI）を改善""",
+
+        "en-us": """miu v1.0.53 Release Notes
+- Strengthened offline Live Preview security and improved Markdown, LaTeX math, and all 33 Mermaid diagram renderers
+- Improved multiline Regex find & replace, Emmet expansion, CJK column selection, and 65-language syntax highlighting
+- Added character-loss warning for non-UTF-8 saves, enhanced atomic saving, and fixed Windows OS UI language auto-detection""",
+
+        "zh-hans": """miu v1.0.53 更新日志
+- 强化实时预览离线安全保护，提升 Markdown、LaTeX 公式及全部 33 种 Mermaid 图表渲染稳定性
+- 改进多行正则表达式查找替换、Emmet 展开、全角矩形选择及 65 种语言语法高亮精度
+- 新增非 UTF-8 保存字符丢失提醒，强化原子化安全保存，并修复 Windows 系统界面语言自动识别""",
+
+        "ko": """miu v1.0.53 릴리스 노트
+- 실시간 미리보기 오프라인 보안 강화 및 Markdown·LaTeX 수식·33종 Mermaid 다이어그램 렌더링 안정성 향상
+- 다중 행 정규식 찾기/바꾸기, Emmet 확장, 전각 사각형 선택 및 65개 언어 구문 강조 정밀도 개선
+- 비 UTF-8 저장 시 문자 손실 확인 추가, 원자적 저장 강화 및 Windows OS 표시 언어 자동 감지 개선"""
+    },
     "1.0.52": {
         "ja-jp": """miu v1.0.52 リリースノート
 🪟 ダイアログの画面内配置補正（見切れ防止）＆ ライブプレビュー保護・描画精度の向上
@@ -1242,7 +1263,7 @@ def build_store_package(root_dir, version, msbuild_path):
         "/p:AppxBundle=Always",
         "/p:UapAppxPackageBuildMode=StoreUpload"
     ]
-    res = subprocess.run(cmd)
+    res = subprocess.run(cmd, timeout=1800)
     if res.returncode != 0:
         raise RuntimeError(f"Building Store package failed with code {res.returncode}")
 
@@ -1272,41 +1293,41 @@ def get_oauth_token(tenant_id, client_id, client_secret):
         "client_secret": client_secret,
         "resource": "https://manage.devcenter.microsoft.com"
     }
-    resp = requests.post(token_url, data=data)
+    resp = requests.post(token_url, data=data, timeout=60)
     resp.raise_for_status()
     return resp.json()["access_token"]
 
 def get_or_create_submission(headers, product_id):
     app_url = f"https://manage.devcenter.microsoft.com/v1.0/my/applications/{product_id}"
-    app_resp = requests.get(app_url, headers=headers)
+    app_resp = requests.get(app_url, headers=headers, timeout=60)
     app_resp.raise_for_status()
     app_data = app_resp.json()
 
     for _ in range(40):
-        app_data = requests.get(app_url, headers=headers).json()
+        app_data = requests.get(app_url, headers=headers, timeout=60).json()
         pending = app_data.get("pendingApplicationSubmission")
         if not pending or not pending.get("id"):
             break
         sub_id = pending["id"]
-        st_resp = requests.get(f"{app_url}/submissions/{sub_id}/status", headers=headers).json()
+        st_resp = requests.get(f"{app_url}/submissions/{sub_id}/status", headers=headers, timeout=60).json()
         st = st_resp.get("status", "")
         print(f"Existing pending submission {sub_id} status: {st}")
         if st == "CommitStarted":
             time.sleep(8)
             continue
         if st in ("PendingCommit", ""):
-            sub_resp = requests.get(f"{app_url}/submissions/{sub_id}", headers=headers)
+            sub_resp = requests.get(f"{app_url}/submissions/{sub_id}", headers=headers, timeout=60)
             sub_resp.raise_for_status()
             return sub_resp.json()
         # In PreProcessing / Certification / CommitFailed -> delete so we can create a fresh draft
-        del_resp = requests.delete(f"{app_url}/submissions/{sub_id}", headers=headers)
+        del_resp = requests.delete(f"{app_url}/submissions/{sub_id}", headers=headers, timeout=60)
         print(f"Deleted previous in-flight submission {sub_id}: {del_resp.status_code}")
         time.sleep(3)
         break
 
     print("Creating new draft submission...")
     create_url = f"{app_url}/submissions"
-    create_resp = requests.post(create_url, headers=headers)
+    create_resp = requests.post(create_url, headers=headers, timeout=60)
     create_resp.raise_for_status()
     new_sub = create_resp.json()
     print(f"Created new draft submission: {new_sub.get('id')}")
@@ -1338,7 +1359,8 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
         up_resp = requests.put(
             upload_url,
             data=f,
-            headers={"x-ms-blob-type": "BlockBlob"}
+            headers={"x-ms-blob-type": "BlockBlob"},
+            timeout=600
         )
     up_resp.raise_for_status()
     print("Zip package uploaded successfully.")
@@ -1473,7 +1495,7 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
     # 5. PUT update to Dev Center API
     print(f"Updating submission {sub_id}...")
     put_url = f"https://manage.devcenter.microsoft.com/v1.0/my/applications/{product_id}/submissions/{sub_id}"
-    put_resp = requests.put(put_url, headers=headers, json=submission_data)
+    put_resp = requests.put(put_url, headers=headers, json=submission_data, timeout=120)
     if put_resp.status_code != 200:
         raise RuntimeError(f"Failed to update submission: {put_resp.status_code} - {put_resp.text}")
     print("Submission updated successfully.")
@@ -1481,7 +1503,7 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
 def commit_submission(headers, product_id, submission_id):
     print(f"Committing submission {submission_id} to Microsoft Store...")
     commit_url = f"https://manage.devcenter.microsoft.com/v1.0/my/applications/{product_id}/submissions/{submission_id}/commit"
-    res = requests.post(commit_url, headers=headers)
+    res = requests.post(commit_url, headers=headers, timeout=60)
     if res.status_code not in (200, 202):
         raise RuntimeError(f"Failed to commit submission: {res.status_code} - {res.text}")
     print("Submission committed! It is now queued for certification.")
@@ -1490,7 +1512,7 @@ def poll_submission_status(headers, product_id, submission_id, max_attempts=24, 
     status_url = f"https://manage.devcenter.microsoft.com/v1.0/my/applications/{product_id}/submissions/{submission_id}/status"
     for i in range(max_attempts):
         time.sleep(interval)
-        res = requests.get(status_url, headers=headers)
+        res = requests.get(status_url, headers=headers, timeout=60)
         if res.status_code == 200:
             status_data = res.json()
             st = status_data.get("status")

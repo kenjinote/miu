@@ -56,7 +56,7 @@
 		<author>InstallShield</author>
 		<keywords>Installer,MSI,Database</keywords>
 		<comments>Contact:  Your local administrator</comments>
-		<template>Intel;1033</template>
+		<template>x64;1033</template>
 		<lastauthor>Administrator</lastauthor>
 		<revnumber>{E1A74D8D-94FF-4278-918F-DD50248AB732}</revnumber>
 		<lastprinted/>
@@ -102,7 +102,7 @@
 		<col def="S0">ISDotNetInstallerArgsCommit</col>
 		<col def="S0">ISDotNetInstallerArgsUninstall</col>
 		<col def="S0">ISDotNetInstallerArgsRollback</col>
-		<row><td>DefaultComponent</td><td>{71EB45ED-8B54-4B38-8039-E29D837EFFC1}</td><td>TARGETDIR</td><td>0</td><td/><td/><td>51729</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
+		<row><td>DefaultComponent</td><td>{71EB45ED-8B54-4B38-8039-E29D837EFFC1}</td><td>TARGETDIR</td><td>256</td><td/><td/><td>51729</td><td/><td/><td/><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td><td>/LogFile=</td></row>
 	</table>
 
 	<table name="Control">
@@ -505,7 +505,7 @@
 		<col def="S255">DotNetBuildConfiguration</col>
 		<col def="S255">MsiCommandLine</col>
 		<col def="I4">ISSetupPrerequisiteLocation</col>
-		<row><td>SINGLE_EXE_IMAGE</td><td>Media</td><td/><td>PackageName</td><td>1</td><td>1041,1069,1026,1027,2052,1028,1050,1029,1030,1043,1033,1035,3084,1036,1031,1032,1038,1057,1040,1042,1044,1046,1045,2070,1049,1048,3098,1051,1060,1034,1053,1054,1055</td><td>2</td><td>1</td><td>Intel</td><td/><td>1041</td><td>3</td><td>0</td><td>0</td><td>0</td><td/><td>0</td><td/><td>MediaLocation</td><td/><td>http://</td><td/><td/><td/><td/><td>29</td><td/><td/><td/><td/></row>
+		<row><td>SINGLE_EXE_IMAGE</td><td>Media</td><td/><td>PackageName</td><td>1</td><td>1041,1069,1026,1027,2052,1028,1050,1029,1030,1043,1033,1035,3084,1036,1031,1032,1038,1057,1040,1042,1044,1046,1045,2070,1049,1048,3098,1051,1060,1034,1053,1054,1055</td><td>2</td><td>1</td><td>x64</td><td/><td>1041</td><td>3</td><td>0</td><td>0</td><td>0</td><td/><td>0</td><td/><td>MediaLocation</td><td/><td>https://</td><td/><td/><td/><td/><td>29</td><td/><td/><td/><td/></row>
 	</table>
 
 	<table name="ISReleasePro">
@@ -1249,7 +1249,7 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<row><td>ProObjUseDefaultSettings</td><td>##IDS_PROOBJ_USEDEFAULTSETTINGS##</td><td/></row>
 		<row><td>ProductCode</td><td>{B899017B-2842-400D-84F3-D65263B7D72D}</td><td/></row>
 		<row><td>ProductName</td><td>miu</td><td/></row>
-		<row><td>ProductVersion</td><td>1.0.0.52</td><td/></row>
+		<row><td>ProductVersion</td><td>1.0.0.53</td><td/></row>
 	</table>
 
 	<table name="RadioButton">
@@ -1367,8 +1367,6 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<row><td>Registry92</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.lua</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
 		<row><td>Registry93</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.tex</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
 		<row><td>Registry94</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.latex</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
-		<row><td>Registry95</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.bat</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
-		<row><td>Registry96</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.cmd</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
 		<row><td>Registry97</td><td>2</td><td>SOFTWARE\miu</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
 		<row><td>Registry98</td><td>2</td><td>SOFTWARE\miu\Capabilities</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
 		<row><td>Registry99</td><td>2</td><td>SOFTWARE\miu\Capabilities</td><td>ApplicationName</td><td>miu</td><td>&lt;Default&gt;</td><td>0</td></row>
@@ -1439,8 +1437,6 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<row><td>Registry164</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.lua</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
 		<row><td>Registry165</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.tex</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
 		<row><td>Registry166</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.latex</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
-		<row><td>Registry167</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.bat</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
-		<row><td>Registry168</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.cmd</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
 		<row><td>Registry169</td><td>2</td><td>SOFTWARE\RegisteredApplications</td><td>miu</td><td>SOFTWARE\miu\Capabilities</td><td>&lt;Default&gt;</td><td>0</td></row>
 		<row><td>Registry170</td><td>2</td><td>SOFTWARE\Classes\.txt</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
 		<row><td>Registry171</td><td>2</td><td>SOFTWARE\Classes\.txt\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
@@ -1637,12 +1633,6 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<row><td>Registry362</td><td>2</td><td>SOFTWARE\Classes\.latex</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
 		<row><td>Registry363</td><td>2</td><td>SOFTWARE\Classes\.latex\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
 		<row><td>Registry364</td><td>2</td><td>SOFTWARE\Classes\.latex\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
-		<row><td>Registry365</td><td>2</td><td>SOFTWARE\Classes\.bat</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
-		<row><td>Registry366</td><td>2</td><td>SOFTWARE\Classes\.bat\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
-		<row><td>Registry367</td><td>2</td><td>SOFTWARE\Classes\.bat\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
-		<row><td>Registry368</td><td>2</td><td>SOFTWARE\Classes\.cmd</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
-		<row><td>Registry369</td><td>2</td><td>SOFTWARE\Classes\.cmd\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
-		<row><td>Registry370</td><td>2</td><td>SOFTWARE\Classes\.cmd\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
 		<row><td>Registry371</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.mmd</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
 		<row><td>Registry372</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.mermaid</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
 		<row><td>Registry373</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.mmd</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
@@ -1653,6 +1643,376 @@ UwBJAE4ARwBMAEUAXwBFAFgARQBfAEkATQBBAEcARQABAE0AZQBkAGkAYQA=
 		<row><td>Registry378</td><td>2</td><td>SOFTWARE\Classes\.mermaid</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
 		<row><td>Registry379</td><td>2</td><td>SOFTWARE\Classes\.mermaid\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
 		<row><td>Registry380</td><td>2</td><td>SOFTWARE\Classes\.mermaid\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry381</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.dart</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry382</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.dart</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry383</td><td>2</td><td>SOFTWARE\Classes\.dart</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry384</td><td>2</td><td>SOFTWARE\Classes\.dart\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry385</td><td>2</td><td>SOFTWARE\Classes\.dart\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry386</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.r</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry387</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.r</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry388</td><td>2</td><td>SOFTWARE\Classes\.r</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry389</td><td>2</td><td>SOFTWARE\Classes\.r\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry390</td><td>2</td><td>SOFTWARE\Classes\.r\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry391</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.zig</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry392</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.zig</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry393</td><td>2</td><td>SOFTWARE\Classes\.zig</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry394</td><td>2</td><td>SOFTWARE\Classes\.zig\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry395</td><td>2</td><td>SOFTWARE\Classes\.zig\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry396</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.scala</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry397</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.scala</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry398</td><td>2</td><td>SOFTWARE\Classes\.scala</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry399</td><td>2</td><td>SOFTWARE\Classes\.scala\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry400</td><td>2</td><td>SOFTWARE\Classes\.scala\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry401</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.sc</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry402</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.sc</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry403</td><td>2</td><td>SOFTWARE\Classes\.sc</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry404</td><td>2</td><td>SOFTWARE\Classes\.sc\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry405</td><td>2</td><td>SOFTWARE\Classes\.sc\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry406</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.pl</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry407</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.pl</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry408</td><td>2</td><td>SOFTWARE\Classes\.pl</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry409</td><td>2</td><td>SOFTWARE\Classes\.pl\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry410</td><td>2</td><td>SOFTWARE\Classes\.pl\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry411</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.pm</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry412</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.pm</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry413</td><td>2</td><td>SOFTWARE\Classes\.pm</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry414</td><td>2</td><td>SOFTWARE\Classes\.pm\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry415</td><td>2</td><td>SOFTWARE\Classes\.pm\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry416</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.vb</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry417</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.vb</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry418</td><td>2</td><td>SOFTWARE\Classes\.vb</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry419</td><td>2</td><td>SOFTWARE\Classes\.vb\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry420</td><td>2</td><td>SOFTWARE\Classes\.vb\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry421</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.fs</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry422</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.fs</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry423</td><td>2</td><td>SOFTWARE\Classes\.fs</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry424</td><td>2</td><td>SOFTWARE\Classes\.fs\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry425</td><td>2</td><td>SOFTWARE\Classes\.fs\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry426</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.fsi</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry427</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.fsi</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry428</td><td>2</td><td>SOFTWARE\Classes\.fsi</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry429</td><td>2</td><td>SOFTWARE\Classes\.fsi\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry430</td><td>2</td><td>SOFTWARE\Classes\.fsi\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry431</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.fsx</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry432</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.fsx</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry433</td><td>2</td><td>SOFTWARE\Classes\.fsx</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry434</td><td>2</td><td>SOFTWARE\Classes\.fsx\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry435</td><td>2</td><td>SOFTWARE\Classes\.fsx\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry436</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.jl</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry437</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.jl</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry438</td><td>2</td><td>SOFTWARE\Classes\.jl</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry439</td><td>2</td><td>SOFTWARE\Classes\.jl\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry440</td><td>2</td><td>SOFTWARE\Classes\.jl\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry441</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.hs</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry442</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.hs</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry443</td><td>2</td><td>SOFTWARE\Classes\.hs</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry444</td><td>2</td><td>SOFTWARE\Classes\.hs\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry445</td><td>2</td><td>SOFTWARE\Classes\.hs\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry446</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.lhs</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry447</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.lhs</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry448</td><td>2</td><td>SOFTWARE\Classes\.lhs</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry449</td><td>2</td><td>SOFTWARE\Classes\.lhs\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry450</td><td>2</td><td>SOFTWARE\Classes\.lhs\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry451</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.ex</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry452</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.ex</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry453</td><td>2</td><td>SOFTWARE\Classes\.ex</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry454</td><td>2</td><td>SOFTWARE\Classes\.ex\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry455</td><td>2</td><td>SOFTWARE\Classes\.ex\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry456</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.exs</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry457</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.exs</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry458</td><td>2</td><td>SOFTWARE\Classes\.exs</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry459</td><td>2</td><td>SOFTWARE\Classes\.exs\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry460</td><td>2</td><td>SOFTWARE\Classes\.exs\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry461</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.dockerfile</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry462</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.dockerfile</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry463</td><td>2</td><td>SOFTWARE\Classes\.dockerfile</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry464</td><td>2</td><td>SOFTWARE\Classes\.dockerfile\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry465</td><td>2</td><td>SOFTWARE\Classes\.dockerfile\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry466</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.tf</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry467</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.tf</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry468</td><td>2</td><td>SOFTWARE\Classes\.tf</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry469</td><td>2</td><td>SOFTWARE\Classes\.tf\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry470</td><td>2</td><td>SOFTWARE\Classes\.tf\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry471</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.tfvars</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry472</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.tfvars</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry473</td><td>2</td><td>SOFTWARE\Classes\.tfvars</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry474</td><td>2</td><td>SOFTWARE\Classes\.tfvars\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry475</td><td>2</td><td>SOFTWARE\Classes\.tfvars\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry476</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.hcl</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry477</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.hcl</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry478</td><td>2</td><td>SOFTWARE\Classes\.hcl</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry479</td><td>2</td><td>SOFTWARE\Classes\.hcl\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry480</td><td>2</td><td>SOFTWARE\Classes\.hcl\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry481</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.graphql</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry482</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.graphql</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry483</td><td>2</td><td>SOFTWARE\Classes\.graphql</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry484</td><td>2</td><td>SOFTWARE\Classes\.graphql\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry485</td><td>2</td><td>SOFTWARE\Classes\.graphql\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry486</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.gql</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry487</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.gql</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry488</td><td>2</td><td>SOFTWARE\Classes\.gql</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry489</td><td>2</td><td>SOFTWARE\Classes\.gql\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry490</td><td>2</td><td>SOFTWARE\Classes\.gql\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry491</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.proto</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry492</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.proto</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry493</td><td>2</td><td>SOFTWARE\Classes\.proto</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry494</td><td>2</td><td>SOFTWARE\Classes\.proto\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry495</td><td>2</td><td>SOFTWARE\Classes\.proto\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry496</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.cmake</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry497</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.cmake</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry498</td><td>2</td><td>SOFTWARE\Classes\.cmake</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry499</td><td>2</td><td>SOFTWARE\Classes\.cmake\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry500</td><td>2</td><td>SOFTWARE\Classes\.cmake\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry501</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.mk</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry502</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.mk</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry503</td><td>2</td><td>SOFTWARE\Classes\.mk</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry504</td><td>2</td><td>SOFTWARE\Classes\.mk\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry505</td><td>2</td><td>SOFTWARE\Classes\.mk\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry506</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.mak</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry507</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.mak</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry508</td><td>2</td><td>SOFTWARE\Classes\.mak</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry509</td><td>2</td><td>SOFTWARE\Classes\.mak\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry510</td><td>2</td><td>SOFTWARE\Classes\.mak\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry511</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.hlsl</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry512</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.hlsl</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry513</td><td>2</td><td>SOFTWARE\Classes\.hlsl</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry514</td><td>2</td><td>SOFTWARE\Classes\.hlsl\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry515</td><td>2</td><td>SOFTWARE\Classes\.hlsl\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry516</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.fx</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry517</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.fx</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry518</td><td>2</td><td>SOFTWARE\Classes\.fx</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry519</td><td>2</td><td>SOFTWARE\Classes\.fx\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry520</td><td>2</td><td>SOFTWARE\Classes\.fx\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry521</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.glsl</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry522</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.glsl</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry523</td><td>2</td><td>SOFTWARE\Classes\.glsl</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry524</td><td>2</td><td>SOFTWARE\Classes\.glsl\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry525</td><td>2</td><td>SOFTWARE\Classes\.glsl\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry526</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.vert</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry527</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.vert</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry528</td><td>2</td><td>SOFTWARE\Classes\.vert</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry529</td><td>2</td><td>SOFTWARE\Classes\.vert\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry530</td><td>2</td><td>SOFTWARE\Classes\.vert\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry531</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.frag</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry532</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.frag</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry533</td><td>2</td><td>SOFTWARE\Classes\.frag</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry534</td><td>2</td><td>SOFTWARE\Classes\.frag\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry535</td><td>2</td><td>SOFTWARE\Classes\.frag\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry536</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.comp</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry537</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.comp</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry538</td><td>2</td><td>SOFTWARE\Classes\.comp</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry539</td><td>2</td><td>SOFTWARE\Classes\.comp\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry540</td><td>2</td><td>SOFTWARE\Classes\.comp\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry541</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.geom</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry542</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.geom</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry543</td><td>2</td><td>SOFTWARE\Classes\.geom</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry544</td><td>2</td><td>SOFTWARE\Classes\.geom\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry545</td><td>2</td><td>SOFTWARE\Classes\.geom\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry546</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.tesc</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry547</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.tesc</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry548</td><td>2</td><td>SOFTWARE\Classes\.tesc</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry549</td><td>2</td><td>SOFTWARE\Classes\.tesc\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry550</td><td>2</td><td>SOFTWARE\Classes\.tesc\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry551</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.tese</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry552</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.tese</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry553</td><td>2</td><td>SOFTWARE\Classes\.tese</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry554</td><td>2</td><td>SOFTWARE\Classes\.tese\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry555</td><td>2</td><td>SOFTWARE\Classes\.tese\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry556</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.wgsl</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry557</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.wgsl</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry558</td><td>2</td><td>SOFTWARE\Classes\.wgsl</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry559</td><td>2</td><td>SOFTWARE\Classes\.wgsl\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry560</td><td>2</td><td>SOFTWARE\Classes\.wgsl\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry561</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.asm</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry562</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.asm</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry563</td><td>2</td><td>SOFTWARE\Classes\.asm</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry564</td><td>2</td><td>SOFTWARE\Classes\.asm\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry565</td><td>2</td><td>SOFTWARE\Classes\.asm\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry566</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.s</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry567</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.s</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry568</td><td>2</td><td>SOFTWARE\Classes\.s</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry569</td><td>2</td><td>SOFTWARE\Classes\.s\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry570</td><td>2</td><td>SOFTWARE\Classes\.s\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry571</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.inc</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry572</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.inc</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry573</td><td>2</td><td>SOFTWARE\Classes\.inc</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry574</td><td>2</td><td>SOFTWARE\Classes\.inc\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry575</td><td>2</td><td>SOFTWARE\Classes\.inc\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry576</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.v</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry577</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.v</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry578</td><td>2</td><td>SOFTWARE\Classes\.v</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry579</td><td>2</td><td>SOFTWARE\Classes\.v\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry580</td><td>2</td><td>SOFTWARE\Classes\.v\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry581</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.sv</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry582</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.sv</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry583</td><td>2</td><td>SOFTWARE\Classes\.sv</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry584</td><td>2</td><td>SOFTWARE\Classes\.sv\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry585</td><td>2</td><td>SOFTWARE\Classes\.sv\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry586</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.svh</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry587</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.svh</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry588</td><td>2</td><td>SOFTWARE\Classes\.svh</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry589</td><td>2</td><td>SOFTWARE\Classes\.svh\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry590</td><td>2</td><td>SOFTWARE\Classes\.svh\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry591</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.vh</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry592</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.vh</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry593</td><td>2</td><td>SOFTWARE\Classes\.vh</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry594</td><td>2</td><td>SOFTWARE\Classes\.vh\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry595</td><td>2</td><td>SOFTWARE\Classes\.vh\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry596</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.vhd</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry597</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.vhd</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry598</td><td>2</td><td>SOFTWARE\Classes\.vhd</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry599</td><td>2</td><td>SOFTWARE\Classes\.vhd\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry600</td><td>2</td><td>SOFTWARE\Classes\.vhd\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry601</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.vhdl</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry602</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.vhdl</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry603</td><td>2</td><td>SOFTWARE\Classes\.vhdl</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry604</td><td>2</td><td>SOFTWARE\Classes\.vhdl\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry605</td><td>2</td><td>SOFTWARE\Classes\.vhdl\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry606</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.hh</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry607</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.hh</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry608</td><td>2</td><td>SOFTWARE\Classes\.hh</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry609</td><td>2</td><td>SOFTWARE\Classes\.hh\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry610</td><td>2</td><td>SOFTWARE\Classes\.hh\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry611</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.inl</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry612</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.inl</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry613</td><td>2</td><td>SOFTWARE\Classes\.inl</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry614</td><td>2</td><td>SOFTWARE\Classes\.inl\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry615</td><td>2</td><td>SOFTWARE\Classes\.inl\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry616</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.ipp</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry617</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.ipp</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry618</td><td>2</td><td>SOFTWARE\Classes\.ipp</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry619</td><td>2</td><td>SOFTWARE\Classes\.ipp\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry620</td><td>2</td><td>SOFTWARE\Classes\.ipp\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry621</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.tpp</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry622</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.tpp</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry623</td><td>2</td><td>SOFTWARE\Classes\.tpp</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry624</td><td>2</td><td>SOFTWARE\Classes\.tpp\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry625</td><td>2</td><td>SOFTWARE\Classes\.tpp\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry626</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.rc</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry627</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.rc</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry628</td><td>2</td><td>SOFTWARE\Classes\.rc</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry629</td><td>2</td><td>SOFTWARE\Classes\.rc\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry630</td><td>2</td><td>SOFTWARE\Classes\.rc\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry631</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.ino</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry632</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.ino</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry633</td><td>2</td><td>SOFTWARE\Classes\.ino</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry634</td><td>2</td><td>SOFTWARE\Classes\.ino\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry635</td><td>2</td><td>SOFTWARE\Classes\.ino\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry636</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.cu</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry637</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.cu</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry638</td><td>2</td><td>SOFTWARE\Classes\.cu</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry639</td><td>2</td><td>SOFTWARE\Classes\.cu\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry640</td><td>2</td><td>SOFTWARE\Classes\.cu\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry641</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.cuh</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry642</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.cuh</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry643</td><td>2</td><td>SOFTWARE\Classes\.cuh</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry644</td><td>2</td><td>SOFTWARE\Classes\.cuh\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry645</td><td>2</td><td>SOFTWARE\Classes\.cuh\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry646</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.vcxproj</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry647</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.vcxproj</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry648</td><td>2</td><td>SOFTWARE\Classes\.vcxproj</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry649</td><td>2</td><td>SOFTWARE\Classes\.vcxproj\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry650</td><td>2</td><td>SOFTWARE\Classes\.vcxproj\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry651</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.csproj</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry652</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.csproj</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry653</td><td>2</td><td>SOFTWARE\Classes\.csproj</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry654</td><td>2</td><td>SOFTWARE\Classes\.csproj\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry655</td><td>2</td><td>SOFTWARE\Classes\.csproj\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry656</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.fsproj</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry657</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.fsproj</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry658</td><td>2</td><td>SOFTWARE\Classes\.fsproj</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry659</td><td>2</td><td>SOFTWARE\Classes\.fsproj\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry660</td><td>2</td><td>SOFTWARE\Classes\.fsproj\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry661</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.vbproj</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry662</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.vbproj</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry663</td><td>2</td><td>SOFTWARE\Classes\.vbproj</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry664</td><td>2</td><td>SOFTWARE\Classes\.vbproj\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry665</td><td>2</td><td>SOFTWARE\Classes\.vbproj\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry666</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.props</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry667</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.props</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry668</td><td>2</td><td>SOFTWARE\Classes\.props</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry669</td><td>2</td><td>SOFTWARE\Classes\.props\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry670</td><td>2</td><td>SOFTWARE\Classes\.props\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry671</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.targets</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry672</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.targets</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry673</td><td>2</td><td>SOFTWARE\Classes\.targets</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry674</td><td>2</td><td>SOFTWARE\Classes\.targets\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry675</td><td>2</td><td>SOFTWARE\Classes\.targets\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry676</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.wapproj</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry677</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.wapproj</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry678</td><td>2</td><td>SOFTWARE\Classes\.wapproj</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry679</td><td>2</td><td>SOFTWARE\Classes\.wapproj\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry680</td><td>2</td><td>SOFTWARE\Classes\.wapproj\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry681</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.appxmanifest</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry682</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.appxmanifest</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry683</td><td>2</td><td>SOFTWARE\Classes\.appxmanifest</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry684</td><td>2</td><td>SOFTWARE\Classes\.appxmanifest\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry685</td><td>2</td><td>SOFTWARE\Classes\.appxmanifest\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry686</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.resw</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry687</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.resw</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry688</td><td>2</td><td>SOFTWARE\Classes\.resw</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry689</td><td>2</td><td>SOFTWARE\Classes\.resw\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry690</td><td>2</td><td>SOFTWARE\Classes\.resw\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry691</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.resx</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry692</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.resx</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry693</td><td>2</td><td>SOFTWARE\Classes\.resx</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry694</td><td>2</td><td>SOFTWARE\Classes\.resx\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry695</td><td>2</td><td>SOFTWARE\Classes\.resx\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry696</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.plist</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry697</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.plist</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry698</td><td>2</td><td>SOFTWARE\Classes\.plist</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry699</td><td>2</td><td>SOFTWARE\Classes\.plist\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry700</td><td>2</td><td>SOFTWARE\Classes\.plist\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry701</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.xaml</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry702</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.xaml</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry703</td><td>2</td><td>SOFTWARE\Classes\.xaml</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry704</td><td>2</td><td>SOFTWARE\Classes\.xaml\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry705</td><td>2</td><td>SOFTWARE\Classes\.xaml\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry706</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.nuspec</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry707</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.nuspec</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry708</td><td>2</td><td>SOFTWARE\Classes\.nuspec</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry709</td><td>2</td><td>SOFTWARE\Classes\.nuspec\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry710</td><td>2</td><td>SOFTWARE\Classes\.nuspec\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry711</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.config</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry712</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.config</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry713</td><td>2</td><td>SOFTWARE\Classes\.config</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry714</td><td>2</td><td>SOFTWARE\Classes\.config\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry715</td><td>2</td><td>SOFTWARE\Classes\.config\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry716</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.manifest</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry717</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.manifest</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry718</td><td>2</td><td>SOFTWARE\Classes\.manifest</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry719</td><td>2</td><td>SOFTWARE\Classes\.manifest\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry720</td><td>2</td><td>SOFTWARE\Classes\.manifest\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry721</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.pyw</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry722</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.pyw</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry723</td><td>2</td><td>SOFTWARE\Classes\.pyw</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry724</td><td>2</td><td>SOFTWARE\Classes\.pyw\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry725</td><td>2</td><td>SOFTWARE\Classes\.pyw\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry726</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.pyi</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry727</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.pyi</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry728</td><td>2</td><td>SOFTWARE\Classes\.pyi</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry729</td><td>2</td><td>SOFTWARE\Classes\.pyi\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry730</td><td>2</td><td>SOFTWARE\Classes\.pyi\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry731</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.psm1</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry732</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.psm1</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry733</td><td>2</td><td>SOFTWARE\Classes\.psm1</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry734</td><td>2</td><td>SOFTWARE\Classes\.psm1\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry735</td><td>2</td><td>SOFTWARE\Classes\.psm1\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry736</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.psd1</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry737</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.psd1</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry738</td><td>2</td><td>SOFTWARE\Classes\.psd1</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry739</td><td>2</td><td>SOFTWARE\Classes\.psd1\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry740</td><td>2</td><td>SOFTWARE\Classes\.psd1\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry741</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.diff</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry742</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.diff</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry743</td><td>2</td><td>SOFTWARE\Classes\.diff</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry744</td><td>2</td><td>SOFTWARE\Classes\.diff\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry745</td><td>2</td><td>SOFTWARE\Classes\.diff\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry746</td><td>2</td><td>SOFTWARE\Classes\Applications\miu.exe\SupportedTypes</td><td>.patch</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry747</td><td>2</td><td>SOFTWARE\miu\Capabilities\FileAssociations</td><td>.patch</td><td>miu.Document</td><td>&lt;Default&gt;</td><td>0</td></row>
+		<row><td>Registry748</td><td>2</td><td>SOFTWARE\Classes\.patch</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry749</td><td>2</td><td>SOFTWARE\Classes\.patch\OpenWithProgids</td><td/><td/><td>&lt;Default&gt;</td><td>1</td></row>
+		<row><td>Registry750</td><td>2</td><td>SOFTWARE\Classes\.patch\OpenWithProgids</td><td>miu.Document</td><td/><td>&lt;Default&gt;</td><td>0</td></row>
 	</table>
 
 	<table name="Shortcut">

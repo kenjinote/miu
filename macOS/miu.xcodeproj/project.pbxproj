@@ -63,6 +63,7 @@
 		BAA1E1F72F4AE80000BA3D2C /* nb */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = nb; path = nb.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1F82F4AE80000BA3D2C /* ms */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ms; path = ms.lproj/Localizable.strings; sourceTree = "<group>"; };
 		BAA1E1F92F4AE90000BA3D2C /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		BAA1E1FC2F4AE91000BA3D2C /* miu_macOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = miu_macOS.entitlements; path = miu_macOS/miu_macOS.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -84,6 +85,7 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				info.plist,
+				miu_macOS.entitlements,
 			);
 			target = BABDDE552F49D3BC00B3E84A /* miu_macOS */;
 		};
@@ -141,6 +143,7 @@
 			children = (
 				BAA1E1D92F4AE17800BA3D2C /* Localizable.strings */,
 				BAA1E1F92F4AE90000BA3D2C /* PrivacyInfo.xcprivacy */,
+				BAA1E1FC2F4AE91000BA3D2C /* miu_macOS.entitlements */,
 				BABDDE582F49D3BC00B3E84A /* miu_macOS */,
 				BA4A72FD2F4C1DC90045F2FD /* miu_iOS */,
 				BABDDE6B2F49E1C000B3E84A /* Frameworks */,
@@ -369,7 +372,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 56;
+				CURRENT_PROJECT_VERSION = 57;
 				DEVELOPMENT_TEAM = J8HRH6XC73;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
@@ -395,7 +398,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.51;
+				MARKETING_VERSION = 1.0.53;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				SDKROOT = iphoneos;
@@ -411,7 +414,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 56;
+				CURRENT_PROJECT_VERSION = 57;
 				DEVELOPMENT_TEAM = J8HRH6XC73;
 				GENERATE_INFOPLIST_FILE = YES;
 				HEADER_SEARCH_PATHS = (
@@ -437,7 +440,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.51;
+				MARKETING_VERSION = 1.0.53;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				SDKROOT = iphoneos;
@@ -570,9 +573,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = miu_macOS/miu_macOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 56;
+				CURRENT_PROJECT_VERSION = 57;
 				DEVELOPMENT_TEAM = J8HRH6XC73;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -607,7 +611,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.51;
+				MARKETING_VERSION = 1.0.53;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				REGISTER_APP_GROUPS = YES;
@@ -621,9 +625,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = miu_macOS/miu_macOS.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 56;
+				CURRENT_PROJECT_VERSION = 57;
 				DEVELOPMENT_TEAM = J8HRH6XC73;
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -658,7 +663,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 				);
-				MARKETING_VERSION = 1.0.51;
+				MARKETING_VERSION = 1.0.53;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.hack.miu;
 				PRODUCT_NAME = miu;
 				REGISTER_APP_GROUPS = YES;

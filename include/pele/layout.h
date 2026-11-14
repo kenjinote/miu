@@ -1730,8 +1730,11 @@ inline std::vector<double> position(const Graph& g, const LayeredOptions& opt) {
 
 } // namespace detail_layered
 
-inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& opt = {}) {
+inline LayeredResult layoutLayered(std::vector<LNode>& nodes, std::vector<LEdge>& edges, const LayeredOptions& rawOpt = {}) {
   using namespace detail_layered;
+  LayeredOptions opt = rawOpt;
+  opt.nodeSep = std::isfinite(opt.nodeSep) ? std::max(1.0, opt.nodeSep) : 40.0;
+  opt.rankSep = std::isfinite(opt.rankSep) ? std::max(1.0, opt.rankSep) : 48.0;
   int real = static_cast<int>(nodes.size());
   int m = static_cast<int>(edges.size());
   if (real == 0) return {0, 0, 0, 0};
@@ -2358,8 +2361,8 @@ inline Side opposite(Side s) {
 
 inline LayeredOptions styleOf(const CompoundOptions& opt) {
   LayeredOptions lo;
-  lo.nodeSep = opt.nodeSep;
-  lo.rankSep = opt.rankSep;
+  lo.nodeSep = std::isfinite(opt.nodeSep) ? std::max(1.0, opt.nodeSep) : 40.0;
+  lo.rankSep = std::isfinite(opt.rankSep) ? std::max(1.0, opt.rankSep) : 48.0;
   lo.edgeSep = opt.edgeSep;
   lo.portSep = opt.portSep;
   lo.headRoom = opt.headRoom;
@@ -2484,13 +2487,13 @@ inline void toLocal(const std::string& dir, std::vector<LNode>& lnodes, std::vec
 
 inline void appendRoute(std::vector<double>& dst, const std::vector<double>& pts, double ox, double oy) {
   int n = static_cast<int>(pts.size());
-  if (n == 0) return;
+  if (n < 3) return;
   int start = 0;
   int dlen = static_cast<int>(dst.size());
   if (dlen >= 3 && std::abs(dst[dlen - 3] - (pts[0] + ox)) < 0.01 && std::abs(dst[dlen - 2] - (pts[1] + oy)) < 0.01) {
     start = 3;
   }
-  for (int i = start; i < n; i += 3) {
+  for (int i = start; i + 2 < n; i += 3) {
     dst.push_back(pts[i] + ox);
     dst.push_back(pts[i + 1] + oy);
     dst.push_back(pts[i + 2]);
@@ -2823,6 +2826,10 @@ inline void layoutSingleLevel(Level& level, std::vector<CNode>& nodes, std::vect
 }
 
 inline void extendPort(Port& port, const std::vector<double>& pts, bool atStart, double boxW, double boxH) {
+  if (pts.size() < 6) {
+    port.route.clear();
+    return;
+  }
   int end = atStart ? 0 : static_cast<int>(pts.size()) - 3;
   double x = pts[end];
   double y = pts[end + 1];
@@ -2852,6 +2859,7 @@ inline void extendPort(Port& port, const std::vector<double>& pts, bool atStart,
 }
 
 inline void shiftPortRoute(std::vector<double>& route, int end, int adj, bool vertical, double np) {
+  if (route.size() < 6 || end < 0 || adj < 0 || static_cast<size_t>(end + 1) >= route.size() || static_cast<size_t>(adj + 1) >= route.size()) return;
   if (vertical) {
     double oldX = route[end];
     if (std::abs(route[adj] - oldX) < 0.01) route[adj] = np;
@@ -2912,7 +2920,7 @@ inline void adjustBorderPorts(Level& childLv, const CNode& childNode, Level& par
           eKey = -1 - le.toPort;
           hasPRoute = true;
         }
-        if (!hasPRoute || !pRoutePtr || pRoutePtr->size() < 6) continue;
+        if (!hasPRoute || !pRoutePtr || pRoutePtr->size() < 6 || port.route.size() < 6) continue;
         const auto& pRoute = *pRoutePtr;
         int nearIdx = atStart ? 3 : static_cast<int>(pRoute.size()) - 6;
         double outer = (vertical ? pRoute[nearIdx] : pRoute[nearIdx + 1]) - origin;
@@ -2974,6 +2982,7 @@ inline void rerouteSideEntries(const Level& childLv, const CNode& childNode, Lev
     auto itR = parentLv.routes.find(le.e);
     if (itR == parentLv.routes.end()) continue;
     auto& pRoute = itR->second;
+    if (pRoute.size() < 6) continue;
     bool atStart = le.from == childLv.id;
     bool atEnd = le.to == childLv.id;
     if (!atStart && !atEnd) continue;
@@ -3554,9 +3563,45 @@ inline LanedGraph layoutLanes(
   bool rev = opt.dir == "BT" || opt.dir == "RL";
   int n = static_cast<int>(nodes.size());
   int m = static_cast<int>(edges.size());
+  laneCount = std::max(0, laneCount);
+  auto laneAt = [&](int idx) -> int {
+    if (idx < 0 || idx >= static_cast<int>(laneOf.size())) return -1;
+    int ln = laneOf[idx];
+    return (ln >= 0 && ln < laneCount) ? ln : -1;
+  };
+
+  for (int i = 0; i < n; i++) {
+    int p = nodes[i].parent;
+    if (p < 0 || p >= n || p == i || !nodes[p].isGroup) nodes[i].parent = -1;
+  }
+  {
+    std::vector<uint8_t> pState(n, 0);
+    for (int i = 0; i < n; i++) {
+      if (pState[i] != 0) continue;
+      int cur = i;
+      int steps = 0;
+      while (cur >= 0 && cur < n && pState[cur] == 0 && steps <= n) {
+        pState[cur] = 1;
+        int nx = nodes[cur].parent;
+        if (nx >= 0 && nx < n && pState[nx] == 1) {
+          nodes[cur].parent = -1;
+          break;
+        }
+        cur = nx;
+        ++steps;
+      }
+      for (int k = i, kSteps = 0; k >= 0 && k < n && pState[k] == 1 && kSteps <= n; ++kSteps) {
+        int nx = nodes[k].parent;
+        pState[k] = 2;
+        k = nx;
+      }
+    }
+  }
 
   std::vector<int> loops;
-  for (int ei = 0; ei < m; ei++) if (edges[ei].src == edges[ei].dst) loops.push_back(ei);
+  for (int ei = 0; ei < m; ei++) {
+    if (edges[ei].src >= 0 && edges[ei].src < n && edges[ei].src == edges[ei].dst) loops.push_back(ei);
+  }
   for (int ei : loops) {
     const auto& e = edges[ei];
     auto& node = nodes[e.src];
@@ -3573,30 +3618,31 @@ inline LanedGraph layoutLanes(
   std::vector<LaneGroupInfo> groups;
   Pele::FlatMap<int, int> groupSlot;
   for (int i = 0; i < n; i++) {
-    if (!nodes[i].isGroup || laneOf[i] < 0) continue;
+    int ln = laneAt(i);
+    if (!nodes[i].isGroup || ln < 0) continue;
     groupSlot[i] = static_cast<int>(groups.size());
-    groups.push_back({i, laneOf[i], {}});
+    groups.push_back({i, ln, {}});
   }
   std::vector<int> groupOf(n, -1);
   for (int i = 0; i < n; i++) {
     if (nodes[i].isGroup) continue;
-    for (int p = nodes[i].parent; p >= 0; p = nodes[p].parent) {
+    for (int p = nodes[i].parent, steps = 0; p >= 0 && p < n && steps < n; p = nodes[p].parent, ++steps) {
       auto it = groupSlot.find(p);
       if (it != groupSlot.end()) {
         groupOf[i] = it->second;
         break;
       }
     }
-    for (int p = nodes[i].parent; p >= 0; p = nodes[p].parent) {
+    for (int p = nodes[i].parent, steps = 0; p >= 0 && p < n && steps < n; p = nodes[p].parent, ++steps) {
       auto it = groupSlot.find(p);
       if (it != groupSlot.end()) groups[it->second].members.push_back(i);
     }
   }
   std::vector<int> groupParent(groups.size(), -1);
   for (size_t g = 0; g < groups.size(); g++) {
-    for (int p = nodes[groups[g].id].parent; p >= 0; p = nodes[p].parent) {
+    for (int p = nodes[groups[g].id].parent, steps = 0; p >= 0 && p < n && steps < n; p = nodes[p].parent, ++steps) {
       auto it = groupSlot.find(p);
-      if (it != groupSlot.end()) {
+      if (it != groupSlot.end() && static_cast<size_t>(it->second) != g) {
         groupParent[g] = it->second;
         break;
       }
@@ -3624,6 +3670,7 @@ inline LanedGraph layoutLanes(
   for (int ei = 0; ei < m; ei++) {
     if (loopSet.count(ei)) continue;
     const auto& e = edges[ei];
+    if (e.src < 0 || e.src >= n || e.dst < 0 || e.dst >= n) continue;
     int tail = leafOf[e.src];
     int head = leafOf[e.dst];
     if (tail < 0 || head < 0) continue;
@@ -3642,9 +3689,12 @@ inline LanedGraph layoutLanes(
 
   if (!groups.empty()) {
     int leaves = static_cast<int>(allNodes.size());
+    int gCount = static_cast<int>(groups.size());
     std::vector<std::vector<int>> members(groups.size());
     for (int li = 0; li < leaves; li++) {
-      for (int g = leafGroup[li]; g >= 0; g = groupParent[g]) members[g].push_back(li);
+      for (int g = leafGroup[li], steps = 0; g >= 0 && g < gCount && steps < gCount; g = groupParent[g], ++steps) {
+        members[g].push_back(li);
+      }
     }
     for (int pass = 0; pass < 4; pass++) {
       bool changed = false;
@@ -3667,23 +3717,25 @@ inline LanedGraph layoutLanes(
         if (outside.empty()) continue;
         std::vector<uint8_t> reachFromGroup(leaves, 0);
         for (int li : mem) reachFromGroup[li] = 1;
-        for (bool more = true; more;) {
-          more = false;
+        for (int iter = 0, more = 1; more && iter <= leaves; ++iter) {
+          more = 0;
           for (const auto& e : allEdges) {
-            if (reachFromGroup[e.tail] && !reachFromGroup[e.head]) {
+            if (e.tail >= 0 && e.tail < leaves && e.head >= 0 && e.head < leaves &&
+                reachFromGroup[e.tail] && !reachFromGroup[e.head]) {
               reachFromGroup[e.head] = 1;
-              more = true;
+              more = 1;
             }
           }
         }
         std::vector<uint8_t> canReachGroup(leaves, 0);
         for (int li : mem) canReachGroup[li] = 1;
-        for (bool more = true; more;) {
-          more = false;
+        for (int iter = 0, more = 1; more && iter <= leaves; ++iter) {
+          more = 0;
           for (const auto& e : allEdges) {
-            if (canReachGroup[e.head] && !canReachGroup[e.tail]) {
+            if (e.tail >= 0 && e.tail < leaves && e.head >= 0 && e.head < leaves &&
+                canReachGroup[e.head] && !canReachGroup[e.tail]) {
               canReachGroup[e.tail] = 1;
-              more = true;
+              more = 1;
             }
           }
         }
@@ -3778,7 +3830,7 @@ inline LanedGraph layoutLanes(
   for (int lane = 0; lane < laneCount; lane++) {
     std::vector<int> members;
     for (size_t li = 0; li < allNodes.size(); li++) {
-      if (laneOf[nodeOf[li]] == lane) members.push_back(static_cast<int>(li));
+      if (laneAt(nodeOf[li]) == lane) members.push_back(static_cast<int>(li));
     }
     std::vector<int> localOf(allNodes.size(), -1);
     std::vector<LNode> lnodes;
@@ -3874,7 +3926,7 @@ inline LanedGraph layoutLanes(
   }
 
   for (size_t li = 0; li < allNodes.size(); li++) {
-    allNodes[li].pin = laneOf[nodeOf[li]] + 1;
+    allNodes[li].pin = laneAt(nodeOf[li]) + 1;
     allNodes[li].key = across[nodeOf[li]];
   }
   LayeredOptions fullOpt;
@@ -3903,7 +3955,7 @@ inline LanedGraph layoutLanes(
       int count = 0;
       for (size_t li = 0; li < allNodes.size(); li++) {
         int idx = nodeOf[li];
-        if (laneOf[idx] != lane) continue;
+        if (laneAt(idx) != lane) continue;
         sum += across[idx] - (globalMin + allNodes[li].x * scale);
         count++;
       }
@@ -3945,9 +3997,11 @@ inline LanedGraph layoutLanes(
     auto& le = allEdges[k];
     int tailNode = nodeOf[le.tail];
     int headNode = nodeOf[le.head];
-    int tailLane = laneOf[tailNode];
-    int headLane = laneOf[headNode];
-    double sVal = tailLane == headLane ? laneShift[tailLane] : (laneShift[tailLane] + laneShift[headLane]) / 2.0;
+    int tailLane = laneAt(tailNode);
+    int headLane = laneAt(headNode);
+    double sTail = (tailLane >= 0 && tailLane < laneCount) ? laneShift[tailLane] : 0.0;
+    double sHead = (headLane >= 0 && headLane < laneCount) ? laneShift[headLane] : 0.0;
+    double sVal = tailLane == headLane ? sTail : (sTail + sHead) / 2.0;
     auto& pts = le.points;
     int last = static_cast<int>(pts.size()) - 2;
     int firstNode = le.reversed ? le.head : le.tail;
@@ -4067,6 +4121,7 @@ inline LanedGraph layoutLanes(
 // ============================================================================
 
 inline int endSide(const std::vector<double>& route, int at, const CNode& c) {
+  if (route.size() < 6 || at < 0 || static_cast<size_t>(at + 1) >= route.size()) return -1;
   double dx = route[at] - c.x;
   double dy = route[at + 1] - c.y;
   if (std::abs(std::abs(dy) - c.h / 2.0) < 0.5) return dy < 0 ? 0 : 2;
@@ -4081,7 +4136,7 @@ struct ShapeViewRef {
 };
 
 inline void insetRoute(std::vector<double>& route, int at, const ShapeViewRef& view, const CNode& c) {
-  if (c.isGroup) return;
+  if (c.isGroup || route.size() < 6 || at < 0 || static_cast<size_t>(at + 1) >= route.size()) return;
   int side = endSide(route, at, c);
   if (side == 0 || side == 2) {
     double amount = shapeInset(view.shape, view.w, view.h, side, route[at] - c.x) + (c.h - view.h) / 2.0;
@@ -4095,8 +4150,9 @@ inline void insetRoute(std::vector<double>& route, int at, const ShapeViewRef& v
 using Crossings = std::unordered_map<int, std::vector<double>>;
 
 inline void markCrossings(Crossings& crossings, const std::vector<double>& route) {
-  for (size_t k = 0; k < route.size(); k += 3) {
-    int key = static_cast<int>(std::llround(route[k + 1]));
+  for (size_t k = 0; k + 1 < route.size(); k += 3) {
+    if (!std::isfinite(route[k]) || !std::isfinite(route[k + 1])) continue;
+    int key = static_cast<int>(std::llround(std::clamp(route[k + 1], -1e8, 1e8)));
     crossings[key].push_back(route[k]);
   }
 }
@@ -4107,7 +4163,8 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
   double left = c.x - c.w / 2.0;
   double half = width / 2.0;
   double candidates[3] = {left + pad - 6.0 + half, c.x, left + c.w - pad + 6.0 - half};
-  auto it = crossings.find(static_cast<int>(std::llround(top)));
+  if (!std::isfinite(top)) return candidates[0];
+  auto it = crossings.find(static_cast<int>(std::llround(std::clamp(top, -1e8, 1e8))));
   if (it == crossings.end()) return candidates[0];
   const auto& xs = it->second;
   double best = candidates[0];
@@ -4128,7 +4185,9 @@ inline double clusterTitleX(const CNode& c, double width, const Crossings& cross
 
 inline bool titleCrossed(const CNode& c, double width, double x, const Crossings& crossings) {
   if (width <= 0) return false;
-  auto it = crossings.find(static_cast<int>(std::llround(c.y - c.h / 2.0)));
+  double top = c.y - c.h / 2.0;
+  if (!std::isfinite(top)) return false;
+  auto it = crossings.find(static_cast<int>(std::llround(std::clamp(top, -1e8, 1e8))));
   if (it == crossings.end()) return false;
   double left = c.x - c.w / 2.0;
   for (double cx : it->second) {
@@ -4149,7 +4208,10 @@ inline std::string struckTitle(
   const IconResolver& icons = nullptr
 ) {
   int depth = 1;
-  for (int p = nodes[index].parent; p >= 0 && depth < 8; p = nodes[p].parent) depth++;
+  int nNodes = static_cast<int>(nodes.size());
+  if (index >= 0 && index < nNodes) {
+    for (int p = nodes[index].parent; p >= 0 && p < nNodes && depth < 8; p = nodes[p].parent) depth++;
+  }
   std::string fill = Pele::cat({"color-mix(in srgb,var(--_a) ", num(100.0 * (1.0 - std::pow(0.5, depth))), "%,var(--_bg))"});
   return Pele::cat({"<g class=\"pele-cluster-title\" data-id=\"", id, "\">", labelSvg(label,  x,  y, Pele::cat({" fill=\"none\" stroke=\"", fill, "\" stroke-width=\"5\" stroke-linejoin=\"round\""}),  icons), labelSvg(label, x, y, attrs, icons), "</g>"});
 }
