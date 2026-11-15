@@ -7,6 +7,14 @@ on:
         description: "Also attach build and submit for App Store Review"
         required: false
         default: "false"
+      target_platform:
+        description: "Platform to archive & upload (all, macos, ios)"
+        required: false
+        default: "all"
+      testflight_only:
+        description: "Prepare TestFlight build only without touching App Store Version review/metadata"
+        required: false
+        default: "false"
 
 permissions:
   contents: read
@@ -17,7 +25,9 @@ jobs:
     runs-on: xcode-27
     env:
       HAS_ASC_SECRETS: ${{ secrets.APPSTORE_ISSUER_ID != '' && secrets.APPSTORE_KEY_ID != '' && secrets.APPSTORE_PRIVATE_KEY != '' }}
-      SUBMIT_FOR_REVIEW: ${{ github.event.inputs.submit_for_review }}
+      SUBMIT_FOR_REVIEW: ${{ github.event.inputs.submit_for_review || 'false' }}
+      TARGET_PLATFORM: ${{ github.event.inputs.target_platform || 'all' }}
+      TESTFLIGHT_ONLY: ${{ github.event.inputs.testflight_only || 'false' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -34,9 +44,17 @@ jobs:
           sw_vers
           xcodebuild -version
 
-      - name: Validate all 30 Localizable.strings with plutil
+      - name: Validate Localizable.strings & macOS Sandbox Entitlements
         run: |
-          plutil -lint macOS/*.lproj/Localizable.strings
+          plutil -lint macOS/*.lproj/Localizable.strings macOS/miu_macOS/miu_macOS.entitlements
+          python3 - << 'PYLINT'
+          import plistlib
+          with open("macOS/miu_macOS/miu_macOS.entitlements", "rb") as f:
+              ent = plistlib.load(f)
+          assert ent.get("com.apple.security.app-sandbox") is True, "miu_macOS.entitlements must enable app-sandbox"
+          assert ent.get("com.apple.security.network.client") is True, "miu_macOS.entitlements must enable network.client for WKWebView"
+          print("[OK] Verified miu_macOS.entitlements:", ent)
+          PYLINT
 
       - name: Build universal libced.a (macOS) & libced_iOS.a (iOS)
         run: |
@@ -92,7 +110,7 @@ jobs:
             "$RUNNER_TEMP/asc_venv/bin/pip" install --quiet "pyjwt>=2.8,<3" "cryptography>=42" "requests>=2.31,<3"
           echo "$RUNNER_TEMP/asc_venv/bin" >> "$GITHUB_PATH"
 
-      - name: Archive & Upload miu_macOS and miu_iOS to TestFlight
+      - name: Archive & Upload to TestFlight
         if: env.HAS_ASC_SECRETS == 'true'
         env:
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
@@ -150,11 +168,12 @@ jobs:
           umask 022
 
           python3 - << 'PYEOF'
-          import os, time, jwt, requests
+          import os, re, time, jwt, requests
 
           key_id = os.environ["APPSTORE_KEY_ID"]
           issuer_id = os.environ["APPSTORE_ISSUER_ID"]
           key_path = os.environ["KEY_PATH"]
+          runner_temp = os.environ["RUNNER_TEMP"]
           with open(key_path, "r") as f:
               private_key = f.read()
 
@@ -172,8 +191,7 @@ jobs:
               dev_certs = [c for c in certs if c.get("attributes", {}).get("certificateType") in dev_types]
               print(f"Found {len(dev_certs)} development certificate(s) on App Store Connect.")
               api_dev_certs = [c for c in dev_certs if "API" in (c.get("attributes", {}).get("name", "") + c.get("attributes", {}).get("displayName", ""))]
-              targets = api_dev_certs
-              for c in targets:
+              for c in api_dev_certs:
                   cid = c["id"]
                   cname = c.get("attributes", {}).get("name", cid)
                   ctype = c.get("attributes", {}).get("certificateType", "")
@@ -181,56 +199,243 @@ jobs:
                   print(f"Revoked API dev certificate {cid} ({ctype} - {cname}): HTTP {del_r.status_code}")
           else:
               print(f"Failed to list certificates: HTTP {r.status_code}")
+
+          # Resolve safe MARKETING_VERSION and CURRENT_PROJECT_VERSION for macOS upload
+          pbx_text = open("macOS/miu.xcodeproj/project.pbxproj", "r", encoding="utf-8", errors="replace").read()
+          mv_matches = re.findall(r"MARKETING_VERSION\s*=\s*([0-9]+\.[0-9]+\.[0-9]+)\s*;", pbx_text)
+          bv_matches = [int(x) for x in re.findall(r"CURRENT_PROJECT_VERSION\s*=\s*([0-9]+)\s*;", pbx_text)]
+          macos_ver = mv_matches[-1] if mv_matches else "1.0.53"
+          macos_build = max(bv_matches) if bv_matches else 58
+
+          def parse_ver(v):
+              parts = [int(p) for p in v.split(".")[:3]]
+              while len(parts) < 3:
+                  parts.append(0)
+              return tuple(parts)
+
+          r_app = requests.get("https://api.appstoreconnect.apple.com/v1/apps?filter[bundleId]=jp.hack.miu", headers=headers, timeout=30)
+          if r_app.status_code == 200 and r_app.json().get("data"):
+              app_id = r_app.json()["data"][0]["id"]
+              closed_states = {
+                  "READY_FOR_SALE",
+                  "PROCESSING_FOR_APP_STORE",
+                  "PENDING_DEVELOPER_RELEASE",
+                  "PREORDER_READY_FOR_SALE",
+                  "REPLACED_WITH_NEW_VERSION",
+              }
+              r_vers = requests.get(
+                  f"https://api.appstoreconnect.apple.com/v1/apps/{app_id}/appStoreVersions?filter[platform]=MAC_OS&limit=50",
+                  headers=headers,
+                  timeout=30,
+              )
+              if r_vers.status_code == 200:
+                  closed_tuples = []
+                  for v in r_vers.json().get("data", []):
+                      attrs = v.get("attributes", {})
+                      vst = attrs.get("appStoreState", "")
+                      vstr = attrs.get("versionString", "")
+                      print(f"[ASC MAC_OS Version] {vstr} -> {vst}")
+                      if vst in closed_states and re.match(r"^[0-9]+\.[0-9]+\.[0-9]+$", vstr):
+                          closed_tuples.append(parse_ver(vstr))
+                  if closed_tuples:
+                      max_closed = max(closed_tuples)
+                      cur_t = parse_ver(macos_ver)
+                      if cur_t <= max_closed:
+                          bumped = f"{max_closed[0]}.{max_closed[1]}.{max_closed[2] + 1}"
+                          print(f"[ASC MAC_OS Preflight] Train {macos_ver} is closed on App Store Connect; bumping TestFlight upload MARKETING_VERSION -> {bumped}")
+                          macos_ver = bumped
+
+              r_builds = requests.get(
+                  f"https://api.appstoreconnect.apple.com/v1/builds?filter[app]={app_id}&filter[preReleaseVersion.platform]=MAC_OS&sort=-uploadedDate&limit=50",
+                  headers=headers,
+                  timeout=30,
+              )
+              if r_builds.status_code == 200:
+                  existing_bnums = []
+                  for b in r_builds.json().get("data", []):
+                      bstr = b.get("attributes", {}).get("version", "")
+                      if bstr.isdigit():
+                          existing_bnums.append(int(bstr))
+                  if existing_bnums and macos_build <= max(existing_bnums):
+                      macos_build = max(existing_bnums) + 1
+                      print(f"[ASC MAC_OS Preflight] Bumped CURRENT_PROJECT_VERSION -> {macos_build} to exceed existing builds {max(existing_bnums)}")
+
+          print(f"[ASC MAC_OS Preflight] Final resolved upload target: MARKETING_VERSION={macos_ver}, CURRENT_PROJECT_VERSION={macos_build}")
+          with open(os.path.join(runner_temp, "asc_macos_ver.env"), "w") as out_f:
+              out_f.write(f"MACOS_UPLOAD_VERSION={macos_ver}\n")
+              out_f.write(f"MACOS_UPLOAD_BUILD={macos_build}\n")
           PYEOF
 
-          echo "=== Archiving & Uploading miu_iOS ==="
-          xcodebuild -project macOS/miu.xcodeproj \
-            -scheme miu_iOS \
-            -destination "generic/platform=iOS" \
-            -configuration Release \
-            -archivePath "$RUNNER_TEMP/miu_iOS.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$APPSTORE_KEY_ID" \
-            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
-            archive
+          source "$RUNNER_TEMP/asc_macos_ver.env"
 
-          xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/miu_iOS.xcarchive" \
-            -exportPath "$RUNNER_TEMP/export_iOS" \
-            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$APPSTORE_KEY_ID" \
-            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
+          if [ "${TARGET_PLATFORM}" = "all" ] || [ "${TARGET_PLATFORM}" = "ios" ]; then
+            echo "=== Archiving & Uploading miu_iOS ==="
+            xcodebuild -project macOS/miu.xcodeproj \
+              -scheme miu_iOS \
+              -destination "generic/platform=iOS" \
+              -configuration Release \
+              -archivePath "$RUNNER_TEMP/miu_iOS.xcarchive" \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath "$KEY_PATH" \
+              -authenticationKeyID "$APPSTORE_KEY_ID" \
+              -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
+              archive
 
-          echo "=== Archiving & Uploading miu_macOS ==="
-          xcodebuild -project macOS/miu.xcodeproj \
-            -scheme miu \
-            -destination "generic/platform=macOS" \
-            -configuration Release \
-            -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$APPSTORE_KEY_ID" \
-            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
-            archive
+            xcodebuild -exportArchive \
+              -archivePath "$RUNNER_TEMP/miu_iOS.xcarchive" \
+              -exportPath "$RUNNER_TEMP/export_iOS" \
+              -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath "$KEY_PATH" \
+              -authenticationKeyID "$APPSTORE_KEY_ID" \
+              -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
+          fi
 
-          xcodebuild -exportArchive \
-            -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
-            -exportPath "$RUNNER_TEMP/export_macOS" \
-            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$KEY_PATH" \
-            -authenticationKeyID "$APPSTORE_KEY_ID" \
-            -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
+          if [ "${TARGET_PLATFORM}" = "all" ] || [ "${TARGET_PLATFORM}" = "macos" ]; then
+            echo "=== Archiving & Uploading miu_macOS (v${MACOS_UPLOAD_VERSION} build ${MACOS_UPLOAD_BUILD}) ==="
+            xcodebuild -project macOS/miu.xcodeproj \
+              -scheme miu \
+              -destination "generic/platform=macOS" \
+              -configuration Release \
+              -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath "$KEY_PATH" \
+              -authenticationKeyID "$APPSTORE_KEY_ID" \
+              -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID" \
+              MARKETING_VERSION="${MACOS_UPLOAD_VERSION}" \
+              CURRENT_PROJECT_VERSION="${MACOS_UPLOAD_BUILD}" \
+              archive
 
-          echo "=== Preparing 1.0.53 Builds on TestFlight (macOS & iOS) & Syncing Metadata ==="
-          python3 scripts/appstore_metadata_sync.py --testflight-only
-          if [ "${SUBMIT_FOR_REVIEW:-false}" = "true" ]; then
-            python3 scripts/appstore_metadata_sync.py --submit
+            echo "=== Verifying Signed Entitlements on Archived miu.app ==="
+            ENT_XML="$RUNNER_TEMP/archived_macos_entitlements.plist"
+            codesign -d --entitlements - --xml "$RUNNER_TEMP/miu_macOS.xcarchive/Products/Applications/miu.app" > "$ENT_XML" 2>/dev/null || \
+              codesign -d --entitlements :- "$RUNNER_TEMP/miu_macOS.xcarchive/Products/Applications/miu.app" > "$ENT_XML" 2>/dev/null
+            python3 - "$ENT_XML" << 'PYENT'
+          import sys, plistlib
+          with open(sys.argv[1], "rb") as f:
+              ent = plistlib.load(f)
+          print("Signed miu.app entitlements:", ent)
+          assert ent.get("com.apple.security.app-sandbox") is True, "Archived miu.app missing com.apple.security.app-sandbox!"
+          assert ent.get("com.apple.security.network.client") is True, "Archived miu.app missing com.apple.security.network.client!"
+          PYENT
+
+            xcodebuild -exportArchive \
+              -archivePath "$RUNNER_TEMP/miu_macOS.xcarchive" \
+              -exportPath "$RUNNER_TEMP/export_macOS" \
+              -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath "$KEY_PATH" \
+              -authenticationKeyID "$APPSTORE_KEY_ID" \
+              -authenticationKeyIssuerID "$APPSTORE_ISSUER_ID"
+          fi
+
+          if [ "${TESTFLIGHT_ONLY}" = "true" ] && [ "${TARGET_PLATFORM}" = "macos" ]; then
+            echo "=== Preparing macOS Build ${MACOS_UPLOAD_VERSION} (${MACOS_UPLOAD_BUILD}) on TestFlight Only ==="
+            export MACOS_UPLOAD_VERSION MACOS_UPLOAD_BUILD
+            python3 - << 'PYTF'
+          import os, sys, time, requests
+          sys.path.insert(0, "scripts")
+          import appstore_metadata_sync as ams
+
+          target_ver = os.environ["MACOS_UPLOAD_VERSION"]
+          target_build = os.environ["MACOS_UPLOAD_BUILD"]
+          headers = ams.get_headers()
+          app_id, _ = ams.get_app_id(headers)
+          print(f"[MAC_OS TestFlight] Waiting for uploaded build v{target_ver} ({target_build}) on App Store Connect...")
+
+          chosen_build_id = None
+          for attempt in range(28):
+              headers = ams.get_headers()
+              r_b = requests.get(
+                  f"{ams.BASE_URL}/builds?filter[app]={app_id}&filter[preReleaseVersion.platform]=MAC_OS&filter[version]={target_build}&sort=-uploadedDate&limit=5",
+                  headers=headers,
+                  timeout=60,
+              )
+              if r_b.status_code == 200:
+                  builds = r_b.json().get("data", [])
+                  if builds:
+                      b0 = builds[0]
+                      b_id = b0["id"]
+                      b_state = b0.get("attributes", {}).get("processingState", "")
+                      print(f"[MAC_OS TestFlight] Attempt {attempt+1}/28: build {target_build} (id={b_id}) processingState={b_state}")
+                      if b_state == "VALID":
+                          chosen_build_id = b_id
+                          break
+                      elif b_state not in ("PROCESSING", ""):
+                          print(f"[MAC_OS TestFlight] Unexpected processingState={b_state}")
+                          break
+                  else:
+                      print(f"[MAC_OS TestFlight] Attempt {attempt+1}/28: build {target_build} not indexed yet; waiting 15s...")
+              time.sleep(15)
+
+          if chosen_build_id:
+              headers = ams.get_headers()
+              enc_payload = {
+                  "data": {
+                      "type": "builds",
+                      "id": chosen_build_id,
+                      "attributes": {"usesNonExemptEncryption": False},
+                  }
+              }
+              r_enc = requests.patch(f"{ams.BASE_URL}/builds/{chosen_build_id}", headers=headers, json=enc_payload, timeout=60)
+              print(f"[MAC_OS TestFlight] Set usesNonExemptEncryption=False on build {target_build} ({chosen_build_id}): HTTP {r_enc.status_code}")
+
+              ja_note = "macOS版でライブプレビューが表示されない事象の修正（App Sandbox下のWKWebView初期化権限復元、applewebdataナビゲーション許容、ContentRuleListタイムアウト保護、ライブ変換中のOption+P対応）"
+              en_note = "Fixed blank Live Preview on macOS (restored WKWebView App Sandbox client entitlement, allowed WebKit applewebdata HTML loads, added ContentRuleList timeout fallback, and fixed Option+P during IME composition)."
+              r_bbloc = requests.get(f"{ams.BASE_URL}/builds/{chosen_build_id}/betaBuildLocalizations?limit=200", headers=headers, timeout=60)
+              existing = {}
+              if r_bbloc.status_code == 200:
+                  for item in r_bbloc.json().get("data", []):
+                      loc = item.get("attributes", {}).get("locale")
+                      if loc:
+                          existing[loc] = item["id"]
+              for loc, note in (("ja", ja_note), ("en-US", en_note)):
+                  if loc in existing:
+                      requests.patch(
+                          f"{ams.BASE_URL}/betaBuildLocalizations/{existing[loc]}",
+                          headers=headers,
+                          json={"data": {"type": "betaBuildLocalizations", "id": existing[loc], "attributes": {"whatsNew": note}}},
+                          timeout=60,
+                      )
+                  else:
+                      requests.post(
+                          f"{ams.BASE_URL}/betaBuildLocalizations",
+                          headers=headers,
+                          json={
+                              "data": {
+                                  "type": "betaBuildLocalizations",
+                                  "attributes": {"locale": loc, "whatsNew": note},
+                                  "relationships": {"build": {"data": {"type": "builds", "id": chosen_build_id}}},
+                              }
+                          },
+                          timeout=60,
+                      )
+              print(f"[MAC_OS TestFlight] Build v{target_ver} ({target_build}) is VALID and ready on TestFlight!")
+          else:
+              print(f"[MAC_OS TestFlight] Build v{target_ver} ({target_build}) uploaded successfully; Apple is still finishing TestFlight processing.")
+          PYTF
           else
-            python3 scripts/appstore_metadata_sync.py
+            echo "=== Preparing Builds on TestFlight & Syncing Metadata ==="
+            python3 scripts/appstore_metadata_sync.py --testflight-only
+            if [ "${TESTFLIGHT_ONLY}" != "true" ]; then
+              if [ "${SUBMIT_FOR_REVIEW}" = "true" ]; then
+                if [ "${TARGET_PLATFORM}" = "macos" ]; then
+                  python3 scripts/appstore_metadata_sync.py --macos-only --submit
+                elif [ "${TARGET_PLATFORM}" = "ios" ]; then
+                  python3 scripts/appstore_metadata_sync.py --ios-only --submit
+                else
+                  python3 scripts/appstore_metadata_sync.py --submit
+                fi
+              else
+                if [ "${TARGET_PLATFORM}" = "macos" ]; then
+                  python3 scripts/appstore_metadata_sync.py --macos-only
+                elif [ "${TARGET_PLATFORM}" = "ios" ]; then
+                  python3 scripts/appstore_metadata_sync.py --ios-only
+                else
+                  python3 scripts/appstore_metadata_sync.py
+                fi
+              fi
+            fi
           fi
 
       - name: Cleanup temporary signing credentials & keychain

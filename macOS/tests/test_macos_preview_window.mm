@@ -3,6 +3,24 @@
 #import <QuartzCore/QuartzCore.h>
 #include <iostream>
 
+@interface MiuMockFrameInfo : WKFrameInfo
+@property (nonatomic, assign) BOOL mockMainFrame;
+@end
+@implementation MiuMockFrameInfo
+- (BOOL)isMainFrame { return self.mockMainFrame; }
+@end
+
+@interface MiuMockNavAction : WKNavigationAction
+@property (nonatomic, strong) NSURLRequest *mockRequest;
+@property (nonatomic, strong) WKFrameInfo *mockTargetFrame;
+@property (nonatomic, assign) WKNavigationType mockNavType;
+@end
+@implementation MiuMockNavAction
+- (NSURLRequest *)request { return self.mockRequest; }
+- (WKFrameInfo *)targetFrame { return self.mockTargetFrame; }
+- (WKNavigationType)navigationType { return self.mockNavType; }
+@end
+
 struct PixelRGBA {
     int r = -1, g = -1, b = -1, a = -1;
 };
@@ -414,7 +432,96 @@ int main(int argc, const char * argv[]) {
             return 1;
         }
 
-        std::cout << "[PASS] macOS frosted-glass NSVisualEffectView, subtle 1pt splitter, WKWebView split preview (Dark=0,0,0 / Light=255,255,255), and unified scrollbars verified: "
+        // 9. Regression checks for v1.0.53 macOS blank preview fixes:
+        //    (a) App Sandbox entitlements must include com.apple.security.network.client for WKWebView XPC initialization
+        NSDictionary *entDict = [NSDictionary dictionaryWithContentsOfFile:@"macOS/miu_macOS/miu_macOS.entitlements"];
+        if (!entDict) {
+            entDict = [NSDictionary dictionaryWithContentsOfFile:@"../miu_macOS/miu_macOS.entitlements"];
+        }
+        if (!entDict ||
+            ![entDict[@"com.apple.security.app-sandbox"] boolValue] ||
+            ![entDict[@"com.apple.security.network.client"] boolValue]) {
+            std::cerr << "[FAIL] miu_macOS.entitlements must enable both app-sandbox and network.client for macOS WKWebView" << std::endl;
+            return 1;
+        }
+
+        //    (b) Navigation policy must allow both about:blank and macOS 13/14 WebKit applewebdata:// loads on main frame,
+        //        while strictly cancelling external, file, javascript, iframe, and link navigations
+        auto checkNavPolicy = [&](NSString *urlStr, BOOL mainFrame, WKNavigationType navType) -> WKNavigationActionPolicy {
+            MiuMockFrameInfo *fi = [[MiuMockFrameInfo alloc] init];
+            fi.mockMainFrame = mainFrame;
+            MiuMockNavAction *act = [[MiuMockNavAction alloc] init];
+            act.mockRequest = [NSURLRequest requestWithURL:[NSURL URLWithString:urlStr]];
+            act.mockTargetFrame = fi;
+            act.mockNavType = navType;
+            __block WKNavigationActionPolicy decided = WKNavigationActionPolicyCancel;
+            [ev->previewMsgHandler webView:ev->previewWebView
+           decidePolicyForNavigationAction:act
+                           decisionHandler:^(WKNavigationActionPolicy policy) {
+                decided = policy;
+            }];
+            return decided;
+        };
+        if (checkNavPolicy(@"about:blank", YES, WKNavigationTypeOther) != WKNavigationActionPolicyAllow ||
+            checkNavPolicy(@"about:blank#heading", YES, WKNavigationTypeOther) != WKNavigationActionPolicyAllow ||
+            checkNavPolicy(@"applewebdata://12345678-abcd-ef01-2345-6789abcdef01", YES, WKNavigationTypeOther) != WKNavigationActionPolicyAllow) {
+            std::cerr << "[FAIL] decidePolicyForNavigationAction rejected legitimate about:blank or applewebdata:// HTML load" << std::endl;
+            return 1;
+        }
+        if (checkNavPolicy(@"https://example.com/", YES, WKNavigationTypeOther) != WKNavigationActionPolicyCancel ||
+            checkNavPolicy(@"http://127.0.0.1:8080/", YES, WKNavigationTypeOther) != WKNavigationActionPolicyCancel ||
+            checkNavPolicy(@"file:///etc/passwd", YES, WKNavigationTypeOther) != WKNavigationActionPolicyCancel ||
+            checkNavPolicy(@"javascript:alert(1)", YES, WKNavigationTypeOther) != WKNavigationActionPolicyCancel ||
+            checkNavPolicy(@"applewebdata://12345678-abcd-ef01-2345-6789abcdef01", NO, WKNavigationTypeOther) != WKNavigationActionPolicyCancel ||
+            checkNavPolicy(@"about:blank", YES, WKNavigationTypeLinkActivated) != WKNavigationActionPolicyCancel) {
+            std::cerr << "[FAIL] decidePolicyForNavigationAction failed to block untrusted scheme, iframe, or link navigation" << std::endl;
+            return 1;
+        }
+
+        //    (c) Option+P must commit marked text and toggle Live Preview even during Japanese Live Conversion (hasMarkedText)
+        [ev setMarkedText:@"ライブ変換テスト" selectedRange:NSMakeRange(8, 0) replacementRange:NSMakeRange(NSNotFound, 0)];
+        if (![ev hasMarkedText]) {
+            std::cerr << "[FAIL] Expected hasMarkedText == YES after setMarkedText" << std::endl;
+            return 1;
+        }
+        NSEvent *optPEvent = [NSEvent keyEventWithType:NSEventTypeKeyDown
+                                              location:NSMakePoint(10, 10)
+                                         modifierFlags:NSEventModifierFlagOption
+                                             timestamp:0
+                                          windowNumber:[win windowNumber]
+                                               context:nil
+                                            characters:@"π"
+                           charactersIgnoringModifiers:@"p"
+                                             isARepeat:NO
+                                               keyCode:35];
+        [ev keyDown:optPEvent];
+        if ([ev hasMarkedText] || ev->editor->showPreview) {
+            std::cerr << "[FAIL] Option+P while hasMarkedText did not commit IME text and toggle preview off" << std::endl;
+            return 1;
+        }
+        [ev keyDown:optPEvent];
+        if (!ev->editor->showPreview) {
+            std::cerr << "[FAIL] Second Option+P did not toggle preview back on" << std::endl;
+            return 1;
+        }
+
+        //    (d) previewSplitRatio defensive clamping against NaN / out-of-bounds values
+        ev->editor->previewSplitRatio = NAN;
+        [ev layoutSplitViews];
+        if (std::abs(ev->editor->previewSplitRatio - 0.5f) > 1e-4f) {
+            std::cerr << "[FAIL] NaN previewSplitRatio was not reset to 0.5f" << std::endl;
+            return 1;
+        }
+        ev->editor->previewSplitRatio = 0.99f;
+        [ev layoutSplitViews];
+        if (std::abs(ev->editor->previewSplitRatio - 0.85f) > 1e-4f) {
+            std::cerr << "[FAIL] Out-of-range previewSplitRatio was not clamped to 0.85f" << std::endl;
+            return 1;
+        }
+        ev->editor->previewSplitRatio = 0.5f;
+        [ev layoutSplitViews];
+
+        std::cout << "[PASS] macOS frosted-glass NSVisualEffectView, subtle 1pt splitter, WKWebView split preview (Dark=0,0,0 / Light=255,255,255), entitlements, applewebdata policy, IME Option+P, and unified scrollbars verified: "
                   << [renderedHtml UTF8String] << std::endl;
     }
     return 0;
