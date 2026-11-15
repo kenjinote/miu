@@ -3,24 +3,6 @@
 #import <QuartzCore/QuartzCore.h>
 #include <iostream>
 
-@interface MiuMockFrameInfo : WKFrameInfo
-@property (nonatomic, assign) BOOL mockMainFrame;
-@end
-@implementation MiuMockFrameInfo
-- (BOOL)isMainFrame { return self.mockMainFrame; }
-@end
-
-@interface MiuMockNavAction : WKNavigationAction
-@property (nonatomic, strong) NSURLRequest *mockRequest;
-@property (nonatomic, strong) WKFrameInfo *mockTargetFrame;
-@property (nonatomic, assign) WKNavigationType mockNavType;
-@end
-@implementation MiuMockNavAction
-- (NSURLRequest *)request { return self.mockRequest; }
-- (WKFrameInfo *)targetFrame { return self.mockTargetFrame; }
-- (WKNavigationType)navigationType { return self.mockNavType; }
-@end
-
 struct PixelRGBA {
     int r = -1, g = -1, b = -1, a = -1;
 };
@@ -447,34 +429,22 @@ int main(int argc, const char * argv[]) {
 
         //    (b) Navigation policy must allow both about:blank and macOS 13/14 WebKit applewebdata:// loads on main frame,
         //        while strictly cancelling external, file, javascript, iframe, and link navigations
-        auto checkNavPolicy = [&](NSString *urlStr, BOOL mainFrame, WKNavigationType navType) -> WKNavigationActionPolicy {
-            MiuMockFrameInfo *fi = [[MiuMockFrameInfo alloc] init];
-            fi.mockMainFrame = mainFrame;
-            MiuMockNavAction *act = [[MiuMockNavAction alloc] init];
-            act.mockRequest = [NSURLRequest requestWithURL:[NSURL URLWithString:urlStr]];
-            act.mockTargetFrame = fi;
-            act.mockNavType = navType;
-            __block WKNavigationActionPolicy decided = WKNavigationActionPolicyCancel;
-            [ev->previewMsgHandler webView:ev->previewWebView
-           decidePolicyForNavigationAction:act
-                           decisionHandler:^(WKNavigationActionPolicy policy) {
-                decided = policy;
-            }];
-            return decided;
+        auto checkNavPolicy = [](NSString *urlStr, BOOL mainFrame, WKNavigationType navType) -> BOOL {
+            return MiuShouldAllowPreviewNavigation([NSURL URLWithString:urlStr], mainFrame, navType);
         };
-        if (checkNavPolicy(@"about:blank", YES, WKNavigationTypeOther) != WKNavigationActionPolicyAllow ||
-            checkNavPolicy(@"about:blank#heading", YES, WKNavigationTypeOther) != WKNavigationActionPolicyAllow ||
-            checkNavPolicy(@"applewebdata://12345678-abcd-ef01-2345-6789abcdef01", YES, WKNavigationTypeOther) != WKNavigationActionPolicyAllow) {
-            std::cerr << "[FAIL] decidePolicyForNavigationAction rejected legitimate about:blank or applewebdata:// HTML load" << std::endl;
+        if (!checkNavPolicy(@"about:blank", YES, WKNavigationTypeOther) ||
+            !checkNavPolicy(@"about:blank#heading", YES, WKNavigationTypeOther) ||
+            !checkNavPolicy(@"applewebdata://12345678-abcd-ef01-2345-6789abcdef01", YES, WKNavigationTypeOther)) {
+            std::cerr << "[FAIL] MiuShouldAllowPreviewNavigation rejected legitimate about:blank or applewebdata:// HTML load" << std::endl;
             return 1;
         }
-        if (checkNavPolicy(@"https://example.com/", YES, WKNavigationTypeOther) != WKNavigationActionPolicyCancel ||
-            checkNavPolicy(@"http://127.0.0.1:8080/", YES, WKNavigationTypeOther) != WKNavigationActionPolicyCancel ||
-            checkNavPolicy(@"file:///etc/passwd", YES, WKNavigationTypeOther) != WKNavigationActionPolicyCancel ||
-            checkNavPolicy(@"javascript:alert(1)", YES, WKNavigationTypeOther) != WKNavigationActionPolicyCancel ||
-            checkNavPolicy(@"applewebdata://12345678-abcd-ef01-2345-6789abcdef01", NO, WKNavigationTypeOther) != WKNavigationActionPolicyCancel ||
-            checkNavPolicy(@"about:blank", YES, WKNavigationTypeLinkActivated) != WKNavigationActionPolicyCancel) {
-            std::cerr << "[FAIL] decidePolicyForNavigationAction failed to block untrusted scheme, iframe, or link navigation" << std::endl;
+        if (checkNavPolicy(@"https://example.com/", YES, WKNavigationTypeOther) ||
+            checkNavPolicy(@"http://127.0.0.1:8080/", YES, WKNavigationTypeOther) ||
+            checkNavPolicy(@"file:///etc/passwd", YES, WKNavigationTypeOther) ||
+            checkNavPolicy(@"javascript:alert(1)", YES, WKNavigationTypeOther) ||
+            checkNavPolicy(@"applewebdata://12345678-abcd-ef01-2345-6789abcdef01", NO, WKNavigationTypeOther) ||
+            checkNavPolicy(@"about:blank", YES, WKNavigationTypeLinkActivated)) {
+            std::cerr << "[FAIL] MiuShouldAllowPreviewNavigation failed to block untrusted scheme, iframe, or link navigation" << std::endl;
             return 1;
         }
 
@@ -487,7 +457,7 @@ int main(int argc, const char * argv[]) {
         NSEvent *optPEvent = [NSEvent keyEventWithType:NSEventTypeKeyDown
                                               location:NSMakePoint(10, 10)
                                          modifierFlags:NSEventModifierFlagOption
-                                             timestamp:0
+                                             timestamp:[[NSProcessInfo processInfo] systemUptime]
                                           windowNumber:[win windowNumber]
                                                context:nil
                                             characters:@"π"

@@ -34,6 +34,17 @@ static inline NSURL *MiuPreviewBaseURL(void) {
     return [NSURL URLWithString:@"about:blank"];
 }
 
+static inline BOOL MiuShouldAllowPreviewNavigation(NSURL * _Nullable url, BOOL isMainFrame, WKNavigationType navType) {
+    if (!isMainFrame || navType != WKNavigationTypeOther) {
+        return NO;
+    }
+    NSString *scheme = url.scheme ? [url.scheme lowercaseString] : @"";
+    NSString *absStr = url ? [[url absoluteString] lowercaseString] : @"";
+    return ([absStr isEqualToString:@"about:blank"] ||
+            [absStr hasPrefix:@"about:blank#"] ||
+            [scheme isEqualToString:@"applewebdata"]);
+}
+
 static void MiuLoadOfflineContentRuleList(void (^completion)(WKContentRuleList * _Nullable ruleList)) {
     static WKContentRuleList *s_cachedRuleList = nil;
     static NSMutableArray<void (^)(WKContentRuleList *)> *s_pendingCallbacks = nil;
@@ -214,16 +225,8 @@ static void MiuLoadOfflineContentRuleList(void (^completion)(WKContentRuleList *
     }
 }
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
-    NSURL *url = navigationAction.request.URL;
-    NSString *scheme = url.scheme ? [url.scheme lowercaseString] : @"";
-    NSString *absStr = url ? [[url absoluteString] lowercaseString] : @"";
     BOOL isMainFrame = (navigationAction.targetFrame != nil && navigationAction.targetFrame.isMainFrame);
-    BOOL isSafeInternalLoad = ([absStr isEqualToString:@"about:blank"] ||
-                               [absStr hasPrefix:@"about:blank#"] ||
-                               [scheme isEqualToString:@"applewebdata"]);
-    if (isMainFrame &&
-        navigationAction.navigationType == WKNavigationTypeOther &&
-        isSafeInternalLoad) {
+    if (MiuShouldAllowPreviewNavigation(navigationAction.request.URL, isMainFrame, navigationAction.navigationType)) {
         decisionHandler(WKNavigationActionPolicyAllow);
     } else {
         decisionHandler(WKNavigationActionPolicyCancel);
