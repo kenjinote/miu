@@ -8,7 +8,7 @@ on:
         required: false
         default: "all"
       target_version:
-        description: "Optional target version for single-platform submission (e.g. 1.0.54)"
+        description: "Optional target version for single-platform submission (e.g. 1.0.55)"
         required: false
         default: ""
       sync_screenshots:
@@ -58,7 +58,7 @@ jobs:
           set -euo pipefail
           PLAT="${TARGET_PLATFORM:-all}"
           if [ "$PLAT" = "macos" ]; then
-            VER_ARG="${TARGET_VERSION:-1.0.54}"
+            VER_ARG="${TARGET_VERSION:-1.0.55}"
             if [ "${SUBMIT_FOR_REVIEW:-false}" = "true" ]; then
               python3 scripts/submit_macos_appstore.py --version "$VER_ARG" --submit
             else

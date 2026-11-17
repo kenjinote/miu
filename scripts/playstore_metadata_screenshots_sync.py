@@ -71,10 +71,10 @@ AR_DESC = """miu هو محرر نصوص وأكواد بسيط وخفيف، مص�
 • خصوصية تامة
 بدون إعلانات، وبدون تتبع، وبدون جمع بيانات. جميع الميزات تعمل بنسبة 100% دون اتصال بالإنترنت على جهازك."""
 
-AR_WHATS_NEW = """الجديد في miu v1.0.53
-• تعزيز أمان المعاينة الفورية دون اتصال وتحسين عرض Markdown ومعادلات LaTeX وجميع مخططات Mermaid الـ 33.
-• تحسين البحث والاستبدال متعدد الأسطر (Regex) واختصارات Emmet وتمييز الصياغة لـ 65 لغة.
-• تنبيه قبل فقدان الأحرف عند الحفظ بترميز غير UTF-8، وتحسين الحفظ الذري الآمن ودعم اللغات."""
+AR_WHATS_NEW = """الجديد في miu v1.0.55
+• تسريع فتح ملفات UTF-8 والتحقق من ترميزها بشكل ملحوظ بفضل تقنية SIMD.
+• بحث أسرع غير حساس لحالة الأحرف وبحث للخلف واستبدال الكل وتمييز الصياغة لـ 65 لغة (بما فيها Markdown).
+• أداء أكثر سلاسة في الكتابة وحركة المؤشر وتمرير الملفات الكبيرة والعرض."""
 
 HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנועד להפוך כל משימה – מרישום הערות יומיות מהירות ועד כתיבת מסמכי Markdown ותכנות – לנוחה ונעימה.
 
@@ -100,10 +100,10 @@ HE_DESC = """miu הוא עורך טקסט וקוד פשוט וקליל, שנוע
 • פרטיות מלאה
 ללא פרסומות, ללא מעקב וללא איסוף נתונים. הכל פועל 100% אופליין במכשיר שלכם."""
 
-HE_WHATS_NEW = """מה חדש ב-miu v1.0.53
-• חיזוק אבטחת התצוגה המקדימה אופליין ושיפור התצוגה של Markdown, נוסחאות LaTeX ו-33 סוגי דיאגרמות Mermaid.
-• שיפור חיפוש והחלפה מרובי-שורות ב-Regex, הרחבת Emmet והדגשת תחביר ל-65 שפות.
-• התראה לפני אובדן תווים בשמירה שאינה UTF-8, שמירה אטומית בטוחה יותר ושיפורי תרגום."""
+HE_WHATS_NEW = """מה חדש ב-miu v1.0.55
+• פתיחה ואימות מהירים משמעותית של קובצי UTF-8 באמצעות האצת SIMD.
+• האצת חיפוש ללא תלות ברישיות, חיפוש לאחור, החלף הכל והדגשת תחביר ל-65 שפות (כולל Markdown).
+• הקלדה, תנועת סמן, גלילה בקבצים גדולים ותצוגה חלקים ומהירים יותר."""
 
 SK_DESC = """miu je jednoduchý a ľahký textový a kódový editor, s ktorým je písanie každodenných poznámok, textov v Markdowne aj programovanie pohodlné a príjemné.
 
@@ -129,10 +129,10 @@ Hľadanie a nahrádzanie (s regulárnymi výrazmi), viac kurzorov, čísla riadk
 • Súkromie na prvom mieste
 Žiadne reklamy, žiadne sledovanie a žiadny zber dát. Všetko funguje 100 % offline priamo vo vašom zariadení."""
 
-SK_WHATS_NEW = """Novinky v miu v1.0.53
-• Posilnené offline zabezpečenie živého náhľadu a presnejšie vykresľovanie Markdownu, LaTeXu a 33 diagramov Mermaid.
-• Vylepšené viacriadkové hľadanie a nahrádzanie Regex, rozbaľovanie Emmet a zvýrazňovanie syntaxe 65 jazykov.
-• Upozornenie na stratu znakov mimo UTF-8, spoľahlivejšie atomické ukladanie a vylepšená lokalizácia."""
+SK_WHATS_NEW = """Novinky v miu v1.0.55
+• Výrazne rýchlejšie otváranie a overovanie súborov UTF-8 vďaka akcelerácii SIMD.
+• Rýchlejšie hľadanie bez rozlišovania veľkosti písmen, spätné hľadanie, Nahradiť všetko a zvýrazňovanie syntaxe 65 jazykov (vrátane Markdownu).
+• Plynulejšie písanie, pohyb kurzora, posúvanie veľkých súborov a vykresľovanie."""
 
 # ============================================================================
 # Short Descriptions (Strictly <= 80 characters for Google Play)
@@ -225,149 +225,149 @@ def adapt_desc_for_android(text: str) -> str:
     return out
 
 
-# Localized Android Release Notes for v1.0.53 (versionCode 60), strictly <= 500 chars each
+# Localized Android Release Notes for v1.0.55 (versionCode 61), strictly <= 500 chars each
 ANDROID_RELEASE_NOTES = {
-    "ja-JP": """miu v1.0.53 アップデート内容
-・ライブプレビューのオフライン保護強化と Markdown / LaTeX 数式 / 全33種 Mermaid 図表の描画精度向上
-・複数行正規表現の検索・置換、Emmet 展開、全65言語シンタックスハイライトの精度改善
-・非 UTF-8 保存時の文字欠落確認、安全なアトミック保存、および多言語ローカライズの改善""",
+    "ja-JP": """miu v1.0.55 アップデート内容
+・SIMD高速化により、UTF-8ファイルの読み込み・文字コード検証を大幅に高速化
+・大文字小文字を区別しない検索・上方向検索・全置換および65言語ハイライト（Markdown等）を高速化
+・大容量ファイルでの文字入力・カーソル移動・スクロールおよび描画パフォーマンスを改善""",
 
-    "en-US": """What's New in miu v1.0.53
-• Strengthened offline Live Preview security and improved Markdown, LaTeX math, and all 33 Mermaid diagram renderers.
-• Improved multiline Regex find & replace, Emmet expansion, and 65-language syntax highlighting precision.
-• Added character-loss confirmation for non-UTF-8 saves, enhanced atomic file saving, and refined 30+ language localization.""",
+    "en-US": """What's New in miu v1.0.55
+• Faster UTF-8 file loading and encoding validation powered by SIMD acceleration.
+• Faster case-insensitive search, backward search, Replace All, and 65-language syntax highlighting (including Markdown).
+• Smoother typing, caret navigation, large-file scrolling, and rendering performance.""",
 
-    "zh-CN": """miu v1.0.53 更新内容
-・强化实时预览离线安全保护，提升 Markdown、LaTeX 公式及 33 种 Mermaid 图表渲染精度
-・改进多行正则表达式查找替换、Emmet 展开与 65 种语言语法高亮准确性
-・新增非 UTF-8 保存字符丢失提醒，优化原子化安全保存与多语言本地化细节""",
+    "zh-CN": """miu v1.0.55 更新内容
+・引入 SIMD 加速，大幅提升 UTF-8 文件打开与编码校验速度
+・大幅加快不区分大小写查找、向上查找、全部替换及 65 种语言语法高亮（含 Markdown）
+・优化大文件输入、光标移动、滚动注释解析与界面渲染性能""",
 
-    "zh-TW": """miu v1.0.53 更新內容
-・強化即時預覽離線安全保護，提升 Markdown、LaTeX 公式及 33 種 Mermaid 圖表渲染精準度
-・改進多行正規表示式尋找取代、Emmet 展開與 65 種語言語法突顯準確性
-・新增非 UTF-8 儲存字元遺失提醒，最佳化原子化安全儲存與多語言在地化細節""",
+    "zh-TW": """miu v1.0.55 更新內容
+・導入 SIMD 加速，大幅提升 UTF-8 檔案開啟與編碼驗證速度
+・大幅加快不區分大小寫尋找、向上尋找、全部取代及 65 種語言語法突顯（含 Markdown）
+・最佳化大檔案輸入、游標移動、捲動註解解析與畫面渲染效能""",
 
-    "ko-KR": """miu v1.0.53 업데이트 안내
-・실시간 미리보기 오프라인 보안 강화 및 Markdown·LaTeX 수식·33종 Mermaid 다이어그램 렌더링 정밀도 향상
-・다중 행 정규식 찾기/바꾸기, Emmet 확장 및 65개 언어 구문 강조 정확도 개선
-・비 UTF-8 저장 시 문자 손실 확인 추가, 원자적 안전 저장 및 다국어 번역 품질 개선""",
+    "ko-KR": """miu v1.0.55 업데이트 안내
+・SIMD 가속을 통해 UTF-8 파일 열기 및 인코딩 검증 속도 대폭 향상
+・대소문자 구분 없는 검색, 이전 찾기, 모두 바꾸기 및 65개 언어 구문 강조(Markdown 포함) 고속화
+・대용량 파일 입력, 커서 이동, 스크롤 및 렌더링 성능 최적화""",
 
-    "de-DE": """Neuerungen in miu v1.0.53
-• Strengere Offline-Sicherheit für die Live-Vorschau sowie präzisere Darstellung von Markdown, LaTeX und allen 33 Mermaid-Diagrammtypen.
-• Verbesserte mehrzeilige Regex-Suche & -Ersetzung, Emmet-Erweiterung und Syntaxhervorhebung für 65 Sprachen.
-• Warnhinweis vor Zeichenverlust beim Speichern in Nicht-UTF-8, zuverlässigeres atomares Speichern und optimierte Lokalisierung.""",
+    "de-DE": """Neuerungen in miu v1.0.55
+• Deutlich schnelleres Öffnen und Prüfen von UTF-8-Dateien dank SIMD-Beschleunigung.
+• Beschleunigte Groß-/Kleinschreibung-ignorierende Suche, Rückwärtssuche, Alle ersetzen sowie Syntaxhervorhebung für 65 Sprachen (inkl. Markdown).
+• Flüssigeres Tippen, Navigieren, Scrollen in großen Dateien und effizienteres Rendering.""",
 
-    "fr-FR": """Nouveautés de miu v1.0.53
-• Sécurité hors ligne renforcée de l’aperçu en direct et rendu amélioré pour Markdown, LaTeX et les 33 types de diagrammes Mermaid.
-• Recherche/remplacement Regex multiligne, extension Emmet et coloration syntaxique de 65 langages plus précis.
-• Alerte de perte de caractères hors UTF-8, sauvegarde atomique fiabilisée et traductions affinées.""",
+    "fr-FR": """Nouveautés de miu v1.0.55
+• Ouverture et validation des fichiers UTF-8 nettement accélérées grâce au SIMD.
+• Recherche insensible à la casse, recherche arrière, Tout remplacer et coloration syntaxique de 65 langages (dont Markdown) plus rapides.
+• Saisie, déplacement du curseur, défilement des grands fichiers et rendu plus fluides.""",
 
-    "es-ES": """Novedades de miu v1.0.53
-• Mayor seguridad sin conexión en Vista Previa y mejor renderizado de Markdown, LaTeX y los 33 diagramas Mermaid.
-• Mejoras en búsqueda y reemplazo Regex multilínea, expansión Emmet y resaltado de sintaxis para 65 lenguajes.
-• Aviso de pérdida de caracteres al guardar fuera de UTF-8, guardado atómico más seguro y mejoras de localización.""",
+    "es-ES": """Novedades de miu v1.0.55
+• Apertura y validación de archivos UTF-8 mucho más rápidas mediante aceleración SIMD.
+• Mayor velocidad en búsqueda sin distinción de mayúsculas, búsqueda hacia atrás, Reemplazar todo y resaltado de 65 lenguajes (incluido Markdown).
+• Escritura, movimiento del cursor, desplazamiento en archivos grandes y renderizado más fluidos.""",
 
-    "it-IT": """Novità di miu v1.0.53
-• Sicurezza offline potenziata nell’Anteprima dal vivo e resa migliorata per Markdown, LaTeX e tutti i 33 diagrammi Mermaid.
-• Ricerca e sostituzione Regex multiriga, espansione Emmet ed evidenziazione per 65 linguaggi più precisi.
-• Avviso di perdita caratteri nei salvataggi non UTF-8, salvataggio atomico ancora più sicuro e localizzazione rifinita.""",
+    "it-IT": """Novità di miu v1.0.55
+• Apertura e verifica dei file UTF-8 sensibilmente più veloci grazie all’accelerazione SIMD.
+• Ricerca senza distinzione maiuscole/minuscole, ricerca all’indietro, Sostituisci tutto ed evidenziazione per 65 linguaggi (incluso Markdown) più rapidi.
+• Digitazione, movimento del cursore, scorrimento di file grandi e rendering più fluidi.""",
 
-    "pt-BR": """Novidades do miu v1.0.53
-• Segurança offline reforçada na Pré-visualização e melhor renderização de Markdown, LaTeX e dos 33 diagramas Mermaid.
-• Melhorias na busca e substituição Regex multilinha, expansão Emmet e destaque de sintaxe para 65 linguagens.
-• Aviso de perda de caracteres ao salvar fora de UTF-8, salvamento atômico mais seguro e melhorias de tradução.""",
+    "pt-BR": """Novidades do miu v1.0.55
+• Abertura e validação de arquivos UTF-8 muito mais rápidas com aceleração SIMD.
+• Maior velocidade na busca sem diferenciar maiúsculas, busca para trás, Substituir tudo e destaque de sintaxe para 65 linguagens (incluindo Markdown).
+• Digitação, navegação do cursor, rolagem em arquivos grandes e renderização mais suaves.""",
 
-    "ru-RU": """Что нового в miu v1.0.53
-• Усилена офлайн-защита предпросмотра и улучшена отрисовка Markdown, формул LaTeX и всех 33 типов диаграмм Mermaid.
-• Повышена точность многострочного поиска Regex, автодополнения Emmet и подсветки синтаксиса 65 языков.
-• Добавлено предупреждение о потере символов при сохранении не в UTF-8, улучшены атомарное сохранение и локализация.""",
+    "ru-RU": """Что нового в miu v1.0.55
+• Значительно ускорены открытие и проверка файлов UTF-8 благодаря SIMD-оптимизации.
+• Ускорены поиск без учёта регистра, обратный поиск, автозамена и подсветка синтаксиса 65 языков (включая Markdown).
+• Более плавный ввод текста, перемещение курсора, прокрутка больших файлов и отрисовка.""",
 
-    "nl-NL": """Nieuw in miu v1.0.53
-• Verbeterde offline beveiliging van Live Voorbeeld en nauwkeurigere weergave van Markdown, LaTeX en 33 Mermaid-diagrammen.
-• Betere meerregelige Regex-zoek- en vervangfunctie, Emmet-uitbreiding en syntaxisaccentuering voor 65 talen.
-• Waarschuwing bij tekenverlies buiten UTF-8, betrouwbaarder atomair opslaan en verfijnde lokalisatie.""",
+    "nl-NL": """Nieuw in miu v1.0.55
+• Aanzienlijk sneller openen en valideren van UTF-8-bestanden dankzij SIMD-versnelling.
+• Snellere hoofdletterongevoelige zoekopdrachten, achteruit zoeken, Alles vervangen en syntaxisaccentuering voor 65 talen (waaronder Markdown).
+• Soepeler typen, cursornavigatie, scrollen in grote bestanden en weergaveprestaties.""",
 
-    "sv-SE": """Nyheter i miu v1.0.53
-• Stärkt offlinesäkerhet i förhandsgranskningen samt förbättrad visning av Markdown, LaTeX och alla 33 Mermaid-diagram.
-• Förbättrad flerradig Regex-sök/ersätt, Emmet-utökning och syntaxmarkering för 65 språk.
-• Varning vid teckenförlust utanför UTF-8, tryggare atomär sparning och förfinad lokalisering.""",
+    "sv-SE": """Nyheter i miu v1.0.55
+• Betydligt snabbare öppning och validering av UTF-8-filer med SIMD-acceleration.
+• Snabbare skiftlägesokänslig sökning, bakåtsökning, Ersätt alla samt syntaxmarkering för 65 språk (inklusive Markdown).
+• Mjukare skrivning, markörförflyttning, rullning i stora filer och rendering.""",
 
-    "da-DK": """Nyheder i miu v1.0.53
-• Styrket offlinesikkerhed i Live-forhåndsvisning samt bedre visning af Markdown, LaTeX og alle 33 Mermaid-diagrammer.
-• Forbedret flerlinjet Regex-søg/erstat, Emmet-udvidelse og syntaksfremhævning for 65 sprog.
-• Advarsel ved tegntab uden for UTF-8, mere pålidelig atomisk lagring og forbedret lokalisering.""",
+    "da-DK": """Nyheder i miu v1.0.55
+• Markant hurtigere åbning og validering af UTF-8-filer med SIMD-acceleration.
+• Hurtigere søgning uden forskel på store/små bogstaver, baglæns søgning, Erstat alle og syntaksfremhævning for 65 sprog (inkl. Markdown).
+• Mere flydende indtastning, markørnavigation, rulning i store filer og gengivelse.""",
 
-    "no-NO": """Nyheter i miu v1.0.53
-• Styrket offlinesikkerhet i forhåndsvisning og bedre visning av Markdown, LaTeX og alle 33 Mermaid-diagrammer.
-• Forbedret flerlinjet Regex-søk/erstatt, Emmet-utvidelse og syntaksutheving for 65 språk.
-• Varsel ved tegntap utenfor UTF-8, tryggere atomisk lagring og forbedret lokalisering.""",
+    "no-NO": """Nyheter i miu v1.0.55
+• Betydelig raskere åpning og validering av UTF-8-filer med SIMD-akselerasjon.
+• Raskere søk uavhengig av store/små bokstaver, bakoversøk, Erstatt alle og syntaksutheving for 65 språk (inkludert Markdown).
+• Jevnere skriving, markørnavigasjon, rulling i store filer og opptegning.""",
 
-    "fi-FI": """Uutta versiossa miu v1.0.53
-• Vahvistettu esikatselun offline-tietoturva sekä tarkempi Markdown-, LaTeX- ja 33 Mermaid-kaavion piirto.
-• Parannettu monirivinen Regex-haku ja -korvaus, Emmet-laajennus sekä 65 kielen syntaksinkorostus.
-• Varoitus merkkitappioista muussa kuin UTF-8-tallennuksessa, luotettavampi atominen tallennus ja päivitetty lokalisointi.""",
+    "fi-FI": """Uutta versiossa miu v1.0.55
+• Huomattavasti nopeampi UTF-8-tiedostojen avaus ja tarkistus SIMD-kiihdytyksellä.
+• Nopeampi kirjainkoosta riippumaton haku, taaksepäin haku, Korvaa kaikki ja 65 kielen syntaksinkorostus (mukaan lukien Markdown).
+• Sulavampi kirjoitus, kohdistimen liike, suurten tiedostojen vieritys ja piirto.""",
 
-    "pl-PL": """Nowości w miu v1.0.53
-• Wzmocnione bezpieczeństwo podglądu offline oraz lepsze renderowanie Markdown, LaTeX i 33 diagramów Mermaid.
-• Ulepszone wielowierszowe wyszukiwanie Regex, rozwijanie Emmet i kolorowanie składni dla 65 języków.
-• Ostrzeżenie przed utratą znaków przy zapisie spoza UTF-8, pewniejszy zapis atomowy i dopracowana lokalizacja.""",
+    "pl-PL": """Nowości w miu v1.0.55
+• Znacznie szybsze otwieranie i weryfikacja plików UTF-8 dzięki akceleracji SIMD.
+• Przyspieszone wyszukiwanie bez rozróżniania wielkości liter, szukanie wstecz, Zamień wszystko oraz kolorowanie składni 65 języków (w tym Markdown).
+• Płynniejsze pisanie, ruch kursora, przewijanie dużych plików i renderowanie.""",
 
-    "cs-CZ": """Novinky v miu v1.0.53
-• Posílené offline zabezpečení živého náhledu a přesnější vykreslování Markdownu, LaTeXu a 33 diagramů Mermaid.
-• Vylepšené víceřádkové hledání a nahrazování Regex, rozbalování Emmet a zvýrazňování syntaxe 65 jazyků.
-• Upozornění na ztrátu znaků mimo UTF-8, spolehlivější atomické ukládání a vylepšená lokalizace.""",
+    "cs-CZ": """Novinky v miu v1.0.55
+• Výrazně rychlejší otevírání a ověřování souborů UTF-8 díky akceleraci SIMD.
+• Rychlejší hledání bez rozlišování velikosti písmen, zpětné hledání, Nahradit vše a zvýrazňování syntaxe 65 jazyků (včetně Markdownu).
+• Plynulejší psaní, pohyb kurzoru, posouvání velkých souborů a vykreslování.""",
 
     "sk": SK_WHATS_NEW,
 
-    "hu-HU": """A miu v1.0.53 újdonságai
-• Megerősített offline Élő előnézet-védelem, pontosabb Markdown, LaTeX és 33-féle Mermaid diagrammegjelenítés.
-• Fejlesztett többsoros Regex keresés és csere, Emmet-kibontás és 65 nyelvű szintaxiskiemelés.
-• Karaktervesztési figyelmeztetés nem UTF-8 mentésnél, még biztonságosabb atomi mentés és pontosított honosítás.""",
+    "hu-HU": """A miu v1.0.55 újdonságai
+• Jelentősen gyorsabb UTF-8-fájlmegnyitás és kódolás-ellenőrzés SIMD-gyorsítással.
+• Gyorsabb kis- és nagybetű-független keresés, visszafelé keresés, Összes cseréje és 65 nyelvű szintaxiskiemelés (beleértve a Markdownt).
+• Gördülékenyebb gépelés, kurzormozgatás, nagy fájlok görgetése és megjelenítés.""",
 
-    "ro": """Noutăți în miu v1.0.53
-• Securitate offline sporită în Previzualizare și redare îmbunătățită pentru Markdown, LaTeX și 33 de diagrame Mermaid.
-• Căutare și înlocuire Regex pe mai multe rânduri, extindere Emmet și sintaxă pentru 65 de limbaje mai precise.
-• Avertizare la pierderea caracterelor în afara UTF-8, salvare atomică sigură și localizare îmbunătățită.""",
+    "ro": """Noutăți în miu v1.0.55
+• Deschidere și validare mult mai rapidă a fișierelor UTF-8 prin accelerare SIMD.
+• Căutare fără diferențiere majuscule/minuscule, căutare înapoi, Înlocuire peste tot și evidențiere sintactică pentru 65 de limbaje (inclusiv Markdown) mai rapide.
+• Tastare, navigare cu cursorul, derulare a fișierelor mari și randare mai fluide.""",
 
-    "el-GR": """Τι νέο υπάρχει στο miu v1.0.53
-• Ενισχυμένη ασφάλεια προεπισκόπησης εκτός σύνδεσης και ακριβέστερη απόδοση Markdown, LaTeX και 33 διαγραμμάτων Mermaid.
-• Βελτιωμένη αναζήτηση/αντικατάσταση Regex πολλαπλών γραμμών, Emmet και επισήμανση σύνταξης 65 γλωσσών.
-• Προειδοποίηση απώλειας χαρακτήρων εκτός UTF-8, ασφαλέστερη ατομική αποθήκευση και βελτιωμένη μετάφραση.""",
+    "el-GR": """Τι νέο υπάρχει στο miu v1.0.55
+• Ταχύτερο άνοιγμα και έλεγχος αρχείων UTF-8 χάρη στην επιτάχυνση SIMD.
+• Ταχύτερη αναζήτηση χωρίς διάκριση πεζών/κεφαλαίων, αναζήτηση προς τα πίσω, Αντικατάσταση όλων και επισήμανση 65 γλωσσών (συμπερ. Markdown).
+• Πιο ομαλή πληκτρολόγηση, κίνηση δρομέα, κύλιση μεγάλων αρχείων και σχεδίαση.""",
 
-    "tr-TR": """miu v1.0.53 Yenilikleri
-• Güçlendirilmiş çevrimdışı Canlı Önizleme güvenliği ve Markdown, LaTeX ile 33 Mermaid şemasında daha net görünüm.
-• Çok satırlı Regex bul/değiştir, Emmet genişletme ve 65 dil sözdizimi vurgulamada doğruluk iyileştirmeleri.
-• UTF-8 dışı kayıtlarda karakter kaybı uyarısı, daha güvenli atomik kaydetme ve çok dilli arayüz iyileştirmeleri.""",
+    "tr-TR": """miu v1.0.55 Yenilikleri
+• SIMD hızlandırmasıyla UTF-8 dosya açma ve kodlama doğrulama önemli ölçüde hızlandırıldı.
+• Büyük/küçük harf duyarsız arama, geriye doğru arama, Tümünü Değiştir ve 65 dil sözdizimi vurgulama (Markdown dahil) hızlandırıldı.
+• Büyük dosyalarda daha akıcı yazma, imleç hareketi, kaydırma ve çizim performansı.""",
 
-    "uk": """Що нового в miu v1.0.53
-• Посилено офлайн-захист перегляду та покращено відображення Markdown, формул LaTeX і 33 типів діаграм Mermaid.
-• Покращено багаторядковий пошук і заміну Regex, розгортання Emmet та підсвічування синтаксису 65 мов.
-• Додано попередження про втрату символів під час збереження не в UTF-8, надійніше атомарне збереження й локалізацію.""",
+    "uk": """Що нового в miu v1.0.55
+• Значно пришвидшено відкриття та перевірку файлів UTF-8 завдяки SIMD-прискоренню.
+• Пришвидшено пошук без урахування регістру, зворотний пошук, Замінити все та підсвічування синтаксису 65 мов (зокрема Markdown).
+• Плавніший набір тексту, рух курсора, прокручування великих файлів і рендеринг.""",
 
-    "vi": """Có gì mới trong miu v1.0.53
-• Tăng cường bảo mật Xem trước ngoại tuyến và hiển thị chuẩn xác hơn cho Markdown, LaTeX cùng 33 loại sơ đồ Mermaid.
-• Cải thiện tìm/thay thế Regex nhiều dòng, gõ tắt Emmet và tô sáng cú pháp cho 65 ngôn ngữ.
-• Thêm cảnh báo mất ký tự khi lưu ngoài UTF-8, nâng cao lưu tệp nguyên tử an toàn và bản địa hóa đa ngôn ngữ.""",
+    "vi": """Có gì mới trong miu v1.0.55
+• Mở và kiểm tra tệp UTF-8 nhanh hơn đáng kể nhờ tăng tốc SIMD.
+• Tăng tốc tìm kiếm không phân biệt hoa thường, tìm ngược, Thay thế tất cả và tô sáng cú pháp 65 ngôn ngữ (gồm Markdown).
+• Gõ phím, di chuyển con trỏ, cuộn tệp lớn và hiển thị mượt mà hơn.""",
 
-    "th": """มีอะไรใหม่ใน miu v1.0.53
-• ยกระดับความปลอดภัยพรีวิวออฟไลน์ และแสดงผล Markdown, สมการ LaTeX และแผนภาพ Mermaid ทั้ง 33 รูปแบบได้แม่นยำขึ้น
-• ปรับปรุงการค้นหา/แทนที่ด้วย Regex หลายบรรทัด, Emmet และการไฮไลต์ไวยากรณ์ 65 ภาษา
-• เพิ่มการแจ้งเตือนอักขระตกหล่นเมื่อบันทึกนอก UTF-8 ปรับปรุงการบันทึกไฟล์แบบอะตอมมิกและการแปลภาษา""",
+    "th": """มีอะไรใหม่ใน miu v1.0.55
+• เปิดและตรวจสอบไฟล์ UTF-8 ได้รวดเร็วยิ่งขึ้นด้วยการเร่งความเร็ว SIMD
+• ค้นหาแบบไม่สนใจตัวพิมพ์ใหญ่-เล็ก ค้นหาย้อนกลับ แทนที่ทั้งหมด และไฮไลต์ไวยากรณ์ 65 ภาษา (รวมถึง Markdown) ได้เร็วขึ้น
+• พิมพ์ข้อความ เลื่อนเคอร์เซอร์ เลื่อนดูไฟล์ขนาดใหญ่ และแสดงผลได้ลื่นไหลยิ่งขึ้น""",
 
-    "id": """Yang Baru di miu v1.0.53
-• Keamanan offline Pratinjau Langsung diperkuat serta tampilan Markdown, LaTeX, dan 33 diagram Mermaid lebih akurat.
-• Peningkatan cari & ganti Regex multibaris, ekspansi Emmet, dan penyorotan sintaks 65 bahasa.
-• Peringatan kehilangan karakter saat menyimpan non-UTF-8, penyimpanan atomik lebih aman, dan perbaikan pelokalan.""",
+    "id": """Yang Baru di miu v1.0.55
+• Pembukaan dan validasi file UTF-8 jauh lebih cepat berkat akselerasi SIMD.
+• Pencarian tanpa peka huruf besar/kecil, pencarian mundur, Ganti Semua, dan penyorotan sintaks 65 bahasa (termasuk Markdown) lebih cepat.
+• Pengetikan, navigasi kursor, pengguliran file besar, dan perenderan lebih mulus.""",
 
-    "ms": """Baharu dalam miu v1.0.53
-• Keselamatan luar talian Pratonton Langsung diperkukuh serta paparan Markdown, LaTeX dan 33 rajah Mermaid lebih tepat.
-• Penambahbaikan cari & ganti Regex berbilang baris, pengembangan Emmet dan penyerlahan sintaks 65 bahasa.
-• Amaran kehilangan aksara bagi simpanan bukan UTF-8, simpanan atomik lebih selamat dan penyetempatan diperhalusi.""",
+    "ms": """Baharu dalam miu v1.0.55
+• Pembukaan dan pengesahan fail UTF-8 jauh lebih pantas dengan pecutan SIMD.
+• Carian tanpa mengira huruf besar/kecil, carian ke belakang, Ganti Semua dan penyerlahan sintaks 65 bahasa (termasuk Markdown) lebih laju.
+• Penaipan, pergerakan kursor, penatalan fail besar dan pemaparan lebih lancar.""",
 
-    "hi-IN": """miu v1.0.53 में नया क्या है
-• ऑफ़लाइन लाइव प्रीव्यू सुरक्षा को मजबूत किया गया और Markdown, LaTeX व सभी 33 Mermaid आरेखों की रेंडरिंग सुधारी गई।
-• मल्टीलाइन Regex खोजें/बदलें, Emmet विस्तार और 65 भाषाओं के सिंटैक्स हाइलाइटिंग की सटीकता बढ़ाई गई।
-• गैर-UTF-8 सेव में अक्षर हानि चेतावनी, अधिक सुरक्षित एटॉमिक फ़ाइल सेविंग और बहुभाषी अनुवाद में सुधार।""",
+    "hi-IN": """miu v1.0.55 में नया क्या है
+• SIMD त्वरण द्वारा UTF-8 फ़ाइल खोलने और एन्कोडिंग सत्यापन की गति में बड़ा सुधार।
+• केस-इनसेंसिटिव खोज, पीछे की ओर खोज, सभी बदलें और 65 भाषाओं (Markdown सहित) की सिंटैक्स हाइलाइटिंग अब और तेज़।
+• बड़ी फ़ाइलों में टाइपिंग, कर्सर मूवमेंट, स्क्रॉलिंग और रेंडरिंग प्रदर्शन अधिक स्मूथ।""",
 
     "ar": AR_WHATS_NEW,
     "iw-IL": HE_WHATS_NEW,

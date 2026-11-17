@@ -217,6 +217,8 @@ struct Editor {
     float tabWidth = 32.0f;
     float gutterWidth = 40.0f;
     float maxLineWidth = 100.0f;
+    float baseMaxLineWidth = 100.0f;
+    bool baseMaxLineWidthHasIme = false;
     size_t maxLineBytes = 0;
     int maxLineBytesIdx = 0;
 
@@ -282,6 +284,7 @@ struct Editor {
     CGColorRef colNewlineMark = NULL, colBracketBg = NULL, colBracketBorder = NULL;
     CTFontRef fontRef = nullptr;
     CTParagraphStyleRef paragraphStyle = nullptr;
+    CFDictionaryRef textMeasureAttrs = nullptr;
 #endif
 
     std::wstring helpTextStr;

@@ -220,47 +220,47 @@ def main():
         if not notes:
             # Default release notes template
             notes = f"# miu {release_name} リリースノート / Release Notes\n\n" + r"""## 🇯🇵 日本語 (Japanese)
-v1.0.53 では、ライブプレビュー保護・描画精度の強化、正規表現検索／65言語ハイライトの改善、およびファイル保存保護・多言語UIの修正を実施しました。
+v1.0.55 では、既存の機能・UI・描画仕様を完全に維持したまま、ファイル読込・検索・シンタックスハイライト・編集・スクロール・描画の各ホットパスを高速化しました。
 
-- **ライブプレビューのセキュリティ・描画精度向上**：オフライン分離（CSP・URLサニタイズ）を強化し、Markdown リンク／表／LaTeX 数式および全33種 Mermaid ダイアグラムの描画安定性を向上しました。
-- **正規表現・Emmet・65言語ハイライトの改善**：複数行正規表現（`^` / `$` / `\uXXXX`）の検索・置換、Emmet 展開、全角文字を含む矩形選択、ネストコメント解析の精度を改善しました。
-- **安全な保存と多言語UIの改善**：非 UTF-8 保存時の文字欠落確認、アトミック保存・未保存データの保護強化、および Windows の OS 表示言語自動検出（日本語ほか30言語以上）を修正しました。
+- **UTF-8 検証の SIMD 高速化**：AVX2 / SSE2 / ARM NEON による 16/32 バイト ASCII 一括スキップを導入し、ファイル読込・保存検証を大幅に高速化しました。
+- **検索・置換および 65 言語ハイライトの高速化**：大文字小文字を区別しない検索・上方向検索・全置換への高速スキャン適用と、Markdown 等の正規表現プリチェックにより処理負荷を大幅に削減しました。
+- **大容量ファイルでの編集・スクロール・描画最適化**：単一行編集時の最長行追跡の `O(1)` 化、スクロール時のブロックコメント判定のチェックポイント化、および一時アロケーション削減によりレスポンスを向上しました。
 
 ---
 
 ## 🇺🇸 English
-Version 1.0.53 strengthens Live Preview security & rendering accuracy, improves Regex & 65-language syntax highlighting, and enhances file-save safety & multi-language UI detection.
+Version 1.0.55 delivers across-the-board speed optimizations across file loading, search, syntax highlighting, editing, scrolling, and rendering while preserving 100% identical behavior and visual output.
 
-- **Live Preview Security & Rendering**: Hardened offline isolation (CSP & URL sanitization) and improved Markdown link/table/math parsing alongside all 33 Mermaid diagram renderers.
-- **Regex, Emmet & 65-Language Syntax**: Improved multiline Regex (`^` / `$` / `\uXXXX`) find & replace, Emmet expansion, CJK rectangular selection alignment, and nested comment/literal highlighting.
-- **Safer Saving & Multi-Language UI**: Added data-loss confirmation for non-UTF-8 saves, improved atomic/read-only saving & draft recovery, and fixed Windows OS UI language detection across 30+ languages.
+- **SIMD-Accelerated UTF-8 Validation**: Added 16/32-byte AVX2 / SSE2 / ARM NEON ASCII fast-skip to significantly speed up file opening and encoding checks.
+- **Faster Search & 65-Language Syntax Highlighting**: Accelerated case-insensitive search, backward search, and Replace All, and added required-character prechecks for Markdown and other syntax rules.
+- **Smoother Large-File Editing, Scrolling & Rendering**: Optimized single-line max-width tracking to `O(1)`, added line-boundary block-comment checkpoints for smooth scrolling, and eliminated per-frame temporary allocations.
 
 ---
 
 ## 🇨🇳 简体中文 (Simplified Chinese)
-v1.0.53 强化了实时预览安全与渲染精度，改进了正则表达式与 65 种语言语法高亮，并优化了文件保存保护与多语言界面识别。
+v1.0.55 在完全保持原有功能与显示效果一致的前提下，全面优化了文件读取、查找替换、语法高亮、输入与大文件滚动的性能。
 
-- **实时预览安全与渲染优化**：增强离线隔离（CSP 与 URL 过滤），提升 Markdown 链接/表格/LaTeX 公式及全部 33 种 Mermaid 图表的渲染稳定性。
-- **正则查找、Emmet 与语法高亮**：改进多行正则表达式（`^` / `$` / `\uXXXX`）查找替换、Emmet 展开、全角矩形选择对齐及 65 种语言嵌套注释解析。
-- **安全保存与多语言界面**：新增非 UTF-8 编码保存字符丢失提醒，强化原子保存与草稿恢复，并修复 Windows 系统界面语言自动识别（支持 30 余种语言）。
+- **UTF-8 校验 SIMD 加速**：采用 AVX2 / SSE2 / ARM NEON 的 16/32 字节 ASCII 快速跳过，显著提升文件打开与编码检测速度。
+- **查找替换与 65 种语言语法高亮提速**：全面加速不区分大小写查找、向上查找与全部替换，并为 Markdown 等语法规则增加前置字符快速过滤。
+- **大文件编辑、滚动与渲染优化**：将单行编辑最长行追踪优化为 `O(1)`，为块注释解析引入行边界检查点，并消除渲染与光标计算中的临时内存分配。
 
 ---
 
 ## 🇹🇼 繁體中文 (Traditional Chinese)
-v1.0.53 強化了即時預覽安全與渲染精準度，改進了正規表示式與 65 種語言語法突顯，並最佳化了檔案儲存保護與多語言介面辨識。
+v1.0.55 在完全維持原有功能與顯示效果一致的前提下，全面最佳化了檔案讀取、尋找取代、語法突顯、輸入與大檔案捲動的效能。
 
-- **即時預覽安全與渲染最佳化**：增強離線隔離（CSP 與 URL 過濾），提升 Markdown 連結/表格/LaTeX 公式及全部 33 種 Mermaid 圖表的渲染穩定性。
-- **正規尋找、Emmet 與語法突顯**：改進多行正規表示式（`^` / `$` / `\uXXXX`）尋找取代、Emmet 展開、全角矩形選取對齊及 65 種語言巢狀註解解析。
-- **安全儲存與多語言介面**：新增非 UTF-8 編碼儲存字元遺失提醒，強化原子儲存與草稿復原，並修正 Windows 系統介面語言自動辨識（支援 30 餘種語言）。
+- **UTF-8 驗證 SIMD 加速**：採用 AVX2 / SSE2 / ARM NEON 的 16/32 位元組 ASCII 快速跳過，顯著提升檔案開啟與編碼偵測速度。
+- **尋找取代與 65 種語言語法突顯提速**：全面加速不區分大小寫尋找、向上尋找與全部取代，並為 Markdown 等語法規則加入前置字元快速過濾。
+- **大檔案編輯、捲動與渲染最佳化**：將單行編輯最長行追蹤最佳化為 `O(1)`，為區塊註解解析導入行邊界檢查點，並消除渲染與游標計算中的暫時記憶體配置。
 
 ---
 
 ## 🇰🇷 한국어 (Korean)
-v1.0.53에서는 실시간 미리보기 보안·렌더링 정밀도 강화, 정규식 및 65개 언어 구문 강조 개선, 안전한 파일 저장 및 다국어 UI 감지를 개선했습니다.
+v1.0.55에서는 기존 기능과 화면 표시를 100% 동일하게 유지하면서 파일 열기, 검색/바꾸기, 구문 강조, 편집, 스크롤 및 렌더링 전반의 속도를 개선했습니다.
 
-- **실시간 미리보기 보안 및 렌더링**: 오프라인 격리(CSP·URL 필터링)를 강화하고 Markdown 링크/표/LaTeX 수식 및 33종 Mermaid 다이어그램 렌더링 안정성을 높였습니다.
-- **정규식·Emmet·65개 언어 구문 강조**: 다중 행 정규식(`^` / `$` / `\uXXXX`) 찾기·바꾸기, Emmet 확장, 전각 문자 사각형 선택 정렬 및 중첩 주석 분석을 개선했습니다.
-- **안전한 저장 및 다국어 UI**: 비 UTF-8 인코딩 저장 시 문자 손실 확인 추가, 원자적 저장·임시 보관 복구 강화 및 Windows OS 표시 언어 자동 감지(30개 이상 언어)를 수정했습니다.
+- **SIMD 기반 UTF-8 검증 고속화**: AVX2 / SSE2 / ARM NEON 16/32바이트 ASCII 고속 스킵을 적용하여 파일 열기 및 인코딩 감지 속도를 크게 높였습니다.
+- **검색/바꾸기 및 65개 언어 구문 강조 고속화**: 대소문자 구분 없는 검색, 이전 찾기, 모두 바꾸기를 고속화하고 Markdown 등 구문 정규식에 필수 문자 사전 필터를 적용했습니다.
+- **대용량 파일 편집·스크롤·렌더링 최적화**: 단일 행 편집 시 최장 행 추적을 `O(1)`로 개선하고 블록 주석 체크포인트 및 프레임 내 임시 할당 제거로 반응성을 높였습니다.
 """
         elif os.path.exists(notes):
             with open(notes, "r", encoding="utf-8") as f:

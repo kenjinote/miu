@@ -2,6 +2,7 @@
 #include <sys/stat.h>
 #include <cerrno>
 #include <climits>
+#include <cstdio>
 #include <cstdlib>
 #include <random>
 
@@ -29,7 +30,7 @@
 #include <arm_neon.h>
 #endif
 
-const std::wstring APP_VERSION = L"v1.0.53";
+const std::wstring APP_VERSION = L"v1.0.55";
 const std::wstring APP_TITLE = L"miu";
 
 using MiuCore::SanitizeUtf8;
@@ -2058,11 +2059,12 @@ int Editor::getBlockCommentState(int targetLine) {
             startLine = 1;
         }
         int state = commentStateCache[startLine - 1];
+        std::string lineStr;
         for (int li = startLine; li <= clampedTarget; ++li) {
             int prevLi = li - 1;
             size_t s = lineStarts[prevLi];
             size_t e = (prevLi + 1 < (int)lineStarts.size()) ? lineStarts[prevLi + 1] : pt.length();
-            std::string lineStr = pt.getRange(s, e - s);
+            pt.getRange(s, e - s, lineStr);
             state = scanBlockCommentState(lineStr, currentSyntax, state);
             commentStateCache.push_back(state);
         }
@@ -2099,6 +2101,8 @@ void Editor::updateMaxLineWidth() {
     if (lineStarts.empty()) {
         maxLineBytes = 0;
         maxLineBytesIdx = 0;
+        baseMaxLineWidth = 100.0f;
+        baseMaxLineWidthHasIme = false;
         maxLineWidth = 100.0f;
         return;
     }
@@ -2116,7 +2120,9 @@ void Editor::updateMaxLineWidth() {
             maxLineBytesIdx = i;
         }
     }
-    maxLineWidth = std::max(100.0f, measureLineWidth(maxLineBytesIdx));
+    baseMaxLineWidth = std::max(100.0f, measureLineWidth(maxLineBytesIdx));
+    baseMaxLineWidthHasIme = !imeComp.empty();
+    maxLineWidth = baseMaxLineWidth;
 }
 
 bool Editor::canFastAdjustLineStarts(const std::string& s) const {
@@ -2145,14 +2151,18 @@ void Editor::adjustLineStartsSingleLine(size_t editPos, ptrdiff_t delta) {
     if (li == maxLineBytesIdx) {
         if (newLen >= maxLineBytes) {
             maxLineBytes = newLen;
-            maxLineWidth = std::max(100.0f, measureLineWidth(li));
+            baseMaxLineWidth = std::max(100.0f, measureLineWidth(li));
+            baseMaxLineWidthHasIme = !imeComp.empty();
+            maxLineWidth = baseMaxLineWidth;
         } else {
             updateMaxLineWidth();
         }
     } else if (newLen > maxLineBytes) {
         maxLineBytes = newLen;
         maxLineBytesIdx = li;
-        maxLineWidth = std::max(100.0f, measureLineWidth(li));
+        baseMaxLineWidth = std::max(100.0f, measureLineWidth(li));
+        baseMaxLineWidthHasIme = !imeComp.empty();
+        maxLineWidth = baseMaxLineWidth;
     }
     updateScrollBars();
 }
@@ -2430,7 +2440,7 @@ std::vector<VisualSubLine> Editor::getVisualSubLines(int lineIdx, float wrapWidt
             CFIndex totalU16 = CFStringGetLength(cf);
             const void* keys[] = { kCTFontAttributeName, kCTParagraphStyleAttributeName };
             const void* values[] = { fontRef, paragraphStyle };
-            CFDictionaryRef d = CFDictionaryCreate(NULL, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+            CFDictionaryRef d = textMeasureAttrs ? textMeasureAttrs : CFDictionaryCreate(NULL, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
             CFAttributedStringRef as = CFAttributedStringCreate(NULL, cf, d);
             CTTypesetterRef ts = CTTypesetterCreateWithAttributedString(as);
 
@@ -2473,7 +2483,7 @@ std::vector<VisualSubLine> Editor::getVisualSubLines(int lineIdx, float wrapWidt
             }
             CFRelease(ts);
             CFRelease(as);
-            CFRelease(d);
+            if (!textMeasureAttrs && d) CFRelease(d);
             CFRelease(cf);
             if (subs.empty()) subs.push_back({ 0, 0, 0, 0 });
             return subs;
@@ -2913,12 +2923,6 @@ const std::regex* Editor::getCompiledSearchRegex(const std::string& rawQuery, bo
     }
 }
 
-static const char* fastFindLiteralBuffer(const char* hay, size_t hayLen, const char* needle, size_t needleLen) {
-    if (needleLen == 0) return hay;
-    size_t pos = MiuCore::findSubstringFast(std::string_view(hay, hayLen), 0, std::string_view(needle, needleLen), true, true, false);
-    return (pos == std::string::npos) ? nullptr : (hay + pos);
-}
-
 size_t Editor::findText(size_t startPos, const std::string& query, bool forward, bool matchCase, bool wholeWord, bool isRegex, size_t* outLen) {
     if (query.empty()) return std::string::npos;
     size_t len = pt.length();
@@ -3077,39 +3081,44 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
         return true;
     };
 
-    // Ultra-fast piece-direct forward scan when matchCase is true
-    if (forward && matchCase) {
+    // Piece-direct SIMD/first+last scan for both forward/backward and case-sensitive/insensitive
+    std::string_view qView(query);
+    std::string boundarySpan;
+    if (forward) {
         size_t curStart = (startPos >= len) ? 0 : startPos;
         size_t pieceDocOffset = 0;
         for (size_t pIdx = 0; pIdx < pt.pieces.size(); ++pIdx) {
             const auto& p = pt.pieces[pIdx];
             size_t pieceEnd = pieceDocOffset + p.len;
-            if (pieceEnd <= curStart) {
+            if (pieceEnd <= curStart || p.len == 0) {
                 pieceDocOffset = pieceEnd;
                 continue;
             }
             const char* pData = p.isOriginal ? (pt.origPtr + p.start) : (pt.addBuf.data() + p.start);
             size_t localStart = (curStart > pieceDocOffset) ? (curStart - pieceDocOffset) : 0;
-            while (localStart + qLen <= p.len) {
-                const char* found = fastFindLiteralBuffer(pData + localStart, p.len - localStart, query.data(), qLen);
-                if (!found) break;
-                size_t foundLocal = (size_t)(found - pData);
-                size_t globalCand = pieceDocOffset + foundLocal;
-                if (checkValidMatch(globalCand)) return globalCand;
-                localStart = foundLocal + 1;
+            if (p.len >= qLen) {
+                std::string_view pView(pData, p.len);
+                size_t maxLocal = p.len - qLen;
+                while (localStart <= maxLocal) {
+                    size_t foundLocal = MiuCore::findSubstringInRange(pView, localStart, maxLocal, qView, true, matchCase);
+                    if (foundLocal == std::string::npos) break;
+                    size_t globalCand = pieceDocOffset + foundLocal;
+                    if (checkValidMatch(globalCand)) return globalCand;
+                    localStart = foundLocal + 1;
+                }
             }
-            // Check boundary spanning into next piece(s)
             size_t boundaryStart = (p.len > qLen - 1) ? std::max(localStart, p.len - (qLen - 1)) : localStart;
-            if (boundaryStart < p.len && pieceEnd < len) {
+            if (qLen > 1 && boundaryStart < p.len && pieceEnd < len) {
                 size_t globalBStart = pieceDocOffset + boundaryStart;
                 size_t spanLen = std::min(len - globalBStart, (p.len - boundaryStart) + qLen - 1);
                 if (spanLen >= qLen) {
-                    std::string span = pt.getRange(globalBStart, spanLen);
+                    pt.getRange(globalBStart, spanLen, boundarySpan);
+                    std::string_view spanView(boundarySpan);
+                    size_t maxOff = spanView.size() - qLen;
                     size_t off = 0;
-                    while (off + qLen <= span.size()) {
-                        const char* found = fastFindLiteralBuffer(span.data() + off, span.size() - off, query.data(), qLen);
-                        if (!found) break;
-                        size_t fOff = (size_t)(found - span.data());
+                    while (off <= maxOff) {
+                        size_t fOff = MiuCore::findSubstringInRange(spanView, off, maxOff, qView, true, matchCase);
+                        if (fOff == std::string::npos) break;
                         size_t globalCand = globalBStart + fOff;
                         if (globalCand >= curStart && checkValidMatch(globalCand)) return globalCand;
                         off = fOff + 1;
@@ -3119,37 +3128,53 @@ size_t Editor::findText(size_t startPos, const std::string& query, bool forward,
             pieceDocOffset = pieceEnd;
         }
         return std::string::npos;
-    }
-
-    auto toLower = [](char c) { return (c >= 'A' && c <= 'Z') ? (char)(c + ('a' - 'A')) : c; };
-    size_t cur = startPos;
-    if (forward) {
-        if (cur >= len) cur = 0;
     } else {
-        if (cur == 0) cur = len - 1;
-        else cur--;
-    }
-
-    while (true) {
-        if (cur + qLen <= len) {
-            bool match = true;
-            for (size_t i = 0; i < qLen; ++i) {
-                char c1 = pt.charAt(cur + i);
-                char c2 = query[i];
-                if (!matchCase) { c1 = toLower(c1); c2 = toLower(c2); }
-                if (c1 != c2) { match = false; break; }
+        size_t maxCand = (startPos == 0) ? (len - qLen) : std::min(startPos - 1, len - qLen);
+        size_t pieceEnd = len;
+        for (size_t pIdx = pt.pieces.size(); pIdx-- > 0; ) {
+            const auto& p = pt.pieces[pIdx];
+            size_t pieceDocOffset = pieceEnd - p.len;
+            if (p.len == 0 || pieceDocOffset > maxCand) {
+                pieceEnd = pieceDocOffset;
+                continue;
             }
-            if (match && checkValidMatch(cur)) return cur;
+            if (qLen > 1 && pieceEnd < len) {
+                size_t bFirstGlobal = (p.len > qLen - 1) ? (pieceEnd - (qLen - 1)) : pieceDocOffset;
+                size_t bLastGlobal = std::min(pieceEnd - 1, maxCand);
+                if (bFirstGlobal <= bLastGlobal) {
+                    size_t spanLen = std::min(len - bFirstGlobal, (bLastGlobal - bFirstGlobal + 1) + (qLen - 1));
+                    if (spanLen >= qLen) {
+                        pt.getRange(bFirstGlobal, spanLen, boundarySpan);
+                        std::string_view spanView(boundarySpan);
+                        size_t hiOff = std::min(bLastGlobal - bFirstGlobal, spanView.size() - qLen);
+                        while (true) {
+                            size_t fOff = MiuCore::findSubstringInRange(spanView, 0, hiOff, qView, false, matchCase);
+                            if (fOff == std::string::npos) break;
+                            size_t globalCand = bFirstGlobal + fOff;
+                            if (checkValidMatch(globalCand)) return globalCand;
+                            if (fOff == 0) break;
+                            hiOff = fOff - 1;
+                        }
+                    }
+                }
+            }
+            if (p.len >= qLen && pieceDocOffset <= std::min(pieceEnd - qLen, maxCand)) {
+                const char* pData = p.isOriginal ? (pt.origPtr + p.start) : (pt.addBuf.data() + p.start);
+                std::string_view pView(pData, p.len);
+                size_t hiLocal = std::min(pieceEnd - qLen, maxCand) - pieceDocOffset;
+                while (true) {
+                    size_t foundLocal = MiuCore::findSubstringInRange(pView, 0, hiLocal, qView, false, matchCase);
+                    if (foundLocal == std::string::npos) break;
+                    size_t globalCand = pieceDocOffset + foundLocal;
+                    if (checkValidMatch(globalCand)) return globalCand;
+                    if (foundLocal == 0) break;
+                    hiLocal = foundLocal - 1;
+                }
+            }
+            pieceEnd = pieceDocOffset;
         }
-        if (forward) {
-            cur++;
-            if (cur + qLen > len) break;
-        } else {
-            if (cur == 0) break;
-            cur--;
-        }
+        return std::string::npos;
     }
-    return std::string::npos;
 }
 
 void Editor::findNext(bool forward) {
@@ -3532,6 +3557,12 @@ void Editor::updateFont(float s) {
     };
     paragraphStyle = CTParagraphStyleCreate(settings, 4);
     CFRelease(emptyTabStops);
+    if (textMeasureAttrs) { CFRelease(textMeasureAttrs); textMeasureAttrs = nullptr; }
+    if (fontRef && paragraphStyle) {
+        const void* mKeys[] = { kCTFontAttributeName, kCTParagraphStyleAttributeName };
+        const void* mVals[] = { fontRef, paragraphStyle };
+        textMeasureAttrs = CFDictionaryCreate(NULL, mKeys, mVals, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    }
 #else
     charWidth = std::max(4.0f, std::round(s * 0.6f));
     tabWidth = charWidth * 4.0f;
@@ -3554,7 +3585,9 @@ void Editor::rebuildLineStarts() {
     maxLineBytesIdx = std::max(0, maxIdx);
     commentStateCache.clear();
     updateGutterWidth();
-    maxLineWidth = std::max(100.0f, measureLineWidth(maxLineBytesIdx));
+    baseMaxLineWidth = std::max(100.0f, measureLineWidth(maxLineBytesIdx));
+    baseMaxLineWidthHasIme = !imeComp.empty();
+    maxLineWidth = baseMaxLineWidth;
     updateScrollBars();
 }
 
@@ -3585,15 +3618,49 @@ float Editor::getXInLine(int li, size_t pos) {
         if (!cf) return 0.0f;
         const void* keys[] = { kCTFontAttributeName, kCTParagraphStyleAttributeName };
         const void* values[] = { fontRef, paragraphStyle };
-        CFDictionaryRef d = CFDictionaryCreate(NULL, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+        CFDictionaryRef d = textMeasureAttrs ? textMeasureAttrs : CFDictionaryCreate(NULL, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         CFAttributedStringRef as = CFAttributedStringCreate(NULL, cf, d);
         CTLineRef line = CTLineCreateWithAttributedString(as);
-        CFStringRef sub = CFStringCreateWithBytes(NULL, (const UInt8*)lstr.data(), std::min(rp, lstr.size()), kCFStringEncodingUTF8, false);
-        CGFloat x = CTLineGetOffsetForStringIndex(line, sub ? CFStringGetLength(sub) : 0, NULL);
-        if (sub) CFRelease(sub);
+        size_t clampedRp = std::min(rp, lstr.size());
+        CFIndex cfTotalLen = CFStringGetLength(cf);
+        CFIndex u16Idx = 0;
+        if (clampedRp == lstr.size()) {
+            u16Idx = cfTotalLen;
+        } else {
+            size_t b = 0;
+            CFIndex totalExpectedU16 = 0, prefixU16 = -1;
+            bool ok = true;
+            while (b < lstr.size()) {
+                if (b == clampedRp) prefixU16 = totalExpectedU16;
+                unsigned char ch = (unsigned char)lstr[b];
+                if (ch < 0x80u) {
+                    b += 1; totalExpectedU16 += 1;
+                } else if (ch >= 0xC2u && ch <= 0xDFu && b + 1 < lstr.size() && ((unsigned char)lstr[b + 1] & 0xC0u) == 0x80u) {
+                    b += 2; totalExpectedU16 += 1;
+                } else if (ch >= 0xE0u && ch <= 0xEFu && b + 2 < lstr.size() &&
+                           ((unsigned char)lstr[b + 1] & 0xC0u) == 0x80u && ((unsigned char)lstr[b + 2] & 0xC0u) == 0x80u &&
+                           !(ch == 0xE0u && (unsigned char)lstr[b + 1] < 0xA0u) && !(ch == 0xEDu && (unsigned char)lstr[b + 1] >= 0xA0u)) {
+                    b += 3; totalExpectedU16 += 1;
+                } else if (ch >= 0xF0u && ch <= 0xF4u && b + 3 < lstr.size() &&
+                           ((unsigned char)lstr[b + 1] & 0xC0u) == 0x80u && ((unsigned char)lstr[b + 2] & 0xC0u) == 0x80u && ((unsigned char)lstr[b + 3] & 0xC0u) == 0x80u &&
+                           !(ch == 0xF0u && (unsigned char)lstr[b + 1] < 0x90u) && !(ch == 0xF4u && (unsigned char)lstr[b + 1] >= 0x90u)) {
+                    b += 4; totalExpectedU16 += 2;
+                } else {
+                    ok = false; break;
+                }
+            }
+            if (ok && prefixU16 >= 0 && totalExpectedU16 == cfTotalLen) {
+                u16Idx = prefixU16;
+            } else {
+                CFStringRef sub = CFStringCreateWithBytes(NULL, (const UInt8*)lstr.data(), clampedRp, kCFStringEncodingUTF8, false);
+                u16Idx = sub ? CFStringGetLength(sub) : 0;
+                if (sub) CFRelease(sub);
+            }
+        }
+        CGFloat x = CTLineGetOffsetForStringIndex(line, u16Idx, NULL);
         CFRelease(line);
         CFRelease(as);
-        CFRelease(d);
+        if (!textMeasureAttrs && d) CFRelease(d);
         CFRelease(cf);
         return (float)x;
     }
@@ -3643,7 +3710,7 @@ size_t Editor::getPosFromLineAndX(int li, float tx) {
         if (!cf) return s;
         const void* keys[] = { kCTFontAttributeName, kCTParagraphStyleAttributeName };
         const void* values[] = { fontRef, paragraphStyle };
-        CFDictionaryRef d = CFDictionaryCreate(NULL, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+        CFDictionaryRef d = textMeasureAttrs ? textMeasureAttrs : CFDictionaryCreate(NULL, keys, values, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
         CFAttributedStringRef as = CFAttributedStringCreate(NULL, cf, d);
         CTLineRef line = CTLineCreateWithAttributedString(as);
         CFIndex ci = CTLineGetStringIndexForPosition(line, CGPointMake(tx, 0));
@@ -3657,7 +3724,7 @@ size_t Editor::getPosFromLineAndX(int li, float tx) {
         }
         CFRelease(line);
         CFRelease(as);
-        CFRelease(d);
+        if (!textMeasureAttrs && d) CFRelease(d);
         CFRelease(cf);
         return s + (size_t)bytes;
     }
@@ -3814,7 +3881,16 @@ void Editor::ensureCaretVisible() {
     }
     if (hScrollPos < 0) hScrollPos = 0;
 
-    maxLineWidth = std::max(100.0f, measureLineWidth(maxLineBytesIdx));
+    if (!imeComp.empty() || baseMaxLineWidthHasIme) {
+        float measured = std::max(100.0f, measureLineWidth(maxLineBytesIdx));
+        if (imeComp.empty()) {
+            baseMaxLineWidth = measured;
+            baseMaxLineWidthHasIme = false;
+        }
+        maxLineWidth = measured;
+    } else {
+        maxLineWidth = baseMaxLineWidth;
+    }
     if (hScrollPos > 0) {
         float requiredWidth = caretX + margin;
         if (requiredWidth > maxLineWidth) {
@@ -5627,28 +5703,23 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                     }
                 } catch (...) {}
             }
-        } else if (!searchRegex) {
-            std::string q = searchQuery;
-            std::string t = visibleText;
-            if (!searchMatchCase) {
-                auto asciiLower = [](unsigned char ch) -> char {
-                    return (ch >= 'A' && ch <= 'Z') ? (char)(ch + ('a' - 'A')) : (char)ch;
-                };
-                std::transform(q.begin(), q.end(), q.begin(), asciiLower);
-                std::transform(t.begin(), t.end(), t.begin(), asciiLower);
-            }
+        } else if (!searchRegex && !searchQuery.empty() && searchQuery.size() <= visibleText.size()) {
+            size_t qLenVis = searchQuery.size();
+            size_t maxOff = visibleText.size() - qLenVis;
             size_t offset = 0;
-            while ((offset = t.find(q, offset)) != std::string::npos) {
+            while (offset <= maxOff) {
+                offset = MiuCore::findSubstringInRange(visibleText, offset, maxOff, searchQuery, true, searchMatchCase);
+                if (offset == std::string::npos) break;
                 bool match = true;
                 if (searchWholeWord) {
                     size_t docMatchPos = visByteStart + offset;
                     if (!MiuCore::isWordBoundaryBefore(pt, docMatchPos)) match = false;
-                    if (match && !MiuCore::isWordBoundaryAfter(pt, docMatchPos + q.length())) match = false;
+                    if (match && !MiuCore::isWordBoundaryAfter(pt, docMatchPos + qLenVis)) match = false;
                 }
                 if (match) {
                     size_t currentDrawPos = visByteStart + offset;
                     int li = getLineIdx(currentDrawPos);
-                    forEachVisualSpanRect(li, currentDrawPos, currentDrawPos + q.length(), 0.0f, [&](CGRect r) {
+                    forEachVisualSpanRect(li, currentDrawPos, currentDrawPos + qLenVis, 0.0f, [&](CGRect r) {
                         CGContextFillRect(ctx, r);
                     });
                 }
@@ -5713,6 +5784,17 @@ void Editor::render(CGContextRef ctx, float w, float h) {
     std::vector<GutterEntry> gutterEntries;
     gutterEntries.reserve(vis + 4);
     std::vector<SyntaxColor> lineSyntaxColors;
+    struct CachedSynCGColor { SyntaxColor sc; CGColorRef cg; };
+    std::vector<CachedSynCGColor> synColorCache;
+    synColorCache.reserve(16);
+    auto getOrCreateSynCGColor = [&](const SyntaxColor& sc) -> CGColorRef {
+        for (const auto& entry : synColorCache) {
+            if (entry.sc == sc) return entry.cg;
+        }
+        CGColorRef cg = CGColorCreateGenericRGB(sc.r, sc.g, sc.b, sc.a);
+        synColorCache.push_back({ sc, cg });
+        return cg;
+    };
 
     float curVisualY = lineBaseVisualY[0];
     for (int i = renderStart; i < (int)lineStarts.size() && curVisualY < vh + lineHeight; ++i) {
@@ -5819,9 +5901,8 @@ void Editor::render(CGContextRef ctx, float w, float h) {
                                 CFIndex u16E = subByteToU16[std::min(runEnd, subStr.size())];
                                 CFIndex u16L = (u16E > u16S) ? (u16E - u16S) : 0;
                                 if (u16L > 0 && u16S + u16L <= cfLen) {
-                                    CGColorRef synCol = CGColorCreateGenericRGB(sc.r, sc.g, sc.b, sc.a);
+                                    CGColorRef synCol = getOrCreateSynCGColor(sc);
                                     CFAttributedStringSetAttribute(mas, CFRangeMake(u16S, u16L), kCTForegroundColorAttributeName, synCol);
-                                    CGColorRelease(synCol);
                                 }
                             }
                             runStart = runEnd;
@@ -5911,6 +5992,9 @@ void Editor::render(CGContextRef ctx, float w, float h) {
             if (!wordWrapEnabled) break;
         }
     }
+    for (const auto& entry : synColorCache) {
+        if (entry.cg) CGColorRelease(entry.cg);
+    }
 
     // 6. Carets & Drag-drop target caret
     CGColorRef caretColorToUse = colCaret;
@@ -5978,23 +6062,30 @@ void Editor::render(CGContextRef ctx, float w, float h) {
 #else
     CGContextFillRect(ctx, CGRectMake(0, 0, gutterWidth, h));
 #endif
-    for (const auto& ge : gutterEntries) {
-        CFStringRef n = CFStringCreateWithCString(NULL, std::to_string(ge.lineNumber).c_str(), kCFStringEncodingUTF8);
-        if (n) {
-            const void* keys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName, kCTParagraphStyleAttributeName };
-            const void* values[] = { fontRef, colGutterText, paragraphStyle };
-            CFDictionaryRef attr = CFDictionaryCreate(NULL, keys, values, 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-            CFAttributedStringRef nas = CFAttributedStringCreate(NULL, n, attr);
-            CTLineRef nl = CTLineCreateWithAttributedString(nas);
-            double lineWidth = CTLineGetTypographicBounds(nl, NULL, NULL, NULL);
-            float xPos = gutterWidth - (float)lineWidth - (charWidth * 0.5f);
-            if (xPos < 5.0f) xPos = 5.0f;
-            CGContextSetTextPosition(ctx, xPos, ge.y + baselineOffset);
-            CTLineDraw(nl, ctx);
-            CFRelease(nl);
-            CFRelease(nas);
-            CFRelease(attr);
-            CFRelease(n);
+    if (!gutterEntries.empty() && fontRef && colGutterText && paragraphStyle) {
+        const void* gKeys[] = { kCTFontAttributeName, kCTForegroundColorAttributeName, kCTParagraphStyleAttributeName };
+        const void* gVals[] = { fontRef, colGutterText, paragraphStyle };
+        CFDictionaryRef gutterAttr = CFDictionaryCreate(NULL, gKeys, gVals, 3, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+        if (gutterAttr) {
+            char numBuf[16];
+            for (const auto& ge : gutterEntries) {
+                int numLen = std::snprintf(numBuf, sizeof(numBuf), "%d", ge.lineNumber);
+                if (numLen <= 0) continue;
+                CFStringRef n = CFStringCreateWithBytes(NULL, (const UInt8*)numBuf, (CFIndex)numLen, kCFStringEncodingASCII, false);
+                if (n) {
+                    CFAttributedStringRef nas = CFAttributedStringCreate(NULL, n, gutterAttr);
+                    CTLineRef nl = CTLineCreateWithAttributedString(nas);
+                    double lineWidth = CTLineGetTypographicBounds(nl, NULL, NULL, NULL);
+                    float xPos = gutterWidth - (float)lineWidth - (charWidth * 0.5f);
+                    if (xPos < 5.0f) xPos = 5.0f;
+                    CGContextSetTextPosition(ctx, xPos, ge.y + baselineOffset);
+                    CTLineDraw(nl, ctx);
+                    CFRelease(nl);
+                    CFRelease(nas);
+                    CFRelease(n);
+                }
+            }
+            CFRelease(gutterAttr);
         }
     }
 
@@ -6205,6 +6296,7 @@ Editor::~Editor() {
     if (colNewlineMark) CGColorRelease(colNewlineMark);
     if (colBracketBg) CGColorRelease(colBracketBg);
     if (colBracketBorder) CGColorRelease(colBracketBorder);
+    if (textMeasureAttrs) CFRelease(textMeasureAttrs);
     if (fontRef) CFRelease(fontRef);
     if (paragraphStyle) CFRelease(paragraphStyle);
 #endif

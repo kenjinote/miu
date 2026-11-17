@@ -38,14 +38,21 @@ jobs:
           java-version: '17'
           cache: 'gradle'
 
-      - name: Set up Android SDK & NDK 27.0.12077973
-        uses: android-actions/setup-android@v3
-
-      - name: Install pinned NDK & CMake
+      - name: Install pinned Android SDK, NDK & CMake
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "ndk;27.0.12077973" "cmake;3.22.1" "platforms;android-36" "build-tools;36.0.0" || \
-          sdkmanager "ndk;27.0.12077973" "cmake;3.22.1"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMGR="$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMGR" ]; then
+            SDKMGR=$(ls -1 "$SDK_ROOT"/cmdline-tools/*/bin/sdkmanager 2>/dev/null | sort -V | tail -n 1)
+          fi
+          echo "Using sdkmanager: $SDKMGR (SDK_ROOT=$SDK_ROOT)"
+          export ANDROID_HOME="$SDK_ROOT"
+          export ANDROID_SDK_ROOT="$SDK_ROOT"
+          echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
+          yes | "$SDKMGR" --sdk_root="$SDK_ROOT" --licenses > /dev/null || true
+          "$SDKMGR" --sdk_root="$SDK_ROOT" "ndk;27.0.12077973" "cmake;3.22.1" "platforms;android-36" "build-tools;36.0.0" || \
+          "$SDKMGR" --sdk_root="$SDK_ROOT" "ndk;27.0.12077973" "cmake;3.22.1"
 
       - name: Build Release APK/AAB, Run Unit Tests & Release Lint
         working-directory: Android

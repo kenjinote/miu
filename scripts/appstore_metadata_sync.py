@@ -30,7 +30,7 @@ def _resolve_target_version() -> str:
             m = re.search(r"MARKETING_VERSION\s*=\s*([0-9]+\.[0-9]+\.[0-9]+)\s*;", f.read())
             if m:
                 return m.group(1)
-    return "1.0.53"
+    return "1.0.55"
 
 
 TARGET_VERSION = _resolve_target_version()
@@ -66,10 +66,10 @@ UTF-8やShift_JIS、EUC-JPなど、さまざまな文字コードを自動で判
 毎日のメモ帳としても、頼れるコードエディタとしても。
 miuが、あなたの「書く時間」を少しでも快適にするお手伝いができれば幸いです。"""
 
-JA_WHATS_NEW = """miu v1.0.53 アップデート内容
-・ライブプレビューのオフライン保護強化と Markdown / LaTeX 数式 / 全33種 Mermaid 図表の描画精度向上
-・複数行正規表現の検索・置換、Emmet 展開、全65言語シンタックスハイライトの精度改善
-・非 UTF-8 保存時の文字欠落確認、安全なアトミック保存、および多言語ローカライズの改善"""
+JA_WHATS_NEW = """miu v1.0.55 アップデート内容
+・SIMD高速化により、UTF-8ファイルの読み込み・文字コード検証を大幅に高速化
+・大文字小文字を区別しない検索・上方向検索・全置換および65言語ハイライト（Markdown等）を高速化
+・大容量ファイルでの文字入力・カーソル移動・スクロールおよび描画パフォーマンスを改善"""
 
 EN_DESC = """miu is a simple, lightweight text and code editor designed to make everything from quick daily notes to Markdown writing and programming feel effortless.
 
@@ -97,10 +97,10 @@ No ads, no tracking, and no data collection. Everything works 100% offline on yo
 
 Whether you use it as an everyday notepad or a reliable code editor, we hope miu makes your writing time a little more enjoyable."""
 
-EN_WHATS_NEW = """What's New in miu v1.0.53
-• Strengthened offline Live Preview security and improved Markdown, LaTeX math, and all 33 Mermaid diagram renderers.
-• Improved multiline Regex find & replace, Emmet expansion, and 65-language syntax highlighting precision.
-• Added character-loss confirmation for non-UTF-8 saves, enhanced atomic file saving, and refined 30+ language localization."""
+EN_WHATS_NEW = """What's New in miu v1.0.55
+• Faster UTF-8 file loading and encoding validation powered by SIMD acceleration.
+• Faster case-insensitive search, backward search, Replace All, and 65-language syntax highlighting (including Markdown).
+• Smoother typing, caret navigation, large-file scrolling, and rendering performance."""
 
 ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无论是记录日常随笔、撰写 Markdown 文档，还是编写程序代码，都能为您提供舒适顺畅的书写体验。
 
@@ -128,10 +128,10 @@ ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无�
 
 无论是作为日常便签，还是得力的代码编辑器，希望 miu 能陪伴您度过每一段愉快的书写时光。"""
 
-ZH_HANS_WHATS_NEW = """miu v1.0.53 更新内容
-・强化实时预览离线安全保护，提升 Markdown、LaTeX 公式及 33 种 Mermaid 图表渲染精度
-・改进多行正则表达式查找替换、Emmet 展开与 65 种语言语法高亮准确性
-・新增非 UTF-8 保存字符丢失提醒，优化原子化安全保存与多语言本地化细节"""
+ZH_HANS_WHATS_NEW = """miu v1.0.55 更新内容
+・引入 SIMD 加速，大幅提升 UTF-8 文件打开与编码校验速度
+・大幅加快不区分大小写查找、向上查找、全部替换及 65 种语言语法高亮（含 Markdown）
+・优化大文件输入、光标移动、滚动注释解析与界面渲染性能"""
 
 ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器。無論是記錄日常隨手筆記、撰寫 Markdown 文章，還是編寫程式碼，都能為您帶來舒適順暢的書寫體驗。
 
@@ -159,10 +159,10 @@ ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器�
 
 無論是作為日常記事本，還是可靠的程式碼編輯器，希望 miu 能讓您的書寫時光更加愉快。"""
 
-ZH_HANT_WHATS_NEW = """miu v1.0.53 更新內容
-・強化即時預覽離線安全保護，提升 Markdown、LaTeX 公式及 33 種 Mermaid 圖表渲染精準度
-・改進多行正規表示式尋找取代、Emmet 展開與 65 種語言語法突顯準確性
-・新增非 UTF-8 儲存字元遺失提醒，最佳化原子化安全儲存與多語言在地化細節"""
+ZH_HANT_WHATS_NEW = """miu v1.0.55 更新內容
+・導入 SIMD 加速，大幅提升 UTF-8 檔案開啟與編碼驗證速度
+・大幅加快不區分大小寫尋找、向上尋找、全部取代及 65 種語言語法突顯（含 Markdown）
+・最佳化大檔案輸入、游標移動、捲動註解解析與畫面渲染效能"""
 
 KO_DESC = """miu는 일상의 가벼운 메모부터 Markdown 글쓰기, 프로그래밍까지 편안하게 사용할 수 있는 심플한 텍스트 및 코드 에디터입니다.
 
@@ -191,10 +191,10 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 등 다양한 문자 인코딩을 자동으로 
 매일 쓰는 메모장으로도, 든든한 코드 에디터로도.
 miu가 당신의 글쓰기 시간을 조금 더 기분 좋게 만들어 드릴 수 있기를 바랍니다."""
 
-KO_WHATS_NEW = """miu v1.0.53 업데이트 안내
-・실시간 미리보기 오프라인 보안 강화 및 Markdown·LaTeX 수식·33종 Mermaid 다이어그램 렌더링 정밀도 향상
-・다중 행 정규식 찾기/바꾸기, Emmet 확장 및 65개 언어 구문 강조 정확도 개선
-・비 UTF-8 저장 시 문자 손실 확인 추가, 원자적 안전 저장 및 다국어 번역 품질 개선"""
+KO_WHATS_NEW = """miu v1.0.55 업데이트 안내
+・SIMD 가속을 통해 UTF-8 파일 열기 및 인코딩 검증 속도 대폭 향상
+・대소문자 구분 없는 검색, 이전 찾기, 모두 바꾸기 및 65개 언어 구문 강조(Markdown 포함) 고속화
+・대용량 파일 입력, 커서 이동, 스크롤 및 렌더링 성능 최적화"""
 
 DE_DESC = """miu ist ein schlichter, leichtgewichtiger Text- und Code-Editor, mit dem alltägliche Notizen, Markdown-Texte und Programmierarbeiten gleichermaßen angenehm von der Hand gehen.
 
@@ -222,10 +222,10 @@ Keine Werbung, kein Tracking und keine Datenübertragung. Alle Funktionen arbeit
 
 Ob als täglicher Notizblock oder als verlässlicher Code-Editor – wir hoffen, dass miu Ihnen das Schreiben jeden Tag ein Stück angenehmer macht."""
 
-DE_WHATS_NEW = """Neuerungen in miu v1.0.53
-• Strengere Offline-Sicherheit für die Live-Vorschau sowie präzisere Darstellung von Markdown, LaTeX und allen 33 Mermaid-Diagrammtypen.
-• Verbesserte mehrzeilige Regex-Suche & -Ersetzung, Emmet-Erweiterung und Syntaxhervorhebung für 65 Sprachen.
-• Warnhinweis vor Zeichenverlust beim Speichern in Nicht-UTF-8, zuverlässigeres atomares Speichern und optimierte Lokalisierung."""
+DE_WHATS_NEW = """Neuerungen in miu v1.0.55
+• Deutlich schnelleres Öffnen und Prüfen von UTF-8-Dateien dank SIMD-Beschleunigung.
+• Beschleunigte Groß-/Kleinschreibung-ignorierende Suche, Rückwärtssuche, Alle ersetzen sowie Syntaxhervorhebung für 65 Sprachen (inkl. Markdown).
+• Flüssigeres Tippen, Navigieren, Scrollen in großen Dateien und effizienteres Rendering."""
 
 FR_DESC = """miu est un éditeur de texte et de code simple et léger, conçu pour rendre aussi agréables la prise de notes quotidienne, la rédaction en Markdown et la programmation.
 
@@ -253,10 +253,10 @@ Aucune publicité, aucun suivi et aucune collecte de données. Tout fonctionne �
 
 Comme bloc-notes de tous les jours ou comme éditeur de code fiable, nous espérons que miu rendra vos moments d’écriture plus agréables."""
 
-FR_WHATS_NEW = """Nouveautés de miu v1.0.53
-• Sécurité hors ligne renforcée de l’aperçu en direct et rendu amélioré pour Markdown, LaTeX et les 33 types de diagrammes Mermaid.
-• Recherche/remplacement Regex multiligne, extension Emmet et coloration syntaxique de 65 langages plus précis.
-• Alerte de perte de caractères hors UTF-8, sauvegarde atomique fiabilisée et traductions affinées."""
+FR_WHATS_NEW = """Nouveautés de miu v1.0.55
+• Ouverture et validation des fichiers UTF-8 nettement accélérées grâce au SIMD.
+• Recherche insensible à la casse, recherche arrière, Tout remplacer et coloration syntaxique de 65 langages (dont Markdown) plus rapides.
+• Saisie, déplacement du curseur, défilement des grands fichiers et rendu plus fluides."""
 
 ES_DESC = """miu es un editor de texto y código sencillo y ligero, pensado para que desde tus notas rápidas del día a día hasta la escritura en Markdown y la programación resulten cómodas y agradables.
 
@@ -284,10 +284,10 @@ Sin anuncios, sin rastreo y sin envío de datos. Todo funciona 100 % sin conexi�
 
 Ya sea como tu bloc de notas diario o como un editor de código de confianza, esperamos que miu haga más agradable tu tiempo de escritura."""
 
-ES_WHATS_NEW = """Novedades de miu v1.0.53
-• Mayor seguridad sin conexión en Vista Previa y mejor renderizado de Markdown, LaTeX y los 33 diagramas Mermaid.
-• Mejoras en búsqueda y reemplazo Regex multilínea, expansión Emmet y resaltado de sintaxis para 65 lenguajes.
-• Aviso de pérdida de caracteres al guardar fuera de UTF-8, guardado atómico más seguro y mejoras de localización."""
+ES_WHATS_NEW = """Novedades de miu v1.0.55
+• Apertura y validación de archivos UTF-8 mucho más rápidas mediante aceleración SIMD.
+• Mayor velocidad en búsqueda sin distinción de mayúsculas, búsqueda hacia atrás, Reemplazar todo y resaltado de 65 lenguajes (incluido Markdown).
+• Escritura, movimiento del cursor, desplazamiento en archivos grandes y renderizado más fluidos."""
 
 IT_DESC = """miu è un editor di testo e codice semplice e leggero, pensato per rendere piacevole ogni attività: dagli appunti quotidiani alla scrittura in Markdown, fino alla programmazione.
 
@@ -315,10 +315,10 @@ Nessuna pubblicità, nessun tracciamento e nessuna raccolta dati. Tutto funziona
 
 Come blocco note quotidiano o come affidabile editor di codice, speriamo che miu renda più piacevole il tuo tempo dedicato alla scrittura."""
 
-IT_WHATS_NEW = """Novità di miu v1.0.53
-• Sicurezza offline potenziata nell’Anteprima dal vivo e resa migliorata per Markdown, LaTeX e tutti i 33 diagrammi Mermaid.
-• Ricerca e sostituzione Regex multiriga, espansione Emmet ed evidenziazione per 65 linguaggi più precisi.
-• Avviso di perdita caratteri nei salvataggi non UTF-8, salvataggio atomico ancora più sicuro e localizzazione rifinita."""
+IT_WHATS_NEW = """Novità di miu v1.0.55
+• Apertura e verifica dei file UTF-8 sensibilmente più veloci grazie all’accelerazione SIMD.
+• Ricerca senza distinzione maiuscole/minuscole, ricerca all’indietro, Sostituisci tutto ed evidenziazione per 65 linguaggi (incluso Markdown) più rapidi.
+• Digitazione, movimento del cursore, scorrimento di file grandi e rendering più fluidi."""
 
 PT_DESC = """O miu é um editor de texto e código simples e leve, criado para tornar desde as suas anotações diárias até a escrita em Markdown e a programação muito mais confortáveis.
 
@@ -346,10 +346,10 @@ Sem anúncios, sem rastreamento e sem coleta de dados. Tudo funciona 100% offlin
 
 Seja como seu bloco de notas do dia a dia ou como um editor de código confiável, esperamos que o miu torne o seu momento de escrever ainda mais agradável."""
 
-PT_WHATS_NEW = """Novidades do miu v1.0.53
-• Segurança offline reforçada na Pré-visualização e melhor renderização de Markdown, LaTeX e dos 33 diagramas Mermaid.
-• Melhorias na busca e substituição Regex multilinha, expansão Emmet e destaque de sintaxe para 65 linguagens.
-• Aviso de perda de caracteres ao salvar fora de UTF-8, salvamento atômico mais seguro e melhorias de tradução."""
+PT_WHATS_NEW = """Novidades do miu v1.0.55
+• Abertura e validação de arquivos UTF-8 muito mais rápidas com aceleração SIMD.
+• Maior velocidade na busca sem diferenciar maiúsculas, busca para trás, Substituir tudo e destaque de sintaxe para 65 linguagens (incluindo Markdown).
+• Digitação, navegação do cursor, rolagem em arquivos grandes e renderização mais suaves."""
 
 RU_DESC = """miu — это простой и лёгкий текстовый и кодовый редактор, созданный для комфортной работы: от быстрых повседневных заметок и текстов в Markdown до программирования.
 
@@ -377,10 +377,10 @@ RU_DESC = """miu — это простой и лёгкий текстовый и
 
 В качестве ежедневного блокнота или надёжного редактора кода — надеемся, что miu сделает вашу работу с текстом ещё приятнее."""
 
-RU_WHATS_NEW = """Что нового в miu v1.0.53
-• Усилена офлайн-защита предпросмотра и улучшена отрисовка Markdown, формул LaTeX и всех 33 типов диаграмм Mermaid.
-• Повышена точность многострочного поиска Regex, автодополнения Emmet и подсветки синтаксиса 65 языков.
-• Добавлено предупреждение о потере символов при сохранении не в UTF-8, улучшены атомарное сохранение и локализация."""
+RU_WHATS_NEW = """Что нового в miu v1.0.55
+• Значительно ускорены открытие и проверка файлов UTF-8 благодаря SIMD-оптимизации.
+• Ускорены поиск без учёта регистра, обратный поиск, автозамена и подсветка синтаксиса 65 языков (включая Markdown).
+• Более плавный ввод текста, перемещение курсора, прокрутка больших файлов и отрисовка."""
 
 NL_DESC = """miu is een eenvoudige, lichtgewicht tekst- en code-editor waarmee u prettig werkt aan dagelijkse notities, Markdown-documenten en programmeerprojecten.
 
@@ -408,10 +408,10 @@ Geen advertenties, geen tracking en geen gegevensverzameling. Alles werkt 100% o
 
 Of u miu nu gebruikt als dagelijks notitieblok of als betrouwbare code-editor, we hopen dat het uw schrijfmomenten net wat aangenamer maakt."""
 
-NL_WHATS_NEW = """Nieuw in miu v1.0.53
-• Verbeterde offline beveiliging van Live Voorbeeld en nauwkeurigere weergave van Markdown, LaTeX en 33 Mermaid-diagrammen.
-• Betere meerregelige Regex-zoek- en vervangfunctie, Emmet-uitbreiding en syntaxisaccentuering voor 65 talen.
-• Waarschuwing bij tekenverlies buiten UTF-8, betrouwbaarder atomair opslaan en verfijnde lokalisatie."""
+NL_WHATS_NEW = """Nieuw in miu v1.0.55
+• Aanzienlijk sneller openen en valideren van UTF-8-bestanden dankzij SIMD-versnelling.
+• Snellere hoofdletterongevoelige zoekopdrachten, achteruit zoeken, Alles vervangen en syntaxisaccentuering voor 65 talen (waaronder Markdown).
+• Soepeler typen, cursornavigatie, scrollen in grote bestanden en weergaveprestaties."""
 
 SV_DESC = """miu är en enkel och lättviktig text- och kodredigerare som gör allt från dagliga anteckningar till Markdown-skrivande och programmering bekvämt och smidigt.
 
@@ -439,10 +439,10 @@ Inga annonser, ingen spårning och ingen datainsamling. Allt fungerar 100 % offl
 
 Som dagligt anteckningsblock eller pålitlig kodredigerare – vi hoppas att miu gör din skrivstund lite trevligare."""
 
-SV_WHATS_NEW = """Nyheter i miu v1.0.53
-• Stärkt offlinesäkerhet i förhandsgranskningen samt förbättrad visning av Markdown, LaTeX och alla 33 Mermaid-diagram.
-• Förbättrad flerradig Regex-sök/ersätt, Emmet-utökning och syntaxmarkering för 65 språk.
-• Varning vid teckenförlust utanför UTF-8, tryggare atomär sparning och förfinad lokalisering."""
+SV_WHATS_NEW = """Nyheter i miu v1.0.55
+• Betydligt snabbare öppning och validering av UTF-8-filer med SIMD-acceleration.
+• Snabbare skiftlägesokänslig sökning, bakåtsökning, Ersätt alla samt syntaxmarkering för 65 språk (inklusive Markdown).
+• Mjukare skrivning, markörförflyttning, rullning i stora filer och rendering."""
 
 DA_DESC = """miu er en enkel og let tekst- og kodeeditor, der gør alt fra daglige noter til Markdown-skrivning og programmering behageligt og ubesværet.
 
@@ -470,10 +470,10 @@ Ingen reklamer, ingen sporing og ingen dataindsamling. Alt fungerer 100 % offlin
 
 Uanset om du bruger miu som daglig notesblok eller som kodeeditor, håber vi, at den gør din skrivetid lidt mere behagelig."""
 
-DA_WHATS_NEW = """Nyheder i miu v1.0.53
-• Styrket offlinesikkerhed i Live-forhåndsvisning samt bedre visning af Markdown, LaTeX og alle 33 Mermaid-diagrammer.
-• Forbedret flerlinjet Regex-søg/erstat, Emmet-udvidelse og syntaksfremhævning for 65 sprog.
-• Advarsel ved tegntab uden for UTF-8, mere pålidelig atomisk lagring og forbedret lokalisering."""
+DA_WHATS_NEW = """Nyheder i miu v1.0.55
+• Markant hurtigere åbning og validering af UTF-8-filer med SIMD-acceleration.
+• Hurtigere søgning uden forskel på store/små bogstaver, baglæns søgning, Erstat alle og syntaksfremhævning for 65 sprog (inkl. Markdown).
+• Mere flydende indtastning, markørnavigation, rulning i store filer og gengivelse."""
 
 NO_DESC = """miu er et enkelt og lett tekst- og koderedigeringsprogram som gjør alt fra daglige notater til Markdown-skriving og programmering behagelig og uanstrengt.
 
@@ -501,10 +501,10 @@ Ingen reklame, ingen sporing og ingen datainnsamling. Alt fungerer 100 % offline
 
 Enten du bruker miu som daglig notisblokk eller som en pålitelig kodeeditor, håper vi den gjør skrivetiden din litt hyggeligere."""
 
-NO_WHATS_NEW = """Nyheter i miu v1.0.53
-• Styrket offlinesikkerhet i forhåndsvisning og bedre visning av Markdown, LaTeX og alle 33 Mermaid-diagrammer.
-• Forbedret flerlinjet Regex-søk/erstatt, Emmet-utvidelse og syntaksutheving for 65 språk.
-• Varsel ved tegntap utenfor UTF-8, tryggere atomisk lagring og forbedret lokalisering."""
+NO_WHATS_NEW = """Nyheter i miu v1.0.55
+• Betydelig raskere åpning og validering av UTF-8-filer med SIMD-akselerasjon.
+• Raskere søk uavhengig av store/små bokstaver, bakoversøk, Erstatt alle og syntaksutheving for 65 språk (inkludert Markdown).
+• Jevnere skriving, markørnavigasjon, rulling i store filer og opptegning."""
 
 FI_DESC = """miu on yksinkertainen ja kevyt teksti- ja koodieditori, joka tekee päivittäisistä muistiinpanoista, Markdown-kirjoittamisesta ja ohjelmoinnista miellyttävää ja vaivatonta.
 
@@ -532,10 +532,10 @@ Ei mainoksia, ei seurantaa eikä tiedonkeruuta. Kaikki toimii 100 % offline-tila
 
 Käytitpä miuta päivittäisenä muistiona tai luotettavana koodieditorina, toivomme sen tekevän kirjoitushetkistäsi hieman mukavampia."""
 
-FI_WHATS_NEW = """Uutta versiossa miu v1.0.53
-• Vahvistettu esikatselun offline-tietoturva sekä tarkempi Markdown-, LaTeX- ja 33 Mermaid-kaavion piirto.
-• Parannettu monirivinen Regex-haku ja -korvaus, Emmet-laajennus sekä 65 kielen syntaksinkorostus.
-• Varoitus merkkitappioista muussa kuin UTF-8-tallennuksessa, luotettavampi atominen tallennus ja päivitetty lokalisointi."""
+FI_WHATS_NEW = """Uutta versiossa miu v1.0.55
+• Huomattavasti nopeampi UTF-8-tiedostojen avaus ja tarkistus SIMD-kiihdytyksellä.
+• Nopeampi kirjainkoosta riippumaton haku, taaksepäin haku, Korvaa kaikki ja 65 kielen syntaksinkorostus (mukaan lukien Markdown).
+• Sulavampi kirjoitus, kohdistimen liike, suurten tiedostojen vieritys ja piirto."""
 
 PL_DESC = """miu to prosty, lekki edytor tekstu i kodu, zaprojektowany tak, aby codzienne notatki, pisanie w Markdown oraz programowanie były wygodne i przyjemne.
 
@@ -563,10 +563,10 @@ Brak reklam, brak śledzenia i brak gromadzenia danych. Wszystko działa w 100% 
 
 Zarówno jako codzienny notatnik, jak i niezawodny edytor kodu – mamy nadzieję, że miu uprzyjemni Twój czas spędzony na pisaniu."""
 
-PL_WHATS_NEW = """Nowości w miu v1.0.53
-• Wzmocnione bezpieczeństwo podglądu offline oraz lepsze renderowanie Markdown, LaTeX i 33 diagramów Mermaid.
-• Ulepszone wielowierszowe wyszukiwanie Regex, rozwijanie Emmet i kolorowanie składni dla 65 języków.
-• Ostrzeżenie przed utratą znaków przy zapisie spoza UTF-8, pewniejszy zapis atomowy i dopracowana lokalizacja."""
+PL_WHATS_NEW = """Nowości w miu v1.0.55
+• Znacznie szybsze otwieranie i weryfikacja plików UTF-8 dzięki akceleracji SIMD.
+• Przyspieszone wyszukiwanie bez rozróżniania wielkości liter, szukanie wstecz, Zamień wszystko oraz kolorowanie składni 65 języków (w tym Markdown).
+• Płynniejsze pisanie, ruch kursora, przewijanie dużych plików i renderowanie."""
 
 CS_DESC = """miu je jednoduchý a lehký textový a kódový editor, se kterým je psaní každodenních poznámek, textů v Markdownu i programování pohodlné a příjemné.
 
@@ -594,10 +594,10 @@ Hledání a nahrazování (s regulárními výrazy), více kurzorů, čísla ř�
 
 Ať už miu používáte jako každodenní zápisník nebo jako spolehlivý editor kódu, věříme, že vám zpříjemní každou chvíli u psaní."""
 
-CS_WHATS_NEW = """Novinky v miu v1.0.53
-• Posílené offline zabezpečení živého náhledu a přesnější vykreslování Markdownu, LaTeXu a 33 diagramů Mermaid.
-• Vylepšené víceřádkové hledání a nahrazování Regex, rozbalování Emmet a zvýrazňování syntaxe 65 jazyků.
-• Upozornění na ztrátu znaků mimo UTF-8, spolehlivější atomické ukládání a vylepšená lokalizace."""
+CS_WHATS_NEW = """Novinky v miu v1.0.55
+• Výrazně rychlejší otevírání a ověřování souborů UTF-8 díky akceleraci SIMD.
+• Rychlejší hledání bez rozlišování velikosti písmen, zpětné hledání, Nahradit vše a zvýrazňování syntaxe 65 jazyků (včetně Markdownu).
+• Plynulejší psaní, pohyb kurzoru, posouvání velkých souborů a vykreslování."""
 
 HU_DESC = """A miu egy egyszerű, könnyed szöveg- és kódszerkesztő, amely a napi gyors jegyzeteléstől a Markdown-szövegíráson át a programozásig minden helyzetben kényelmes használatot nyújt.
 
@@ -625,10 +625,10 @@ Nincsenek reklámok, nincs követés és nincs adatgyűjtés. Minden funkció 10
 
 Akár mindennapi jegyzettömbként, akár megbízható kódszerkesztőként használja, reméljük, hogy a miu kellemesebbé teszi az írással töltött időt."""
 
-HU_WHATS_NEW = """A miu v1.0.53 újdonságai
-• Megerősített offline Élő előnézet-védelem, pontosabb Markdown, LaTeX és 33-féle Mermaid diagrammegjelenítés.
-• Fejlesztett többsoros Regex keresés és csere, Emmet-kibontás és 65 nyelvű szintaxiskiemelés.
-• Karaktervesztési figyelmeztetés nem UTF-8 mentésnél, még biztonságosabb atomi mentés és pontosított honosítás."""
+HU_WHATS_NEW = """A miu v1.0.55 újdonságai
+• Jelentősen gyorsabb UTF-8-fájlmegnyitás és kódolás-ellenőrzés SIMD-gyorsítással.
+• Gyorsabb kis- és nagybetű-független keresés, visszafelé keresés, Összes cseréje és 65 nyelvű szintaxiskiemelés (beleértve a Markdownt).
+• Gördülékenyebb gépelés, kurzormozgatás, nagy fájlok görgetése és megjelenítés."""
 
 RO_DESC = """miu este un editor de text și cod simplu și ușor, creat pentru ca notițele zilnice, redactarea în Markdown și programarea să fie cât mai plăcute și confortabile.
 
@@ -656,10 +656,10 @@ Fără reclame, fără urmărire și fără colectare de date. Totul funcționea
 
 Fie ca agendă de zi cu zi, fie ca editor de cod de încredere, sperăm că miu vă va face timpul petrecut scriind mai plăcut."""
 
-RO_WHATS_NEW = """Noutăți în miu v1.0.53
-• Securitate offline sporită în Previzualizare și redare îmbunătățită pentru Markdown, LaTeX și 33 de diagrame Mermaid.
-• Căutare și înlocuire Regex pe mai multe rânduri, extindere Emmet și sintaxă pentru 65 de limbaje mai precise.
-• Avertizare la pierderea caracterelor în afara UTF-8, salvare atomică sigură și localizare îmbunătățită."""
+RO_WHATS_NEW = """Noutăți în miu v1.0.55
+• Deschidere și validare mult mai rapidă a fișierelor UTF-8 prin accelerare SIMD.
+• Căutare fără diferențiere majuscule/minuscule, căutare înapoi, Înlocuire peste tot și evidențiere sintactică pentru 65 de limbaje (inclusiv Markdown) mai rapide.
+• Tastare, navigare cu cursorul, derulare a fișierelor mari și randare mai fluide."""
 
 EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επεξεργαστής κειμένου και κώδικα, σχεδιασμένος ώστε οι καθημερινές σημειώσεις, η συγγραφή σε Markdown και ο προγραμματισμός να γίνονται άνετα και ευχάριστα.
 
@@ -687,10 +687,10 @@ EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επ�
 
 Είτε ως καθημερινό σημειωματάριο είτε ως αξιόπιστος επεξεργαστής κώδικα, ελπίζουμε το miu να κάνει τον χρόνο που αφιερώνετε στο γράψιμο πιο ευχάριστο."""
 
-EL_WHATS_NEW = """Τι νέο υπάρχει στο miu v1.0.53
-• Ενισχυμένη ασφάλεια προεπισκόπησης εκτός σύνδεσης και ακριβέστερη απόδοση Markdown, LaTeX και 33 διαγραμμάτων Mermaid.
-• Βελτιωμένη αναζήτηση/αντικατάσταση Regex πολλαπλών γραμμών, Emmet και επισήμανση σύνταξης 65 γλωσσών.
-• Προειδοποίηση απώλειας χαρακτήρων εκτός UTF-8, ασφαλέστερη ατομική αποθήκευση και βελτιωμένη μετάφραση."""
+EL_WHATS_NEW = """Τι νέο υπάρχει στο miu v1.0.55
+• Ταχύτερο άνοιγμα και έλεγχος αρχείων UTF-8 χάρη στην επιτάχυνση SIMD.
+• Ταχύτερη αναζήτηση χωρίς διάκριση πεζών/κεφαλαίων, αναζήτηση προς τα πίσω, Αντικατάσταση όλων και επισήμανση 65 γλωσσών (συμπερ. Markdown).
+• Πιο ομαλή πληκτρολόγηση, κίνηση δρομέα, κύλιση μεγάλων αρχείων και σχεδίαση."""
 
 TR_DESC = """miu; günlük kısa notlardan Markdown yazılarına ve programlamaya kadar her türlü metin çalışmasını keyifli ve rahat hale getirmek için tasarlanmış sade ve hafif bir metin ve kod düzenleyicidir.
 
@@ -718,10 +718,10 @@ Reklam, takip veya veri toplama yoktur. Tüm özellikler cihazınızda %100 çev
 
 İster günlük not defteriniz ister güvenilir kod düzenleyiciniz olarak, miu'nun yazma zamanınızı daha keyifli hale getirmesini dileriz."""
 
-TR_WHATS_NEW = """miu v1.0.53 Yenilikleri
-• Güçlendirilmiş çevrimdışı Canlı Önizleme güvenliği ve Markdown, LaTeX ile 33 Mermaid şemasında daha net görünüm.
-• Çok satırlı Regex bul/değiştir, Emmet genişletme ve 65 dil sözdizimi vurgulamada doğruluk iyileştirmeleri.
-• UTF-8 dışı kayıtlarda karakter kaybı uyarısı, daha güvenli atomik kaydetme ve çok dilli arayüz iyileştirmeleri."""
+TR_WHATS_NEW = """miu v1.0.55 Yenilikleri
+• SIMD hızlandırmasıyla UTF-8 dosya açma ve kodlama doğrulama önemli ölçüde hızlandırıldı.
+• Büyük/küçük harf duyarsız arama, geriye doğru arama, Tümünü Değiştir ve 65 dil sözdizimi vurgulama (Markdown dahil) hızlandırıldı.
+• Büyük dosyalarda daha akıcı yazma, imleç hareketi, kaydırma ve çizim performansı."""
 
 UK_DESC = """miu — це простий і легкий редактор тексту та коду, створений для того, щоб щоденні нотатки, написання текстів у Markdown і програмування були максимально зручними та приємними.
 
@@ -749,10 +749,10 @@ UK_DESC = """miu — це простий і легкий редактор тек
 
 Як щоденний записник або надійний редактор коду — сподіваємося, що miu зробить ваш час за письмом приємнішим."""
 
-UK_WHATS_NEW = """Що нового в miu v1.0.53
-• Посилено офлайн-захист перегляду та покращено відображення Markdown, формул LaTeX і 33 типів діаграм Mermaid.
-• Покращено багаторядковий пошук і заміну Regex, розгортання Emmet та підсвічування синтаксису 65 мов.
-• Додано попередження про втрату символів під час збереження не в UTF-8, надійніше атомарне збереження й локалізацію."""
+UK_WHATS_NEW = """Що нового в miu v1.0.55
+• Значно пришвидшено відкриття та перевірку файлів UTF-8 завдяки SIMD-прискоренню.
+• Пришвидшено пошук без урахування регістру, зворотний пошук, Замінити все та підсвічування синтаксису 65 мов (зокрема Markdown).
+• Плавніший набір тексту, рух курсора, прокручування великих файлів і рендеринг."""
 
 VI_DESC = """miu là trình soạn thảo văn bản và mã nguồn đơn giản, gọn nhẹ, mang lại cảm giác thoải mái cho mọi nhu cầu từ ghi chú nhanh hàng ngày, viết tài liệu Markdown cho đến lập trình.
 
@@ -780,10 +780,10 @@ Không quảng cáo, không theo dõi và không thu thập dữ liệu. Mọi t
 
 Dù dùng làm sổ tay hàng ngày hay trình sửa code đáng tin cậy, hy vọng miu sẽ giúp khoảng thời gian viết lách của bạn thêm phần dễ chịu."""
 
-VI_WHATS_NEW = """Có gì mới trong miu v1.0.53
-• Tăng cường bảo mật Xem trước ngoại tuyến và hiển thị chuẩn xác hơn cho Markdown, LaTeX cùng 33 loại sơ đồ Mermaid.
-• Cải thiện tìm/thay thế Regex nhiều dòng, gõ tắt Emmet và tô sáng cú pháp cho 65 ngôn ngữ.
-• Thêm cảnh báo mất ký tự khi lưu ngoài UTF-8, nâng cao lưu tệp nguyên tử an toàn và bản địa hóa đa ngôn ngữ."""
+VI_WHATS_NEW = """Có gì mới trong miu v1.0.55
+• Mở và kiểm tra tệp UTF-8 nhanh hơn đáng kể nhờ tăng tốc SIMD.
+• Tăng tốc tìm kiếm không phân biệt hoa thường, tìm ngược, Thay thế tất cả và tô sáng cú pháp 65 ngôn ngữ (gồm Markdown).
+• Gõ phím, di chuyển con trỏ, cuộn tệp lớn và hiển thị mượt mà hơn."""
 
 TH_DESC = """miu คือแอปแก้ไขข้อความและโค้ดที่เรียบง่ายและทำงานได้อย่างรวดเร็ว ออกแบบมาเพื่อให้ทั้งการจดบันทึกประจำวัน การเขียนบทความด้วย Markdown และการเขียนโปรแกรมเป็นเรื่องที่สบายตาและน่าใช้งาน
 
@@ -811,10 +811,10 @@ TH_DESC = """miu คือแอปแก้ไขข้อความและ
 
 ไม่ว่าจะใช้เป็นสมุดโน้ตประจำวันหรือเครื่องมือเขียนโค้ดคู่ใจ เราหวังว่า miu จะช่วยให้ช่วงเวลาแห่งการเขียนของคุณน่าเพลิดเพลินยิ่งขึ้น"""
 
-TH_WHATS_NEW = """มีอะไรใหม่ใน miu v1.0.53
-• ยกระดับความปลอดภัยพรีวิวออฟไลน์ และแสดงผล Markdown, สมการ LaTeX และแผนภาพ Mermaid ทั้ง 33 รูปแบบได้แม่นยำขึ้น
-• ปรับปรุงการค้นหา/แทนที่ด้วย Regex หลายบรรทัด, Emmet และการไฮไลต์ไวยากรณ์ 65 ภาษา
-• เพิ่มการแจ้งเตือนอักขระตกหล่นเมื่อบันทึกนอก UTF-8 ปรับปรุงการบันทึกไฟล์แบบอะตอมมิกและการแปลภาษา"""
+TH_WHATS_NEW = """มีอะไรใหม่ใน miu v1.0.55
+• เปิดและตรวจสอบไฟล์ UTF-8 ได้รวดเร็วยิ่งขึ้นด้วยการเร่งความเร็ว SIMD
+• ค้นหาแบบไม่สนใจตัวพิมพ์ใหญ่-เล็ก ค้นหาย้อนกลับ แทนที่ทั้งหมด และไฮไลต์ไวยากรณ์ 65 ภาษา (รวมถึง Markdown) ได้เร็วขึ้น
+• พิมพ์ข้อความ เลื่อนเคอร์เซอร์ เลื่อนดูไฟล์ขนาดใหญ่ และแสดงผลได้ลื่นไหลยิ่งขึ้น"""
 
 ID_DESC = """miu adalah editor teks dan kode yang sederhana serta ringan, dirancang agar nyaman digunakan mulai dari mencatat ide harian, menulis dokumen Markdown, hingga pemrograman.
 
@@ -842,10 +842,10 @@ Tanpa iklan, tanpa pelacakan, dan tanpa pengumpulan data. Semua fitur berjalan 1
 
 Baik sebagai buku catatan sehari-hari maupun editor kode andalan, semoga miu dapat membuat waktu menulis Anda menjadi lebih menyenangkan."""
 
-ID_WHATS_NEW = """Yang Baru di miu v1.0.53
-• Keamanan offline Pratinjau Langsung diperkuat serta tampilan Markdown, LaTeX, dan 33 diagram Mermaid lebih akurat.
-• Peningkatan cari & ganti Regex multibaris, ekspansi Emmet, dan penyorotan sintaks 65 bahasa.
-• Peringatan kehilangan karakter saat menyimpan non-UTF-8, penyimpanan atomik lebih aman, dan perbaikan pelokalan."""
+ID_WHATS_NEW = """Yang Baru di miu v1.0.55
+• Pembukaan dan validasi file UTF-8 jauh lebih cepat berkat akselerasi SIMD.
+• Pencarian tanpa peka huruf besar/kecil, pencarian mundur, Ganti Semua, dan penyorotan sintaks 65 bahasa (termasuk Markdown) lebih cepat.
+• Pengetikan, navigasi kursor, pengguliran file besar, dan perenderan lebih mulus."""
 
 MS_DESC = """miu ialah penyunting teks dan kod yang ringkas serta ringan, direka untuk memberikan keselesaan sama ada ketika mencatat nota harian, menulis dokumen Markdown mahupun melakukan pengaturcaraan.
 
@@ -873,10 +873,10 @@ Tiada iklan, tiada penjejakan dan tiada pengumpulan data. Semua ciri berfungsi 1
 
 Sama ada sebagai buku nota harian atau penyunting kod yang boleh dipercayai, kami berharap miu menjadikan masa menulis anda lebih menyenangkan."""
 
-MS_WHATS_NEW = """Baharu dalam miu v1.0.53
-• Keselamatan luar talian Pratonton Langsung diperkukuh serta paparan Markdown, LaTeX dan 33 rajah Mermaid lebih tepat.
-• Penambahbaikan cari & ganti Regex berbilang baris, pengembangan Emmet dan penyerlahan sintaks 65 bahasa.
-• Amaran kehilangan aksara bagi simpanan bukan UTF-8, simpanan atomik lebih selamat dan penyetempatan diperhalusi."""
+MS_WHATS_NEW = """Baharu dalam miu v1.0.55
+• Pembukaan dan pengesahan fail UTF-8 jauh lebih pantas dengan pecutan SIMD.
+• Carian tanpa mengira huruf besar/kecil, carian ke belakang, Ganti Semua dan penyerlahan sintaks 65 bahasa (termasuk Markdown) lebih laju.
+• Penaipan, pergerakan kursor, penatalan fail besar dan pemaparan lebih lancar."""
 
 HI_DESC = """miu एक सरल और हल्का टेक्स्ट व कोड एडिटर है, जिसे रोज़मर्रा के छोटे नोट्स से लेकर Markdown लेखन और प्रोग्रामिंग तक हर काम को सहज और आरामदायक बनाने के लिए डिज़ाइन किया गया है।
 
@@ -904,10 +904,10 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 और अन्य एन्कोडिंग
 
 चाहे आप इसे दैनिक नोटपैड के रूप में उपयोग करें या एक भरोसेमंद कोड एडिटर के रूप में, हमें उम्मीद है कि miu आपके लिखने के समय को और सुखद बनाएगा।"""
 
-HI_WHATS_NEW = """miu v1.0.53 में नया क्या है
-• ऑफ़लाइन लाइव प्रीव्यू सुरक्षा को मजबूत किया गया और Markdown, LaTeX व सभी 33 Mermaid आरेखों की रेंडरिंग सुधारी गई।
-• मल्टीलाइन Regex खोजें/बदलें, Emmet विस्तार और 65 भाषाओं के सिंटैक्स हाइलाइटिंग की सटीकता बढ़ाई गई।
-• गैर-UTF-8 सेव में अक्षर हानि चेतावनी, अधिक सुरक्षित एटॉमिक फ़ाइल सेविंग और बहुभाषी अनुवाद में सुधार।"""
+HI_WHATS_NEW = """miu v1.0.55 में नया क्या है
+• SIMD त्वरण द्वारा UTF-8 फ़ाइल खोलने और एन्कोडिंग सत्यापन की गति में बड़ा सुधार।
+• केस-इनसेंसिटिव खोज, पीछे की ओर खोज, सभी बदलें और 65 भाषाओं (Markdown सहित) की सिंटैक्स हाइलाइटिंग अब और तेज़।
+• बड़ी फ़ाइलों में टाइपिंग, कर्सर मूवमेंट, स्क्रॉलिंग और रेंडरिंग प्रदर्शन अधिक स्मूथ।"""
 
 SUPPORT_URL = "https://github.com/kenjinote/miu"
 

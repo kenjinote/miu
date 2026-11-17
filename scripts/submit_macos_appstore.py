@@ -408,8 +408,11 @@ def sync_macos_localizations(version_id: str, version_str: str):
     created = 0
     failed = 0
 
-    for locale, (desc, _v53_whats_new) in ASC_LOCALIZATIONS.items():
-        whats_new = MACOS_WHATS_NEW_V1_0_54[locale].replace("v1.0.54", f"v{version_str}")
+    for locale, (desc, asc_whats_new) in ASC_LOCALIZATIONS.items():
+        if version_str == "1.0.54":
+            whats_new = MACOS_WHATS_NEW_V1_0_54[locale]
+        else:
+            whats_new = asc_whats_new
         kw = ASC_KEYWORDS[locale]
         promo = ASC_PROMOTIONAL_TEXT[locale]
 
@@ -648,7 +651,7 @@ def attach_macos_build_and_submit(app_id: str, v_id: str, v_str: str, expected_b
 
 def main():
     parser = argparse.ArgumentParser(description="Submit macOS miu release on App Store Connect.")
-    parser.add_argument("--version", default="1.0.54", help="Target MAC_OS marketing version (default: 1.0.54)")
+    parser.add_argument("--version", default="1.0.55", help="Target MAC_OS marketing version (default: 1.0.55)")
     parser.add_argument("--build", default="", help="Optional exact CFBundleVersion build number (e.g. 58)")
     parser.add_argument("--submit", action="store_true", help="Attach build and submit MAC_OS for App Store Review")
     args = parser.parse_args()

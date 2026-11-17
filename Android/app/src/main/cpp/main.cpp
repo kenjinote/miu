@@ -645,11 +645,12 @@ int checkInBlockComment(Engine* engine, int targetLine) {
             startLine = 1;
         }
         int state = engine->commentStateCache[startLine - 1];
+        std::string lineStr;
         for (int li = startLine; li <= targetLine && li <= (int)engine->lineStarts.size(); ++li) {
             int prevLi = li - 1;
             size_t s = engine->lineStarts[prevLi];
             size_t e = (prevLi + 1 < (int)engine->lineStarts.size()) ? engine->lineStarts[prevLi + 1] : engine->pt.length();
-            std::string lineStr = engine->pt.getRange(s, e - s);
+            engine->pt.getRange(s, e - s, lineStr);
             state = scanBlockCommentState(lineStr, engine->currentSyntax, state);
             engine->commentStateCache.push_back(state);
         }

@@ -15,8 +15,13 @@
 #if defined(_MSC_VER)
 #include <intrin.h>
 #endif
-#elif defined(__ARM_NEON) || defined(__ARM_NEON__)
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)
+#if defined(_MSC_VER) && defined(_M_ARM64)
+#include <arm64_neon.h>
+#include <intrin.h>
+#else
 #include <arm_neon.h>
+#endif
 #endif
 
 namespace MiuCore {
@@ -28,7 +33,73 @@ namespace MiuCore {
 inline bool IsValidUtf8(const char* buf, size_t len) noexcept {
     if (!buf || len == 0) return true;
     size_t i = 0;
+#if defined(__AVX2__)
+    const __m256i vZero = _mm256_setzero_si256();
+    const __m256i vEsc  = _mm256_set1_epi8(0x1B);
+#elif defined(_M_X64) || defined(_M_AMD64) || defined(__SSE2__)
+    const __m128i vZero = _mm_setzero_si128();
+    const __m128i vEsc  = _mm_set1_epi8(0x1B);
+#elif defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)
+    const int8x16_t vZeroS8 = vdupq_n_s8(0);
+    const uint8x16_t vEsc   = vdupq_n_u8(0x1B);
+#endif
     while (i < len) {
+#if defined(__AVX2__)
+        if (i + 32 <= len) {
+            __m256i chunk = _mm256_loadu_si256((const __m256i*)(buf + i));
+            uint32_t special = (uint32_t)_mm256_movemask_epi8(chunk) |
+                               (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(chunk, vZero)) |
+                               (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(chunk, vEsc));
+            if (special == 0) {
+                i += 32;
+                continue;
+            }
+#if defined(_MSC_VER)
+            unsigned long tz = 0;
+            _BitScanForward(&tz, special);
+#else
+            int tz = __builtin_ctz(special);
+#endif
+            i += (size_t)tz;
+        }
+#elif defined(_M_X64) || defined(_M_AMD64) || defined(__SSE2__)
+        if (i + 16 <= len) {
+            __m128i chunk = _mm_loadu_si128((const __m128i*)(buf + i));
+            uint32_t special = (uint32_t)_mm_movemask_epi8(chunk) |
+                               (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, vZero)) |
+                               (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, vEsc));
+            if (special == 0) {
+                i += 16;
+                continue;
+            }
+#if defined(_MSC_VER)
+            unsigned long tz = 0;
+            _BitScanForward(&tz, special);
+#else
+            int tz = __builtin_ctz(special);
+#endif
+            i += (size_t)tz;
+        }
+#elif (defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)) && !(defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+        if (i + 16 <= len) {
+            uint8x16_t chunk = vld1q_u8((const uint8_t*)(buf + i));
+            uint8x16_t nonPos = vcleq_s8(vreinterpretq_s8_u8(chunk), vZeroS8);
+            uint8x16_t eqEsc  = vceqq_u8(chunk, vEsc);
+            uint8x16_t specV  = vorrq_u8(nonPos, eqEsc);
+            uint64_t m64 = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8(specV), 4)), 0);
+            if (m64 == 0) {
+                i += 16;
+                continue;
+            }
+#if defined(_MSC_VER)
+            unsigned long tz = 0;
+            _BitScanForward64(&tz, m64);
+#else
+            int tz = __builtin_ctzll(m64);
+#endif
+            i += (size_t)(tz >> 2);
+        }
+#endif
         unsigned char c = (unsigned char)buf[i];
         if (c == 0x00) return false;
         if (c == 0x1B && i + 2 < len) {
@@ -2730,21 +2801,24 @@ inline std::string adjustCaretGroupReferences(
     return fmt;
 }
 
-inline size_t findSubstringFast(
+inline size_t findSubstringInRange(
     std::string_view fullText,
-    size_t startPos,
+    size_t from,
+    size_t toInclusive,
     std::string_view query,
     bool forward,
-    bool matchCase,
-    bool wholeWord) noexcept
+    bool matchCase) noexcept
 {
     size_t len = fullText.size();
     size_t qLen = query.size();
     if (qLen == 0 || qLen > len) return std::string::npos;
 
+    size_t maxStart = len - qLen;
+    if (from > maxStart || from > toInclusive) return std::string::npos;
+    if (toInclusive > maxStart) toInclusive = maxStart;
+
     const char* data = fullText.data();
     const char* qData = query.data();
-    size_t maxStart = len - qLen;
     auto toLower = [](char c) noexcept -> char { return (c >= 'A' && c <= 'Z') ? (char)(c + ('a' - 'A')) : c; };
     char fLow = matchCase ? qData[0] : toLower(qData[0]);
     char fUp  = matchCase ? qData[0] : (char)((fLow >= 'a' && fLow <= 'z') ? (fLow - ('a' - 'A')) : fLow);
@@ -2765,19 +2839,14 @@ inline size_t findSubstringFast(
                 }
             }
         }
-        if (wholeWord) {
-            if (!isWordBoundaryBefore(fullText, p)) return false;
-            if (!isWordBoundaryAfter(fullText, p + qLen)) return false;
-        }
         return true;
     };
 
-    auto scanForwardRange = [&](size_t from, size_t to) noexcept -> size_t {
-        if (from > to) return std::string::npos;
-        if (matchCase && !wholeWord && fLow == fUp) {
+    if (forward) {
+        if (fLow == fUp) {
             size_t p = from;
-            while (p <= to) {
-                const char* hit = (const char*)std::memchr(data + p, (unsigned char)fLow, to - p + 1);
+            while (p <= toInclusive) {
+                const char* hit = (const char*)std::memchr(data + p, (unsigned char)fLow, toInclusive - p + 1);
                 if (!hit) break;
                 size_t idx = (size_t)(hit - data);
                 if (checkAt(idx)) return idx;
@@ -2785,25 +2854,191 @@ inline size_t findSubstringFast(
             }
             return std::string::npos;
         }
-        for (size_t p = from; p <= to; ++p) {
+        size_t p = from;
+#if defined(__AVX2__)
+        const __m256i vfLow = _mm256_set1_epi8(fLow);
+        const __m256i vfUp  = _mm256_set1_epi8(fUp);
+        while (p <= toInclusive && (toInclusive - p) >= 31) {
+            __m256i chunk = _mm256_loadu_si256((const __m256i*)(data + p));
+            uint32_t mask = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(chunk, vfLow)) |
+                            (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(chunk, vfUp));
+            while (mask != 0) {
+#if defined(_MSC_VER)
+                unsigned long b = 0;
+                _BitScanForward(&b, mask);
+#else
+                int b = __builtin_ctz(mask);
+#endif
+                if (checkAt(p + (size_t)b)) return p + (size_t)b;
+                mask &= (mask - 1);
+            }
+            p += 32;
+        }
+#elif defined(_M_X64) || defined(_M_AMD64) || defined(__SSE2__)
+        const __m128i vfLow = _mm_set1_epi8(fLow);
+        const __m128i vfUp  = _mm_set1_epi8(fUp);
+        while (p <= toInclusive && (toInclusive - p) >= 15) {
+            __m128i chunk = _mm_loadu_si128((const __m128i*)(data + p));
+            uint32_t mask = (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, vfLow)) |
+                            (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, vfUp));
+            while (mask != 0) {
+#if defined(_MSC_VER)
+                unsigned long b = 0;
+                _BitScanForward(&b, mask);
+#else
+                int b = __builtin_ctz(mask);
+#endif
+                if (checkAt(p + (size_t)b)) return p + (size_t)b;
+                mask &= (mask - 1);
+            }
+            p += 16;
+        }
+#elif (defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)) && !(defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+        const uint8x16_t vfLow = vdupq_n_u8((uint8_t)fLow);
+        const uint8x16_t vfUp  = vdupq_n_u8((uint8_t)fUp);
+        while (p <= toInclusive && (toInclusive - p) >= 15) {
+            uint8x16_t chunk = vld1q_u8((const uint8_t*)(data + p));
+            uint8x16_t eq = vorrq_u8(vceqq_u8(chunk, vfLow), vceqq_u8(chunk, vfUp));
+            uint64_t m64 = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8(eq), 4)), 0);
+            while (m64 != 0) {
+#if defined(_MSC_VER)
+                unsigned long tz = 0;
+                _BitScanForward64(&tz, m64);
+#else
+                int tz = __builtin_ctzll(m64);
+#endif
+                size_t b = (size_t)(tz >> 2);
+                if (checkAt(p + b)) return p + b;
+                m64 &= ~(0xFULL << (b * 4));
+            }
+            p += 16;
+        }
+#endif
+        for (; p <= toInclusive; ++p) {
             if (checkAt(p)) return p;
+        }
+        return std::string::npos;
+    } else {
+        size_t count = toInclusive - from + 1;
+#if defined(__AVX2__)
+        const __m256i vfLow = _mm256_set1_epi8(fLow);
+        const __m256i vfUp  = _mm256_set1_epi8(fUp);
+        while (count >= 32) {
+            size_t blk = from + count - 32;
+            __m256i chunk = _mm256_loadu_si256((const __m256i*)(data + blk));
+            uint32_t mask = (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(chunk, vfLow));
+            if (fLow != fUp) mask |= (uint32_t)_mm256_movemask_epi8(_mm256_cmpeq_epi8(chunk, vfUp));
+            while (mask != 0) {
+#if defined(_MSC_VER)
+                unsigned long b = 0;
+                _BitScanReverse(&b, mask);
+#else
+                int b = 31 - __builtin_clz(mask);
+#endif
+                if (checkAt(blk + (size_t)b)) return blk + (size_t)b;
+                mask &= ~(1u << b);
+            }
+            count -= 32;
+        }
+#elif defined(_M_X64) || defined(_M_AMD64) || defined(__SSE2__)
+        const __m128i vfLow = _mm_set1_epi8(fLow);
+        const __m128i vfUp  = _mm_set1_epi8(fUp);
+        while (count >= 16) {
+            size_t blk = from + count - 16;
+            __m128i chunk = _mm_loadu_si128((const __m128i*)(data + blk));
+            uint32_t mask = (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, vfLow));
+            if (fLow != fUp) mask |= (uint32_t)_mm_movemask_epi8(_mm_cmpeq_epi8(chunk, vfUp));
+            while (mask != 0) {
+#if defined(_MSC_VER)
+                unsigned long b = 0;
+                _BitScanReverse(&b, mask);
+#else
+                int b = 31 - __builtin_clz(mask);
+#endif
+                if (checkAt(blk + (size_t)b)) return blk + (size_t)b;
+                mask &= ~(1u << b);
+            }
+            count -= 16;
+        }
+#elif (defined(__ARM_NEON) || defined(__ARM_NEON__) || defined(_M_ARM64)) && !(defined(__BYTE_ORDER__) && defined(__ORDER_BIG_ENDIAN__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__)
+        const uint8x16_t vfLow = vdupq_n_u8((uint8_t)fLow);
+        const uint8x16_t vfUp  = vdupq_n_u8((uint8_t)fUp);
+        while (count >= 16) {
+            size_t blk = from + count - 16;
+            uint8x16_t chunk = vld1q_u8((const uint8_t*)(data + blk));
+            uint8x16_t eq = (fLow == fUp) ? vceqq_u8(chunk, vfLow) : vorrq_u8(vceqq_u8(chunk, vfLow), vceqq_u8(chunk, vfUp));
+            uint64_t m64 = vget_lane_u64(vreinterpret_u64_u8(vshrn_n_u16(vreinterpretq_u16_u8(eq), 4)), 0);
+            while (m64 != 0) {
+#if defined(_MSC_VER)
+                unsigned long hi = 0;
+                _BitScanReverse64(&hi, m64);
+                size_t b = (size_t)(hi >> 2);
+#else
+                size_t b = (size_t)((63 - __builtin_clzll(m64)) >> 2);
+#endif
+                if (checkAt(blk + b)) return blk + b;
+                m64 &= ~(0xFULL << (b * 4));
+            }
+            count -= 16;
+        }
+#endif
+        for (size_t k = count; k-- > 0; ) {
+            if (checkAt(from + k)) return from + k;
+        }
+        return std::string::npos;
+    }
+}
+
+inline size_t findSubstringFast(
+    std::string_view fullText,
+    size_t startPos,
+    std::string_view query,
+    bool forward,
+    bool matchCase,
+    bool wholeWord) noexcept
+{
+    size_t len = fullText.size();
+    size_t qLen = query.size();
+    if (qLen == 0 || qLen > len) return std::string::npos;
+    size_t maxStart = len - qLen;
+
+    auto scanForwardChecked = [&](size_t from, size_t to) noexcept -> size_t {
+        size_t cur = from;
+        while (cur <= to) {
+            size_t hit = findSubstringInRange(fullText, cur, to, query, true, matchCase);
+            if (hit == std::string::npos) return std::string::npos;
+            if (!wholeWord || (isWordBoundaryBefore(fullText, hit) && isWordBoundaryAfter(fullText, hit + qLen))) {
+                return hit;
+            }
+            cur = hit + 1;
+        }
+        return std::string::npos;
+    };
+
+    auto scanBackwardChecked = [&](size_t from, size_t to) noexcept -> size_t {
+        size_t cur = to;
+        while (from <= cur) {
+            size_t hit = findSubstringInRange(fullText, from, cur, query, false, matchCase);
+            if (hit == std::string::npos) return std::string::npos;
+            if (!wholeWord || (isWordBoundaryBefore(fullText, hit) && isWordBoundaryAfter(fullText, hit + qLen))) {
+                return hit;
+            }
+            if (hit == from) break;
+            cur = hit - 1;
         }
         return std::string::npos;
     };
 
     if (forward) {
         size_t cur = (startPos <= maxStart) ? startPos : 0;
-        size_t pos = scanForwardRange(cur, maxStart);
+        size_t pos = scanForwardChecked(cur, maxStart);
         if (pos != std::string::npos) return pos;
-        if (cur > 0) return scanForwardRange(0, cur - 1);
+        if (cur > 0) return scanForwardChecked(0, cur - 1);
     } else {
         size_t firstStart = (startPos == 0) ? maxStart : std::min(startPos - 1, maxStart);
-        for (size_t p = firstStart + 1; p-- > 0; ) {
-            if (checkAt(p)) return p;
-        }
-        for (size_t p = maxStart + 1; p-- > firstStart + 1; ) {
-            if (checkAt(p)) return p;
-        }
+        size_t pos = scanBackwardChecked(0, firstStart);
+        if (pos != std::string::npos) return pos;
+        if (firstStart < maxStart) return scanBackwardChecked(firstStart + 1, maxStart);
     }
     return std::string::npos;
 }

@@ -91,6 +91,9 @@ struct SyntaxRuleMeta {
     SyntaxRuleKind kind = SyntaxRuleKind::GenericRegex;
     char reqChar1 = 0;
     char reqChar2 = 0;
+    char anyChar1 = 0;
+    char anyChar2 = 0;
+    char anyChar3 = 0;
 };
 struct SyntaxDef {
     bool active = false;
@@ -147,6 +150,20 @@ static inline SyntaxRuleMeta classifySyntaxRegex(const std::string& pat) {
     if (pat == R"((?:^|[\r\n])[ \t]*[a-zA-Z0-9_-]+(?=[ \t]*=))") { m.kind = SyntaxRuleKind::LineKeyBeforeEqNoDot; m.reqChar1 = '='; return m; }
     if (pat == R"((?:^|[\r\n])[a-zA-Z0-9_./-]+(?=[ \t]*:(?!=)))") { m.kind = SyntaxRuleKind::MakefileTarget; m.reqChar1 = ':'; return m; }
     if (pat == R"((?:^|[\r\n])[ \t]*[a-zA-Z_.][a-zA-Z0-9_.$@]*(?=[ \t]*:))") { m.kind = SyntaxRuleKind::AsmLabel; m.reqChar1 = ':'; return m; }
+    if (pat == R"((?:^|[\r\n])[ \t]*#{1,6}[ \t]+[^\r\n]*)") { m.reqChar1 = '#'; return m; }
+    if (pat.find(R"((\*\*\*|___))") == 0) { m.anyChar1 = '*'; m.anyChar2 = '_'; return m; }
+    if (pat.find(R"((?:^|[\r\n])[ \t]*`{3,})") == 0) { m.anyChar1 = '`'; m.anyChar2 = '~'; return m; }
+    if (pat == R"(\b[a-zA-Z_][a-zA-Z0-9_]*!)") { m.reqChar1 = '!'; return m; }
+    if (pat == R"((?:^|[\r\n])[ \t]*([rR][eE][mM]\b|::)[^\r\n]*)") { m.anyChar1 = 'r'; m.anyChar2 = 'R'; m.anyChar3 = ':'; return m; }
+    if (pat == R"((?:^|[\r\n])[ \t]*[a-zA-Z0-9_.-]+:)") { m.reqChar1 = ':'; return m; }
+    if (pat == R"((?:<-->|<-\.->|<==>|-->|---|-\.->|-\.-|==>|===|--x|--o|o--o|x--x|->>|-->>|-x|-\)|--\)|:::))") { m.anyChar1 = '-'; m.anyChar2 = '='; m.anyChar3 = ':'; return m; }
+    if (pat == R"((?:<-|<<-|->|->>|%>%|\|>))") { m.anyChar1 = '-'; m.anyChar2 = '>'; return m; }
+    if (pat == R"((?:^|[\r\n])[ \t]*\[\[(?:[^\r\n\]]+)\]\]|(?:^|[\r\n])[ \t]*\[(?:[^\r\n\]]+)\])") { m.reqChar1 = '['; m.reqChar2 = ']'; return m; }
+    if (pat == R"(\[\[[a-zA-Z_][a-zA-Z0-9_(), \t]*\]\])") { m.reqChar1 = '['; m.reqChar2 = ']'; return m; }
+    if (pat == R"(\b[0-9]{4}[-/][0-9]{2}[-/][0-9]{2}\b)") { m.anyChar1 = '-'; m.anyChar2 = '/'; return m; }
+    if (pat == R"(\$\{[^}\r\n]+\}|\$[a-zA-Z_][a-zA-Z0-9_]*)") { m.reqChar1 = '$'; return m; }
+    if (pat == R"((?:^|[\r\n])[0-9 ]{0,6}\*[^\r\n]*)") { m.reqChar1 = '*'; return m; }
+    if (pat == R"(:-|\?-->|-->)") { m.reqChar1 = '-'; return m; }
     if (!pat.empty()) {
         bool hasTopAlt = false;
         {
@@ -1197,6 +1214,10 @@ inline void scanSyntaxHighlighting(
         SyntaxRuleMeta meta = (i < currentSyntax.ruleMetas.size()) ? currentSyntax.ruleMetas[i] : SyntaxRuleMeta{};
         if (meta.reqChar1 != 0 && visibleText.find(meta.reqChar1) == std::string::npos) continue;
         if (meta.reqChar2 != 0 && visibleText.find(meta.reqChar2) == std::string::npos) continue;
+        if (meta.anyChar1 != 0 &&
+            visibleText.find(meta.anyChar1) == std::string::npos &&
+            (meta.anyChar2 == 0 || visibleText.find(meta.anyChar2) == std::string::npos) &&
+            (meta.anyChar3 == 0 || visibleText.find(meta.anyChar3) == std::string::npos)) continue;
 
         auto setEffect = [&](size_t start, size_t len) {
             if (len > 0) applySpan(start, len, (int)i);

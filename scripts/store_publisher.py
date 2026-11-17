@@ -7,6 +7,27 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.55": {
+        "ja-jp": """miu v1.0.55 アップデート内容
+・SIMD高速化により、UTF-8ファイルの読み込み・文字コード検証を大幅に高速化
+・大文字小文字を区別しない検索・上方向検索・全置換および65言語ハイライト（Markdown等）を高速化
+・大容量ファイルでの文字入力・カーソル移動・スクロールおよび描画パフォーマンスを改善""",
+
+        "en-us": """What's New in miu v1.0.55
+• Faster UTF-8 file loading and encoding validation powered by SIMD acceleration.
+• Faster case-insensitive search, backward search, Replace All, and 65-language syntax highlighting (including Markdown).
+• Smoother typing, caret navigation, large-file scrolling, and rendering performance.""",
+
+        "zh-hans": """miu v1.0.55 更新内容
+・引入 SIMD 加速，大幅提升 UTF-8 文件打开与编码校验速度
+・大幅加快不区分大小写查找、向上查找、全部替换及 65 种语言语法高亮（含 Markdown）
+・优化大文件输入、光标移动、滚动注释解析与界面渲染性能""",
+
+        "ko": """miu v1.0.55 업데이트 안내
+・SIMD 가속을 통해 UTF-8 파일 열기 및 인코딩 검증 속도 대폭 향상
+・대소문자 구분 없는 검색, 이전 찾기, 모두 바꾸기 및 65개 언어 구문 강조(Markdown 포함) 고속화
+・대용량 파일 입력, 커서 이동, 스크롤 및 렌더링 성능 최적화"""
+    },
     "1.0.53": {
         "ja-jp": """miu v1.0.53 リリースノート
 ・ライブプレビューのオフライン保護強化と Markdown / LaTeX 数式 / 全33種 Mermaid 図表の描画安定性向上
