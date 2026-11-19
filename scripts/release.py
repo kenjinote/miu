@@ -220,47 +220,47 @@ def main():
         if not notes:
             # Default release notes template
             notes = f"# miu {release_name} リリースノート / Release Notes\n\n" + r"""## 🇯🇵 日本語 (Japanese)
-v1.0.55 では、既存の機能・UI・描画仕様を完全に維持したまま、ファイル読込・検索・シンタックスハイライト・編集・スクロール・描画の各ホットパスを高速化しました。
+v1.0.56 では、Windows・macOS・iOS・Android 全プラットフォームにおける HTML ライブプレビューの `<script>` 動作統一と、未保存 HTML スニペットへの対応を実施しました。
 
-- **UTF-8 検証の SIMD 高速化**：AVX2 / SSE2 / ARM NEON による 16/32 バイト ASCII 一括スキップを導入し、ファイル読込・保存検証を大幅に高速化しました。
-- **検索・置換および 65 言語ハイライトの高速化**：大文字小文字を区別しない検索・上方向検索・全置換への高速スキャン適用と、Markdown 等の正規表現プリチェックにより処理負荷を大幅に削減しました。
-- **大容量ファイルでの編集・スクロール・描画最適化**：単一行編集時の最長行追跡の `O(1)` 化、スクロール時のブロックコメント判定のチェックポイント化、および一時アロケーション削減によりレスポンスを向上しました。
+- **未保存 HTML スニペットの `<script>` 実行対応**：新規作成の未保存バッファにおいて、`<!DOCTYPE html>` 等を省略して `<canvas>`・`<div>`・`<script>`・`<style>`・`<button>` 等から直接書き始めた場合でも HTML プレビューとして描画・スクリプト実行されるようになりました（オフライン隔離・ローカル保護は維持）。
+- **プラットフォーム間の HTML プレビュー CSP 統一**：macOS / iOS / Android の HTML プレビュー CSP を Windows 版と揃え、`eval()` / `new Function()` および `blob:` / `data:` URL スクリプトの実行に対応しました。
+- **`.html` 保存直後のライブプレビュー即時反映**：新規テキストを `.html` として保存した瞬間にプレビューが自動的に HTML モードへ切り替わるよう改善しました。
 
 ---
 
 ## 🇺🇸 English
-Version 1.0.55 delivers across-the-board speed optimizations across file loading, search, syntax highlighting, editing, scrolling, and rendering while preserving 100% identical behavior and visual output.
+Version 1.0.56 unifies HTML Live Preview `<script>` execution across Windows, macOS, iOS, and Android, and enables instant `<script>` previewing in unsaved HTML snippets.
 
-- **SIMD-Accelerated UTF-8 Validation**: Added 16/32-byte AVX2 / SSE2 / ARM NEON ASCII fast-skip to significantly speed up file opening and encoding checks.
-- **Faster Search & 65-Language Syntax Highlighting**: Accelerated case-insensitive search, backward search, and Replace All, and added required-character prechecks for Markdown and other syntax rules.
-- **Smoother Large-File Editing, Scrolling & Rendering**: Optimized single-line max-width tracking to `O(1)`, added line-boundary block-comment checkpoints for smooth scrolling, and eliminated per-frame temporary allocations.
+- **Unsaved HTML Snippet `<script>` Support**: Unsaved scratchpad buffers starting directly with HTML elements such as `<canvas>`, `<div>`, `<script>`, `<style>`, or `<button>` (without requiring a `<!DOCTYPE html>` prologue) now automatically render in HTML Live Preview with `<script>` execution while preserving strict offline isolation.
+- **Cross-Platform HTML Preview CSP Parity**: Aligned HTML Live Preview CSP on macOS, iOS, and Android with Windows to support `eval()` / `new Function()` as well as `blob:` and `data:` scripts.
+- **Instant Preview Refresh on `.html` Save**: Saving an untitled buffer as `.html` now immediately switches Live Preview into HTML mode without requiring an extra edit or toggle.
 
 ---
 
 ## 🇨🇳 简体中文 (Simplified Chinese)
-v1.0.55 在完全保持原有功能与显示效果一致的前提下，全面优化了文件读取、查找替换、语法高亮、输入与大文件滚动的性能。
+v1.0.56 统一了 Windows、macOS、iOS 与 Android 全平台的 HTML 实时预览 `<script>` 行为，并新增对未保存 HTML 片段脚本的直接支持。
 
-- **UTF-8 校验 SIMD 加速**：采用 AVX2 / SSE2 / ARM NEON 的 16/32 字节 ASCII 快速跳过，显著提升文件打开与编码检测速度。
-- **查找替换与 65 种语言语法高亮提速**：全面加速不区分大小写查找、向上查找与全部替换，并为 Markdown 等语法规则增加前置字符快速过滤。
-- **大文件编辑、滚动与渲染优化**：将单行编辑最长行追踪优化为 `O(1)`，为块注释解析引入行边界检查点，并消除渲染与光标计算中的临时内存分配。
+- **支持未保存 HTML 片段执行 `<script>`**：在新建未保存缓冲区中直接编写以 `<canvas>`、`<div>`、`<script>`、`<style>`、`<button>` 等开头的 HTML 片段（无需 `<!DOCTYPE html>` 声明）时，现可直接渲染并运行脚本，同时保持严格的离线安全隔离。
+- **全平台 HTML 预览 CSP 统一**：将 macOS / iOS / Android 的 HTML 预览 CSP 与 Windows 版对齐，支持 `eval()` / `new Function()` 以及 `blob:` / `data:` 脚本加载。
+- **另存为 `.html` 后即时刷新预览**：将未命名缓冲区保存为 `.html` 文件后，实时预览会立即自动切换至 HTML 模式。
 
 ---
 
 ## 🇹🇼 繁體中文 (Traditional Chinese)
-v1.0.55 在完全維持原有功能與顯示效果一致的前提下，全面最佳化了檔案讀取、尋找取代、語法突顯、輸入與大檔案捲動的效能。
+v1.0.56 統一了 Windows、macOS、iOS 與 Android 全平台的 HTML 即時預覽 `<script>` 行為，並新增對未儲存 HTML 片段腳本的直接支援。
 
-- **UTF-8 驗證 SIMD 加速**：採用 AVX2 / SSE2 / ARM NEON 的 16/32 位元組 ASCII 快速跳過，顯著提升檔案開啟與編碼偵測速度。
-- **尋找取代與 65 種語言語法突顯提速**：全面加速不區分大小寫尋找、向上尋找與全部取代，並為 Markdown 等語法規則加入前置字元快速過濾。
-- **大檔案編輯、捲動與渲染最佳化**：將單行編輯最長行追蹤最佳化為 `O(1)`，為區塊註解解析導入行邊界檢查點，並消除渲染與游標計算中的暫時記憶體配置。
+- **支援未儲存 HTML 片段執行 `<script>`**：在新建未儲存緩衝區中直接編寫以 `<canvas>`、`<div>`、`<script>`、`<style>`、`<button>` 等開頭的 HTML 片段（無需 `<!DOCTYPE html>` 宣告）時，現可直接渲染並執行腳本，同時維持嚴格的離線安全隔離。
+- **全平台 HTML 預覽 CSP 統一**：將 macOS / iOS / Android 的 HTML 預覽 CSP 與 Windows 版對齊，支援 `eval()` / `new Function()` 以及 `blob:` / `data:` 腳本載入。
+- **另存為 `.html` 後即時重新整理預覽**：將未命名緩衝區儲存為 `.html` 檔案後，即時預覽會立即自動切換至 HTML 模式。
 
 ---
 
 ## 🇰🇷 한국어 (Korean)
-v1.0.55에서는 기존 기능과 화면 표시를 100% 동일하게 유지하면서 파일 열기, 검색/바꾸기, 구문 강조, 편집, 스크롤 및 렌더링 전반의 속도를 개선했습니다.
+v1.0.56에서는 Windows, macOS, iOS, Android 전 플랫폼의 HTML 실시간 미리보기 `<script>` 동작을 통일하고 저장하지 않은 HTML 스니펫 지원을 추가했습니다.
 
-- **SIMD 기반 UTF-8 검증 고속화**: AVX2 / SSE2 / ARM NEON 16/32바이트 ASCII 고속 스킵을 적용하여 파일 열기 및 인코딩 감지 속도를 크게 높였습니다.
-- **검색/바꾸기 및 65개 언어 구문 강조 고속화**: 대소문자 구분 없는 검색, 이전 찾기, 모두 바꾸기를 고속화하고 Markdown 등 구문 정규식에 필수 문자 사전 필터를 적용했습니다.
-- **대용량 파일 편집·스크롤·렌더링 최적화**: 단일 행 편집 시 최장 행 추적을 `O(1)`로 개선하고 블록 주석 체크포인트 및 프레임 내 임시 할당 제거로 반응성을 높였습니다.
+- **미저장 HTML 스니펫 `<script>` 실행 지원**: 새로 만든 미저장 버퍼에서 `<!DOCTYPE html>` 없이 `<canvas>`, `<div>`, `<script>`, `<style>`, `<button>` 등으로 바로 작성해도 오프라인 격리를 유지한 채 HTML 미리보기 및 스크립트가 즉시 실행됩니다.
+- **플랫폼 간 HTML 미리보기 CSP 통일**: macOS / iOS / Android의 HTML 미리보기 CSP를 Windows 버전과 동일하게 맞춰 `eval()` / `new Function()` 및 `blob:` / `data:` 스크립트를 지원합니다.
+- **`.html` 저장 즉시 미리보기 자동 전환**: 새 문서를 `.html`로 저장하는 즉시 실시간 미리보기가 HTML 모드로 전환됩니다.
 """
         elif os.path.exists(notes):
             with open(notes, "r", encoding="utf-8") as f:

@@ -5101,7 +5101,7 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetPreviewHtml(JNIEnv
         if (g_engine->previewNonce.empty()) g_engine->previewNonce = generateRandomHexNonce();
         static constexpr size_t PREVIEW_MAX_BYTES = 524288;
         std::string text = g_engine->pt.getRange(0, std::min(g_engine->pt.length(), PREVIEW_MAX_BYTES + 1));
-        MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce);
+        MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce, g_engine->currentFilePath.empty());
         g_engine->lastPreviewWasMdOrMermaid = res.isMdOrMermaidShell;
         fullHtml = std::move(res.fullHtml);
     }
@@ -5121,7 +5121,7 @@ JNIEXPORT jstring JNICALL Java_jp_hack_miu_MainActivity_cmdGetPreviewDomUpdateJs
         if (g_engine->previewNonce.empty()) g_engine->previewNonce = generateRandomHexNonce();
         static constexpr size_t PREVIEW_MAX_BYTES = 524288;
         std::string text = g_engine->pt.getRange(0, std::min(g_engine->pt.length(), PREVIEW_MAX_BYTES + 1));
-        MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce);
+        MiuPreview::PreviewRenderResult res = MiuPreview::renderPreview(text, g_engine->currentFileExt, isDark == JNI_TRUE, g_engine->previewNonce, g_engine->currentFilePath.empty());
         if (!res.isMdOrMermaidShell) return utf8ToJString(env, "");
         js = MiuPreview::buildDomUpdateJs(res.bodyContent, isDark == JNI_TRUE);
     }
@@ -5136,7 +5136,7 @@ JNIEXPORT void JNICALL Java_jp_hack_miu_MainActivity_cmdHandlePreviewMessage(JNI
     static constexpr size_t PREVIEW_HEAD_BYTES = 4096;
     std::string head = g_engine->pt.getRange(0, std::min(g_engine->pt.length(), PREVIEW_HEAD_BYTES));
     int lineIdx = -1;
-    if (MiuPreview::parseVerifiedTaskToggleMessage(rawMsg, g_engine->previewNonce, g_engine->currentFileExt, head, lineIdx)) {
+    if (MiuPreview::parseVerifiedTaskToggleMessage(rawMsg, g_engine->previewNonce, g_engine->currentFileExt, head, lineIdx, g_engine->currentFilePath.empty())) {
         handlePreviewTaskToggleCommand(g_engine, lineIdx);
     }
 }

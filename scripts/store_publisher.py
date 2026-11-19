@@ -7,6 +7,27 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.56": {
+        "ja-jp": """miu v1.0.56 アップデート内容
+・未保存の新規バッファでも <canvas> や <div> 等から始まる HTML スニペットの <script> 実行に対応
+・macOS / iOS / Android の HTML プレビュー CSP を Windows 版と統一し、eval / new Function や blob: / data: スクリプトに対応
+・未保存テキストを .html として保存した直後にプレビューが即時 HTML モードへ切り替わるよう改善""",
+
+        "en-us": """What's New in miu v1.0.56
+• Enabled <script> execution for unsaved HTML snippets (starting with <canvas>, <div>, <script>, <style>, etc.) across all platforms.
+• Unified HTML Live Preview CSP on macOS, iOS, and Android with Windows to support eval / new Function and blob: / data: scripts.
+• Fixed Live Preview to immediately switch to HTML mode as soon as an untitled buffer is saved as .html.""",
+
+        "zh-hans": """miu v1.0.56 更新内容
+・支持在未保存的新建缓冲区中直接运行以 <canvas>、<div>、<script> 等开头的 HTML 片段脚本
+・统一 macOS / iOS / Android 与 Windows 版的 HTML 预览 CSP，支持 eval / new Function 及 blob: / data: 脚本
+・改进保存流程，将未保存文档另存为 .html 后立即自动刷新为 HTML 实时预览""",
+
+        "ko": """miu v1.0.56 업데이트 안내
+・저장하지 않은 새 버퍼에서도 <canvas>, <div>, <script> 등으로 시작하는 HTML 스니펫의 <script> 실행 지원
+・macOS / iOS / Android의 HTML 미리보기 CSP를 Windows 버전과 통일하여 eval / new Function 및 blob: / data: 스크립트 지원
+・새 문서를 .html로 저장한 직후 실시간 미리보기가 즉시 HTML 모드로 전환되도록 개선"""
+    },
     "1.0.55": {
         "ja-jp": """miu v1.0.55 アップデート内容
 ・SIMD高速化により、UTF-8ファイルの読み込み・文字コード検証を大幅に高速化

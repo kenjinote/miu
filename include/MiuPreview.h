@@ -2665,6 +2665,153 @@ inline bool looksLikeStandaloneHtmlOrSvg(const std::string& rawInput) {
     return false;
 }
 
+inline bool looksLikeUnsavedHtmlSnippet(const std::string& rawInput) noexcept {
+    auto isAlphaAscii = [](char ch) noexcept -> bool {
+        unsigned char c = (unsigned char)ch;
+        return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    };
+    auto isAlnumAscii = [](char ch) noexcept -> bool {
+        unsigned char c = (unsigned char)ch;
+        return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z');
+    };
+    const size_t n = rawInput.size();
+    size_t p = 0;
+    if (n >= 3 && (unsigned char)rawInput[0] == 0xEF &&
+        (unsigned char)rawInput[1] == 0xBB && (unsigned char)rawInput[2] == 0xBF) {
+        p = 3;
+    }
+    while (p < n) {
+        if (detail::isHtmlSpace(rawInput[p])) {
+            p++;
+            continue;
+        }
+        if (p + 4 <= n && rawInput.compare(p, 4, "<!--") == 0) {
+            size_t after = p;
+            if (!detail::skipHtmlCommentAt(rawInput, p, after)) return false;
+            p = after;
+            continue;
+        }
+        break;
+    }
+    if (p + 2 >= n || rawInput[p] != '<' || !isAlphaAscii(rawInput[p + 1])) return false;
+
+    const size_t nameStart = p + 1;
+    size_t nameEnd = nameStart;
+    while (nameEnd < n && isAlnumAscii(rawInput[nameEnd]) && (nameEnd - nameStart) <= 16) {
+        nameEnd++;
+    }
+    if (nameEnd == nameStart || (nameEnd - nameStart) > 16 || !detail::isTagBoundaryChar(rawInput, nameEnd)) {
+        return false;
+    }
+    size_t afterGt = nameEnd;
+    bool selfClosing = false;
+    if (!detail::scanHtmlStartTagEnd(rawInput, nameEnd, afterGt, selfClosing)) {
+        return false;
+    }
+
+    char lowerTag[17];
+    const size_t tagLen = nameEnd - nameStart;
+    for (size_t i = 0; i < tagLen; ++i) {
+        lowerTag[i] = detail::asciiLowerChar(rawInput[nameStart + i]);
+    }
+    lowerTag[tagLen] = '\0';
+    std::string_view tag(lowerTag, tagLen);
+
+    static const char* const unambiguousWebTags[] = {
+        "script", "style", "canvas", "button", "input", "select", "textarea", "form",
+        "label", "dialog", "template", "section", "main", "header", "footer", "nav",
+        "article", "aside", "figure", "figcaption", "video", "audio", "picture",
+        "iframe", "meta", "link", "title", "output", "progress", "meter", "fieldset"
+    };
+    for (const char* wt : unambiguousWebTags) {
+        if (tag == wt) return true;
+    }
+
+    static const char* const sharedFlowTags[] = {
+        "div", "span", "p", "h1", "h2", "h3", "h4", "h5", "h6",
+        "table", "ul", "ol", "dl", "blockquote", "pre", "code",
+        "a", "img", "details", "hr", "br"
+    };
+    bool isSharedTag = false;
+    for (const char* st : sharedFlowTags) {
+        if (tag == st) { isSharedTag = true; break; }
+    }
+    if (!isSharedTag) return false;
+
+    {
+        const size_t openLen = afterGt - nameEnd;
+        for (size_t i = 0; i + 3 < openLen; ++i) {
+            if (detail::isHtmlSpace(rawInput[nameEnd + i])) {
+                size_t a = i + 1;
+                while (a < openLen && detail::isHtmlSpace(rawInput[nameEnd + a])) a++;
+                if (a + 6 <= openLen && detail::matchAsciiCI(rawInput, nameEnd + a, "style", 5)) {
+                    size_t eq = a + 5;
+                    while (eq < openLen && detail::isHtmlSpace(rawInput[nameEnd + eq])) eq++;
+                    if (eq < openLen && rawInput[nameEnd + eq] == '=') return true;
+                }
+                if (a + 4 <= openLen && detail::matchAsciiCI(rawInput, nameEnd + a, "on", 2) &&
+                    isAlphaAscii(rawInput[nameEnd + a + 2])) {
+                    size_t eq = a + 3;
+                    while (eq < openLen && isAlphaAscii(rawInput[nameEnd + eq])) eq++;
+                    while (eq < openLen && detail::isHtmlSpace(rawInput[nameEnd + eq])) eq++;
+                    if (eq < openLen && rawInput[nameEnd + eq] == '=') return true;
+                }
+            }
+        }
+    }
+
+    const size_t scanLim = std::min<size_t>(n, 65536);
+    size_t firstWebOnlyPos = std::string::npos;
+    for (size_t i = afterGt; i + 4 < scanLim; ++i) {
+        if (rawInput[i] != '<') continue;
+        if ((detail::matchAsciiCI(rawInput, i, "<script", 7) && detail::isTagBoundaryChar(rawInput, i + 7)) ||
+            (detail::matchAsciiCI(rawInput, i, "<style", 6) && detail::isTagBoundaryChar(rawInput, i + 6)) ||
+            (detail::matchAsciiCI(rawInput, i, "<canvas", 7) && detail::isTagBoundaryChar(rawInput, i + 7)) ||
+            (detail::matchAsciiCI(rawInput, i, "<button", 7) && detail::isTagBoundaryChar(rawInput, i + 7)) ||
+            (detail::matchAsciiCI(rawInput, i, "<input", 6) && detail::isTagBoundaryChar(rawInput, i + 6)) ||
+            (detail::matchAsciiCI(rawInput, i, "<select", 7) && detail::isTagBoundaryChar(rawInput, i + 7)) ||
+            (detail::matchAsciiCI(rawInput, i, "<textarea", 9) && detail::isTagBoundaryChar(rawInput, i + 9)) ||
+            (detail::matchAsciiCI(rawInput, i, "<form", 5) && detail::isTagBoundaryChar(rawInput, i + 5))) {
+            firstWebOnlyPos = i;
+            break;
+        }
+    }
+
+    size_t firstFencePos = std::string::npos;
+    size_t firstMdBlockPos = std::string::npos;
+    for (size_t i = afterGt; i < scanLim; ++i) {
+        if (rawInput[i] != '\n' && rawInput[i] != '\r') continue;
+        if (rawInput[i] == '\r' && i + 1 < scanLim && rawInput[i + 1] == '\n') i++;
+        size_t ls = i + 1;
+        while (ls < scanLim && (rawInput[ls] == ' ' || rawInput[ls] == '\t')) ls++;
+        if (ls >= scanLim) break;
+        if (ls + 3 <= scanLim && (rawInput.compare(ls, 3, "```") == 0 || rawInput.compare(ls, 3, "~~~") == 0)) {
+            if (firstFencePos == std::string::npos) firstFencePos = ls;
+            if (firstMdBlockPos == std::string::npos) firstMdBlockPos = ls;
+            break;
+        }
+        if (firstMdBlockPos == std::string::npos) {
+            if (rawInput[ls] == '#') {
+                size_t h = ls;
+                while (h < scanLim && rawInput[h] == '#' && (h - ls) < 6) h++;
+                if (h > ls && h < scanLim && (rawInput[h] == ' ' || rawInput[h] == '\t')) {
+                    firstMdBlockPos = ls;
+                }
+            } else if (ls + 5 <= scanLim && (rawInput[ls] == '-' || rawInput[ls] == '*' || rawInput[ls] == '+') &&
+                       rawInput[ls + 1] == ' ' && rawInput[ls + 2] == '[' &&
+                       (rawInput[ls + 3] == ' ' || rawInput[ls + 3] == 'x' || rawInput[ls + 3] == 'X') &&
+                       rawInput[ls + 4] == ']') {
+                firstMdBlockPos = ls;
+            }
+        }
+    }
+
+    if (firstWebOnlyPos != std::string::npos) {
+        return (firstFencePos == std::string::npos || firstWebOnlyPos < firstFencePos);
+    }
+    return firstMdBlockPos == std::string::npos;
+}
+
 inline std::string sanitizeNonceToken(const std::string& customNonce) {
     if (customNonce.empty() || customNonce.size() > 128) return getPreviewCspNonce();
     for (unsigned char c : customNonce) {
@@ -2682,7 +2829,8 @@ inline PreviewRenderResult renderPreview(
     const std::wstring& currentExtension,
     bool isDarkMode,
     const std::string& baseHrefTag = "",
-    const std::string& customNonce = "")
+    const std::string& customNonce = "",
+    bool isUnsavedBuffer = true)
 {
     PreviewRenderResult res;
     std::string truncNotice;
@@ -2692,7 +2840,9 @@ inline PreviewRenderResult renderPreview(
     const char* kMdThemeStyle = getMdThemeStyle();
     const std::string nonce = sanitizeNonceToken(customNonce);
     const char* baseUriPolicy = baseHrefTag.empty() ? "base-uri 'none';" : "base-uri https://miu.local;";
-    const bool looksLikeHtmlDoc = currentExtension.empty() && looksLikeStandaloneHtmlOrSvg(rawInput);
+    const bool looksLikeHtmlDoc = currentExtension.empty() &&
+                                  (looksLikeStandaloneHtmlOrSvg(rawInput) ||
+                                   (isUnsavedBuffer && looksLikeUnsavedHtmlSnippet(rawInput)));
     const bool isMermaid = (currentExtension == L"mmd" || currentExtension == L"mermaid" ||
                             ((currentExtension.empty() || currentExtension == L"txt") && !looksLikeHtmlDoc && looksLikeMermaid(rawInput)));
     const bool isMd = (!isMermaid && (currentExtension == L"md" || currentExtension == L"markdown" || currentExtension == L"mdx" ||
@@ -2804,7 +2954,7 @@ inline PreviewRenderResult renderPreview(
             html += truncNotice;
             html += "</body></html>";
         } else {
-            std::string webCspMeta = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline' https://miu.local; style-src 'unsafe-inline' https://miu.local; img-src https://miu.local data: blob:; font-src https://miu.local data:; media-src https://miu.local data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; child-src 'none'; form-action 'none'; ";
+            std::string webCspMeta = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob: data: https://miu.local; style-src 'unsafe-inline' https://miu.local data:; img-src https://miu.local data: blob:; font-src https://miu.local data:; media-src https://miu.local data: blob:; connect-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; child-src 'none'; form-action 'none'; ";
             webCspMeta += baseUriPolicy;
             webCspMeta += "\">";
             bool hasFullHtml = false;
@@ -2853,7 +3003,8 @@ inline PreviewRenderResult renderPreview(
     const std::string& rawInput,
     const std::string& currentFileExtUtf8,
     bool isDarkMode,
-    const std::string& customNonce = "")
+    const std::string& customNonce = "",
+    bool isUnsavedBuffer = true)
 {
     try {
         std::wstring wext;
@@ -2881,9 +3032,9 @@ inline PreviewRenderResult renderPreview(
                 }
                 truncated.erase(cut);
             }
-            return renderPreview(truncated, true, "Preview truncated (512 KB)", wext, isDarkMode, "", customNonce);
+            return renderPreview(truncated, true, "Preview truncated (512 KB)", wext, isDarkMode, "", customNonce, isUnsavedBuffer);
         }
-        return renderPreview(rawInput, false, "", wext, isDarkMode, "", customNonce);
+        return renderPreview(rawInput, false, "", wext, isDarkMode, "", customNonce, isUnsavedBuffer);
     } catch (...) {
         return PreviewRenderResult{};
     }
@@ -2894,7 +3045,8 @@ inline bool parseVerifiedTaskToggleMessage(
     const std::string& expectedNonce,
     const std::string& currentFileExtUtf8,
     const std::string& rawDocHead,
-    int& outLineIdx) noexcept
+    int& outLineIdx,
+    bool isUnsavedBuffer = true) noexcept
 {
     outLineIdx = -1;
     if (expectedNonce.empty()) return false;
@@ -2908,7 +3060,9 @@ inline bool parseVerifiedTaskToggleMessage(
         if (wext.empty() && c == '.') continue;
         wext.push_back((wchar_t)((c >= 'A' && c <= 'Z') ? (c + 32) : c));
     }
-    const bool looksLikeHtmlDoc = wext.empty() && looksLikeStandaloneHtmlOrSvg(rawDocHead);
+    const bool looksLikeHtmlDoc = wext.empty() &&
+                                  (looksLikeStandaloneHtmlOrSvg(rawDocHead) ||
+                                   (isUnsavedBuffer && looksLikeUnsavedHtmlSnippet(rawDocHead)));
     const bool isMermaid = (wext == L"mmd" || wext == L"mermaid" ||
                             ((wext.empty() || wext == L"txt") && !looksLikeHtmlDoc && looksLikeMermaid(rawDocHead)));
     const bool isMd = (!isMermaid && (wext == L"md" || wext == L"markdown" || wext == L"mdx" ||

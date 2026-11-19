@@ -30,7 +30,7 @@ def _resolve_target_version() -> str:
             m = re.search(r"MARKETING_VERSION\s*=\s*([0-9]+\.[0-9]+\.[0-9]+)\s*;", f.read())
             if m:
                 return m.group(1)
-    return "1.0.55"
+    return "1.0.56"
 
 
 TARGET_VERSION = _resolve_target_version()
@@ -66,10 +66,10 @@ UTF-8やShift_JIS、EUC-JPなど、さまざまな文字コードを自動で判
 毎日のメモ帳としても、頼れるコードエディタとしても。
 miuが、あなたの「書く時間」を少しでも快適にするお手伝いができれば幸いです。"""
 
-JA_WHATS_NEW = """miu v1.0.55 アップデート内容
-・SIMD高速化により、UTF-8ファイルの読み込み・文字コード検証を大幅に高速化
-・大文字小文字を区別しない検索・上方向検索・全置換および65言語ハイライト（Markdown等）を高速化
-・大容量ファイルでの文字入力・カーソル移動・スクロールおよび描画パフォーマンスを改善"""
+JA_WHATS_NEW = """miu v1.0.56 アップデート内容
+・未保存の新規バッファでも <canvas> や <div> 等から始まる HTML スニペットの <script> 実行に対応
+・macOS / iOS / Android の HTML プレビュー CSP を Windows 版と統一し、eval / new Function や blob: / data: スクリプトに対応
+・未保存テキストを .html として保存した直後にプレビューが即時 HTML モードへ切り替わるよう改善"""
 
 EN_DESC = """miu is a simple, lightweight text and code editor designed to make everything from quick daily notes to Markdown writing and programming feel effortless.
 
@@ -97,10 +97,10 @@ No ads, no tracking, and no data collection. Everything works 100% offline on yo
 
 Whether you use it as an everyday notepad or a reliable code editor, we hope miu makes your writing time a little more enjoyable."""
 
-EN_WHATS_NEW = """What's New in miu v1.0.55
-• Faster UTF-8 file loading and encoding validation powered by SIMD acceleration.
-• Faster case-insensitive search, backward search, Replace All, and 65-language syntax highlighting (including Markdown).
-• Smoother typing, caret navigation, large-file scrolling, and rendering performance."""
+EN_WHATS_NEW = """What's New in miu v1.0.56
+• Enabled <script> execution for unsaved HTML snippets (starting with <canvas>, <div>, <script>, <style>, etc.) across all platforms.
+• Unified HTML Live Preview CSP on macOS, iOS, and Android with Windows to support eval / new Function and blob: / data: scripts.
+• Fixed Live Preview to immediately switch to HTML mode as soon as an untitled buffer is saved as .html."""
 
 ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无论是记录日常随笔、撰写 Markdown 文档，还是编写程序代码，都能为您提供舒适顺畅的书写体验。
 
@@ -128,10 +128,10 @@ ZH_HANS_DESC = """miu 是一款简洁、轻快的文本与代码编辑器。无�
 
 无论是作为日常便签，还是得力的代码编辑器，希望 miu 能陪伴您度过每一段愉快的书写时光。"""
 
-ZH_HANS_WHATS_NEW = """miu v1.0.55 更新内容
-・引入 SIMD 加速，大幅提升 UTF-8 文件打开与编码校验速度
-・大幅加快不区分大小写查找、向上查找、全部替换及 65 种语言语法高亮（含 Markdown）
-・优化大文件输入、光标移动、滚动注释解析与界面渲染性能"""
+ZH_HANS_WHATS_NEW = """miu v1.0.56 更新内容
+・支持在未保存的新建缓冲区中直接运行以 <canvas>、<div>、<script> 等开头的 HTML 片段脚本
+・统一 macOS / iOS / Android 与 Windows 版的 HTML 预览 CSP，支持 eval / new Function 及 blob: / data: 脚本
+・改进保存流程，将未保存文档另存为 .html 后立即自动刷新为 HTML 实时预览"""
 
 ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器。無論是記錄日常隨手筆記、撰寫 Markdown 文章，還是編寫程式碼，都能為您帶來舒適順暢的書寫體驗。
 
@@ -159,10 +159,10 @@ ZH_HANT_DESC = """miu 是一款簡潔、輕快的純文字與程式碼編輯器�
 
 無論是作為日常記事本，還是可靠的程式碼編輯器，希望 miu 能讓您的書寫時光更加愉快。"""
 
-ZH_HANT_WHATS_NEW = """miu v1.0.55 更新內容
-・導入 SIMD 加速，大幅提升 UTF-8 檔案開啟與編碼驗證速度
-・大幅加快不區分大小寫尋找、向上尋找、全部取代及 65 種語言語法突顯（含 Markdown）
-・最佳化大檔案輸入、游標移動、捲動註解解析與畫面渲染效能"""
+ZH_HANT_WHATS_NEW = """miu v1.0.56 更新內容
+・支援在未儲存的新建緩衝區中直接執行以 <canvas>、<div>、<script> 等開頭的 HTML 片段腳本
+・統一 macOS / iOS / Android 與 Windows 版的 HTML 預覽 CSP，支援 eval / new Function 及 blob: / data: 腳本
+・改進儲存流程，將未儲存文件另存為 .html 後立即自動重新整理為 HTML 即時預覽"""
 
 KO_DESC = """miu는 일상의 가벼운 메모부터 Markdown 글쓰기, 프로그래밍까지 편안하게 사용할 수 있는 심플한 텍스트 및 코드 에디터입니다.
 
@@ -191,10 +191,10 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 등 다양한 문자 인코딩을 자동으로 
 매일 쓰는 메모장으로도, 든든한 코드 에디터로도.
 miu가 당신의 글쓰기 시간을 조금 더 기분 좋게 만들어 드릴 수 있기를 바랍니다."""
 
-KO_WHATS_NEW = """miu v1.0.55 업데이트 안내
-・SIMD 가속을 통해 UTF-8 파일 열기 및 인코딩 검증 속도 대폭 향상
-・대소문자 구분 없는 검색, 이전 찾기, 모두 바꾸기 및 65개 언어 구문 강조(Markdown 포함) 고속화
-・대용량 파일 입력, 커서 이동, 스크롤 및 렌더링 성능 최적화"""
+KO_WHATS_NEW = """miu v1.0.56 업데이트 안내
+・저장하지 않은 새 버퍼에서도 <canvas>, <div>, <script> 등으로 시작하는 HTML 스니펫의 <script> 실행 지원
+・macOS / iOS / Android의 HTML 미리보기 CSP를 Windows 버전과 통일하여 eval / new Function 및 blob: / data: 스크립트 지원
+・새 문서를 .html로 저장한 직후 실시간 미리보기가 즉시 HTML 모드로 전환되도록 개선"""
 
 DE_DESC = """miu ist ein schlichter, leichtgewichtiger Text- und Code-Editor, mit dem alltägliche Notizen, Markdown-Texte und Programmierarbeiten gleichermaßen angenehm von der Hand gehen.
 
@@ -222,10 +222,10 @@ Keine Werbung, kein Tracking und keine Datenübertragung. Alle Funktionen arbeit
 
 Ob als täglicher Notizblock oder als verlässlicher Code-Editor – wir hoffen, dass miu Ihnen das Schreiben jeden Tag ein Stück angenehmer macht."""
 
-DE_WHATS_NEW = """Neuerungen in miu v1.0.55
-• Deutlich schnelleres Öffnen und Prüfen von UTF-8-Dateien dank SIMD-Beschleunigung.
-• Beschleunigte Groß-/Kleinschreibung-ignorierende Suche, Rückwärtssuche, Alle ersetzen sowie Syntaxhervorhebung für 65 Sprachen (inkl. Markdown).
-• Flüssigeres Tippen, Navigieren, Scrollen in großen Dateien und effizienteres Rendering."""
+DE_WHATS_NEW = """Neuerungen in miu v1.0.56
+• <script>-Ausführung für ungespeicherte HTML-Snippets (beginnend mit <canvas>, <div>, <script>, <style> usw.) auf allen Plattformen aktiviert.
+• HTML-Vorschau-CSP unter macOS, iOS und Android an Windows angeglichen (Unterstützung für eval / new Function sowie blob:- / data:-Skripte).
+• Sofortige Aktualisierung der Live-Vorschau in den HTML-Modus direkt nach dem Speichern als .html."""
 
 FR_DESC = """miu est un éditeur de texte et de code simple et léger, conçu pour rendre aussi agréables la prise de notes quotidienne, la rédaction en Markdown et la programmation.
 
@@ -253,10 +253,10 @@ Aucune publicité, aucun suivi et aucune collecte de données. Tout fonctionne �
 
 Comme bloc-notes de tous les jours ou comme éditeur de code fiable, nous espérons que miu rendra vos moments d’écriture plus agréables."""
 
-FR_WHATS_NEW = """Nouveautés de miu v1.0.55
-• Ouverture et validation des fichiers UTF-8 nettement accélérées grâce au SIMD.
-• Recherche insensible à la casse, recherche arrière, Tout remplacer et coloration syntaxique de 65 langages (dont Markdown) plus rapides.
-• Saisie, déplacement du curseur, défilement des grands fichiers et rendu plus fluides."""
+FR_WHATS_NEW = """Nouveautés de miu v1.0.56
+• Exécution des balises <script> dans les extraits HTML non enregistrés (<canvas>, <div>, <script>, <style>, etc.) sur toutes les plateformes.
+• Unification de la CSP d’aperçu HTML sur macOS, iOS et Android avec Windows (prise en charge de eval / new Function et des scripts blob: / data:).
+• Passage immédiat de l’aperçu en direct au mode HTML dès l’enregistrement d’un document sous .html."""
 
 ES_DESC = """miu es un editor de texto y código sencillo y ligero, pensado para que desde tus notas rápidas del día a día hasta la escritura en Markdown y la programación resulten cómodas y agradables.
 
@@ -284,10 +284,10 @@ Sin anuncios, sin rastreo y sin envío de datos. Todo funciona 100 % sin conexi�
 
 Ya sea como tu bloc de notas diario o como un editor de código de confianza, esperamos que miu haga más agradable tu tiempo de escritura."""
 
-ES_WHATS_NEW = """Novedades de miu v1.0.55
-• Apertura y validación de archivos UTF-8 mucho más rápidas mediante aceleración SIMD.
-• Mayor velocidad en búsqueda sin distinción de mayúsculas, búsqueda hacia atrás, Reemplazar todo y resaltado de 65 lenguajes (incluido Markdown).
-• Escritura, movimiento del cursor, desplazamiento en archivos grandes y renderizado más fluidos."""
+ES_WHATS_NEW = """Novedades de miu v1.0.56
+• Ejecución de <script> habilitada en fragmentos HTML sin guardar (<canvas>, <div>, <script>, <style>, etc.) en todas las plataformas.
+• CSP de vista previa HTML unificada en macOS, iOS y Android con Windows para admitir eval / new Function y scripts blob: / data:.
+• Actualización inmediata de la vista previa al modo HTML al guardar un documento nuevo como .html."""
 
 IT_DESC = """miu è un editor di testo e codice semplice e leggero, pensato per rendere piacevole ogni attività: dagli appunti quotidiani alla scrittura in Markdown, fino alla programmazione.
 
@@ -315,10 +315,10 @@ Nessuna pubblicità, nessun tracciamento e nessuna raccolta dati. Tutto funziona
 
 Come blocco note quotidiano o come affidabile editor di codice, speriamo che miu renda più piacevole il tuo tempo dedicato alla scrittura."""
 
-IT_WHATS_NEW = """Novità di miu v1.0.55
-• Apertura e verifica dei file UTF-8 sensibilmente più veloci grazie all’accelerazione SIMD.
-• Ricerca senza distinzione maiuscole/minuscole, ricerca all’indietro, Sostituisci tutto ed evidenziazione per 65 linguaggi (incluso Markdown) più rapidi.
-• Digitazione, movimento del cursore, scorrimento di file grandi e rendering più fluidi."""
+IT_WHATS_NEW = """Novità di miu v1.0.56
+• Abilitata l’esecuzione di <script> nei frammenti HTML non salvati (<canvas>, <div>, <script>, <style>, ecc.) su tutte le piattaforme.
+• Unificata la CSP dell’anteprima HTML su macOS, iOS e Android con Windows per supportare eval / new Function e script blob: / data:.
+• Passaggio immediato dell’anteprima dal vivo alla modalità HTML subito dopo il salvataggio come .html."""
 
 PT_DESC = """O miu é um editor de texto e código simples e leve, criado para tornar desde as suas anotações diárias até a escrita em Markdown e a programação muito mais confortáveis.
 
@@ -346,10 +346,10 @@ Sem anúncios, sem rastreamento e sem coleta de dados. Tudo funciona 100% offlin
 
 Seja como seu bloco de notas do dia a dia ou como um editor de código confiável, esperamos que o miu torne o seu momento de escrever ainda mais agradável."""
 
-PT_WHATS_NEW = """Novidades do miu v1.0.55
-• Abertura e validação de arquivos UTF-8 muito mais rápidas com aceleração SIMD.
-• Maior velocidade na busca sem diferenciar maiúsculas, busca para trás, Substituir tudo e destaque de sintaxe para 65 linguagens (incluindo Markdown).
-• Digitação, navegação do cursor, rolagem em arquivos grandes e renderização mais suaves."""
+PT_WHATS_NEW = """Novidades do miu v1.0.56
+• Execução de <script> ativada para trechos HTML não salvos (<canvas>, <div>, <script>, <style>, etc.) em todas as plataformas.
+• CSP de pré-visualização HTML unificada no macOS, iOS e Android com o Windows (suporte a eval / new Function e scripts blob: / data:).
+• Atualização imediata da pré-visualização para o modo HTML ao salvar um novo documento como .html."""
 
 RU_DESC = """miu — это простой и лёгкий текстовый и кодовый редактор, созданный для комфортной работы: от быстрых повседневных заметок и текстов в Markdown до программирования.
 
@@ -377,10 +377,10 @@ RU_DESC = """miu — это простой и лёгкий текстовый и
 
 В качестве ежедневного блокнота или надёжного редактора кода — надеемся, что miu сделает вашу работу с текстом ещё приятнее."""
 
-RU_WHATS_NEW = """Что нового в miu v1.0.55
-• Значительно ускорены открытие и проверка файлов UTF-8 благодаря SIMD-оптимизации.
-• Ускорены поиск без учёта регистра, обратный поиск, автозамена и подсветка синтаксиса 65 языков (включая Markdown).
-• Более плавный ввод текста, перемещение курсора, прокрутка больших файлов и отрисовка."""
+RU_WHATS_NEW = """Что нового в miu v1.0.56
+• Включено выполнение <script> в несохранённых HTML-фрагментах (<canvas>, <div>, <script>, <style> и др.) на всех платформах.
+• Политика CSP предпросмотра HTML на macOS, iOS и Android приведена в соответствие с Windows (поддержка eval / new Function и скриптов blob: / data:).
+• Мгновенное переключение предпросмотра в режим HTML сразу после сохранения документа как .html."""
 
 NL_DESC = """miu is een eenvoudige, lichtgewicht tekst- en code-editor waarmee u prettig werkt aan dagelijkse notities, Markdown-documenten en programmeerprojecten.
 
@@ -408,10 +408,10 @@ Geen advertenties, geen tracking en geen gegevensverzameling. Alles werkt 100% o
 
 Of u miu nu gebruikt als dagelijks notitieblok of als betrouwbare code-editor, we hopen dat het uw schrijfmomenten net wat aangenamer maakt."""
 
-NL_WHATS_NEW = """Nieuw in miu v1.0.55
-• Aanzienlijk sneller openen en valideren van UTF-8-bestanden dankzij SIMD-versnelling.
-• Snellere hoofdletterongevoelige zoekopdrachten, achteruit zoeken, Alles vervangen en syntaxisaccentuering voor 65 talen (waaronder Markdown).
-• Soepeler typen, cursornavigatie, scrollen in grote bestanden en weergaveprestaties."""
+NL_WHATS_NEW = """Nieuw in miu v1.0.56
+• <script>-uitvoering ingeschakeld voor niet-opgeslagen HTML-fragmenten (<canvas>, <div>, <script>, <style>, enz.) op alle platforms.
+• HTML-voorbeeld-CSP op macOS, iOS en Android gelijkgesteld met Windows voor ondersteuning van eval / new Function en blob:- / data:-scripts.
+• Live voorbeeld schakelt nu direct na opslaan als .html over naar de HTML-modus."""
 
 SV_DESC = """miu är en enkel och lättviktig text- och kodredigerare som gör allt från dagliga anteckningar till Markdown-skrivande och programmering bekvämt och smidigt.
 
@@ -439,10 +439,10 @@ Inga annonser, ingen spårning och ingen datainsamling. Allt fungerar 100 % offl
 
 Som dagligt anteckningsblock eller pålitlig kodredigerare – vi hoppas att miu gör din skrivstund lite trevligare."""
 
-SV_WHATS_NEW = """Nyheter i miu v1.0.55
-• Betydligt snabbare öppning och validering av UTF-8-filer med SIMD-acceleration.
-• Snabbare skiftlägesokänslig sökning, bakåtsökning, Ersätt alla samt syntaxmarkering för 65 språk (inklusive Markdown).
-• Mjukare skrivning, markörförflyttning, rullning i stora filer och rendering."""
+SV_WHATS_NEW = """Nyheter i miu v1.0.56
+• Aktiverat <script>-körning för osparade HTML-kodsnuttar (<canvas>, <div>, <script>, <style> m.fl.) på alla plattformar.
+• Förenhetligat CSP för HTML-förhandsgranskning på macOS, iOS och Android med Windows (stöd för eval / new Function samt blob:- / data:-skript).
+• Direkt växling till HTML-läge i förhandsgranskningen när ett nytt dokument sparas som .html."""
 
 DA_DESC = """miu er en enkel og let tekst- og kodeeditor, der gør alt fra daglige noter til Markdown-skrivning og programmering behageligt og ubesværet.
 
@@ -470,10 +470,10 @@ Ingen reklamer, ingen sporing og ingen dataindsamling. Alt fungerer 100 % offlin
 
 Uanset om du bruger miu som daglig notesblok eller som kodeeditor, håber vi, at den gør din skrivetid lidt mere behagelig."""
 
-DA_WHATS_NEW = """Nyheder i miu v1.0.55
-• Markant hurtigere åbning og validering af UTF-8-filer med SIMD-acceleration.
-• Hurtigere søgning uden forskel på store/små bogstaver, baglæns søgning, Erstat alle og syntaksfremhævning for 65 sprog (inkl. Markdown).
-• Mere flydende indtastning, markørnavigation, rulning i store filer og gengivelse."""
+DA_WHATS_NEW = """Nyheder i miu v1.0.56
+• Aktiveret <script>-afvikling i ikke-gemte HTML-udsnit (<canvas>, <div>, <script>, <style> m.fl.) på alle platforme.
+• Ensrettet HTML-forhåndsvisningens CSP på macOS, iOS og Android med Windows (understøttelse af eval / new Function og blob:- / data:-scripts).
+• Øjeblikkeligt skift til HTML-tilstand i live-forhåndsvisning straks efter gem som .html."""
 
 NO_DESC = """miu er et enkelt og lett tekst- og koderedigeringsprogram som gjør alt fra daglige notater til Markdown-skriving og programmering behagelig og uanstrengt.
 
@@ -501,10 +501,10 @@ Ingen reklame, ingen sporing og ingen datainnsamling. Alt fungerer 100 % offline
 
 Enten du bruker miu som daglig notisblokk eller som en pålitelig kodeeditor, håper vi den gjør skrivetiden din litt hyggeligere."""
 
-NO_WHATS_NEW = """Nyheter i miu v1.0.55
-• Betydelig raskere åpning og validering av UTF-8-filer med SIMD-akselerasjon.
-• Raskere søk uavhengig av store/små bokstaver, bakoversøk, Erstatt alle og syntaksutheving for 65 språk (inkludert Markdown).
-• Jevnere skriving, markørnavigasjon, rulling i store filer og opptegning."""
+NO_WHATS_NEW = """Nyheter i miu v1.0.56
+• Aktivert <script>-kjøring i ulagrede HTML-snutter (<canvas>, <div>, <script>, <style> osv.) på alle plattformer.
+• Samordnet CSP for HTML-forhåndsvisning på macOS, iOS og Android med Windows (støtte for eval / new Function og blob:- / data:-skript).
+• Umiddelbar oppdatering til HTML-modus i forhåndsvisningen når et nytt dokument lagres som .html."""
 
 FI_DESC = """miu on yksinkertainen ja kevyt teksti- ja koodieditori, joka tekee päivittäisistä muistiinpanoista, Markdown-kirjoittamisesta ja ohjelmoinnista miellyttävää ja vaivatonta.
 
@@ -532,10 +532,10 @@ Ei mainoksia, ei seurantaa eikä tiedonkeruuta. Kaikki toimii 100 % offline-tila
 
 Käytitpä miuta päivittäisenä muistiona tai luotettavana koodieditorina, toivomme sen tekevän kirjoitushetkistäsi hieman mukavampia."""
 
-FI_WHATS_NEW = """Uutta versiossa miu v1.0.55
-• Huomattavasti nopeampi UTF-8-tiedostojen avaus ja tarkistus SIMD-kiihdytyksellä.
-• Nopeampi kirjainkoosta riippumaton haku, taaksepäin haku, Korvaa kaikki ja 65 kielen syntaksinkorostus (mukaan lukien Markdown).
-• Sulavampi kirjoitus, kohdistimen liike, suurten tiedostojen vieritys ja piirto."""
+FI_WHATS_NEW = """Uutta versiossa miu v1.0.56
+• Otettu käyttöön <script>-suoritus tallentamattomille HTML-katkelmille (<canvas>, <div>, <script>, <style> jne.) kaikilla alustoilla.
+• Yhtenäistetty HTML-esikatselun CSP macOS:ssä, iOS:ssä ja Androidissa Windowsin kanssa (eval / new Function sekä blob:- / data:-skriptit).
+• Esikatselu vaihtuu nyt välittömästi HTML-tilaan tallennettaessa tiedosto .html-muodossa."""
 
 PL_DESC = """miu to prosty, lekki edytor tekstu i kodu, zaprojektowany tak, aby codzienne notatki, pisanie w Markdown oraz programowanie były wygodne i przyjemne.
 
@@ -563,10 +563,10 @@ Brak reklam, brak śledzenia i brak gromadzenia danych. Wszystko działa w 100% 
 
 Zarówno jako codzienny notatnik, jak i niezawodny edytor kodu – mamy nadzieję, że miu uprzyjemni Twój czas spędzony na pisaniu."""
 
-PL_WHATS_NEW = """Nowości w miu v1.0.55
-• Znacznie szybsze otwieranie i weryfikacja plików UTF-8 dzięki akceleracji SIMD.
-• Przyspieszone wyszukiwanie bez rozróżniania wielkości liter, szukanie wstecz, Zamień wszystko oraz kolorowanie składni 65 języków (w tym Markdown).
-• Płynniejsze pisanie, ruch kursora, przewijanie dużych plików i renderowanie."""
+PL_WHATS_NEW = """Nowości w miu v1.0.56
+• Włączono wykonywanie <script> w niezapisanych fragmentach HTML (<canvas>, <div>, <script>, <style> itp.) na wszystkich platformach.
+• Ujednolicono politykę CSP podglądu HTML na macOS, iOS i Androidzie z wersją Windows (obsługa eval / new Function oraz skryptów blob: / data:).
+• Natychmiastowe przełączanie podglądu na żywo w tryb HTML po zapisaniu dokumentu jako .html."""
 
 CS_DESC = """miu je jednoduchý a lehký textový a kódový editor, se kterým je psaní každodenních poznámek, textů v Markdownu i programování pohodlné a příjemné.
 
@@ -594,10 +594,10 @@ Hledání a nahrazování (s regulárními výrazy), více kurzorů, čísla ř�
 
 Ať už miu používáte jako každodenní zápisník nebo jako spolehlivý editor kódu, věříme, že vám zpříjemní každou chvíli u psaní."""
 
-CS_WHATS_NEW = """Novinky v miu v1.0.55
-• Výrazně rychlejší otevírání a ověřování souborů UTF-8 díky akceleraci SIMD.
-• Rychlejší hledání bez rozlišování velikosti písmen, zpětné hledání, Nahradit vše a zvýrazňování syntaxe 65 jazyků (včetně Markdownu).
-• Plynulejší psaní, pohyb kurzoru, posouvání velkých souborů a vykreslování."""
+CS_WHATS_NEW = """Novinky v miu v1.0.56
+• Povoleno spouštění <script> v neuložených úryvcích HTML (<canvas>, <div>, <script>, <style> aj.) na všech platformách.
+• Sjednocena CSP živého náhledu HTML na macOS, iOS a Androidu s verzí pro Windows (podpora eval / new Function a skriptů blob: / data:).
+• Okamžité přepnutí živého náhledu do režimu HTML ihned po uložení dokumentu jako .html."""
 
 HU_DESC = """A miu egy egyszerű, könnyed szöveg- és kódszerkesztő, amely a napi gyors jegyzeteléstől a Markdown-szövegíráson át a programozásig minden helyzetben kényelmes használatot nyújt.
 
@@ -625,10 +625,10 @@ Nincsenek reklámok, nincs követés és nincs adatgyűjtés. Minden funkció 10
 
 Akár mindennapi jegyzettömbként, akár megbízható kódszerkesztőként használja, reméljük, hogy a miu kellemesebbé teszi az írással töltött időt."""
 
-HU_WHATS_NEW = """A miu v1.0.55 újdonságai
-• Jelentősen gyorsabb UTF-8-fájlmegnyitás és kódolás-ellenőrzés SIMD-gyorsítással.
-• Gyorsabb kis- és nagybetű-független keresés, visszafelé keresés, Összes cseréje és 65 nyelvű szintaxiskiemelés (beleértve a Markdownt).
-• Gördülékenyebb gépelés, kurzormozgatás, nagy fájlok görgetése és megjelenítés."""
+HU_WHATS_NEW = """A miu v1.0.56 újdonságai
+• Engedélyezve a <script> futtatása mentetlen HTML-részletekben (<canvas>, <div>, <script>, <style> stb.) minden platformon.
+• Egységesített HTML-előnézeti CSP macOS, iOS és Android rendszeren a Windows-verzióval (eval / new Function és blob: / data: szkriptek támogatása).
+• Az élő előnézet .html mentés után azonnal HTML-módra vált."""
 
 RO_DESC = """miu este un editor de text și cod simplu și ușor, creat pentru ca notițele zilnice, redactarea în Markdown și programarea să fie cât mai plăcute și confortabile.
 
@@ -656,10 +656,10 @@ Fără reclame, fără urmărire și fără colectare de date. Totul funcționea
 
 Fie ca agendă de zi cu zi, fie ca editor de cod de încredere, sperăm că miu vă va face timpul petrecut scriind mai plăcut."""
 
-RO_WHATS_NEW = """Noutăți în miu v1.0.55
-• Deschidere și validare mult mai rapidă a fișierelor UTF-8 prin accelerare SIMD.
-• Căutare fără diferențiere majuscule/minuscule, căutare înapoi, Înlocuire peste tot și evidențiere sintactică pentru 65 de limbaje (inclusiv Markdown) mai rapide.
-• Tastare, navigare cu cursorul, derulare a fișierelor mari și randare mai fluide."""
+RO_WHATS_NEW = """Noutăți în miu v1.0.56
+• Activată execuția <script> în fragmentele HTML nesalvate (<canvas>, <div>, <script>, <style> etc.) pe toate platformele.
+• Unificată politica CSP de previzualizare HTML pe macOS, iOS și Android cu Windows (suport pentru eval / new Function și scripturi blob: / data:).
+• Comutare imediată a previzualizării live în modul HTML imediat după salvarea ca .html."""
 
 EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επεξεργαστής κειμένου και κώδικα, σχεδιασμένος ώστε οι καθημερινές σημειώσεις, η συγγραφή σε Markdown και ο προγραμματισμός να γίνονται άνετα και ευχάριστα.
 
@@ -687,10 +687,10 @@ EL_DESC = """Το miu είναι ένας απλός και ελαφρύς επ�
 
 Είτε ως καθημερινό σημειωματάριο είτε ως αξιόπιστος επεξεργαστής κώδικα, ελπίζουμε το miu να κάνει τον χρόνο που αφιερώνετε στο γράψιμο πιο ευχάριστο."""
 
-EL_WHATS_NEW = """Τι νέο υπάρχει στο miu v1.0.55
-• Ταχύτερο άνοιγμα και έλεγχος αρχείων UTF-8 χάρη στην επιτάχυνση SIMD.
-• Ταχύτερη αναζήτηση χωρίς διάκριση πεζών/κεφαλαίων, αναζήτηση προς τα πίσω, Αντικατάσταση όλων και επισήμανση 65 γλωσσών (συμπερ. Markdown).
-• Πιο ομαλή πληκτρολόγηση, κίνηση δρομέα, κύλιση μεγάλων αρχείων και σχεδίαση."""
+EL_WHATS_NEW = """Τι νέο υπάρχει στο miu v1.0.56
+• Ενεργοποιήθηκε η εκτέλεση <script> σε μη αποθηκευμένα αποσπάσματα HTML (<canvas>, <div>, <script>, <style> κ.ά.) σε όλες τις πλατφόρμες.
+• Ενοποιήθηκε η πολιτική CSP προεπισκόπησης HTML σε macOS, iOS και Android με τα Windows (υποστήριξη eval / new Function και blob: / data:).
+• Άμεση εναλλαγή της προεπισκόπησης σε λειτουργία HTML μόλις ένα έγγραφο αποθηκευτεί ως .html."""
 
 TR_DESC = """miu; günlük kısa notlardan Markdown yazılarına ve programlamaya kadar her türlü metin çalışmasını keyifli ve rahat hale getirmek için tasarlanmış sade ve hafif bir metin ve kod düzenleyicidir.
 
@@ -718,10 +718,10 @@ Reklam, takip veya veri toplama yoktur. Tüm özellikler cihazınızda %100 çev
 
 İster günlük not defteriniz ister güvenilir kod düzenleyiciniz olarak, miu'nun yazma zamanınızı daha keyifli hale getirmesini dileriz."""
 
-TR_WHATS_NEW = """miu v1.0.55 Yenilikleri
-• SIMD hızlandırmasıyla UTF-8 dosya açma ve kodlama doğrulama önemli ölçüde hızlandırıldı.
-• Büyük/küçük harf duyarsız arama, geriye doğru arama, Tümünü Değiştir ve 65 dil sözdizimi vurgulama (Markdown dahil) hızlandırıldı.
-• Büyük dosyalarda daha akıcı yazma, imleç hareketi, kaydırma ve çizim performansı."""
+TR_WHATS_NEW = """miu v1.0.56 Yenilikleri
+• Kaydedilmemiş HTML parçalarında (<canvas>, <div>, <script>, <style> vb.) <script> çalıştırma desteği tüm platformlarda etkinleştirildi.
+• macOS, iOS ve Android HTML önizleme CSP politikası Windows ile eşitlenerek eval / new Function ve blob: / data: betikleri desteklendi.
+• Yeni bir belge .html olarak kaydedildiği anda canlı önizlemenin anında HTML moduna geçmesi sağlandı."""
 
 UK_DESC = """miu — це простий і легкий редактор тексту та коду, створений для того, щоб щоденні нотатки, написання текстів у Markdown і програмування були максимально зручними та приємними.
 
@@ -749,10 +749,10 @@ UK_DESC = """miu — це простий і легкий редактор тек
 
 Як щоденний записник або надійний редактор коду — сподіваємося, що miu зробить ваш час за письмом приємнішим."""
 
-UK_WHATS_NEW = """Що нового в miu v1.0.55
-• Значно пришвидшено відкриття та перевірку файлів UTF-8 завдяки SIMD-прискоренню.
-• Пришвидшено пошук без урахування регістру, зворотний пошук, Замінити все та підсвічування синтаксису 65 мов (зокрема Markdown).
-• Плавніший набір тексту, рух курсора, прокручування великих файлів і рендеринг."""
+UK_WHATS_NEW = """Що нового в miu v1.0.56
+• Увімкнено виконання <script> у незбережених HTML-фрагментах (<canvas>, <div>, <script>, <style> тощо) на всіх платформах.
+• Уніфіковано CSP попереднього перегляду HTML на macOS, iOS та Android із Windows (підтримка eval / new Function і скриптів blob: / data:).
+• Миттєве перемикання живого перегляду в режим HTML одразу після збереження файлу як .html."""
 
 VI_DESC = """miu là trình soạn thảo văn bản và mã nguồn đơn giản, gọn nhẹ, mang lại cảm giác thoải mái cho mọi nhu cầu từ ghi chú nhanh hàng ngày, viết tài liệu Markdown cho đến lập trình.
 
@@ -780,10 +780,10 @@ Không quảng cáo, không theo dõi và không thu thập dữ liệu. Mọi t
 
 Dù dùng làm sổ tay hàng ngày hay trình sửa code đáng tin cậy, hy vọng miu sẽ giúp khoảng thời gian viết lách của bạn thêm phần dễ chịu."""
 
-VI_WHATS_NEW = """Có gì mới trong miu v1.0.55
-• Mở và kiểm tra tệp UTF-8 nhanh hơn đáng kể nhờ tăng tốc SIMD.
-• Tăng tốc tìm kiếm không phân biệt hoa thường, tìm ngược, Thay thế tất cả và tô sáng cú pháp 65 ngôn ngữ (gồm Markdown).
-• Gõ phím, di chuyển con trỏ, cuộn tệp lớn và hiển thị mượt mà hơn."""
+VI_WHATS_NEW = """Có gì mới trong miu v1.0.56
+• Hỗ trợ chạy <script> trực tiếp trong các đoạn HTML chưa lưu (<canvas>, <div>, <script>, <style>, v.v.) trên mọi nền tảng.
+• Đồng nhất CSP xem trước HTML trên macOS, iOS và Android với bản Windows, hỗ trợ eval / new Function cùng script blob: / data:.
+• Tự động chuyển xem trước trực tiếp sang chế độ HTML ngay sau khi lưu tệp dưới dạng .html."""
 
 TH_DESC = """miu คือแอปแก้ไขข้อความและโค้ดที่เรียบง่ายและทำงานได้อย่างรวดเร็ว ออกแบบมาเพื่อให้ทั้งการจดบันทึกประจำวัน การเขียนบทความด้วย Markdown และการเขียนโปรแกรมเป็นเรื่องที่สบายตาและน่าใช้งาน
 
@@ -811,10 +811,10 @@ TH_DESC = """miu คือแอปแก้ไขข้อความและ
 
 ไม่ว่าจะใช้เป็นสมุดโน้ตประจำวันหรือเครื่องมือเขียนโค้ดคู่ใจ เราหวังว่า miu จะช่วยให้ช่วงเวลาแห่งการเขียนของคุณน่าเพลิดเพลินยิ่งขึ้น"""
 
-TH_WHATS_NEW = """มีอะไรใหม่ใน miu v1.0.55
-• เปิดและตรวจสอบไฟล์ UTF-8 ได้รวดเร็วยิ่งขึ้นด้วยการเร่งความเร็ว SIMD
-• ค้นหาแบบไม่สนใจตัวพิมพ์ใหญ่-เล็ก ค้นหาย้อนกลับ แทนที่ทั้งหมด และไฮไลต์ไวยากรณ์ 65 ภาษา (รวมถึง Markdown) ได้เร็วขึ้น
-• พิมพ์ข้อความ เลื่อนเคอร์เซอร์ เลื่อนดูไฟล์ขนาดใหญ่ และแสดงผลได้ลื่นไหลยิ่งขึ้น"""
+TH_WHATS_NEW = """มีอะไรใหม่ใน miu v1.0.56
+• รองรับการรัน <script> สำหรับโค้ด HTML ที่ยังไม่บันทึก (เช่น ขึ้นต้นด้วย <canvas>, <div>, <script>, <style>) บนทุกแพลตฟอร์ม
+• ปรับ CSP ของพรีวิว HTML บน macOS, iOS และ Android ให้ตรงกับ Windows รองรับ eval / new Function และสคริปต์ blob: / data:
+• อัปเดตพรีวิวสดเป็นโหมด HTML ทันทีเมื่อบันทึกเอกสารใหม่เป็นไฟล์ .html"""
 
 ID_DESC = """miu adalah editor teks dan kode yang sederhana serta ringan, dirancang agar nyaman digunakan mulai dari mencatat ide harian, menulis dokumen Markdown, hingga pemrograman.
 
@@ -842,10 +842,10 @@ Tanpa iklan, tanpa pelacakan, dan tanpa pengumpulan data. Semua fitur berjalan 1
 
 Baik sebagai buku catatan sehari-hari maupun editor kode andalan, semoga miu dapat membuat waktu menulis Anda menjadi lebih menyenangkan."""
 
-ID_WHATS_NEW = """Yang Baru di miu v1.0.55
-• Pembukaan dan validasi file UTF-8 jauh lebih cepat berkat akselerasi SIMD.
-• Pencarian tanpa peka huruf besar/kecil, pencarian mundur, Ganti Semua, dan penyorotan sintaks 65 bahasa (termasuk Markdown) lebih cepat.
-• Pengetikan, navigasi kursor, pengguliran file besar, dan perenderan lebih mulus."""
+ID_WHATS_NEW = """Yang Baru di miu v1.0.56
+• Mendukung eksekusi <script> pada cuplikan HTML yang belum disimpan (<canvas>, <div>, <script>, <style>, dll.) di semua platform.
+• Menyeragamkan CSP pratinjau HTML di macOS, iOS, dan Android dengan Windows untuk mendukung eval / new Function serta skrip blob: / data:.
+• Pratinjau langsung kini langsung beralih ke mode HTML segera setelah dokumen disimpan sebagai .html."""
 
 MS_DESC = """miu ialah penyunting teks dan kod yang ringkas serta ringan, direka untuk memberikan keselesaan sama ada ketika mencatat nota harian, menulis dokumen Markdown mahupun melakukan pengaturcaraan.
 
@@ -873,10 +873,10 @@ Tiada iklan, tiada penjejakan dan tiada pengumpulan data. Semua ciri berfungsi 1
 
 Sama ada sebagai buku nota harian atau penyunting kod yang boleh dipercayai, kami berharap miu menjadikan masa menulis anda lebih menyenangkan."""
 
-MS_WHATS_NEW = """Baharu dalam miu v1.0.55
-• Pembukaan dan pengesahan fail UTF-8 jauh lebih pantas dengan pecutan SIMD.
-• Carian tanpa mengira huruf besar/kecil, carian ke belakang, Ganti Semua dan penyerlahan sintaks 65 bahasa (termasuk Markdown) lebih laju.
-• Penaipan, pergerakan kursor, penatalan fail besar dan pemaparan lebih lancar."""
+MS_WHATS_NEW = """Baharu dalam miu v1.0.56
+• Menyokong pelaksanaan <script> dalam keratan HTML belum disimpan (<canvas>, <div>, <script>, <style>, dll.) pada semua platform.
+• Menyelaraskan CSP pratonton HTML pada macOS, iOS dan Android dengan Windows untuk menyokong eval / new Function serta skrip blob: / data:.
+• Pratonton langsung kini bertukar serta-merta ke mod HTML sebaik sahaja dokumen disimpan sebagai .html."""
 
 HI_DESC = """miu एक सरल और हल्का टेक्स्ट व कोड एडिटर है, जिसे रोज़मर्रा के छोटे नोट्स से लेकर Markdown लेखन और प्रोग्रामिंग तक हर काम को सहज और आरामदायक बनाने के लिए डिज़ाइन किया गया है।
 
@@ -904,10 +904,10 @@ UTF-8, Shift_JIS, EUC-JP, UTF-16 और अन्य एन्कोडिंग
 
 चाहे आप इसे दैनिक नोटपैड के रूप में उपयोग करें या एक भरोसेमंद कोड एडिटर के रूप में, हमें उम्मीद है कि miu आपके लिखने के समय को और सुखद बनाएगा।"""
 
-HI_WHATS_NEW = """miu v1.0.55 में नया क्या है
-• SIMD त्वरण द्वारा UTF-8 फ़ाइल खोलने और एन्कोडिंग सत्यापन की गति में बड़ा सुधार।
-• केस-इनसेंसिटिव खोज, पीछे की ओर खोज, सभी बदलें और 65 भाषाओं (Markdown सहित) की सिंटैक्स हाइलाइटिंग अब और तेज़।
-• बड़ी फ़ाइलों में टाइपिंग, कर्सर मूवमेंट, स्क्रॉलिंग और रेंडरिंग प्रदर्शन अधिक स्मूथ।"""
+HI_WHATS_NEW = """miu v1.0.56 में नया क्या है
+• सभी प्लेटफ़ॉर्म पर बिना सहेजे गए HTML स्निपेट (<canvas>, <div>, <script>, <style> आदि) में <script> निष्पादन समर्थित।
+• macOS, iOS और Android के HTML प्रीव्यू CSP को Windows के समान बनाया गया (eval / new Function और blob: / data: स्क्रिप्ट समर्थित)।
+• नए दस्तावेज़ को .html के रूप में सहेजते ही लाइव प्रीव्यू तुरंत HTML मोड में अपडेट होता है।"""
 
 SUPPORT_URL = "https://github.com/kenjinote/miu"
 

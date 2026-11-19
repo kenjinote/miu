@@ -921,14 +921,14 @@ public class MainActivity extends NativeActivity {
             public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
                 if (request == null || request.getUrl() == null) return blockedOfflineResponse();
                 String scheme = request.getUrl().getScheme();
-                if (scheme != null && "data".equalsIgnoreCase(scheme)) {
+                if (scheme != null && ("data".equalsIgnoreCase(scheme) || "blob".equalsIgnoreCase(scheme))) {
                     return null;
                 }
                 return blockedOfflineResponse();
             }
             @Override
             public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
-                if (url != null && url.regionMatches(true, 0, "data:", 0, 5)) {
+                if (url != null && (url.regionMatches(true, 0, "data:", 0, 5) || url.regionMatches(true, 0, "blob:", 0, 5))) {
                     return null;
                 }
                 return blockedOfflineResponse();

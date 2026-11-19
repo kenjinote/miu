@@ -491,7 +491,88 @@ int main(int argc, const char * argv[]) {
         ev->editor->previewSplitRatio = 0.5f;
         [ev layoutSplitViews];
 
-        std::cout << "[PASS] macOS frosted-glass NSVisualEffectView, subtle 1pt splitter, WKWebView split preview (Dark=0,0,0 / Light=255,255,255), entitlements, applewebdata policy, IME Option+P, and unified scrollbars verified: "
+        // 10. Live WKWebView verification for v1.0.56:
+        //     (a) Unsaved <canvas>...</canvas><script>...</script> snippet executes inline JS, new Function ('unsafe-eval'), and blob: script in WKWebView
+        ev->editor->isDirty = false;
+        ev->editor->newFile();
+        if (!ev->editor->showPreview) {
+            [ev togglePreviewAction:nil];
+        }
+        std::string unsavedSnippet =
+            "<canvas id=\"c\" width=\"40\" height=\"40\"></canvas>"
+            "<div id=\"js_out\">INIT</div>"
+            "<script>"
+            "const ctx = document.getElementById('c').getContext('2d');"
+            "ctx.fillStyle = '#00ff88'; ctx.fillRect(0, 0, 40, 40);"
+            "const evalRes = (new Function('a', 'b', 'return a + b;'))(20, 22);"
+            "const blob = new Blob([\"window.__miuBlobTag = 'BLOB_OK';\"], {type: 'text/javascript'});"
+            "const s = document.createElement('script');"
+            "s.src = URL.createObjectURL(blob);"
+            "s.onload = function() { document.getElementById('js_out').textContent = 'CANVAS_' + evalRes + '_' + window.__miuBlobTag; };"
+            "document.body.appendChild(s);"
+            "</script>";
+        ev->editor->insertAtCursors(unsavedSnippet);
+
+        __block NSString *snippetOut = nil;
+        NSDate *snippetDeadline = [NSDate dateWithTimeIntervalSinceNow:8.0];
+        while ([snippetDeadline timeIntervalSinceNow] > 0) {
+            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+            if (ev->previewMsgHandler && ev->previewMsgHandler.previewPageLoaded) {
+                __block BOOL evalDone = NO;
+                [ev->previewWebView evaluateJavaScript:@"document.getElementById('js_out') ? document.getElementById('js_out').textContent : ''"
+                                     completionHandler:^(id result, NSError *error) {
+                    if ([result isKindOfClass:[NSString class]]) snippetOut = (NSString *)result;
+                    evalDone = YES;
+                }];
+                NSDate *evalWait = [NSDate dateWithTimeIntervalSinceNow:1.0];
+                while (!evalDone && [evalWait timeIntervalSinceNow] > 0) {
+                    [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+                }
+                if (snippetOut && [snippetOut isEqualToString:@"CANVAS_42_BLOB_OK"]) break;
+            }
+        }
+        if (!snippetOut || ![snippetOut isEqualToString:@"CANVAS_42_BLOB_OK"]) {
+            std::cerr << "[FAIL] Unsaved <canvas>+<script>+eval+blob snippet did not execute in macOS WKWebView. Got: "
+                      << (snippetOut ? [snippetOut UTF8String] : "(null)") << std::endl;
+            return 1;
+        }
+
+        //     (b) Saving a non-HTML-prefixed untitled buffer as .html immediately refreshes WKWebView and executes <script>
+        ev->editor->isDirty = false;
+        ev->editor->newFile();
+        ev->editor->insertAtCursors("Plain prefix before HTML save\n<div id=\"saved_out\">BEFORE</div><script>document.getElementById('saved_out').textContent='SAVED_HTML_OK';</script>");
+        NSString *tmpSavePath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"miu_wkwebview_save_test.html"];
+        [[NSFileManager defaultManager] removeItemAtPath:tmpSavePath error:nil];
+        if (!ev->editor->saveFile(UTF8ToW(MiuStdStringFromNSString(tmpSavePath)))) {
+            std::cerr << "[FAIL] saveFile to temporary .html path failed" << std::endl;
+            return 1;
+        }
+        __block NSString *savedOut = nil;
+        NSDate *savedDeadline = [NSDate dateWithTimeIntervalSinceNow:8.0];
+        while ([savedDeadline timeIntervalSinceNow] > 0) {
+            [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
+            if (ev->previewMsgHandler && ev->previewMsgHandler.previewPageLoaded) {
+                __block BOOL evalDone = NO;
+                [ev->previewWebView evaluateJavaScript:@"document.getElementById('saved_out') ? document.getElementById('saved_out').textContent : ''"
+                                     completionHandler:^(id result, NSError *error) {
+                    if ([result isKindOfClass:[NSString class]]) savedOut = (NSString *)result;
+                    evalDone = YES;
+                }];
+                NSDate *evalWait = [NSDate dateWithTimeIntervalSinceNow:1.0];
+                while (!evalDone && [evalWait timeIntervalSinceNow] > 0) {
+                    [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.02]];
+                }
+                if (savedOut && [savedOut isEqualToString:@"SAVED_HTML_OK"]) break;
+            }
+        }
+        [[NSFileManager defaultManager] removeItemAtPath:tmpSavePath error:nil];
+        if (!savedOut || ![savedOut isEqualToString:@"SAVED_HTML_OK"]) {
+            std::cerr << "[FAIL] Saving untitled buffer as .html did not immediately execute <script> in WKWebView. Got: "
+                      << (savedOut ? [savedOut UTF8String] : "(null)") << std::endl;
+            return 1;
+        }
+
+        std::cout << "[PASS] macOS frosted-glass NSVisualEffectView, subtle 1pt splitter, WKWebView split preview (Dark=0,0,0 / Light=255,255,255), entitlements, applewebdata policy, IME Option+P, unified scrollbars, and unsaved/saved HTML <script>+eval+blob execution verified: "
                   << [renderedHtml UTF8String] << std::endl;
     }
     return 0;

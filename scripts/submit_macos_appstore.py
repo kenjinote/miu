@@ -651,7 +651,7 @@ def attach_macos_build_and_submit(app_id: str, v_id: str, v_str: str, expected_b
 
 def main():
     parser = argparse.ArgumentParser(description="Submit macOS miu release on App Store Connect.")
-    parser.add_argument("--version", default="1.0.55", help="Target MAC_OS marketing version (default: 1.0.55)")
+    parser.add_argument("--version", default="1.0.56", help="Target MAC_OS marketing version (default: 1.0.55)")
     parser.add_argument("--build", default="", help="Optional exact CFBundleVersion build number (e.g. 58)")
     parser.add_argument("--submit", action="store_true", help="Attach build and submit MAC_OS for App Store Review")
     args = parser.parse_args()

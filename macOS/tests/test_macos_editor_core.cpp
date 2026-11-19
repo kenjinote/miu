@@ -1759,6 +1759,134 @@ void testPhase8AssemblyAndNewSyntaxCategories() {
     }
 }
 
+static void testPhase9UnsavedHtmlSnippetCspParityAndSaveRefresh() {
+    std::cout << "--- Running Phase 9: Unsaved HTML Snippet, CSP Parity & Save Refresh ---" << std::endl;
+    Editor ed;
+    ed.initGraphics();
+
+    // 1. Unsaved scratchpad buffer with <canvas>...</canvas><script>...</script> (including #, ||, $)
+    {
+        ed.newFile();
+        std::string snippet =
+            "<canvas id=\"c\" width=\"120\" height=\"80\"></canvas>\n"
+            "<div id=\"out\"></div>\n"
+            "<script>\n"
+            "const color = '#ff3366';\n"
+            "const val = (1 || 2) + '$ok';\n"
+            "const fn = new Function('return 42;');\n"
+            "document.getElementById('out').textContent = color + ':' + val + ':' + fn();\n"
+            "</script>\n";
+        ed.insertAtCursors(snippet);
+        MiuPreview::PreviewRenderResult res = ed.getPreviewRenderResult();
+        CHECK(!res.isMdOrMermaidShell, "Unsaved <canvas>+<script> snippet renders as HTML web doc, not Markdown");
+        CHECK(res.fullHtml.find("script-src 'unsafe-inline' 'unsafe-eval' blob: data: https://miu.local;") != std::string::npos,
+              "HTML preview CSP includes 'unsafe-inline' 'unsafe-eval' blob: data: matching Windows");
+        CHECK(res.fullHtml.find("<canvas id=\"c\"") != std::string::npos &&
+              res.fullHtml.find("new Function('return 42;')") != std::string::npos,
+              "Unsaved HTML snippet preserves <canvas> and inline <script> unescaped");
+
+        // Task toggle message from unsaved HTML snippet must be rejected
+        int lineIdx = -1;
+        CHECK(!MiuPreview::parseVerifiedTaskToggleMessage("toggle_task:" + ed.previewNonce + ":0",
+                                                          ed.previewNonce, ed.currentFileExt, snippet, lineIdx, true),
+              "Task toggle bridge rejects messages when unsaved buffer is an HTML snippet");
+    }
+
+    // 2. Unsaved snippets starting with <div>...<script>, <style>..., <button onclick=...>, or <script>...
+    {
+        const char* validSnippets[] = {
+            "<div id=\"app\">Hello</div>\n<script>document.getElementById('app').textContent = 'Run';</script>",
+            "<style>body { background: #112233; color: #fff; }</style><div class=\"box\">Styled</div>",
+            "<button onclick=\"this.textContent='Clicked'\">Click</button>",
+            "<script>document.write('<p>Direct script</p>');</script>",
+            "<!-- comment prologue -->\n<h1 style=\"color: #0969da\">Heading</h1><p>Body</p>"
+        };
+        for (const char* s : validSnippets) {
+            ed.isDirty = false;
+            ed.newFile();
+            ed.insertAtCursors(s);
+            auto r = ed.getPreviewRenderResult();
+            CHECK(!r.isMdOrMermaidShell && r.fullHtml.find("script-src 'unsafe-inline' 'unsafe-eval' blob: data:") != std::string::npos,
+                  std::string("Unsaved HTML snippet classified as HTML web doc: ") + s);
+        }
+    }
+
+    // 3. Security & Non-Regression: Markdown, GitHub README <div align="center"> + # Heading, Mermaid, C++, and extensionless disk files
+    {
+        // Markdown with <script> after # Heading must stay Markdown and escape <script>
+        ed.isDirty = false;
+        ed.newFile();
+        ed.insertAtCursors("# Markdown Notes\n\n<script>alert(1)</script>\n- [ ] Task\n");
+        auto mdRes = ed.getPreviewRenderResult();
+        CHECK(mdRes.isMdOrMermaidShell && mdRes.bodyHtml.find("<script") == std::string::npos,
+              "Unsaved Markdown with <script> stays Markdown and escapes <script>");
+
+        // GitHub-style README starting with <div align="center"> followed by # Heading and ```html <script> ```
+        ed.isDirty = false;
+        ed.newFile();
+        ed.insertAtCursors("<div align=\"center\">\n\n# Project Title\n\n```html\n<script>console.log(1)</script>\n```\n</div>\n");
+        auto readmeRes = ed.getPreviewRenderResult();
+        CHECK(readmeRes.isMdOrMermaidShell, "GitHub README starting with <div align=\"center\"> + # Heading stays Markdown");
+
+        // C++ code starting with #include <vector> must NOT render as live HTML
+        ed.isDirty = false;
+        ed.newFile();
+        ed.insertAtCursors("#include <vector>\nint main() { return 0; }\n");
+        auto cppRes = ed.getPreviewRenderResult();
+        CHECK(cppRes.fullHtml.find("script-src 'unsafe-inline'") == std::string::npos,
+              "Unsaved C++ #include <vector> does not get HTML unsafe-inline CSP");
+
+        // Standalone SVG in unsaved buffer must keep script-src 'none'
+        ed.isDirty = false;
+        ed.newFile();
+        ed.insertAtCursors("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><script>alert(1)</script><circle cx=\"5\" cy=\"5\" r=\"4\"/></svg>");
+        auto svgRes = ed.getPreviewRenderResult();
+        CHECK(!svgRes.isMdOrMermaidShell && svgRes.fullHtml.find("script-src 'none'") != std::string::npos,
+              "Unsaved standalone <svg> retains strict script-src 'none'");
+
+        // Extensionless file ON DISK (isUnsavedBuffer == false) with snippet <script> must be escaped in <pre>
+        auto diskExtlessRes = MiuPreview::renderPreview("<script>alert(1)</script>", "", false, "NONCE_DISK", false);
+        CHECK(!diskExtlessRes.isMdOrMermaidShell &&
+              diskExtlessRes.fullHtml.find("<pre>&lt;script&gt;alert(1)&lt;/script&gt;</pre>") != std::string::npos,
+              "Extensionless disk file (isUnsavedBuffer=false) starting with <script> is safely escaped in <pre>");
+    }
+
+    // 4. macOS saveFile() live preview immediate refresh when saving untitled buffer as .html
+    {
+        namespace fs = std::filesystem;
+        fs::path tmpHtml = fs::temp_directory_path() / "miu_phase9_save_refresh_test.html";
+        std::error_code ec;
+        fs::remove(tmpHtml, ec);
+
+        ed.isDirty = false;
+        ed.newFile();
+        int previewUpdates = 0;
+        ed.cbUpdatePreview = [&]() { previewUpdates++; };
+        ed.togglePreview(); // previewUpdates == 1, previewInitialLoaded = false (caller sets true on Md shell)
+        ed.previewInitialLoaded = true;
+        ed.insertAtCursors("Plain text before tag\n<script>document.body.dataset.ran = '1';</script>");
+        // Before saving as .html, starts with plain text -> not HTML web doc
+        CHECK(ed.getPreviewRenderResult().fullHtml.find("script-src 'unsafe-inline'") == std::string::npos,
+              "Plain-text-prefixed unsaved buffer is not HTML before saving as .html");
+
+        int beforeSaveCount = previewUpdates;
+        std::wstring wTmpHtml = UTF8ToW(tmpHtml.u8string().empty() ? tmpHtml.string() : std::string(reinterpret_cast<const char*>(tmpHtml.u8string().data()), tmpHtml.u8string().size()));
+        bool saved = ed.saveFile(wTmpHtml);
+        CHECK(saved, "saveFile(.html) succeeded");
+        CHECK(ed.currentFileExt == ".html" || ed.currentFileExt == "html", "saveFile updated currentFileExt to html");
+        CHECK(previewUpdates == beforeSaveCount + 1 && !ed.previewInitialLoaded,
+              "saveFile(.html) immediately invalidated previewInitialLoaded and invoked cbUpdatePreview");
+        auto afterSaveRes = ed.getPreviewRenderResult();
+        CHECK(!afterSaveRes.isMdOrMermaidShell &&
+              afterSaveRes.fullHtml.find("script-src 'unsafe-inline' 'unsafe-eval' blob: data:") != std::string::npos,
+              "After saveFile(.html), preview immediately renders in HTML mode with script execution enabled");
+
+        ed.isDirty = false;
+        ed.newFile();
+        fs::remove(tmpHtml, ec);
+    }
+}
+
 int main() {
     testPhase1PieceTableAndFastLineStarts();
     testPhase1FastSearchReplaceAndReDoS();
@@ -1772,6 +1900,7 @@ int main() {
     testPhase6EncodingsNewlinesRectCursorSearch();
     testPhase7LispSyntaxAndCommentToggle();
     testPhase8AssemblyAndNewSyntaxCategories();
+    testPhase9UnsavedHtmlSnippetCspParityAndSaveRefresh();
 
     std::cout << "\n==========================================" << std::endl;
     std::cout << "Total Assertions Passed: " << g_passCount << std::endl;

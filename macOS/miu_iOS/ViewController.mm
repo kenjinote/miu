@@ -126,11 +126,14 @@ static void MiuIOSLoadOfflineContentRuleList(void (^completion)(WKContentRuleLis
 }
 - (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler {
     NSURL *url = navigationAction.request.URL;
+    NSString *scheme = url.scheme ? [url.scheme lowercaseString] : @"";
     NSString *absStr = url ? [[url absoluteString] lowercaseString] : @"";
     BOOL isMainFrame = (navigationAction.targetFrame != nil && navigationAction.targetFrame.isMainFrame);
     if (isMainFrame &&
         navigationAction.navigationType == WKNavigationTypeOther &&
-        ([absStr isEqualToString:@"about:blank"] || [absStr hasPrefix:@"about:blank#"])) {
+        ([absStr isEqualToString:@"about:blank"] ||
+         [absStr hasPrefix:@"about:blank#"] ||
+         [scheme isEqualToString:@"applewebdata"])) {
         decisionHandler(WKNavigationActionPolicyAllow);
     } else {
         decisionHandler(WKNavigationActionPolicyCancel);
@@ -3746,7 +3749,7 @@ static NSString *s_iosClipboardSnapshot = nil;
     _editorEngine->externalModifyAlertIsAsync = true;
     NSDictionary *infoDict = [[NSBundle mainBundle] infoDictionary];
     NSString *appVersion = infoDict[@"CFBundleShortVersionString"];
-    if (!appVersion) appVersion = @"1.0.55";
+    if (!appVersion) appVersion = @"1.0.56";
     NSString *versionString = [NSString stringWithFormat:@"miu v%@", appVersion];
     _editorEngine->appVersionStr = UTF8ToW(MiuIOSStdStringFromNSString(versionString));
     NSString *localizedHelp = NSLocalizedString(@"HelpText_iOS", nil);
@@ -4970,6 +4973,10 @@ static NSString *s_iosClipboardSnapshot = nil;
         }
         if (resolvedDisplayName.length > 0) {
             _editorEngine->loadSyntaxForExtension(MiuIOSStdStringFromNSString(resolvedDisplayName));
+            if (_editorEngine->showPreview) {
+                _editorEngine->previewInitialLoaded = false;
+                [self updatePreviewPane];
+            }
         }
         if (self.searchField.text.length > 0) {
             _editorEngine->searchQuery = MiuIOSStdStringFromNSString(self.searchField.text);
@@ -5057,6 +5064,10 @@ static NSString *s_iosClipboardSnapshot = nil;
         _editorEngine->isDirty = false;
         [self clearRecoveryDraft];
         _editorEngine->updateTitleBar();
+        if (_editorEngine->showPreview) {
+            _editorEngine->previewInitialLoaded = false;
+            [self updatePreviewPane];
+        }
         [self.editorView setNeedsDisplay];
 
         void (^postSaveAction)(void) = self.pendingPostSaveAction;
@@ -5088,6 +5099,10 @@ static NSString *s_iosClipboardSnapshot = nil;
                         strongSelf.currentDocumentDisplayName = refreshedName;
                         strongSelf->_editorEngine->loadSyntaxForExtension(MiuIOSStdStringFromNSString(refreshedName));
                         strongSelf->_editorEngine->updateTitleBar();
+                        if (strongSelf->_editorEngine->showPreview) {
+                            strongSelf->_editorEngine->previewInitialLoaded = false;
+                            [strongSelf updatePreviewPane];
+                        }
                         [strongSelf.editorView setNeedsDisplay];
                     }
                 }

@@ -34,10 +34,10 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.55 更新內容
-・導入 SIMD 加速，大幅提升 UTF-8 檔案開啟與編碼驗證速度
-・大幅加快不區分大小寫尋找、向上尋找、全部取代及 65 種語言語法突顯（含 Markdown）
-・最佳化大檔案輸入、游標移動、捲動註解解析與畫面渲染效能""",
+        "releaseNotes": """miu v1.0.56 更新內容
+・支援在未儲存的新建緩衝區中直接執行以 <canvas>、<div>、<script> 等開頭的 HTML 片段腳本
+・統一 macOS / iOS / Android 與 Windows 版的 HTML 預覽 CSP，支援 eval / new Function 及 blob: / data: 腳本
+・改進儲存流程，將未儲存文件另存為 .html 後立即自動重新整理為 HTML 即時預覽""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -76,10 +76,10 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """Neuerungen in miu v1.0.55
-• Deutlich schnelleres Öffnen und Prüfen von UTF-8-Dateien dank SIMD-Beschleunigung.
-• Beschleunigte Groß-/Kleinschreibung-ignorierende Suche, Rückwärtssuche, Alle ersetzen sowie Syntaxhervorhebung für 65 Sprachen (inkl. Markdown).
-• Flüssigeres Tippen, Navigieren, Scrollen in großen Dateien und effizienteres Rendering.""",
+        "releaseNotes": """Neuerungen in miu v1.0.56
+• <script>-Ausführung für ungespeicherte HTML-Snippets (beginnend mit <canvas>, <div>, <script>, <style> usw.) auf allen Plattformen aktiviert.
+• HTML-Vorschau-CSP unter macOS, iOS und Android an Windows angeglichen (Unterstützung für eval / new Function sowie blob:- / data:-Skripte).
+• Sofortige Aktualisierung der Live-Vorschau in den HTML-Modus direkt nach dem Speichern als .html.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -118,10 +118,10 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Nouveautés de miu v1.0.55
-• Ouverture et validation des fichiers UTF-8 nettement accélérées grâce au SIMD.
-• Recherche insensible à la casse, recherche arrière, Tout remplacer et coloration syntaxique de 65 langages (dont Markdown) plus rapides.
-• Saisie, déplacement du curseur, défilement des grands fichiers et rendu plus fluides.""",
+        "releaseNotes": """Nouveautés de miu v1.0.56
+• Exécution des balises <script> dans les extraits HTML non enregistrés (<canvas>, <div>, <script>, <style>, etc.) sur toutes les plateformes.
+• Unification de la CSP d’aperçu HTML sur macOS, iOS et Android avec Windows (prise en charge de eval / new Function et des scripts blob: / data:).
+• Passage immédiat de l’aperçu en direct au mode HTML dès l’enregistrement d’un document sous .html.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -160,10 +160,10 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Novedades de miu v1.0.55
-• Apertura y validación de archivos UTF-8 mucho más rápidas mediante aceleración SIMD.
-• Mayor velocidad en búsqueda sin distinción de mayúsculas, búsqueda hacia atrás, Reemplazar todo y resaltado de 65 lenguajes (incluido Markdown).
-• Escritura, movimiento del cursor, desplazamiento en archivos grandes y renderizado más fluidos.""",
+        "releaseNotes": """Novedades de miu v1.0.56
+• Ejecución de <script> habilitada en fragmentos HTML sin guardar (<canvas>, <div>, <script>, <style>, etc.) en todas las plataformas.
+• CSP de vista previa HTML unificada en macOS, iOS y Android con Windows para admitir eval / new Function y scripts blob: / data:.
+• Actualización inmediata de la vista previa al modo HTML al guardar un documento nuevo como .html.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -202,10 +202,10 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Novidades do miu v1.0.55
-• Abertura e validação de arquivos UTF-8 muito mais rápidas com aceleração SIMD.
-• Maior velocidade na busca sem diferenciar maiúsculas, busca para trás, Substituir tudo e destaque de sintaxe para 65 linguagens (incluindo Markdown).
-• Digitação, navegação do cursor, rolagem em arquivos grandes e renderização mais suaves.""",
+        "releaseNotes": """Novidades do miu v1.0.56
+• Execução de <script> ativada para trechos HTML não salvos (<canvas>, <div>, <script>, <style>, etc.) em todas as plataformas.
+• CSP de pré-visualização HTML unificada no macOS, iOS e Android com o Windows (suporte a eval / new Function e scripts blob: / data:).
+• Atualização imediata da pré-visualização para o modo HTML ao salvar um novo documento como .html.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -244,10 +244,10 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Что нового в miu v1.0.55
-• Значительно ускорены открытие и проверка файлов UTF-8 благодаря SIMD-оптимизации.
-• Ускорены поиск без учёта регистра, обратный поиск, автозамена и подсветка синтаксиса 65 языков (включая Markdown).
-• Более плавный ввод текста, перемещение курсора, прокрутка больших файлов и отрисовка.""",
+        "releaseNotes": """Что нового в miu v1.0.56
+• Включено выполнение <script> в несохранённых HTML-фрагментах (<canvas>, <div>, <script>, <style> и др.) на всех платформах.
+• Политика CSP предпросмотра HTML на macOS, iOS и Android приведена в соответствие с Windows (поддержка eval / new Function и скриптов blob: / data:).
+• Мгновенное переключение предпросмотра в режим HTML сразу после сохранения документа как .html.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -286,10 +286,10 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Novità di miu v1.0.55
-• Apertura e verifica dei file UTF-8 sensibilmente più veloci grazie all’accelerazione SIMD.
-• Ricerca senza distinzione maiuscole/minuscole, ricerca all’indietro, Sostituisci tutto ed evidenziazione per 65 linguaggi (incluso Markdown) più rapidi.
-• Digitazione, movimento del cursore, scorrimento di file grandi e rendering più fluidi.""",
+        "releaseNotes": """Novità di miu v1.0.56
+• Abilitata l’esecuzione di <script> nei frammenti HTML non salvati (<canvas>, <div>, <script>, <style>, ecc.) su tutte le piattaforme.
+• Unificata la CSP dell’anteprima HTML su macOS, iOS e Android con Windows per supportare eval / new Function e script blob: / data:.
+• Passaggio immediato dell’anteprima dal vivo alla modalità HTML subito dopo il salvataggio come .html.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -328,10 +328,10 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Nowości w miu v1.0.55
-• Znacznie szybsze otwieranie i weryfikacja plików UTF-8 dzięki akceleracji SIMD.
-• Przyspieszone wyszukiwanie bez rozróżniania wielkości liter, szukanie wstecz, Zamień wszystko oraz kolorowanie składni 65 języków (w tym Markdown).
-• Płynniejsze pisanie, ruch kursora, przewijanie dużych plików i renderowanie.""",
+        "releaseNotes": """Nowości w miu v1.0.56
+• Włączono wykonywanie <script> w niezapisanych fragmentach HTML (<canvas>, <div>, <script>, <style> itp.) na wszystkich platformach.
+• Ujednolicono politykę CSP podglądu HTML na macOS, iOS i Androidzie z wersją Windows (obsługa eval / new Function oraz skryptów blob: / data:).
+• Natychmiastowe przełączanie podglądu na żywo w tryb HTML po zapisaniu dokumentu jako .html.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -370,10 +370,10 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Nieuw in miu v1.0.55
-• Aanzienlijk sneller openen en valideren van UTF-8-bestanden dankzij SIMD-versnelling.
-• Snellere hoofdletterongevoelige zoekopdrachten, achteruit zoeken, Alles vervangen en syntaxisaccentuering voor 65 talen (waaronder Markdown).
-• Soepeler typen, cursornavigatie, scrollen in grote bestanden en weergaveprestaties.""",
+        "releaseNotes": """Nieuw in miu v1.0.56
+• <script>-uitvoering ingeschakeld voor niet-opgeslagen HTML-fragmenten (<canvas>, <div>, <script>, <style>, enz.) op alle platforms.
+• HTML-voorbeeld-CSP op macOS, iOS en Android gelijkgesteld met Windows voor ondersteuning van eval / new Function en blob:- / data:-scripts.
+• Live voorbeeld schakelt nu direct na opslaan als .html over naar de HTML-modus.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -412,10 +412,10 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.55 Yenilikleri
-• SIMD hızlandırmasıyla UTF-8 dosya açma ve kodlama doğrulama önemli ölçüde hızlandırıldı.
-• Büyük/küçük harf duyarsız arama, geriye doğru arama, Tümünü Değiştir ve 65 dil sözdizimi vurgulama (Markdown dahil) hızlandırıldı.
-• Büyük dosyalarda daha akıcı yazma, imleç hareketi, kaydırma ve çizim performansı.""",
+        "releaseNotes": """miu v1.0.56 Yenilikleri
+• Kaydedilmemiş HTML parçalarında (<canvas>, <div>, <script>, <style> vb.) <script> çalıştırma desteği tüm platformlarda etkinleştirildi.
+• macOS, iOS ve Android HTML önizleme CSP politikası Windows ile eşitlenerek eval / new Function ve blob: / data: betikleri desteklendi.
+• Yeni bir belge .html olarak kaydedildiği anda canlı önizlemenin anında HTML moduna geçmesi sağlandı.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -453,10 +453,10 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Có gì mới trong miu v1.0.55
-• Mở và kiểm tra tệp UTF-8 nhanh hơn đáng kể nhờ tăng tốc SIMD.
-• Tăng tốc tìm kiếm không phân biệt hoa thường, tìm ngược, Thay thế tất cả và tô sáng cú pháp 65 ngôn ngữ (gồm Markdown).
-• Gõ phím, di chuyển con trỏ, cuộn tệp lớn và hiển thị mượt mà hơn.""",
+        "releaseNotes": """Có gì mới trong miu v1.0.56
+• Hỗ trợ chạy <script> trực tiếp trong các đoạn HTML chưa lưu (<canvas>, <div>, <script>, <style>, v.v.) trên mọi nền tảng.
+• Đồng nhất CSP xem trước HTML trên macOS, iOS và Android với bản Windows, hỗ trợ eval / new Function cùng script blob: / data:.
+• Tự động chuyển xem trước trực tiếp sang chế độ HTML ngay sau khi lưu tệp dưới dạng .html.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -495,10 +495,10 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Що нового в miu v1.0.55
-• Значно пришвидшено відкриття та перевірку файлів UTF-8 завдяки SIMD-прискоренню.
-• Пришвидшено пошук без урахування регістру, зворотний пошук, Замінити все та підсвічування синтаксису 65 мов (зокрема Markdown).
-• Плавніший набір тексту, рух курсора, прокручування великих файлів і рендеринг.""",
+        "releaseNotes": """Що нового в miu v1.0.56
+• Увімкнено виконання <script> у незбережених HTML-фрагментах (<canvas>, <div>, <script>, <style> тощо) на всіх платформах.
+• Уніфіковано CSP попереднього перегляду HTML на macOS, iOS та Android із Windows (підтримка eval / new Function і скриптів blob: / data:).
+• Миттєве перемикання живого перегляду в режим HTML одразу після збереження файлу як .html.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -537,10 +537,10 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Yang Baru di miu v1.0.55
-• Pembukaan dan validasi file UTF-8 jauh lebih cepat berkat akselerasi SIMD.
-• Pencarian tanpa peka huruf besar/kecil, pencarian mundur, Ganti Semua, dan penyorotan sintaks 65 bahasa (termasuk Markdown) lebih cepat.
-• Pengetikan, navigasi kursor, pengguliran file besar, dan perenderan lebih mulus.""",
+        "releaseNotes": """Yang Baru di miu v1.0.56
+• Mendukung eksekusi <script> pada cuplikan HTML yang belum disimpan (<canvas>, <div>, <script>, <style>, dll.) di semua platform.
+• Menyeragamkan CSP pratinjau HTML di macOS, iOS, dan Android dengan Windows untuk mendukung eval / new Function serta skrip blob: / data:.
+• Pratinjau langsung kini langsung beralih ke mode HTML segera setelah dokumen disimpan sebagai .html.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -579,10 +579,10 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Novinky v miu v1.0.55
-• Výrazně rychlejší otevírání a ověřování souborů UTF-8 díky akceleraci SIMD.
-• Rychlejší hledání bez rozlišování velikosti písmen, zpětné hledání, Nahradit vše a zvýrazňování syntaxe 65 jazyků (včetně Markdownu).
-• Plynulejší psaní, pohyb kurzoru, posouvání velkých souborů a vykreslování.""",
+        "releaseNotes": """Novinky v miu v1.0.56
+• Povoleno spouštění <script> v neuložených úryvcích HTML (<canvas>, <div>, <script>, <style> aj.) na všech platformách.
+• Sjednocena CSP živého náhledu HTML na macOS, iOS a Androidu s verzí pro Windows (podpora eval / new Function a skriptů blob: / data:).
+• Okamžité přepnutí živého náhledu do režimu HTML ihned po uložení dokumentu jako .html.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -621,10 +621,10 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Nyheter i miu v1.0.55
-• Betydligt snabbare öppning och validering av UTF-8-filer med SIMD-acceleration.
-• Snabbare skiftlägesokänslig sökning, bakåtsökning, Ersätt alla samt syntaxmarkering för 65 språk (inklusive Markdown).
-• Mjukare skrivning, markörförflyttning, rullning i stora filer och rendering.""",
+        "releaseNotes": """Nyheter i miu v1.0.56
+• Aktiverat <script>-körning för osparade HTML-kodsnuttar (<canvas>, <div>, <script>, <style> m.fl.) på alla plattformar.
+• Förenhetligat CSP för HTML-förhandsgranskning på macOS, iOS och Android med Windows (stöd för eval / new Function samt blob:- / data:-skript).
+• Direkt växling till HTML-läge i förhandsgranskningen när ett nytt dokument sparas som .html.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -663,10 +663,10 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """มีอะไรใหม่ใน miu v1.0.55
-• เปิดและตรวจสอบไฟล์ UTF-8 ได้รวดเร็วยิ่งขึ้นด้วยการเร่งความเร็ว SIMD
-• ค้นหาแบบไม่สนใจตัวพิมพ์ใหญ่-เล็ก ค้นหาย้อนกลับ แทนที่ทั้งหมด และไฮไลต์ไวยากรณ์ 65 ภาษา (รวมถึง Markdown) ได้เร็วขึ้น
-• พิมพ์ข้อความ เลื่อนเคอร์เซอร์ เลื่อนดูไฟล์ขนาดใหญ่ และแสดงผลได้ลื่นไหลยิ่งขึ้น""",
+        "releaseNotes": """มีอะไรใหม่ใน miu v1.0.56
+• รองรับการรัน <script> สำหรับโค้ด HTML ที่ยังไม่บันทึก (เช่น ขึ้นต้นด้วย <canvas>, <div>, <script>, <style>) บนทุกแพลตฟอร์ม
+• ปรับ CSP ของพรีวิว HTML บน macOS, iOS และ Android ให้ตรงกับ Windows รองรับ eval / new Function และสคริปต์ blob: / data:
+• อัปเดตพรีวิวสดเป็นโหมด HTML ทันทีเมื่อบันทึกเอกสารใหม่เป็นไฟล์ .html""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -705,10 +705,10 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.55 में नया क्या है
-• SIMD त्वरण द्वारा UTF-8 फ़ाइल खोलने और एन्कोडिंग सत्यापन की गति में बड़ा सुधार।
-• केस-इनसेंसिटिव खोज, पीछे की ओर खोज, सभी बदलें और 65 भाषाओं (Markdown सहित) की सिंटैक्स हाइलाइटिंग अब और तेज़।
-• बड़ी फ़ाइलों में टाइपिंग, कर्सर मूवमेंट, स्क्रॉलिंग और रेंडरिंग प्रदर्शन अधिक स्मूथ।""",
+        "releaseNotes": """miu v1.0.56 में नया क्या है
+• सभी प्लेटफ़ॉर्म पर बिना सहेजे गए HTML स्निपेट (<canvas>, <div>, <script>, <style> आदि) में <script> निष्पादन समर्थित।
+• macOS, iOS और Android के HTML प्रीव्यू CSP को Windows के समान बनाया गया (eval / new Function और blob: / data: स्क्रिप्ट समर्थित)।
+• नए दस्तावेज़ को .html के रूप में सहेजते ही लाइव प्रीव्यू तुरंत HTML मोड में अपडेट होता है।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -747,10 +747,10 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Noutăți în miu v1.0.55
-• Deschidere și validare mult mai rapidă a fișierelor UTF-8 prin accelerare SIMD.
-• Căutare fără diferențiere majuscule/minuscule, căutare înapoi, Înlocuire peste tot și evidențiere sintactică pentru 65 de limbaje (inclusiv Markdown) mai rapide.
-• Tastare, navigare cu cursorul, derulare a fișierelor mari și randare mai fluide.""",
+        "releaseNotes": """Noutăți în miu v1.0.56
+• Activată execuția <script> în fragmentele HTML nesalvate (<canvas>, <div>, <script>, <style> etc.) pe toate platformele.
+• Unificată politica CSP de previzualizare HTML pe macOS, iOS și Android cu Windows (suport pentru eval / new Function și scripturi blob: / data:).
+• Comutare imediată a previzualizării live în modul HTML imediat după salvarea ca .html.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -789,10 +789,10 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """A miu v1.0.55 újdonságai
-• Jelentősen gyorsabb UTF-8-fájlmegnyitás és kódolás-ellenőrzés SIMD-gyorsítással.
-• Gyorsabb kis- és nagybetű-független keresés, visszafelé keresés, Összes cseréje és 65 nyelvű szintaxiskiemelés (beleértve a Markdownt).
-• Gördülékenyebb gépelés, kurzormozgatás, nagy fájlok görgetése és megjelenítés.""",
+        "releaseNotes": """A miu v1.0.56 újdonságai
+• Engedélyezve a <script> futtatása mentetlen HTML-részletekben (<canvas>, <div>, <script>, <style> stb.) minden platformon.
+• Egységesített HTML-előnézeti CSP macOS, iOS és Android rendszeren a Windows-verzióval (eval / new Function és blob: / data: szkriptek támogatása).
+• Az élő előnézet .html mentés után azonnal HTML-módra vált.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -831,10 +831,10 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Τι νέο υπάρχει στο miu v1.0.55
-• Ταχύτερο άνοιγμα και έλεγχος αρχείων UTF-8 χάρη στην επιτάχυνση SIMD.
-• Ταχύτερη αναζήτηση χωρίς διάκριση πεζών/κεφαλαίων, αναζήτηση προς τα πίσω, Αντικατάσταση όλων και επισήμανση 65 γλωσσών (συμπερ. Markdown).
-• Πιο ομαλή πληκτρολόγηση, κίνηση δρομέα, κύλιση μεγάλων αρχείων και σχεδίαση.""",
+        "releaseNotes": """Τι νέο υπάρχει στο miu v1.0.56
+• Ενεργοποιήθηκε η εκτέλεση <script> σε μη αποθηκευμένα αποσπάσματα HTML (<canvas>, <div>, <script>, <style> κ.ά.) σε όλες τις πλατφόρμες.
+• Ενοποιήθηκε η πολιτική CSP προεπισκόπησης HTML σε macOS, iOS και Android με τα Windows (υποστήριξη eval / new Function και blob: / data:).
+• Άμεση εναλλαγή της προεπισκόπησης σε λειτουργία HTML μόλις ένα έγγραφο αποθηκευτεί ως .html.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -873,10 +873,10 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Nyheder i miu v1.0.55
-• Markant hurtigere åbning og validering af UTF-8-filer med SIMD-acceleration.
-• Hurtigere søgning uden forskel på store/små bogstaver, baglæns søgning, Erstat alle og syntaksfremhævning for 65 sprog (inkl. Markdown).
-• Mere flydende indtastning, markørnavigation, rulning i store filer og gengivelse.""",
+        "releaseNotes": """Nyheder i miu v1.0.56
+• Aktiveret <script>-afvikling i ikke-gemte HTML-udsnit (<canvas>, <div>, <script>, <style> m.fl.) på alle platforme.
+• Ensrettet HTML-forhåndsvisningens CSP på macOS, iOS og Android med Windows (understøttelse af eval / new Function og blob:- / data:-scripts).
+• Øjeblikkeligt skift til HTML-tilstand i live-forhåndsvisning straks efter gem som .html.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -915,10 +915,10 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """Uutta versiossa miu v1.0.55
-• Huomattavasti nopeampi UTF-8-tiedostojen avaus ja tarkistus SIMD-kiihdytyksellä.
-• Nopeampi kirjainkoosta riippumaton haku, taaksepäin haku, Korvaa kaikki ja 65 kielen syntaksinkorostus (mukaan lukien Markdown).
-• Sulavampi kirjoitus, kohdistimen liike, suurten tiedostojen vieritys ja piirto.""",
+        "releaseNotes": """Uutta versiossa miu v1.0.56
+• Otettu käyttöön <script>-suoritus tallentamattomille HTML-katkelmille (<canvas>, <div>, <script>, <style> jne.) kaikilla alustoilla.
+• Yhtenäistetty HTML-esikatselun CSP macOS:ssä, iOS:ssä ja Androidissa Windowsin kanssa (eval / new Function sekä blob:- / data:-skriptit).
+• Esikatselu vaihtuu nyt välittömästi HTML-tilaan tallennettaessa tiedosto .html-muodossa.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -957,10 +957,10 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Nyheter i miu v1.0.55
-• Betydelig raskere åpning og validering av UTF-8-filer med SIMD-akselerasjon.
-• Raskere søk uavhengig av store/små bokstaver, bakoversøk, Erstatt alle og syntaksutheving for 65 språk (inkludert Markdown).
-• Jevnere skriving, markørnavigasjon, rulling i store filer og opptegning.""",
+        "releaseNotes": """Nyheter i miu v1.0.56
+• Aktivert <script>-kjøring i ulagrede HTML-snutter (<canvas>, <div>, <script>, <style> osv.) på alle plattformer.
+• Samordnet CSP for HTML-forhåndsvisning på macOS, iOS og Android med Windows (støtte for eval / new Function og blob:- / data:-skript).
+• Umiddelbar oppdatering til HTML-modus i forhåndsvisningen når et nytt dokument lagres som .html.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -999,10 +999,10 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Baharu dalam miu v1.0.55
-• Pembukaan dan pengesahan fail UTF-8 jauh lebih pantas dengan pecutan SIMD.
-• Carian tanpa mengira huruf besar/kecil, carian ke belakang, Ganti Semua dan penyerlahan sintaks 65 bahasa (termasuk Markdown) lebih laju.
-• Penaipan, pergerakan kursor, penatalan fail besar dan pemaparan lebih lancar.""",
+        "releaseNotes": """Baharu dalam miu v1.0.56
+• Menyokong pelaksanaan <script> dalam keratan HTML belum disimpan (<canvas>, <div>, <script>, <style>, dll.) pada semua platform.
+• Menyelaraskan CSP pratonton HTML pada macOS, iOS dan Android dengan Windows untuk menyokong eval / new Function serta skrip blob: / data:.
+• Pratonton langsung kini bertukar serta-merta ke mod HTML sebaik sahaja dokumen disimpan sebagai .html.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

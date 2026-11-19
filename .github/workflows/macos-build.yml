@@ -204,8 +204,8 @@ jobs:
           pbx_text = open("macOS/miu.xcodeproj/project.pbxproj", "r", encoding="utf-8", errors="replace").read()
           mv_matches = re.findall(r"MARKETING_VERSION\s*=\s*([0-9]+\.[0-9]+\.[0-9]+)\s*;", pbx_text)
           bv_matches = [int(x) for x in re.findall(r"CURRENT_PROJECT_VERSION\s*=\s*([0-9]+)\s*;", pbx_text)]
-          macos_ver = mv_matches[-1] if mv_matches else "1.0.55"
-          macos_build = max(bv_matches) if bv_matches else 59
+          macos_ver = mv_matches[-1] if mv_matches else "1.0.56"
+          macos_build = max(bv_matches) if bv_matches else 60
 
           def parse_ver(v):
               parts = [int(p) for p in v.split(".")[:3]]
@@ -380,8 +380,8 @@ jobs:
               r_enc = requests.patch(f"{ams.BASE_URL}/builds/{chosen_build_id}", headers=headers, json=enc_payload, timeout=60)
               print(f"[MAC_OS TestFlight] Set usesNonExemptEncryption=False on build {target_build} ({chosen_build_id}): HTTP {r_enc.status_code}")
 
-              ja_note = "v1.0.55 高速化アップデート（SIMD UTF-8検証、検索・全置換、65言語ハイライト、大ファイル編集・描画の高速化）"
-              en_note = "v1.0.55 performance update (SIMD UTF-8 validation, faster case-insensitive/backward search, 65-language syntax prechecks, and smoother large-file editing & rendering)."
+              ja_note = "v1.0.56 HTMLライブプレビュー改善（未保存HTMLスニペットの<script>対応、eval/blob:等のCSP統一、.html保存時の即時反映）"
+              en_note = "v1.0.56 HTML Live Preview update (unsaved HTML snippet <script> support, cross-platform CSP parity for eval/blob:/data:, and immediate refresh on .html save)."
               r_bbloc = requests.get(f"{ams.BASE_URL}/builds/{chosen_build_id}/betaBuildLocalizations?limit=200", headers=headers, timeout=60)
               existing = {}
               if r_bbloc.status_code == 200:

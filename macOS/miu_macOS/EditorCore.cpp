@@ -30,7 +30,7 @@
 #include <arm_neon.h>
 #endif
 
-const std::wstring APP_VERSION = L"v1.0.55";
+const std::wstring APP_VERSION = L"v1.0.56";
 const std::wstring APP_TITLE = L"miu";
 
 using MiuCore::SanitizeUtf8;
@@ -2813,7 +2813,7 @@ MiuPreview::PreviewRenderResult Editor::getPreviewRenderResult() {
     static constexpr size_t PREVIEW_MAX_BYTES = 524288;
     size_t totalBytes = pt.length();
     std::string content = pt.getRange(0, std::min(totalBytes, PREVIEW_MAX_BYTES + 1));
-    return MiuPreview::renderPreview(content, currentFileExt, isDarkMode, previewNonce);
+    return MiuPreview::renderPreview(content, currentFileExt, isDarkMode, previewNonce, currentFilePath.empty());
 }
 
 bool Editor::handlePreviewTaskToggle(int targetLineIdx) {
@@ -2861,7 +2861,7 @@ bool Editor::handlePreviewMessage(const std::string& msg) {
     if (!showPreview) return false;
     std::string head = pt.getRange(0, std::min(pt.length(), (size_t)4096));
     int lineIdx = -1;
-    if (!MiuPreview::parseVerifiedTaskToggleMessage(msg, previewNonce, currentFileExt, head, lineIdx)) {
+    if (!MiuPreview::parseVerifiedTaskToggleMessage(msg, previewNonce, currentFileExt, head, lineIdx, currentFilePath.empty())) {
         return false;
     }
     return handlePreviewTaskToggle(lineIdx);
@@ -4987,6 +4987,10 @@ bool Editor::saveFile(const std::wstring& p) {
     undo.markSaved();
     isDirty = false;
     updateTitleBar();
+    if (cbUpdatePreview && showPreview) {
+        previewInitialLoaded = false;
+        cbUpdatePreview();
+    }
     return true;
 }
 
