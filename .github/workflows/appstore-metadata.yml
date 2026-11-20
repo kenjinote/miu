@@ -15,6 +15,14 @@ on:
         description: "Also re-render and upload screenshots"
         required: false
         default: "false"
+      screenshots_only:
+        description: "Only render and replace screenshots (skip text metadata overwrite)"
+        required: false
+        default: "false"
+      force_clean_screenshots:
+        description: "Force-replace all existing App Store screenshots"
+        required: false
+        default: "false"
       submit_for_review:
         description: "Attach build and submit for App Store Review"
         required: false
@@ -32,10 +40,28 @@ jobs:
       TARGET_PLATFORM: ${{ github.event.inputs.target_platform }}
       TARGET_VERSION: ${{ github.event.inputs.target_version }}
       SYNC_SCREENSHOTS: ${{ github.event.inputs.sync_screenshots }}
+      SCREENSHOTS_ONLY: ${{ github.event.inputs.screenshots_only }}
+      FORCE_CLEAN_SCREENSHOTS: ${{ github.event.inputs.force_clean_screenshots }}
       SUBMIT_FOR_REVIEW: ${{ github.event.inputs.submit_for_review }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install multi-script Noto fonts & C++20 toolchain for Retina Screenshot Renderer
+        if: env.HAS_ASC_SECRETS == 'true' && (env.SYNC_SCREENSHOTS == 'true' || env.SCREENSHOTS_ONLY == 'true')
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            g++ \
+            fontconfig \
+            fonts-noto-cjk \
+            fonts-noto-core \
+            fonts-noto-extra \
+            fonts-dejavu-core
+          if ! command -v google-chrome >/dev/null 2>&1 && ! command -v microsoft-edge >/dev/null 2>&1 && ! command -v chromium >/dev/null 2>&1 && ! command -v chromium-browser >/dev/null 2>&1; then
+            sudo apt-get install -y --no-install-recommends chromium-browser || sudo apt-get install -y --no-install-recommends chromium
+          fi
+          fc-cache -f
 
       - name: Install Python dependencies
         if: env.HAS_ASC_SECRETS == 'true'
@@ -48,7 +74,7 @@ jobs:
             "pyjwt>=2.8,<3" "cryptography>=42" "requests>=2.31,<3" "pillow>=10" "numpy>=1.26"
           echo "$RUNNER_TEMP/asc_venv/bin" >> "$GITHUB_PATH"
 
-      - name: Sync App Store Metadata
+      - name: Sync App Store Metadata & Screenshots
         if: env.HAS_ASC_SECRETS == 'true'
         env:
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
@@ -57,28 +83,35 @@ jobs:
         run: |
           set -euo pipefail
           PLAT="${TARGET_PLATFORM:-all}"
-          if [ "$PLAT" = "macos" ]; then
-            VER_ARG="${TARGET_VERSION:-1.0.56}"
-            if [ "${SUBMIT_FOR_REVIEW:-false}" = "true" ]; then
-              python3 scripts/submit_macos_appstore.py --version "$VER_ARG" --submit
+          if [ "${SCREENSHOTS_ONLY:-false}" != "true" ]; then
+            if [ "$PLAT" = "macos" ]; then
+              VER_ARG="${TARGET_VERSION:-1.0.56}"
+              if [ "${SUBMIT_FOR_REVIEW:-false}" = "true" ]; then
+                python3 scripts/submit_macos_appstore.py --version "$VER_ARG" --submit
+              else
+                python3 scripts/submit_macos_appstore.py --version "$VER_ARG"
+              fi
+            elif [ "$PLAT" = "ios" ]; then
+              if [ "${SUBMIT_FOR_REVIEW:-false}" = "true" ]; then
+                python3 scripts/appstore_metadata_sync.py --ios-only --submit
+              else
+                python3 scripts/appstore_metadata_sync.py --ios-only
+              fi
             else
-              python3 scripts/submit_macos_appstore.py --version "$VER_ARG"
-            fi
-          elif [ "$PLAT" = "ios" ]; then
-            if [ "${SUBMIT_FOR_REVIEW:-false}" = "true" ]; then
-              python3 scripts/appstore_metadata_sync.py --ios-only --submit
-            else
-              python3 scripts/appstore_metadata_sync.py --ios-only
-            fi
-          else
-            if [ "${SUBMIT_FOR_REVIEW:-false}" = "true" ]; then
-              python3 scripts/appstore_metadata_sync.py --submit
-            else
-              python3 scripts/appstore_metadata_sync.py
+              if [ "${SUBMIT_FOR_REVIEW:-false}" = "true" ]; then
+                python3 scripts/appstore_metadata_sync.py --submit
+              else
+                python3 scripts/appstore_metadata_sync.py
+              fi
             fi
           fi
-          if [ "${SYNC_SCREENSHOTS:-false}" = "true" ]; then
-            python3 scripts/appstore_screenshots_sync.py --out-dir "$RUNNER_TEMP/asc_screenshots"
+
+          if [ "${SYNC_SCREENSHOTS:-false}" = "true" ] || [ "${SCREENSHOTS_ONLY:-false}" = "true" ]; then
+            EXTRA_ARGS=(--platform "$PLAT" --out-dir "$RUNNER_TEMP/asc_screenshots")
+            if [ "${FORCE_CLEAN_SCREENSHOTS:-false}" = "true" ]; then
+              EXTRA_ARGS+=(--force-clean)
+            fi
+            python3 scripts/appstore_screenshots_sync.py "${EXTRA_ARGS[@]}"
           fi
 
       - name: Cleanup temporary files

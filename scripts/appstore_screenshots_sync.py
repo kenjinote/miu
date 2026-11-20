@@ -1549,19 +1549,11 @@ DISPLAY_TYPE_RENDERERS = {
 
 
 def render_prefix_display_type(prefix, display_type, out_dir):
-    """Render all 5 slides for (prefix, display_type) into out_dir and return list of file paths."""
-    os.makedirs(out_dir, exist_ok=True)
-    fb, fr = resolve_font_paths(prefix)
-    specs = get_slide_specs(prefix)
-    renderer = DISPLAY_TYPE_RENDERERS[display_type]
-    paths = []
-    for spec in specs:
-        fname = f"miu_{prefix}_{display_type}_{spec['idx']}.png"
-        fpath = os.path.join(out_dir, fname)
-        img = renderer(spec, fb, fr)
-        img.save(fpath, "PNG", optimize=False)
-        paths.append(fpath)
-    return paths
+    """Render all 5 Retina minimalist slides for (prefix, display_type) into out_dir and return list of file paths."""
+    import store_minimal_renderer as smr
+    ui_strings = parse_localizable_strings(LANG_DECKS[prefix]["lproj"])
+    res = smr.render_minimal_batch([prefix], [display_type], out_dir, {prefix: ui_strings}, DUO_TARGET_SIZE, workers=1)
+    return res[(prefix, display_type)]
 
 
 # ============================================================================
@@ -1651,9 +1643,148 @@ def get_app_and_editable_versions():
     targets = []
     for v in r_ver.json().get("data", []):
         attrs = v.get("attributes", {})
-        if attrs.get("appStoreState") in editable_states:
-            targets.append((attrs.get("platform"), v["id"], attrs.get("versionString")))
+        st = attrs.get("appStoreState", "")
+        print(f"  [Version] platform={attrs.get('platform')} version={attrs.get('versionString')} id={v['id']} state={st}")
+        if st in editable_states:
+            targets.append((attrs.get("platform"), v["id"], attrs.get("versionString"), st))
     return app_id, targets
+
+
+def unlock_version_for_screenshots(app_id: str, plat: str, version_id: str, version_str: str, cur_state: str) -> tuple[str, bool]:
+    """
+    App Store Connect locks appScreenshots mutations while appStoreState is WAITING_FOR_REVIEW / IN_REVIEW.
+    Cancel active reviewSubmission temporarily so screenshots can be replaced cleanly, then return was_submitted=True.
+    """
+    unlocked_states = {
+        "PREPARE_FOR_SUBMISSION",
+        "DEVELOPER_REJECTED",
+        "REJECTED",
+        "METADATA_REJECTED",
+        "INVALID_BINARY",
+    }
+    if cur_state in unlocked_states:
+        return cur_state, False
+
+    if cur_state not in ("WAITING_FOR_REVIEW", "IN_REVIEW"):
+        return cur_state, False
+
+    print(f"[{plat}] Version {version_str} is in {cur_state}; cancelling active reviewSubmission temporarily to unlock screenshot sets...")
+    r_subs = api_request("GET", f"{BASE_URL}/apps/{app_id}/reviewSubmissions?filter[platform]={plat}&limit=20")
+    canceled_any = False
+    if r_subs.status_code == 200:
+        for s in r_subs.json().get("data", []):
+            sub_id = s["id"]
+            st = s.get("attributes", {}).get("state", "")
+            if st in ("WAITING_FOR_REVIEW", "IN_REVIEW", "UNRESOLVED_ISSUES", "READY_FOR_REVIEW"):
+                r_can = api_request(
+                    "PATCH",
+                    f"{BASE_URL}/reviewSubmissions/{sub_id}",
+                    json_data={
+                        "data": {
+                            "type": "reviewSubmissions",
+                            "id": sub_id,
+                            "attributes": {"canceled": True},
+                        }
+                    },
+                )
+                print(f"[{plat}] Canceled reviewSubmission {sub_id} (was {st}): HTTP {r_can.status_code}")
+                if r_can.status_code in (200, 204):
+                    canceled_any = True
+
+    for _ in range(20):
+        time.sleep(2.0)
+        r_v = api_request("GET", f"{BASE_URL}/appStoreVersions/{version_id}")
+        if r_v.status_code == 200:
+            new_st = r_v.json().get("data", {}).get("attributes", {}).get("appStoreState", "")
+            if new_st in unlocked_states:
+                print(f"[{plat}] Version {version_str} unlocked -> {new_st}")
+                return new_st, True
+    return cur_state, canceled_any
+
+
+def resubmit_version_for_review(app_id: str, plat: str, version_id: str, version_str: str):
+    """Re-verify attached VALID build and re-submit appStoreVersion back to WAITING_FOR_REVIEW."""
+    print(f"\n[{plat}] Re-submitting v{version_str} ({version_id}) for App Store Review...")
+    # Ensure build is attached
+    r_vb = api_request("GET", f"{BASE_URL}/appStoreVersions/{version_id}/build")
+    has_build = (r_vb.status_code == 200 and bool(r_vb.json().get("data")))
+    if not has_build:
+        r_b = api_request(
+            "GET",
+            f"{BASE_URL}/builds?filter[app]={app_id}&filter[preReleaseVersion.platform]={plat}"
+            f"&filter[preReleaseVersion.version]={version_str}&sort=-uploadedDate&limit=10",
+        )
+        if r_b.status_code == 200:
+            for b in r_b.json().get("data", []):
+                if b.get("attributes", {}).get("processingState") == "VALID":
+                    bid = b["id"]
+                    api_request(
+                        "PATCH",
+                        f"{BASE_URL}/appStoreVersions/{version_id}/relationships/build",
+                        json_data={"data": {"type": "builds", "id": bid}},
+                    )
+                    print(f"[{plat}] Re-attached VALID build {bid} to v{version_str}")
+                    break
+
+    r_subs = api_request("GET", f"{BASE_URL}/apps/{app_id}/reviewSubmissions?filter[platform]={plat}&limit=20")
+    sub_id = None
+    if r_subs.status_code == 200:
+        for s in r_subs.json().get("data", []):
+            st = s.get("attributes", {}).get("state", "")
+            if st in ("READY_FOR_REVIEW", "UNRESOLVED_ISSUES"):
+                sub_id = s["id"]
+                break
+            if st in ("WAITING_FOR_REVIEW", "IN_REVIEW"):
+                print(f"[{plat}] Already in {st} (reviewSubmission {s['id']})")
+                return
+
+    if not sub_id:
+        r_cs = api_request(
+            "POST",
+            f"{BASE_URL}/reviewSubmissions",
+            json_data={
+                "data": {
+                    "type": "reviewSubmissions",
+                    "attributes": {"platform": plat},
+                    "relationships": {"app": {"data": {"type": "apps", "id": app_id}}},
+                }
+            },
+        )
+        if r_cs.status_code not in (200, 201):
+            raise RuntimeError(f"[{plat}] Failed to create reviewSubmission: HTTP {r_cs.status_code} {r_cs.text[:300]}")
+        sub_id = r_cs.json()["data"]["id"]
+
+    r_item = api_request(
+        "POST",
+        f"{BASE_URL}/reviewSubmissionItems",
+        json_data={
+            "data": {
+                "type": "reviewSubmissionItems",
+                "relationships": {
+                    "reviewSubmission": {"data": {"type": "reviewSubmissions", "id": sub_id}},
+                    "appStoreVersion": {"data": {"type": "appStoreVersions", "id": version_id}},
+                },
+            }
+        },
+    )
+    if r_item.status_code not in (200, 201, 409):
+        print(f"[{plat}] Note adding reviewSubmissionItem: HTTP {r_item.status_code} {r_item.text[:240]}")
+
+    r_sub = api_request(
+        "PATCH",
+        f"{BASE_URL}/reviewSubmissions/{sub_id}",
+        json_data={
+            "data": {
+                "type": "reviewSubmissions",
+                "id": sub_id,
+                "attributes": {"submitted": True},
+            }
+        },
+    )
+    if r_sub.status_code != 200:
+        raise RuntimeError(f"[{plat}] Failed to re-submit reviewSubmission {sub_id}: HTTP {r_sub.status_code} {r_sub.text[:400]}")
+    sub_state = r_sub.json().get("data", {}).get("attributes", {}).get("state", "")
+    print(f"[{plat}] Re-submitted v{version_str} for App Review! reviewSubmission {sub_id} state={sub_state}")
 
 
 def upload_single_screenshot(set_id, file_path):
@@ -1743,9 +1874,33 @@ def clean_all_existing_screenshots_for_locale(loc_id, locale):
     return total_deleted
 
 
+def clean_non_target_sets_for_locale(loc_id, active_display_types):
+    """Remove screenshots from any non-target screenshot sets so zero stale screenshots remain."""
+    r_sets = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}/appScreenshotSets?limit=50")
+    if r_sets.status_code != 200:
+        return 0
+    deleted = 0
+    for s in r_sets.json().get("data", []):
+        dt = s.get("attributes", {}).get("screenshotDisplayType", "")
+        if dt in active_display_types:
+            continue
+        set_id = s["id"]
+        r_ss = api_request("GET", f"{BASE_URL}/appScreenshotSets/{set_id}/appScreenshots?limit=50")
+        if r_ss.status_code == 200:
+            for old_ss in r_ss.json().get("data", []):
+                r_del = api_request("DELETE", f"{BASE_URL}/appScreenshots/{old_ss['id']}")
+                if r_del.status_code in (200, 204, 404):
+                    deleted += 1
+    return deleted
+
+
 def sync_localization_screenshot_set(loc_id, locale, display_type, file_paths, force_clean=False, verify_delivery=False):
-    """Ensure the screenshot set exists for (loc_id, display_type), upload 5 screenshots if not already complete."""
-    # 1. List existing sets for this localization
+    """
+    Atomically replace screenshots in (loc_id, display_type) with the 5 new PNGs:
+      - Reuses any remote screenshot whose MD5 checksum already matches
+      - Uses upload-before-delete within Apple's 10-slot limit so sets never drop to 0 mid-transfer
+      - Waits for COMPLETE delivery state and enforces exact 1..5 order
+    """
     r_sets = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}/appScreenshotSets?limit=50")
     if r_sets.status_code != 200:
         return False, f"[{locale}/{display_type}] Failed to list sets: {r_sets.status_code}"
@@ -1760,15 +1915,10 @@ def sync_localization_screenshot_set(loc_id, locale, display_type, file_paths, f
         create_payload = {
             "data": {
                 "type": "appScreenshotSets",
-                "attributes": {
-                    "screenshotDisplayType": display_type,
-                },
+                "attributes": {"screenshotDisplayType": display_type},
                 "relationships": {
                     "appStoreVersionLocalization": {
-                        "data": {
-                            "type": "appStoreVersionLocalizations",
-                            "id": loc_id,
-                        }
+                        "data": {"type": "appStoreVersionLocalizations", "id": loc_id}
                     }
                 },
             }
@@ -1778,42 +1928,63 @@ def sync_localization_screenshot_set(loc_id, locale, display_type, file_paths, f
             set_id = r_create.json()["data"]["id"]
         elif r_create.status_code == 409:
             r_sets2 = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}/appScreenshotSets?limit=50")
-            for s in r_sets2.json().get("data", []):
-                if s.get("attributes", {}).get("screenshotDisplayType") == display_type:
-                    set_id = s["id"]
-                    break
+            if r_sets2.status_code == 200:
+                for s in r_sets2.json().get("data", []):
+                    if s.get("attributes", {}).get("screenshotDisplayType") == display_type:
+                        set_id = s["id"]
+                        break
         if not set_id:
             return False, f"[{locale}/{display_type}] Failed to create set ({r_create.status_code}): {r_create.text[:300]}"
 
-    # 2. Check existing screenshots in this set
+    desired_md5s = [hashlib.md5(open(fp, "rb").read()).hexdigest() for fp in file_paths]
+
     r_existing = api_request("GET", f"{BASE_URL}/appScreenshotSets/{set_id}/appScreenshots?limit=50")
     existing_items = r_existing.json().get("data", []) if r_existing.status_code == 200 else []
-    if not force_clean and len(existing_items) == len(file_paths):
-        all_ok = all(
-            item.get("attributes", {}).get("assetDeliveryState", {}).get("state") in ("COMPLETE", "UPLOAD_COMPLETE")
-            for item in existing_items
-        )
-        if all_ok:
-            return True, f"[{locale}/{display_type}] Already has {len(existing_items)} complete screenshots (skipped)"
 
-    deleted_count = 0
-    for old_ss in existing_items:
-        old_id = old_ss["id"]
-        r_del = api_request("DELETE", f"{BASE_URL}/appScreenshots/{old_id}")
+    existing_md5_seq = [it.get("attributes", {}).get("sourceFileChecksum") for it in existing_items]
+    existing_all_ok = len(existing_items) == len(file_paths) and all(
+        it.get("attributes", {}).get("assetDeliveryState", {}).get("state") in ("COMPLETE", "UPLOAD_COMPLETE")
+        for it in existing_items
+    )
+    if existing_all_ok and existing_md5_seq == desired_md5s:
+        return True, f"[{locale}/{display_type}] Checksums already match all 5 screenshots (up-to-date)"
+    if not force_clean and existing_all_ok:
+        return True, f"[{locale}/{display_type}] Already has {len(existing_items)} complete screenshots (skipped)"
+
+    # Map reusable remote screenshots by MD5 checksum
+    matching_by_md5 = {}
+    for ss in existing_items:
+        attr = ss.get("attributes", {})
+        st = attr.get("assetDeliveryState", {}).get("state", "")
+        ck = attr.get("sourceFileChecksum")
+        if ck in desired_md5s and st != "FAILED":
+            matching_by_md5.setdefault(ck, ss["id"])
+
+    keep_ids = set(matching_by_md5.values())
+    stale_ids = [ss["id"] for ss in existing_items if ss["id"] not in keep_ids]
+    needed_uploads = sum(1 for md5 in desired_md5s if md5 not in matching_by_md5)
+
+    # Free slots only if len(existing_items) + needed_uploads > 10 (Apple's 10-screenshot cap per set)
+    overflow = max(0, len(existing_items) + needed_uploads - 10)
+    for sid in list(stale_ids[:overflow]):
+        r_del = api_request("DELETE", f"{BASE_URL}/appScreenshots/{sid}")
         if r_del.status_code in (200, 204, 404):
-            deleted_count += 1
+            stale_ids.remove(sid)
 
-    # 3. Upload the 5 new screenshots in order (1..5)
-    uploaded_ids = []
-    for idx, fpath in enumerate(file_paths):
+    # Upload all needed new screenshots
+    final_ids = []
+    for idx, (fpath, want_md5) in enumerate(zip(file_paths, desired_md5s)):
+        reused = matching_by_md5.get(want_md5)
+        if reused:
+            final_ids.append(reused)
+            continue
         ok, info = upload_single_screenshot(set_id, fpath)
         if not ok:
             return False, f"[{locale}/{display_type}] {info}"
-        uploaded_ids.append(info)
+        final_ids.append(info)
 
-        # Optionally verify first screenshot processing state on App Store Connect
         if verify_delivery and idx == 0:
-            for _ in range(8):
+            for _ in range(10):
                 time.sleep(1.5)
                 r_chk = api_request("GET", f"{BASE_URL}/appScreenshots/{info}")
                 if r_chk.status_code == 200:
@@ -1825,17 +1996,67 @@ def sync_localization_screenshot_set(loc_id, locale, display_type, file_paths, f
                     if st == "COMPLETE":
                         break
 
-    # 4. Explicitly set the ordering relationship on the set
-    order_payload = {
-        "data": [{"type": "appScreenshots", "id": sid} for sid in uploaded_ids]
-    }
+    # Delete remaining stale screenshots now that new ones are uploaded
+    for sid in stale_ids:
+        api_request("DELETE", f"{BASE_URL}/appScreenshots/{sid}")
+
+    # Enforce exact 1..5 ordering
+    order_payload = {"data": [{"type": "appScreenshots", "id": sid} for sid in final_ids]}
     api_request("PATCH", f"{BASE_URL}/appScreenshotSets/{set_id}/relationships/appScreenshots", json_data=order_payload)
 
-    return True, f"[{locale}/{display_type}] Uploaded {len(uploaded_ids)} screenshots"
+    # Poll until all 5 screenshots finish processing (COMPLETE) so review re-submission succeeds cleanly
+    pending = set(final_ids)
+    for _ in range(30):
+        r_pol = api_request("GET", f"{BASE_URL}/appScreenshotSets/{set_id}/appScreenshots?limit=50")
+        if r_pol.status_code == 200:
+            by_id = {it["id"]: it for it in r_pol.json().get("data", [])}
+            for sid in list(pending):
+                st_obj = by_id.get(sid, {}).get("attributes", {}).get("assetDeliveryState", {})
+                st = st_obj.get("state", "")
+                if st == "FAILED":
+                    return False, f"[{locale}/{display_type}] Asset processing FAILED: {st_obj.get('errors')}"
+                if st == "COMPLETE":
+                    pending.discard(sid)
+        if not pending:
+            break
+        time.sleep(2.0)
+
+    return True, f"[{locale}/{display_type}] Replaced & verified {len(final_ids)} screenshots"
+
+
+def _probe_or_confirm_display_type(probe_loc_id: str, cand: str) -> bool:
+    """Return True ONLY if cand already exists or POST creates it on probe_loc_id (never misread enum 409)."""
+    r0 = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{probe_loc_id}/appScreenshotSets?limit=50")
+    if r0.status_code == 200:
+        for s in r0.json().get("data", []):
+            if s.get("attributes", {}).get("screenshotDisplayType") == cand:
+                return True
+
+    payload = {
+        "data": {
+            "type": "appScreenshotSets",
+            "attributes": {"screenshotDisplayType": cand},
+            "relationships": {
+                "appStoreVersionLocalization": {
+                    "data": {"type": "appStoreVersionLocalizations", "id": probe_loc_id}
+                }
+            },
+        }
+    }
+    r_try = api_request("POST", f"{BASE_URL}/appScreenshotSets", json_data=payload)
+    if r_try.status_code in (200, 201):
+        return True
+    if r_try.status_code == 409:
+        r1 = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{probe_loc_id}/appScreenshotSets?limit=50")
+        if r1.status_code == 200:
+            for s in r1.json().get("data", []):
+                if s.get("attributes", {}).get("screenshotDisplayType") == cand:
+                    return True
+    return False
 
 
 def discover_iphone_duo_display_type(existing_locs):
-    """Discover or confirm the exact ScreenshotDisplayType enum value for iPhone Duo on IOS."""
+    """Discover or confirm the exact ScreenshotDisplayType enum value for iPhone Duo on IOS (or None if unsupported)."""
     probe_loc_id = existing_locs.get("ja") or existing_locs.get("en-US") or next(iter(existing_locs.values()))
     r = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{probe_loc_id}/appScreenshotSets?limit=50")
     if r.status_code == 200:
@@ -1845,179 +2066,163 @@ def discover_iphone_duo_display_type(existing_locs):
                 print(f"[IOS] Found existing iPhone Duo screenshot set with displayType={dt}")
                 return dt
 
-    candidates = ["APP_IPHONE_DUO", "APP_IPHONE_FOLD", "APP_IPHONE_DUAL"]
-    for cand in candidates:
-        payload = {
-            "data": {
-                "type": "appScreenshotSets",
-                "attributes": {"screenshotDisplayType": cand},
-                "relationships": {
-                    "appStoreVersionLocalization": {
-                        "data": {"type": "appStoreVersionLocalizations", "id": probe_loc_id}
-                    }
-                },
-            }
-        }
-        r_try = api_request("POST", f"{BASE_URL}/appScreenshotSets", json_data=payload)
-        if r_try.status_code in (200, 201, 409):
-            print(f"[IOS] Confirmed iPhone Duo displayType={cand} (HTTP {r_try.status_code})")
+    for cand in ("APP_IPHONE_DUO", "APP_IPHONE_FOLD", "APP_IPHONE_DUAL"):
+        if _probe_or_confirm_display_type(probe_loc_id, cand):
+            print(f"[IOS] Confirmed iPhone Duo displayType={cand}")
             return cand
-        else:
-            print(f"[IOS] Probe {cand} returned HTTP {r_try.status_code}: {r_try.text[:300]}")
-    return "APP_IPHONE_DUO"
+    print("[IOS] Note: App Store Connect API does not expose a separate iPhone Duo screenshotDisplayType on this version; syncing iPhone & iPad slots.")
+    return None
 
 
 def discover_platform_display_types(version_id, plat, existing_locs):
-    """Discover active screenshotDisplayTypes configured on primary locales, ensuring iPhone, iPhone Duo & iPad on IOS."""
+    """Discover active screenshotDisplayTypes configured on primary locales for MAC_OS and IOS."""
     if plat == "MAC_OS":
         return ["APP_DESKTOP"]
 
-    discovered_iphone = None
-    discovered_ipad = None
+    probe_loc_id = existing_locs.get("ja") or existing_locs.get("en-US") or next(iter(existing_locs.values()))
+    existing_dts = set()
     for probe_loc in ("ja", "en-US"):
         if probe_loc in existing_locs:
-            loc_id = existing_locs[probe_loc]
-            r = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}/appScreenshotSets?limit=50")
+            r = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{existing_locs[probe_loc]}/appScreenshotSets?limit=50")
             if r.status_code == 200:
                 for s in r.json().get("data", []):
-                    dt = s.get("attributes", {}).get("screenshotDisplayType", "")
-                    if dt in ("APP_IPHONE_67", "APP_IPHONE_65") and not discovered_iphone:
-                        discovered_iphone = dt
-                    elif dt in ("APP_IPAD_PRO_3GEN_129", "APP_IPAD_PRO_129") and not discovered_ipad:
-                        discovered_ipad = dt
+                    existing_dts.add(s.get("attributes", {}).get("screenshotDisplayType", ""))
+    print(f"[IOS] Existing screenshot sets on primary locales: {sorted(existing_dts)}")
 
+    iphone_dt = "APP_IPHONE_67" if _probe_or_confirm_display_type(probe_loc_id, "APP_IPHONE_67") else "APP_IPHONE_65"
+    ipad_dt = "APP_IPAD_PRO_3GEN_129" if _probe_or_confirm_display_type(probe_loc_id, "APP_IPAD_PRO_3GEN_129") else "APP_IPAD_PRO_129"
+    result = [iphone_dt]
+    # If APP_IPHONE_65 also existed alongside APP_IPHONE_67 and cannot be left stale, we clean non-target sets;
+    # or if desired we only populate APP_IPHONE_67 (Media Manager cascades 6.7" to 6.5"/5.5" automatically when 6.5" is empty!).
     duo_dt = discover_iphone_duo_display_type(existing_locs)
-    if duo_dt not in DISPLAY_TYPE_RENDERERS:
-        DISPLAY_TYPE_RENDERERS[duo_dt] = DISPLAY_TYPE_RENDERERS["APP_IPHONE_DUO"]
-
-    return [
-        discovered_iphone or "APP_IPHONE_67",
-        duo_dt,
-        discovered_ipad or "APP_IPAD_PRO_3GEN_129",
-    ]
+    if duo_dt:
+        result.append(duo_dt)
+    result.append(ipad_dt)
+    return result
 
 
 def main():
     global DUO_TARGET_SIZE
+    import store_minimal_renderer as smr
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--local-test", action="store_true", help="Render ja & en-US screenshots locally without uploading")
-    parser.add_argument("--force-clean", action="store_true", help="Delete and re-upload even if a set already has 5 complete screenshots")
+    parser.add_argument("--local-test", action="store_true", help="Render ja & en Retina screenshots locally without uploading")
+    parser.add_argument("--local-all", action="store_true", help="Render all 28 languages locally without uploading")
+    parser.add_argument("--force-clean", action="store_true", help="Replace all screenshots even if a set already has 5 screenshots")
+    parser.add_argument("--no-resubmit", action="store_true", help="Do not re-submit version to App Review if unlocked from WAITING_FOR_REVIEW")
+    parser.add_argument("--platform", default="all", choices=["all", "ios", "macos"], help="Target platform filter (all, ios, macos)")
     parser.add_argument("--out-dir", default=os.path.join(REPO_ROOT, "build_screenshots"), help="Output directory for generated PNGs")
     args = parser.parse_args()
 
-    if args.local_test:
-        print(f"=== Local Test Mode: Rendering ja & en into {args.out_dir} ===")
-        for prefix in ("ja", "en"):
-            for dt in ("APP_DESKTOP", "APP_IPHONE_67", "APP_IPHONE_DUO", "APP_IPAD_PRO_3GEN_129"):
-                t0 = time.time()
-                paths = render_prefix_display_type(prefix, dt, args.out_dir)
-                print(f"  [OK] {prefix} / {dt}: {len(paths)} files in {time.time() - t0:.2f}s")
+    all_prefixes = sorted(LANG_DECKS.keys())
+    ui_strings_by_prefix = {pfx: parse_localizable_strings(LANG_DECKS[pfx]["lproj"]) for pfx in all_prefixes}
+
+    if args.local_test or args.local_all:
+        test_pfxs = all_prefixes if args.local_all else ["ja", "en"]
+        test_dts = ["APP_DESKTOP", "APP_IPHONE_67", "APP_IPHONE_DUO", "APP_IPAD_PRO_3GEN_129"]
+        print(f"=== Local Render Mode: {len(test_pfxs)} language(s) × {len(test_dts)} displayTypes -> {args.out_dir} ===")
+        t0 = time.time()
+        rendered = smr.render_minimal_batch(test_pfxs, test_dts, args.out_dir, ui_strings_by_prefix, DUO_TARGET_SIZE, workers=4)
+        print(f"[OK] Rendered {len(rendered) * 5} Retina screenshots in {time.time() - t0:.2f}s")
         return
 
-    print("=== App Store Connect Screenshot Generator & Synchronizer for miu ===")
+    print("=== App Store Connect Minimalist Retina Screenshot Synchronizer for miu ===")
     app_id, targets = get_app_and_editable_versions()
-    print(f"Found App ID: {app_id}, Editable Versions: {targets}")
+    if args.platform == "ios":
+        targets = [t for t in targets if t[0] == "IOS"]
+    elif args.platform == "macos":
+        targets = [t for t in targets if t[0] == "MAC_OS"]
+    print(f"Found App ID: {app_id}, Candidate Versions ({args.platform}): {targets}")
+    if not targets:
+        raise RuntimeError("No editable or review-pending appStoreVersions found on App Store Connect!")
 
-    for plat, version_id, version_str in targets:
-        print(f"\n================ {plat} v{version_str} (ID: {version_id}) ================")
+    for plat, version_id, version_str, init_state in targets:
+        print(f"\n================ {plat} v{version_str} (ID: {version_id}, state: {init_state}) ================")
+        was_submitted = False
+        cur_state = init_state
+        # IN_REVIEW is strictly read-only until unlocked; WAITING_FOR_REVIEW often allows in-place upload-before-delete
+        if init_state == "IN_REVIEW":
+            cur_state, was_submitted = unlock_version_for_screenshots(app_id, plat, version_id, version_str, init_state)
+
         r_locs = api_request("GET", f"{BASE_URL}/appStoreVersions/{version_id}/appStoreVersionLocalizations?limit=200")
         if r_locs.status_code != 200:
-            print(f"[{plat}] Failed to fetch localizations: {r_locs.status_code} {r_locs.text}")
-            continue
+            raise RuntimeError(f"[{plat}] Failed to fetch localizations: {r_locs.status_code} {r_locs.text}")
 
         existing_locs = {
             loc.get("attributes", {}).get("locale"): loc["id"]
             for loc in r_locs.json().get("data", [])
         }
         display_types = discover_platform_display_types(version_id, plat, existing_locs)
-        print(f"[{plat}] Target screenshotDisplayTypes: {display_types}")
+        print(f"[{plat}] Target screenshotDisplayTypes: {display_types} across {len(existing_locs)} locales")
 
-        if args.force_clean:
-            print(f"[{plat}] Force-cleaning existing screenshots across {len(existing_locs)} locales...")
-            with ThreadPoolExecutor(max_workers=8) as clean_pool:
-                clean_futs = {
-                    clean_pool.submit(clean_all_existing_screenshots_for_locale, loc_id, loc): loc
-                    for loc, loc_id in existing_locs.items()
-                }
-                total_del = sum(f.result() for f in as_completed(clean_futs))
-            print(f"[{plat}] Deleted {total_del} existing screenshot(s).")
-
-        # Determine which (locale, dt) sets actually need uploading (in parallel)
-        pending_tasks_by_dt = {dt: [] for dt in display_types}
-        skipped_count = 0
-
-        def _check_loc(item):
-            locale, loc_id = item
-            if args.force_clean:
-                return locale, loc_id, list(display_types), 0
-            r_sets = api_request("GET", f"{BASE_URL}/appStoreVersionLocalizations/{loc_id}/appScreenshotSets?limit=50")
-            set_map = {}
-            if r_sets.status_code == 200:
-                for s in r_sets.json().get("data", []):
-                    set_map[s.get("attributes", {}).get("screenshotDisplayType", "")] = s["id"]
-            need = []
-            skip = 0
-            for dt in display_types:
-                if dt in set_map:
-                    r_ss = api_request("GET", f"{BASE_URL}/appScreenshotSets/{set_map[dt]}/appScreenshots?limit=50")
-                    items = r_ss.json().get("data", []) if r_ss.status_code == 200 else []
-                    if len(items) == 5 and all(
-                        it.get("attributes", {}).get("assetDeliveryState", {}).get("state") in ("COMPLETE", "UPLOAD_COMPLETE")
-                        for it in items
-                    ):
-                        skip += 1
-                        continue
-                need.append(dt)
-            return locale, loc_id, need, skip
-
-        with ThreadPoolExecutor(max_workers=8) as chk_pool:
-            for locale, loc_id, need_dts, skip_c in chk_pool.map(_check_loc, sorted(existing_locs.items())):
-                skipped_count += skip_c
-                for dt in need_dts:
-                    pending_tasks_by_dt[dt].append((loc_id, locale))
-
-        active_dts = [dt for dt in display_types if pending_tasks_by_dt[dt]]
-        print(f"[{plat}] {skipped_count} sets already complete (skipped); active displayTypes to render & upload: {active_dts}")
-        if not active_dts:
-            continue
-
-        # Pre-render all needed language prefixes for active_dts
-        rendered_map = {}  # (prefix, dt) -> list of 5 paths
-        needed_prefixes = sorted(set(ASC_LOCALE_TO_PREFIX[loc] for loc in existing_locs if loc in ASC_LOCALE_TO_PREFIX))
-        print(f"[{plat}] Rendering {len(needed_prefixes)} language sets for {active_dts}...")
+        needed_prefixes = sorted(set(ASC_LOCALE_TO_PREFIX.get(loc, "en") for loc in existing_locs))
+        print(f"[{plat}] Rendering {len(needed_prefixes)} language packs × {display_types} in 1:1 Retina quality...")
         t_render = time.time()
-        for prefix in needed_prefixes:
-            for dt in active_dts:
-                rendered_map[(prefix, dt)] = render_prefix_display_type(prefix, dt, args.out_dir)
-        print(f"[{plat}] Finished rendering {len(rendered_map) * 5} screenshots in {time.time() - t_render:.1f}s.")
+        rendered_map = smr.render_minimal_batch(
+            needed_prefixes, display_types, args.out_dir, ui_strings_by_prefix, DUO_TARGET_SIZE, workers=4
+        )
+        print(f"[{plat}] Finished rendering {len(rendered_map) * 5} Retina PNGs in {time.time() - t_render:.1f}s.")
 
-        # If any active_dt is iPhone Duo, verify the first locale ('ja') delivery before parallel upload
-        for dt in active_dts:
+        # Probe first set on 'ja' (or first locale): if WAITING_FOR_REVIEW blocks screenshot mutation (409),
+        # automatically unlock reviewSubmission, re-discover display_types cleanly, and mark was_submitted=True!
+        probe_locale = "ja" if "ja" in existing_locs else next(iter(existing_locs.keys()))
+        probe_loc_id = existing_locs[probe_locale]
+        probe_pfx = ASC_LOCALE_TO_PREFIX.get(probe_locale, "en")
+        first_dt = display_types[0]
+        ok_first, msg_first = sync_localization_screenshot_set(
+            probe_loc_id, probe_locale, first_dt, rendered_map[(probe_pfx, first_dt)], force_clean=args.force_clean, verify_delivery=True
+        )
+        print(f"  [INITIAL-PROBE] {msg_first}", flush=True)
+        if not ok_first and cur_state == "WAITING_FOR_REVIEW" and ("409" in msg_first or "STATE_ERROR" in msg_first):
+            print(f"[{plat}] WAITING_FOR_REVIEW locked screenshot edits ({msg_first}); unlocking reviewSubmission...")
+            cur_state, was_submitted = unlock_version_for_screenshots(app_id, plat, version_id, version_str, cur_state)
+            new_dts = discover_platform_display_types(version_id, plat, existing_locs)
+            extra_dts = [d for d in new_dts if d not in display_types]
+            if extra_dts:
+                extra_map = smr.render_minimal_batch(
+                    needed_prefixes, extra_dts, args.out_dir, ui_strings_by_prefix, DUO_TARGET_SIZE, workers=4
+                )
+                rendered_map.update(extra_map)
+                display_types = new_dts
+
+        # Clean any screenshots in non-target obsolete sets (e.g. old APP_IPHONE_65 / APP_IPHONE_55 sets)
+        if args.force_clean:
+            with ThreadPoolExecutor(max_workers=6) as cpool:
+                cleaned_extra = sum(
+                    cpool.map(lambda lid: clean_non_target_sets_for_locale(lid, set(display_types)), existing_locs.values())
+                )
+            if cleaned_extra:
+                print(f"[{plat}] Cleaned {cleaned_extra} obsolete screenshot(s) from non-target sets.")
+
+        # If iPhone Duo displayType is active, probe delivery on 'ja' first
+        for dt in list(display_types):
             if "DUO" in dt or "FOLD" in dt:
-                first_loc_id, first_locale = pending_tasks_by_dt[dt][0]
-                first_prefix = ASC_LOCALE_TO_PREFIX.get(first_locale, "en")
-                print(f"[{plat}] Verifying {dt} dimension acceptance ({DUO_TARGET_SIZE}) on {first_locale}...")
+                probe_locale = "ja" if "ja" in existing_locs else next(iter(existing_locs.keys()))
+                probe_loc_id = existing_locs[probe_locale]
+                probe_pfx = ASC_LOCALE_TO_PREFIX.get(probe_locale, "en")
+                print(f"[{plat}] Verifying {dt} dimension acceptance ({DUO_TARGET_SIZE}) on {probe_locale}...")
                 ok_probe, msg_probe = sync_localization_screenshot_set(
-                    first_loc_id, first_locale, dt, rendered_map[(first_prefix, dt)], force_clean=True, verify_delivery=True
+                    probe_loc_id, probe_locale, dt, rendered_map[(probe_pfx, dt)], force_clean=True, verify_delivery=True
                 )
                 print(f"  [PROBE] {msg_probe}", flush=True)
                 if not ok_probe and "DELIVERY_FAILED" in msg_probe and DUO_TARGET_SIZE != (2034, 1398):
-                    print(f"[{plat}] Switching {dt} target resolution from {DUO_TARGET_SIZE} to (2034, 1398) and re-rendering...")
+                    print(f"[{plat}] Switching {dt} target resolution to (2034, 1398) and re-rendering...")
                     DUO_TARGET_SIZE = (2034, 1398)
-                    for prefix in needed_prefixes:
-                        rendered_map[(prefix, dt)] = render_prefix_display_type(prefix, dt, args.out_dir)
+                    duo_rerender = smr.render_minimal_batch(
+                        needed_prefixes, [dt], args.out_dir, ui_strings_by_prefix, DUO_TARGET_SIZE, workers=4
+                    )
+                    rendered_map.update(duo_rerender)
 
-        # Upload across all pending localizations in parallel
         tasks = []
-        for dt in active_dts:
-            for loc_id, locale in pending_tasks_by_dt[dt]:
+        for dt in display_types:
+            for locale, loc_id in sorted(existing_locs.items()):
                 prefix = ASC_LOCALE_TO_PREFIX.get(locale, "en")
                 tasks.append((loc_id, locale, dt, rendered_map[(prefix, dt)]))
 
-        print(f"[{plat}] Uploading {len(tasks)} screenshot sets ({len(tasks) * 5} screenshots) with ThreadPoolExecutor...")
+        print(f"[{plat}] Uploading & verifying {len(tasks)} screenshot sets ({len(tasks) * 5} screenshots)...")
         ok_count = 0
         fail_count = 0
-        with ThreadPoolExecutor(max_workers=8) as pool:
+        with ThreadPoolExecutor(max_workers=6) as pool:
             future_map = {
                 pool.submit(sync_localization_screenshot_set, loc_id, locale, dt, fpaths, args.force_clean): (locale, dt)
                 for (loc_id, locale, dt, fpaths) in tasks
@@ -2036,7 +2241,12 @@ def main():
                     fail_count += 1
                     print(f"  [EXC] [{locale}/{dt}] {ex}", flush=True)
 
-        print(f"[{plat}] Summary: {ok_count} sets succeeded ({skipped_count} already complete), {fail_count} failed.")
+        print(f"[{plat}] Summary: {ok_count}/{len(tasks)} screenshot sets succeeded, {fail_count} failed.")
+        if fail_count > 0:
+            raise RuntimeError(f"[{plat}] {fail_count} screenshot set(s) failed to synchronize!")
+
+        if was_submitted and not args.no_resubmit:
+            resubmit_version_for_review(app_id, plat, version_id, version_str)
 
 
 if __name__ == "__main__":
