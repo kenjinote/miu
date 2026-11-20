@@ -1621,7 +1621,20 @@ def api_request(method, url, headers=None, json_data=None, data=None, extra_head
     return None
 
 
-def get_app_and_editable_versions():
+def _bump_patch_version(ver_str: str) -> str:
+    parts = [p for p in (ver_str or "1.0.56").strip().split(".") if p.isdigit()]
+    if len(parts) >= 3:
+        return f"{parts[0]}.{parts[1]}.{int(parts[2]) + 1}"
+    if len(parts) == 2:
+        return f"{parts[0]}.{parts[1]}.1"
+    return "1.0.57"
+
+
+def _ver_tuple(ver_str: str) -> tuple:
+    return tuple(int(p) for p in (ver_str or "0.0.0").split(".") if p.isdigit())
+
+
+def get_app_and_editable_versions(requested_platforms=None):
     r = api_request("GET", f"{BASE_URL}/apps?filter[bundleId]={BUNDLE_ID}")
     if r.status_code != 200 or not r.json().get("data"):
         raise RuntimeError(f"Failed to find app {BUNDLE_ID}: {r.status_code} {r.text}")
@@ -1640,13 +1653,76 @@ def get_app_and_editable_versions():
         "IN_REVIEW",
         "INVALID_BINARY",
     }
-    targets = []
+    by_plat = {"IOS": [], "MAC_OS": []}
     for v in r_ver.json().get("data", []):
         attrs = v.get("attributes", {})
+        plat = attrs.get("platform", "")
         st = attrs.get("appStoreState", "")
-        print(f"  [Version] platform={attrs.get('platform')} version={attrs.get('versionString')} id={v['id']} state={st}")
-        if st in editable_states:
-            targets.append((attrs.get("platform"), v["id"], attrs.get("versionString"), st))
+        print(f"  [Version] platform={plat} version={attrs.get('versionString')} id={v['id']} state={st}")
+        if plat in by_plat:
+            by_plat[plat].append(v)
+
+    want_plats = requested_platforms or ["IOS", "MAC_OS"]
+    targets = []
+    for plat in want_plats:
+        vers = by_plat.get(plat, [])
+        ed = next((v for v in vers if v.get("attributes", {}).get("appStoreState") in editable_states), None)
+        if ed:
+            attrs = ed.get("attributes", {})
+            targets.append((plat, ed["id"], attrs.get("versionString"), attrs.get("appStoreState")))
+            continue
+
+        # All existing versions are READY_FOR_SALE (locked); create next patch PREPARE_FOR_SUBMISSION version
+        highest_v = max(vers, key=lambda x: _ver_tuple(x.get("attributes", {}).get("versionString", "0.0.0"))) if vers else None
+        base_ver_str = highest_v.get("attributes", {}).get("versionString", TARGET_VERSION) if highest_v else TARGET_VERSION
+        next_ver_str = _bump_patch_version(base_ver_str)
+        prev_attrs = highest_v.get("attributes", {}) if highest_v else {}
+        prev_copyright = (prev_attrs.get("copyright") or "").strip()
+        prev_release_type = (prev_attrs.get("releaseType") or "").strip()
+
+        print(f"[{plat}] All existing versions are READY_FOR_SALE (latest={base_ver_str}); creating {next_ver_str} (PREPARE_FOR_SUBMISSION) to stage new screenshots...")
+        create_attrs = {"platform": plat, "versionString": next_ver_str}
+        if prev_copyright:
+            create_attrs["copyright"] = prev_copyright
+        if prev_release_type:
+            create_attrs["releaseType"] = prev_release_type
+
+        r_create = api_request(
+            "POST",
+            f"{BASE_URL}/appStoreVersions",
+            json_data={
+                "data": {
+                    "type": "appStoreVersions",
+                    "attributes": create_attrs,
+                    "relationships": {"app": {"data": {"type": "apps", "id": app_id}}},
+                }
+            },
+        )
+        if r_create.status_code not in (200, 201):
+            r_create = api_request(
+                "POST",
+                f"{BASE_URL}/appStoreVersions",
+                json_data={
+                    "data": {
+                        "type": "appStoreVersions",
+                        "attributes": {"platform": plat, "versionString": next_ver_str},
+                        "relationships": {"app": {"data": {"type": "apps", "id": app_id}}},
+                    }
+                },
+            )
+        if r_create.status_code not in (200, 201):
+            raise RuntimeError(f"[{plat}] Failed to create version {next_ver_str}: HTTP {r_create.status_code} {r_create.text[:400]}")
+
+        new_v = r_create.json()["data"]
+        new_id = new_v["id"]
+        print(f"[{plat}] Created {next_ver_str} (id={new_id}, state=PREPARE_FOR_SUBMISSION); waiting for Apple to clone 34 localizations...")
+        for _ in range(10):
+            time.sleep(2.5)
+            r_lc = api_request("GET", f"{BASE_URL}/appStoreVersions/{new_id}/appStoreVersionLocalizations?limit=200")
+            if r_lc.status_code == 200 and len(r_lc.json().get("data", [])) >= 34:
+                break
+        targets.append((plat, new_id, next_ver_str, "PREPARE_FOR_SUBMISSION"))
+
     return app_id, targets
 
 
@@ -2127,11 +2203,8 @@ def main():
         return
 
     print("=== App Store Connect Minimalist Retina Screenshot Synchronizer for miu ===")
-    app_id, targets = get_app_and_editable_versions()
-    if args.platform == "ios":
-        targets = [t for t in targets if t[0] == "IOS"]
-    elif args.platform == "macos":
-        targets = [t for t in targets if t[0] == "MAC_OS"]
+    req_plats = ["IOS"] if args.platform == "ios" else (["MAC_OS"] if args.platform == "macos" else ["IOS", "MAC_OS"])
+    app_id, targets = get_app_and_editable_versions(req_plats)
     print(f"Found App ID: {app_id}, Candidate Versions ({args.platform}): {targets}")
     if not targets:
         raise RuntimeError("No editable or review-pending appStoreVersions found on App Store Connect!")
