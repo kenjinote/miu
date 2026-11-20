@@ -30,6 +30,21 @@ REPO_ROOT = SCRIPT_DIR.parent
 
 from store_minimal_i18n import LANG_PACKS, get_lang_pack  # noqa: E402
 
+_MIU_ICON_DATA_URI_CACHE: str | None = None
+
+
+def _get_miu_icon_data_uri() -> str:
+    global _MIU_ICON_DATA_URI_CACHE
+    if _MIU_ICON_DATA_URI_CACHE is not None:
+        return _MIU_ICON_DATA_URI_CACHE
+    icon_path = REPO_ROOT / "package" / "Images" / "Square44x44Logo.altform-unplated_targetsize-48.png"
+    if icon_path.is_file():
+        b64 = base64.b64encode(icon_path.read_bytes()).decode("ascii")
+        _MIU_ICON_DATA_URI_CACHE = f"data:image/png;base64,{b64}"
+    else:
+        _MIU_ICON_DATA_URI_CACHE = ""
+    return _MIU_ICON_DATA_URI_CACHE
+
 
 # ============================================================================
 # Browser & C++ Compiler Discovery (Windows & Linux/macOS)
@@ -424,6 +439,43 @@ def build_macos_replace_sheet_html(ui_strings: dict, repl_val: str) -> str:
           <span class="mbtn">{t_ra}</span>
           <span class="mbtn">{t_replace}</span>
           <span class="mbtn primary">{t_fn}</span>
+        </div>
+      </div>
+    </div>
+    """
+
+
+def build_windows_replace_dialog_html(ui_strings: dict, repl_val: str) -> str:
+    t_replace = _esc(ui_strings.get("Replace", "Replace"))
+    t_find_l = _esc(ui_strings.get("Find:", "Find:"))
+    t_repl_l = _esc(ui_strings.get("Replace:", "Replace:"))
+    t_mc = _esc(ui_strings.get("Match Case", "Match Case"))
+    t_ww = _esc(ui_strings.get("Whole Word", "Whole Word"))
+    t_rx = _esc(ui_strings.get("Regex", "Regex"))
+    t_ra = _esc(ui_strings.get("Replace All", "Replace All"))
+    t_fn = _esc(ui_strings.get("Find Next", "Find Next"))
+    return f"""
+    <div class="mac-replace-sheet win-replace-dialog">
+      <div class="win-dlg-tb">
+        <span class="win-dlg-title">{t_replace}</span>
+        <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1L9 9M9 1L1 9" stroke="#4B5563" stroke-width="1.2"/></svg>
+      </div>
+      <div class="mac-sheet-body">
+        <div class="mac-fields-grid">
+          <label>{t_find_l}</label>
+          <div class="mac-input win-input focus">(\\d{{4}})/(\\d{{2}})/(\\d{{2}}) \\[WARN\\]</div>
+          <label>{t_repl_l}</label>
+          <div class="mac-input win-input">{_esc(repl_val)}</div>
+        </div>
+        <div class="mac-checks">
+          <span class="chk"><span class="box"></span>{t_mc}</span>
+          <span class="chk"><span class="box"></span>{t_ww}</span>
+          <span class="chk on win-chk"><span class="box checked win-box">✓</span>{t_rx}</span>
+        </div>
+        <div class="mac-btns">
+          <span class="mbtn win-btn">{t_ra}</span>
+          <span class="mbtn win-btn">{t_replace}</span>
+          <span class="mbtn primary win-btn-primary">{t_fn}</span>
         </div>
       </div>
     </div>
@@ -884,6 +936,60 @@ def build_slide_html(
         </div>
         """
         header_cls = "header-landscape-android"
+
+    elif display_type == "WINDOWS_DESKTOP":
+        vw, vh, dpr = 1440, 810, 2
+        headline_html = (
+            '<span class="hl-row">'
+            + "".join(f'<span class="{"hl-em" if em else "hl-sub"}">{_esc(txt)}</span>' for txt, em in hl_land)
+            + "</span>"
+        )
+        ed_html = build_editor_html(lines_decorated, 13.5, 1.62, 24)
+        cap_stroke = "#D4D4D8" if is_dark else "#3F3F46"
+
+        if mode == "split":
+            body_html = f"""
+            <div class="split-horizontal">
+              <div class="pane-left">{ed_html}</div>
+              <div class="h-splitter"></div>
+              <div class="pane-right"><div id="__miu_root" class="preview-mac"{prev_dir_attr}>{preview_inner}</div></div>
+            </div>
+            """
+        elif mode == "regex":
+            body_html = f"""
+            <div class="single-pane">
+              {ed_html}
+              {build_windows_replace_dialog_html(ui_strings, pack['repl_val'])}
+            </div>
+            """
+        else:
+            body_html = f"""
+            <div class="single-pane">{ed_html}</div>
+            """
+
+        icon_uri = _get_miu_icon_data_uri()
+        icon_tag = (
+            f'<img src="{icon_uri}" width="15" height="15" style="display:block;object-fit:contain;" alt="">'
+            if icon_uri
+            else ""
+        )
+        device_html = f"""
+        <div class="device-card win-card {'dark' if is_dark else 'light'}">
+          <div class="win-titlebar">
+            <div class="win-tb-left">
+              {icon_tag}
+              <span class="win-wintitle">{_esc(doc_title)} — miu</span>
+            </div>
+            <div class="win-captions">
+              <span class="wcap"><svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 5H10" stroke="{cap_stroke}" stroke-width="1"/></svg></span>
+              <span class="wcap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><rect x="0.75" y="0.75" width="8.5" height="8.5" rx="1" stroke="{cap_stroke}" stroke-width="1"/></svg></span>
+              <span class="wcap"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1L9 9M9 1L1 9" stroke="{cap_stroke}" stroke-width="1.1"/></svg></span>
+            </div>
+          </div>
+          <div class="card-content">{body_html}</div>
+        </div>
+        """
+        header_cls = "header-landscape-win"
     else:
         raise ValueError(f"Unsupported display_type: {display_type}")
 
@@ -978,6 +1084,13 @@ def build_slide_html(
   }}
   .header-landscape-android .hl-em + .hl-sub,
   .header-landscape-android .hl-sub + .hl-em {{ margin-left: 0.22em; }}
+  .header-landscape-win {{
+    padding-top: 60px;
+    font-size: 42px;
+    line-height: 1.25;
+  }}
+  .header-landscape-win .hl-em + .hl-sub,
+  .header-landscape-win .hl-sub + .hl-em {{ margin-left: 0.22em; }}
   .headline[dir="rtl"] .hl-em + .hl-sub,
   .headline[dir="rtl"] .hl-sub + .hl-em {{ margin-left: 0; margin-right: 0.24em; }}
   #__miu_root[dir="rtl"] math {{ direction: ltr; unicode-bidi: isolate; }}
@@ -1035,6 +1148,84 @@ def build_slide_html(
     width: 1184px;
     height: 682px;
     border-radius: 12px 12px 0 0;
+  }}
+  .win-card {{
+    width: 1184px;
+    height: 626px;
+    border-radius: 8px 8px 0 0;
+  }}
+  .win-titlebar {{
+    height: 34px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 12px;
+  }}
+  .dark .win-titlebar {{
+    background: #1B1B1F;
+    border-bottom: 1px solid #2C2C30;
+  }}
+  .light .win-titlebar {{
+    background: #F3F4F6;
+    border-bottom: 1px solid #E5E7EB;
+  }}
+  .win-tb-left {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }}
+  .win-wintitle {{
+    font-size: 12px;
+    font-weight: 600;
+  }}
+  .dark .win-wintitle {{ color: #D4D4D8; }}
+  .light .win-wintitle {{ color: #374151; }}
+  .win-captions {{
+    display: flex;
+    align-items: stretch;
+    height: 100%;
+  }}
+  .wcap {{
+    width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }}
+  .win-replace-dialog {{
+    border-radius: 8px !important;
+    background: #F8F9FA !important;
+    border: 1px solid #D1D5DB !important;
+  }}
+  .win-dlg-tb {{
+    height: 30px;
+    background: #F1F3F5;
+    border-bottom: 1px solid #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+  }}
+  .win-dlg-title {{
+    font-size: 12px;
+    font-weight: 600;
+    color: #1F2937;
+  }}
+  .win-input {{
+    border-radius: 4px !important;
+  }}
+  .win-input.focus {{
+    border: 1px solid #9CA3AF !important;
+    border-bottom: 2px solid #0067C0 !important;
+  }}
+  .win-chk {{ color: #0067C0 !important; }}
+  .win-box {{ background: #0067C0 !important; border-color: #0067C0 !important; }}
+  .win-btn {{ border-radius: 4px !important; }}
+  .win-btn-primary {{
+    border-radius: 4px !important;
+    background: #0067C0 !important;
+    border-color: #0067C0 !important;
+    color: #FFFFFF !important;
   }}
 
   /* iPhone Duo dual-screen book card (continuous flat top edge, flush 1px center seam) */
@@ -1690,6 +1881,7 @@ def render_minimal_batch(
     ui_strings_by_prefix: dict[str, dict],
     duo_target_size: tuple[int, int] = (2853, 2007),
     workers: int = 4,
+    filename_pattern: str = "miu_{pfx}_{dt}_{s_idx}.png",
 ) -> dict[tuple[str, str], list[str]]:
     """
     Render all 5 slides for every (prefix, display_type) in parallel using
@@ -1825,7 +2017,7 @@ def render_minimal_batch(
                             },
                         )
                         png_bytes = base64.b64decode(shot["data"])
-                        fname = f"miu_{pfx}_{dt}_{s_idx}.png"
+                        fname = filename_pattern.format(pfx=pfx, dt=dt, s_idx=s_idx)
                         fpath = out_path / fname
 
                         # Apple App Store Connect strictly forbids PNG alpha channels (RGBA -> 24-bit RGB)

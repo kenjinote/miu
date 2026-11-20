@@ -1,155 +1,76 @@
 # -*- coding: utf-8 -*-
+"""
+Generate all 28-language × 5-slide (140 PNGs) 1:1 Retina (2880×1620, 16:9 @2x)
+minimalist Windows 11 Microsoft Store screenshots into package/screenshots/.
+"""
+
 import os
 import sys
 import time
-import struct
-import subprocess
-import ctypes
-from ctypes import wintypes
 from PIL import Image
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-EXE_PATH = os.path.join(REPO_ROOT, "x64", "Release", "miu.exe")
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.dirname(SCRIPT_DIR)
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)
+
+from appstore_screenshots_sync import LANG_DECKS, parse_localizable_strings  # noqa: E402
+import store_minimal_renderer as smr  # noqa: E402
+
 OUT_DIR = os.path.join(REPO_ROOT, "package", "screenshots")
-SAMPLES_DIR = os.path.join(REPO_ROOT, "package", "screenshots_samples")
 
-os.makedirs(OUT_DIR, exist_ok=True)
-
-LANG_CONFIGS = [
-    # Tier 1
-    ("zh-tw", "sample_zh_tw.md", "zh_tw"),
-    ("de-de", "sample_de.md", "de"),
-    ("fr-fr", "sample_fr.md", "fr"),
-    ("es-es", "sample_es.md", "es"),
-    ("pt-br", "sample_pt_br.md", "pt_br"),
-    # Tier 2
-    ("ru-ru", "sample_ru.md", "ru"),
-    ("it-it", "sample_it.md", "it"),
-    ("pl-pl", "sample_pl.md", "pl"),
-    ("nl-nl", "sample_nl.md", "nl"),
-    ("tr-tr", "sample_tr.md", "tr"),
-    # Tier 3
-    ("vi-vn", "sample_vi.md", "vi"),
-    ("uk-ua", "sample_uk.md", "uk"),
-    ("id-id", "sample_id.md", "id"),
-    # Tier 4 & 5 (11 new languages)
-    ("cs-cz", "sample_cs.md", "cs"),
-    ("sv-se", "sample_sv.md", "sv"),
-    ("th-th", "sample_th.md", "th"),
-    ("hi-in", "sample_hi.md", "hi"),
-    ("ro-ro", "sample_ro.md", "ro"),
-    ("hu-hu", "sample_hu.md", "hu"),
-    ("el-gr", "sample_el.md", "el"),
-    ("da-dk", "sample_da.md", "da"),
-    ("fi-fi", "sample_fi.md", "fi"),
-    ("nb-no", "sample_nb.md", "nb"),
-    ("ms-my", "sample_ms.md", "ms"),
-]
-
-def capture_window_to_file(hwnd, out_path, width=1280, height=720):
-    rect = wintypes.RECT()
-    ctypes.windll.user32.GetWindowRect(hwnd, ctypes.byref(rect))
-    w = rect.right - rect.left
-    h = rect.bottom - rect.top
-
-    hwnd_dc = ctypes.windll.user32.GetWindowDC(hwnd)
-    mfc_dc = ctypes.windll.gdi32.CreateCompatibleDC(hwnd_dc)
-    save_bit_map = ctypes.windll.gdi32.CreateCompatibleBitmap(hwnd_dc, w, h)
-    ctypes.windll.gdi32.SelectObject(mfc_dc, save_bit_map)
-
-    # PrintWindow PW_RENDERFULLCONTENT = 2
-    res = ctypes.windll.user32.PrintWindow(hwnd, mfc_dc, 2)
-    if not res:
-        print(f"[Warn] PrintWindow returned {res} for hwnd {hwnd}")
-
-    bmpinfo = bytearray(40)
-    struct.pack_into('<IiiHHIIIIII', bmpinfo, 0, 40, w, -h, 1, 32, 0, w * h * 4, 0, 0, 0, 0)
-    buf = bytearray(w * h * 4)
-    ctypes.windll.gdi32.GetDIBits(mfc_dc, save_bit_map, 0, h, (ctypes.c_char * len(buf)).from_buffer(buf), (ctypes.c_char * 40).from_buffer(bmpinfo), 0)
-
-    im = Image.frombuffer('RGBA', (w, h), buf, 'raw', 'BGRA', 0, 1)
-
-    ctypes.windll.gdi32.DeleteObject(save_bit_map)
-    ctypes.windll.gdi32.DeleteDC(mfc_dc)
-    ctypes.windll.user32.ReleaseDC(hwnd, hwnd_dc)
-
-    # Ensure RGB / opaque
-    rgb_im = Image.new('RGB', (w, h), (0, 0, 0))
-    rgb_im.paste(im, mask=None)
-    rgb_im.save(out_path, "PNG")
-    print(f"Captured: {out_path} ({w}x{h})")
-
-def capture_scenario(lang_code, theme, file_path, is_f1, out_file):
-    cmd = [
-        EXE_PATH,
-        "--lang", lang_code,
-        "--theme", theme,
-        "--new-window",
-        "--width", "1280",
-        "--height", "720"
-    ]
-    if is_f1:
-        cmd.append("--f1")
-    if file_path:
-        cmd.append(file_path)
-
-    p = subprocess.Popen(cmd)
-    time.sleep(1.2)
-
-    hwnd = ctypes.windll.user32.FindWindowW("miu", None)
-    if not hwnd:
-        time.sleep(1.0)
-        hwnd = ctypes.windll.user32.FindWindowW("miu", None)
-
-    if not hwnd:
-        p.kill()
-        raise RuntimeError(f"Could not find miu window for {lang_code} {theme}")
-
-    try:
-        capture_window_to_file(hwnd, out_file)
-    finally:
-        ctypes.windll.user32.PostMessageW(hwnd, 0x0010, 0, 0) # WM_CLOSE
-        try:
-            p.wait(timeout=2.0)
-        except subprocess.TimeoutExpired:
-            p.kill()
-    time.sleep(0.3)
 
 def main():
-    if not os.path.exists(EXE_PATH):
-        raise FileNotFoundError(f"Binary not found: {EXE_PATH}")
-
+    os.makedirs(OUT_DIR, exist_ok=True)
     filter_prefixes = set(sys.argv[1:]) if len(sys.argv) > 1 else None
-    configs = [c for c in LANG_CONFIGS if not filter_prefixes or c[2] in filter_prefixes or c[0] in filter_prefixes]
+    all_prefixes = sorted(LANG_DECKS.keys())
+    target_prefixes = [p for p in all_prefixes if not filter_prefixes or p in filter_prefixes]
+    if not target_prefixes:
+        raise ValueError(f"No matching prefixes for filter: {filter_prefixes}")
 
-    total = len(configs) * 3
-    count = 0
-    print(f"=== Starting screenshot capture for {len(configs)} languages (Total: {total} images) ===")
+    # When rendering the full 28-language set, purge obsolete *_6.png, *_7.png, and *.mp4 files
+    if filter_prefixes is None:
+        removed = 0
+        for fname in os.listdir(OUT_DIR):
+            if fname.endswith((".png", ".mp4")):
+                os.remove(os.path.join(OUT_DIR, fname))
+                removed += 1
+        print(f"Cleaned {removed} previous asset(s) from {OUT_DIR}")
 
-    for lang_code, sample_file, prefix in configs:
-        sample_path = os.path.join(SAMPLES_DIR, sample_file)
-        if not os.path.exists(sample_path):
-            raise FileNotFoundError(f"Sample not found: {sample_path}")
+    ui_strings_by_prefix = {
+        pfx: parse_localizable_strings(LANG_DECKS[pfx]["lproj"]) for pfx in target_prefixes
+    }
 
-        print(f"\nProcessing [{lang_code}]...")
-        # 1. Light mode
-        out1 = os.path.join(OUT_DIR, f"{prefix}_1.png")
-        capture_scenario(lang_code, "light", sample_path, False, out1)
-        count += 1
+    print(
+        f"=== Rendering {len(target_prefixes)} language(s) × 5 slides "
+        f"({len(target_prefixes) * 5} Retina 2880×1620 PNGs) into {OUT_DIR} ==="
+    )
+    t0 = time.time()
+    rendered = smr.render_minimal_batch(
+        target_prefixes,
+        ["WINDOWS_DESKTOP"],
+        OUT_DIR,
+        ui_strings_by_prefix,
+        workers=4,
+        filename_pattern="{pfx}_{s_idx}.png",
+    )
 
-        # 2. Dark mode
-        out2 = os.path.join(OUT_DIR, f"{prefix}_2.png")
-        capture_scenario(lang_code, "dark", sample_path, False, out2)
-        count += 1
+    # Verify all generated PNGs
+    verified = 0
+    for pfx in target_prefixes:
+        for i in range(1, 6):
+            fpath = os.path.join(OUT_DIR, f"{pfx}_{i}.png")
+            if not os.path.isfile(fpath):
+                raise RuntimeError(f"Missing expected screenshot: {fpath}")
+            with Image.open(fpath) as im:
+                if im.size != (2880, 1620) or im.mode != "RGB":
+                    raise RuntimeError(f"Invalid screenshot {fpath}: size={im.size}, mode={im.mode}")
+            verified += 1
 
-        # 3. F1 Help
-        out3 = os.path.join(OUT_DIR, f"{prefix}_3.png")
-        capture_scenario(lang_code, "dark", "", True, out3)
-        count += 1
+    elapsed = time.time() - t0
+    print(f"[OK] Rendered and verified {verified} Retina (2880×1620 RGB) screenshots in {elapsed:.2f}s")
+    return rendered
 
-    print("\n" + "=" * 50)
-    print(f"Successfully generated all {count}/{total} screenshots in {OUT_DIR}!")
-    print("=" * 50)
 
 if __name__ == "__main__":
     main()

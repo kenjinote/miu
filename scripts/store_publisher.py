@@ -1381,7 +1381,7 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
     bundle_filename = os.path.basename(bundle_path)
     root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-    # 1. Create zip package with bundle and all 30 screenshots
+    # 1. Create zip package with bundle and all 140 Retina screenshots (28 locales × 5 slides)
     zip_path = os.path.splitext(bundle_path)[0] + ".zip"
     print(f"Packaging bundle and screenshots into zip: {zip_path}...")
     screenshots_dir = os.path.join(root_dir, "package", "screenshots")
@@ -1431,6 +1431,37 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
     except ImportError:
         from store_metadata import METADATA_10_LANGS
 
+    try:
+        from .store_minimal_i18n import get_lang_pack
+    except ImportError:
+        from store_minimal_i18n import get_lang_pack
+
+    def _build_5_screenshot_items(prefix: str, existing_images: list | None) -> list:
+        pack = get_lang_pack(prefix)
+        shortcuts = ("(Alt+P)", "(Alt+P)", "(Alt+P)", "(Ctrl+H)", "(Ctrl+D)")
+        sep = "" if prefix in ("ja", "zh_cn", "zh_tw") else " "
+        caps5 = []
+        for idx, sk in enumerate(("s1", "s2", "s3", "s4", "s5")):
+            hl_land = pack["headlines"][sk][0]
+            hl_text = sep.join(txt.strip() for txt, _ in hl_land if txt.strip()).strip()
+            cap = f"{hl_text} {shortcuts[idx]}".strip()[:200]
+            caps5.append(cap)
+
+        preserved = [
+            im for im in (existing_images or [])
+            if isinstance(im, dict) and im.get("imageType") != "Screenshot"
+        ]
+        new_shots = [
+            {
+                "fileName": f"{prefix}_{i}.png",
+                "fileStatus": "PendingUpload",
+                "imageType": "Screenshot",
+                "description": caps5[i - 1],
+            }
+            for i in range(1, 6)
+        ]
+        return preserved + new_shots
+
     for lang, meta in METADATA_10_LANGS.items():
         lang_entry = listings.setdefault(lang, {})
         base = lang_entry.setdefault("baseListing", {})
@@ -1446,79 +1477,20 @@ def upload_and_update_submission(headers, product_id, submission_data, bundle_pa
         base["licenseTerms"] = ""
 
         prefix = meta["prefix"]
-        old_caps = meta.get("image_captions", ["", "", ""])
-        loc_c6_c7 = {'zh-tw': ('Mermaid 圖表 隨寫隨看 瞬間優雅成圖 (Alt+P)', 'LaTeX 數學公式 完全離線 毫秒級高畫質渲染 (Alt+P)'), 'de-de': ('Mermaid-Diagramme in Echtzeit als elegante Grafiken (Alt+P)', 'LaTeX-Formeln 100 % offline live gerendert (Alt+P)'), 'fr-fr': ('Vos diagrammes Mermaid tracés en temps réel (Alt+P)', 'Formules LaTeX rendues en direct 100 % hors ligne (Alt+P)'), 'es-es': ('Diagramas Mermaid renderizados al instante (Alt+P)', 'Fórmulas LaTeX en tiempo real 100 % sin conexión (Alt+P)'), 'pt-br': ('Diagramas Mermaid desenhados em tempo real (Alt+P)', 'Fórmulas LaTeX em tempo real 100% offline (Alt+P)'), 'ru-ru': ('Диаграммы Mermaid оживают прямо во время ввода (Alt+P)', 'Формулы LaTeX в реальном времени 100% офлайн (Alt+P)'), 'it-it': ('Diagrammi Mermaid disegnati dal vivo mentre scrivi (Alt+P)', 'Formule LaTeX rese dal vivo 100% offline (Alt+P)'), 'pl-pl': ('Diagramy Mermaid rysowane na żywo podczas pisania (Alt+P)', 'Wzory LaTeX na żywo i w 100% trybie offline (Alt+P)'), 'nl-nl': ('Mermaid-diagrammen direct live gevisualiseerd (Alt+P)', 'LaTeX-formules direct live 100% offline (Alt+P)'), 'tr-tr': ('Mermaid Şemaları Siz Yazarken Anında Çizilir (Alt+P)', 'LaTeX Formülleri %100 Çevrimdışı Canlı Önizleme (Alt+P)'), 'vi-vn': ('Sơ đồ Mermaid vẽ trực tiếp ngay khi bạn gõ (Alt+P)', 'Công thức LaTeX hiển thị trực tiếp 100% ngoại tuyến (Alt+P)'), 'uk-ua': ('Діаграми Mermaid малюються наживо під час введення (Alt+P)', 'Формули LaTeX наживо та на 100% повністю офлайн (Alt+P)'), 'id-id': ('Diagram Mermaid Langsung Terlukis Saat Anda Mengetik (Alt+P)', 'Rumus LaTeX Tampil Langsung 100% Offline (Alt+P)'), 'cs-cz': ('Diagramy Mermaid vykreslené živě během psaní (Alt+P)', 'Vzorce LaTeX vykreslené živě 100% offline (Alt+P)'), 'sv-se': ('Mermaid-diagram ritas upp live medan du skriver (Alt+P)', 'LaTeX-formler renderade live 100 % offline (Alt+P)'), 'th-th': ('วาดกราฟ Mermaid แบบเรียลไทม์ ทันทีที่พิมพ์ (Alt+P)', 'สมการ LaTeX เรนเดอร์สดทันที ออฟไลน์ 100% (Alt+P)'), 'hi-in': ('Mermaid डायग्राम टाइप करते ही तुरंत लाइव ग्राफ़ में (Alt+P)', 'LaTeX गणित सूत्र 100% ऑफ़लाइन तुरंत लाइव प्रीव्यू (Alt+P)'), 'ro-ro': ('Diagrame Mermaid redate în direct pe măsură ce scrii (Alt+P)', 'Formule LaTeX redate în direct 100% offline (Alt+P)'), 'hu-hu': ('Mermaid diagramok élő kirajzolása gépelés közben (Alt+P)', 'LaTeX képletek élő megjelenítése 100% offline (Alt+P)'), 'el-gr': ('Διαγράμματα Mermaid σχεδιασμένα ζωντανά καθώς πληκτρολογείτε (Alt+P)', 'Εξισώσεις LaTeX ζωντανή απόδοση 100% εκτός σύνδεσης (Alt+P)'), 'da-dk': ('Mermaid-diagrammer tegnes live mens du skriver (Alt+P)', 'LaTeX-formler gengivet live 100 % offline (Alt+P)'), 'fi-fi': ('Mermaid-kaaviot piirtyvät livenä kirjoittaessasi (Alt+P)', 'LaTeX-kaavat piirtyvät livenä 100 % offline (Alt+P)'), 'nb-no': ('Mermaid-diagrammer tegnes live mens du skriver (Alt+P)', 'LaTeX-formler gjengitt live 100 % offline (Alt+P)'), 'ms-my': ('Rajah Mermaid Dilukis Secara Langsung Semasa Menaip (Alt+P)', 'Formula LaTeX Dipapar Langsung 100% Luar Talian (Alt+P)')}.get(lang, ("Mermaid Diagrams & Charts Live Preview (Alt+P)", "LaTeX Math Equations Live Preview (Alt+P)"))
-        caps7 = [
-            old_caps[1] if len(old_caps) > 1 else "",
-            old_caps[0] if len(old_caps) > 0 else "",
-            "Multi-Cursor (Ctrl+D)",
-            "Regex Find & Replace (Ctrl+H)",
-            "HTML5 / JS Live Preview (Alt+P)",
-            loc_c6_c7[0],
-            loc_c6_c7[1]
-        ]
-        img_list = []
-        for i in range(1, 8):
-            fname = f"{prefix}_{i}.png"
-            img_list.append({
-                "fileName": fname,
-                "fileStatus": "PendingUpload",
-                "imageType": "Screenshot",
-                "description": caps7[i-1]
-            })
-        base["images"] = img_list
-        print(f"Configured listing and 7 screenshots for [{lang}]")
+        base["images"] = _build_5_screenshot_items(prefix, base.get("images"))
+        print(f"Configured listing and 5 Retina screenshots for [{lang}]")
 
     base_4_prefixes = {
-        "ja-jp": ("ja", [
-            "ダークモード × Markdown リアルタイム分割プレビュー (Alt+P)",
-            "ライトモード × SVG 機械図面 (CAD) ライブプレビュー",
-            "ダークモード × マルチカーソル一括高速編集 (Ctrl+D)",
-            "ライトモード × 正規表現を使った検索と一括置換 (Ctrl+H)",
-            "ダークモード × HTML5 / JS ライブ実行 (Alt+P)",
-            "ダークモード × Mermaid 図表・グラフ リアルタイムプレビュー (Alt+P)",
-            "ライトモード × LaTeX 数式 リアルタイムプレビュー (Alt+P)",
-        ]),
-        "en-us": ("en", [
-            "Dark Mode × Markdown & GFM Live Split Preview (Alt+P)",
-            "Light Mode × SVG Technical CAD Drawing Live Preview",
-            "Dark Mode × Multi-Cursor Simultaneous Editing (Ctrl+D)",
-            "Light Mode × Regex Find & Batch Replace (Ctrl+H)",
-            "Dark Mode × HTML5 & JavaScript Live Execution (Alt+P)",
-            "Dark Mode × Mermaid Diagrams & Charts Live Preview (Alt+P)",
-            "Light Mode × LaTeX Math & Scientific Live Preview (Alt+P)",
-        ]),
-        "zh-hans": ("zh_cn", [
-            "深色模式 × Markdown 与 GFM 实时分屏预览 (Alt+P)",
-            "浅色模式 × SVG 工程制图实时预览",
-            "深色模式 × 多光标同步高速编辑 (Ctrl+D)",
-            "浅色模式 × 正则表达式查找与批量替换 (Ctrl+H)",
-            "深色模式 × HTML5 / JS 编辑器内实时运行 (Alt+P)",
-            "深色模式 × Mermaid 流程图与图表实时预览 (Alt+P)",
-            "浅色模式 × LaTeX 数学公式实时预览 (Alt+P)",
-        ]),
-        "ko": ("ko", [
-            "다크 모드 × Markdown & GFM 실시간 분할 미리보기 (Alt+P)",
-            "라이트 모드 × SVG 기계 도면 실시간 미리보기",
-            "다크 모드 × 다중 커서 동시 고속 편집 (Ctrl+D)",
-            "라이트 모드 × 정규식 검색 및 일괄 바꾸기 (Ctrl+H)",
-            "다크 모드 × HTML5 / JS 편집기 내 실시간 실행 (Alt+P)",
-            "다크 모드 × Mermaid 다이어그램 및 차트 실시간 미리보기 (Alt+P)",
-            "라이트 모드 × LaTeX 수식 실시간 미리보기 (Alt+P)",
-        ]),
+        "ja-jp": "ja",
+        "en-us": "en",
+        "zh-hans": "zh_cn",
+        "ko": "ko",
     }
-    for lang, (prefix, caps7) in base_4_prefixes.items():
+    for lang, prefix in base_4_prefixes.items():
         if lang in listings and "baseListing" in listings[lang]:
-            listings[lang]["baseListing"]["images"] = [
-                {
-                    "fileName": f"{prefix}_{i}.png",
-                    "fileStatus": "PendingUpload",
-                    "imageType": "Screenshot",
-                    "description": caps7[i-1]
-                }
-                for i in range(1, 8)
-            ]
-            print(f"Configured 7 screenshots for [{lang}]")
+            base = listings[lang]["baseListing"]
+            base["images"] = _build_5_screenshot_items(prefix, base.get("images"))
+            print(f"Configured 5 Retina screenshots for [{lang}]")
 
     for base_lang in ("ja-jp", "en-us", "zh-hans", "ko"):
         if base_lang in listings and "baseListing" in listings[base_lang]:
