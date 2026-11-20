@@ -416,7 +416,7 @@ PLAY_LOCALE_CONFIG = {
     "fi-FI": (adapt_desc_for_android(ams.FI_DESC), "fi"),
     "pl-PL": (adapt_desc_for_android(ams.PL_DESC), "pl"),
     "cs-CZ": (adapt_desc_for_android(ams.CS_DESC), "cs"),
-    "sk": (SK_DESC, "cs"),
+    "sk": (SK_DESC, "sk"),
     "hu-HU": (adapt_desc_for_android(ams.HU_DESC), "hu"),
     "ro": (adapt_desc_for_android(ams.RO_DESC), "ro"),
     "el-GR": (adapt_desc_for_android(ams.EL_DESC), "el"),
@@ -427,8 +427,8 @@ PLAY_LOCALE_CONFIG = {
     "id": (adapt_desc_for_android(ams.ID_DESC), "id"),
     "ms": (adapt_desc_for_android(ams.MS_DESC), "ms"),
     "hi-IN": (adapt_desc_for_android(ams.HI_DESC), "hi"),
-    "ar": (AR_DESC, "en"),
-    "iw-IL": (HE_DESC, "en"),
+    "ar": (AR_DESC, "ar"),
+    "iw-IL": (HE_DESC, "he"),
 }
 
 
@@ -786,27 +786,35 @@ def render_android_tablet_slide(spec, font_bold_path, font_reg_path, target_size
     return out_rgb
 
 
-def render_android_prefix_sets(prefix: str, out_dir: str):
-    """Render 5 phone screenshots and 5 tablet screenshots for a language prefix."""
+def render_all_android_minimal_sets(prefixes: list[str], out_dir: str) -> dict[str, tuple[list[str], list[str]]]:
+    """Render 1:1 Retina Android Phone (1296x2304) & Tablet (2560x1600) sets via store_minimal_renderer."""
     _ensure_imaging_deps()
-    os.makedirs(out_dir, exist_ok=True)
-    fb, fr = ass.resolve_font_paths(prefix)
-    specs = get_android_slide_specs(prefix)
-    phone_paths = []
-    tablet_paths = []
-    for spec in specs:
-        p_path = os.path.join(out_dir, f"miu_android_{prefix}_phone_{spec['idx']}.png")
-        if not os.path.exists(p_path):
-            img_p = render_android_phone_slide(spec, fb, fr, (1080, 1920))
-            img_p.save(p_path, "PNG", optimize=False)
-        phone_paths.append(p_path)
+    import store_minimal_i18n as smi
+    import store_minimal_renderer as smr
 
-        t_path = os.path.join(out_dir, f"miu_android_{prefix}_tablet_{spec['idx']}.png")
-        if not os.path.exists(t_path):
-            img_t = render_android_tablet_slide(spec, fb, fr, (1920, 1200))
-            img_t.save(t_path, "PNG", optimize=False)
-        tablet_paths.append(t_path)
-    return phone_paths, tablet_paths
+    ui_strings_by_prefix = {}
+    for pfx in prefixes:
+        if pfx in ass.LANG_DECKS:
+            ui_strings_by_prefix[pfx] = ass.parse_localizable_strings(ass.LANG_DECKS[pfx]["lproj"])
+        else:
+            ui_strings_by_prefix[pfx] = smi.EXTRA_UI_STRINGS.get(pfx, {})
+
+    raw_map = smr.render_minimal_batch(
+        prefixes,
+        ["ANDROID_PHONE", "ANDROID_TABLET"],
+        out_dir,
+        ui_strings_by_prefix,
+        workers=4,
+    )
+    return {
+        pfx: (raw_map[(pfx, "ANDROID_PHONE")], raw_map[(pfx, "ANDROID_TABLET")])
+        for pfx in prefixes
+    }
+
+
+def render_android_prefix_sets(prefix: str, out_dir: str):
+    """Render 5 phone screenshots and 5 tablet screenshots for a single language prefix."""
+    return render_all_android_minimal_sets([prefix], out_dir)[prefix]
 
 
 # ============================================================================
@@ -833,7 +841,7 @@ def play_request(method: str, url: str, token: str, json_data=None, data=None, c
     return None
 
 
-def sync_play_store(out_dir: str, key_path: str, skip_screenshots: bool = False):
+def sync_play_store(out_dir: str, key_path: str, skip_screenshots: bool = False, screenshots_only: bool = False):
     if requests is None:
         raise ImportError("The 'requests' package is required for sync_play_store")
     from playstore_upload import get_access_token
@@ -844,12 +852,10 @@ def sync_play_store(out_dir: str, key_path: str, skip_screenshots: bool = False)
     rendered_sets = {}
     if not skip_screenshots:
         needed_prefixes = sorted(set(cfg[1] for cfg in PLAY_LOCALE_CONFIG.values()))
-        print(f"Rendering Android Phone & Tablet screenshots for {len(needed_prefixes)} language sets into {out_dir}...")
+        print(f"Rendering 1:1 Retina Android Phone & Tablet screenshots for {len(needed_prefixes)} language sets into {out_dir}...")
         t0 = time.time()
-        for prefix in needed_prefixes:
-            rendered_sets[prefix] = render_android_prefix_sets(prefix, out_dir)
-            print(f"  [Rendered] {prefix} (5 phone + 5 tablet)", flush=True)
-        print(f"Finished rendering {len(rendered_sets) * 10} screenshots in {time.time() - t0:.1f}s.\n")
+        rendered_sets = render_all_android_minimal_sets(needed_prefixes, out_dir)
+        print(f"Finished rendering {len(rendered_sets) * 10} Retina screenshots in {time.time() - t0:.1f}s.\n")
 
     # 2. Refresh token & create a new Google Play Edit
     token = get_access_token(key_path)
@@ -864,61 +870,67 @@ def sync_play_store(out_dir: str, key_path: str, skip_screenshots: bool = False)
     existing_listings = {l["language"]: l for l in r_list.json().get("listings", [])}
     print(f"Existing Play Store listings ({len(existing_listings)}): {', '.join(sorted(existing_listings.keys()))}")
 
-    # 4. Update/create store listings for all target locales
-    print("\n--- Syncing Store Listings (Title, Short Description, Full Description) ---")
-    synced_locales = []
-    for locale, (full_desc, prefix) in sorted(PLAY_LOCALE_CONFIG.items()):
-        short_desc = PLAY_SHORT_DESC[locale]
-        body = {
-            "language": locale,
-            "title": "miu",
-            "shortDescription": short_desc,
-            "fullDescription": full_desc,
-        }
-        r_put = play_request("PUT", f"{BASE_URL}/edits/{edit_id}/listings/{locale}", token, json_data=body)
-        if r_put.status_code == 200:
-            synced_locales.append(locale)
-            print(f"  [OK] Listing {locale} updated (short={len(short_desc)}c, full={len(full_desc)}c)")
-        else:
-            print(f"  [WARN] Listing {locale} skipped (HTTP {r_put.status_code}: {r_put.text[:200]})")
+    if screenshots_only:
+        synced_locales = sorted(loc for loc in PLAY_LOCALE_CONFIG if loc in existing_listings)
+        print(f"[Screenshots-Only Mode] Target existing locales ({len(synced_locales)}): {', '.join(synced_locales)}")
+    else:
+        # 4. Update/create store listings for all target locales
+        print("\n--- Syncing Store Listings (Title, Short Description, Full Description) ---")
+        synced_locales = []
+        for locale, (full_desc, prefix) in sorted(PLAY_LOCALE_CONFIG.items()):
+            short_desc = PLAY_SHORT_DESC[locale]
+            body = {
+                "language": locale,
+                "title": "miu",
+                "shortDescription": short_desc,
+                "fullDescription": full_desc,
+            }
+            r_put = play_request("PUT", f"{BASE_URL}/edits/{edit_id}/listings/{locale}", token, json_data=body)
+            if r_put.status_code == 200:
+                synced_locales.append(locale)
+                print(f"  [OK] Listing {locale} updated (short={len(short_desc)}c, full={len(full_desc)}c)")
+            else:
+                print(f"  [WARN] Listing {locale} skipped (HTTP {r_put.status_code}: {r_put.text[:200]})")
 
-    # 5. Update Release Notes ("What's New") on 'production' and 'internal' Tracks
-    print("\n--- Syncing Localized Release Notes on 'production' & 'internal' Tracks ---")
-    notes_list = [
-        {"language": locale, "text": ANDROID_RELEASE_NOTES[locale]}
-        for locale in synced_locales
-        if locale in ANDROID_RELEASE_NOTES
-    ]
-    for track_name in ("production", "internal"):
-        r_tr = play_request("GET", f"{BASE_URL}/edits/{edit_id}/tracks/{track_name}", token)
-        if r_tr.status_code == 200:
-            tr_data = r_tr.json()
-            releases = tr_data.get("releases", [])
-            if releases:
-                rel = releases[0]
-                rel["releaseNotes"] = notes_list
-                r_put_tr = play_request("PUT", f"{BASE_URL}/edits/{edit_id}/tracks/{track_name}", token, json_data=tr_data)
-                if r_put_tr.status_code == 200:
-                    print(f"  [OK] Updated '{track_name}' track (versionCodes={rel.get('versionCodes')}, name={rel.get('name')}) with {len(notes_list)} localized releaseNotes!")
-                else:
-                    print(f"  [WARN] Failed to update '{track_name}' track releaseNotes: HTTP {r_put_tr.status_code} {r_put_tr.text[:240]}")
+        # 5. Update Release Notes ("What's New") on 'production' and 'internal' Tracks
+        print("\n--- Syncing Localized Release Notes on 'production' & 'internal' Tracks ---")
+        notes_list = [
+            {"language": locale, "text": ANDROID_RELEASE_NOTES[locale]}
+            for locale in synced_locales
+            if locale in ANDROID_RELEASE_NOTES
+        ]
+        for track_name in ("production", "internal"):
+            r_tr = play_request("GET", f"{BASE_URL}/edits/{edit_id}/tracks/{track_name}", token)
+            if r_tr.status_code == 200:
+                tr_data = r_tr.json()
+                releases = tr_data.get("releases", [])
+                if releases:
+                    rel = releases[0]
+                    rel["releaseNotes"] = notes_list
+                    r_put_tr = play_request("PUT", f"{BASE_URL}/edits/{edit_id}/tracks/{track_name}", token, json_data=tr_data)
+                    if r_put_tr.status_code == 200:
+                        print(f"  [OK] Updated '{track_name}' track (versionCodes={rel.get('versionCodes')}, name={rel.get('name')}) with {len(notes_list)} localized releaseNotes!")
+                    else:
+                        print(f"  [WARN] Failed to update '{track_name}' track releaseNotes: HTTP {r_put_tr.status_code} {r_put_tr.text[:240]}")
 
     # 6. Upload Screenshots (phoneScreenshots, sevenInchScreenshots, tenInchScreenshots) for all synced locales
     if not skip_screenshots:
         print(f"\n--- Uploading Phone, 7-inch & 10-inch Tablet Screenshots across {len(synced_locales)} Locales ---")
-        image_types_map = lambda p_paths, t_paths: [
-            ("phoneScreenshots", p_paths),
-            ("sevenInchScreenshots", t_paths),
-            ("tenInchScreenshots", t_paths),
-        ]
 
-        for idx_loc, locale in enumerate(synced_locales, 1):
+        def _upload_locale_screenshots(locale: str) -> tuple[str, str, int]:
             _, prefix = PLAY_LOCALE_CONFIG[locale]
             p_paths, t_paths = rendered_sets[prefix]
+            slots = [
+                ("phoneScreenshots", p_paths),
+                ("sevenInchScreenshots", t_paths),
+                ("tenInchScreenshots", t_paths),
+            ]
             ok_imgs = 0
-            for img_type, paths in image_types_map(p_paths, t_paths):
-                # Delete existing images in this slot
-                play_request("DELETE", f"{BASE_URL}/edits/{edit_id}/listings/{locale}/{img_type}", token)
+            for img_type, paths in slots:
+                r_del = play_request("DELETE", f"{BASE_URL}/edits/{edit_id}/listings/{locale}/{img_type}", token)
+                if r_del is None or r_del.status_code not in (200, 204):
+                    code = r_del.status_code if r_del is not None else "None"
+                    print(f"  [WARN] [{locale}/{img_type}] DELETE returned {code}", flush=True)
                 for fpath in paths:
                     with open(fpath, "rb") as f:
                         png_bytes = f.read()
@@ -934,14 +946,22 @@ def sync_play_store(out_dir: str, key_path: str, skip_screenshots: bool = False)
                     else:
                         code = r_up.status_code if r_up is not None else "None"
                         txt = r_up.text[:160] if r_up is not None else ""
-                        print(f"  [ERR] [{locale}/{img_type}] Upload failed ({code}): {txt}", flush=True)
-            print(f"  [{idx_loc}/{len(synced_locales)}] {locale} ({prefix}): Uploaded {ok_imgs}/15 screenshots (Phone + 7\" + 10\")", flush=True)
+                        raise RuntimeError(f"[{locale}/{img_type}] Upload failed ({code}): {txt}")
+            return locale, prefix, ok_imgs
+
+        completed_locales = 0
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            futs = {pool.submit(_upload_locale_screenshots, loc): loc for loc in synced_locales}
+            for fut in as_completed(futs):
+                loc, pfx, ok_imgs = fut.result()
+                completed_locales += 1
+                print(f"  [{completed_locales}/{len(synced_locales)}] {loc} ({pfx}): Uploaded {ok_imgs}/15 screenshots (Phone + 7\" + 10\")", flush=True)
 
     # 7. Commit the Google Play Edit
     print(f"\nCommitting Google Play edit {edit_id}...")
     r_commit = play_request("POST", f"{BASE_URL}/edits/{edit_id}:commit", token)
     if r_commit.status_code == 200:
-        print(f"=== Successfully committed all listings, release notes, and screenshots to Google Play Console! ===")
+        print(f"=== Successfully committed all updates to Google Play Console (Edit ID: {edit_id})! ===")
     else:
         raise RuntimeError(f"Failed to commit edit {edit_id}: HTTP {r_commit.status_code} {r_commit.text}")
 
@@ -951,6 +971,12 @@ if __name__ == "__main__":
     parser.add_argument("--out-dir", default=os.path.join(REPO_ROOT, "build_screenshots_android"), help="Directory for generated Android PNGs")
     parser.add_argument("--key", default=DEFAULT_KEY_PATH, help="Service Account JSON key path")
     parser.add_argument("--skip-screenshots", action="store_true", help="Sync only text listings and release notes")
+    parser.add_argument("--screenshots-only", action="store_true", help="Only render and replace screenshots across all existing locales")
     args = parser.parse_args()
 
-    sync_play_store(out_dir=args.out_dir, key_path=args.key, skip_screenshots=args.skip_screenshots)
+    sync_play_store(
+        out_dir=args.out_dir,
+        key_path=args.key,
+        skip_screenshots=args.skip_screenshots,
+        screenshots_only=args.screenshots_only,
+    )

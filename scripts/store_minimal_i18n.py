@@ -679,6 +679,75 @@ LANG_PACKS["ms"] = _make_pack(
     "Log Audit Pelayan", "Kawalan paparan mengikut tema",
 )
 
+LANG_PACKS["sk"] = _make_pack(
+    "sk", "Pi 20. 11.", "Aktívne kurzory: 3  ·  TypeScript  ·  UTF-8", "FIXED",
+    {
+        "s1": ([("Živý náhľad", True), ("pre Markdown", False)], [[("Živý náhľad", True)], [("pre Markdown", False)]]),
+        "s2": ([("Diagramy Mermaid", True), ("ihneď pri písaní", False)], [[("Diagramy Mermaid", True)], [("ihneď pri písaní", False)]]),
+        "s3": ([("Vzorce LaTeX", True), ("100 % offline naživo", False)], [[("Vzorce LaTeX", True)], [("100 % offline", False)]]),
+        "s4": ([("Rýchle hľadanie a", False), ("nahrádzanie Regexom", True)], [[("Rýchle hľadanie a", False)], [("nahrádzanie Regexom", True)]]),
+        "s5": ([("65 jazykov a", False), ("úpravy multi-kurzorom", True)], [[("65 jazykov a", False)], [("multi-kurzor", True)]]),
+    },
+    ("Poznámky k návrhu", "Rýchly živý náhľad", "Pri písaní okamžite prekresľuje len zmenené bloky.", "Modul", "Úloha", "Stav", "Rýchle úpravy PieceTable", "CommonMark / GFM", "Matematika a 33 diagramov", "Hotovo", "Kontrolný zoznam", "Automatický tmavý / svetlý režim", "100 % offline prevádzka", "Export prehľadu výkonu"),
+    ("Spracovanie požiadavky", "Klient", "API brána", "Overené", "Rýchlo", "App server", "Pamäť cache", "Primárna DB", "Vykreslí", "33 typov diagramov", "offline ako ostré SVG"),
+    ("Matematické poznámky", "Gaussov integrál a normálne rozdelenie:", "Vlastné čísla a 2D matica rotácie:", "Riadkové vzorce", "ostro vykreslené natívnym MathML"),
+    "Auditný záznam servera", "Vykresľovanie podľa motívu",
+)
+
+LANG_PACKS["ar"] = _make_pack(
+    "ar", "الجمعة 20 نوفمبر", "3 مؤشرات نشطة  ·  TypeScript  ·  UTF-8", "تم",
+    {
+        "s1": ([("معاينة فورية منقسمة", True), ("لملفات Markdown", False)], [[("معاينة فورية منقسمة", True)], [("لملفات Markdown", False)]]),
+        "s2": ([("مخططات Mermaid", True), ("تُرسَم فور الكتابة", False)], [[("مخططات Mermaid", True)], [("تُرسَم فور الكتابة", False)]]),
+        "s3": ([("معادلات LaTeX واضحة", True), ("100% دون إنترنت", False)], [[("معادلات LaTeX واضحة", True)], [("100% دون إنترنت", False)]]),
+        "s4": ([("بحث سريع واستبدال", True), ("بتعبيرات Regex", False)], [[("بحث سريع واستبدال", True)], [("بتعبيرات Regex", False)]]),
+        "s5": ([("إبراز 65 لغة برمجة", False), ("وتحرير متعدد المؤشرات", True)], [[("إبراز 65 لغة برمجة", False)], [("وتحرير متعدد المؤشرات", True)]]),
+    },
+    ("ملاحظات تصميم المشروع", "معاينة حية سريعة", "تُحدِّث الأجزاء المعدَّلة فقط خلال أجزاء من الثانية.", "الوحدة", "الدور الأساسي", "الحالة", "تحرير PieceTable السريع", "CommonMark / GFM", "معادلات و33 نوع مخطط", "مكتمل", "قائمة ما قبل الإصدار", "مزامنة الوضع الداكن والفاتح", "يعمل 100% دون إنترنت", "تصدير تقرير الأداء"),
+    ("مسار معالجة الطلبات", "Client", "API Gateway", "Auth OK", "Fast Hit", "App Server", "Memory Cache", "Primary DB", "عرض فوري دون إنترنت لـ", "33 نوعاً من المخططات", "بدقة SVG عالية"),
+    ("ملاحظات النماذج الرياضية", "تكامل غاوس والتوزيع الطبيعي:", "معادلة القيم الذاتية ومصفوفة الدوران:", "المعادلات السطرية", "تُعرض بوضوح عبر محرك MathML الأصلي"),
+    "Server Audit Log", "Theme-aware frame renderer",
+)
+LANG_PACKS["ar"]["rtl"] = True
+
+LANG_PACKS["he"] = _make_pack(
+    "he", "יום ו׳, 20 בנוב׳", "3 סמנים פעילים  ·  TypeScript  ·  UTF-8", "תוקן",
+    {
+        "s1": ([("תצוגה מקדימה חיה", True), ("עבור Markdown", False)], [[("תצוגה מקדימה חיה", True)], [("עבור Markdown", False)]]),
+        "s2": ([("דיאגרמות Mermaid", True), ("מצוירות תוך כדי הקלדה", False)], [[("דיאגרמות Mermaid", True)], [("תוך כדי הקלדה", False)]]),
+        "s3": ([("נוסחאות LaTeX חדות", True), ("100% אופליין מיידית", False)], [[("נוסחאות LaTeX חדות", True)], [("100% אופליין", False)]]),
+        "s4": ([("חיפוש מהיר והחלפה", True), ("באמצעות Regex", False)], [[("חיפוש מהיר והחלפה", True)], [("באמצעות Regex", False)]]),
+        "s5": ([("הדגשה ל-65 שפות", False), ("ועריכה מרובת סמנים", True)], [[("הדגשה ל-65 שפות", False)], [("ועריכה מרובת סמנים", True)]]),
+    },
+    ("הערות תכנון פרויקט", "תצוגה חיה מהירה", "מרנדרת רק בלוקים שהשתנו באלפיות שנייה.", "מודול", "תפקיד עיקרי", "מצב", "עריכת PieceTable מהירה", "CommonMark / GFM", "נוסחאות ו-33 דיאגרמות", "הושלם", "רשימת בדיקה לשחרור", "סנכרון אוטומטי למצב כהה/בהיר", "פעולה 100% אופליין במכשיר", "ייצוא דוח ביצועים"),
+    ("זרימת עיבוד בקשות", "Client", "API Gateway", "Auth OK", "Fast Hit", "App Server", "Memory Cache", "Primary DB", "רינדור אופליין של", "33 סוגי דיאגרמות", "כקובצי SVG חדים"),
+    ("הערות מודלים מתמטיים", "אינטגרל גאוס והתפלגות נורמלית:", "משוואת ערכים עצמיים ומטריצת סיבוב:", "נוסחאות בשורה", "מוצגות בחדות באמצעות מנוע MathML מובנה"),
+    "Server Audit Log", "Theme-aware frame renderer",
+)
+LANG_PACKS["he"]["rtl"] = True
+
+
+EXTRA_UI_STRINGS = {
+    "sk": {
+        "File": "Súbor", "Edit": "Upraviť", "Find": "Hľadať", "View": "Zobraziť", "Tab": "Tab",
+        "Replace": "Nahradiť", "Find:": "Hľadať:", "Replace:": "Nahradiť:",
+        "Match Case": "Rozlišovať veľkosť", "Whole Word": "Celé slová", "Regex": "Regex",
+        "Replace All": "Nahradiť všetko", "Find Next": "Hľadať ďalšie", "Done": "Hotovo", "All": "Všetko",
+    },
+    "ar": {
+        "File": "ملف", "Edit": "تحرير", "Find": "بحث", "View": "عرض", "Tab": "جدولة",
+        "Replace": "استبدال", "Find:": "بحث:", "Replace:": "استبدال:",
+        "Match Case": "مطابقة الحالة", "Whole Word": "كلمة كاملة", "Regex": "Regex",
+        "Replace All": "استبدال الكل", "Find Next": "بحث عن التالي", "Done": "تم", "All": "الكل",
+    },
+    "he": {
+        "File": "קובץ", "Edit": "עריכה", "Find": "חיפוש", "View": "תצוגה", "Tab": "טאב",
+        "Replace": "החלפה", "Find:": "חיפוש:", "Replace:": "החלפה:",
+        "Match Case": "התאמת רישיות", "Whole Word": "מילה שלמה", "Regex": "Regex",
+        "Replace All": "החלף הכל", "Find Next": "חפש הבא", "Done": "סיום", "All": "הכל",
+    },
+}
+
 
 TS_BODY_TEMPLATE = """{comment}
 export interface ViewportMetrics {{

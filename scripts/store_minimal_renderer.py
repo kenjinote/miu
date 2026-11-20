@@ -338,6 +338,23 @@ def ios_status_icons_svg(fg: str) -> str:
     """
 
 
+def android_status_icons_svg(fg: str) -> str:
+    return f"""
+    <div class="ios-status-right">
+      <svg width="15" height="12" viewBox="0 0 16 12" fill="none">
+        <path d="M8 11.2 15.2 2.4C13.2 1.0 10.7 0.2 8 0.2S2.8 1.0 0.8 2.4L8 11.2Z" fill="{fg}"/>
+      </svg>
+      <svg width="13" height="12" viewBox="0 0 13 12" fill="none">
+        <path d="M1 11.2H12V0.8L1 11.2Z" fill="{fg}"/>
+      </svg>
+      <svg width="9" height="13" viewBox="0 0 10 14" fill="none">
+        <rect x="3" y="0.5" width="4" height="1.5" rx="0.6" fill="{fg}"/>
+        <rect x="1.2" y="2" width="7.6" height="11" rx="1.4" fill="{fg}"/>
+      </svg>
+    </div>
+    """
+
+
 def build_ios_pill_bar_html(ui_strings: dict, active_cat: str, compact: bool = False) -> str:
     cats = [
         (_esc(ui_strings.get("File", "File")), "file"),
@@ -491,13 +508,21 @@ JS_AUTO_FIT = """
       sh.style.transformOrigin = 'top right';
     }
   });
-  document.querySelectorAll('.pane-top, .iphone-card .single-pane .miu-editor').forEach(box => {
+  document.querySelectorAll('.pane-top, .iphone-card .single-pane .miu-editor, .android-phone-card .single-pane .miu-editor').forEach(box => {
     const boxBottom = box.getBoundingClientRect().bottom - 3;
-    box.querySelectorAll('.ed-line').forEach(line => {
-      if (line.getBoundingClientRect().bottom > boxBottom) {
-        line.style.display = 'none';
+    const lines = Array.from(box.querySelectorAll('.ed-line'));
+    let cutFrom = -1;
+    for (let i = 0; i < lines.length; i++) {
+      if (lines[i].getBoundingClientRect().bottom > boxBottom) {
+        cutFrom = i;
+        break;
       }
-    });
+    }
+    if (cutFrom !== -1) {
+      for (let j = cutFrom; j < lines.length; j++) {
+        lines[j].style.display = 'none';
+      }
+    }
   });
   document.querySelectorAll('.pane-bot').forEach(bot => {
     const root = bot.querySelector('#__miu_root');
@@ -531,6 +556,10 @@ def build_slide_html(
     preview_inner = slide["previewHtml"]
     active_cat = "view" if mode == "split" else ("find" if mode == "regex" else "edit")
     hl_land, hl_port = pack["headlines"][slide_key]
+
+    is_rtl = bool(pack.get("rtl", False))
+    hl_dir_attr = ' dir="rtl"' if is_rtl else ""
+    prev_dir_attr = ' dir="rtl"' if is_rtl else ""
 
     if display_type in ("APP_IPHONE_67", "APP_IPHONE_65"):
         if display_type == "APP_IPHONE_67":
@@ -752,6 +781,109 @@ def build_slide_html(
         </div>
         """
         header_cls = "header-landscape-mac"
+
+    elif display_type == "ANDROID_PHONE":
+        vw, vh, dpr = 432, 768, 3
+        card_w, card_h = 376, 616
+        if prefix in ("ja", "zh_cn", "zh_tw"):
+            headline_html = "".join(
+                '<div class="hl-row">'
+                + "".join(f'<span class="{"hl-em" if em else "hl-sub"}">{_esc(txt)}</span>' for txt, em in row)
+                + "</div>"
+                for row in hl_port
+            )
+        else:
+            headline_html = "".join(
+                '<div class="hl-row">'
+                + " ".join(f'<span class="{"hl-em" if em else "hl-sub"}">{_esc(txt)}</span>' for txt, em in row)
+                + "</div>"
+                for row in hl_port
+            )
+        fg_stat = "#F5F5F7" if is_dark else "#1D1D1F"
+        aphone_max = {"s1": 13, "s2": 11, "s3": 9, "s4": 12, "s5": 25}
+        ed_font = 10.3 if mode == "split" else 10.8
+        ed_lh = 1.48 if mode == "split" else 1.52
+        ed_html = build_editor_html(lines_decorated, ed_font, ed_lh, aphone_max.get(slide_key, 13))
+
+        if mode == "split":
+            body_html = f"""
+            <div class="split-vertical">
+              <div class="pane-top">{ed_html}</div>
+              <div class="v-splitter"><span class="v-grabber"></span></div>
+              <div class="pane-bot"><div id="__miu_root" class="preview-Zoom-iphone preview-Zoom-android"{prev_dir_attr}>{preview_inner}</div></div>
+            </div>
+            {build_ios_pill_bar_html(ui_strings, active_cat, compact=True)}
+            """
+        elif mode == "regex":
+            body_html = f"""
+            <div class="single-pane">
+              {ed_html}
+              {build_ios_replace_bar_html(ui_strings, pack['repl_val'])}
+            </div>
+            {build_ios_pill_bar_html(ui_strings, active_cat, compact=True)}
+            """
+        else:
+            body_html = f"""
+            <div class="single-pane">{ed_html}</div>
+            {build_ios_pill_bar_html(ui_strings, active_cat, compact=True)}
+            """
+
+        device_html = f"""
+        <div class="device-card android-phone-card {'dark' if is_dark else 'light'}" style="width:{card_w}px;height:{card_h}px;">
+          <div class="ios-statusbar android-sb">
+            <span class="ios-time">9:30</span>
+            {android_status_icons_svg(fg_stat)}
+          </div>
+          <div class="ios-docbar">{_esc(doc_title)}</div>
+          <div class="card-content">{body_html}</div>
+        </div>
+        """
+        header_cls = "header-portrait-android"
+
+    elif display_type == "ANDROID_TABLET":
+        vw, vh, dpr = 1280, 800, 2
+        headline_html = (
+            '<span class="hl-row">'
+            + "".join(f'<span class="{"hl-em" if em else "hl-sub"}">{_esc(txt)}</span>' for txt, em in hl_land)
+            + "</span>"
+        )
+        fg_stat = "#F5F5F7" if is_dark else "#1D1D1F"
+        ed_html = build_editor_html(lines_decorated, 13, 1.62, 24)
+
+        if mode == "split":
+            body_html = f"""
+            <div class="split-horizontal">
+              <div class="pane-left">{ed_html}</div>
+              <div class="h-splitter"></div>
+              <div class="pane-right"><div id="__miu_root" class="preview-pad"{prev_dir_attr}>{preview_inner}</div></div>
+            </div>
+            {build_ios_pill_bar_html(ui_strings, active_cat, compact=False)}
+            """
+        elif mode == "regex":
+            body_html = f"""
+            <div class="single-pane">
+              {ed_html}
+              <div class="ipad-find-wrap">{build_ios_replace_bar_html(ui_strings, pack['repl_val'])}</div>
+            </div>
+            {build_ios_pill_bar_html(ui_strings, active_cat, compact=False)}
+            """
+        else:
+            body_html = f"""
+            <div class="single-pane">{ed_html}</div>
+            {build_ios_pill_bar_html(ui_strings, active_cat, compact=False)}
+            """
+
+        device_html = f"""
+        <div class="device-card android-tablet-card {'dark' if is_dark else 'light'}">
+          <div class="ios-statusbar ipad-sb">
+            <span class="ios-time">9:30 &nbsp;{_esc(pack['ipad_date'])}</span>
+            <span class="ipad-doc">{_esc(doc_title)}</span>
+            {android_status_icons_svg(fg_stat)}
+          </div>
+          <div class="card-content">{body_html}</div>
+        </div>
+        """
+        header_cls = "header-landscape-android"
     else:
         raise ValueError(f"Unsupported display_type: {display_type}")
 
@@ -765,7 +897,7 @@ def build_slide_html(
         "'Consolas', 'Noto Sans Mono', 'DejaVu Sans Mono', 'BIZ UDGothic', 'Noto Sans JP', "
         "'Noto Sans CJK JP', 'Noto Sans CJK SC', 'Noto Sans CJK TC', 'Noto Sans CJK KR', "
         "'Microsoft YaHei UI', 'Microsoft JhengHei UI', 'Malgun Gothic', 'Noto Sans Thai', "
-        "'Leelawadee UI', 'Noto Sans Devanagari', 'Nirmala UI', 'Noto Sans', monospace"
+        "'Leelawadee UI', 'Noto Sans Devanagari', 'Nirmala UI', 'Segoe UI', 'Noto Sans', monospace"
     )
 
     html = f"""<!DOCTYPE html>
@@ -820,6 +952,11 @@ def build_slide_html(
     font-size: 30px;
     line-height: 1.40;
   }}
+  .header-portrait-android {{
+    padding-top: 44px;
+    font-size: 28px;
+    line-height: 1.38;
+  }}
   .header-landscape-lg {{
     padding-top: 96px;
     font-size: 46px;
@@ -834,6 +971,20 @@ def build_slide_html(
   }}
   .header-landscape-mac .hl-em + .hl-sub,
   .header-landscape-mac .hl-sub + .hl-em {{ margin-left: 0.22em; }}
+  .header-landscape-android {{
+    padding-top: 62px;
+    font-size: 40px;
+    line-height: 1.25;
+  }}
+  .header-landscape-android .hl-em + .hl-sub,
+  .header-landscape-android .hl-sub + .hl-em {{ margin-left: 0.22em; }}
+  .headline[dir="rtl"] .hl-em + .hl-sub,
+  .headline[dir="rtl"] .hl-sub + .hl-em {{ margin-left: 0; margin-right: 0.24em; }}
+  #__miu_root[dir="rtl"] math {{ direction: ltr; unicode-bidi: isolate; }}
+  #__miu_root[dir="rtl"] .pele-diagram {{ direction: ltr; }}
+  #__miu_root[dir="rtl"] ul, #__miu_root[dir="rtl"] ol {{ padding-right: 1.8em !important; padding-left: 0 !important; }}
+  #__miu_root[dir="rtl"] input[type="checkbox"] {{ margin: 0 -1.4em 0.2em 0.5em !important; }}
+  #__miu_root[dir="rtl"] .markdown-alert {{ border-left: none !important; border-right: 4px solid #2ea043 !important; }}
   .header-landscape-duo {{
     padding-top: 56px;
     font-size: 31px;
@@ -863,10 +1014,22 @@ def build_slide_html(
   .iphone-card {{
     border-radius: 40px 40px 0 0;
   }}
+  .android-phone-card {{
+    border-radius: 32px 32px 0 0;
+  }}
   .ipad-card {{
     width: 1164px;
     height: 786px;
     border-radius: 22px 22px 0 0;
+  }}
+  .android-tablet-card {{
+    width: 1104px;
+    height: 626px;
+    border-radius: 20px 20px 0 0;
+  }}
+  .android-sb {{
+    height: 32px;
+    padding: 4px 22px 0 24px;
   }}
   .mac-card {{
     width: 1184px;
@@ -1165,6 +1328,9 @@ def build_slide_html(
   .preview-Zoom-iphone .pele-diagram svg {{
     max-height: 138px !important;
   }}
+  .preview-Zoom-android .pele-diagram svg {{
+    max-height: 118px !important;
+  }}
   .preview-duo .pele-diagram svg {{
     max-height: 290px !important;
   }}
@@ -1209,7 +1375,7 @@ def build_slide_html(
     background: #FFFFFF;
     border-top: 1px solid #ECECF0;
   }}
-  .ipad-card .ios-pillbar-wrap {{
+  .ipad-card .ios-pillbar-wrap, .android-tablet-card .ios-pillbar-wrap {{
     position: absolute;
     left: 0;
     right: 0;
@@ -1407,11 +1573,11 @@ def build_slide_html(
     color: #FFFFFF;
   }}
 
-  .iphone-card .single-pane {{
+  .iphone-card .single-pane, .android-phone-card .single-pane {{
     display: flex;
     flex-direction: column;
   }}
-  .iphone-card .single-pane .miu-editor {{
+  .iphone-card .single-pane .miu-editor, .android-phone-card .single-pane .miu-editor {{
     flex: 1;
     min-height: 0;
     overflow: hidden;
@@ -1430,7 +1596,7 @@ def build_slide_html(
     gap: 6px;
     color: #1D1D1F;
   }}
-  .iphone-card .single-pane .ios-find-bar {{
+  .iphone-card .single-pane .ios-find-bar, .android-phone-card .single-pane .ios-find-bar {{
     position: relative;
     left: auto;
     right: auto;
@@ -1502,7 +1668,7 @@ def build_slide_html(
 </head>
 <body data-page-token="{_esc(f'{prefix}_{display_type}_{slide_idx}')}">
   <div class="stage">
-    <div class="headline {header_cls}">{headline_html}</div>
+    <div class="headline {header_cls}"{hl_dir_attr}>{headline_html}</div>
     {device_html}
   </div>
 </body>
