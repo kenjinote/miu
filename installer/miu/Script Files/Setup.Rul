@@ -23,7 +23,11 @@ function OnBegin()
 begin
     if (SYSINFO.bIsWow64 != 0) then
         REGDB_OPTIONS = REGDB_OPTIONS | REGDB_OPTION_WOW64_64KEY;
+        if (!MAINTENANCE) then
+            TARGETDIR = PROGRAMFILES64 ^ "miu";
+        endif;
     endif;
+    IFX_PRODUCT_ICON = TARGETDIR ^ "miu.exe,0";
 end;
 
 
@@ -164,6 +168,52 @@ Dlg_SdStartCopy2:
 
     // Added in 11.0 - Set appropriate StatusEx static text.
     SetStatusExStaticText( SdLoadString( IDS_IFX_STATUSEX_STATICTEXT_FIRSTUI ) );
+
+    IFX_PRODUCT_ICON = TARGETDIR ^ "miu.exe,0";
  
     return 0;
+end;
+
+
+//---------------------------------------------------------------------------
+// OnCustomizeUninstInfo
+//
+// Ensure Add/Remove Programs ("Installed apps") DisplayIcon always points
+// to the installed miu.exe program icon across install, upgrade, and repair.
+//---------------------------------------------------------------------------
+function OnCustomizeUninstInfo()
+    string szIconPath, szUninstKey;
+    number nSavedOptions, nSavedRoot;
+begin
+    szIconPath = TARGETDIR ^ "miu.exe,0";
+    IFX_PRODUCT_ICON = szIconPath;
+    RegDBSetItem( REGDB_UNINSTALL_DISPLAYICON, szIconPath );
+
+    if (StrLengthChars( UNINSTALLKEY ) > 0) then
+        nSavedOptions = REGDB_OPTIONS;
+        nSavedRoot = RegDBGetDefaultRoot();
+        szUninstKey = REGDB_KEYPATH_UNINSTALL + UNINSTALLKEY;
+
+        RegDBSetDefaultRoot( HKEY_LOCAL_MACHINE );
+        REGDB_OPTIONS = nSavedOptions & ~REGDB_OPTION_WOW64_64KEY;
+        if (RegDBKeyExist( szUninstKey ) = 1) then
+            RegDBSetKeyValueEx( szUninstKey, REGDB_VALUENAME_UNINSTALL_DISPLAYICON, REGDB_STRING, szIconPath, -1 );
+        endif;
+
+        if (SYSINFO.bIsWow64 != 0) then
+            REGDB_OPTIONS = nSavedOptions | REGDB_OPTION_WOW64_64KEY;
+            if (RegDBKeyExist( szUninstKey ) = 1) then
+                RegDBSetKeyValueEx( szUninstKey, REGDB_VALUENAME_UNINSTALL_DISPLAYICON, REGDB_STRING, szIconPath, -1 );
+            endif;
+        endif;
+
+        RegDBSetDefaultRoot( HKEY_CURRENT_USER );
+        REGDB_OPTIONS = nSavedOptions & ~REGDB_OPTION_WOW64_64KEY;
+        if (RegDBKeyExist( szUninstKey ) = 1) then
+            RegDBSetKeyValueEx( szUninstKey, REGDB_VALUENAME_UNINSTALL_DISPLAYICON, REGDB_STRING, szIconPath, -1 );
+        endif;
+
+        RegDBSetDefaultRoot( nSavedRoot );
+        REGDB_OPTIONS = nSavedOptions;
+    endif;
 end;

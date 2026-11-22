@@ -220,47 +220,47 @@ def main():
         if not notes:
             # Default release notes template
             notes = f"# miu {release_name} リリースノート / Release Notes\n\n" + r"""## 🇯🇵 日本語 (Japanese)
-v1.0.56 では、Windows・macOS・iOS・Android 全プラットフォームにおける HTML ライブプレビューの `<script>` 動作統一と、未保存 HTML スニペットへの対応を実施しました。
+v1.0.57 では、Windows 版における単一行テキスト切り取り・削除後のカーソル移動不具合の修正、編集操作後のカーソル基準位置同期の強化、およびインストーラー版のプログラムアイコン設定修正を実施しました。
 
-- **未保存 HTML スニペットの `<script>` 実行対応**：新規作成の未保存バッファにおいて、`<!DOCTYPE html>` 等を省略して `<canvas>`・`<div>`・`<script>`・`<style>`・`<button>` 等から直接書き始めた場合でも HTML プレビューとして描画・スクリプト実行されるようになりました（オフライン隔離・ローカル保護は維持）。
-- **プラットフォーム間の HTML プレビュー CSP 統一**：macOS / iOS / Android の HTML プレビュー CSP を Windows 版と揃え、`eval()` / `new Function()` および `blob:` / `data:` URL スクリプトの実行に対応しました。
-- **`.html` 保存直後のライブプレビュー即時反映**：新規テキストを `.html` として保存した瞬間にプレビューが自動的に HTML モードへ切り替わるよう改善しました。
+- **単一行の切り取り・削除後の矢印キー移動を修正**：単一行内で選択範囲を切り取り（`Ctrl+X`）または削除した際に行開始オフセット計算の符号が反転し、上下矢印キーでカーソルが意図しない列へ飛んだり、行末からの左矢印キー移動が停止したりする問題を修正しました。
+- **編集・置換・Undo/Redo 後のカーソル基準座標同期と UTF-8 境界保護を強化**：文字入力・ペースト・削除・インデント・コメント切替・行移動・一括置換・元に戻す／やり直し直後に水平基準座標（`desiredX`）を正確に再計算し、UTF-8 マルチバイト文字境界での安全なカーソル移動を保証しました。
+- **Windows「インストールされているアプリ」アイコン表示を修正**：インストーラー（`Setup.exe`）でインストールした際、Windows 設定の「インストールされているアプリ」一覧に `miu` のアプリアイコンが正しく表示されるよう修正しました。
 
 ---
 
 ## 🇺🇸 English
-Version 1.0.56 unifies HTML Live Preview `<script>` execution across Windows, macOS, iOS, and Android, and enables instant `<script>` previewing in unsaved HTML snippets.
+Version 1.0.57 fixes a cursor navigation regression after single-line cut/delete operations on Windows, strengthens post-edit caret horizontal coordinate synchronization, and fixes the program icon shown in Windows "Installed apps".
 
-- **Unsaved HTML Snippet `<script>` Support**: Unsaved scratchpad buffers starting directly with HTML elements such as `<canvas>`, `<div>`, `<script>`, `<style>`, or `<button>` (without requiring a `<!DOCTYPE html>` prologue) now automatically render in HTML Live Preview with `<script>` execution while preserving strict offline isolation.
-- **Cross-Platform HTML Preview CSP Parity**: Aligned HTML Live Preview CSP on macOS, iOS, and Android with Windows to support `eval()` / `new Function()` as well as `blob:` and `data:` scripts.
-- **Instant Preview Refresh on `.html` Save**: Saving an untitled buffer as `.html` now immediately switches Live Preview into HTML mode without requiring an extra edit or toggle.
+- **Fixed Arrow-Key Navigation After Single-Line Cut / Delete**: Fixed a sign error in single-line line-offset adjustment when cutting (`Ctrl+X`) or deleting a selection within a line, preventing vertical arrow jumps to wrong columns and left-arrow stalls on multibyte UTF-8 text.
+- **Hardened Post-Edit Caret Column Sync & UTF-8 Boundary Safety**: Synchronized caret `desiredX` immediately after typing, pasting, deleting, indenting, comment toggling, moving lines, Replace All, and Undo/Redo, while enforcing strict UTF-8 code-point boundary progression.
+- **Fixed Windows "Installed apps" Program Icon**: Updated the Windows installer (`Setup.exe`) so the `miu` application icon displays properly in Windows Settings > Apps > Installed apps.
 
 ---
 
 ## 🇨🇳 简体中文 (Simplified Chinese)
-v1.0.56 统一了 Windows、macOS、iOS 与 Android 全平台的 HTML 实时预览 `<script>` 行为，并新增对未保存 HTML 片段脚本的直接支持。
+v1.0.57 修复了 Windows 版单行剪切/删除后的光标移动异常，强化了编辑操作后的光标水平坐标同步，并修复了安装程序在 Windows“已安装的应用”中的图标显示。
 
-- **支持未保存 HTML 片段执行 `<script>`**：在新建未保存缓冲区中直接编写以 `<canvas>`、`<div>`、`<script>`、`<style>`、`<button>` 等开头的 HTML 片段（无需 `<!DOCTYPE html>` 声明）时，现可直接渲染并运行脚本，同时保持严格的离线安全隔离。
-- **全平台 HTML 预览 CSP 统一**：将 macOS / iOS / Android 的 HTML 预览 CSP 与 Windows 版对齐，支持 `eval()` / `new Function()` 以及 `blob:` / `data:` 脚本加载。
-- **另存为 `.html` 后即时刷新预览**：将未命名缓冲区保存为 `.html` 文件后，实时预览会立即自动切换至 HTML 模式。
+- **修复单行剪切/删除后的方向键光标移动问题**：修复在单行内剪切（`Ctrl+X`）或删除选中文本时行起始偏移量符号计算错误，解决上下方向键跳转到错误列以及在多字节 UTF-8 行末按左方向键无法移动的问题。
+- **强化编辑、替换与撤销/重做后的光标列同步及 UTF-8 边界保护**：在输入、粘贴、删除、缩进、注释切换、移动行、全部替换及撤销/重做后精确更新光标水平基准坐标（`desiredX`），并确保严格按 UTF-8 字符边界安全移动。
+- **修复 Windows“已安装的应用”图标显示**：更新安装程序（`Setup.exe`），使 Windows 设置“已安装的应用”列表中正确显示 `miu` 程序图标。
 
 ---
 
 ## 🇹🇼 繁體中文 (Traditional Chinese)
-v1.0.56 統一了 Windows、macOS、iOS 與 Android 全平台的 HTML 即時預覽 `<script>` 行為，並新增對未儲存 HTML 片段腳本的直接支援。
+v1.0.57 修復了 Windows 版單行剪下／刪除後的游標移動異常，強化了編輯操作後的游標水平座標同步，並修復了安裝程式在 Windows「已安裝的應用程式」中的圖示顯示。
 
-- **支援未儲存 HTML 片段執行 `<script>`**：在新建未儲存緩衝區中直接編寫以 `<canvas>`、`<div>`、`<script>`、`<style>`、`<button>` 等開頭的 HTML 片段（無需 `<!DOCTYPE html>` 宣告）時，現可直接渲染並執行腳本，同時維持嚴格的離線安全隔離。
-- **全平台 HTML 預覽 CSP 統一**：將 macOS / iOS / Android 的 HTML 預覽 CSP 與 Windows 版對齊，支援 `eval()` / `new Function()` 以及 `blob:` / `data:` 腳本載入。
-- **另存為 `.html` 後即時重新整理預覽**：將未命名緩衝區儲存為 `.html` 檔案後，即時預覽會立即自動切換至 HTML 模式。
+- **修復單行剪下／刪除後的方向鍵游標移動問題**：修復在單行內剪下（`Ctrl+X`）或刪除選取文字時行起始位移符號計算錯誤，解決上下方向鍵跳轉至錯誤欄位以及在多位元組 UTF-8 行末按左方向鍵無法移動的問題。
+- **強化編輯、取代與復原／重做後的游標欄位同步及 UTF-8 邊界保護**：在輸入、貼上、刪除、縮排、註解切換、移動行、全部取代及復原／重做後精確更新游標水平基準座標（`desiredX`），並確保嚴格依 UTF-8 字元邊界安全移動。
+- **修復 Windows「已安裝的應用程式」圖示顯示**：更新安裝程式（`Setup.exe`），使 Windows 設定「已安裝的應用程式」清單中正確顯示 `miu` 程式圖示。
 
 ---
 
 ## 🇰🇷 한국어 (Korean)
-v1.0.56에서는 Windows, macOS, iOS, Android 전 플랫폼의 HTML 실시간 미리보기 `<script>` 동작을 통일하고 저장하지 않은 HTML 스니펫 지원을 추가했습니다.
+v1.0.57에서는 Windows 버전의 단일 줄 잘라내기/삭제 후 커서 이동 오류를 수정하고, 편집 후 커서 기준 좌표 동기화를 강화했으며, Windows '설치된 앱' 목록의 아이콘 표시를 개선했습니다.
 
-- **미저장 HTML 스니펫 `<script>` 실행 지원**: 새로 만든 미저장 버퍼에서 `<!DOCTYPE html>` 없이 `<canvas>`, `<div>`, `<script>`, `<style>`, `<button>` 등으로 바로 작성해도 오프라인 격리를 유지한 채 HTML 미리보기 및 스크립트가 즉시 실행됩니다.
-- **플랫폼 간 HTML 미리보기 CSP 통일**: macOS / iOS / Android의 HTML 미리보기 CSP를 Windows 버전과 동일하게 맞춰 `eval()` / `new Function()` 및 `blob:` / `data:` 스크립트를 지원합니다.
-- **`.html` 저장 즉시 미리보기 자동 전환**: 새 문서를 `.html`로 저장하는 즉시 실시간 미리보기가 HTML 모드로 전환됩니다.
+- **단일 줄 잘라내기/삭제 후 방향키 이동 오류 수정**: 한 줄 내에서 선택 영역을 잘라내기(`Ctrl+X`)하거나 삭제할 때 줄 시작 오프셋 부호가 반대로 적용되어 위/아래 방향키 입력 시 엉뚱한 열로 이동하거나 줄 끝에서 왼쪽 방향키가 멈추던 문제를 수정했습니다.
+- **편집·바꾸기·실행 취소/다시 실행 후 커서 열 동기화 및 UTF-8 경계 보호 강화**: 입력, 붙여넣기, 삭제, 들여쓰기, 주석 토글, 줄 이동, 모두 바꾸기 및 실행 취소/다시 실행 직후 수평 기준 좌표(`desiredX`)를 정확히 갱신하고 멀티바이트 UTF-8 문자 경계에서 안전한 커서 이동을 보장합니다.
+- **Windows '설치된 앱' 아이콘 표시 수정**: 설치 프로그램(`Setup.exe`)으로 설치 시 Windows 설정의 '설치된 앱' 목록에 `miu` 프로그램 아이콘이 정상적으로 표시되도록 수정했습니다.
 """
         elif os.path.exists(notes):
             with open(notes, "r", encoding="utf-8") as f:

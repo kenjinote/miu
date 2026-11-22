@@ -34,10 +34,10 @@ METADATA_10_LANGS = {
             "Text Editor",
             "UTF-8"
         ],
-        "releaseNotes": """miu v1.0.56 更新內容
-・支援在未儲存的新建緩衝區中直接執行以 <canvas>、<div>、<script> 等開頭的 HTML 片段腳本
-・統一 macOS / iOS / Android 與 Windows 版的 HTML 預覽 CSP，支援 eval / new Function 及 blob: / data: 腳本
-・改進儲存流程，將未儲存文件另存為 .html 後立即自動重新整理為 HTML 即時預覽""",
+        "releaseNotes": """miu v1.0.57 更新內容
+・修復在單行內剪下（Ctrl+X）或刪除文字後，使用方向鍵移動游標時發生欄位跳轉或行末左移停滯的問題
+・強化輸入、貼上、取代及復原／重做後的游標水平座標同步與多位元組 UTF-8 字元邊界保護
+・改進 Windows 安裝程式圖示顯示與整體穩定性""",
         "image_captions": [
             "淺色模式下的多功能文字編輯",
             "深色模式下的代碼語法高亮",
@@ -76,10 +76,10 @@ Vom schnellen Notieren bis zum Durchsuchen und Bearbeiten riesiger Protokolldate
             "Leicht",
             "Code Editor"
         ],
-        "releaseNotes": """Neuerungen in miu v1.0.56
-• <script>-Ausführung für ungespeicherte HTML-Snippets (beginnend mit <canvas>, <div>, <script>, <style> usw.) auf allen Plattformen aktiviert.
-• HTML-Vorschau-CSP unter macOS, iOS und Android an Windows angeglichen (Unterstützung für eval / new Function sowie blob:- / data:-Skripte).
-• Sofortige Aktualisierung der Live-Vorschau in den HTML-Modus direkt nach dem Speichern als .html.""",
+        "releaseNotes": """Neuerungen in miu v1.0.57
+• Fehler behoben, bei dem das Ausschneiden (Strg+X) oder Löschen innerhalb einer einzelnen Zeile zu falschen Spaltensprüngen mit den Pfeiltasten oder zum Stillstand der linken Pfeiltaste bei Mehrbyte-UTF-8-Zeichen führte.
+• Synchronisierung der horizontalen Cursorposition nach Eingabe, Einfügen, Ersetzen sowie Rückgängig/Wiederholen und Schutz der UTF-8-Zeichengrenzen verbessert.
+• Darstellung des Anwendungsicons im Windows-Installer sowie allgemeine Stabilität verbessert.""",
         "image_captions": [
             "Heller Modus mit Markdown- und Code-Bearbeitung",
             "Dunkler Modus mit lebendiger Syntaxhervorhebung",
@@ -118,10 +118,10 @@ Idéal pour la prise de notes instantanée, l'analyse de fichiers journaux volum
             "ultra rapide",
             "texte"
         ],
-        "releaseNotes": """Nouveautés de miu v1.0.56
-• Exécution des balises <script> dans les extraits HTML non enregistrés (<canvas>, <div>, <script>, <style>, etc.) sur toutes les plateformes.
-• Unification de la CSP d’aperçu HTML sur macOS, iOS et Android avec Windows (prise en charge de eval / new Function et des scripts blob: / data:).
-• Passage immédiat de l’aperçu en direct au mode HTML dès l’enregistrement d’un document sous .html.""",
+        "releaseNotes": """Nouveautés de miu v1.0.57
+• Correction d’un problème où couper (Ctrl+X) ou supprimer du texte sur une seule ligne entraînait un décalage de colonne avec les flèches haut/bas ou un blocage de la flèche gauche sur du texte UTF-8 multi-octets.
+• Synchronisation renforcée de la position horizontale du curseur après saisie, collage, remplacement et Annuler/Rétablir, avec protection stricte des limites UTF-8.
+• Amélioration de l’affichage de l’icône dans l’installateur Windows et de la stabilité générale.""",
         "image_captions": [
             "Mode clair avec rendu précis des polices et indentation",
             "Mode sombre élégant avec coloration syntaxique",
@@ -160,10 +160,10 @@ Diseñado para abrirse en una fracción de segundo, es perfecto tanto para notas
             "rapido",
             "texto"
         ],
-        "releaseNotes": """Novedades de miu v1.0.56
-• Ejecución de <script> habilitada en fragmentos HTML sin guardar (<canvas>, <div>, <script>, <style>, etc.) en todas las plataformas.
-• CSP de vista previa HTML unificada en macOS, iOS y Android con Windows para admitir eval / new Function y scripts blob: / data:.
-• Actualización inmediata de la vista previa al modo HTML al guardar un documento nuevo como .html.""",
+        "releaseNotes": """Novedades de miu v1.0.57
+• Se corrigió un error por el que cortar (Ctrl+X) o eliminar texto en una sola línea provocaba saltos de columna con las flechas arriba/abajo o bloqueos de la flecha izquierda en texto UTF-8 multibyte.
+• Se mejoró la sincronización de la posición horizontal del cursor tras escribir, pegar, reemplazar y Deshacer/Rehacer, reforzando la seguridad en límites de caracteres UTF-8.
+• Se mejoró el registro del icono en el instalador de Windows y la estabilidad general.""",
         "image_captions": [
             "Modo claro con edición de texto y código",
             "Modo oscuro con resaltado de sintaxis",
@@ -202,10 +202,10 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "programacao",
             "texto"
         ],
-        "releaseNotes": """Novidades do miu v1.0.56
-• Execução de <script> ativada para trechos HTML não salvos (<canvas>, <div>, <script>, <style>, etc.) em todas as plataformas.
-• CSP de pré-visualização HTML unificada no macOS, iOS e Android com o Windows (suporte a eval / new Function e scripts blob: / data:).
-• Atualização imediata da pré-visualização para o modo HTML ao salvar um novo documento como .html.""",
+        "releaseNotes": """Novidades do miu v1.0.57
+• Corrigido um problema em que recortar (Ctrl+X) ou excluir texto em uma única linha causava saltos incorretos de coluna com as setas ou travamento da seta para a esquerda em linhas UTF-8 multibyte.
+• Aprimorada a sincronização da posição horizontal do cursor após digitar, colar, substituir e Desfazer/Refazer, com proteção estrita de limites de caracteres UTF-8.
+• Melhorias na exibição do ícone do instalador do Windows e na estabilidade geral.""",
         "image_captions": [
             "Modo claro com edição limpa e visualização nítida",
             "Modo escuro com realce de sintaxe colorido",
@@ -244,10 +244,10 @@ Projetado para inicializar em milissegundos, é a escolha perfeita para anotaç�
             "легкий редактор",
             "текст"
         ],
-        "releaseNotes": """Что нового в miu v1.0.56
-• Включено выполнение <script> в несохранённых HTML-фрагментах (<canvas>, <div>, <script>, <style> и др.) на всех платформах.
-• Политика CSP предпросмотра HTML на macOS, iOS и Android приведена в соответствие с Windows (поддержка eval / new Function и скриптов blob: / data:).
-• Мгновенное переключение предпросмотра в режим HTML сразу после сохранения документа как .html.""",
+        "releaseNotes": """Что нового в miu v1.0.57
+• Исправлена ошибка, из-за которой после вырезания (Ctrl+X) или удаления текста в пределах одной строки стрелки вверх/вниз смещали курсор в неверный столбец, а стрелка влево застревала на многобайтовых символах UTF-8.
+• Улучшена синхронизация горизонтальной позиции курсора после ввода, вставки, замены и отмены/повтора, а также усилена защита границ символов UTF-8.
+• Исправлено отображение значка программы в установщике Windows и повышена общая стабильность.""",
         "image_captions": [
             "Светлая тема оформления с удобной нумерацией строк",
             "Темная тема с яркой подсветкой синтаксиса",
@@ -286,10 +286,10 @@ Progettato per avviarsi in un istante, è ideale sia per prendere note veloci, s
             "codice",
             "testo"
         ],
-        "releaseNotes": """Novità di miu v1.0.56
-• Abilitata l’esecuzione di <script> nei frammenti HTML non salvati (<canvas>, <div>, <script>, <style>, ecc.) su tutte le piattaforme.
-• Unificata la CSP dell’anteprima HTML su macOS, iOS e Android con Windows per supportare eval / new Function e script blob: / data:.
-• Passaggio immediato dell’anteprima dal vivo alla modalità HTML subito dopo il salvataggio come .html.""",
+        "releaseNotes": """Novità di miu v1.0.57
+• Risolto un problema per cui tagliando (Ctrl+X) o eliminando testo su una singola riga i tasti freccia spostavano il cursore nella colonna errata o bloccavano la freccia sinistra su testo UTF-8 multibyte.
+• Migliorata la sincronizzazione della posizione orizzontale del cursore dopo digitazione, incolla, sostituzione e Annulla/Ripeti, con protezione rigorosa dei confini UTF-8.
+• Migliorata la visualizzazione dell’icona nell’installer di Windows e la stabilità generale.""",
         "image_captions": [
             "Modalità chiara con formattazione e testo nitido",
             "Modalità scura elegante con evidenziazione del codice",
@@ -328,10 +328,10 @@ Uruchamia się w ułamku sekundy i sprawdza się idealnie zarówno do szybkich n
             "kod",
             "tekst"
         ],
-        "releaseNotes": """Nowości w miu v1.0.56
-• Włączono wykonywanie <script> w niezapisanych fragmentach HTML (<canvas>, <div>, <script>, <style> itp.) na wszystkich platformach.
-• Ujednolicono politykę CSP podglądu HTML na macOS, iOS i Androidzie z wersją Windows (obsługa eval / new Function oraz skryptów blob: / data:).
-• Natychmiastowe przełączanie podglądu na żywo w tryb HTML po zapisaniu dokumentu jako .html.""",
+        "releaseNotes": """Nowości w miu v1.0.57
+• Naprawiono błąd, przez który wycięcie (Ctrl+X) lub usunięcie tekstu w pojedynczym wierszu powodowało przeskakiwanie kursora do niewłaściwej kolumny lub blokowanie strzałki w lewo w tekście UTF-8.
+• Ulepszono synchronizację poziomej pozycji kursora po wpisywaniu, wklejaniu, zamianie oraz Cofnij/Ponów, wzmacniając ochronę granic znaków UTF-8.
+• Poprawiono wyświetlanie ikony aplikacji w instalatorze Windows oraz ogólną stabilność.""",
         "image_captions": [
             "Motyw jasny z przejrzystym widokiem dokumentu",
             "Motyw ciemny z kolorowaniem składni kodu",
@@ -370,10 +370,10 @@ Ontworpen om direct binnen een fractie van een seconde op te starten; perfect vo
             "code editor",
             "tekst"
         ],
-        "releaseNotes": """Nieuw in miu v1.0.56
-• <script>-uitvoering ingeschakeld voor niet-opgeslagen HTML-fragmenten (<canvas>, <div>, <script>, <style>, enz.) op alle platforms.
-• HTML-voorbeeld-CSP op macOS, iOS en Android gelijkgesteld met Windows voor ondersteuning van eval / new Function en blob:- / data:-scripts.
-• Live voorbeeld schakelt nu direct na opslaan als .html over naar de HTML-modus.""",
+        "releaseNotes": """Nieuw in miu v1.0.57
+• Probleem opgelost waarbij knippen (Ctrl+X) of verwijderen binnen één regel leidde tot verkeerde kolomsprongen met de pijltjestoetsen of het vastlopen van pijl-links bij multibyte UTF-8-tekst.
+• Horizontale cursorpositie-synchronisatie na typen, plakken, vervangen en Ongedaan maken/Opnieuw uitvoeren verbeterd, met striktere UTF-8-karaktergrensbewaking.
+• Weergave van het programmapictogram in de Windows-installer en algehele stabiliteit verbeterd.""",
         "image_captions": [
             "Lichte modus met overzichtelijke documentweergave",
             "Donkere modus met kleurrijke syntaxisaccentuering",
@@ -412,10 +412,10 @@ Göz açıp kapayıncaya kadar açılan yapısıyla hem hızlı notlar almak, he
             "kod",
             "metin"
         ],
-        "releaseNotes": """miu v1.0.56 Yenilikleri
-• Kaydedilmemiş HTML parçalarında (<canvas>, <div>, <script>, <style> vb.) <script> çalıştırma desteği tüm platformlarda etkinleştirildi.
-• macOS, iOS ve Android HTML önizleme CSP politikası Windows ile eşitlenerek eval / new Function ve blob: / data: betikleri desteklendi.
-• Yeni bir belge .html olarak kaydedildiği anda canlı önizlemenin anında HTML moduna geçmesi sağlandı.""",
+        "releaseNotes": """miu v1.0.57 Yenilikleri
+• Tek satır içinde metin kesildiğinde (Ctrl+X) veya silindiğinde yön tuşlarıyla imlecin yanlış sütuna atlamasına ya da çok baytlı UTF-8 satırlarında sol ok tuşunun takılmasına neden olan sorun düzeltildi.
+• Yazma, yapıştırma, değiştirme ve Geri Al/Yinele işlemlerinden sonra yatay imleç konumu senkronizasyonu ve UTF-8 karakter sınırı koruması güçlendirildi.
+• Windows yükleyicisindeki uygulama simgesi görünümü ve genel kararlılık iyileştirildi.""",
         "image_captions": [
             "Açık temada temiz ve akıcı metin düzenleme",
             "Koyu temada renkli kod sözdizimi vurgulama",
@@ -453,10 +453,10 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "nhanh",
             "văn bản"
         ],
-        "releaseNotes": """Có gì mới trong miu v1.0.56
-• Hỗ trợ chạy <script> trực tiếp trong các đoạn HTML chưa lưu (<canvas>, <div>, <script>, <style>, v.v.) trên mọi nền tảng.
-• Đồng nhất CSP xem trước HTML trên macOS, iOS và Android với bản Windows, hỗ trợ eval / new Function cùng script blob: / data:.
-• Tự động chuyển xem trước trực tiếp sang chế độ HTML ngay sau khi lưu tệp dưới dạng .html.""",
+        "releaseNotes": """Có gì mới trong miu v1.0.57
+• Khắc phục lỗi khi cắt (Ctrl+X) hoặc xóa văn bản trên một dòng khiến phím mũi tên nhảy sai cột hoặc kẹt phím mũi tên trái trên văn bản UTF-8 đa byte.
+• Tăng cường đồng bộ vị trí ngang của con trỏ sau khi nhập, dán, thay thế và Hoàn tác/Làm lại, đồng thời bảo vệ chặt chẽ ranh giới ký tự UTF-8.
+• Cải thiện hiển thị biểu tượng ứng dụng trong trình cài đặt Windows và độ ổn định tổng thể.""",
         "image_captions": [
             "Chế độ Sáng với định dạng và căn lề sắc nét",
             "Chế độ Tối với tô màu cú pháp mã nguồn",
@@ -495,10 +495,10 @@ Từ việc ghi chú tức thì, duyệt qua các tệp nhật ký (log) khổng
             "код",
             "текст"
         ],
-        "releaseNotes": """Що нового в miu v1.0.56
-• Увімкнено виконання <script> у незбережених HTML-фрагментах (<canvas>, <div>, <script>, <style> тощо) на всіх платформах.
-• Уніфіковано CSP попереднього перегляду HTML на macOS, iOS та Android із Windows (підтримка eval / new Function і скриптів blob: / data:).
-• Миттєве перемикання живого перегляду в режим HTML одразу після збереження файлу як .html.""",
+        "releaseNotes": """Що нового в miu v1.0.57
+• Виправлено помилку, через яку після вирізання (Ctrl+X) або видалення тексту в межах одного рядка клавіші стрілок переміщували курсор у хибний стовпець або блокували стрілку вліво на багатобайтових символах UTF-8.
+• Покращено синхронізацію горизонтальної позиції курсора після введення, вставлення, заміни та скасування/повторення, а також посилено захист меж символів UTF-8.
+• Виправлено відображення піктограми програми в інсталяторі Windows і підвищено загальну стабільність.""",
         "image_captions": [
             "Світла тема з чистим відображенням тексту",
             "Темна тема з підсвічуванням синтаксису коду",
@@ -537,10 +537,10 @@ Mulai dari mencatat cepat, memeriksa berkas log raksasa berukuran gigabita, hing
             "kode",
             "teks"
         ],
-        "releaseNotes": """Yang Baru di miu v1.0.56
-• Mendukung eksekusi <script> pada cuplikan HTML yang belum disimpan (<canvas>, <div>, <script>, <style>, dll.) di semua platform.
-• Menyeragamkan CSP pratinjau HTML di macOS, iOS, dan Android dengan Windows untuk mendukung eval / new Function serta skrip blob: / data:.
-• Pratinjau langsung kini langsung beralih ke mode HTML segera setelah dokumen disimpan sebagai .html.""",
+        "releaseNotes": """Yang Baru di miu v1.0.57
+• Memperbaiki masalah saat memotong (Ctrl+X) atau menghapus teks dalam satu baris yang menyebabkan tombol panah melompat ke kolom yang salah atau panah kiri macet pada teks UTF-8 multibita.
+• Meningkatkan sinkronisasi posisi horizontal kursor setelah mengetik, menempel, mengganti, dan Urungkan/Ulangi, serta perlindungan batas karakter UTF-8.
+• Meningkatkan tampilan ikon aplikasi pada pemasang Windows dan stabilitas secara keseluruhan.""",
         "image_captions": [
             "Mode Terang dengan tampilan dokumen yang rapi dan bersih",
             "Mode Gelap dengan pewarnaan sintaksis kode yang jelas",
@@ -579,10 +579,10 @@ Spouští se během zlomku sekundy a je ideální pro rychlé poznámky, analýz
             "kód",
             "text"
         ],
-        "releaseNotes": """Novinky v miu v1.0.56
-• Povoleno spouštění <script> v neuložených úryvcích HTML (<canvas>, <div>, <script>, <style> aj.) na všech platformách.
-• Sjednocena CSP živého náhledu HTML na macOS, iOS a Androidu s verzí pro Windows (podpora eval / new Function a skriptů blob: / data:).
-• Okamžité přepnutí živého náhledu do režimu HTML ihned po uložení dokumentu jako .html.""",
+        "releaseNotes": """Novinky v miu v1.0.57
+• Opravena chyba, kdy vyjmutí (Ctrl+X) nebo smazání textu na jednom řádku způsobovalo skoky kurzoru do nesprávného sloupce nebo zasekávání šipky vlevo u vícebajtového textu UTF-8.
+• Vylepšena synchronizace vodorovné pozice kurzoru po psaní, vkládání, nahrazování a Zpět/Znovu spolu s přísnější ochranou hranic znaků UTF-8.
+• Opraveno zobrazení ikony aplikace v instalátoru Windows a zlepšena celková stabilita.""",
         "image_captions": [
             "Světlý režim s čistým a přehledným zobrazením dokumentu",
             "Tmavý režim s barevným zvýrazňováním syntaxe kódu",
@@ -621,10 +621,10 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "kodredigerare",
             "text"
         ],
-        "releaseNotes": """Nyheter i miu v1.0.56
-• Aktiverat <script>-körning för osparade HTML-kodsnuttar (<canvas>, <div>, <script>, <style> m.fl.) på alla plattformar.
-• Förenhetligat CSP för HTML-förhandsgranskning på macOS, iOS och Android med Windows (stöd för eval / new Function samt blob:- / data:-skript).
-• Direkt växling till HTML-läge i förhandsgranskningen när ett nytt dokument sparas som .html.""",
+        "releaseNotes": """Nyheter i miu v1.0.57
+• Åtgärdade ett fel där klipp ut (Ctrl+X) eller borttagning på en enskild rad gjorde att piltangenterna hoppade till fel kolumn eller att vänsterpilen fastnade på flerbytes UTF-8-text.
+• Förbättrad synkronisering av markörens horisontella position efter inmatning, inklistring, ersättning och Ångra/Gör om samt striktare skydd för UTF-8-teckengränser.
+• Förbättrad ikonvisning i Windows-installationsprogrammet och ökad stabilitet.""",
         "image_captions": [
             "Ljust läge med ren och tydlig dokumentvy",
             "Mörkt läge med tydlig syntaxmarkering för kod",
@@ -663,10 +663,10 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "ความเร็วสูง",
             "ข้อความ"
         ],
-        "releaseNotes": """มีอะไรใหม่ใน miu v1.0.56
-• รองรับการรัน <script> สำหรับโค้ด HTML ที่ยังไม่บันทึก (เช่น ขึ้นต้นด้วย <canvas>, <div>, <script>, <style>) บนทุกแพลตฟอร์ม
-• ปรับ CSP ของพรีวิว HTML บน macOS, iOS และ Android ให้ตรงกับ Windows รองรับ eval / new Function และสคริปต์ blob: / data:
-• อัปเดตพรีวิวสดเป็นโหมด HTML ทันทีเมื่อบันทึกเอกสารใหม่เป็นไฟล์ .html""",
+        "releaseNotes": """มีอะไรใหม่ใน miu v1.0.57
+• แก้ไขปัญหาที่การตัดข้อความ (Ctrl+X) หรือลบข้อความภายในบรรทัดเดียวทำให้ปุ่มลูกศรกระโดดผิดคอลัมน์หรือปุ่มลูกศรซ้ายค้างในข้อความ UTF-8 แบบหลายไบต์
+• ปรับปรุงการซิงค์ตำแหน่งแนวนอนของเคอร์เซอร์หลังการพิมพ์ วาง แทนที่ และเลิกทำ/ทำซ้ำ พร้อมเพิ่มความปลอดภัยของขอบเขตอักขระ UTF-8
+• ปรับปรุงการแสดงไอคอนของตัวติดตั้ง Windows และความเสถียรโดยรวม""",
         "image_captions": [
             "โหมดสว่างพร้อมการแสดงผลเอกสารที่สะอาดตาและคมชัด",
             "โหมดมืดพร้อมการไฮไลต์สีไวยากรณ์โค้ดอย่างชัดเจน",
@@ -705,10 +705,10 @@ Den startar på ett ögonblick och är perfekt för snabba anteckningar, granskn
             "कोड एडिटर",
             "टेक्स्ट"
         ],
-        "releaseNotes": """miu v1.0.56 में नया क्या है
-• सभी प्लेटफ़ॉर्म पर बिना सहेजे गए HTML स्निपेट (<canvas>, <div>, <script>, <style> आदि) में <script> निष्पादन समर्थित।
-• macOS, iOS और Android के HTML प्रीव्यू CSP को Windows के समान बनाया गया (eval / new Function और blob: / data: स्क्रिप्ट समर्थित)।
-• नए दस्तावेज़ को .html के रूप में सहेजते ही लाइव प्रीव्यू तुरंत HTML मोड में अपडेट होता है।""",
+        "releaseNotes": """miu v1.0.57 में नया क्या है
+• एक ही पंक्ति में टेक्स्ट कट (Ctrl+X) या हटाने के बाद तीर कुंजियों से कर्सर के गलत कॉलम पर कूदने या मल्टीबाइट UTF-8 टेक्स्ट पर बाएँ तीर के अटकने की समस्या ठीक की गई।
+• टाइपिंग, पेस्ट, रिप्लेस और Undo/Redo के बाद कर्सर की क्षैतिज स्थिति का समन्वय और UTF-8 वर्ण सीमा सुरक्षा को मजबूत किया गया।
+• Windows इंस्टॉलर में ऐप आइकन प्रदर्शन और समग्र स्थिरता में सुधार किया गया।""",
         "image_captions": [
             "साफ़ और स्पष्ट दस्तावेज़ दृश्य के साथ लाइट मोड",
             "कोड सिंटैक्स हाइलाइटिंग के साथ आकर्षक डार्क मोड",
@@ -747,10 +747,10 @@ Pornește instantaneu și este ideal pentru notițe rapide, analizarea fișierel
             "cod",
             "text"
         ],
-        "releaseNotes": """Noutăți în miu v1.0.56
-• Activată execuția <script> în fragmentele HTML nesalvate (<canvas>, <div>, <script>, <style> etc.) pe toate platformele.
-• Unificată politica CSP de previzualizare HTML pe macOS, iOS și Android cu Windows (suport pentru eval / new Function și scripturi blob: / data:).
-• Comutare imediată a previzualizării live în modul HTML imediat după salvarea ca .html.""",
+        "releaseNotes": """Noutăți în miu v1.0.57
+• S-a remediat o problemă prin care decuparea (Ctrl+X) sau ștergerea textului pe un singur rând provoca salturi ale cursorului la o coloană greșită sau blocarea săgeții stânga pe text UTF-8 multibyte.
+• S-a îmbunătățit sincronizarea poziției orizontale a cursorului după tastare, lipire, înlocuire și Anulare/Refacere, cu protecție strictă a limitelor de caractere UTF-8.
+• S-a îmbunătățit afișarea pictogramei aplicației în programul de instalare Windows și stabilitatea generală.""",
         "image_captions": [
             "Mod Luminos cu afișare clară și ordonată a documentului",
             "Mod Întunecat cu evidențierea sintaxei codului sursă",
@@ -789,10 +789,10 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "kódszerkesztő",
             "szöveg"
         ],
-        "releaseNotes": """A miu v1.0.56 újdonságai
-• Engedélyezve a <script> futtatása mentetlen HTML-részletekben (<canvas>, <div>, <script>, <style> stb.) minden platformon.
-• Egységesített HTML-előnézeti CSP macOS, iOS és Android rendszeren a Windows-verzióval (eval / new Function és blob: / data: szkriptek támogatása).
-• Az élő előnézet .html mentés után azonnal HTML-módra vált.""",
+        "releaseNotes": """A miu v1.0.57 újdonságai
+• Javítva a hiba, amely miatt az egy soron belüli kivágás (Ctrl+X) vagy törlés után a nyílbillentyűk rossz oszlopra ugrottak, illetve a balra nyíl elakadt többbájtos UTF-8 szövegnél.
+• Pontosabb vízszintes kurzorpozíció-szinkronizálás gépelés, beillesztés, csere és Visszavonás/Mégis után, szigorúbb UTF-8 karakterhatár-védelemmel.
+• Javított alkalmazásikon-megjelenítés a Windows telepítőben és fokozott általános stabilitás.""",
         "image_captions": [
             "Világos mód letisztult és jól áttekinthető dokumentumnézettel",
             "Sötét mód színes kódszintaxis-kiemeléssel",
@@ -831,10 +831,10 @@ A másodperc törtrésze alatt elindul, így tökéletes választás gyors jegyz
             "κώδικας",
             "κείμενο"
         ],
-        "releaseNotes": """Τι νέο υπάρχει στο miu v1.0.56
-• Ενεργοποιήθηκε η εκτέλεση <script> σε μη αποθηκευμένα αποσπάσματα HTML (<canvas>, <div>, <script>, <style> κ.ά.) σε όλες τις πλατφόρμες.
-• Ενοποιήθηκε η πολιτική CSP προεπισκόπησης HTML σε macOS, iOS και Android με τα Windows (υποστήριξη eval / new Function και blob: / data:).
-• Άμεση εναλλαγή της προεπισκόπησης σε λειτουργία HTML μόλις ένα έγγραφο αποθηκευτεί ως .html.""",
+        "releaseNotes": """Τι νέο υπάρχει στο miu v1.0.57
+• Διορθώθηκε σφάλμα όπου η αποκοπή (Ctrl+X) ή η διαγραφή κειμένου σε μία γραμμή προκαλούσε μεταπήδηση του δρομέα σε λάθος στήλη με τα βέλη ή κόλλημα του αριστερού βέλους σε κείμενο UTF-8 πολλαπλών byte.
+• Βελτιώθηκε ο συγχρονισμός της οριζόντιας θέσης του δρομέα μετά από πληκτρολόγηση, επικόλληση, αντικατάσταση και Αναίρεση/Επανάληψη, με αυστηρότερη προστασία ορίων χαρακτήρων UTF-8.
+• Βελτιώθηκε η εμφάνιση του εικονιδίου εφαρμογής στο πρόγραμμα εγκατάστασης των Windows και η συνολική σταθερότητα.""",
         "image_captions": [
             "Φωτεινή λειτουργία με καθαρή και ευανάγνωστη προβολή εγγράφου",
             "Σκοτεινή λειτουργία με χρωματική επισήμανση σύνταξης κώδικα",
@@ -873,10 +873,10 @@ Det starter på et splitsekund og er perfekt til hurtige noter, analyse af enorm
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Nyheder i miu v1.0.56
-• Aktiveret <script>-afvikling i ikke-gemte HTML-udsnit (<canvas>, <div>, <script>, <style> m.fl.) på alle platforme.
-• Ensrettet HTML-forhåndsvisningens CSP på macOS, iOS og Android med Windows (understøttelse af eval / new Function og blob:- / data:-scripts).
-• Øjeblikkeligt skift til HTML-tilstand i live-forhåndsvisning straks efter gem som .html.""",
+        "releaseNotes": """Nyheder i miu v1.0.57
+• Rettede en fejl, hvor klip (Ctrl+X) eller sletning på en enkelt linje fik piletasterne til at hoppe til en forkert kolonne eller venstre pil til at gå i stå på multibyte UTF-8-tekst.
+• Forbedret synkronisering af markørens vandrette position efter indtastning, indsætning, erstatning og Fortryd/Annuller fortryd samt strengere beskyttelse af UTF-8-tegngrænser.
+• Forbedret ikonvisning i Windows-installationsprogrammet og øget generel stabilitet.""",
         "image_captions": [
             "Lys tilstand med ren og overskuelig dokumentvisning",
             "Mørk tilstand med tydelig syntaksfremhævning af kode",
@@ -915,10 +915,10 @@ Se käynnistyy silmänräpäyksessä ja sopii täydellisesti nopeisiin muistiinp
             "koodieditori",
             "teksti"
         ],
-        "releaseNotes": """Uutta versiossa miu v1.0.56
-• Otettu käyttöön <script>-suoritus tallentamattomille HTML-katkelmille (<canvas>, <div>, <script>, <style> jne.) kaikilla alustoilla.
-• Yhtenäistetty HTML-esikatselun CSP macOS:ssä, iOS:ssä ja Androidissa Windowsin kanssa (eval / new Function sekä blob:- / data:-skriptit).
-• Esikatselu vaihtuu nyt välittömästi HTML-tilaan tallennettaessa tiedosto .html-muodossa.""",
+        "releaseNotes": """Uutta versiossa miu v1.0.57
+• Korjattu ongelma, jossa tekstin leikkaaminen (Ctrl+X) tai poistaminen yhden rivin sisällä sai nuolinäppäimet hyppäämään väärään sarakkeeseen tai vasemman nuolen jumittumaan monitavuisessa UTF-8-tekstissä.
+• Parannettu kohdistimen vaakasuuntaisen sijainnin synkronointia kirjoittamisen, liittämisen, korvaamisen sekä Kumoa/Tee uudelleen -toimintojen jälkeen sekä tiukennettu UTF-8-merkkirajojen suojausta.
+• Parannettu sovelluskuvakkeen näkymistä Windows-asennusohjelmassa ja yleistä vakautta.""",
         "image_captions": [
             "Vaalea tila selkeällä ja puhtaalla asiakirjanäkymällä",
             "Tumma tila koodin syntaksin värikorostuksella",
@@ -957,10 +957,10 @@ Det starter på et øyeblikk og passer perfekt til raske notater, analyse av eno
             "kodeeditor",
             "tekst"
         ],
-        "releaseNotes": """Nyheter i miu v1.0.56
-• Aktivert <script>-kjøring i ulagrede HTML-snutter (<canvas>, <div>, <script>, <style> osv.) på alle plattformer.
-• Samordnet CSP for HTML-forhåndsvisning på macOS, iOS og Android med Windows (støtte for eval / new Function og blob:- / data:-skript).
-• Umiddelbar oppdatering til HTML-modus i forhåndsvisningen når et nytt dokument lagres som .html.""",
+        "releaseNotes": """Nyheter i miu v1.0.57
+• Rettet en feil der utklipping (Ctrl+X) eller sletting innenfor én enkelt linje førte til at piltastene hoppet til feil kolonne eller at venstrepilen stoppet opp på flerbyte UTF-8-tekst.
+• Forbedret synkronisering av markørens horisontale posisjon etter skriving, innliming, erstatning og Angre/Gjør om, med strengere beskyttelse av UTF-8-tegngrenser.
+• Forbedret ikonvisning i Windows-installasjonsprogrammet og økt generell stabilitet.""",
         "image_captions": [
             "Lys modus med ren og oversiktlig dokumentvisning",
             "Mørk modus med tydelig syntaksutheving av kode",
@@ -999,10 +999,10 @@ Ia dilancarkan dalam sekelip mata dan sangat sesuai untuk nota pantas, memeriksa
             "penyunting kod",
             "teks"
         ],
-        "releaseNotes": """Baharu dalam miu v1.0.56
-• Menyokong pelaksanaan <script> dalam keratan HTML belum disimpan (<canvas>, <div>, <script>, <style>, dll.) pada semua platform.
-• Menyelaraskan CSP pratonton HTML pada macOS, iOS dan Android dengan Windows untuk menyokong eval / new Function serta skrip blob: / data:.
-• Pratonton langsung kini bertukar serta-merta ke mod HTML sebaik sahaja dokumen disimpan sebagai .html.""",
+        "releaseNotes": """Baharu dalam miu v1.0.57
+• Membaiki isu apabila memotong (Ctrl+X) atau memadam teks dalam satu baris menyebabkan kekunci anak panah melompat ke lajur yang salah atau anak panah kiri tersekat pada teks UTF-8 berbilang bait.
+• Menambah baik penyegerakan kedudukan mendatar kursor selepas menaip, menampal, mengganti dan Buat Asal/Buat Semula serta perlindungan sempadan aksara UTF-8.
+• Menambah baik paparan ikon aplikasi dalam pemasang Windows dan kestabilan keseluruhan.""",
         "image_captions": [
             "Mod Cerah dengan paparan dokumen yang kemas dan jelas",
             "Mod Gelap dengan penyerlahan sintaks kod yang terang",

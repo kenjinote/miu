@@ -7,6 +7,27 @@ import subprocess
 import requests
 
 DEFAULT_RELEASE_NOTES = {
+    "1.0.57": {
+        "ja-jp": """miu v1.0.57 アップデート内容
+・単一行の切り取り（Ctrl+X）や削除後に上下左右の矢印キー移動でカーソル位置がずれたり停止したりする問題を修正
+・テキスト編集・ペースト・置換・Undo/Redo 直後のカーソル水平基準位置の同期と UTF-8 マルチバイト文字境界の保護を強化
+・インストーラーおよびアプリアイコン表示の安定性を改善""",
+
+        "en-us": """What's New in miu v1.0.57
+• Fixed an issue where cutting (Ctrl+X) or deleting text within a single line caused arrow-key caret jumps or left-arrow stalls on multibyte UTF-8 lines.
+• Improved caret horizontal position synchronization after typing, pasting, replacing, and Undo/Redo, with stricter UTF-8 character boundary safety.
+• Improved Windows installer icon registration and overall stability.""",
+
+        "zh-hans": """miu v1.0.57 更新内容
+・修复在单行内剪切（Ctrl+X）或删除文本后，使用方向键移动光标时出现列跳转或行末左移停滞的问题
+・强化输入、粘贴、替换及撤销/重做后的光标水平坐标同步与多字节 UTF-8 字符边界保护
+・改进 Windows 安装包图标显示与整体稳定性""",
+
+        "ko": """miu v1.0.57 업데이트 안내
+・단일 줄에서 텍스트를 잘라내기(Ctrl+X)하거나 삭제한 후 방향키 이동 시 커서 열이 어긋나거나 줄 끝에서 멈추던 문제 수정
+・입력·붙여넣기·바꾸기·실행 취소/다시 실행 직후 커서 수평 기준 위치 동기화 및 멀티바이트 UTF-8 문자 경계 보호 강화
+・Windows 설치 프로그램 아이콘 표시 및 전반적인 안정성 개선"""
+    },
     "1.0.56": {
         "ja-jp": """miu v1.0.56 アップデート内容
 ・未保存の新規バッファでも <canvas> や <div> 等から始まる HTML スニペットの <script> 実行に対応
